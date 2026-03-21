@@ -1,4 +1,3 @@
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
@@ -6,14 +5,32 @@ import api from './api';
 
 const isExpoGo = Constants.appOwnership === 'expo' || Constants.appOwnership === 'guest';
 
-// Configure how notifications appear when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+async function getNotificationsModule() {
+  if (isExpoGo) return null;
+  try {
+    const Notifications = await import('expo-notifications');
+    return Notifications;
+  } catch (e) {
+    console.warn('[Push] expo-notifications import failed:', e);
+    return null;
+  }
+}
+
+// Configure how notifications appear when app is in foreground (if available)
+(async () => {
+  const Notifications = await getNotificationsModule();
+  if (Notifications && Notifications.setNotificationHandler) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  } else if (isExpoGo) {
+    console.warn('[Push] expo-notifications not available in Expo Go; skipping notification handler. Use dev-client for push support.');
+  }
+})();
 
 /**
  * Register for push notifications and get the FCM token
@@ -21,9 +38,9 @@ Notifications.setNotificationHandler({
 export async function registerForPushNotifications(): Promise<string | null> {
   let token: string | null = null;
 
-  // In Expo Go SDK 53+, remote push is not supported; use a dev-client build.
-  if (isExpoGo) {
-    console.warn('[Push] expo-notifications remote push is not supported in Expo Go. Use development build (dev-client).');
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    console.warn('[Push] Notifications module unavailable; skipping registration.');
     return null;
   }
 
@@ -52,9 +69,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
     
     if (projectId) {
-      const pushToken = await Notifications.getExpoPushTokenAsync({
-        projectId,
-      });
+      const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
       token = pushToken.data;
       console.log('[Push] Expo Push Token:', token);
     } else {
@@ -69,21 +84,25 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   // Configure Android notification channel
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'Default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF6B35',
-    });
+    try {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Default',
+        importance: Notifications.AndroidImportance?.MAX ?? 5,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF6B35',
+      });
 
-    await Notifications.setNotificationChannelAsync('messages', {
-      name: 'Messages',
-      description: 'Private and community message notifications',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF6B35',
-      sound: 'default',
-    });
+      await Notifications.setNotificationChannelAsync('messages', {
+        name: 'Messages',
+        description: 'Private and community message notifications',
+        importance: Notifications.AndroidImportance?.HIGH ?? 4,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF6B35',
+        sound: 'default',
+      });
+    } catch (e) {
+      console.warn('[Push] Failed to configure Android channels', e);
+    }
   }
 
   return token;
@@ -119,18 +138,28 @@ export async function initializePushNotifications(): Promise<string | null> {
 /**
  * Add listener for notification received while app is foregrounded
  */
-export function addNotificationReceivedListener(
-  callback: (notification: Notifications.Notification) => void
+export async function addNotificationReceivedListener(
+  callback: (notification: any) => void
 ) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    console.warn('[Push] addNotificationReceivedListener: notifications unavailable');
+    return { remove: () => {} };
+  }
   return Notifications.addNotificationReceivedListener(callback);
 }
 
 /**
  * Add listener for notification response (when user taps notification)
  */
-export function addNotificationResponseReceivedListener(
-  callback: (response: Notifications.NotificationResponse) => void
+export async function addNotificationResponseReceivedListener(
+  callback: (response: any) => void
 ) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    console.warn('[Push] addNotificationResponseReceivedListener: notifications unavailable');
+    return { remove: () => {} };
+  }
   return Notifications.addNotificationResponseReceivedListener(callback);
 }
 
@@ -138,6 +167,8 @@ export function addNotificationResponseReceivedListener(
  * Get the last notification response (for handling deep links on app launch)
  */
 export async function getLastNotificationResponse() {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
   return await Notifications.getLastNotificationResponseAsync();
 }
 
@@ -149,6 +180,8 @@ export async function scheduleLocalNotification(
   body: string,
   data?: Record<string, any>
 ) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -164,6 +197,8 @@ export async function scheduleLocalNotification(
  * Clear all notifications
  */
 export async function clearAllNotifications() {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return;
   await Notifications.dismissAllNotificationsAsync();
 }
 
@@ -171,6 +206,8 @@ export async function clearAllNotifications() {
  * Get badge count
  */
 export async function getBadgeCount(): Promise<number> {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return 0;
   return await Notifications.getBadgeCountAsync();
 }
 
@@ -178,5 +215,7 @@ export async function getBadgeCount(): Promise<number> {
  * Set badge count
  */
 export async function setBadgeCount(count: number) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return;
   await Notifications.setBadgeCountAsync(count);
 }

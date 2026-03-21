@@ -22,6 +22,25 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Robust retry on 503 errors and network disconnections
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    // Retry up to 3 times on 503 or Network Error
+    if (config && (!config._retryCount || config._retryCount < 3)) {
+      if (error.response?.status === 503 || error.response?.status === 502 || error.code === 'ERR_NETWORK') {
+        config._retryCount = (config._retryCount || 0) + 1;
+        console.warn(`[API] Retrying request... Attempt ${config._retryCount}`);
+        const delay = config._retryCount * 2000; // 2s, 4s, 6s
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return api(config);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth APIs
 export const sendOTP = (phone: string) => 
   api.post('/auth/send-otp', { phone });
@@ -336,6 +355,10 @@ export const createVendor = (data: {
   phone_number: string;
   latitude?: number;
   longitude?: number;
+  photos?: string[];
+  aadhar_url?: string | null;
+  pan_url?: string | null;
+  face_scan_url?: string | null;
 }) => api.post('/vendors', data);
 
 export const getVendors = (params?: {
@@ -366,6 +389,9 @@ export const updateVendor = (vendorId: string, data: {
   latitude?: number;
   longitude?: number;
   photos?: string[];
+  aadhar_url?: string | null;
+  pan_url?: string | null;
+  face_scan_url?: string | null;
 }) => api.put(`/vendors/${vendorId}`, data);
 
 export const addVendorPhoto = (vendorId: string, photo: string) => 

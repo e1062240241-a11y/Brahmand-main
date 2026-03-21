@@ -16,11 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useVendorStore, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { updateVendor } from '../../src/services/api';
+import { VendorKYCModal } from '../../src/components/VendorKYCModal';
 
 export default function VendorDashboardScreen() {
   const router = useRouter();
   const { myVendor, fetchMyVendor } = useVendorStore();
   const [loading, setLoading] = useState(false);
+  const [kycVisible, setKycVisible] = useState(false);
   
   // Edit modals
   const [editModal, setEditModal] = useState<string | null>(null);
@@ -31,6 +33,11 @@ export default function VendorDashboardScreen() {
   useEffect(() => {
     fetchMyVendor();
   }, []);
+
+  useEffect(() => {
+    // Refresh myVendor on mount and when this component re-renders.
+    fetchMyVendor().catch((e) => console.warn('fetchMyVendor failed', e));
+  }, [fetchMyVendor]);
 
   if (!myVendor) {
     return (
@@ -142,6 +149,7 @@ export default function VendorDashboardScreen() {
     { icon: 'location', label: 'Update Address', action: handleEditAddress },
     { icon: 'pricetags', label: 'Update Categories', action: handleEditCategories },
     { icon: 'call', label: 'Manage Contact Number', action: handleEditPhone },
+    { icon: 'id-card', label: 'Complete KYC & Verification', action: () => setKycVisible(true) },
   ];
 
   return (
@@ -323,6 +331,12 @@ export default function VendorDashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      <VendorKYCModal 
+        visible={kycVisible}
+        onClose={() => setKycVisible(false)}
+        vendorId={myVendor.id}
+      />
     </SafeAreaView>
   );
 }

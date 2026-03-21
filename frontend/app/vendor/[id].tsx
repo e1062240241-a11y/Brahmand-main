@@ -23,9 +23,17 @@ const TRUST_LABELS = {
 export default function VendorProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { vendors } = useVendorStore();
+  const { vendors, fetchMyVendor } = useVendorStore();
   
   const vendor = vendors.find(v => v.id === id);
+
+  React.useEffect(() => {
+    if (id && !vendor) {
+      fetchMyVendor().catch((e) => {
+        console.warn('Failed to refresh my vendor on profile load', e);
+      });
+    }
+  }, [id, vendor, fetchMyVendor]);
 
   if (!vendor) {
     return (
@@ -43,7 +51,7 @@ export default function VendorProfileScreen() {
     );
   }
 
-  const trustInfo = TRUST_LABELS[vendor.trustLabel];
+  const trustInfo = TRUST_LABELS[vendor.trustLabel] || { label: 'Community Vendor', color: COLORS.text, icon: 'people' };
 
   const handleCall = () => {
     Linking.openURL(`tel:${vendor.phoneNumber}`);
@@ -90,7 +98,7 @@ export default function VendorProfileScreen() {
           <Text style={styles.ownerName}>by {vendor.ownerName}</Text>
           
           {/* Trust Badge */}
-          <View style={[styles.trustBadge, { backgroundColor: `${trustInfo.color}15` }]}>
+          <View style={[styles.trustBadge, { backgroundColor: `${trustInfo.color ?? COLORS.text}15` }]}>
             <Ionicons name={trustInfo.icon as any} size={16} color={trustInfo.color} />
             <Text style={[styles.trustText, { color: trustInfo.color }]}>{trustInfo.label}</Text>
           </View>
@@ -106,7 +114,7 @@ export default function VendorProfileScreen() {
           {/* Distance */}
           <View style={styles.metaRow}>
             <Ionicons name="location" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.metaText}>{vendor.distance?.toFixed(1)} km away</Text>
+            <Text style={styles.metaText}>{vendor.distance ? `${vendor.distance.toFixed(1)} km away` : 'Distance unknown'}</Text>
           </View>
         </View>
 

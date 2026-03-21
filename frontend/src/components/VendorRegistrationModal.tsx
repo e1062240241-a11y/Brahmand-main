@@ -113,7 +113,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
         businessName: businessName.trim(),
         ownerName: ownerName.trim(),
         phoneNumber: phoneNumber.trim(),
-        yearsInBusiness: parseInt(yearsInBusiness) || 0,
+        yearsInBusiness: parseInt(yearsInBusiness, 10) || 0,
         categories: selectedCategories,
         address: address.trim(),
         locationLink,
@@ -122,9 +122,21 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       });
       resetForm();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error registering vendor:', error);
-      Alert.alert('Error', 'Failed to register. Please try again.');
+      let message = 'Failed to register. Please try again.';
+      if (error?.response?.data?.detail) {
+        if (Array.isArray(error.response.data.detail)) {
+          message = error.response.data.detail.map((item: any) => item.msg || JSON.stringify(item)).join('\n');
+        } else if (typeof error.response.data.detail === 'string') {
+          message = error.response.data.detail;
+        } else {
+          message = JSON.stringify(error.response.data.detail);
+        }
+      } else if (error?.message) {
+        message = error.message;
+      }
+      Alert.alert('Registration Error', message);
     } finally {
       setLoading(false);
     }

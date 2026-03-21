@@ -80,9 +80,11 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
     set({ loading: true });
     try {
       const response = await getVendors(params);
-      set({ vendors: response.data || [] });
-    } catch (error) {
-      console.error('Error fetching vendors:', error);
+      set({ vendors: response?.data || [] });
+    } catch (error: any) {
+      if (error?.response?.status !== 404 && error?.response?.status !== 503) {
+        console.warn('Error fetching vendors:', error?.message || error);
+      }
       set({ vendors: [] });
     } finally {
       set({ loading: false });
@@ -92,9 +94,11 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   fetchMyVendor: async () => {
     try {
       const response = await getMyVendor();
-      set({ myVendor: response.data });
-    } catch (error) {
-      console.error('Error fetching my vendor:', error);
+      set({ myVendor: response?.data || null });
+    } catch (error: any) {
+      if (error?.response?.status !== 404 && error?.response?.status !== 503) {
+        console.warn('Error fetching my vendor:', error?.message || error);
+      }
       set({ myVendor: null });
     }
   },
@@ -102,9 +106,11 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   fetchVendor: async (vendorId: string) => {
     try {
       const response = await getVendor(vendorId);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching vendor:', error);
+      return response?.data || null;
+    } catch (error: any) {
+      if (error?.response?.status !== 404 && error?.response?.status !== 503) {
+        console.warn(`Error fetching vendor ${vendorId}:`, error?.message || error);
+      }
       return null;
     }
   },
@@ -112,21 +118,28 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   fetchCategories: async () => {
     try {
       const response = await getVendorCategories();
-      const categories = response.data || [];
+      const categories = response?.data || [];
       // Merge with defaults and deduplicate
       const merged = [...new Set([...categories, ...DEFAULT_CATEGORIES])].sort();
       set({ categories: merged });
-    } catch (error) {
-      console.error('Error fetching categories:', error);
+    } catch (error: any) {
+      if (error?.response?.status !== 503) {
+        console.warn('Error fetching categories:', error?.message || error);
+      }
       set({ categories: DEFAULT_CATEGORIES });
     }
   },
   
   createVendor: async (data) => {
-    const response = await createVendorAPI(data);
-    const newVendor = response.data;
-    set({ myVendor: newVendor });
-    return newVendor;
+    try {
+      const response = await createVendorAPI(data);
+      const newVendor = response.data;
+      set({ myVendor: newVendor });
+      return newVendor;
+    } catch (error: any) {
+      console.error('createVendor failed:', error?.response?.data || error?.message || error);
+      throw error;
+    }
   },
   
   updateVendor: async (vendorId, data) => {

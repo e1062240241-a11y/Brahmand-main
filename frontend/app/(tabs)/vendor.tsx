@@ -103,19 +103,37 @@ export default function VendorScreen() {
         years_in_business: data.yearsInBusiness || 0,
         categories: data.categories,
         full_address: data.address,
-        location_link: data.locationLink,
+        location_link: data.locationLink || undefined,
         phone_number: data.phoneNumber,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        photos: data.documents?.businessImagesUrls || [],
-        aadhar_url: data.documents?.aadharUrl || null,
-        pan_url: data.documents?.panUrl || null,
-        face_scan_url: data.documents?.faceScanUrl || null
+        latitude: data.latitude || undefined,
+        longitude: data.longitude || undefined,
+        photos: [],
+        aadhar_url: null,
+        pan_url: null,
+        face_scan_url: null
       });
       Alert.alert('Success', 'Your business has been registered!');
       setShowRegistrationModal(false);
+      // Force refresh data so it shows immediately
+      await fetchMyVendor();
+      if (userLocation) {
+        await fetchVendors(userLocation);
+      } else {
+        await fetchVendors();
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to register business');
+      console.error('Vendor API Registration Error:', error.response?.data);
+      let errorMsg = 'Failed to register business';
+      if (error.response?.data?.detail) {
+        if (Array.isArray(error.response.data.detail)) {
+          errorMsg = error.response.data.detail.map((err: any) => `${err.loc?.[1] || err.loc?.[0]}: ${err.msg}`).join('\n');
+        } else if (typeof error.response.data.detail === 'string') {
+          errorMsg = error.response.data.detail;
+        } else {
+          errorMsg = JSON.stringify(error.response.data.detail);
+        }
+      }
+      Alert.alert('Error', errorMsg);
     }
   };
 
