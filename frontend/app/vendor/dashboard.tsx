@@ -8,7 +8,8 @@ import {
   TextInput,
   Alert,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  BackHandler
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,11 +40,24 @@ export default function VendorDashboardScreen() {
     fetchMyVendor().catch((e) => console.warn('fetchMyVendor failed', e));
   }, [fetchMyVendor]);
 
+  useEffect(() => {
+    const onBackPress = () => {
+      router.replace('/(tabs)/vendor');
+      return true; // prevent default behavior
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
   if (!myVendor) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/vendor')}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Vendor Dashboard</Text>
@@ -54,7 +68,7 @@ export default function VendorDashboardScreen() {
           <Text style={styles.errorText}>No business registered</Text>
           <TouchableOpacity 
             style={styles.registerBtn}
-            onPress={() => router.back()}
+            onPress={() => router.replace('/(tabs)/vendor')}
           >
             <Text style={styles.registerBtnText}>Register Your Business</Text>
           </TouchableOpacity>
@@ -81,6 +95,32 @@ export default function VendorDashboardScreen() {
   const handleEditCategories = () => {
     setEditCategories([...myVendor.categories]);
     setEditModal('categories');
+  };
+
+  const formatKycStatus = (status?: string) => {
+    switch (status) {
+      case 'verified':
+        return 'Verified';
+      case 'manual_review':
+        return 'In Review';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return 'Pending';
+    }
+  };
+
+  const getKycChipColor = (status?: string) => {
+    switch (status) {
+      case 'verified':
+        return '#DFF7E3';
+      case 'manual_review':
+        return '#FFF5D6';
+      case 'rejected':
+        return '#FAD6D6';
+      default:
+        return '#EDF4FF';
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -156,7 +196,7 @@ export default function VendorDashboardScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/vendor')}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Vendor Dashboard</Text>
@@ -171,7 +211,12 @@ export default function VendorDashboardScreen() {
           </View>
           <Text style={styles.businessName}>{myVendor.business_name}</Text>
           <Text style={styles.businessOwner}>{myVendor.owner_name}</Text>
-          
+
+          {/* KYC Status Badge */}
+          <View style={[styles.kycChip, { backgroundColor: getKycChipColor(myVendor.kyc_status) }]}> 
+            <Text style={styles.kycChipText}>{formatKycStatus(myVendor.kyc_status)}</Text>
+          </View>
+
           <View style={styles.statsRow}>
             <View style={styles.stat}>
               <Text style={styles.statValue}>{myVendor.years_in_business || 0}</Text>
@@ -336,6 +381,7 @@ export default function VendorDashboardScreen() {
         visible={kycVisible}
         onClose={() => setKycVisible(false)}
         vendorId={myVendor.id}
+        onKycUpdated={fetchMyVendor}
       />
     </SafeAreaView>
   );

@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+python-multipart
 python-socketio
 pydantic
 python-dotenv
@@ -10,3 +11,5 @@ Pillow
 google-cloud-firestore
 
 twilio
+face_recognition
+requests

@@ -22,7 +22,7 @@ import { RequestFormModal } from '../../src/components/RequestFormModal';
 const TOP_TABS = ['Community', 'Private Chat'];
 
 // Community sub-tabs
-const COMMUNITY_TABS = ['Chat', 'Help', 'Blood', 'Medical', 'Financial', 'Petition'];
+const COMMUNITY_TABS = ['Chat', 'General', 'Blood', 'Medical', 'Petition'];
 
 interface Circle {
   id: string;
@@ -74,10 +74,10 @@ export default function MessagesScreen() {
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
-  // Request form modal
+  const [generalExpanded, setGeneralExpanded] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
+  const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
+  const [requestType, setRequestType] = useState<'Blood' | 'Medical' | 'Petition'>('Blood');
 
   const fetchData = useCallback(async () => {
     try {
@@ -87,13 +87,15 @@ export default function MessagesScreen() {
           const res = await getCommunities();
           setCommunities(res.data || []);
           setRequests([]);
+        } else if (activeCommunityTab === 'General') {
+          // General tab does not display requests
+          setCommunities([]);
+          setRequests([]);
         } else {
           // Fetch community requests for this tab type
           const requestTypeMap: Record<string, string> = {
-            'Help': 'help',
             'Blood': 'blood',
             'Medical': 'medical',
-            'Financial': 'financial',
             'Petition': 'petition'
           };
           const response = await getCommunityRequests({
@@ -121,57 +123,16 @@ export default function MessagesScreen() {
 
   const handleCommunityTabChange = async (tab: string) => {
     setActiveCommunityTab(tab);
-    if (tab !== 'Chat') {
-      // Check for existing active request before opening modal
-      try {
-        const response = await getMyCommunityRequests();
-        const myRequests = response.data || [];
-        const hasActive = myRequests.some((req: any) => req.status === 'active');
-        
-        if (hasActive) {
-          Alert.alert(
-            'Active Request Exists',
-            'You already have an active help request. Please mark it as fulfilled before creating a new one.'
-          );
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking active requests:', error);
-      }
-      
-      setRequestType(tab as any);
-      setShowRequestModal(true);
+
+    if (tab === 'General') {
+      setGeneralExpanded(false);
+      return;
     }
+
+    // No request creation at community sub-tabs, only show existing requests
   };
 
-  const handleSubmitRequest = async (data: any) => {
-    try {
-      const title = data.title || `${data.request_type} Request`;
-      const description = data.description || 'Request created from community tab';
-      
-      await createCommunityRequest({
-        request_type: data.request_type,
-        visibility_level: data.visibility_level || 'area',
-        title: title.length >= 2 ? title : `${data.request_type} Request`,
-        description: description.length >= 10 ? description : description.padEnd(10, '.'),
-        contact_number: data.contact_number,
-        urgency_level: data.urgency_level || 'low',
-        blood_group: data.blood_group,
-        hospital_name: data.hospital_name,
-        location: data.location,
-        amount: data.amount,
-        support_needed: data.support_needed,
-        contact_person_name: data.contact_person_name,
-      });
-      
-      Alert.alert('Success', 'Your request has been posted!');
-      fetchData();
-    } catch (error: any) {
-      console.error('Error submitting request:', error);
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to submit request');
-      throw error;
-    }
-  };
+  // Request submission disabled inside community sub-tabs.
 
   const handleResolveRequest = async (requestId: string) => {
     Alert.alert(
@@ -348,17 +309,64 @@ export default function MessagesScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Top Tabs: Community | Private Chat */}
       <View style={styles.topTabsContainer}>
-        {TOP_TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.topTab, activeTopTab === tab && styles.topTabActive]}
-            onPress={() => setActiveTopTab(tab)}
-          >
-            <Text style={[styles.topTabText, activeTopTab === tab && styles.topTabTextActive]}>
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.topTabsInner}>
+          {TOP_TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.topTab, activeTopTab === tab && styles.topTabActive]}
+              onPress={() => setActiveTopTab(tab)}
+            >
+              <Text style={[styles.topTabText, activeTopTab === tab && styles.topTabTextActive]}>
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {activeTopTab === 'Community' && (
+          <View>
+            <TouchableOpacity
+              style={styles.headerAction}
+              onPress={() => setShowRequestTypeMenu(!showRequestTypeMenu)}
+            >
+              <Ionicons name="add" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+
+            {showRequestTypeMenu && (
+              <View style={styles.requestTypeMenu}>
+                {['Blood', 'Medical', 'Petition'].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={styles.requestTypeMenuItem}
+                    onPress={async () => {
+                      setShowRequestTypeMenu(false);
+                      setRequestType(type as any);
+
+                      try {
+                        const response = await getMyCommunityRequests();
+                        const myRequests = response.data || [];
+                        const hasActive = myRequests.some((req: any) => req.status === 'active');
+                        if (hasActive) {
+                          Alert.alert(
+                            'Active Request Exists',
+                            'You already have an active help request. Please fulfill it before creating a new one.'
+                          );
+                          return;
+                        }
+                      } catch (error) {
+                        console.error('Error checking active requests:', error);
+                      }
+
+                      setShowRequestModal(true);
+                    }}
+                  >
+                    <Text style={styles.requestTypeMenuText}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Community Tab Content */}
@@ -379,17 +387,6 @@ export default function MessagesScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            {activeCommunityTab !== 'Chat' && (
-              <TouchableOpacity 
-                style={styles.addButton} 
-                onPress={() => {
-                  setRequestType(activeCommunityTab as any);
-                  setShowRequestModal(true);
-                }}
-              >
-                <Ionicons name="add" size={24} color={COLORS.primary} />
-              </TouchableOpacity>
-            )}
           </View>
 
           {/* Community Content */}
@@ -410,6 +407,31 @@ export default function MessagesScreen() {
                 </View>
               }
             />
+          ) : activeCommunityTab === 'General' ? (
+            <View style={styles.generalContainer}>
+              <TouchableOpacity
+                style={styles.generalBar}
+                onPress={() => setGeneralExpanded(!generalExpanded)}
+              >
+                <Text style={styles.generalBarText}>General Options</Text>
+                <Ionicons
+                  name={generalExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={COLORS.text}
+                />
+              </TouchableOpacity>
+
+              {generalExpanded && (
+                <View style={styles.generalOptions}>
+                  <TouchableOpacity style={styles.generalOptionItem} onPress={() => { /* no-op placeholder */ }}>
+                    <Text style={styles.generalOptionText}>Study</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.generalOptionItem} onPress={() => { /* no-op placeholder */ }}>
+                    <Text style={styles.generalOptionText}>Offerings</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           ) : (
             <FlatList
               data={requests}
@@ -423,17 +445,7 @@ export default function MessagesScreen() {
                 <View style={styles.emptyState}>
                   <Ionicons name="document-text-outline" size={48} color={COLORS.textLight} />
                   <Text style={styles.emptyTitle}>No {activeCommunityTab} Requests</Text>
-                  <Text style={styles.emptyText}>Be the first to create a request</Text>
-                  <TouchableOpacity 
-                    style={styles.createButton}
-                    onPress={() => {
-                      setRequestType(activeCommunityTab as any);
-                      setShowRequestModal(true);
-                    }}
-                  >
-                    <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-                    <Text style={styles.createButtonText}>Create {activeCommunityTab} Request</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.emptyText}>Tap + in the top-right to create a new {activeCommunityTab.toLowerCase()} request</Text>
                 </View>
               }
             />
@@ -455,13 +467,37 @@ export default function MessagesScreen() {
         />
       )}
 
-      {/* Request Form Modal */}
+      {/* Request Form Modal for outside-community creation */}
       <RequestFormModal
         visible={showRequestModal}
         onClose={() => setShowRequestModal(false)}
         requestType={requestType}
-        onSubmit={handleSubmitRequest}
+        onSubmit={async (data: any) => {
+          // Existing patterns used inside previous flow
+          try {
+            await createCommunityRequest({
+              request_type: data.request_type,
+              visibility_level: data.visibility_level || 'area',
+              title: data.title || `${data.request_type} Request`,
+              description: data.description || 'Request created from community tab',
+              contact_number: data.contact_number,
+              urgency_level: data.urgency_level || 'low',
+              blood_group: data.blood_group,
+              hospital_name: data.hospital_name,
+              location: data.location,
+              amount: data.amount,
+              support_needed: data.support_needed,
+              contact_person_name: data.contact_person_name,
+            });
+            Alert.alert('Success', 'Your request has been posted!');
+            fetchData();
+          } catch (error: any) {
+            console.error('Error submitting request:', error);
+            Alert.alert('Error', error.response?.data?.detail || 'Failed to submit request');
+          }
+        }}
       />
+
     </SafeAreaView>
   );
 }
@@ -483,6 +519,39 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+  },
+  topTabsInner: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  headerAction: {
+    padding: SPACING.sm,
+  },
+  requestTypeMenu: {
+    position: 'absolute',
+    top: 44,
+    right: 0,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.divider,
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.sm,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    zIndex: 10,
+  },
+  requestTypeMenuItem: {
+    padding: SPACING.sm,
+    minWidth: 120,
+  },
+  requestTypeMenuText: {
+    color: COLORS.text,
+    fontWeight: '600',
   },
   topTab: {
     flex: 1,
@@ -705,6 +774,43 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: SPACING.xl * 2,
+  },
+  generalContainer: {
+    padding: SPACING.md,
+  },
+  generalBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  generalBarText: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  generalOptions: {
+    marginTop: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+  },
+  generalOptionItem: {
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
+  },
+  generalOptionText: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '500',
   },
   emptyIconContainer: {
     width: 80,

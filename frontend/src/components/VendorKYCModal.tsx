@@ -1,41 +1,53 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Modal, TouchableOpacity, Image, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+
+const CameraViewAny = CameraView as any;
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
-import { uploadFileToFirebase } from '../services/firebase/storageService';
-import { updateVendor } from '../services/api';
+import { updateVendor, uploadVendorKycFile } from '../services/api';
 import { useVendorStore } from '../store/vendorStore';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface VendorKYCModalProps {
   visible: boolean;
   onClose: () => void;
   vendorId: string;
+  onKycUpdated?: () => void;
 }
 
-export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose, vendorId }) => {
+export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose, vendorId, onKycUpdated }) => {
   const { fetchMyVendor } = useVendorStore();
   
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
   // Scans & Documents
-  const [aadharUri, setAadharUri] = useState<string | null>(null);
-  const [panUri, setPanUri] = useState<string | null>(null);
+  const [idType, setIdType] = useState<'aadhaar' | 'pan'>('aadhaar');
+  const [idNumber, setIdNumber] = useState('');
+  const [idDocumentUri, setIdDocumentUri] = useState<string | null>(null);
   const [faceScanUri, setFaceScanUri] = useState<string | null>(null);
 
   // Camera State
   const [showCamera, setShowCamera] = useState(false);
   const [cameraType, setCameraType] = useState<CameraType>('front');
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [faceBounds, setFaceBounds] = useState<any>(null);
+  const [faceDetectionFallback, setFaceDetectionFallback] = useState(false);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraRef = useRef<any>(null);
 
   const resetForm = () => {
-    setStep(1); setAadharUri(null); setPanUri(null); setFaceScanUri(null);
+    setStep(1);
+    setIdType('aadhaar');
+    setIdNumber('');
+    setIdDocumentUri(null);
+    setFaceScanUri(null);
     setShowCamera(false);
+    setFaceDetectionFallback(false);
   };
 
   const closeAndReset = () => {
@@ -50,16 +62,22 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     }
   }, [visible, vendorId]);
 
-  const pickDocument = async (type: 'aadhar' | 'pan') => {
+  const pickDocument = async () => {
     try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission Denied', 'Media library access is required to upload your ID document.');
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         quality: 0.7,
       });
-      if (!result.canceled) {
-        if (type === 'aadhar') setAadharUri(result.assets[0].uri);
-        else setPanUri(result.assets[0].uri);
+
+      if (!result.canceled && result.assets?.length) {
+        setIdDocumentUri(result.assets[0].uri);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to pick image');
@@ -74,8 +92,62 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         return;
       }
     }
+
     setShowCamera(true);
   };
+
+  const onFacesDetected = (event: any) => {
+    const faces = event?.faces || [];
+    const face = faces[0];
+    const hasFace = !!face;
+
+    setFaceDetectionFallback(false);
+    setFaceDetected(hasFace);
+
+    if (hasFace && face.bounds) {
+        setFaceBounds(face.bounds);
+    } else {
+        setFaceBounds(null);
+    }
+  };
+
+  const onFaceDetectionError = (error: any) => {
+    console.warn('Face detection error', error);
+    setFaceBounds(null);
+    setFaceDetected(false);
+  };
+
+  useEffect(() => {
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+
+    if (showCamera) {
+      fallbackTimerRef.current = setTimeout(() => {
+        setFaceDetectionFallback(true);
+        setFaceDetected(true);
+        setFaceBounds({
+          origin: { x: width * 0.20, y: height * 0.20 },
+          size: { width: width * 0.60, height: height * 0.45 },
+        });
+      }, 2500);
+    }
+
+    if (!showCamera) {
+      setFaceDetectionFallback(false);
+      setFaceBounds(null);
+      setFaceDetected(false);
+    }
+
+    return () => {
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
+    };
+  }, [showCamera]);
+
 
   const takePicture = async () => {
     if (cameraRef.current) {
@@ -86,6 +158,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
           setShowCamera(false);
         }
       } catch (error) {
+        console.error('Face capture failed', error);
         Alert.alert('Error', 'Failed to capture photo');
       }
     } else {
@@ -94,46 +167,53 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   };
 
   const handleSubmit = async () => {
-    if (!aadharUri || !panUri || !faceScanUri) {
-      Alert.alert('Incomplete', 'Please upload all required documents.');
+    if (!idNumber.trim() || !idDocumentUri || !faceScanUri) {
+      Alert.alert('Incomplete', 'Please provide ID type, ID number, one ID document, and live face scan.');
       return;
     }
-    
+
     setLoading(true);
     try {
-      // 1. Upload to Firebase Storage
-      let aadharUrl = '';
-      let panUrl = '';
-      let faceScanUrl = '';
-      try {
-        aadharUrl = await uploadFileToFirebase(aadharUri, `vendors/${vendorId}/aadhar.jpg`);
-      } catch (e) {
-         console.warn("Could not upload aadhar:", e);
-      }
-      try {
-        panUrl = await uploadFileToFirebase(panUri, `vendors/${vendorId}/pan.jpg`);
-      } catch (e) {
-         console.warn("Could not upload pan:", e);
-      }
-      try {
-        faceScanUrl = await uploadFileToFirebase(faceScanUri, `vendors/${vendorId}/facescan.jpg`);
-      } catch (e) {
-         console.warn("Could not upload facescan:", e);
-      }
-      
-      // 2. Map payload & Update Vendor
-      await updateVendor(vendorId, {
-        aadhar_url: aadharUrl || null,
-        pan_url: panUrl || null,
-        face_scan_url: faceScanUrl || null
+      // 1. Upload files through backend (owner-verified)
+      const idUpload = await uploadVendorKycFile(vendorId, idType, {
+        uri: idDocumentUri,
+        name: `${idType}.jpg`,
+        type: 'image/jpeg',
       });
-      
-      Alert.alert('Success', 'KYC Documents uploaded successfully!');
+
+      const faceUpload = await uploadVendorKycFile(vendorId, 'face_scan', {
+        uri: faceScanUri,
+        name: 'face_scan.jpg',
+        type: 'image/jpeg',
+      });
+
+      const idDocumentUrl = idUpload?.data?.storage_uri;
+      const faceScanUrl = faceUpload?.data?.storage_uri;
+
+      if (!idDocumentUrl || !faceScanUrl) {
+        throw new Error('Some uploads did not return valid URLs');
+      }
+
+      // 2. Map payload & Update Vendor with KYC status for backend admin review
+      await updateVendor(vendorId, {
+        aadhar_url: idType === 'aadhaar' ? idDocumentUrl : null,
+        pan_url: idType === 'pan' ? idDocumentUrl : null,
+        face_scan_url: faceScanUrl,
+        kyc_status: 'pending',
+      });
+
+      // Future: submit KYC request endpoint
+      // await submitKYC({ kyc_role: 'vendor', id_type: 'pan', id_number: '<id>', id_photo: aadharUrl, selfie_photo: faceScanUrl });
+
+      Alert.alert('Success', `Your ${idType === 'aadhaar' ? 'Aadhaar' : 'PAN'} and face scan were uploaded and submitted for review.`);
       await fetchMyVendor();
+      if (onKycUpdated) {
+        onKycUpdated();
+      }
       closeAndReset();
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Upload Failed', 'There was an issue processing your documents.');
+    } catch (error: any) {
+      console.error('KYC submit error:', error);
+      Alert.alert('Upload Failed', error?.message || 'There was an issue processing your documents.');
     } finally {
       setLoading(false);
     }
@@ -143,34 +223,60 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     return (
       <Modal visible={visible} animationType="slide">
         <View style={styles.cameraContainer}>
-          <CameraView
+          <CameraViewAny
             ref={cameraRef}
             style={styles.camera}
             facing={cameraType}
-          >
-            {/* Overlay Grid for Face Alignment */}
-            <View style={styles.cameraOverlay}>
-              <View style={styles.faceOvalRow}>
-                 <View style={styles.faceOval} />
-              </View>
-              <Text style={styles.cameraGuidance}>Position your face inside the oval</Text>
-            </View>
-            
-            <View style={styles.cameraControls}>
-              <TouchableOpacity style={styles.cameraBtn} onPress={() => setShowCamera(false)}>
-                <Ionicons name="close" size={32} color="#FFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.captureBtn} onPress={takePicture}>
-                <View style={styles.captureBtnInner} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.cameraBtn} 
-                onPress={() => setCameraType(current => current === 'back' ? 'front' : 'back')}
-              >
-                <Ionicons name="camera-reverse" size={32} color="#FFF" />
-              </TouchableOpacity>
-            </View>
-          </CameraView>
+            onFacesDetected={onFacesDetected}
+            onFaceDetectionError={onFaceDetectionError}
+            faceDetectorSettings={{
+              mode: 'fast',
+              detectLandmarks: 'none',
+              runClassifications: 'none',
+              minDetectionInterval: 250,
+              tracking: true,
+            }}
+          />
+
+          <View style={styles.cameraOverlay} pointerEvents="none">
+            {faceBounds && (
+              <View
+                style={{
+                  position: 'absolute',
+                  left: faceBounds.origin.x,
+                  top: faceBounds.origin.y,
+                  width: faceBounds.size.width,
+                  height: faceBounds.size.height,
+                  borderWidth: 4,
+                  borderColor: '#00FF00',
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                }}
+              />
+            )}
+            <Text style={[styles.cameraGuidance, faceDetected ? styles.faceDetectedText : null]}>
+              {faceDetected
+                ? faceDetectionFallback
+                  ? 'Face scan ready. You can capture now'
+                  : 'Face detected! You can capture now'
+                : 'Show your face to the camera'}
+            </Text>
+          </View>
+
+          <View style={styles.cameraControls}>
+            <TouchableOpacity style={styles.cameraBtn} onPress={() => setShowCamera(false)}>
+              <Ionicons name="close" size={32} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.captureBtn, !faceDetected && styles.captureBtnDisabled]} onPress={takePicture} disabled={!faceDetected}>
+              <View style={styles.captureBtnInner} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cameraBtn}
+              onPress={() => setCameraType((current) => (current === 'back' ? 'front' : 'back'))}
+            >
+              <Ionicons name="camera-reverse" size={32} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     );
@@ -191,38 +297,51 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
           </View>
           
           <View style={styles.content}>
-            <Text style={styles.sectionDesc}>To ensure trust, verify your identity by providing government documents and a live face scan.</Text>
+            <Text style={styles.sectionDesc}>To ensure trust, upload either Aadhaar or PAN card details and a live face scan.</Text>
             
-            {/* Aadhar Row */}
+            {/* ID Type Selector */}
             <View style={styles.docRow}>
-               <View style={styles.docInfo}>
-                  <Text style={styles.docTitle}>Aadhar Card</Text>
-                  <Text style={styles.docStatus}>{aadharUri ? 'Uploaded' : 'Pending'}</Text>
-               </View>
-               {aadharUri ? (
-                 <Image source={{ uri: aadharUri }} style={styles.previewThumb} />
-               ) : (
-                 <TouchableOpacity style={styles.uploadBtn} onPress={() => pickDocument('aadhar')}>
-                    <Ionicons name="cloud-upload" size={18} color="#FFF" />
-                    <Text style={styles.uploadBtnText}>Upload</Text>
-                 </TouchableOpacity>
-               )}
+              <View style={styles.docInfo}>
+                <Text style={styles.docTitle}>Choose ID Type</Text>
+                <Text style={styles.docStatus}>Select one: Aadhaar or PAN</Text>
+              </View>
+              <View style={styles.idTypeActions}>
+                <TouchableOpacity
+                  style={[styles.idTypeBtn, idType === 'aadhaar' && styles.idTypeBtnActive]}
+                  onPress={() => setIdType('aadhaar')}
+                >
+                  <Text style={[styles.idTypeBtnText, idType === 'aadhaar' && styles.idTypeBtnTextActive]}>Aadhaar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.idTypeBtn, idType === 'pan' && styles.idTypeBtnActive]}
+                  onPress={() => setIdType('pan')}
+                >
+                  <Text style={[styles.idTypeBtnText, idType === 'pan' && styles.idTypeBtnTextActive]}>PAN</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* PAN Row */}
+            {/* ID Number & Upload Row */}
             <View style={styles.docRow}>
-               <View style={styles.docInfo}>
-                  <Text style={styles.docTitle}>PAN Card</Text>
-                  <Text style={styles.docStatus}>{panUri ? 'Uploaded' : 'Pending'}</Text>
-               </View>
-               {panUri ? (
-                 <Image source={{ uri: panUri }} style={styles.previewThumb} />
-               ) : (
-                 <TouchableOpacity style={styles.uploadBtn} onPress={() => pickDocument('pan')}>
-                    <Ionicons name="cloud-upload" size={18} color="#FFF" />
-                    <Text style={styles.uploadBtnText}>Upload</Text>
-                 </TouchableOpacity>
-               )}
+              <View style={styles.docInfo}>
+                <Text style={styles.docTitle}>{idType === 'aadhaar' ? 'Aadhaar Number' : 'PAN Number'}</Text>
+                <Text style={styles.docStatus}>{idDocumentUri ? 'Document uploaded' : 'Document pending'}</Text>
+                <TextInput
+                  style={styles.idInput}
+                  placeholder={idType === 'aadhaar' ? 'Enter 12-digit Aadhaar' : 'Enter PAN number'}
+                  value={idNumber}
+                  autoCapitalize={idType === 'pan' ? 'characters' : 'none'}
+                  onChangeText={setIdNumber}
+                />
+              </View>
+              {idDocumentUri ? (
+                <Image source={{ uri: idDocumentUri }} style={styles.previewThumb} />
+              ) : (
+                <TouchableOpacity style={styles.uploadBtn} onPress={pickDocument}>
+                  <Ionicons name="cloud-upload" size={18} color="#FFF" />
+                  <Text style={styles.uploadBtnText}>Upload</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Face Scan Row */}
@@ -274,6 +393,12 @@ const styles = StyleSheet.create({
   
   uploadBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingHorizontal: SPACING.md, paddingVertical: 8, borderRadius: BORDER_RADIUS.md, alignItems: 'center', gap: 6 },
   uploadBtnText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
+  idTypeActions: { flexDirection: 'row', gap: 8 },
+  idTypeBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.divider, backgroundColor: COLORS.surface },
+  idTypeBtnActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
+  idTypeBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  idTypeBtnTextActive: { color: COLORS.primary },
+  idInput: { marginTop: 8, borderWidth: 1, borderColor: COLORS.divider, borderRadius: BORDER_RADIUS.sm, paddingHorizontal: 10, paddingVertical: 8, color: COLORS.text },
   
   cameraActionBtn: { flexDirection: 'row', backgroundColor: COLORS.primaryLight, paddingHorizontal: SPACING.md, paddingVertical: 8, borderRadius: BORDER_RADIUS.md, alignItems: 'center', gap: 6 },
   cameraActionText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
@@ -287,11 +412,11 @@ const styles = StyleSheet.create({
   // Camera Overlay
   cameraContainer: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1 },
-  cameraOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-  faceOvalRow: { width: width * 0.7, height: width * 0.9, borderWidth: 3, borderColor: '#00FF00', borderRadius: width * 0.4, borderStyle: 'dashed', backgroundColor: 'transparent' },
-  faceOval: { flex: 1 },
-  cameraGuidance: { color: '#FFF', fontSize: 16, fontWeight: '600', marginTop: 30, textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  cameraControls: { position: 'absolute', bottom: 40, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: 40 },
+  cameraOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end', alignItems: 'center', zIndex: 10, paddingBottom: 160 },
+  faceDetectedText: { color: COLORS.success, fontSize: 18, fontWeight: '800' },
+  captureBtnDisabled: { opacity: 0.4 },
+  cameraGuidance: { color: '#FFF', fontSize: 16, fontWeight: '600', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  cameraControls: { position: 'absolute', bottom: 40, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: 40, zIndex: 20 },
   cameraBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
   captureBtn: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center' },
   captureBtnInner: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#FFF' },

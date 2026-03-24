@@ -45,6 +45,13 @@ class IDType(str, Enum):
     VOTER_ID = "voter_id"
 
 
+class KYCStatus(str, Enum):
+    PENDING = "pending"
+    VERIFIED = "verified"
+    MANUAL_REVIEW = "manual_review"
+    REJECTED = "rejected"
+
+
 # ================= AUTH MODELS =================
 
 class OTPRequest(BaseModel):
@@ -429,6 +436,7 @@ class VendorCreate(BaseModel):
     aadhar_url: Optional[str] = None
     pan_url: Optional[str] = None
     face_scan_url: Optional[str] = None
+    kyc_status: KYCStatus = KYCStatus.PENDING
 
 
 class VendorUpdate(BaseModel):
@@ -445,6 +453,7 @@ class VendorUpdate(BaseModel):
     aadhar_url: Optional[str] = None
     pan_url: Optional[str] = None
     face_scan_url: Optional[str] = None
+    kyc_status: Optional[KYCStatus] = None
 
 
 class VendorResponse(BaseModel):
@@ -463,6 +472,7 @@ class VendorResponse(BaseModel):
     aadhar_url: Optional[str] = None
     pan_url: Optional[str] = None
     face_scan_url: Optional[str] = None
+    kyc_status: Optional[KYCStatus] = KYCStatus.PENDING
     distance: Optional[float] = None
     created_at: datetime
 

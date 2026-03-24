@@ -37,6 +37,18 @@ api.interceptors.response.use(
         return api(config);
       }
     }
+    // If backend is temporarily unavailable, return a graceful fallback object.
+    if (error.response?.status === 503 || error.response?.status === 502) {
+      console.warn('[API] Backend unavailable, returning fallback payload for 503/502');
+      return Promise.resolve({
+        data: null,
+        status: error.response.status,
+        statusText: error.response.statusText,
+        headers: error.response.headers,
+        config: config,
+      });
+    }
+
     return Promise.reject(error);
   }
 );
@@ -392,7 +404,22 @@ export const updateVendor = (vendorId: string, data: {
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
+  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected';
 }) => api.put(`/vendors/${vendorId}`, data);
+
+export const uploadVendorKycFile = (
+  vendorId: string,
+  docType: 'aadhaar' | 'pan' | 'face_scan',
+  file: { uri: string; name: string; type: string }
+) => {
+  const formData = new FormData();
+  formData.append('doc_type', docType);
+  formData.append('file', file as any);
+
+  return api.post(`/vendors/${vendorId}/kyc/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
 
 export const addVendorPhoto = (vendorId: string, photo: string) => 
   api.post(`/vendors/${vendorId}/photos`, photo, {

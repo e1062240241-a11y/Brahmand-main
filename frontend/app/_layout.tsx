@@ -15,9 +15,22 @@ function SafeSlot() {
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     }>
-      <Slot />
+      <SlotWrapper />
     </ErrorBoundary>
   );
+}
+
+function SlotWrapper() {
+  try {
+    return <Slot />;
+  } catch (error) {
+    console.warn('Slot rendering crashed, showing fallback.', error);
+    return (
+      <View style={styles.fallbackContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 }
 
 export default function RootLayout() {

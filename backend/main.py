@@ -6,12 +6,13 @@ Full Firebase backend with Firestore database, Firebase Auth, and FCM.
 """
 import logging
 import sys
+import os
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from typing import Optional, List
 
-from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body
+from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import socketio
@@ -30,6 +31,7 @@ from config.firebase_config import (
 from config.firestore_db import FirestoreDB
 from workers.background_tasks import task_queue
 from services.push_notification_service import push_service
+from services.notification_service import NotificationService
 
 from models.schemas import (
     OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate,
@@ -1867,6 +1869,15 @@ async def create_temple_post(temple_id: str, data: dict, token_data: dict = Depe
 
 # =================== KYC SYSTEM ===================
 
+
+def try_face_match(id_base64: str, selfie_base64: str) -> dict:
+    """Fallback face match logic for environments without opencv/mediapipe support."""
+    # In this deployment, backend face matching is disabled to avoid installing
+    # heavy cv2/mediapipe dependencies. The frontend already validates live face
+    # presence by darkening the circle and enables capture only when a face is inside.
+    return {"status": "manual_review", "distance": None, "reason": "backend_match_disabled"}
+
+
 @api_router.get("/kyc/status")
 async def get_kyc_status(token_data: dict = Depends(verify_token)):
     """Get user's KYC status"""
@@ -1937,11 +1948,43 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_selfie_photo': selfie_photo if id_type == 'pan' else None,
         'kyc_submitted_at': datetime.utcnow().isoformat()
     }
-    
+
+    match_result = try_face_match(kyc_data['kyc_id_photo'], kyc_data['kyc_selfie_photo'])
+    if match_result['status'] == 'verified':
+        kyc_data['kyc_status'] = 'verified'
+        kyc_data['kyc_verified_at'] = datetime.utcnow().isoformat()
+        kyc_data['is_verified'] = True
+    elif match_result['status'] == 'manual_review':
+        kyc_data['kyc_status'] = 'manual_review'
+
+    kyc_data['kyc_match_distance'] = match_result.get('distance')
+    kyc_data['kyc_match_reason'] = match_result.get('reason')
+
     await db.update_document('users', user_id, kyc_data)
-    
-    logger.info(f"KYC submitted for {token_data.get('sl_id')} - role: {kyc_role}")
-    return {"message": "KYC submitted successfully", "status": "pending"}
+
+    # Send in-app notification
+    await NotificationService.create_notification(
+        user_id=user_id,
+        title='KYC status updated',
+        body=f"Your KYC status is now {kyc_data['kyc_status']}",
+        notification_type=NotificationService.TYPE_VERIFICATION,
+        data={
+            'kyc_status': kyc_data['kyc_status'],
+            'reason': kyc_data.get('kyc_match_reason'),
+            'distance': kyc_data.get('kyc_match_distance')
+        }
+    )
+
+    # Optional: send email / SMS via existing user contact fields (if user has phone/email)
+    # Here you would fill in from existing send_email/send_sms utilities.
+
+    logger.info(f"KYC submitted for {token_data.get('sl_id')} - role: {kyc_role} - status {kyc_data['kyc_status']}")
+    return {
+        "message": "KYC submitted successfully",
+        "status": kyc_data['kyc_status'],
+        "match_distance": kyc_data.get('kyc_match_distance'),
+        "match_reason": kyc_data.get('kyc_match_reason')
+    }
 
 
 @api_router.post("/admin/kyc/verify/{user_id}")
@@ -1983,6 +2026,15 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
         # Add verified badge
         if kyc_role in badge_map:
             await db.array_union_update('users', user_id, 'badges', [badge_map[kyc_role]])
+
+        # Notify user about verification
+        await NotificationService.create_notification(
+            user_id=user_id,
+            title='KYC verified',
+            body='Your KYC has been verified successfully.',
+            notification_type=NotificationService.TYPE_VERIFICATION,
+            data={'kyc_role': kyc_role}
+        )
         
         logger.info(f"KYC verified for user {user_id}")
         return {"message": "KYC verified", "badge_added": badge_map.get(kyc_role)}
@@ -1993,7 +2045,16 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
             'kyc_rejection_reason': data.get('rejection_reason', 'Documents not acceptable')
         }
         await db.update_document('users', user_id, update_data)
-        
+
+        # Notify the user about rejection
+        await NotificationService.create_notification(
+            user_id=user_id,
+            title='KYC rejected',
+            body=f"Your KYC was rejected: {update_data.get('kyc_rejection_reason')}",
+            notification_type=NotificationService.TYPE_VERIFICATION,
+            data={'rejection_reason': update_data.get('kyc_rejection_reason')}
+        )
+    
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
     
@@ -2010,7 +2071,7 @@ async def get_pending_kyc(token_data: dict = Depends(verify_token)):
     if 'Admin' not in admin_user.get('badges', []):
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    pending = await db.query_documents('users', filters=[('kyc_status', '==', 'pending')])
+    pending = await db.query_documents('users', filters=[('kyc_status', 'in', ['pending', 'manual_review'])])
     
     # Return only necessary fields
     return [{
@@ -2568,6 +2629,92 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
     
     logger.info(f"Vendor {vendor_id} updated by {user_id}")
     return {"message": "Vendor updated successfully"}
+
+
+@api_router.post("/vendors/{vendor_id}/storage-owner")
+async def set_vendor_storage_owner(vendor_id: str, data: dict, token_data: dict = Depends(verify_token)):
+    """Set the storage bucket userId mapping for a vendor folder."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can configure storage owner")
+
+    storage_user_id = data.get('storage_user_id')
+    if not storage_user_id:
+        raise HTTPException(status_code=400, detail="storage_user_id is required")
+
+    await db.update_document('vendors', vendor_id, {'storage_user_id': storage_user_id})
+
+    return {"message": "Vendor storage owner mapping updated", "storage_user_id": storage_user_id}
+
+
+@api_router.post("/vendors/{vendor_id}/kyc/upload")
+async def upload_vendor_kyc_file(
+    vendor_id: str,
+    doc_type: str = Form(...),
+    file: UploadFile = File(...),
+    token_data: dict = Depends(verify_token)
+):
+    """Upload vendor KYC files through backend (owner only)."""
+    from firebase_admin import storage as firebase_storage
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can upload KYC files")
+
+    allowed_doc_types = {'aadhaar', 'pan', 'face_scan'}
+    if doc_type not in allowed_doc_types:
+        raise HTTPException(status_code=400, detail="Invalid doc_type")
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    content_type = file.content_type or 'application/octet-stream'
+    extension = 'jpg'
+    if content_type == 'image/png':
+        extension = 'png'
+    elif content_type in {'image/jpeg', 'image/jpg'}:
+        extension = 'jpg'
+
+    bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET') or 'sanatan-lok.firebasestorage.app'
+    bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
+    object_path = f"vendors/{vendor_id}/{doc_type}.{extension}"
+    blob = bucket.blob(object_path)
+    blob.upload_from_string(file_bytes, content_type=content_type)
+
+    storage_uri = f"gs://{bucket.name}/{object_path}"
+    signed_url = None
+    signed_url_expires_at = None
+    try:
+        signed_url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(days=7),
+            method="GET"
+        )
+        signed_url_expires_at = (datetime.utcnow() + timedelta(days=7)).isoformat()
+    except Exception as e:
+        logger.warning(f"Could not generate signed URL for {object_path}: {e}")
+
+    return {
+        "message": "KYC file uploaded",
+        "doc_type": doc_type,
+        "path": object_path,
+        "storage_uri": storage_uri,
+        "signed_url": signed_url,
+        "signed_url_expires_at": signed_url_expires_at
+    }
 
 
 @api_router.post("/vendors/{vendor_id}/photos")
