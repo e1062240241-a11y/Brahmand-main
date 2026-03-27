@@ -1,6 +1,14 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Public business images under vendors/{vendorId}/{randomKey}/business_images/**
+    // Anyone can read, only authenticated owner can write.
+    match /vendors/{vendorId}/{randomKey}/business_images/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && firestore.get(/databases/(default)/documents/vendors/$(vendorId)).data.owner_id == request.auth.uid;
+    }
+
     // KYC documents are stored under vendors/{vendorId}/...
     // Access only for the authenticated owner of that vendor document.
     match /vendors/{vendorId}/{allPaths=**} {

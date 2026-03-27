@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -75,9 +78,11 @@ export default function MessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generalExpanded, setGeneralExpanded] = useState(false);
+  const [offeringsExpanded, setOfferingsExpanded] = useState(false);
+  const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
-  const [requestType, setRequestType] = useState<'Blood' | 'Medical' | 'Petition'>('Blood');
+  const [requestType, setRequestType] = useState<'Blood' | 'Medical' | 'Petition' | 'Financial'>('Blood');
 
   const fetchData = useCallback(async () => {
     try {
@@ -118,6 +123,9 @@ export default function MessagesScreen() {
   }, [activeTopTab, activeCommunityTab]);
 
   useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
     fetchData();
   }, [fetchData]);
 
@@ -126,6 +134,7 @@ export default function MessagesScreen() {
 
     if (tab === 'General') {
       setGeneralExpanded(false);
+      setOfferingsExpanded(false);
       return;
     }
 
@@ -334,13 +343,21 @@ export default function MessagesScreen() {
 
             {showRequestTypeMenu && (
               <View style={styles.requestTypeMenu}>
-                {['Blood', 'Medical', 'Petition'].map((type) => (
+                {['Blood', 'Medical', 'Petition', 'Offerings'].map((type) => (
                   <TouchableOpacity
                     key={type}
                     style={styles.requestTypeMenuItem}
                     onPress={async () => {
                       setShowRequestTypeMenu(false);
+                      if (type === 'Offerings') {
+                        setRequestType('Financial');
+                        setSelectedOfferingType(null);
+                        setOfferingsExpanded(true);
+                        return;
+                      }
+
                       setRequestType(type as any);
+                      setSelectedOfferingType(null);
 
                       try {
                         const response = await getMyCommunityRequests();
@@ -411,7 +428,11 @@ export default function MessagesScreen() {
             <View style={styles.generalContainer}>
               <TouchableOpacity
                 style={styles.generalBar}
-                onPress={() => setGeneralExpanded(!generalExpanded)}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setGeneralExpanded(!generalExpanded);
+                  setOfferingsExpanded(false);
+                }}
               >
                 <Text style={styles.generalBarText}>General Options</Text>
                 <Ionicons
@@ -423,12 +444,60 @@ export default function MessagesScreen() {
 
               {generalExpanded && (
                 <View style={styles.generalOptions}>
-                  <TouchableOpacity style={styles.generalOptionItem} onPress={() => { /* no-op placeholder */ }}>
+                  <TouchableOpacity style={styles.generalOptionItem} onPress={() => Alert.alert('Study', 'Study option placeholder') }>
                     <Text style={styles.generalOptionText}>Study</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.generalOptionItem} onPress={() => { /* no-op placeholder */ }}>
-                    <Text style={styles.generalOptionText}>Offerings</Text>
+                  <TouchableOpacity
+                    style={styles.generalOptionItem}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setOfferingsExpanded(!offeringsExpanded);
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={styles.generalOptionText}>Offerings</Text>
+                      <Ionicons
+                        name={offeringsExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textSecondary}
+                      />
+                    </View>
                   </TouchableOpacity>
+
+                  {offeringsExpanded && (
+                    <View style={styles.offeringsList}>
+                      {['Food', 'Blanket', 'Clothes'].map((item) => (
+                        <TouchableOpacity
+                          key={item}
+                          style={styles.offeringsItem}
+                          onPress={async () => {
+                            setRequestType('Financial');
+                            setSelectedOfferingType(item as 'Food' | 'Blanket' | 'Clothes');
+                            setOfferingsExpanded(false);
+
+                            try {
+                              const response = await getMyCommunityRequests();
+                              const myRequests = response.data || [];
+                              const hasActive = myRequests.some((req: any) => req.status === 'active');
+                              if (hasActive) {
+                                Alert.alert(
+                                  'Active Request Exists',
+                                  'You already have an active request. Please fulfill it before creating a new one.'
+                                );
+                                return;
+                              }
+                            } catch (err) {
+                              console.error('Error checking active requests:', err);
+                            }
+
+                            setShowRequestModal(true);
+                          }}
+                        >
+                          <Text style={styles.offeringsText}>{item}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </View>
               )}
             </View>
@@ -470,12 +539,18 @@ export default function MessagesScreen() {
       {/* Request Form Modal for outside-community creation */}
       <RequestFormModal
         visible={showRequestModal}
-        onClose={() => setShowRequestModal(false)}
+        onClose={() => {
+          setShowRequestModal(false);
+          setSelectedOfferingType(null);
+        }}
         requestType={requestType}
+        selectedOfferingType={selectedOfferingType}
+        communities={communities}
         onSubmit={async (data: any) => {
           // Existing patterns used inside previous flow
           try {
             await createCommunityRequest({
+              community_id: data.community_id,
               request_type: data.request_type,
               visibility_level: data.visibility_level || 'area',
               title: data.title || `${data.request_type} Request`,
@@ -552,6 +627,24 @@ const styles = StyleSheet.create({
   requestTypeMenuText: {
     color: COLORS.text,
     fontWeight: '600',
+  },
+  offeringsList: {
+    marginTop: SPACING.xs,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+  },
+  offeringsItem: {
+    padding: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
+  },
+  offeringsText: {
+    color: COLORS.text,
+    fontWeight: '500',
   },
   topTab: {
     flex: 1,

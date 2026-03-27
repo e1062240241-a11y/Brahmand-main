@@ -4506,6 +4506,11 @@ expo-system-ui@~6.0.9:
     "@react-native/normalize-colors" "0.81.5"
     debug "^4.3.2"
 
+expo-text-recognition@^0.1.1:
+  version "0.1.1"
+  resolved "https://registry.npmjs.org/expo-text-recognition/-/expo-text-recognition-0.1.1.tgz"
+  integrity sha512-YgjeP0zXlhCqnOvDXXK1K6ATbWolKXARuxnqr8FPoUAKpJ4Fh66pSoc9iMDHKOtsc3t0zHk1zkvBfAHJgp++hQ==
+
 expo-web-browser@~15.0.10:
   version "15.0.10"
   resolved "https://registry.npmjs.org/expo-web-browser/-/expo-web-browser-15.0.10.tgz"

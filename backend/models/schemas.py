@@ -433,9 +433,14 @@ class VendorCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     photos: Optional[List[str]] = []
+    business_description: Optional[str] = Field(None, max_length=2000)
     aadhar_url: Optional[str] = None
     pan_url: Optional[str] = None
     face_scan_url: Optional[str] = None
+    business_gallery_images: Optional[List[str]] = Field(default_factory=list, max_items=5)
+    menu_items: Optional[List[str]] = Field(default_factory=list, max_items=30)
+    offers_home_delivery: Optional[bool] = False
+    business_media_key: Optional[str] = None
     kyc_status: KYCStatus = KYCStatus.PENDING
 
 
@@ -450,9 +455,14 @@ class VendorUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     photos: Optional[List[str]] = None
+    business_description: Optional[str] = Field(None, max_length=2000)
     aadhar_url: Optional[str] = None
     pan_url: Optional[str] = None
     face_scan_url: Optional[str] = None
+    business_gallery_images: Optional[List[str]] = Field(None, max_items=5)
+    menu_items: Optional[List[str]] = Field(None, max_items=30)
+    offers_home_delivery: Optional[bool] = None
+    business_media_key: Optional[str] = None
     kyc_status: Optional[KYCStatus] = None
 
 
@@ -469,9 +479,14 @@ class VendorResponse(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     photos: List[str] = []
+    business_description: Optional[str] = None
     aadhar_url: Optional[str] = None
     pan_url: Optional[str] = None
     face_scan_url: Optional[str] = None
+    business_gallery_images: List[str] = []
+    menu_items: List[str] = []
+    offers_home_delivery: bool = False
+    business_media_key: Optional[str] = None
     kyc_status: Optional[KYCStatus] = KYCStatus.PENDING
     distance: Optional[float] = None
     created_at: datetime

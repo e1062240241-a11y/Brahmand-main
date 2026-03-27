@@ -7,11 +7,18 @@ Full Firebase backend with Firestore database, Firebase Auth, and FCM.
 import logging
 import sys
 import os
+import asyncio
 from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from typing import Optional, List
+from uuid import uuid4
+from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
+import base64
+import requests
+from google.api_core.exceptions import FailedPrecondition
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -32,6 +39,13 @@ from config.firestore_db import FirestoreDB
 from workers.background_tasks import task_queue
 from services.push_notification_service import push_service
 from services.notification_service import NotificationService
+from services.prokerala_panchang_service import prokerala_panchang_service
+from services.prokerala_astrology_service import prokerala_astrology_service
+
+try:
+    from google.cloud import vision
+except ImportError:
+    vision = None
 
 from models.schemas import (
     OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate,
@@ -56,6 +70,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_sandbox_auth_cache = {
+    "token": None,
+    "expires_at": None,
+}
+
+_panchang_prefetch_task: Optional[asyncio.Task] = None
+
+
+def _seconds_until_next_midnight(tz_name: str) -> int:
+    now = datetime.now(ZoneInfo(tz_name))
+    next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return max(30, int((next_midnight - now).total_seconds()))
+
+
+async def _run_panchang_prefetch_once():
+    db = await get_db()
+    result = await prokerala_panchang_service.prewarm_user_locations(db)
+    logger.info("Panchang prefetch complete: %s", result)
+
+
+async def _panchang_midnight_prefetch_loop():
+    tz_name = settings.PROKERALA_DEFAULT_TZ or "Asia/Kolkata"
+    while True:
+        wait_seconds = _seconds_until_next_midnight(tz_name)
+        logger.info("Panchang prefetch scheduler sleeping for %s seconds", wait_seconds)
+        await asyncio.sleep(wait_seconds)
+        try:
+            await _run_panchang_prefetch_once()
+        except Exception as exc:
+            logger.warning("Scheduled Panchang prefetch failed: %s", exc)
+
 
 # Lifespan
 @asynccontextmanager
@@ -74,11 +119,25 @@ async def lifespan(app: FastAPI):
     # Start task queue
     await task_queue.start()
     logger.info("Background task queue started")
+
+    global _panchang_prefetch_task
+    if settings.PROKERALA_PREFETCH_ENABLED:
+        _panchang_prefetch_task = asyncio.create_task(_panchang_midnight_prefetch_loop())
+        logger.info("Panchang midnight prefetch loop started")
+    else:
+        _panchang_prefetch_task = None
+        logger.info("Panchang prefetch loop disabled")
     
     yield
     
     # Shutdown
     logger.info("Shutting down...")
+    if _panchang_prefetch_task:
+        _panchang_prefetch_task.cancel()
+        try:
+            await _panchang_prefetch_task
+        except asyncio.CancelledError:
+            pass
     await task_queue.stop()
     if hasattr(firebase_manager, 'close'):
         await getattr(firebase_manager, 'close')()
@@ -111,6 +170,76 @@ async def get_db() -> FirestoreDB:
     if not client:
         raise HTTPException(status_code=503, detail="Database unavailable")
     return FirestoreDB(client)
+
+
+async def _is_admin_user(db: FirestoreDB, user_id: str) -> bool:
+    """Check whether user has admin privileges."""
+    if user_id == 'admin':
+        return True
+
+    admin_user_ids = [x.strip() for x in os.getenv('ADMIN_USER_IDS', '').split(',') if x.strip()]
+    if user_id in admin_user_ids:
+        return True
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        return False
+
+    if user.get('is_admin') is True:
+        return True
+    if str(user.get('role', '')).lower() == 'admin':
+        return True
+
+    return False
+
+
+async def _ensure_admin_user(token_data: dict):
+    db = await get_db()
+    user_id = token_data["user_id"]
+    is_admin = await _is_admin_user(db, user_id)
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return db, user_id
+
+
+def _build_vendor_admin_snapshot(vendor: dict) -> dict:
+    """Build admin-facing snapshot of vendor profile and KYC fields."""
+    return {
+        'vendor_id': vendor.get('id'),
+        'owner_id': vendor.get('owner_id'),
+        'owner_name': vendor.get('owner_name'),
+        'business_name': vendor.get('business_name'),
+        'years_in_business': vendor.get('years_in_business'),
+        'categories': vendor.get('categories', []),
+        'full_address': vendor.get('full_address'),
+        'location_link': vendor.get('location_link'),
+        'phone_number': vendor.get('phone_number'),
+        'latitude': vendor.get('latitude'),
+        'longitude': vendor.get('longitude'),
+        'photos': vendor.get('photos', []),
+        'business_description': vendor.get('business_description'),
+        'aadhar_url': vendor.get('aadhar_url'),
+        'pan_url': vendor.get('pan_url'),
+        'face_scan_url': vendor.get('face_scan_url'),
+        'business_gallery_images': vendor.get('business_gallery_images', []),
+        'menu_items': vendor.get('menu_items', []),
+        'offers_home_delivery': vendor.get('offers_home_delivery', False),
+        'kyc_status': vendor.get('kyc_status', 'pending'),
+        'aadhaar_otp_verified_at': vendor.get('aadhaar_otp_verified_at'),
+        'aadhaar_reference_id': vendor.get('aadhaar_reference_id'),
+        'review_status': 'pending' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else vendor.get('kyc_status'),
+        'review_state': 'needs_admin_action' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else 'closed',
+    }
+
+
+async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str):
+    """Upsert vendor review snapshot used by future admin panel."""
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        return
+
+    snapshot = _build_vendor_admin_snapshot(vendor)
+    await db.set_document('vendor_admin_reviews', vendor_id, snapshot)
 
 
 # =================== MIDDLEWARE ===================
@@ -380,6 +509,30 @@ async def verify_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
         "message": "OTP verified",
         "is_new_user": True,
         "phone": request.phone
+    }
+
+
+@api_router.post("/admin/auth/login")
+async def admin_panel_login(data: dict = Body(...)):
+    """Admin panel login with static credentials for internal review console."""
+    username = str(data.get('username', '')).strip()
+    password = str(data.get('password', '')).strip()
+
+    expected_username = os.getenv('ADMIN_PANEL_USERNAME', 'Admin')
+    expected_password = os.getenv('ADMIN_PANEL_PASSWORD', 'admin123')
+
+    if username != expected_username or password != expected_password:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+
+    token = create_jwt_token('admin', 'ADMIN')
+    return {
+        "message": "Admin login successful",
+        "token": token,
+        "admin": {
+            "id": "admin",
+            "name": expected_username,
+            "role": "admin",
+        },
     }
 
 
@@ -2307,6 +2460,268 @@ async def get_panchang():
     }
 
 
+@api_router.get("/panchang/prokerala")
+async def get_prokerala_panchang(
+    date_str: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    endpoints: Optional[str] = None,
+    force_refresh: bool = False,
+    token_data: dict = Depends(verify_token),
+):
+    """Get Prokerala Panchang data with user-location fallback."""
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    home_location = user.get('home_location') or user.get('location') or {}
+    resolved_lat = lat if lat is not None else home_location.get('latitude')
+    resolved_lng = lng if lng is not None else home_location.get('longitude')
+
+    if not isinstance(resolved_lat, (int, float)) or not isinstance(resolved_lng, (int, float)):
+        raise HTTPException(
+            status_code=400,
+            detail="Latitude/longitude missing. Set location with coordinates or pass lat/lng query params.",
+        )
+
+    try:
+        endpoint_keys = [item.strip() for item in (endpoints or "").split(",") if item.strip()] or None
+        payload = await prokerala_panchang_service.get_aggregated_panchang(
+            lat=float(resolved_lat),
+            lng=float(resolved_lng),
+            date_str=date_str,
+            force_refresh=force_refresh,
+            endpoint_keys=endpoint_keys,
+        )
+        return payload
+    except Exception as exc:
+        logger.error("Prokerala Panchang fetch failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Panchang provider error: {exc}")
+
+
+@api_router.get("/panchang/prokerala/summary")
+async def get_prokerala_panchang_summary(
+    date_str: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    force_refresh: bool = False,
+    token_data: dict = Depends(verify_token),
+):
+    """Get Panchang summary via Groq using the current panchang data."""
+    db = await get_db()
+    user = await db.get_document('users', token_data['user_id'])
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    home_location = user.get('home_location') or user.get('location') or {}
+    resolved_lat = lat if lat is not None else home_location.get('latitude')
+    resolved_lng = lng if lng is not None else home_location.get('longitude')
+
+    if not isinstance(resolved_lat, (int, float)) or not isinstance(resolved_lng, (int, float)):
+        raise HTTPException(
+            status_code=400,
+            detail="Latitude/longitude missing. Set location with coordinates or pass lat/lng query params.",
+        )
+
+    try:
+        payload = await prokerala_panchang_service.get_aggregated_panchang(
+            lat=float(resolved_lat),
+            lng=float(resolved_lng),
+            date_str=date_str,
+            force_refresh=force_refresh,
+        )
+
+        from services.groq_service import get_groq_service
+
+        try:
+            groq_client = get_groq_service()
+            summary_text = groq_client.summarize_panchang(payload)
+        except Exception as groq_exc:
+            logger.warning("Groq summary failed: %s", groq_exc)
+            summary_text = "Groq summary is unavailable. Please check your GROQ_API_KEY and network."
+
+        return {
+            "panchang": payload,
+            "summary": summary_text,
+        }
+    except Exception as exc:
+        logger.error("Prokerala Panchang summary fetch failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Panchang provider error: {exc}")
+
+
+def _normalize_birth_datetime(user: dict, datetime_str: Optional[str]) -> str:
+    if datetime_str:
+        try:
+            parsed = datetime.fromisoformat(datetime_str.replace("Z", "+00:00"))
+            return parsed.isoformat()
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid datetime format: {exc}")
+
+    date_of_birth = user.get("date_of_birth")
+    time_of_birth = user.get("time_of_birth")
+    if not date_of_birth or not time_of_birth:
+        raise HTTPException(
+            status_code=400,
+            detail="Date of birth and time of birth are required. Update your profile before using astrology.",
+        )
+
+    normalized_time = str(time_of_birth).strip()
+    if len(normalized_time) == 5:
+        normalized_time = f"{normalized_time}:00"
+
+    try:
+        local_birth_dt = datetime.fromisoformat(f"{date_of_birth}T{normalized_time}")
+        return local_birth_dt.replace(tzinfo=ZoneInfo(settings.PROKERALA_DEFAULT_TZ)).isoformat()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid birth date/time on profile: {exc}")
+
+
+def _resolve_user_coordinates(user: dict, lat: Optional[float], lng: Optional[float]) -> tuple[float, float]:
+    home_location = user.get("home_location") or user.get("location") or {}
+    resolved_lat = lat if lat is not None else home_location.get("latitude")
+    resolved_lng = lng if lng is not None else home_location.get("longitude")
+
+    if not isinstance(resolved_lat, (int, float)) or not isinstance(resolved_lng, (int, float)):
+        raise HTTPException(
+            status_code=400,
+            detail="Latitude/longitude missing. Set home location coordinates or pass lat/lng query params.",
+        )
+
+    return float(resolved_lat), float(resolved_lng)
+
+
+@api_router.get("/astrology/prokerala")
+async def get_prokerala_astrology(
+    datetime_str: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    ayanamsa: int = 1,
+    la: Optional[str] = None,
+    endpoints: Optional[str] = None,
+    force_refresh: bool = False,
+    token_data: dict = Depends(verify_token),
+):
+    """Get Prokerala astrology data with user birth details and location fallback."""
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    resolved_lat, resolved_lng = _resolve_user_coordinates(user, lat, lng)
+    resolved_datetime = _normalize_birth_datetime(user, datetime_str)
+
+    try:
+        endpoint_keys = [item.strip() for item in (endpoints or "").split(",") if item.strip()] or None
+        payload = await prokerala_astrology_service.get_aggregated_astrology(
+            lat=resolved_lat,
+            lng=resolved_lng,
+            datetime_str=resolved_datetime,
+            ayanamsa=ayanamsa,
+            force_refresh=force_refresh,
+            la=la,
+            endpoint_keys=endpoint_keys,
+        )
+        return payload
+    except Exception as exc:
+        logger.error("Prokerala Astrology fetch failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Astrology provider error: {exc}")
+
+
+@api_router.get("/astrology/prokerala/summary")
+async def get_prokerala_astrology_summary(
+    datetime_str: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    ayanamsa: int = 1,
+    la: Optional[str] = None,
+    force_refresh: bool = False,
+    token_data: dict = Depends(verify_token),
+):
+    """Get astrology summary via Groq using current birth and kundli data."""
+    db = await get_db()
+    user = await db.get_document('users', token_data['user_id'])
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    resolved_lat, resolved_lng = _resolve_user_coordinates(user, lat, lng)
+    resolved_datetime = _normalize_birth_datetime(user, datetime_str)
+
+    try:
+        payload = await prokerala_astrology_service.get_aggregated_astrology(
+            lat=resolved_lat,
+            lng=resolved_lng,
+            datetime_str=resolved_datetime,
+            ayanamsa=ayanamsa,
+            force_refresh=force_refresh,
+            la=la,
+        )
+
+        from services.groq_service import get_groq_service
+
+        try:
+            groq_client = get_groq_service()
+            summary_text = groq_client.summarize_astrology(payload)
+        except Exception as groq_exc:
+            logger.warning("Groq astrology summary failed: %s", groq_exc)
+            summary_text = "Groq summary is unavailable. Please check your GROQ_API_KEY and network."
+
+        return {
+            "astrology": payload,
+            "summary": summary_text,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Prokerala Astrology summary fetch failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Astrology provider error: {exc}")
+
+
+@api_router.post("/astrology/prokerala/ask")
+async def ask_prokerala_astrology_question(
+    body: dict = Body(...),
+    token_data: dict = Depends(verify_token),
+):
+    """Ask Groq a question grounded in the current astrology payload."""
+    question = str(body.get("question") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required")
+
+    db = await get_db()
+    user = await db.get_document('users', token_data['user_id'])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    astrology_payload = body.get("astrology")
+    if not isinstance(astrology_payload, dict) or not astrology_payload:
+        resolved_lat, resolved_lng = _resolve_user_coordinates(user, None, None)
+        resolved_datetime = _normalize_birth_datetime(user, None)
+        astrology_payload = await prokerala_astrology_service.get_aggregated_astrology(
+            lat=resolved_lat,
+            lng=resolved_lng,
+            datetime_str=resolved_datetime,
+            ayanamsa=int(body.get("ayanamsa") or 1),
+            la=body.get("la"),
+        )
+
+    try:
+        from services.groq_service import get_groq_service
+
+        groq_client = get_groq_service()
+        answer = groq_client.answer_astrology_question(astrology_payload, question)
+        return {
+            "question": question,
+            "answer": answer,
+        }
+    except Exception as exc:
+        logger.error("Groq astrology ask failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Astrology AI error: {exc}")
+
+
 # =================== HELP REQUESTS ===================
 
 @api_router.post("/help-requests")
@@ -2513,9 +2928,14 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "latitude": data.latitude,
         "longitude": data.longitude,
         "photos": data.photos if data.photos else [],
+        "business_description": data.business_description,
         "aadhar_url": data.aadhar_url,
         "pan_url": data.pan_url,
-        "face_scan_url": data.face_scan_url
+        "face_scan_url": data.face_scan_url,
+        "business_gallery_images": data.business_gallery_images if data.business_gallery_images else [],
+        "menu_items": data.menu_items if data.menu_items else [],
+        "offers_home_delivery": bool(data.offers_home_delivery),
+        "business_media_key": data.business_media_key,
     }
     
     vendor_id = await db.create_document('vendors', vendor_data)
@@ -2523,6 +2943,7 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     
     # Update user to mark as vendor
     await db.update_document('users', user_id, {'is_vendor': True, 'vendor_id': vendor_id})
+    await _sync_vendor_to_admin_queue(db, vendor_id)
     
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
@@ -2626,6 +3047,7 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
     
     if update_data:
         await db.update_document('vendors', vendor_id, update_data)
+        await _sync_vendor_to_admin_queue(db, vendor_id)
     
     logger.info(f"Vendor {vendor_id} updated by {user_id}")
     return {"message": "Vendor updated successfully"}
@@ -2651,6 +3073,128 @@ async def set_vendor_storage_owner(vendor_id: str, data: dict, token_data: dict 
     await db.update_document('vendors', vendor_id, {'storage_user_id': storage_user_id})
 
     return {"message": "Vendor storage owner mapping updated", "storage_user_id": storage_user_id}
+
+
+@api_router.put("/vendors/{vendor_id}/business/profile")
+async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    """Update approved vendor's public business profile info (menu + delivery toggle)."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
+
+    if vendor.get('kyc_status') != 'verified':
+        raise HTTPException(status_code=403, detail="Business profile updates are allowed only for approved vendors")
+
+    menu_items = data.get('menu_items')
+    offers_home_delivery = data.get('offers_home_delivery')
+
+    update_data = {}
+
+    if menu_items is not None:
+        if not isinstance(menu_items, list):
+            raise HTTPException(status_code=400, detail="menu_items must be a list")
+
+        cleaned_menu = [str(item).strip() for item in menu_items if str(item).strip()]
+        if len(cleaned_menu) > 30:
+            raise HTTPException(status_code=400, detail="Maximum 30 menu items allowed")
+        update_data['menu_items'] = cleaned_menu
+
+    if offers_home_delivery is not None:
+        update_data['offers_home_delivery'] = bool(offers_home_delivery)
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields provided")
+
+    await db.update_document('vendors', vendor_id, update_data)
+    await _sync_vendor_to_admin_queue(db, vendor_id)
+
+    refreshed = await db.get_document('vendors', vendor_id)
+    return {
+        "message": "Business profile updated",
+        "vendor": refreshed,
+    }
+
+
+@api_router.post("/vendors/{vendor_id}/business/images/upload")
+async def upload_vendor_business_image(
+    vendor_id: str,
+    file: UploadFile = File(...),
+    slot: int = Form(...),
+    token_data: dict = Depends(verify_token)
+):
+    """Upload approved vendor business gallery image to Firebase Storage."""
+    from firebase_admin import storage as firebase_storage
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can upload business images")
+
+    if vendor.get('kyc_status') != 'verified':
+        raise HTTPException(status_code=403, detail="Business images can be uploaded only for approved vendors")
+
+    if slot < 0 or slot > 4:
+        raise HTTPException(status_code=400, detail="slot must be between 0 and 4")
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    content_type = file.content_type or 'application/octet-stream'
+    if content_type not in {'image/png', 'image/jpeg', 'image/jpg', 'image/webp'}:
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+
+    extension = 'jpg'
+    if content_type == 'image/png':
+        extension = 'png'
+    elif content_type == 'image/webp':
+        extension = 'webp'
+
+    media_key = vendor.get('business_media_key') or uuid4().hex
+
+    bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET') or 'sanatan-lok.firebasestorage.app'
+    bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
+    object_path = f"vendors/{vendor_id}/{media_key}/business_images/image_{slot + 1}.{extension}"
+    blob = bucket.blob(object_path)
+
+    download_token = uuid4().hex
+    blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+    blob.upload_from_string(file_bytes, content_type=content_type)
+
+    public_url = (
+        f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
+        f"{quote(object_path, safe='')}?alt=media&token={download_token}"
+    )
+
+    images = list(vendor.get('business_gallery_images') or [])
+    while len(images) < 5:
+        images.append('')
+    images[slot] = public_url
+
+    await db.update_document('vendors', vendor_id, {
+        'business_gallery_images': images,
+        'business_media_key': media_key,
+    })
+    await _sync_vendor_to_admin_queue(db, vendor_id)
+
+    return {
+        "message": "Business image uploaded",
+        "slot": slot,
+        "path": object_path,
+        "url": public_url,
+        "images": images,
+    }
 
 
 @api_router.post("/vendors/{vendor_id}/kyc/upload")
@@ -2717,6 +3261,291 @@ async def upload_vendor_kyc_file(
     }
 
 
+@api_router.post("/vendors/{vendor_id}/kyc/vision-extract")
+async def extract_kyc_text_from_image(vendor_id: str, file: UploadFile = File(...), token_data: dict = Depends(verify_token)):
+    """Use Google Cloud Vision to extract text from KYC images (Aadhaar/PAN)."""
+    if vision is None:
+        raise HTTPException(status_code=501, detail="Google Cloud Vision client library is not installed")
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can extract text")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    vision_api_key = os.getenv('GOOGLE_CLOUD_VISION_API_KEY')
+    if vision_api_key:
+        # Use REST API key flow for Cloud Vision.
+        try:
+            image_content = base64.b64encode(contents).decode('utf-8')
+            json_payload = {
+                "requests": [
+                    {
+                        "image": {"content": image_content},
+                        "features": [{"type": "TEXT_DETECTION", "maxResults": 10}],
+                    }
+                ]
+            }
+
+            request_url = f"https://vision.googleapis.com/v1/images:annotate?key={vision_api_key}"
+            resp = requests.post(request_url, json=json_payload, timeout=30)
+
+            if resp.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"Cloud Vision REST failed ({resp.status_code}): {resp.text}")
+
+            data = resp.json()
+            vision_resp = data.get('responses', [{}])[0]
+            if 'error' in vision_resp:
+                err = vision_resp.get('error', {})
+                raise HTTPException(status_code=500, detail=f"Cloud Vision error: {err.get('message')}")
+
+            text_annotations = vision_resp.get('textAnnotations', [])
+            raw_texts = [a.get('description', '') for a in text_annotations if a.get('description')]
+            annotations = []
+            for a in text_annotations:
+                if not a.get('description'):
+                    continue
+                vertices = []
+                for v in (a.get('boundingPoly', {}).get('vertices', []) or []):
+                    vertices.append({
+                        'x': v.get('x', 0),
+                        'y': v.get('y', 0),
+                    })
+                annotations.append({
+                    'description': a.get('description'),
+                    'bounds': vertices,
+                })
+
+            full_text = raw_texts[0] if raw_texts else ''
+            return {
+                'message': 'Text extracted',
+                'text': full_text,
+                'full_text': full_text,
+                'raw_texts': raw_texts,
+                'annotations': annotations,
+                'total_annotations': len(annotations),
+            }
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Vision extraction failed (API key path): {str(exc)}")
+
+    # Fallback to service account library path
+    try:
+        client = vision.ImageAnnotatorClient()
+        image = vision.Image(content=contents)
+        response = client.text_detection(image=image)
+
+        if response.error.message:
+            raise HTTPException(status_code=500, detail=f"Vision API error: {response.error.message}")
+
+        annotations = []
+        raw_texts = []
+
+        for annotation in (response.text_annotations or []):
+            description = annotation.description or ""
+            if not description:
+                continue
+
+            raw_texts.append(description)
+            vertices = []
+            for vertex in (annotation.bounding_poly.vertices or []):
+                vertices.append({"x": vertex.x or 0, "y": vertex.y or 0})
+
+            annotations.append({
+                "description": description,
+                "bounds": vertices,
+            })
+
+        full_text = raw_texts[0] if raw_texts else ""
+        combined = " ".join(raw_texts)
+
+        return {
+            "message": "Text extracted",
+            "text": full_text or combined,
+            "full_text": full_text,
+            "raw_texts": raw_texts,
+            "annotations": annotations,
+            "total_annotations": len(annotations),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Vision extraction failed (library path): {str(exc)}")
+
+
+def _get_sandbox_headers() -> dict:
+    sandbox_api_key = os.getenv("SANDBOX_API_KEY")
+    sandbox_auth = os.getenv("SANDBOX_AUTHORIZATION") or os.getenv("SANDBOX_ACCESS_TOKEN")
+    sandbox_api_secret = os.getenv("SANDBOX_API_SECRET")
+    sandbox_api_version = os.getenv("SANDBOX_API_VERSION", "2")
+
+    if not sandbox_api_key:
+        raise HTTPException(status_code=500, detail="Missing SANDBOX_API_KEY in backend environment")
+
+    auth_header = None
+    if sandbox_auth and not sandbox_auth.startswith("secret_"):
+        auth_header = sandbox_auth
+
+    if not auth_header:
+        now = datetime.utcnow()
+        cached_token = _sandbox_auth_cache.get("token")
+        cached_expiry = _sandbox_auth_cache.get("expires_at")
+        if cached_token and cached_expiry and cached_expiry > now:
+            auth_header = cached_token
+        else:
+            if not sandbox_api_secret:
+                raise HTTPException(status_code=500, detail="Missing SANDBOX_API_SECRET for Sandbox Authenticate flow")
+
+            auth_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/authenticate"
+            auth_headers = {
+                "x-api-key": sandbox_api_key,
+                "x-api-secret": sandbox_api_secret,
+                "x-api-version": str(sandbox_api_version),
+            }
+            try:
+                auth_resp = requests.post(auth_url, headers=auth_headers, timeout=20)
+                auth_data = auth_resp.json() if auth_resp.content else {}
+            except Exception as exc:
+                raise HTTPException(status_code=502, detail=f"Sandbox authenticate failed: {str(exc)}")
+
+            if auth_resp.status_code >= 400:
+                raise HTTPException(status_code=502, detail={
+                    "message": "Sandbox authenticate returned error",
+                    "status_code": auth_resp.status_code,
+                    "response": auth_data,
+                })
+
+            access_token = (auth_data.get("data") or {}).get("access_token")
+            if not access_token:
+                raise HTTPException(status_code=502, detail={
+                    "message": "Sandbox authenticate did not return access_token",
+                    "response": auth_data,
+                })
+
+            auth_header = access_token
+            _sandbox_auth_cache["token"] = access_token
+            _sandbox_auth_cache["expires_at"] = now + timedelta(hours=23)
+
+    return {
+        "Authorization": auth_header,
+        "x-api-key": sandbox_api_key,
+        "x-api-version": str(sandbox_api_version),
+        "Content-Type": "application/json",
+    }
+
+
+async def _ensure_vendor_owner(vendor_id: str, token_data: dict):
+    db = await get_db()
+    user_id = token_data["user_id"]
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can perform this action")
+    return db, vendor
+
+
+@api_router.post("/vendors/{vendor_id}/kyc/aadhaar/otp")
+async def generate_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    """Generate Aadhaar OTP through Sandbox API for vendor KYC."""
+    await _ensure_vendor_owner(vendor_id, token_data)
+
+    aadhaar_number = str(data.get("aadhaar_number", "")).strip()
+    consent = str(data.get("consent", "Y")).strip()
+    reason = str(data.get("reason", "KYC verification")).strip()
+
+    if len(aadhaar_number) != 12 or not aadhaar_number.isdigit():
+        raise HTTPException(status_code=400, detail="aadhaar_number must be a 12-digit numeric string")
+    if consent.lower() != 'y':
+        raise HTTPException(status_code=400, detail="consent must be Y")
+    if not reason:
+        raise HTTPException(status_code=400, detail="reason is required")
+
+    payload = {
+        "@entity": "in.co.sandbox.kyc.aadhaar.okyc.otp.request",
+        "aadhaar_number": aadhaar_number,
+        "consent": "Y",
+        "reason": reason,
+    }
+
+    headers = _get_sandbox_headers()
+    sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp"
+
+    try:
+        resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
+        resp_data = resp.json() if resp.content else {}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Sandbox OTP request failed: {str(exc)}")
+
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP generation failed")
+
+    reference_id = (
+        resp_data.get("reference_id")
+        or (resp_data.get("data") or {}).get("reference_id")
+        or (resp_data.get("response") or {}).get("reference_id")
+    )
+
+    return {
+        "message": "Aadhaar OTP generated",
+        "reference_id": reference_id,
+        "sandbox_response": resp_data,
+    }
+
+
+@api_router.post("/vendors/{vendor_id}/kyc/aadhaar/otp/verify")
+async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    """Verify Aadhaar OTP through Sandbox API for vendor KYC."""
+    db, _ = await _ensure_vendor_owner(vendor_id, token_data)
+
+    reference_id = str(data.get("reference_id", "")).strip()
+    otp = str(data.get("otp", "")).strip()
+
+    if not reference_id:
+        raise HTTPException(status_code=400, detail="reference_id is required")
+    if not otp:
+        raise HTTPException(status_code=400, detail="otp is required")
+
+    payload = {
+        "@entity": "in.co.sandbox.kyc.aadhaar.okyc.request",
+        "reference_id": reference_id,
+        "otp": otp,
+    }
+
+    headers = _get_sandbox_headers()
+    sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp/verify"
+
+    try:
+        resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
+        resp_data = resp.json() if resp.content else {}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Sandbox OTP verify failed: {str(exc)}")
+
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP verification failed")
+
+    await db.update_document('vendors', vendor_id, {
+        'kyc_status': 'manual_review',
+        'aadhaar_otp_verified_at': datetime.utcnow().isoformat(),
+        'aadhaar_reference_id': reference_id,
+    })
+    await _sync_vendor_to_admin_queue(db, vendor_id)
+
+    return {
+        "message": "Aadhaar OTP verified and sent to admin for review",
+        "verified": True,
+        "kyc_status": "manual_review",
+        "sandbox_response": resp_data,
+    }
+
+
 @api_router.post("/vendors/{vendor_id}/photos")
 async def add_vendor_photo(vendor_id: str, photo: str = Body(...), token_data: dict = Depends(verify_token)):
     """Add a photo to vendor gallery"""
@@ -2749,9 +3578,116 @@ async def delete_vendor(vendor_id: str, token_data: dict = Depends(verify_token)
     
     await db.delete_document('vendors', vendor_id)
     await db.update_document('users', user_id, {'is_vendor': False, 'vendor_id': None})
+    try:
+        await db.delete_document('vendor_admin_reviews', vendor_id)
+    except Exception:
+        pass
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
+
+
+@api_router.get("/admin/vendors/review-queue")
+async def get_vendor_review_queue(
+    status: Optional[str] = None,
+    limit: int = 100,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: list vendor review queue snapshots."""
+    db, _ = await _ensure_admin_user(token_data)
+
+    filters = []
+    if status:
+        filters.append(('review_status', '==', status))
+
+    try:
+        records = await db.query_documents(
+            'vendor_admin_reviews',
+            filters=filters if filters else None,
+            order_by='updated_at',
+            order_direction='DESCENDING',
+            limit=limit,
+        )
+    except FailedPrecondition as exc:
+        logger.warning(
+            "Missing Firestore composite index for admin review queue query; falling back to in-memory sort. error=%s",
+            exc,
+        )
+        records = await db.query_documents(
+            'vendor_admin_reviews',
+            filters=filters if filters else None,
+        )
+        records.sort(key=lambda item: item.get('updated_at') or datetime.min, reverse=True)
+        records = records[:max(1, limit)]
+
+    return records
+
+
+@api_router.post("/admin/vendors/{vendor_id}/approve")
+async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Admin: approve vendor KYC."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    await db.update_document('vendors', vendor_id, {
+        'kyc_status': 'verified',
+        'kyc_verified_at': datetime.utcnow().isoformat(),
+        'kyc_reviewed_by': admin_user_id,
+        'kyc_review_note': data.get('note'),
+    })
+
+    await db.set_document('vendor_admin_reviews', vendor_id, {
+        **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'verified'}),
+        'review_status': 'approved',
+        'review_state': 'closed',
+        'reviewed_at': datetime.utcnow().isoformat(),
+        'reviewed_by': admin_user_id,
+        'review_note': data.get('note'),
+    })
+
+    return {
+        'message': 'Vendor approved successfully',
+        'vendor_id': vendor_id,
+        'kyc_status': 'verified',
+    }
+
+
+@api_router.post("/admin/vendors/{vendor_id}/reject")
+async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Admin: reject vendor KYC."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    reason = data.get('reason') or 'Denied by admin'
+
+    await db.update_document('vendors', vendor_id, {
+        'kyc_status': 'pending',
+        'kyc_rejection_reason': reason,
+        'kyc_reviewed_by': admin_user_id,
+        'kyc_reviewed_at': datetime.utcnow().isoformat(),
+    })
+
+    await db.set_document('vendor_admin_reviews', vendor_id, {
+        **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'pending'}),
+        'review_status': 'rejected',
+        'review_state': 'closed',
+        'reviewed_at': datetime.utcnow().isoformat(),
+        'reviewed_by': admin_user_id,
+        'rejection_reason': reason,
+    })
+
+    return {
+        'message': 'Vendor rejected',
+        'vendor_id': vendor_id,
+        'kyc_status': 'pending',
+        'reason': reason,
+    }
 
 
 # =================== CULTURAL COMMUNITY ===================

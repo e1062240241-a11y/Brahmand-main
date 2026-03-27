@@ -13,6 +13,15 @@ const api = axios.create({
   },
 });
 
+const adminApi = axios.create({
+  baseURL: `${API_URL}/api`,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true',
+  },
+});
+
 // Add auth token to requests
 api.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem('auth_token');
@@ -59,6 +68,46 @@ export const sendOTP = (phone: string) =>
 
 export const verifyOTP = (phone: string, otp: string) => 
   api.post('/auth/verify-otp', { phone, otp });
+
+export const adminPanelLogin = (data: { username: string; password: string }) =>
+  adminApi.post('/admin/auth/login', data);
+
+export interface AdminVendorReview {
+  vendor_id: string;
+  business_name?: string;
+  owner_name?: string;
+  phone_number?: string;
+  categories?: string[];
+  full_address?: string;
+  kyc_status?: string;
+  review_status?: string;
+  review_state?: string;
+  aadhaar_otp_verified_at?: string;
+  aadhar_url?: string | null;
+  pan_url?: string | null;
+  face_scan_url?: string | null;
+  updated_at?: string;
+}
+
+export const getAdminVendorReviewQueue = (adminToken: string, status: string = 'pending') =>
+  adminApi.get<AdminVendorReview[]>('/admin/vendors/review-queue', {
+    params: { status },
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+
+export const adminApproveVendor = (adminToken: string, vendorId: string, note?: string) =>
+  adminApi.post(
+    `/admin/vendors/${vendorId}/approve`,
+    { note },
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
+export const adminRejectVendor = (adminToken: string, vendorId: string, reason?: string) =>
+  adminApi.post(
+    `/admin/vendors/${vendorId}/reject`,
+    { reason: reason || 'Denied by admin' },
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
 
 export const verifyFirebaseToken = (id_token: string) =>
   api.post('/auth/verify-firebase-token', { id_token });
@@ -177,6 +226,47 @@ export const getTodaysWisdom = () =>
 
 export const getTodaysPanchang = () => 
   api.get('/panchang/today');
+
+export const getProkeralaPanchang = (params?: {
+  date_str?: string;
+  lat?: number;
+  lng?: number;
+  endpoints?: string;
+  force_refresh?: boolean;
+}) => api.get('/panchang/prokerala', { params });
+
+export const getProkeralaPanchangSummary = (params?: {
+  date_str?: string;
+  lat?: number;
+  lng?: number;
+  force_refresh?: boolean;
+}) => api.get('/panchang/prokerala/summary', { params });
+
+export const getProkeralaAstrology = (params?: {
+  datetime_str?: string;
+  lat?: number;
+  lng?: number;
+  ayanamsa?: number;
+  la?: string;
+  endpoints?: string;
+  force_refresh?: boolean;
+}) => api.get('/astrology/prokerala', { params });
+
+export const getProkeralaAstrologySummary = (params?: {
+  datetime_str?: string;
+  lat?: number;
+  lng?: number;
+  ayanamsa?: number;
+  la?: string;
+  force_refresh?: boolean;
+}) => api.get('/astrology/prokerala/summary', { params });
+
+export const askProkeralaAstrology = (data: {
+  question: string;
+  astrology?: any;
+  ayanamsa?: number;
+  la?: string;
+}) => api.post('/astrology/prokerala/ask', data);
 
 // Temple APIs
 export const getTemples = () => 
@@ -368,9 +458,14 @@ export const createVendor = (data: {
   latitude?: number;
   longitude?: number;
   photos?: string[];
+  business_description?: string;
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
+  business_gallery_images?: string[];
+  menu_items?: string[];
+  offers_home_delivery?: boolean;
+  business_media_key?: string | null;
 }) => api.post('/vendors', data);
 
 export const getVendors = (params?: {
@@ -401,11 +496,35 @@ export const updateVendor = (vendorId: string, data: {
   latitude?: number;
   longitude?: number;
   photos?: string[];
+  business_description?: string;
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
+  business_gallery_images?: string[];
+  menu_items?: string[];
+  offers_home_delivery?: boolean;
+  business_media_key?: string | null;
   kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected';
 }) => api.put(`/vendors/${vendorId}`, data);
+
+export const updateVendorBusinessProfile = (
+  vendorId: string,
+  data: { menu_items?: string[]; offers_home_delivery?: boolean }
+) => api.put(`/vendors/${vendorId}/business/profile`, data);
+
+export const uploadVendorBusinessImage = (
+  vendorId: string,
+  slot: number,
+  file: { uri: string; name: string; type: string }
+) => {
+  const formData = new FormData();
+  formData.append('slot', String(slot));
+  formData.append('file', file as any);
+
+  return api.post(`/vendors/${vendorId}/business/images/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
 
 export const uploadVendorKycFile = (
   vendorId: string,
@@ -420,6 +539,25 @@ export const uploadVendorKycFile = (
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
+
+export const extractKycTextFromImage = (vendorId: string, file: { uri: string; name: string; type: string }) => {
+  const formData = new FormData();
+  formData.append('file', file as any);
+  return api.post(`/vendors/${vendorId}/kyc/vision-extract`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
+export const generateVendorAadhaarOtp = (vendorId: string, data: {
+  aadhaar_number: string;
+  consent: 'Y' | 'y';
+  reason: string;
+}) => api.post(`/vendors/${vendorId}/kyc/aadhaar/otp`, data);
+
+export const verifyVendorAadhaarOtp = (vendorId: string, data: {
+  reference_id: string;
+  otp: string;
+}) => api.post(`/vendors/${vendorId}/kyc/aadhaar/otp/verify`, data);
 
 export const addVendorPhoto = (vendorId: string, photo: string) => 
   api.post(`/vendors/${vendorId}/photos`, photo, {

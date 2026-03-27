@@ -41,6 +41,15 @@ export default function PhoneScreen() {
     initializeFirebase();
   }, []);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/');
+  };
+
   const handleSendOTP = async () => {
     if (phone.length !== 10) {
       setError('Please enter a valid 10-digit phone number');
@@ -151,7 +160,7 @@ export default function PhoneScreen() {
         />
 
         {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
 

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Slot } from 'expo-router';
+import { Slot, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuthStore } from '../src/store/authStore';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
+import { useAdminStore } from '../src/store/adminStore';
 
 // Safe Slot wrapper to isolate navigation errors
 function SafeSlot() {
@@ -34,11 +35,20 @@ function SlotWrapper() {
 }
 
 export default function RootLayout() {
+  const pathname = usePathname();
   const { isLoading, loadStoredAuth, token } = useAuthStore();
+  const { loadStoredAdminAuth } = useAdminStore();
 
   useEffect(() => {
-    loadStoredAuth().catch((e) => {
-      console.warn('Failed to load stored auth:', e?.message || e);
+    Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {
+      const authErr = results[0].status === 'rejected' ? results[0].reason : null;
+      const adminErr = results[1].status === 'rejected' ? results[1].reason : null;
+      if (authErr) {
+        console.warn('Failed to load stored auth:', authErr?.message || authErr);
+      }
+      if (adminErr) {
+        console.warn('Failed to load stored admin auth:', adminErr?.message || adminErr);
+      }
     });
   }, []);
 
@@ -55,7 +65,7 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <SafeSlot />
       {/* Global Floating Button - only show when logged in */}
-      {token && <FloatingUtilityButton />}
+      {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
     </ErrorBoundary>
   );
 }
