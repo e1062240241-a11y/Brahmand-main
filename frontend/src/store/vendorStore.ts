@@ -5,6 +5,8 @@ import {
   getMyVendor,
   getVendor,
   updateVendor,
+  updateVendorBusinessProfile,
+  uploadVendorBusinessImage,
   getVendorCategories,
   deleteVendor as deleteVendorAPI
 } from '../services/api';
@@ -22,9 +24,15 @@ export interface Vendor {
   latitude?: number;
   longitude?: number;
   photos: string[];
+  business_description?: string;
+  business_gallery_images?: string[];
+  menu_items?: string[];
+  offers_home_delivery?: boolean;
+  business_media_key?: string | null;
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
+  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected';
   distance?: number;
   created_at: string;
 }
@@ -61,11 +69,18 @@ interface VendorStore {
     latitude?: number;
     longitude?: number;
     photos?: string[];
+    business_description?: string;
+    business_gallery_images?: string[];
+    menu_items?: string[];
+    offers_home_delivery?: boolean;
+    business_media_key?: string | null;
     aadhar_url?: string | null;
     pan_url?: string | null;
     face_scan_url?: string | null;
   }) => Promise<Vendor>;
   updateVendor: (vendorId: string, data: Partial<Vendor>) => Promise<void>;
+  updateBusinessProfile: (vendorId: string, data: { menu_items?: string[]; offers_home_delivery?: boolean }) => Promise<void>;
+  uploadBusinessImage: (vendorId: string, slot: number, file: { uri: string; name: string; type: string }) => Promise<string[]>;
   deleteVendor: (vendorId: string) => Promise<void>;
   getFilteredVendors: (category?: string, searchTerm?: string) => Vendor[];
 }
@@ -143,9 +158,42 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   },
   
   updateVendor: async (vendorId, data) => {
+    set((state) => {
+      if (!state.myVendor || state.myVendor.id !== vendorId) {
+        return state;
+      }
+      return {
+        myVendor: {
+          ...state.myVendor,
+          ...data,
+        },
+      };
+    });
     await updateVendor(vendorId, data);
     // Refresh my vendor
     await get().fetchMyVendor();
+  },
+
+  updateBusinessProfile: async (vendorId, data) => {
+    await updateVendorBusinessProfile(vendorId, data);
+    await get().fetchMyVendor();
+  },
+
+  uploadBusinessImage: async (vendorId, slot, file) => {
+    const response = await uploadVendorBusinessImage(vendorId, slot, file);
+    const images = response?.data?.images || [];
+    set((state) => {
+      if (!state.myVendor || state.myVendor.id !== vendorId) {
+        return state;
+      }
+      return {
+        myVendor: {
+          ...state.myVendor,
+          business_gallery_images: images,
+        },
+      };
+    });
+    return images;
   },
   
   deleteVendor: async (vendorId) => {

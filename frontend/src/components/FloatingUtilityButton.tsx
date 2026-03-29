@@ -434,7 +434,7 @@ export const FloatingUtilityButton = () => {
                   <View style={[styles.mediumIconBg, { backgroundColor: '#FFE5CC' }]}>
                     <Ionicons name="calendar" size={20} color={COLORS.primary} />
                   </View>
-                  <Text style={styles.mediumTitle}>Today's Panchang</Text>
+                  <Text style={styles.mediumTitle}>Todays Panchang</Text>
                   <Text style={styles.mediumSubtext}>{panchang?.tithi || 'Loading...'}</Text>
                   <Text style={styles.mediumDetail}>{panchang?.nakshatra || ''}</Text>
                 </TouchableOpacity>
@@ -459,15 +459,15 @@ export const FloatingUtilityButton = () => {
                 style={styles.horoscopeCard}
                 onPress={() => {
                   setModalVisible(false);
-                  router.push('/profile');
+                  router.push('/astrology');
                 }}
               >
                 <View style={[styles.mediumIconBg, { backgroundColor: '#E3F2FD' }]}>
                   <Ionicons name="star" size={20} color={COLORS.info} />
                 </View>
                 <View style={styles.horoscopeContent}>
-                  <Text style={styles.mediumTitle}>Daily Horoscope</Text>
-                  <Text style={styles.mediumSubtext}>Set your birth details in Profile</Text>
+                  <Text style={styles.mediumTitle}>Horoscope & Kundli</Text>
+                  <Text style={styles.mediumSubtext}>Birth details first, advanced tools on demand</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
               </TouchableOpacity>

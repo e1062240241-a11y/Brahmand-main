@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,10 +15,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 
+interface CommunityOption {
+  id: string;
+  name: string;
+}
+
 interface RequestFormModalProps {
   visible: boolean;
   onClose: () => void;
   requestType: 'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition';
+  selectedOfferingType?: 'Food' | 'Blanket' | 'Clothes' | null;
+  communities?: CommunityOption[];
   onSubmit: (data: any) => Promise<void>;
 }
 
@@ -42,11 +49,20 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
   visible,
   onClose,
   requestType,
+  selectedOfferingType,
+  communities = [],
   onSubmit,
 }) => {
   const [loading, setLoading] = useState(false);
   const [visibility, setVisibility] = useState('area');
   const [urgency, setUrgency] = useState('low');
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(communities[0]?.id ?? null);
+
+  useEffect(() => {
+    if (!selectedCommunityId && communities.length > 0) {
+      setSelectedCommunityId(communities[0].id);
+    }
+  }, [communities, selectedCommunityId]);
   
   // Common fields
   const [title, setTitle] = useState('');
@@ -91,29 +107,43 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       Alert.alert('Required Field', 'Please enter your contact number.');
       return;
     }
+    if (selectedCommunityId === null) {
+      Alert.alert('Required Field', 'Please select a community.');
+      return;
+    }
     if (requestType === 'Blood' && !bloodGroup) {
       Alert.alert('Required Field', 'Please select a blood group.');
       return;
     }
-    if (requestType === 'Petition' && !petitionTitle.trim()) {
-      Alert.alert('Required Field', 'Please enter a petition title.');
+    if (requestType === 'Financial' && !selectedOfferingType && !amount.trim()) {
+      Alert.alert('Required Field', 'Please enter amount required.');
       return;
     }
 
-    setLoading(true);
     try {
+      const computedTitle = requestType === 'Petition'
+        ? petitionTitle
+        : selectedOfferingType
+          ? `${selectedOfferingType} Offering Request`
+          : (title || `${requestType} Request`);
+
+      const computedDescription = description || (selectedOfferingType ? `${selectedOfferingType} is required for community offerings.` : '');
+
       const data = {
+        community_id: selectedCommunityId,
         request_type: requestType.toLowerCase(),
         visibility_level: visibility,
         urgency_level: urgency,
-        title: requestType === 'Petition' ? petitionTitle : (title || `${requestType} Request`),
-        description,
+        title: computedTitle,
+        description: computedDescription,
         contact_number: contactNumber,
+        // Optionally include offerings string so it appears in group feed
+        ...(selectedOfferingType && { support_needed: selectedOfferingType }),
         // Blood specific
-        ...(requestType === 'Blood' && { 
-          blood_group: bloodGroup, 
-          hospital_name: hospitalName, 
-          location 
+        ...(requestType === 'Blood' && {
+          blood_group: bloodGroup,
+          hospital_name: hospitalName,
+          location
         }),
         // Financial specific
         ...(requestType === 'Financial' && { 
@@ -146,7 +176,8 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
     switch (requestType) {
       case 'Blood': return 'Blood Donation Request';
       case 'Medical': return 'Medical Help Request';
-      case 'Financial': return 'Financial Help Request';
+      case 'Financial':
+        return selectedOfferingType ? `${selectedOfferingType} Offering Request` : 'Financial Help Request';
       case 'Petition': return 'Create Petition';
       default: return 'Help Request';
     }
@@ -326,6 +357,34 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         </>
       )}
 
+      {/* Community selector (for outside-community created request to be placed in a group) */}
+      {communities.length > 0 && (
+        <>
+          <Text style={styles.label}>Community *</Text>
+          <View style={styles.communityDropdown}>
+            {communities.map((community) => (
+              <TouchableOpacity
+                key={community.id}
+                style={[
+                  styles.communityOption,
+                  selectedCommunityId === community.id && styles.communityOptionActive,
+                ]}
+                onPress={() => setSelectedCommunityId(community.id)}
+              >
+                <Text
+                  style={[
+                    styles.communityText,
+                    selectedCommunityId === community.id && styles.communityTextActive,
+                  ]}
+                >
+                  {community.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
+
       {/* Urgency Level */}
       <Text style={styles.label}>Urgency Level</Text>
       <View style={styles.urgencyContainer}>
@@ -352,8 +411,8 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         ))}
       </View>
 
-      {/* Amount (for Financial requests) */}
-      {requestType === 'Financial' && (
+      {/* Amount (for Financial requests, excluding offerings sub-type) */}
+      {requestType === 'Financial' && !selectedOfferingType && (
         <>
           <Text style={styles.label}>Amount Required (Rs)</Text>
           <TextInput
@@ -420,7 +479,12 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
               <View style={[styles.iconBg, { backgroundColor: `${getIconColor()}15` }]}>
                 <Ionicons name={getIcon()} size={20} color={getIconColor()} />
               </View>
-              <Text style={styles.headerTitle}>{getTitle()}</Text>
+              <View>
+                <Text style={styles.headerTitle}>{getTitle()}</Text>
+                {selectedOfferingType && requestType === 'Financial' && (
+                  <Text style={styles.selectedOfferingText}>{selectedOfferingType}</Text>
+                )}
+              </View>
             </View>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={COLORS.text} />
@@ -489,6 +553,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  selectedOfferingText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginLeft: SPACING.sm,
   },
   form: {
     padding: SPACING.md,

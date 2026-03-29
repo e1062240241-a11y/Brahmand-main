@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+python-multipart
 python-socketio
 pydantic
 python-dotenv
@@ -8,5 +9,9 @@ PyJWT
 passlib
 Pillow
 google-cloud-firestore
+google-cloud-vision
 
 twilio
+face_recognition
+requests
+groq

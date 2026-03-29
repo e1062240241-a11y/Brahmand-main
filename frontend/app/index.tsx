@@ -117,6 +117,14 @@ export default function WelcomeScreen() {
         >
           <Text style={styles.continueButtonText}>Continue</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.adminLoginButton}
+          onPress={() => router.push('/admin/login')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.adminLoginText}>Login as Admin</Text>
+        </TouchableOpacity>
       </View>
     </LinearGradient>
   );
@@ -229,5 +237,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  adminLoginButton: {
+    marginTop: SPACING.md,
+    alignItems: 'center',
+  },
+  adminLoginText: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

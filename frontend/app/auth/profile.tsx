@@ -35,6 +35,14 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const { login } = useAuthStore();
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/auth/phone');
+  };
   
   const [name, setName] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
@@ -102,7 +110,7 @@ export default function ProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
 

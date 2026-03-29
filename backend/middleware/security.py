@@ -10,6 +10,12 @@ from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+try:
+    from jwt import ExpiredSignatureError, InvalidTokenError
+except Exception:
+    ExpiredSignatureError = Exception
+    InvalidTokenError = Exception
+
 security = HTTPBearer()
 
 
@@ -27,17 +33,33 @@ def create_jwt_token(user_id: str, sl_id: str) -> str:
 
 def decode_jwt_token(token: str) -> Dict[str, Any]:
     """Decode and validate JWT token"""
-    try:
-        payload = jwt.decode(
-            token, 
-            settings.JWT_SECRET, 
-            algorithms=[settings.JWT_ALGORITHM]
-        )
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    current_secret = settings.JWT_SECRET
+    legacy_default_secret = 'sanatan-lok-secret-key-2025-v2'
+    candidate_secrets = [current_secret]
+
+    if current_secret != legacy_default_secret:
+        candidate_secrets.append(legacy_default_secret)
+
+    last_error = None
+    for secret in candidate_secrets:
+        try:
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=[settings.JWT_ALGORITHM]
+            )
+            return payload
+        except ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Token expired")
+        except InvalidTokenError as exc:
+            last_error = exc
+            continue
+        except Exception as exc:
+            last_error = exc
+            continue
+
+    logger.warning(f"JWT decode failed for all configured secrets: {last_error}")
+    raise HTTPException(status_code=401, detail="Invalid token")
 
 
 async def verify_token(

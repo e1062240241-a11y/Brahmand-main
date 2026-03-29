@@ -32,6 +32,14 @@ export default function OTPScreen() {
   const router = useRouter();
   const { phone, verificationId } = useLocalSearchParams<{ phone: string; verificationId?: string }>();
   const { login } = useAuthStore();
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/auth/phone');
+  };
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -171,7 +179,7 @@ export default function OTPScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
 

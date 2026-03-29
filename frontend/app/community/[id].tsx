@@ -16,13 +16,12 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
-import { RequestFormModal } from '../../src/components/RequestFormModal';
 
-const TABS = ['Chat', 'Help', 'Blood', 'Medical', 'Financial', 'Petition'];
+const TABS = ['Chat', 'General', 'Blood', 'Medical', 'Petition'];
 
 interface Message {
   id: string;
@@ -73,8 +72,7 @@ export default function CommunityDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
+  const [generalExpanded, setGeneralExpanded] = useState(false);
 
   useEffect(() => {
     fetchCommunity();
@@ -104,13 +102,15 @@ export default function CommunityDetailScreen() {
         const response = await getCommunityMessages(id!, 'chat');
         setMessages(response.data || []);
         setRequests([]);
+      } else if (activeTab === 'General') {
+        // General tab does not fetch requests
+        setMessages([]);
+        setRequests([]);
       } else {
         // Fetch community requests for this tab type
         const requestTypeMap: Record<string, string> = {
-          'Help': 'help',
           'Blood': 'blood',
           'Medical': 'medical',
-          'Financial': 'financial',
           'Petition': 'petition'
         };
         const response = await getCommunityRequests({
@@ -132,28 +132,13 @@ export default function CommunityDetailScreen() {
 
   const handleTabChange = async (tab: string) => {
     setActiveTab(tab);
-    // Automatically open form when tapping non-Chat tab
-    if (tab !== 'Chat') {
-      // Check for existing active request before opening modal
-      try {
-        const response = await getMyCommunityRequests();
-        const myRequests = response.data || [];
-        const hasActive = myRequests.some((req: any) => req.status === 'active');
-        
-        if (hasActive) {
-          Alert.alert(
-            'Active Request Exists',
-            'You already have an active help request. Please mark it as fulfilled before creating a new one.'
-          );
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking active requests:', error);
-      }
-      
-      setRequestType(tab as any);
-      setShowRequestModal(true);
+    if (tab === 'General') {
+      setGeneralExpanded(false);
+      return;
     }
+
+    // No request creation inside community group tabs; list only.
+    // This tab switch is read-only in non-chat modes.
   };
 
   const handleSendMessage = async () => {
@@ -169,30 +154,6 @@ export default function CommunityDetailScreen() {
     } finally {
       setSending(false);
     }
-  };
-
-  const handleAddRequest = async () => {
-    if (activeTab === 'Chat') return;
-    
-    // Check for existing active request before opening modal
-    try {
-      const response = await getMyCommunityRequests();
-      const myRequests = response.data || [];
-      const hasActive = myRequests.some((req: any) => req.status === 'active');
-      
-      if (hasActive) {
-        Alert.alert(
-          'Active Request Exists',
-          'You already have an active help request. Please mark it as fulfilled before creating a new one.'
-        );
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking active requests:', error);
-    }
-    
-    setRequestType(activeTab as any);
-    setShowRequestModal(true);
   };
 
   const handleResolveRequest = async (requestId: string) => {
@@ -225,41 +186,7 @@ export default function CommunityDetailScreen() {
     );
   };
 
-  const handleSubmitRequest = async (data: any) => {
-    try {
-      console.log('Submitting community request:', data);
-      
-      // Ensure minimum length requirements
-      const title = data.title || `${data.request_type} Request`;
-      const description = data.description || 'Request created from community tab';
-      
-      // Create community request via API
-      await createCommunityRequest({
-        community_id: id,
-        request_type: data.request_type,
-        visibility_level: data.visibility_level || 'area',
-        title: title.length >= 2 ? title : `${data.request_type} Request`,
-        description: description.length >= 10 ? description : description.padEnd(10, '.'),
-        contact_number: data.contact_number,
-        urgency_level: data.urgency_level || 'low',
-        blood_group: data.blood_group,
-        hospital_name: data.hospital_name,
-        location: data.location,
-        amount: data.amount,
-        support_needed: data.support_needed,
-        contact_person_name: data.contact_person_name,
-      });
-      
-      Alert.alert('Success', 'Your request has been posted!');
-      // Refresh the data to show the new request
-      fetchData();
-    } catch (error: any) {
-      console.error('Error submitting request:', error);
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to submit request');
-      throw error;
-    }
-  };
-
+  // Request submission disabled inside community group detail view.
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -448,11 +375,7 @@ export default function CommunityDetailScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-        {activeTab !== 'Chat' && (
-          <TouchableOpacity style={styles.addButton} onPress={handleAddRequest}>
-            <Ionicons name="add" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
-        )}
+        {/* Create request button disabled for all non-Chat tabs as per requirement */}
       </View>
 
       {/* Content */}
@@ -485,6 +408,32 @@ export default function CommunityDetailScreen() {
               }
             }}
           />
+        ) : activeTab === 'General' ? (
+          // General tab with expandable Study/Offerings options
+          <View style={styles.generalContainer}>
+            <TouchableOpacity
+              style={styles.generalBar}
+              onPress={() => setGeneralExpanded(!generalExpanded)}
+            >
+              <Text style={styles.generalBarText}>General Options</Text>
+              <Ionicons
+                name={generalExpanded ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={COLORS.text}
+              />
+            </TouchableOpacity>
+
+            {generalExpanded && (
+              <View style={styles.generalOptions}>
+                <TouchableOpacity style={styles.generalOptionItem} onPress={() => { /** no-op placeholder */ }}>
+                  <Text style={styles.generalOptionText}>Study</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.generalOptionItem} onPress={() => { /** no-op placeholder */ }}>
+                <Text style={styles.generalOptionText}>Offerings</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         ) : (
           // Request List
           <FlatList
@@ -499,13 +448,6 @@ export default function CommunityDetailScreen() {
               <View style={styles.emptyState}>
                 <Ionicons name="document-text-outline" size={48} color={COLORS.textLight} />
                 <Text style={styles.emptyText}>No {activeTab.toLowerCase()} requests yet</Text>
-                <TouchableOpacity 
-                  style={styles.createRequestBtn}
-                  onPress={handleAddRequest}
-                >
-                  <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-                  <Text style={styles.createRequestBtnText}>Create {activeTab} Request</Text>
-                </TouchableOpacity>
               </View>
             }
           />
@@ -538,13 +480,6 @@ export default function CommunityDetailScreen() {
         )}
       </KeyboardAvoidingView>
 
-      {/* Request Form Modal */}
-      <RequestFormModal
-        visible={showRequestModal}
-        onClose={() => setShowRequestModal(false)}
-        requestType={requestType}
-        onSubmit={handleSubmitRequest}
-      />
     </SafeAreaView>
   );
 }
@@ -649,6 +584,43 @@ const styles = StyleSheet.create({
   requestsList: {
     padding: SPACING.md,
     flexGrow: 1,
+  },
+  generalContainer: {
+    padding: SPACING.md,
+  },
+  generalBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  generalBarText: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  generalOptions: {
+    marginTop: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+  },
+  generalOptionItem: {
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
+  },
+  generalOptionText: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '500',
   },
   messageContainer: {
     flexDirection: 'row',

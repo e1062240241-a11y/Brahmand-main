@@ -40,7 +40,13 @@ class FirebaseManager:
                 self.app = firebase_admin.get_app()
             except ValueError:
                 cred = credentials.Certificate(cred_path)
-                self.app = firebase_admin.initialize_app(cred)
+                bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
+                if bucket_name:
+                    self.app = firebase_admin.initialize_app(cred, {
+                        'storageBucket': bucket_name
+                    })
+                else:
+                    self.app = firebase_admin.initialize_app(cred)
             
             self.db = firestore.client()
             self._firebase_available = True

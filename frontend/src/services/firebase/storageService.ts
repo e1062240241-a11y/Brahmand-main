@@ -10,8 +10,11 @@ export const uploadFileToFirebase = async (uri: string, path: string): Promise<s
     await uploadBytes(storageRef, blob);
     const downloadURL = await getDownloadURL(storageRef);
     return downloadURL;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading file: ', error);
+    if (error?.code === 'storage/unauthorized') {
+      throw new Error('Upload permission denied. Please update Firebase Storage rules for vendor KYC uploads.');
+    }
     throw error;
   }
 };

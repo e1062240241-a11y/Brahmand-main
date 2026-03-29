@@ -22,6 +22,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 const MENU_ITEMS = [
   { id: 'edit', icon: 'person-circle', label: 'Edit Profile', route: '/profile/edit' },
+  { id: 'horoscope', icon: 'star', label: 'Horoscope & Kundli', route: '/astrology' },
   { id: 'cultural', icon: 'people', label: 'Cultural Community', action: 'cultural' },
   { id: 'location', icon: 'location', label: 'Change Location', route: '/settings/location' },
   { id: 'settings', icon: 'settings', label: 'Settings', route: '/settings' },
@@ -140,6 +141,11 @@ export default function ProfileScreen() {
   };
 
   const displayUser = profile || user;
+  const astrologyReady = Boolean(
+    displayUser?.date_of_birth &&
+    displayUser?.time_of_birth &&
+    displayUser?.place_of_birth
+  );
 
   return (
     <ScrollView 
@@ -194,6 +200,35 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      <TouchableOpacity
+        style={styles.astrologyCard}
+        onPress={() => router.push(astrologyReady ? '/astrology' : '/profile/edit')}
+      >
+        <View style={styles.astrologyCardTop}>
+          <View style={styles.astrologyIconWrap}>
+            <Ionicons name="star" size={22} color={COLORS.info} />
+          </View>
+          <View style={styles.astrologyCardContent}>
+            <Text style={styles.astrologyTitle}>Horoscope Profile</Text>
+            <Text style={styles.astrologySubtitle}>
+              {astrologyReady
+                ? 'Birth details saved. Astrology can use them across the app.'
+                : 'Add birth date, time, and place once for horoscope and astrology.'}
+            </Text>
+          </View>
+          <Ionicons
+            name={astrologyReady ? 'checkmark-circle' : 'chevron-forward'}
+            size={20}
+            color={astrologyReady ? COLORS.success : COLORS.textLight}
+          />
+        </View>
+        <View style={[styles.astrologyBadge, astrologyReady ? styles.astrologyBadgeReady : styles.astrologyBadgePending]}>
+          <Text style={[styles.astrologyBadgeText, astrologyReady ? styles.astrologyBadgeTextReady : styles.astrologyBadgeTextPending]}>
+            {astrologyReady ? 'Ready everywhere' : 'Setup needed'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
       {/* Menu Items */}
       <View style={styles.menuSection}>
         {MENU_ITEMS.map((item) => (
@@ -209,6 +244,9 @@ export default function ProfileScreen() {
               <Text style={styles.menuLabel}>{item.label}</Text>
               {item.id === 'cultural' && userCG?.cultural_community && (
                 <Text style={styles.menuSubLabel}>{userCG.cultural_community}</Text>
+              )}
+              {item.id === 'horoscope' && astrologyReady && (
+                <Text style={styles.menuSubLabel}>Birth details saved</Text>
               )}
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
@@ -390,6 +428,63 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: COLORS.divider,
     marginVertical: 8,
+  },
+  astrologyCard: {
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surface,
+  },
+  astrologyCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  astrologyIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#EAF3FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  astrologyCardContent: {
+    flex: 1,
+  },
+  astrologyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  astrologySubtitle: {
+    marginTop: 4,
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  astrologyBadge: {
+    alignSelf: 'flex-start',
+    marginTop: SPACING.sm,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  astrologyBadgeReady: {
+    backgroundColor: `${COLORS.success}15`,
+  },
+  astrologyBadgePending: {
+    backgroundColor: `${COLORS.warning}18`,
+  },
+  astrologyBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  astrologyBadgeTextReady: {
+    color: COLORS.success,
+  },
+  astrologyBadgeTextPending: {
+    color: COLORS.warning,
   },
   menuSection: {
     backgroundColor: COLORS.surface,

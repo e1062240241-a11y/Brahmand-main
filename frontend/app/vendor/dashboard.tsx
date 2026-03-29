@@ -8,19 +8,21 @@ import {
   TextInput,
   Alert,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  BackHandler,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useVendorStore, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
-import { updateVendor } from '../../src/services/api';
 import { VendorKYCModal } from '../../src/components/VendorKYCModal';
 
 export default function VendorDashboardScreen() {
   const router = useRouter();
-  const { myVendor, fetchMyVendor } = useVendorStore();
+  const { myVendor, fetchMyVendor, updateVendor } = useVendorStore();
   const [loading, setLoading] = useState(false);
   const [kycVisible, setKycVisible] = useState(false);
   
@@ -31,19 +33,28 @@ export default function VendorDashboardScreen() {
   const [categorySearch, setCategorySearch] = useState('');
 
   useEffect(() => {
-    fetchMyVendor();
-  }, []);
-
-  useEffect(() => {
     // Refresh myVendor on mount and when this component re-renders.
     fetchMyVendor().catch((e) => console.warn('fetchMyVendor failed', e));
   }, [fetchMyVendor]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      router.replace('/(tabs)/vendor');
+      return true; // prevent default behavior
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
 
   if (!myVendor) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/vendor')}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Vendor Dashboard</Text>
@@ -54,7 +65,7 @@ export default function VendorDashboardScreen() {
           <Text style={styles.errorText}>No business registered</Text>
           <TouchableOpacity 
             style={styles.registerBtn}
-            onPress={() => router.back()}
+            onPress={() => router.replace('/(tabs)/vendor')}
           >
             <Text style={styles.registerBtnText}>Register Your Business</Text>
           </TouchableOpacity>
@@ -78,9 +89,40 @@ export default function VendorDashboardScreen() {
     setEditModal('phone');
   };
 
+  const handleEditDescription = () => {
+    setEditValue(myVendor.business_description || '');
+    setEditModal('business_description');
+  };
+
   const handleEditCategories = () => {
     setEditCategories([...myVendor.categories]);
     setEditModal('categories');
+  };
+
+  const formatKycStatus = (status?: string) => {
+    switch (status) {
+      case 'verified':
+        return 'Approved';
+      case 'manual_review':
+        return 'Admin Review';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return 'Pending';
+    }
+  };
+
+  const getKycChipColor = (status?: string) => {
+    switch (status) {
+      case 'verified':
+        return '#DFF7E3';
+      case 'manual_review':
+        return '#FFF5D6';
+      case 'rejected':
+        return '#FAD6D6';
+      default:
+        return '#EDF4FF';
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -97,6 +139,9 @@ export default function VendorDashboardScreen() {
           break;
         case 'phone':
           updateData.phone_number = editValue;
+          break;
+        case 'business_description':
+          updateData.business_description = editValue;
           break;
         case 'categories':
           if (editCategories.length === 0) {
@@ -144,19 +189,43 @@ export default function VendorDashboardScreen() {
       ).slice(0, 5)
     : [];
 
-  const menuItems = [
-    { icon: 'create', label: 'Edit Business Name', action: handleEditBusinessName },
-    { icon: 'location', label: 'Update Address', action: handleEditAddress },
-    { icon: 'pricetags', label: 'Update Categories', action: handleEditCategories },
-    { icon: 'call', label: 'Manage Contact Number', action: handleEditPhone },
-    { icon: 'id-card', label: 'Complete KYC & Verification', action: () => setKycVisible(true) },
-  ];
+  const isVerified = myVendor?.kyc_status === 'verified';
+  const isManualReview = myVendor?.kyc_status === 'manual_review';
+  const isReviewOrVerified = isManualReview || isVerified;
+
+  const handleTellBusiness = () => {
+    router.push('/vendor/business-details');
+  };
+
+  const handleOpenKyc = () => {
+    if (isReviewOrVerified) {
+      router.push('/kyc');
+      return;
+    }
+    setKycVisible(true);
+  };
+
+  const menuItems = isReviewOrVerified
+    ? [
+        ...(isVerified
+          ? [{ icon: '', label: 'Tell about your business', action: handleTellBusiness, emphasis: true }]
+          : []),
+        { icon: '', label: 'KYC & Verification', action: handleOpenKyc, emphasis: true }
+      ]
+    : [
+        { icon: 'create', label: 'Edit Business Name', action: handleEditBusinessName },
+        { icon: 'document-text', label: 'Edit Business Description', action: handleEditDescription },
+        { icon: 'location', label: 'Update Address', action: handleEditAddress },
+        { icon: 'pricetags', label: 'Update Categories', action: handleEditCategories },
+        { icon: 'call', label: 'Manage Contact Number', action: handleEditPhone },
+        { icon: 'id-card', label: 'Complete KYC & Verification', action: handleOpenKyc },
+      ];
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/vendor')}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Vendor Dashboard</Text>
@@ -171,7 +240,18 @@ export default function VendorDashboardScreen() {
           </View>
           <Text style={styles.businessName}>{myVendor.business_name}</Text>
           <Text style={styles.businessOwner}>{myVendor.owner_name}</Text>
-          
+          {myVendor.business_description ? (
+            <Text style={styles.businessDescription}>{myVendor.business_description}</Text>
+          ) : null}
+
+          {/* KYC Status Badge */}
+          <View style={[styles.kycChip, { backgroundColor: getKycChipColor(myVendor.kyc_status) }]}> 
+            <Text style={styles.kycChipText}>{formatKycStatus(myVendor.kyc_status)}</Text>
+          </View>
+          {myVendor.kyc_status === 'manual_review' && (
+            <Text style={styles.kycReviewText}>Your application is under review.</Text>
+          )}
+
           <View style={styles.statsRow}>
             <View style={styles.stat}>
               <Text style={styles.statValue}>{myVendor.years_in_business || 0}</Text>
@@ -199,19 +279,28 @@ export default function VendorDashboardScreen() {
 
         {/* Quick Actions */}
         <Text style={styles.sectionTitle}>Manage Business</Text>
-        
+
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuItem}
+              style={[
+                styles.menuItem,
+                item.emphasis && styles.menuItemEmphasis
+              ]}
               onPress={item.action}
             >
-              <View style={styles.menuIcon}>
-                <Ionicons name={item.icon as any} size={22} color={COLORS.primary} />
-              </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+              {item.emphasis ? (
+                <Text style={styles.menuLabelEmphasis}>{item.label}  →</Text>
+              ) : (
+                <>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name={item.icon as any} size={22} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+                </>
+              )}
             </TouchableOpacity>
           ))}
         </View>
@@ -237,11 +326,17 @@ export default function VendorDashboardScreen() {
         animationType="slide"
         onRequestClose={() => setEditModal(null)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editModal === 'business_name' && 'Edit Business Name'}
+                {editModal === 'business_description' && 'Edit Business Description'}
                 {editModal === 'address' && 'Update Address'}
                 {editModal === 'phone' && 'Update Phone'}
                 {editModal === 'categories' && 'Update Categories'}
@@ -303,15 +398,16 @@ export default function VendorDashboardScreen() {
               <View>
                 <Text style={styles.inputLabel}>
                   {editModal === 'business_name' && 'Business Name'}
+                  {editModal === 'business_description' && 'Business Description'}
                   {editModal === 'address' && 'Full Address'}
                   {editModal === 'phone' && 'Phone Number'}
                 </Text>
                 <TextInput
-                  style={[styles.input, editModal === 'address' && styles.textArea]}
+                  style={[styles.input, (editModal === 'address' || editModal === 'business_description') && styles.textArea]}
                   value={editValue}
                   onChangeText={setEditValue}
-                  multiline={editModal === 'address'}
-                  numberOfLines={editModal === 'address' ? 3 : 1}
+                  multiline={editModal === 'address' || editModal === 'business_description'}
+                  numberOfLines={editModal === 'address' || editModal === 'business_description' ? 3 : 1}
                   keyboardType={editModal === 'phone' ? 'phone-pad' : 'default'}
                 />
               </View>
@@ -330,12 +426,14 @@ export default function VendorDashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </KeyboardAvoidingView>
       </Modal>
 
       <VendorKYCModal 
         visible={kycVisible}
         onClose={() => setKycVisible(false)}
         vendorId={myVendor.id}
+        onKycUpdated={fetchMyVendor}
       />
     </SafeAreaView>
   );
@@ -382,10 +480,11 @@ const styles = StyleSheet.create({
   },
   businessCard: {
     backgroundColor: COLORS.surface,
-    margin: SPACING.md,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
+    margin: SPACING.sm,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
+    minHeight: 160,
   },
   businessIconContainer: {
     width: 72,
@@ -406,6 +505,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginBottom: SPACING.md,
+  },
+  businessDescription: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.md,
+  },
+  kycChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: SPACING.sm,
+  },
+  kycChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  kycReviewText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+    textAlign: 'center',
   },
   statsRow: {
     flexDirection: 'row',
@@ -478,6 +600,30 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: COLORS.text,
+  },
+  menuLabelEmphasis: {
+    flex: 1,
+    fontSize: 18,
+    color: COLORS.primary,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  menuItemEmphasis: {
+    borderWidth: 0,
+    margin: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: 'transparent',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  reviewNotice: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    color: COLORS.text,
+    fontWeight: '700',
+    fontSize: 16,
+    textAlign: 'center',
   },
   infoCard: {
     backgroundColor: COLORS.surface,

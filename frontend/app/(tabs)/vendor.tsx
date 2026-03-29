@@ -10,7 +10,8 @@ import {
   TextInput,
   Linking,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -162,10 +163,11 @@ export default function VendorScreen() {
       >
         {/* Business Image Placeholder */}
         <View style={styles.vendorImageContainer}>
-          {item.photos && item.photos.length > 0 ? (
-            <View style={styles.vendorImage}>
-              <Ionicons name="image" size={24} color={COLORS.textLight} />
-            </View>
+          {(item.business_gallery_images && item.business_gallery_images.find((url) => !!url)) || (item.photos && item.photos.length > 0) ? (
+            <Image
+              source={{ uri: (item.business_gallery_images || []).find((url) => !!url) || item.photos[0] }}
+              style={styles.vendorImage}
+            />
           ) : (
             <View style={styles.vendorImagePlaceholder}>
               <Ionicons name={getVendorIcon(vendorCategories) as any} size={28} color={COLORS.primary} />

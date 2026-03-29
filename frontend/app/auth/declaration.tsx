@@ -11,6 +11,14 @@ export default function DeclarationScreen() {
   const params = useLocalSearchParams<{ phone: string; firebase_uid?: string }>();
   const [agreed, setAgreed] = useState(false);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/auth/phone');
+  };
+
   const handleContinue = () => {
     if (agreed) {
       router.push({ 
@@ -22,7 +30,7 @@ export default function DeclarationScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
         <Ionicons name="arrow-back" size={24} color={COLORS.text} />
       </TouchableOpacity>
 
