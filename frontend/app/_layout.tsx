@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Slot, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuthStore } from '../src/store/authStore';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
@@ -10,22 +10,19 @@ import { useAdminStore } from '../src/store/adminStore';
 
 // Safe Slot wrapper to isolate navigation errors
 function SafeSlot() {
-  return (
-    <ErrorBoundary fallback={
-      <View style={styles.fallbackContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    }>
-      <SlotWrapper />
-    </ErrorBoundary>
-  );
-}
-
-function SlotWrapper() {
   try {
     return <Slot />;
   } catch (error) {
     console.warn('Slot rendering crashed, showing fallback.', error);
+    // For navigation errors, show a more user-friendly message
+    if ((error as any)?.message?.includes('stale')) {
+      return (
+        <View style={styles.fallbackContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.fallbackText}>Loading...</Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.fallbackContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
