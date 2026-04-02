@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
-import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
+import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, parseApiError } from '../../src/services/api';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 
 // Top tabs for Chat section
@@ -114,8 +114,9 @@ export default function MessagesScreen() {
         const res = await getCircles();
         setCircles(res.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching data:', error);
+      Alert.alert('Error', parseApiError(error));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -568,6 +569,7 @@ export default function MessagesScreen() {
             fetchData();
           } catch (error: any) {
             console.error('Error submitting request:', error);
+            Alert.alert('Error', parseApiError(error));
             Alert.alert('Error', error.response?.data?.detail || 'Failed to submit request');
           }
         }}

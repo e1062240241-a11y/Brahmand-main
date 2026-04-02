@@ -2,7 +2,29 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Use localhost for local dev without .env
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const rawApiUrl = (process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000').trim();
+
+let API_URL = rawApiUrl;
+if (rawApiUrl.startsWith('ttps://')) {
+  API_URL = 'https://' + rawApiUrl.slice(6); // handle `ttps://...` typo
+} else if (rawApiUrl.startsWith('ttp://')) {
+  API_URL = 'http://' + rawApiUrl.slice(5); // handle `ttp://...` typo
+} else if (!rawApiUrl.startsWith('http://') && !rawApiUrl.startsWith('https://')) {
+  API_URL = 'https://' + rawApiUrl;
+}
+
+if (API_URL.endsWith('/')) {
+  API_URL = API_URL.slice(0, -1);
+}
+
+export const parseApiError = (error: any): string => {
+  if (!error) return 'Unknown error occurred.';
+  if (error.userFriendlyMessage) return error.userFriendlyMessage;
+  if (error.response?.data?.detail) return String(error.response.data.detail);
+  if (error.response?.data?.message) return String(error.response.data.message);
+  if (error.message) return String(error.message);
+  return 'Something went wrong. Please try again.';
+};
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -58,16 +80,24 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    // If backend is temporarily unavailable, return a graceful fallback object.
+    // Network errors without response (client offline or backend down)
+    if (!error.response) {
+      console.warn('[API] No response from server / network error detected:', error.message);
+      error.userFriendlyMessage =
+        error.code === 'ECONNABORTED'
+          ? 'Request timed out. Try again.'
+          : 'Network unavailable. Check your internet connection and server status.';
+      return Promise.reject(error);
+    }
+
+    // If backend is temporarily unavailable, reject with a clear and user-friendly message.
     if (RETRYABLE_STATUS_CODES.has(status)) {
-      console.warn('[API] Backend unavailable, returning fallback payload for 503/502');
-      return Promise.resolve({
-        data: null,
-        status: error.response.status,
-        statusText: error.response.statusText,
-        headers: error.response.headers,
-        config: config,
-      });
+      console.warn('[API] Backend unavailable, raising user-friendly error for 503/502');
+      const backendError = new Error('Backend unavailable. Please try again in a few moments.');
+      (backendError as any).userFriendlyMessage =
+        'Backend unavailable. Please check the backend service and try again.';
+      (backendError as any).status = status;
+      return Promise.reject(backendError);
     }
 
     return Promise.reject(error);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -13,6 +13,23 @@ import {
   ScrollView,
   Alert
 } from 'react-native';
+
+interface MantraSession {
+  id: string;
+  name: string;
+  mantra: string;
+  participants: number;
+  duration: string;
+  isLive: boolean;
+}
+
+const MANTRA_SESSIONS: MantraSession[] = [
+  { id: '1', name: 'Radha Krishna 108x', mantra: 'Om Kleem Krishnaya Namah', participants: 14, duration: '45 min', isLive: true },
+  { id: '2', name: 'Gayatri Mantra', mantra: 'Om Bhur Bhuva Swaha', participants: 9, duration: '30 min', isLive: true },
+  { id: '3', name: 'Mahamrityunjaya Jaap', mantra: 'Om Tryambakam Yajamahe', participants: 5, duration: '20 min', isLive: true },
+  { id: '4', name: 'Om Namah Shivaya', mantra: 'Om Namah Shivaya', participants: 12, duration: '15 min', isLive: false },
+  { id: '5', name: 'Hanuman Chalisa', mantra: 'Shri Guru Charan Saroj Raj', participants: 8, duration: '25 min', isLive: false },
+];
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +38,8 @@ import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
 
-const TABS = ['Chat', 'General', 'Blood', 'Medical', 'Petition'];
+const TABS = ['Blood', 'Medical', 'Petition', 'Search'];
+const MAIN_TABS = ['Live Mantra'];
 
 interface Message {
   id: string;
@@ -66,6 +84,7 @@ export default function CommunityDetailScreen() {
   
   const [community, setCommunity] = useState<Community | null>(null);
   const [activeTab, setActiveTab] = useState('Chat');
+  const [activeMainTab, setActiveMainTab] = useState('Community');
   const [messages, setMessages] = useState<Message[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,8 +107,14 @@ export default function CommunityDetailScreen() {
     try {
       const response = await getCommunity(id!);
       setCommunity(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching community:', error);
+      const message =
+        error?.response?.data?.detail ||
+        error?.userFriendlyMessage ||
+        error?.message ||
+        'Unable to load community data. Please check your network or server status.';
+      Alert.alert('Network Error', message);
     } finally {
       setLoading(false);
     }
@@ -97,17 +122,18 @@ export default function CommunityDetailScreen() {
 
   const fetchData = async () => {
     try {
+      if (activeTab === 'Live Mantra Jaap') {
+        // Live mantra mode does not require API calls here
+        setMessages([]);
+        setRequests([]);
+        return;
+      }
+
       if (activeTab === 'Chat') {
-        // Fetch chat messages
         const response = await getCommunityMessages(id!, 'chat');
         setMessages(response.data || []);
         setRequests([]);
-      } else if (activeTab === 'General') {
-        // General tab does not fetch requests
-        setMessages([]);
-        setRequests([]);
       } else {
-        // Fetch community requests for this tab type
         const requestTypeMap: Record<string, string> = {
           'Blood': 'blood',
           'Medical': 'medical',
@@ -121,8 +147,14 @@ export default function CommunityDetailScreen() {
         setRequests(response.data || []);
         setMessages([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching data:', error);
+      const message =
+        error?.response?.data?.detail ||
+        error?.userFriendlyMessage ||
+        error?.message ||
+        'Unable to load community data. Please check your network or server status.';
+      Alert.alert('Network Error', message);
       setMessages([]);
       setRequests([]);
     } finally {
@@ -136,9 +168,11 @@ export default function CommunityDetailScreen() {
       setGeneralExpanded(false);
       return;
     }
+  };
 
-    // No request creation inside community group tabs; list only.
-    // This tab switch is read-only in non-chat modes.
+  const handleMainTabChange = (tab: string) => {
+    setActiveMainTab(tab);
+    setActiveTab('Live Mantra Jaap');
   };
 
   const handleSendMessage = async () => {
@@ -360,23 +394,107 @@ export default function CommunityDetailScreen() {
         </View>
       </View>
 
-      {/* Top Tabs */}
-      <View style={styles.tabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => handleTabChange(tab)}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        {/* Create request button disabled for all non-Chat tabs as per requirement */}
+      {/* Top tab group (Community / Private Chat) */}
+      <View style={styles.topTabsContainer}>
+        <TouchableOpacity
+          style={[styles.topTab, activeTab !== 'Live Mantra Jaap' && styles.topTabActive]}
+          onPress={() => { setActiveMainTab('Live Mantra'); setActiveTab('Chat'); }}
+        >
+          <Text style={[styles.topTabText, activeTab !== 'Live Mantra Jaap' && styles.topTabTextActive]}>Community</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.topTab, activeTab === 'Live Mantra Jaap' && styles.topTabActive]}
+          onPress={() => setActiveTab('Private Chat')}
+        >
+          <Text style={[styles.topTabText, activeTab === 'Private Chat' && styles.topTabTextActive]}>Private Chat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.topTabPlus}
+          onPress={() => Alert.alert('Create', 'Implement create new group or chat here')}
+        >
+          <Ionicons name="add" size={20} color={COLORS.primary} />
+        </TouchableOpacity>
       </View>
+
+      {/* Live Mantra section embed (in community) */}
+      <View style={styles.liveMantraSection}>
+        <Text style={styles.communitySectionTitle}>Live Mantra Jaap</Text>
+        <View style={styles.liveMantraCard}>
+          <Text style={styles.liveMantraCardTitle}>Join live chanting sessions with your community</Text>
+          <TouchableOpacity
+            style={styles.liveMantraCardButton}
+            onPress={() => router.push(`/community/${id}/mantra`)}
+          >
+            <Ionicons name="musical-notes" size={18} color="#FFFFFF" />
+            <Text style={styles.liveMantraCardButtonText}>Open Live Mantra</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Home area cards (Andheri, Mumbai, Maharashtra, Bharat) */}
+      <View style={styles.communityLevelContainer}>
+        <Text style={styles.communitySectionTitle}>Home Area</Text>
+        <TouchableOpacity style={styles.communityCard} onPress={() => { /* navigate to Andheri group */ }}>
+          <Ionicons name="people" size={24} color={COLORS.primary} />
+          <View style={styles.communityCardTextWrap}>
+            <Text style={styles.communityCardTitle}>Andheri Group</Text>
+            <Text style={styles.communityCardSub}>9 members</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+        </TouchableOpacity>
+
+        <Text style={styles.communitySectionTitle}>City Community</Text>
+        <TouchableOpacity style={styles.communityCard} onPress={() => { /* navigate to Mumbai */ }}>
+          <Ionicons name="location" size={24} color="#8E44AD" />
+          <View style={styles.communityCardTextWrap}>
+            <Text style={styles.communityCardTitle}>Mumbai Group</Text>
+            <Text style={styles.communityCardSub}>9 members</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+        </TouchableOpacity>
+
+        <Text style={styles.communitySectionTitle}>State Community</Text>
+        <TouchableOpacity style={styles.communityCard} onPress={() => { /* navigate to Maharashtra */ }}>
+          <Ionicons name="map" size={24} color="#F39C12" />
+          <View style={styles.communityCardTextWrap}>
+            <Text style={styles.communityCardTitle}>Maharashtra Group</Text>
+            <Text style={styles.communityCardSub}>10 members</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+        </TouchableOpacity>
+
+        <Text style={styles.communitySectionTitle}>National Community</Text>
+        <TouchableOpacity style={styles.communityCard} onPress={() => { /* navigate to Bharat */ }}>
+          <Ionicons name="flag" size={24} color="#E74C3C" />
+          <View style={styles.communityCardTextWrap}>
+            <Text style={styles.communityCardTitle}>Bharat Group</Text>
+            <Text style={styles.communityCardSub}>10 members</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Home area (static) */}
+      <View style={styles.homeArea}>
+        <Text style={styles.homeAreaTitle}>Community Home</Text>
+        <Text style={styles.homeAreaSubtitle}>Connect with members and access key community controls</Text>
+      </View>
+
+      {/* Live Mantra Header */}
+      <TouchableOpacity 
+        style={styles.liveMantraHeader}
+        onPress={() => { setActiveMainTab('Live Mantra'); setActiveTab('Live Mantra Jaap'); }}
+      >
+        <View style={styles.liveMantraHeaderLeft}>
+          <View style={styles.liveDotAnimated} />
+          <Text style={styles.liveMantraHeaderTitle}>Live Mantra Jaap</Text>
+        </View>
+        <View style={styles.liveMantraHeaderRight}>
+          <Text style={styles.liveMantraHeaderSubtitle}>Tap to join</Text>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+        </View>
+      </TouchableOpacity>
+
 
       {/* Content */}
       <KeyboardAvoidingView 
@@ -385,13 +503,13 @@ export default function CommunityDetailScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {activeTab === 'Chat' ? (
-          // Chat Messages
+          // Quick Actions + Chat Messages
           <FlatList
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messagesList}
+            contentContainerStyle={styles.chatMessagesList}
             inverted={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
@@ -407,6 +525,41 @@ export default function CommunityDetailScreen() {
                 flatListRef.current?.scrollToEnd({ animated: false });
               }
             }}
+            ListHeaderComponent={
+              <View style={styles.quickActionsContainer}>
+                <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+                <View style={styles.quickActionsGrid}>
+                  <TouchableOpacity 
+                    style={[styles.quickActionCard, { backgroundColor: '#FF6B00' }]}
+                    onPress={() => setActiveTab('Blood')}
+                  >
+                    <Ionicons name="water" size={24} color="#FFFFFF" />
+                    <Text style={styles.quickActionCardText}>Blood Request</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionCard, { backgroundColor: '#E74C3C' }]}
+                    onPress={() => setActiveTab('Medical')}
+                  >
+                    <Ionicons name="medical" size={24} color="#FFFFFF" />
+                    <Text style={styles.quickActionCardText}>Medical Help</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionCard, { backgroundColor: '#9B59B6' }]}
+                    onPress={() => { setActiveMainTab('Live Mantra'); }}
+                  >
+                    <Ionicons name="musical-notes" size={24} color="#FFFFFF" />
+                    <Text style={styles.quickActionCardText}>Mantra Jaap</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionCard, { backgroundColor: '#3498DB' }]}
+                    onPress={() => setActiveTab('Petition')}
+                  >
+                    <Ionicons name="document-text" size={24} color="#FFFFFF" />
+                    <Text style={styles.quickActionCardText}>Petition</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            }
           />
         ) : activeTab === 'General' ? (
           // General tab with expandable Study/Offerings options
@@ -434,6 +587,70 @@ export default function CommunityDetailScreen() {
               </View>
             )}
           </View>
+        ) : activeTab === 'Search' ? (
+          <View style={styles.searchContainer}>
+            <Text style={styles.sectionTitle}>Search Community Content</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search chats, requests, and announcements..."
+              placeholderTextColor={COLORS.textLight}
+              onSubmitEditing={(event) => {
+                // Add real search support later
+                Alert.alert('Search', `You searched for: ${event.nativeEvent.text}`);
+              }}
+            />
+          </View>
+        ) : activeTab === 'Live Mantra Jaap' || activeMainTab === 'Live Mantra' ? (
+          <View style={styles.liveMantraContainer}>
+            <View style={styles.liveMantraHeader}>
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveBadgeText}>LIVE</Text>
+              </View>
+              <Text style={styles.sectionTitle}>Mantra Jaap</Text>
+            </View>
+            
+            <Text style={styles.sectionSubtitle}>Join ongoing mantra sessions with community members.</Text>
+            
+            <TouchableOpacity
+              style={styles.mantraButton}
+              onPress={() => router.push(`/community/${id}/mantra`)}
+            >
+              <Ionicons name="play-circle" size={24} color="#FFFFFF" />
+              <Text style={styles.mantraButtonText}>Join Mantra Jaap Room</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.activeSessionsContainer}>
+              <Text style={styles.activeSessionsTitle}>Active Sessions</Text>
+              <View style={styles.sessionCard}>
+                <View style={styles.sessionInfo}>
+                  <Text style={styles.sessionName}>🌸 Radha Krishna 108x</Text>
+                  <Text style={styles.sessionCount}>14 participants</Text>
+                </View>
+                <TouchableOpacity style={styles.joinSessionBtn}>
+                  <Text style={styles.joinSessionText}>Join</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.sessionCard}>
+                <View style={styles.sessionInfo}>
+                  <Text style={styles.sessionName}>🔥 Gayatri Mantra</Text>
+                  <Text style={styles.sessionCount}>9 participants</Text>
+                </View>
+                <TouchableOpacity style={styles.joinSessionBtn}>
+                  <Text style={styles.joinSessionText}>Join</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.sessionCard}>
+                <View style={styles.sessionInfo}>
+                  <Text style={styles.sessionName}>🕉️ Mahamrityunjaya Jaap</Text>
+                  <Text style={styles.sessionCount}>5 participants</Text>
+                </View>
+                <TouchableOpacity style={styles.joinSessionBtn}>
+                  <Text style={styles.joinSessionText}>Join</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         ) : (
           // Request List
           <FlatList
@@ -451,6 +668,23 @@ export default function CommunityDetailScreen() {
               </View>
             }
           />
+        )}
+
+        {/* Live Mantra CTA Bar (below chat messages and above input) */}
+        {activeTab === 'Chat' && (
+          <View style={styles.liveMantraBottomBar}>
+            <View>
+              <Text style={styles.liveMantraBottomTitle}>Live Mantra Jaap</Text>
+              <Text style={styles.liveMantraBottomSubtitle}>Join the ongoing spiritual chant session</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.liveMantraBottomButton}
+              onPress={() => setActiveTab('Live Mantra Jaap')}
+            >
+              <Ionicons name="musical-notes" size={18} color="#fff" />
+              <Text style={styles.liveMantraBottomButtonText}>Go Live</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Input Area - Only show for Chat tab */}
@@ -574,12 +808,79 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
     marginRight: SPACING.sm,
   },
+  liveMantraSection: {
+    backgroundColor: COLORS.surface,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  liveMantraCard: {
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+  },
+  liveMantraCardTitle: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginBottom: SPACING.sm,
+  },
+  liveMantraCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2C3E50',
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  liveMantraCardButtonText: {
+    color: '#FFFFFF',
+    marginLeft: SPACING.xs,
+    fontWeight: '600',
+  },
   chatContainer: {
     flex: 1,
   },
   messagesList: {
     padding: SPACING.md,
     flexGrow: 1,
+  },
+  chatMessagesList: {
+    paddingBottom: SPACING.md,
+    flexGrow: 1,
+  },
+  quickActionsContainer: {
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  quickActionsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  quickActionCard: {
+    width: '48%',
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  quickActionCardText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: SPACING.xs,
+    textAlign: 'center',
   },
   requestsList: {
     padding: SPACING.md,
@@ -694,6 +995,116 @@ const styles = StyleSheet.create({
   createRequestBtnText: {
     color: '#FFFFFF',
     fontWeight: '600',
+    marginLeft: SPACING.xs,
+  },
+  topTabsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  topTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.background,
+    marginHorizontal: SPACING.xs,
+  },
+  topTabActive: {
+    backgroundColor: COLORS.primary,
+  },
+  topTabText: {
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  topTabTextActive: {
+    color: '#FFFFFF',
+  },
+  topTabPlus: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
+    height: 36,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    marginLeft: SPACING.xs,
+  },
+  communityLevelContainer: {
+    backgroundColor: '#FEF6EB',
+    padding: SPACING.md,
+  },
+  communitySectionTitle: {
+    marginTop: SPACING.md,
+    color: '#8E44AD',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    fontSize: 12,
+    marginBottom: SPACING.sm,
+  },
+  communityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.sm,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  communityCardTextWrap: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  communityCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  communityCardSub: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  liveMantraBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0F9FF',
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    padding: SPACING.sm,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  liveMantraBottomTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  liveMantraBottomSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  liveMantraBottomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+  },
+  liveMantraBottomButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
     marginLeft: SPACING.xs,
   },
   inputContainer: {
@@ -838,6 +1249,263 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.success,
     fontWeight: '500',
+  },
+  mainTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    borderBottomLeftRadius: BORDER_RADIUS.lg,
+    borderBottomRightRadius: BORDER_RADIUS.lg,
+  },
+  mainTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    marginHorizontal: SPACING.xs,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  mainTabActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  mainTabText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.9)',
+    marginLeft: SPACING.xs,
+  },
+  mainTabTextActive: {
+    color: COLORS.primary,
+  },
+  liveIndicator: {
+    backgroundColor: COLORS.error,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: SPACING.xs,
+  },
+  liveIndicatorText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  liveMantraHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveDotAnimated: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.error,
+    marginRight: SPACING.sm,
+  },
+  liveMantraHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  liveMantraHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveMantraHeaderSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginRight: SPACING.xs,
+  },
+  quickActionContainer: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  quickActionButton: {
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.primary,
+  },
+  quickActionText: {
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  liveMantraContainer: {
+    flex: 1,
+    backgroundColor: '#EAF5FF',
+    padding: SPACING.md,
+    borderTopLeftRadius: BORDER_RADIUS.lg,
+    borderTopRightRadius: BORDER_RADIUS.lg,
+  },
+  homeArea: {
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  homeAreaTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  homeAreaSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+  },
+  homeOptionbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  homeOptionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    marginHorizontal: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.background,
+  },
+  homeOptionBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  homeOptionText: {
+    marginLeft: SPACING.xs,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  homeOptionTextActive: {
+    color: '#FFFFFF',
+  },
+  liveMantraHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.error,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: SPACING.sm,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+    marginRight: 4,
+  },
+  liveBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.md,
+    textAlign: 'center',
+  },
+  activeSessionsContainer: {
+    width: '100%',
+    marginTop: SPACING.md,
+  },
+  activeSessionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  sessionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  sessionInfo: {
+    flex: 1,
+  },
+  sessionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  sessionCount: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  joinSessionBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  joinSessionText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  searchContainer: {
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    margin: SPACING.md,
+  },
+  searchInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.sm,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    color: COLORS.text,
+    fontSize: 16,
+  },
+  mantraButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.md,
+    width: '100%',
+  },
+  mantraButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: SPACING.sm,
+  },
+  hintText: {
+    marginTop: SPACING.sm,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
   },
   fulfillButton: {
     flexDirection: 'row',

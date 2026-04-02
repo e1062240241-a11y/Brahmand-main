@@ -47,7 +47,7 @@ export default function RootLayout() {
         console.warn('Failed to load stored admin auth:', adminErr?.message || adminErr);
       }
     });
-  }, []);
+  }, [loadStoredAuth, loadStoredAdminAuth]);
 
   if (isLoading) {
     return (
@@ -85,5 +85,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  fallbackText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: COLORS.textSecondary,
   },
 });

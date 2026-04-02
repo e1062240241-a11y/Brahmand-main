@@ -59,10 +59,16 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
   const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(communities[0]?.id ?? null);
 
   useEffect(() => {
-    if (!selectedCommunityId && communities.length > 0) {
-      setSelectedCommunityId(communities[0].id);
+    if (communities.length > 0) {
+      setSelectedCommunityId((prev) => prev || communities[0].id);
     }
-  }, [communities, selectedCommunityId]);
+  }, [communities]);
+
+  useEffect(() => {
+    if (visible && communities.length > 0) {
+      setSelectedCommunityId((prev) => prev || communities[0].id);
+    }
+  }, [visible, communities]);
   
   // Common fields
   const [title, setTitle] = useState('');
@@ -98,24 +104,30 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
   };
 
   const handleSubmit = async () => {
+    setLoading(true);
     // Validation with user feedback
     if (!description.trim()) {
+      setLoading(false);
       Alert.alert('Required Field', 'Please enter a description for your request.');
       return;
     }
     if (!contactNumber.trim()) {
+      setLoading(false);
       Alert.alert('Required Field', 'Please enter your contact number.');
       return;
     }
     if (selectedCommunityId === null) {
+      setLoading(false);
       Alert.alert('Required Field', 'Please select a community.');
       return;
     }
     if (requestType === 'Blood' && !bloodGroup) {
+      setLoading(false);
       Alert.alert('Required Field', 'Please select a blood group.');
       return;
     }
     if (requestType === 'Financial' && !selectedOfferingType && !amount.trim()) {
+      setLoading(false);
       Alert.alert('Required Field', 'Please enter amount required.');
       return;
     }
