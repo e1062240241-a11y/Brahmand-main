@@ -89,17 +89,28 @@ export default function PhoneScreen() {
         
         if (Platform.OS === 'web') {
           try {
-            // Clear any existing verifier
+            // Clear any existing verifier and force recreate
             if ((window as any).recaptchaVerifier) {
-              try { (window as any).recaptchaVerifier.clear(); } catch (e) {}
+              try { 
+                (window as any).recaptchaVerifier.clear(); 
+              } catch (e) {}
               (window as any).recaptchaVerifier = null;
-              const container = document.getElementById('recaptcha-container');
-              if (container) container.innerHTML = '';
+            }
+            
+            // Clear the container completely
+            const container = document.getElementById('recaptcha-container');
+            if (container) {
+              container.innerHTML = '';
+              // Remove any existing iframe
+              const iframes = container.getElementsByTagName('iframe');
+              while(iframes.length > 0) {
+                iframes[0].remove();
+              }
             }
 
             console.log('[Phone Auth] Creating RecaptchaVerifier with auth:', auth?.app?.name);
             
-            // Create new verifier - use explicit siteKey from Firebase config if available
+            // Create new verifier
             const verifierOptions = {
               size: 'invisible' as const,
             };
@@ -107,7 +118,8 @@ export default function PhoneScreen() {
             (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', verifierOptions);
             
             console.log('[Phone Auth] Rendering recaptcha...');
-            await (window as any).recaptchaVerifier.render();
+            const widgetId = await (window as any).recaptchaVerifier.render();
+            console.log('[Phone Auth] reCAPTCHA rendered, widgetId:', widgetId);
             console.log('[Phone Auth] Sending OTP to:', fullPhone);
             
             const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, (window as any).recaptchaVerifier);
