@@ -5,31 +5,7 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuthStore } from '../src/store/authStore';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
-import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useAdminStore } from '../src/store/adminStore';
-
-// Safe Slot wrapper to isolate navigation errors
-function SafeSlot() {
-  try {
-    return <Slot />;
-  } catch (error) {
-    console.warn('Slot rendering crashed, showing fallback.', error);
-    // For navigation errors, show a more user-friendly message
-    if ((error as any)?.message?.includes('stale')) {
-      return (
-        <View style={styles.fallbackContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.fallbackText}>Loading...</Text>
-        </View>
-      );
-    }
-    return (
-      <View style={styles.fallbackContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-}
 
 export default function RootLayout() {
   const pathname = usePathname();
@@ -58,14 +34,13 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
+    <>
       <StatusBar style="dark" />
       <View style={styles.root}>
-        <SafeSlot />
-        {/* Global Floating Button - only show when logged in */}
+        <Slot />
         {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
       </View>
-    </ErrorBoundary>
+    </>
   );
 }
 
@@ -79,16 +54,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
-  },
-  fallbackContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  fallbackText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: COLORS.textSecondary,
   },
 });

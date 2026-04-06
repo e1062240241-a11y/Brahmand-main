@@ -2,21 +2,39 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Use localhost for local dev without .env
-const rawApiUrl = (process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000').trim();
+const normalizeBackendUrl = (rawUrl: string): string => {
+  let apiUrl = rawUrl.trim();
 
-let API_URL = rawApiUrl;
-if (rawApiUrl.startsWith('ttps://')) {
-  API_URL = 'https://' + rawApiUrl.slice(6); // handle `ttps://...` typo
-} else if (rawApiUrl.startsWith('ttp://')) {
-  API_URL = 'http://' + rawApiUrl.slice(5); // handle `ttp://...` typo
-} else if (!rawApiUrl.startsWith('http://') && !rawApiUrl.startsWith('https://')) {
-  API_URL = 'https://' + rawApiUrl;
-}
+  if (!apiUrl) {
+    console.warn(
+      '[API] EXPO_PUBLIC_BACKEND_URL is not defined. Falling back to http://localhost:8000. ' +
+      'If you are testing on a device or emulator, set EXPO_PUBLIC_BACKEND_URL to a reachable backend URL.'
+    );
+    apiUrl = 'http://localhost:8000';
+  }
 
-if (API_URL.endsWith('/')) {
-  API_URL = API_URL.slice(0, -1);
-}
+  if (apiUrl.startsWith('ttps://')) {
+    apiUrl = 'https://' + apiUrl.slice(6); // handle `ttps://...` typo
+  } else if (apiUrl.startsWith('ttp://')) {
+    apiUrl = 'http://' + apiUrl.slice(5); // handle `ttp://...` typo
+  } else if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+    apiUrl = 'https://' + apiUrl;
+  }
+
+  if (Platform.OS === 'android' && /(localhost|127\.0\.0\.1)/.test(apiUrl)) {
+    apiUrl = apiUrl.replace(/localhost|127\.0\.0\.1/, '10.0.2.2');
+    console.warn('[API] Rewriting localhost to Android emulator host:', apiUrl);
+  }
+
+  if (apiUrl.endsWith('/')) {
+    apiUrl = apiUrl.slice(0, -1);
+  }
+
+  return apiUrl;
+};
+
+const rawApiUrl = String(process.env.EXPO_PUBLIC_BACKEND_URL || '');
+export const API_URL = normalizeBackendUrl(rawApiUrl);
 
 export const parseApiError = (error: any): string => {
   if (!error) return 'Unknown error occurred.';
@@ -627,7 +645,6 @@ export const uploadVendorKycFile = (
 };
 
 export const extractKycTextFromImage = async (vendorId: string, file: { uri: string; name: string; type: string }) => {
-  const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
   const token = await AsyncStorage.getItem('auth_token');
   
   const formData = new FormData();

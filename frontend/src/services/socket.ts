@@ -1,7 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from './api';
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const SOCKET_URL = API_URL;
 
 class SocketService {
   private socket: Socket | null = null;

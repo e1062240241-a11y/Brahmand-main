@@ -1,43 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, Modal, ScrollView, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
+import { WebView } from 'react-native-webview';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
+import { useAuthStore } from '../../../src/store/authStore';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface MantraSession {
   id: string;
   name: string;
   mantra: string;
+  mantra_text: string;
   participants: number;
   duration: string;
   isLive: boolean;
+  youtube_url?: string;
+  audio_url?: string;
+  category: string;
 }
 
 const MOCK_SESSIONS: MantraSession[] = [
-  { id: '1', name: 'Radha Krishna 108x', mantra: 'Om Kleem Krishnaya Namah', participants: 14, duration: '45 min', isLive: true },
-  { id: '2', name: 'Gayatri Mantra', mantra: 'Om Bhur Bhuva Swaha', participants: 9, duration: '30 min', isLive: true },
-  { id: '3', name: 'Mahamrityunjaya Jaap', mantra: 'Om Tryambakam Yajamahe', participants: 5, duration: '20 min', isLive: true },
-  { id: '4', name: 'Om Namah Shivaya', mantra: 'Om Namah Shivaya', participants: 12, duration: '15 min', isLive: false },
-  { id: '5', name: 'Hanuman Chalisa', mantra: 'Shri Guru Charan Saroj Raj', participants: 8, duration: '25 min', isLive: false },
+  { id: '1', name: 'Morning Sadhna', mantra: 'Om Kleem Krishnaya Namah', mantra_text: 'ॐ क्लीम कृष्णाय नमः', participants: 14, duration: '45 min', isLive: true, youtube_url: 'https://www.youtube.com/watch?v=AETFvQonfV8&list=RDAETFvQonfV8&start_radio=1', category: 'Krishna' },
+  { id: '2', name: 'Gayatri Mantra 108 Times', mantra: 'Om Bhur Bhuva Swaha', mantra_text: 'ॐ भूर्भुवः स्वः', participants: 9, duration: '30 min', isLive: true, youtube_url: 'https://www.youtube.com/watch?v=4y7c5O-1aPk', category: 'Gayatri' },
+  { id: '3', name: 'Mahamrityunjaya Jaap', mantra: 'Om Tryambakam Yajamahe', mantra_text: 'ॐ त्र्यम्बकं यजामहे', participants: 5, duration: '20 min', isLive: true, youtube_url: 'https://www.youtube.com/watch?v=IzGM1uUzWQw', category: 'Shiv' },
+  { id: '4', name: 'Om Namah Shivaya', mantra: 'Om Namah Shivaya', mantra_text: 'ॐ नमः शिवाय', participants: 12, duration: '15 min', isLive: false, youtube_url: 'https://www.youtube.com/watch?v=JmM6yQvb4wU', category: 'Shiv' },
+  { id: '5', name: 'Hanuman Chalisa', mantra: 'Shri Guru Charan Saroj Raj', mantra_text: 'श्री गुरु चरण सरोज रज', participants: 8, duration: '25 min', isLive: false, youtube_url: 'https://www.youtube.com/watch?v=cmShkQPfFks', category: 'Hanuman' },
+  { id: '6', name: 'Lakshmi Mantra', mantra: 'Om Shring Hoon', mantra_text: 'ॐ श्रीं श्रीं श्रीं', participants: 20, duration: '15 min', isLive: false, youtube_url: 'https://www.youtube.com/watch?v=VfT2F1F2a8k', category: 'Lakshmi' },
+  { id: '7', name: 'Ganesh Mantra', mantra: 'Om Vighn Hoon', mantra_text: 'ॐ विकाह्न राय नमः', participants: 15, duration: '10 min', isLive: false, youtube_url: 'https://www.youtube.com/watch?v=ShF5e1sXZcQ', category: 'Ganesh' },
+  { id: '8', name: 'Durga Mantra', mantra: 'Om Dum Durgayei', mantra_text: 'ॐ दुं दुर्गायै नमः', participants: 7, duration: '20 min', isLive: false, youtube_url: 'https://www.youtube.com/watch?v=KpR10hWbzqU', category: 'Durga' },
 ];
+
+const CATEGORIES = ['All', 'Krishna', 'Shiv', 'Gayatri', 'Hanuman', 'Lakshmi', 'Ganesh', 'Durga'];
 
 export default function MantraJaapRoom() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [sessions, setSessions] = useState<MantraSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { token } = useAuthStore();
+  const [sessions, setSessions] = useState<MantraSession[]>(MOCK_SESSIONS);
+  const [loading, setLoading] = useState(false);
   const [activeSession, setActiveSession] = useState<MantraSession | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [showYouTube, setShowYouTube] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
-    setTimeout(() => {
-      setSessions(MOCK_SESSIONS);
-      setLoading(false);
-    }, 500);
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
   }, []);
 
-  const renderSession = ({ item }: { item: MantraSession }) => (
-    <View style={[styles.sessionCard, !item.isLive && styles.sessionCardInactive]}>
+  const filteredSessions = selectedCategory === 'All' 
+    ? sessions 
+    : sessions.filter(s => s.category === selectedCategory);
+
+  const handleJoinSession = async (session: MantraSession) => {
+    setActiveSession(session);
+    if (session.youtube_url) {
+      setShowYouTube(true);
+    }
+  };
+
+  const handleStopSession = async () => {
+    if (soundRef.current) {
+      await soundRef.current.stopAsync();
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
+    setIsPlaying(false);
+    setActiveSession(null);
+    setShowYouTube(false);
+  };
+
+  const getYouTubeEmbedUrl = (url: string): string => {
+    if (!url) return '';
+    let videoId = '';
+    
+    if (url.includes('watch?v=')) {
+      const params = url.split('watch?v=')[1]?.split('&')[0];
+      videoId = params || '';
+    } else if (url.includes('youtu.be/')) {
+      videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+    }
+    
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=1&showinfo=0&modestbranding=1`;
+    }
+    return '';
+  };
+
+  const renderSessionCard = ({ item }: { item: MantraSession }) => (
+    <View style={styles.sessionCard}>
       <View style={styles.sessionHeader}>
         <View style={styles.sessionTitleRow}>
           <Text style={styles.sessionName}>{item.name}</Text>
@@ -49,27 +110,29 @@ export default function MantraJaapRoom() {
           )}
         </View>
         <Text style={styles.sessionMantra}>{item.mantra}</Text>
+        <Text style={styles.sessionMantraDevanagari}>{item.mantra_text}</Text>
+        <View style={styles.categoryBadge}>
+          <Text style={styles.categoryText}>{item.category}</Text>
+        </View>
       </View>
       
       <View style={styles.sessionStats}>
         <View style={styles.statItem}>
-          <Ionicons name="people" size={16} color={COLORS.textSecondary} />
-          <Text style={styles.statText}>{item.participants} participants</Text>
+          <Ionicons name="people" size={14} color={COLORS.textSecondary} />
+          <Text style={styles.statText}>{item.participants}</Text>
         </View>
         <View style={styles.statItem}>
-          <Ionicons name="time" size={16} color={COLORS.textSecondary} />
+          <Ionicons name="time" size={14} color={COLORS.textSecondary} />
           <Text style={styles.statText}>{item.duration}</Text>
         </View>
       </View>
 
       <TouchableOpacity 
-        style={[styles.joinButton, item.isLive ? styles.joinButtonActive : styles.joinButtonInactive]}
-        onPress={() => setActiveSession(item)}
+        style={styles.playButton}
+        onPress={() => handleJoinSession(item)}
       >
-        <Ionicons name={item.isLive ? 'play' : 'play-circle-outline'} size={20} color="#FFFFFF" />
-        <Text style={styles.joinButtonText}>
-          {activeSession?.id === item.id ? 'Joined!' : (item.isLive ? 'Join Now' : 'View')}
-        </Text>
+        <Ionicons name="play-circle" size={28} color="#FFFFFF" />
+        <Text style={styles.playButtonText}>Play Now</Text>
       </TouchableOpacity>
     </View>
   );
@@ -81,71 +144,136 @@ export default function MantraJaapRoom() {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.title}>Live Mantra Jaap</Text>
-          <Text style={styles.subtitle}>Join spiritual sessions with community</Text>
+          <Text style={styles.title}>🕉️ Mantra Jaap</Text>
+          <Text style={styles.subtitle}> Divine Chanting Sessions</Text>
         </View>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading sessions...</Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <Text style={styles.statBoxNumber}>{sessions.filter(s => s.isLive).length}</Text>
-              <Text style={styles.statBoxLabel}>Live Now</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statBoxNumber}>{sessions.reduce((a, s) => a + s.participants, 0)}</Text>
-              <Text style={styles.statBoxLabel}>Total Chanting</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statBoxNumber}>{sessions.length}</Text>
-              <Text style={styles.statBoxLabel}>Sessions</Text>
-            </View>
+      {/* Live Now Banner */}
+      <View style={styles.liveBanner}>
+        <View style={styles.liveBannerContent}>
+          <View style={styles.liveIndicatorBanner}>
+            <View style={styles.liveDotBanner} />
+            <Text style={styles.liveTextBanner}>LIVE NOW</Text>
           </View>
+          <Text style={styles.liveBannerTitle}>Morning Sadhna - 14 Chanting</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.liveBannerButton}
+          onPress={() => handleJoinSession(sessions[0])}
+        >
+          <Ionicons name="play" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
 
-          <FlatList
-            data={sessions}
-            renderItem={renderSession}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            ListHeaderComponent={
-              <Text style={styles.sectionTitle}>Active & Upcoming Sessions</Text>
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Ionicons name="musical-notes-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>No sessions available</Text>
-              </View>
-            }
-          />
-        </>
-      )}
+      {/* Categories */}
+      <View style={styles.categoriesContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]}
+              onPress={() => setSelectedCategory(cat)}
+            >
+              <Text style={[styles.categoryChipText, selectedCategory === cat && styles.categoryChipTextActive]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
-      {activeSession && (
-        <View style={styles.activePlayerContainer}>
-          <View style={styles.playerInfo}>
-            <View style={styles.playerMantraInfo}>
-              <Text style={styles.playerMantraName}>{activeSession.name}</Text>
-              <Text style={styles.playerMantraText}>{activeSession.mantra}</Text>
-            </View>
-            <View style={styles.playerStats}>
-              <Ionicons name="people" size={16} color="#FFFFFF" />
-              <Text style={styles.playerStatText}>{activeSession.participants}</Text>
-            </View>
+      {/* Sessions List */}
+      <FlatList
+        data={filteredSessions}
+        renderItem={renderSessionCard}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <Text style={styles.sectionTitle}>
+            {selectedCategory === 'All' ? 'All Sessions' : selectedCategory} ({filteredSessions.length})
+          </Text>
+        }
+      />
+
+      {/* Playing Now Mini Player */}
+      {activeSession && !showYouTube && (
+        <View style={styles.miniPlayer}>
+          <View style={styles.miniPlayerInfo}>
+            <Text style={styles.miniPlayerTitle} numberOfLines={1}>{activeSession.name}</Text>
+            <Text style={styles.miniPlayerSubtitle} numberOfLines={1}>{activeSession.mantra}</Text>
           </View>
           <TouchableOpacity 
-            style={styles.stopButton}
-            onPress={() => setActiveSession(null)}
+            style={styles.miniPlayerButton}
+            onPress={() => setShowYouTube(true)}
           >
-            <Ionicons name="stop" size={24} color="#FFFFFF" />
+            <Ionicons name="expand" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.miniPlayerStop}
+            onPress={handleStopSession}
+          >
+            <Ionicons name="close" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       )}
+
+      {/* YouTube Full Player Modal */}
+      <Modal
+        visible={showYouTube}
+        animationType="slide"
+        onRequestClose={() => setShowYouTube(false)}
+      >
+        <SafeAreaView style={styles.youtubeModalContainer}>
+          <View style={styles.youtubeModalHeader}>
+            <TouchableOpacity 
+              style={styles.youtubeCloseButton}
+              onPress={handleStopSession}
+            >
+              <Ionicons name="close" size={28} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.youtubeModalTitle} numberOfLines={1}>
+              {activeSession?.name || 'Mantra Jaap'}
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          {activeSession?.youtube_url && (
+            <WebView
+              ref={webViewRef}
+              style={styles.youtubeWebView}
+              source={{ uri: getYouTubeEmbedUrl(activeSession.youtube_url) }}
+              javaScriptEnabled={true}
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.youtubeLoading}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.youtubeLoadingText}>Loading Divine Mantras...</Text>
+                </View>
+              )}
+            />
+          )}
+
+          {/* Session Info Below Video */}
+          <View style={styles.youtubeSessionInfo}>
+            <Text style={styles.youtubeSessionName}>{activeSession?.name}</Text>
+            <Text style={styles.youtubeSessionMantra}>{activeSession?.mantra_text}</Text>
+            <View style={styles.youtubeSessionStats}>
+              <View style={styles.statItem}>
+                <Ionicons name="people" size={16} color={COLORS.primary} />
+                <Text style={styles.statText}>{activeSession?.participants} chanting</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons name="musical-notes" size={16} color={COLORS.primary} />
+                <Text style={styles.statText}>{activeSession?.duration}</Text>
+              </View>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -160,8 +288,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.md,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
   },
   backButton: {
     marginRight: SPACING.md,
@@ -171,53 +297,91 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: COLORS.text,
   },
   subtitle: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    marginTop: 2,
   },
-  loadingContainer: {
+  liveBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF5722',
+    padding: SPACING.md,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  liveBannerContent: {
     flex: 1,
+  },
+  liveIndicatorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  liveDotBanner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    marginRight: 6,
+  },
+  liveTextBanner: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  liveBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  liveBannerButton: {
+    backgroundColor: '#FFFFFF',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: SPACING.md,
+  categoriesContainer: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+  },
+  categoryChip: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    marginRight: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  categoryChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  categoryChipText: {
     fontSize: 14,
     color: COLORS.textSecondary,
+    fontWeight: '500',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    padding: SPACING.md,
-    backgroundColor: COLORS.primary,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statBoxNumber: {
-    fontSize: 24,
-    fontWeight: '700',
+  categoryChipTextActive: {
     color: '#FFFFFF',
   },
-  statBoxLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: SPACING.md,
-    paddingHorizontal: SPACING.md,
+    marginHorizontal: SPACING.md,
   },
   listContent: {
     padding: SPACING.md,
+    paddingBottom: 100,
   },
   sessionCard: {
     backgroundColor: COLORS.surface,
@@ -226,9 +390,11 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.divider,
-  },
-  sessionCardInactive: {
-    opacity: 0.7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sessionHeader: {
     marginBottom: SPACING.sm,
@@ -237,16 +403,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: SPACING.xs,
   },
   sessionName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: COLORS.text,
+    flex: 1,
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.error,
+    backgroundColor: '#FF5722',
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: 8,
@@ -266,8 +434,27 @@ const styles = StyleSheet.create({
   sessionMantra: {
     fontSize: 13,
     color: COLORS.textSecondary,
+    fontStyle: 'italic',
+  },
+  sessionMantraDevanagari: {
+    fontSize: 18,
+    color: COLORS.primary,
+    fontWeight: '600',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: `${COLORS.primary}20`,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginTop: SPACING.xs,
+  },
+  categoryText: {
+    fontSize: 11,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   sessionStats: {
     flexDirection: 'row',
@@ -283,34 +470,21 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginLeft: 4,
   },
-  joinButton: {
+  playButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
   },
-  joinButtonActive: {
-    backgroundColor: 'orange', // force orange for live sessions
+  playButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+    marginLeft: SPACING.sm,
   },
-  joinButtonInactive: {
-    backgroundColor: '#FFA500', // softer orange for inactive sessions
-  },
-  joinButtonText: {
-    color: '#FFFFFF', // white text stands out on orange
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xl * 2,
-  },
-  emptyText: {
-    marginTop: SPACING.md,
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  activePlayerContainer: {
+  miniPlayer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -321,46 +495,100 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     paddingBottom: SPACING.xl,
   },
-  playerInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  playerMantraInfo: {
+  miniPlayerInfo: {
     flex: 1,
   },
-  playerMantraName: {
+  miniPlayerTitle: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
-  playerMantraText: {
+  miniPlayerSubtitle: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
     marginTop: 2,
   },
-  playerStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  miniPlayerButton: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  playerStatText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    marginLeft: 4,
-    fontWeight: '600',
-  },
-  stopButton: {
-    marginLeft: SPACING.md,
-    backgroundColor: COLORS.error,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: SPACING.sm,
+  },
+  miniPlayerStop: {
+    backgroundColor: COLORS.error,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: SPACING.sm,
+  },
+  youtubeModalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  youtubeModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  youtubeCloseButton: {
+    padding: SPACING.xs,
+    width: 40,
+  },
+  youtubeModalTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  youtubeWebView: {
+    flex: 1,
+    minHeight: SCREEN_WIDTH * 0.56,
+  },
+  youtubeLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  youtubeLoadingText: {
+    marginTop: SPACING.md,
+    color: COLORS.primary,
+    fontSize: 14,
+  },
+  youtubeSessionInfo: {
+    padding: SPACING.lg,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+  },
+  youtubeSessionName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  youtubeSessionMantra: {
+    fontSize: 22,
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    marginBottom: SPACING.md,
+  },
+  youtubeSessionStats: {
+    flexDirection: 'row',
   },
 });

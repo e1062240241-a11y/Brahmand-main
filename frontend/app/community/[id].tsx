@@ -84,7 +84,8 @@ export default function CommunityDetailScreen() {
   
   const [community, setCommunity] = useState<Community | null>(null);
   const [activeTab, setActiveTab] = useState('Chat');
-  const [activeMainTab, setActiveMainTab] = useState('Community');
+  const [activeMainTab, setActiveMainTab] = useState('Live Mantra');
+  const [isMantraPlaying, setIsMantraPlaying] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -417,19 +418,33 @@ export default function CommunityDetailScreen() {
       </View>
 
       {/* Live Mantra section embed (in community) */}
-      <View style={styles.liveMantraSection}>
-        <Text style={styles.communitySectionTitle}>Live Mantra Jaap</Text>
-        <View style={styles.liveMantraCard}>
-          <Text style={styles.liveMantraCardTitle}>Join live chanting sessions with your community</Text>
-          <TouchableOpacity
-            style={styles.liveMantraCardButton}
-            onPress={() => router.push(`/community/${id}/mantra`)}
-          >
-            <Ionicons name="musical-notes" size={18} color="#FFFFFF" />
-            <Text style={styles.liveMantraCardButtonText}>Open Live Mantra</Text>
-          </TouchableOpacity>
+      <TouchableOpacity 
+        style={[styles.liveMantraSection, isMantraPlaying && styles.liveMantraSectionActive]}
+        onPress={() => router.push(`/community/${id}/mantra`)}
+      >
+        <View style={styles.liveMantraSectionContent}>
+          <View style={styles.liveMantraIconContainer}>
+            <Ionicons 
+              name={isMantraPlaying ? 'musical-note' : 'musical-notes'} 
+              size={24} 
+              color={isMantraPlaying ? '#FFFFFF' : COLORS.primary} 
+            />
+          </View>
+          <View style={styles.liveMantraTextContainer}>
+            <Text style={[styles.communitySectionTitle, isMantraPlaying && styles.communitySectionTitleActive]}>
+              {isMantraPlaying ? '🎵 Now Playing' : '🕉️ Live Mantra Jaap'}
+            </Text>
+            <Text style={[styles.liveMantraCardTitle, isMantraPlaying && styles.liveMantraCardTitleActive]}>
+              {isMantraPlaying ? 'Tap to control playback' : 'Join live chanting sessions'}
+            </Text>
+          </View>
+          <Ionicons 
+            name={isMantraPlaying ? 'pause-circle' : 'play-circle'} 
+            size={32} 
+            color={isMantraPlaying ? '#FFFFFF' : COLORS.primary} 
+          />
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Home area cards (Andheri, Mumbai, Maharashtra, Bharat) */}
       <View style={styles.communityLevelContainer}>
@@ -482,16 +497,24 @@ export default function CommunityDetailScreen() {
 
       {/* Live Mantra Header */}
       <TouchableOpacity 
-        style={styles.liveMantraHeader}
+        style={[styles.liveMantraHeader, isMantraPlaying && styles.liveMantraHeaderActive]}
         onPress={() => { setActiveMainTab('Live Mantra'); setActiveTab('Live Mantra Jaap'); }}
       >
         <View style={styles.liveMantraHeaderLeft}>
-          <View style={styles.liveDotAnimated} />
-          <Text style={styles.liveMantraHeaderTitle}>Live Mantra Jaap</Text>
+          {isMantraPlaying ? (
+            <Ionicons name="musical-note" size={20} color="#FFFFFF" />
+          ) : (
+            <View style={[styles.liveDotAnimated, isMantraPlaying && styles.liveDotPlaying]} />
+          )}
+          <Text style={[styles.liveMantraHeaderTitle, isMantraPlaying && styles.liveMantraHeaderTitleActive]}>
+            {isMantraPlaying ? 'Now Playing' : 'Live Mantra Jaap'}
+          </Text>
         </View>
         <View style={styles.liveMantraHeaderRight}>
-          <Text style={styles.liveMantraHeaderSubtitle}>Tap to join</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+          <Text style={[styles.liveMantraHeaderSubtitle, isMantraPlaying && styles.liveMantraHeaderSubtitleActive]}>
+            {isMantraPlaying ? 'Tap to control' : 'Tap to join'}
+          </Text>
+          <Ionicons name={isMantraPlaying ? 'pause-circle' : 'chevron-forward'} size={20} color={isMantraPlaying ? '#FFFFFF' : COLORS.primary} />
         </View>
       </TouchableOpacity>
 
@@ -817,10 +840,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.divider,
   },
+  liveMantraSectionActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  liveMantraSectionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveMantraIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  liveMantraTextContainer: {
+    flex: 1,
+  },
   liveMantraCard: {
     backgroundColor: COLORS.primary,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
+  },
+  communitySectionTitleActive: {
+    color: '#FFFFFF',
+  },
+  liveMantraCardTitleActive: {
+    color: 'rgba(255,255,255,0.8)',
   },
   liveMantraCardTitle: {
     color: '#FFFFFF',
@@ -1308,10 +1357,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.error,
     marginRight: SPACING.sm,
   },
+  liveDotPlaying: {
+    backgroundColor: '#FFFFFF',
+  },
   liveMantraHeaderTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
+  },
+  liveMantraHeaderTitleActive: {
+    color: '#FFFFFF',
   },
   liveMantraHeaderRight: {
     flexDirection: 'row',
@@ -1321,6 +1376,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     marginRight: SPACING.xs,
+  },
+  liveMantraHeaderSubtitleActive: {
+    color: 'rgba(255,255,255,0.8)',
+  },
+  liveMantraHeaderActive: {
+    backgroundColor: COLORS.primary,
   },
   quickActionContainer: {
     marginHorizontal: SPACING.md,

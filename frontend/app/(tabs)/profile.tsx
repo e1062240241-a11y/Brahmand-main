@@ -23,7 +23,6 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 const MENU_ITEMS = [
   { id: 'edit', icon: 'person-circle', label: 'Edit Profile', route: '/profile/edit' },
-  { id: 'cultural', icon: 'people', label: 'Cultural Community', action: 'cultural' },
   { id: 'location', icon: 'location', label: 'Change Location', route: '/settings/location' },
   { id: 'privacy', icon: 'shield-checkmark', label: 'Privacy', route: '/settings/privacy' },
   { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications' },
@@ -38,7 +37,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   
-  // Cultural Community state
+  // Lok Sangam state
   const [showCGModal, setShowCGModal] = useState(false);
   const [cgSearch, setCGSearch] = useState('');
   const [cgList, setCGList] = useState<string[]>([]);
@@ -93,30 +92,34 @@ export default function ProfileScreen() {
 
   const handleSelectCG = async (community: string) => {
     if (userCG?.is_locked) {
-      Alert.alert('Locked', 'You have already changed your cultural community 2 times. It is now locked.');
+      Alert.alert('Locked', 'You have already changed your Lok Sangam 2 times. It is now locked.');
       return;
     }
     
     const changeMessage = userCG?.cultural_community 
       ? `Change from "${userCG.cultural_community}" to "${community}"? You have ${2 - (userCG?.change_count || 0)} changes remaining.`
-      : `Set your cultural community to "${community}"?`;
+      : `Set your Lok Sangam to "${community}"?`;
     
-    Alert.alert('Confirm', changeMessage, [
-      { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Confirm', 
-        onPress: async () => {
-          try {
-            await updateUserCulturalCommunity(community);
-            await fetchProfile();
-            setShowCGModal(false);
-            Alert.alert('Success', 'Cultural community updated!');
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
+    Alert.alert(
+      'Confirm',
+      changeMessage,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Confirm', 
+          onPress: async () => {
+            try {
+              await updateUserCulturalCommunity(community);
+              await fetchProfile();
+              setShowCGModal(false);
+              Alert.alert('Success', 'Lok Sangam updated!');
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
+            }
           }
         }
-      }
-    ]);
+      ]
+    );
   };
 
   const handleMenuPress = (item: any) => {
@@ -220,10 +223,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.menuLabelContainer}>
               <Text style={styles.menuLabel}>{item.label}</Text>
-              {item.id === 'cultural' && userCG?.cultural_community && (
-                <Text style={styles.menuSubLabel}>{userCG.cultural_community}</Text>
-              )}
-              {/* Horoscope menu item removed */}
+            {/* Horoscope menu item removed */}
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
           </TouchableOpacity>
@@ -247,7 +247,7 @@ export default function ProfileScreen() {
 
       <View style={{ height: 100 }} />
 
-      {/* Cultural Community Modal */}
+      {/* Lok Sangam Modal */}
       <Modal
         visible={showCGModal}
         transparent
@@ -257,7 +257,7 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Cultural Community</Text>
+              <Text style={styles.modalTitle}>Select Lok Sangam</Text>
               <TouchableOpacity onPress={() => setShowCGModal(false)}>
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
@@ -273,16 +273,14 @@ export default function ProfileScreen() {
             {userCG?.cultural_community && !userCG?.is_locked && (
               <View style={styles.currentCGBanner}>
                 <Text style={styles.currentCGText}>
-                  Current: {userCG.cultural_community} ({2 - (userCG.change_count || 0)} changes left)
+                  Current Lok Sangam: {userCG.cultural_community} ({2 - (userCG.change_count || 0)} changes left)
                 </Text>
               </View>
             )}
 
             <TextInput
               style={styles.searchInput}
-              placeholder="Search communities..."
-              placeholderTextColor={COLORS.textLight}
-              value={cgSearch}
+                placeholder="Search Lok Sangam..."
               onChangeText={(text) => {
                 setCGSearch(text);
                 loadCulturalCommunities(text);
@@ -522,7 +520,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: SPACING.sm,
   },
-  // Cultural Community Modal Styles
+  // Lok Sangam Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
