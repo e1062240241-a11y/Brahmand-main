@@ -5,7 +5,6 @@ import { View, Text, ActivityIndicator, StyleSheet, Linking } from 'react-native
 import { useAuthStore } from '../src/store/authStore';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
-import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useAdminStore } from '../src/store/adminStore';
 
 // Handle deep links for circle invites
@@ -85,7 +84,7 @@ export default function RootLayout() {
         console.warn('Failed to load stored admin auth:', adminErr?.message || adminErr);
       }
     });
-  }, []);
+  }, [loadStoredAuth, loadStoredAdminAuth]);
 
   if (isLoading) {
     return (
@@ -96,14 +95,13 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
+    <>
       <StatusBar style="dark" />
       <View style={styles.root}>
-        <SafeSlot />
-        {/* Global Floating Button - only show when logged in */}
+        <Slot />
         {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
       </View>
-    </ErrorBoundary>
+    </>
   );
 }
 
@@ -113,12 +111,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  fallbackContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

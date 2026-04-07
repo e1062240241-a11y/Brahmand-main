@@ -91,7 +91,7 @@ export default function CommunityScreen() {
       }
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      setErrorMessage(error?.response?.data?.detail || error?.message || 'Failed to load data. Please try again.');
+      setErrorMessage(parseApiError(error));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -109,11 +109,18 @@ export default function CommunityScreen() {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    // Automatically open form when tapping non-Chat tab
     if (tab !== 'Chat') {
       setRequestType(tab as any);
-      setShowRequestModal(true);
     }
+  };
+
+  const handleAddRequest = () => {
+    if (activeTab === 'Chat') {
+      Alert.alert('Select a request type', 'Please select a specific request tab (Blood / Medical / Petition / Financial) to create a request.');
+      return;
+    }
+    setRequestType(activeTab as any);
+    setShowRequestModal(true);
   };
 
   const handleSubmitRequest = async (data: any) => {
@@ -144,7 +151,7 @@ export default function CommunityScreen() {
       fetchData();
     } catch (error: any) {
       console.error('Error submitting request:', error);
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to submit request');
+      Alert.alert('Error', parseApiError(error));
       throw error;
     }
   };
@@ -336,12 +343,6 @@ export default function CommunityScreen() {
     </View>
   );
 
-  const handleAddRequest = () => {
-    if (activeTab === 'Chat') return;
-    setRequestType(activeTab as any);
-    setShowRequestModal(true);
-  };
-
   return (
     <View style={styles.container}>
       {/* Top Tabs */}
@@ -444,6 +445,7 @@ export default function CommunityScreen() {
         visible={showRequestModal}
         onClose={() => setShowRequestModal(false)}
         requestType={requestType}
+        communities={communities}
         onSubmit={handleSubmitRequest}
       />
 

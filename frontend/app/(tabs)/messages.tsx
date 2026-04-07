@@ -10,7 +10,9 @@ import {
   ScrollView,
   Alert,
   LayoutAnimation,
+  Modal,
   Platform,
+  TextInput,
   UIManager,
   Image,
   Modal,
@@ -96,6 +98,12 @@ export default function MessagesScreen() {
   const [conversations, setConversations] = useState<DMConversation[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
   
+  const [showLokSangmaModal, setShowLokSangmaModal] = useState(false);
+  const [lokSangmaSearch, setLokSangmaSearch] = useState('');
+  const [lokSangmaList, setLokSangmaList] = useState<string[]>([]);
+  const [lokSangmaLoading, setLokSangmaLoading] = useState(false);
+  const [userLokSangma, setUserLokSangma] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generalExpanded, setGeneralExpanded] = useState(false);
@@ -128,8 +136,9 @@ export default function MessagesScreen() {
         const res = await getCircles();
         setCircles(res.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching data:', error);
+      Alert.alert('Error', parseApiError(error));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -218,7 +227,58 @@ export default function MessagesScreen() {
       return;
     }
 
+    if (tab === 'Chat') {
+      fetchUserLokSangma();
+    }
+
     // No request creation at community sub-tabs, only show existing requests
+  };
+
+  // Request submission disabled inside community sub-tabs.
+
+  const loadLokSangmaOptions = async (search?: string) => {
+    setLokSangmaLoading(true);
+    try {
+      const res = await getCulturalCommunities(search);
+      setLokSangmaList(res.data || []);
+    } catch (error) {
+      console.error('Error loading Lok Sangam options:', error);
+    } finally {
+      setLokSangmaLoading(false);
+    }
+  };
+
+  const handleOpenLokSangmaModal = () => {
+    loadLokSangmaOptions();
+    setShowLokSangmaModal(true);
+  };
+
+  const handleSelectLokSangma = async (community: string) => {
+    if (userLokSangma?.is_locked) {
+      Alert.alert('Locked', 'You have already changed your Lok Sangam 2 times. It is now locked.');
+      return;
+    }
+
+    const changeMessage = userLokSangma?.cultural_community
+      ? `Change from "${userLokSangma.cultural_community}" to "${community}"? You have ${2 - (userLokSangma?.change_count || 0)} changes remaining.`
+      : `Set your Lok Sangam to "${community}"?`;
+
+    Alert.alert('Confirm', changeMessage, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Confirm',
+        onPress: async () => {
+          try {
+            await updateUserCulturalCommunity(community);
+            await fetchUserLokSangma();
+            setShowLokSangmaModal(false);
+            Alert.alert('Success', 'Lok Sangam updated!');
+          } catch (error: any) {
+            Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
+          }
+        }
+      }
+    ]);
   };
 
   // Request submission disabled inside community sub-tabs.
@@ -643,7 +703,84 @@ export default function MessagesScreen() {
         </View>
       )}
 
-      {/* Request Form Modal for outside-community creation */}
+      {/* Lok Sangam selection modal */}
+      <Modal
+        visible={showLokSangmaModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLokSangmaModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Lok Sangam</Text>
+              <TouchableOpacity onPress={() => setShowLokSangmaModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {userLokSangma?.is_locked && (
+              <View style={styles.lockedBanner}>
+                <Ionicons name="lock-closed" size={16} color={COLORS.error} />
+                <Text style={styles.lockedText}>Locked - Maximum changes reached</Text>
+              </View>
+            )}
+
+            {userLokSangma?.cultural_community && !userLokSangma?.is_locked && (
+              <View style={styles.currentCGBanner}>
+                <Text style={styles.currentCGText}>
+                  Current Lok Sangam: {userLokSangma.cultural_community} ({2 - (userLokSangma.change_count || 0)} changes left)
+                </Text>
+              </View>
+            )}
+
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search Lok Sangam..."
+              placeholderTextColor={COLORS.textLight}
+              value={lokSangmaSearch}
+              onChangeText={(text) => {
+                setLokSangmaSearch(text);
+                loadLokSangmaOptions(text);
+              }}
+            />
+
+            {lokSangmaLoading ? (
+              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
+            ) : (
+              <FlatList
+                data={lokSangmaList}
+                keyExtractor={(item, index) => `${item}-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.lokSangmaItem,
+                      userLokSangma?.cultural_community === item && styles.lokSangmaItemSelected,
+                    ]}
+                    onPress={() => handleSelectLokSangma(item)}
+                    disabled={userLokSangma?.is_locked}
+                  >
+                    <Text style={[
+                      styles.lokSangmaItemText,
+                      userLokSangma?.cultural_community === item && styles.lokSangmaItemTextSelected,
+                    ]}>
+                      {item}
+                    </Text>
+                    {userLokSangma?.cultural_community === item && (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.lokSangmaList}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>No Lok Sangam found</Text>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <RequestFormModal
         visible={showRequestModal}
         onClose={() => {
@@ -848,6 +985,105 @@ const styles = StyleSheet.create({
   requestTypeMenuText: {
     color: COLORS.text,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingBottom: SPACING.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  lockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.error}15`,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  lockedText: {
+    color: COLORS.error,
+    marginLeft: SPACING.xs,
+    fontSize: 13,
+  },
+  currentCGBanner: {
+    backgroundColor: `${COLORS.primary}10`,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  currentCGText: {
+    color: COLORS.text,
+    fontSize: 13,
+  },
+  lokSangamGroupBanner: {
+    marginHorizontal: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: `${COLORS.primary}10`,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}20`,
+    marginBottom: SPACING.sm,
+  },
+  lokSangamGroupText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginBottom: SPACING.xs,
+  },
+  lokSangamGroupSubtext: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  searchInput: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    backgroundColor: COLORS.background,
+    color: COLORS.text,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  lokSangmaList: {
+    marginHorizontal: SPACING.md,
+  },
+  lokSangmaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  lokSangmaItemSelected: {
+    backgroundColor: `${COLORS.primary}15`,
+  },
+  lokSangmaItemText: {
+    color: COLORS.text,
+    fontSize: 15,
+  },
+  lokSangmaItemTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '700',
   },
   offeringsList: {
     marginTop: SPACING.xs,

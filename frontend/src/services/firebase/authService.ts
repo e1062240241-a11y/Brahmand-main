@@ -5,10 +5,8 @@ import {
   getReactNativePersistence,
   signInWithPhoneNumber, 
   RecaptchaVerifier,
-  PhoneAuthProvider,
-  signInWithCredential,
-  Auth,
-  ConfirmationResult
+  ConfirmationResult,
+  Auth
 } from 'firebase/auth';
 import { Platform } from 'react-native';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
@@ -51,41 +49,6 @@ export function initializeFirebaseAuth(): Auth {
 // Store confirmation result globally
 let confirmationResult: ConfirmationResult | null = null;
 
-/**
- * Setup reCAPTCHA verifier for web
- */
-export function setupRecaptcha(containerId: string): RecaptchaVerifier | null {
-  if (Platform.OS !== 'web') {
-    return null;
-  }
-  
-  const auth = initializeFirebaseAuth();
-  
-  // Clear existing verifier
-  if ((window as any).recaptchaVerifier) {
-    try { (window as any).recaptchaVerifier.clear(); } catch (e) { console.warn('Failed to clear global recaptchaVerifier', e); }
-  }
-  
-  const verifier = new RecaptchaVerifier(auth, containerId, {
-    size: 'invisible',
-    callback: () => {
-      console.log('[Firebase] reCAPTCHA verified');
-    },
-    'expired-callback': () => {
-      console.log('[Firebase] reCAPTCHA expired');
-    }
-  });
-  
-  // Do not attach verifier to global window to avoid conflicts with
-  // expo-firebase-recaptcha's `FirebaseRecaptchaVerifierModal` which
-  // provides its own verifier instance via ref. Callers should keep
-  // a reference to the returned verifier if needed.
-  return verifier;
-}
-
-/**
- * Send OTP via Firebase Phone Auth
- */
 /**
  * Send OTP using Firebase Phone Auth.
  * If `verifier` is provided it will be used (e.g. from FirebaseRecaptchaVerifierModal ref).
@@ -142,6 +105,22 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
       console.log('[Firebase] Native OTP sent successfully');
       return confirmation;
     }
+
+    // Native: use @react-native-firebase/auth if installed
+    let nativeAuthModule: any = null;
+    try {
+      nativeAuthModule = require('@react-native-firebase/auth').default;
+    } catch (error) {
+      console.warn('[Firebase] Native auth module not available:', error);
+    }
+
+    if (!nativeAuthModule) {
+      throw new Error('Native Firebase Auth not available. Install @react-native-firebase/auth or use web auth.');
+    }
+
+    confirmationResult = await nativeAuthModule().signInWithPhoneNumber(formattedPhone);
+    console.log('[Firebase] Native OTP sent successfully');
+    return confirmationResult;
   } catch (error: any) {
     console.error('[Firebase] Error sending OTP:', error, 'code=', error?.code);
     throw error;
@@ -166,10 +145,14 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
     console.error('[Firebase] Error verifying OTP:', error);
     
     if (error.code === 'auth/invalid-verification-code') {
-      throw new Error('Invalid OTP. Please try again.');
+      const dbError: any = new Error('Invalid OTP. Please try again.');
+      dbError.code = 'auth/invalid-verification-code';
+      throw dbError;
     }
     if (error.code === 'auth/code-expired') {
-      throw new Error('OTP expired. Please request a new one.');
+      const dbError: any = new Error('OTP expired. Please request a new one.');
+      dbError.code = 'auth/code-expired';
+      throw dbError;
     }
     
     throw new Error(error.message || 'Failed to verify OTP');

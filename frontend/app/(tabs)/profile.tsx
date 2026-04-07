@@ -157,10 +157,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.menuLabelContainer}>
               <Text style={styles.menuLabel}>{item.label}</Text>
-              {item.id === 'cultural' && userCG?.cultural_community && (
-                <Text style={styles.menuSubLabel}>{userCG.cultural_community}</Text>
-              )}
-              {/* Horoscope menu item removed */}
+            {/* Horoscope menu item removed */}
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
           </TouchableOpacity>
@@ -381,7 +378,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: SPACING.sm,
   },
-  // Cultural Community Modal Styles
+  // Lok Sangam Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

@@ -640,7 +640,6 @@ export const uploadVendorKycFile = (
 };
 
 export const extractKycTextFromImage = async (vendorId: string, file: { uri: string; name: string; type: string }) => {
-  const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
   const token = await AsyncStorage.getItem('auth_token');
   
   const formData = new FormData();

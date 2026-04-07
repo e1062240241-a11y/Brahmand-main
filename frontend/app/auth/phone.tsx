@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { initializeFirebase, firebaseConfig } from '../../src/services/firebase/config';
-import { getAuth, PhoneAuthProvider, signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
+import { sendFirebaseOTP } from '../../src/services/firebase/authService';
 
 // Debug: Log Firebase config on web
 if (typeof window !== 'undefined' && Platform.OS === 'web') {
@@ -27,15 +27,6 @@ if (typeof window !== 'undefined' && Platform.OS === 'web') {
   });
 }
 
-// Lazy load react-native-firebase auth for native platforms
-const getNativeAuth = () => {
-  try {
-    return require('@react-native-firebase/auth').default;
-  } catch (e) {
-    console.log('[Phone Auth] @react-native-firebase/auth not available:', e);
-    return null;
-  }
-};
 import { COLORS, SPACING } from '../../src/constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -79,81 +70,12 @@ export default function PhoneScreen() {
 
     try {
       const fullPhone = `+91${phone}`;
-
-
-      try {
-        const app = initializeFirebase();
-        const auth = getAuth(app);
-        
-        let verificationId = '';
-        
-        if (Platform.OS === 'web') {
-          try {
-            // Clear any existing verifier
-            if ((window as any).recaptchaVerifier) {
-              try { (window as any).recaptchaVerifier.clear(); } catch (e) {}
-              (window as any).recaptchaVerifier = null;
-              const container = document.getElementById('recaptcha-container');
-              if (container) container.innerHTML = '';
-            }
-
-            console.log('[Phone Auth] Creating RecaptchaVerifier with auth:', auth?.app?.name);
-            
-            // Create new verifier - use explicit siteKey from Firebase config if available
-            const verifierOptions = {
-              size: 'invisible' as const,
-            };
-
-            (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', verifierOptions);
-            
-            console.log('[Phone Auth] Rendering recaptcha...');
-            await (window as any).recaptchaVerifier.render();
-            console.log('[Phone Auth] Sending OTP to:', fullPhone);
-            
-            const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, (window as any).recaptchaVerifier);
-            console.log('[Phone Auth] OTP sent successfully');
-            verificationId = confirmationResult.verificationId;
-            router.push({ pathname: '/auth/otp', params: { phone: fullPhone, verificationId } });
-          } catch (err: any) {
-            console.log('Firebase web auth error:', err);
-            setError(err?.message || 'Failed to send OTP.');
-            if ((window as any).recaptchaVerifier) {
-              try { (window as any).recaptchaVerifier.clear(); } catch (e) {}
-              (window as any).recaptchaVerifier = null;
-            }
-          }
-          return;
-        }
-
-        // Native path for iOS/Android using react-native-firebase
-        try {
-          console.log('[Phone Auth] Using native Firebase auth for', Platform.OS);
-          const nativeAuthModule = getNativeAuth();
-          
-          if (!nativeAuthModule) {
-            console.log('[Phone Auth] Native auth module not available');
-            setError('Please use the mobile app for phone authentication.');
-            setLoading(false);
-            return;
-          }
-          
-          const confirmation = await nativeAuthModule().signInWithPhoneNumber(fullPhone);
-          verificationId = confirmation.verificationId;
-          console.log('[Phone Auth] Native OTP sent successfully');
-          router.push({ pathname: '/auth/otp', params: { phone: fullPhone, verificationId, provider: 'native' } });
-        } catch (nativeErr: any) {
-          console.log('[PhoneScreen] Native phone auth error:', nativeErr);
-          setError(nativeErr?.message || 'Failed to send OTP on mobile. Please try again.');
-          setLoading(false);
-          return;
-        }
-      } catch (err: any) {
-        console.log('Firebase verifyPhoneNumber error object:', err);
-        console.log('Firebase verifyPhoneNumber error.code:', err?.code);
-        setError(err?.message || 'Failed to send OTP. Please try again.');
-      }
+      const confirmation = await sendFirebaseOTP(fullPhone);
+      console.log('[Phone Auth] OTP sent successfully', confirmation ? 'confirmation ready' : '');
+      router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
+      return;
     } catch (err: any) {
-      console.log('Firebase Error:', err);
+      console.log('[Phone Auth] OTP send error:', err);
       setError(err?.message || 'Failed to send OTP. Please try again.');
     } finally {
       setLoading(false);

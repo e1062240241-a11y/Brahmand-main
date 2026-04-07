@@ -13,9 +13,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { verifyOTP, sendOTP, verifyFirebaseToken } from '../../src/services/api';
-import { initializeFirebase } from '../../src/services/firebase/config';
-import { getAuth, PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
+import { verifyOTP, verifyFirebaseToken } from '../../src/services/api';
+import { verifyFirebaseOTP, sendFirebaseOTP, confirmationResult } from '../../src/services/firebase/authService';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING } from '../../src/constants/theme';
 
@@ -30,7 +29,7 @@ const MandalaPattern = () => (
 
 export default function OTPScreen() {
   const router = useRouter();
-  const { phone, verificationId } = useLocalSearchParams<{ phone: string; verificationId?: string }>();
+  const { phone } = useLocalSearchParams<{ phone: string }>();
   const { login } = useAuthStore();
 
   const handleBack = () => {
@@ -81,19 +80,21 @@ export default function OTPScreen() {
     setError('');
 
     try {
-      // If we have a verificationId from Firebase flow, use client-side verify
-      if (verificationId) {
-        const app = initializeFirebase();
-        const auth = getAuth(app);
-        const credential = PhoneAuthProvider.credential(verificationId as string, code);
-        const userCred = await signInWithCredential(auth, credential as any);
-        const idToken = await userCred.user.getIdToken();
+      let idToken: string | null = null;
+      let firebaseError: any = null;
 
-        // Send idToken to backend to exchange for app JWT
+      if (confirmationResult) {
+        try {
+          idToken = await verifyFirebaseOTP(code);
+        } catch (error: any) {
+          firebaseError = error;
+        }
+      }
+
+      if (idToken) {
         const resp = await verifyFirebaseToken(idToken);
         const data = resp.data;
 
-        // Force entering profile flow for first-time / incomplete users
         const requiresProfile =
           data.is_new_user ||
           !data.user ||
@@ -111,6 +112,8 @@ export default function OTPScreen() {
         } else {
           router.replace('/auth/location');
         }
+      } else if (firebaseError && firebaseError.message !== 'No OTP request found. Please request OTP first.') {
+        throw firebaseError;
       } else {
         const response = await verifyOTP(phone || '', code);
         const data = response.data;
@@ -158,11 +161,18 @@ export default function OTPScreen() {
   const handleResend = async () => {
     if (resendTimer > 0) return;
     try {
-      await sendOTP(phone || '');
+      if (!phone) {
+        setError('Phone number missing. Please go back and request OTP again.');
+        return;
+      }
+      await sendFirebaseOTP(phone as string);
       setResendTimer(30);
-      setError('');
-    } catch (err) {
-      setError('Failed to resend OTP');
+      setError('OTP resent. Enter the new code.');
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } catch (err: any) {
+      console.log('[OTP] resend error:', err);
+      setError(err?.message || 'Failed to resend OTP. Please try again.');
     }
   };
 
