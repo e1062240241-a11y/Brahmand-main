@@ -232,21 +232,20 @@ class PushNotificationService:
         Send notification to all community members for a new message
         
         Args:
-            community_id: Community ID
-            community_name: Name of the community
-            sender_name: Name of the message sender
-            message_preview: Preview of the message content
-            exclude_user_id: User ID to exclude (the sender)
-            
-        Returns:
-            Dict with success and failure counts
+            community_id Community ID
+            community_name Name of the community
+            sender_name Name of the message sender
+            message_preview Preview of the message content
+            exclude_user_id User ID to exclude (the sender)
         """
-        db = await _get_db()
-        
-        # Get community members
-        community = await db.get_document('communities', community_id)
-        if not community:
+        from config.firestore_db import FirestoreDB
+        from config.firebase_config import get_firestore
+        client = await get_firestore()
+        if not client:
             return {'success_count': 0, 'failure_count': 0}
+        db = FirestoreDB(client)
+        
+        community = await db.get_document('communities', community_id)
         
         member_ids = community.get('members', [])
         
@@ -278,6 +277,47 @@ class PushNotificationService:
                 'type': 'community',
                 'community_id': community_id,
                 'community_name': community_name
+            }
+        )
+
+    @classmethod
+    async def notify_circle_invite(
+        cls,
+        circle_id: str,
+        circle_name: str,
+        inviter_name: str,
+        member_ids: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Send notification to users when they are added to a circle
+        
+        Args:
+            circle_id Circle ID
+            circle_name Name of the circle
+            inviter_name Name of the user who created/invited
+            member_ids List of user IDs to notify
+        """
+        if not member_ids:
+            return {'success_count': 0, 'failure_count': 0}
+        
+        # Get FCM tokens for all members
+        tokens = []
+        for member_id in member_ids:
+            token = await cls.get_user_fcm_token(member_id)
+            if token:
+                tokens.append(token)
+        
+        if not tokens:
+            return {'success_count': 0, 'failure_count': 0}
+        
+        return cls.send_multicast(
+            tokens=tokens,
+            title=f"Added to Circle: {circle_name}",
+            body=f"{inviter_name} added you to {circle_name}. Open the app to start chatting!",
+            data={
+                'type': 'circle_invite',
+                'circle_id': circle_id,
+                'circle_name': circle_name
             }
         )
 

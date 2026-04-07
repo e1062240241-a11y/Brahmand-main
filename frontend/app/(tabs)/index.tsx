@@ -7,11 +7,14 @@ import {
   TouchableOpacity, 
   RefreshControl,
   FlatList,
-  Alert
+  Alert,
+  Modal,
+  TextInput,
+  ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getCommunities, createCommunityRequest, getCommunityRequests } from '../../src/services/api';
+import { getCommunities, createCommunityRequest, getCommunityRequests, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
@@ -56,6 +59,13 @@ export default function CommunityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
+  
+  // Cultural Community state
+  const [showCGModal, setShowCGModal] = useState(false);
+  const [cgSearch, setCGSearch] = useState('');
+  const [cgList, setCGList] = useState<string[]>([]);
+  const [cgLoading, setCGLoading] = useState(false);
+  const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -94,6 +104,7 @@ export default function CommunityScreen() {
       return;
     }
     fetchData();
+    fetchUserCG();
   }, [fetchData, router, userId]);
 
   const handleTabChange = (tab: string) => {
@@ -178,6 +189,62 @@ export default function CommunityScreen() {
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
     return date.toLocaleDateString();
+  };
+
+  // Cultural Community functions
+  const fetchUserCG = async () => {
+    try {
+      const res = await getUserCulturalCommunity();
+      setUserCG(res.data);
+    } catch (error) {
+      console.error('Error fetching user CG:', error);
+    }
+  };
+
+  const loadCulturalCommunities = async (search?: string) => {
+    setCGLoading(true);
+    try {
+      const res = await getCulturalCommunities(search);
+      setCGList(res.data || []);
+    } catch (error) {
+      console.error('Error loading communities:', error);
+    } finally {
+      setCGLoading(false);
+    }
+  };
+
+  const handleOpenCGModal = () => {
+    loadCulturalCommunities();
+    fetchUserCG();
+    setShowCGModal(true);
+  };
+
+  const handleSelectCG = async (community: string) => {
+    if (userCG?.is_locked) {
+      Alert.alert('Locked', 'You have already changed your Lok Sangam 2 times. It is now locked.');
+      return;
+    }
+    
+    const changeMessage = userCG?.cultural_community 
+      ? `Change from "${userCG.cultural_community}" to "${community}"? You have ${2 - (userCG?.change_count || 0)} changes remaining.`
+      : `Set your Lok Sangam to "${community}"?`;
+    
+    Alert.alert('Confirm', changeMessage, [
+      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Confirm', 
+        onPress: async () => {
+          try {
+            await updateUserCulturalCommunity(community);
+            await fetchUserCG();
+            setShowCGModal(false);
+            Alert.alert('Success', 'Lok Sangam updated!');
+          } catch (error: any) {
+            Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
+          }
+        }
+      }
+    ]);
   };
 
   const renderCommunity = ({ item }: { item: Community }) => (
@@ -307,23 +374,44 @@ export default function CommunityScreen() {
 
       {/* Content */}
       {activeTab === 'Chat' ? (
-        // Community List
-        <FlatList
-          data={communities}
-          renderItem={renderCommunity}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="people-outline" size={48} color={COLORS.textLight} />
-              <Text style={styles.emptyText}>No communities yet</Text>
-              <Text style={styles.emptySubtext}>Set up your location to join communities</Text>
-            </View>
-          }
-        />
+        <>
+          {/* Community List */}
+          <FlatList
+            data={communities}
+            renderItem={renderCommunity}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={48} color={COLORS.textLight} />
+                <Text style={styles.emptyText}>No communities yet</Text>
+                <Text style={styles.emptySubtext}>Set up your location to join communities</Text>
+              </View>
+            }
+          />
+          {/* Lok Sangam Section - Always visible below communities */}
+          <View style={styles.cgSection}>
+            <Text style={styles.cgSectionTitle}>Your Profile</Text>
+            <TouchableOpacity 
+              style={styles.cgButton}
+              onPress={handleOpenCGModal}
+            >
+              <View style={styles.cgIconContainer}>
+                <Ionicons name="people" size={22} color={COLORS.primary} />
+              </View>
+              <View style={styles.cgContent}>
+                <Text style={styles.cgTitle}>Lok Sangam</Text>
+                <Text style={styles.cgSubtitle}>
+                  {userCG?.cultural_community || 'Tap to set'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
+        </>
       ) : (
         // Request List
         <FlatList
@@ -358,6 +446,84 @@ export default function CommunityScreen() {
         requestType={requestType}
         onSubmit={handleSubmitRequest}
       />
+
+      {/* Lok Sangam Modal */}
+      <Modal
+        visible={showCGModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCGModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Lok Sangam</Text>
+              <TouchableOpacity onPress={() => setShowCGModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {userCG?.is_locked && (
+              <View style={styles.lockedBanner}>
+                <Ionicons name="lock-closed" size={16} color={COLORS.error} />
+                <Text style={styles.lockedText}>Locked - Maximum changes reached</Text>
+              </View>
+            )}
+
+            {userCG?.cultural_community && !userCG?.is_locked && (
+              <View style={styles.currentCGBanner}>
+                <Text style={styles.currentCGText}>
+                  Current: {userCG.cultural_community} ({2 - (userCG.change_count || 0)} changes left)
+                </Text>
+              </View>
+            )}
+
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search communities..."
+              placeholderTextColor={COLORS.textLight}
+              value={cgSearch}
+              onChangeText={(text) => {
+                setCGSearch(text);
+                loadCulturalCommunities(text);
+              }}
+            />
+
+            {cgLoading ? (
+              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
+            ) : (
+              <FlatList
+                data={cgList}
+                keyExtractor={(item, index) => `${item}-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.cgItem,
+                      userCG?.cultural_community === item && styles.cgItemSelected
+                    ]}
+                    onPress={() => handleSelectCG(item)}
+                    disabled={userCG?.is_locked}
+                  >
+                    <Text style={[
+                      styles.cgItemText,
+                      userCG?.cultural_community === item && styles.cgItemTextSelected
+                    ]}>
+                      {item}
+                    </Text>
+                    {userCG?.cultural_community === item && (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.cgList}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>No communities found</Text>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -596,5 +762,127 @@ const styles = StyleSheet.create({
     color: '#842029',
     fontSize: 13,
     textAlign: 'center',
+  },
+  // Cultural Community Styles
+  cgSection: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xl,
+  },
+  cgSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: SPACING.sm,
+  },
+  cgButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  cgIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  cgContent: {
+    flex: 1,
+  },
+  cgTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  cgSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: SPACING.lg,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  lockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+  lockedText: {
+    color: COLORS.error,
+    fontSize: 13,
+    marginLeft: SPACING.xs,
+  },
+  currentCGBanner: {
+    backgroundColor: `${COLORS.primary}15`,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+  currentCGText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    textAlign: 'center',
+  },
+  searchInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+  },
+  cgList: {
+    maxHeight: 400,
+  },
+  cgItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  cgItemSelected: {
+    backgroundColor: `${COLORS.primary}10`,
+  },
+  cgItemText: {
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  cgItemTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });

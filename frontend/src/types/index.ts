@@ -51,6 +51,7 @@ export interface Circle {
   privacy: 'private' | 'invite_code';
   creator_id: string;
   admin_id: string;
+  admin_ids?: string[];
   members?: CircleMember[];
   member_count: number;
   is_admin: boolean;
@@ -97,4 +98,7 @@ export interface Conversation {
   last_message: string;
   last_message_at: string;
   created_at?: string;
+  request_status?: 'pending' | 'approved' | 'rejected';
+  request_by?: string;
+  request_retry_after?: string;
 }

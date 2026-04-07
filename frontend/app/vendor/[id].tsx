@@ -34,6 +34,29 @@ export default function VendorProfileScreen() {
   
   const vendor = vendors.find(v => v.id === id);
 
+  const formatExternalUrl = (url: string) => {
+    const trimmed = url.trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  };
+
+  const openExternalUrl = async (url: string) => {
+    try {
+      const targetUrl = formatExternalUrl(url);
+      const supported = await Linking.canOpenURL(targetUrl);
+      if (!supported) {
+        Alert.alert('Unable to open link', 'This link cannot be opened.');
+        return;
+      }
+      await Linking.openURL(targetUrl);
+    } catch (error) {
+      console.warn('Failed to open external URL', error);
+      Alert.alert('Unable to open link', 'Please try again in your browser.');
+    }
+  };
+
   const handleBack = () => {
     router.replace('/(tabs)/vendor');
   };
@@ -119,7 +142,12 @@ export default function VendorProfileScreen() {
 
         {/* Business Info */}
         <View style={styles.infoSection}>
-          <Text style={styles.businessName}>{vendor.business_name}</Text>
+          <View style={styles.headerNameRow}>
+            <Text style={styles.businessName}>{vendor.business_name}</Text>
+            {vendor.kyc_status === 'verified' && (
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.info} style={styles.verifiedIcon} />
+            )}
+          </View>
           <Text style={styles.ownerName}>by {vendor.owner_name}</Text>
           
           {/* Trust Badge */}
@@ -238,7 +266,7 @@ export default function VendorProfileScreen() {
             <Text style={styles.sectionTitle}>Connect</Text>
             
             {vendor.website_link && (
-              <TouchableOpacity style={styles.socialRow} onPress={() => vendor.website_link && Linking.openURL(vendor.website_link)}>
+              <TouchableOpacity style={styles.socialRow} onPress={() => openExternalUrl(vendor.website_link)}>
                 <Ionicons name="globe" size={18} color={COLORS.primary} />
                 <Text style={styles.linkText}>{vendor.website_link}</Text>
               </TouchableOpacity>
@@ -353,6 +381,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 4,
+  },
+  headerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  verifiedIcon: {
+    marginLeft: 4,
   },
   ownerName: {
     fontSize: 14,

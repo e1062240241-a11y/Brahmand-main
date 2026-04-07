@@ -6,22 +6,33 @@ import {
   FlatList, 
   TextInput, 
   TouchableOpacity, 
+  Modal,
   Platform, 
   ActivityIndicator,
   Keyboard,
   Dimensions,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  BackHandler,
+  Alert
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { sendDirectMessage, getConversations, getDirectMessages } from '../../src/services/api';
-import { subscribeToMessages, ChatMessage } from '../../src/services/firebase/chatService';
+import {
+  sendDirectMessage,
+  getConversations,
+  getDirectMessages,
+  clearDirectMessages,
+  markDirectMessagesRead,
+  approveDirectMessageRequest,
+  denyDirectMessageRequest,
+} from '../../src/services/api';
+import { ChatMessage } from '../../src/services/firebase/chatService';
 import { useAuthStore } from '../../src/store/authStore';
 import { Conversation } from '../../src/types';
 import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import api from '../../src/services/api';
+import { socketService } from '../../src/services/socket';
 
 export default function DirectMessageScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
@@ -39,19 +50,141 @@ export default function DirectMessageScreen() {
   const [viewHeight, setViewHeight] = useState(Dimensions.get('window').height);
   const [hasMarkedRead, setHasMarkedRead] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [showOptions, setShowOptions] = useState(false);
+  const [requestActionLoading, setRequestActionLoading] = useState(false);
 
   // Mark messages as read when opening chat
   const markMessagesAsRead = useCallback(async () => {
     if (!conversationId || hasMarkedRead) return;
     
     try {
-      await api.post(`/dm/${conversationId}/read`);
+      await markDirectMessagesRead(conversationId);
       setHasMarkedRead(true);
       console.log('[Chat] Messages marked as read');
     } catch (error) {
       console.error('[Chat] Error marking messages as read:', error);
     }
   }, [conversationId, hasMarkedRead]);
+
+  const handleBackNavigation = useCallback(() => {
+    try {
+      router.replace('/messages');
+    } catch (e) {
+      console.warn('[DM] Back navigation failed:', e);
+    }
+  }, [router]);
+
+  const openChatOptions = () => setShowOptions(true);
+  const closeChatOptions = () => setShowOptions(false);
+
+  const executeClearChat = async () => {
+    if (!conversationId) return;
+    try {
+      await clearDirectMessages(conversationId);
+      setMessages([]);
+      setConversation((prev) => (prev ? { ...prev, last_message: '' } : prev));
+      closeChatOptions();
+    } catch (error: any) {
+      console.error('[Chat] Clear chat failed:', error);
+      Alert.alert('Error', 'Unable to clear chat. Please try again.');
+    }
+  };
+
+  const handleClearChat = () => {
+    if (!conversationId) return;
+    if (!conversation) {
+      Alert.alert('Oops', 'Conversation data is not available.');
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to clear this chat?');
+      if (confirmed) {
+        executeClearChat();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Confirm',
+      'Are you sure you want to clear this chat?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: executeClearChat },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const parseDateOrNull = (value?: string) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const requestStatus = conversation?.request_status || 'approved';
+  const isRequester = !!conversation?.request_by && conversation.request_by === user?.id;
+  const retryAfterDate = parseDateOrNull(conversation?.request_retry_after);
+  const cooldownActive =
+    requestStatus === 'rejected' && isRequester && !!retryAfterDate && retryAfterDate.getTime() > Date.now();
+  const canSendAfterCooldown =
+    requestStatus === 'rejected' && isRequester && (!retryAfterDate || retryAfterDate.getTime() <= Date.now());
+  const needsRecipientDecision = requestStatus === 'pending' && !isRequester;
+  const isInputLocked =
+    requestStatus === 'pending' ||
+    (requestStatus === 'rejected' && isRequester && cooldownActive);
+
+  const inputLockReason = (() => {
+    if (requestStatus === 'pending') {
+      return isRequester
+        ? 'Waiting for the other user to approve your message request.'
+        : 'Approve or deny this message request to continue chat.';
+    }
+    if (requestStatus === 'rejected' && isRequester && cooldownActive && retryAfterDate) {
+      return `Your request was denied. You can send a new request after ${retryAfterDate.toLocaleString()}.`;
+    }
+    return '';
+  })();
+
+  const handleApproveRequest = async () => {
+    if (!conversationId) return;
+    setRequestActionLoading(true);
+    try {
+      await approveDirectMessageRequest(conversationId);
+      await fetchConversation();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to approve request');
+    } finally {
+      setRequestActionLoading(false);
+    }
+  };
+
+  const handleDenyRequest = async () => {
+    if (!conversationId) return;
+    setRequestActionLoading(true);
+    try {
+      await denyDirectMessageRequest(conversationId);
+      await fetchConversation();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to deny request');
+    } finally {
+      setRequestActionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const onHardwareBackPress = () => {
+      handleBackNavigation();
+      return true;
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onHardwareBackPress);
+    return () => {
+      BackHandler.removeEventListener('hardwareBackPress', onHardwareBackPress);
+    };
+  }, [handleBackNavigation]);
 
   // Handle viewport resize for iOS Safari keyboard
   useEffect(() => {
@@ -138,6 +271,7 @@ export default function DirectMessageScreen() {
         sender_photo: msg.sender_photo,
         text: msg.text || msg.content || '',
         content: msg.content || msg.text || '',
+        status: msg.status,
         created_at: msg.created_at || msg.timestamp || '',
         timestamp: msg.timestamp || msg.created_at || '',
       }));
@@ -155,53 +289,58 @@ export default function DirectMessageScreen() {
     fetchConversation();
     fetchMessagesViaAPI();
     
-    let unsubscribe: (() => void) | null = null;
     let pollingInterval: NodeJS.Timeout | null = null;
-    let realtimeWorking = false;
-    
-    try {
-      unsubscribe = subscribeToMessages(
-        conversationId!,
-        (updatedMessages) => {
-          setMessages(updatedMessages);
-          setLoading(false);
-          setIsRealtime(true);
-          realtimeWorking = true;
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-            pollingInterval = null;
-          }
-          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-          // Mark messages as read when received
-          markMessagesAsRead();
-        },
-        () => {
-          if (!pollingInterval) {
-            pollingInterval = setInterval(fetchMessagesViaAPI, 2000);
-          }
-        }
-      );
-    } catch (error) {
-      console.error('[Chat] Real-time setup failed:', error);
+    const socketListenerId = `dm_${conversationId}_${Date.now()}`;
+
+    if (Platform.OS === 'web') {
+      setIsRealtime(false);
+      pollingInterval = setInterval(() => {
+        fetchMessagesViaAPI();
+        fetchConversation();
+      }, 2000);
+      setTimeout(() => markMessagesAsRead(), 1000);
+
+      return () => {
+        if (pollingInterval) clearInterval(pollingInterval);
+      };
     }
-    
-    setTimeout(() => {
-      if (!realtimeWorking && !pollingInterval) {
-        pollingInterval = setInterval(fetchMessagesViaAPI, 2000);
+
+    (async () => {
+      try {
+        await socketService.connect();
+        socketService.joinRoom(conversationId!);
+        setIsRealtime(true);
+
+        socketService.onMessage(socketListenerId, async () => {
+          await fetchMessagesViaAPI();
+          await fetchConversation();
+          markMessagesAsRead();
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        });
+      } catch (error) {
+        console.error('[Chat] Socket real-time setup failed:', error);
+        setIsRealtime(false);
       }
-    }, 3000);
+    })();
+
+    pollingInterval = setInterval(() => {
+      fetchMessagesViaAPI();
+      fetchConversation();
+    }, 5000);
 
     // Mark messages as read after initial load
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      socketService.offMessage(socketListenerId);
+      socketService.leaveRoom(conversationId!);
       if (pollingInterval) clearInterval(pollingInterval);
     };
   }, [conversationId, fetchConversation, fetchMessagesViaAPI, markMessagesAsRead]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || !conversation) return;
+    if (isInputLocked) return;
     const messageText = newMessage.trim();
     setNewMessage('');
     setSending(true);
@@ -291,7 +430,7 @@ export default function DirectMessageScreen() {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackNavigation}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         {conversation && (
@@ -311,7 +450,60 @@ export default function DirectMessageScreen() {
             </View>
           </>
         )}
+        <TouchableOpacity style={styles.moreButton} onPress={openChatOptions}>
+          <Ionicons name="ellipsis-vertical" size={24} color={COLORS.text} />
+        </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={showOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={closeChatOptions}
+      >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
+              <Text style={[styles.modalItemText, styles.modalItemDestructive]}>Clear Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalItem} onPress={closeChatOptions}>
+              <Text style={styles.modalItemText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {requestStatus !== 'approved' && (
+        <View style={styles.requestCard}>
+          <Text style={styles.requestTitle}>Message Request</Text>
+          <Text style={styles.requestText}>{inputLockReason || 'This chat requires request approval.'}</Text>
+          {canSendAfterCooldown && (
+            <Text style={styles.requestHint}>You can now send one new message request.</Text>
+          )}
+          {needsRecipientDecision && (
+            <View style={styles.requestActionRow}>
+              <TouchableOpacity
+                style={[styles.requestButton, styles.requestDenyButton]}
+                onPress={handleDenyRequest}
+                disabled={requestActionLoading}
+              >
+                <Text style={[styles.requestButtonText, styles.requestDenyButtonText]}>
+                  {requestActionLoading ? 'Please wait...' : 'Deny'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.requestButton, styles.requestApproveButton]}
+                onPress={handleApproveRequest}
+                disabled={requestActionLoading}
+              >
+                <Text style={styles.requestButtonText}>
+                  {requestActionLoading ? 'Please wait...' : 'Approve'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Messages - takes remaining space */}
       <View style={styles.messagesWrapper}>
@@ -334,25 +526,31 @@ export default function DirectMessageScreen() {
 
       {/* Input - anchored at bottom */}
       <View style={[styles.inputContainer, { paddingBottom: bottomPadding }]}>
-        <TextInput
-          style={styles.input}
-          placeholder="Type a message..."
-          value={newMessage}
-          onChangeText={setNewMessage}
-          multiline
-          maxLength={1000}
-          placeholderTextColor={COLORS.textLight}
-          onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 300)}
-        />
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={[styles.input, isInputLocked && styles.inputDisabled]}
+            placeholder={isInputLocked ? 'Messaging disabled' : 'Text message'}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            multiline
+            maxLength={1000}
+            editable={!isInputLocked}
+            placeholderTextColor="#999999"
+            onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 300)}
+          />
+        </View>
         <TouchableOpacity
-          style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
+          style={[
+            styles.sendButton, 
+            (!newMessage.trim() || sending || isInputLocked) && styles.sendButtonDisabled
+          ]}
           onPress={handleSend}
-          disabled={!newMessage.trim() || sending}
+          disabled={!newMessage.trim() || sending || isInputLocked}
         >
           {sending ? (
-            <ActivityIndicator size="small" color={COLORS.textWhite} />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Ionicons name="send" size={20} color={COLORS.textWhite} />
+            <Ionicons name="send" size={20} color="#FFFFFF" />
           )}
         </TouchableOpacity>
       </View>
@@ -419,6 +617,10 @@ const styles = StyleSheet.create({
     marginRight: SPACING.md,
     padding: 4,
   },
+  moreButton: {
+    padding: 6,
+    borderRadius: BORDER_RADIUS.full,
+  },
   headerInfo: {
     flex: 1,
     marginLeft: SPACING.sm,
@@ -426,7 +628,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   statusRow: {
     flexDirection: 'row',
@@ -435,7 +637,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: COLORS.primary,
+    color: '#0088CC',
   },
   realtimeBadge: {
     flexDirection: 'row',
@@ -458,6 +660,81 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4CAF50',
   },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderTopLeftRadius: BORDER_RADIUS.lg,
+    borderTopRightRadius: BORDER_RADIUS.lg,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+  },
+  modalItem: {
+    paddingVertical: SPACING.sm,
+  },
+  modalItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  modalItemDestructive: {
+    color: COLORS.error,
+  },
+  requestCard: {
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  requestTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  requestText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  requestHint: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  requestActionRow: {
+    marginTop: SPACING.sm,
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  requestButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 4,
+  },
+  requestApproveButton: {
+    backgroundColor: '#0088CC',
+  },
+  requestDenyButton: {
+    backgroundColor: '#F5F5F5',
+  },
+  requestButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  requestDenyButtonText: {
+    color: '#E53935',
+  },
   messagesWrapper: {
     flex: 1,
     overflow: 'hidden',
@@ -468,33 +745,45 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     flexDirection: 'row',
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.xs,
     alignItems: 'flex-end',
+    paddingHorizontal: SPACING.md,
   },
   ownMessageContainer: {
     justifyContent: 'flex-end',
   },
   messageBubble: {
     maxWidth: '75%',
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    borderBottomLeftRadius: BORDER_RADIUS.sm,
-    padding: SPACING.md,
-    marginLeft: SPACING.sm,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginLeft: SPACING.xs,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   ownMessageBubble: {
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: BORDER_RADIUS.lg,
-    borderBottomRightRadius: BORDER_RADIUS.sm,
+    backgroundColor: '#0088CC',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     marginLeft: 0,
+    shadowColor: '#0088CC',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   messageText: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 20,
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 21,
   },
   ownMessageText: {
-    color: COLORS.textWhite,
+    color: '#FFFFFF',
   },
   timeText: {
     fontSize: 10,
@@ -528,34 +817,51 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
+    borderTopColor: '#E8E0D8',
     flexShrink: 0,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 24,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    marginRight: SPACING.sm,
   },
   input: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 6,
     fontSize: 16,
-    color: COLORS.text,
-    maxHeight: 44,
-    minHeight: 44,
+    color: '#1A1A1A',
+    maxHeight: 100,
+  },
+  inputDisabled: {
+    opacity: 0.65,
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#0088CC',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: SPACING.sm,
+    shadowColor: '#0088CC',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#CCCCCC',
+    shadowOpacity: 0,
   },
 });

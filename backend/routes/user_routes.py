@@ -1,6 +1,6 @@
 """User Routes"""
-from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, Any
+from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import Dict, Any, List, Optional
 from models.schemas import (
     UserUpdate, ProfileUpdate, LocationSetup, 
     DualLocationSetup, ReverseGeocodeRequest
@@ -18,6 +18,19 @@ async def get_profile(token_data: dict = Depends(verify_token)):
         return await UserService.get_profile(token_data["user_id"])
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("")
+async def get_all_users(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    token_data: dict = Depends(verify_token)
+):
+    """Get all registered users (for private chat user list)"""
+    try:
+        return await UserService.get_all_users(limit=limit, offset=offset)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/profile")

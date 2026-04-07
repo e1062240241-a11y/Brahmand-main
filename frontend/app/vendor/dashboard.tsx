@@ -20,12 +20,29 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useVendorStore, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { VendorKYCModal } from '../../src/components/VendorKYCModal';
+import { sendOTP, verifyOTP } from '../../src/services/api';
 
 export default function VendorDashboardScreen() {
   const router = useRouter();
-  const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile } = useVendorStore();
-  const { logout, isLoading: authLoading, isAuthenticated } = useAuthStore();
+  const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile, deleteVendor } = useVendorStore();
+  const { isLoading: authLoading, isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [deletingBusiness, setDeletingBusiness] = useState(false);
+  const [phoneOtpStage, setPhoneOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [phoneOtpError, setPhoneOtpError] = useState<string | null>(null);
+  const [phoneOtpMessage, setPhoneOtpMessage] = useState<string | null>(null);
+  const [phoneSending, setPhoneSending] = useState(false);
+  const [phoneVerifying, setPhoneVerifying] = useState(false);
+
+  const resetPhoneVerification = () => {
+    setPhoneOtpStage('idle');
+    setPhoneOtp('');
+    setPhoneOtpError(null);
+    setPhoneOtpMessage(null);
+    setPhoneSending(false);
+    setPhoneVerifying(false);
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -58,25 +75,6 @@ export default function VendorDashboardScreen() {
       subscription.remove();
     };
   }, [router]);
-
-  const performLogout = async () => {
-    await logout();
-    router.replace('/');
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      performLogout();
-      return;
-    }
-
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => {
-        performLogout();
-      } },
-    ]);
-  };
 
   if (authLoading || !myVendor) {
     return (
@@ -124,6 +122,7 @@ export default function VendorDashboardScreen() {
 
   const handleEditPhone = () => {
     setEditValue(myVendor.phone_number);
+    resetPhoneVerification();
     setEditModal('phone');
   };
 
@@ -176,6 +175,10 @@ export default function VendorDashboardScreen() {
           updateData.full_address = editValue;
           break;
         case 'phone':
+          if (editValue !== myVendor.phone_number && phoneOtpStage !== 'verified') {
+            Alert.alert('Verify phone', 'Please verify the new phone number with SMS before saving.');
+            return;
+          }
           updateData.phone_number = editValue;
           break;
         case 'business_description':
@@ -202,6 +205,48 @@ export default function VendorDashboardScreen() {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendPhoneOtp = async () => {
+    const phone = editValue.replace(/[^0-9]/g, '');
+    if (phone.length !== 10) {
+      Alert.alert('Invalid number', 'Please enter a valid 10-digit phone number.');
+      return;
+    }
+
+    setPhoneOtpError(null);
+    setPhoneOtpMessage(null);
+    setPhoneSending(true);
+
+    try {
+      await sendOTP(phone);
+      setPhoneOtpStage('sent');
+      setPhoneOtpMessage(`OTP sent to +91${phone}.`);
+    } catch (error: any) {
+      setPhoneOtpError(error?.response?.data?.detail || error?.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setPhoneSending(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!phoneOtp.trim()) {
+      setPhoneOtpError('Please enter the OTP sent to your phone.');
+      return;
+    }
+
+    setPhoneOtpError(null);
+    setPhoneVerifying(true);
+
+    try {
+      await verifyOTP(editValue.replace(/[^0-9]/g, ''), phoneOtp.trim());
+      setPhoneOtpStage('verified');
+      setPhoneOtpMessage('Phone verified successfully. You can now save the number.');
+    } catch (error: any) {
+      setPhoneOtpError(error?.response?.data?.detail || error?.message || 'OTP verification failed. Please try again.');
+    } finally {
+      setPhoneVerifying(false);
     }
   };
 
@@ -244,6 +289,52 @@ export default function VendorDashboardScreen() {
     setKycVisible(true);
   };
 
+  const handleDeleteBusiness = () => {
+    const confirmDelete = async () => {
+      if (!myVendor) return;
+      setDeletingBusiness(true);
+      try {
+        await deleteVendor(myVendor.id);
+        if (Platform.OS === 'web') {
+          window.alert('Your business has been deleted.');
+        } else {
+          Alert.alert('Deleted', 'Your business has been deleted.');
+        }
+        router.replace('/(tabs)/vendor');
+      } catch (error: any) {
+        const message = error?.response?.data?.detail || error?.message || 'Failed to delete business.';
+        if (Platform.OS === 'web') {
+          window.alert(`Error: ${message}`);
+        } else {
+          Alert.alert('Error', message);
+        }
+      } finally {
+        setDeletingBusiness(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to delete your business? This action cannot be undone.');
+      if (confirmed) {
+        confirmDelete();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete Business',
+      'Are you sure you want to delete your business? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: confirmDelete,
+        }
+      ]
+    );
+  };
+
   type MenuItem = {
     icon: string;
     label: string;
@@ -251,12 +342,13 @@ export default function VendorDashboardScreen() {
     emphasis?: boolean;
   };
 
-  const menuItems: MenuItem[] = isReviewOrVerified
+  const menuItems: MenuItem[] = isVerified
     ? [
-        ...(isVerified
-          ? [{ icon: 'create', label: 'Tell about your business', action: handleTellBusiness }]
-          : []),
-        { icon: '', label: 'KYC & Verification', action: handleOpenKyc, emphasis: true }
+        { icon: 'create', label: 'Tell about your business', action: handleTellBusiness },
+      ]
+    : isReviewOrVerified
+    ? [
+        { icon: '', label: 'KYC & Verification', action: handleOpenKyc, emphasis: true },
       ]
     : [
         { icon: 'create', label: 'Edit Business Name', action: handleEditBusinessName },
@@ -275,9 +367,7 @@ export default function VendorDashboardScreen() {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Vendor Dashboard</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButtonHeader}>
-          <Ionicons name="log-out" size={22} color={COLORS.error} />
-        </TouchableOpacity>
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -286,7 +376,12 @@ export default function VendorDashboardScreen() {
           <View style={styles.businessIconContainer}>
             <Ionicons name="storefront" size={36} color={COLORS.primary} />
           </View>
-          <Text style={styles.businessName}>{myVendor.business_name}</Text>
+          <View style={styles.businessNameRow}>
+            <Text style={styles.businessName}>{myVendor.business_name}</Text>
+            {myVendor.kyc_status === 'verified' && (
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.info} style={styles.verifiedIcon} />
+            )}
+          </View>
           <Text style={styles.businessOwner}>{myVendor.owner_name}</Text>
           {myVendor.business_description ? (
             <Text style={styles.businessDescription}>{myVendor.business_description}</Text>
@@ -359,11 +454,34 @@ export default function VendorDashboardScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="call" size={18} color={COLORS.primary} />
             <Text style={styles.infoText}>{myVendor.phone_number}</Text>
+            {isVendorApproved && (
+              <TouchableOpacity style={styles.editIconButton} onPress={handleEditPhone}>
+                <Ionicons name="pencil" size={18} color={COLORS.primary} />
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="location" size={18} color={COLORS.primary} />
             <Text style={styles.infoText}>{myVendor.full_address}</Text>
           </View>
+          {isVendorApproved && (
+            <View style={styles.deleteRow}>
+              <TouchableOpacity
+                style={[styles.deleteButton, deletingBusiness && styles.deleteButtonDisabled]}
+                onPress={handleDeleteBusiness}
+                disabled={deletingBusiness}
+              >
+                {deletingBusiness ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="trash" size={18} color="#FFFFFF" />
+                    <Text style={styles.deleteButtonText}>Delete Business</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -372,7 +490,10 @@ export default function VendorDashboardScreen() {
         visible={editModal !== null}
         transparent
         animationType="slide"
-        onRequestClose={() => setEditModal(null)}
+        onRequestClose={() => {
+          setEditModal(null);
+          resetPhoneVerification();
+        }}
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -389,7 +510,10 @@ export default function VendorDashboardScreen() {
                 {editModal === 'phone' && 'Update Phone'}
                 {editModal === 'categories' && 'Update Categories'}
               </Text>
-              <TouchableOpacity onPress={() => setEditModal(null)}>
+              <TouchableOpacity onPress={() => {
+                setEditModal(null);
+                resetPhoneVerification();
+              }}>
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -453,18 +577,71 @@ export default function VendorDashboardScreen() {
                 <TextInput
                   style={[styles.input, (editModal === 'address' || editModal === 'business_description') && styles.textArea]}
                   value={editValue}
-                  onChangeText={setEditValue}
+                  onChangeText={(text) => {
+                    setEditValue(text);
+                    if (editModal === 'phone') {
+                      resetPhoneVerification();
+                    }
+                  }}
                   multiline={editModal === 'address' || editModal === 'business_description'}
                   numberOfLines={editModal === 'address' || editModal === 'business_description' ? 3 : 1}
                   keyboardType={editModal === 'phone' ? 'phone-pad' : 'default'}
                 />
+
+                {editModal === 'phone' && editValue.replace(/[^0-9]/g, '') !== myVendor.phone_number.replace(/[^0-9]/g, '') && (
+                  <View style={styles.phoneVerificationSection}>
+                    {phoneOtpMessage ? <Text style={styles.phoneVerificationMessage}>{phoneOtpMessage}</Text> : null}
+                    {phoneOtpError ? <Text style={styles.phoneVerificationError}>{phoneOtpError}</Text> : null}
+
+                    {phoneOtpStage === 'idle' && (
+                      <TouchableOpacity
+                        style={[styles.sendOtpBtn, phoneSending && styles.saveBtnDisabled]}
+                        onPress={handleSendPhoneOtp}
+                        disabled={phoneSending}
+                      >
+                        {phoneSending ? (
+                          <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.sendOtpBtnText}>Send OTP</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+
+                    {phoneOtpStage === 'sent' && (
+                      <>
+                        <TextInput
+                          style={styles.input}
+                          value={phoneOtp}
+                          onChangeText={setPhoneOtp}
+                          placeholder="Enter OTP"
+                          keyboardType="phone-pad"
+                        />
+                        <TouchableOpacity
+                          style={[styles.sendOtpBtn, phoneVerifying && styles.saveBtnDisabled]}
+                          onPress={handleVerifyPhoneOtp}
+                          disabled={phoneVerifying}
+                        >
+                          {phoneVerifying ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                          ) : (
+                            <Text style={styles.sendOtpBtnText}>Verify OTP</Text>
+                          )}
+                        </TouchableOpacity>
+                      </>
+                    )}
+
+                    {phoneOtpStage === 'verified' && (
+                      <Text style={styles.phoneVerificationSuccess}>Phone verified. Save to update.</Text>
+                    )}
+                  </View>
+                )}
               </View>
             )}
 
             <TouchableOpacity
               style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
               onPress={handleSaveEdit}
-              disabled={loading}
+              disabled={loading || (editModal === 'phone' && editValue.replace(/[^0-9]/g, '') !== myVendor.phone_number.replace(/[^0-9]/g, '') && phoneOtpStage !== 'verified')}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -553,6 +730,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 4,
+  },
+  businessNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  verifiedIcon: {
+    marginLeft: 4,
   },
   businessOwner: {
     fontSize: 14,
@@ -738,10 +924,6 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.6,
   },
-  logoutButtonHeader: {
-    width: 24,
-    alignItems: 'flex-end',
-  },
   reviewNotice: {
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.sm,
@@ -767,6 +949,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.text,
     flex: 1,
+  },
+  editIconButton: {
+    padding: SPACING.xs,
+    borderRadius: 8,
+    backgroundColor: `${COLORS.primary}15`,
+    marginLeft: SPACING.sm,
+  },
+  deleteRow: {
+    marginTop: SPACING.sm,
+    alignItems: 'flex-end',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.error,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginTop: SPACING.sm,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.6,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    marginLeft: SPACING.xs,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
@@ -863,6 +1073,36 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
+  },
+  sendOtpBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    marginTop: SPACING.sm,
+  },
+  sendOtpBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  phoneVerificationSection: {
+    marginBottom: SPACING.sm,
+  },
+  phoneVerificationMessage: {
+    color: COLORS.primary,
+    fontSize: 13,
+    marginBottom: SPACING.xs,
+  },
+  phoneVerificationError: {
+    color: COLORS.error,
+    fontSize: 13,
+    marginBottom: SPACING.xs,
+  },
+  phoneVerificationSuccess: {
+    color: COLORS.success,
+    fontSize: 13,
+    marginTop: SPACING.xs,
   },
   saveBtnDisabled: {
     opacity: 0.6,

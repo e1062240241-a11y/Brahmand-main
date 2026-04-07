@@ -8,22 +8,17 @@ import {
   Image,
   RefreshControl,
   Alert,
-  Modal,
-  TextInput,
-  FlatList,
-  ActivityIndicator,
   Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity } from '../../src/services/api';
+import { getUserProfile } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 const MENU_ITEMS = [
   { id: 'edit', icon: 'person-circle', label: 'Edit Profile', route: '/profile/edit' },
-  { id: 'cultural', icon: 'people', label: 'Cultural Community', action: 'cultural' },
   { id: 'location', icon: 'location', label: 'Change Location', route: '/settings/location' },
   { id: 'privacy', icon: 'shield-checkmark', label: 'Privacy', route: '/settings/privacy' },
   { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications' },
@@ -37,23 +32,12 @@ export default function ProfileScreen() {
   const userId = user?.id;
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
-  
-  // Cultural Community state
-  const [showCGModal, setShowCGModal] = useState(false);
-  const [cgSearch, setCGSearch] = useState('');
-  const [cgList, setCGList] = useState<string[]>([]);
-  const [cgLoading, setCGLoading] = useState(false);
-  const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
 
   const fetchProfile = useCallback(async () => {
     try {
       const res = await getUserProfile();
       setProfile(res.data);
       updateUser(res.data || {});
-      
-      // Fetch cultural community info
-      const cgRes = await getUserCulturalCommunity();
-      setUserCG(cgRes.data);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       if (error?.response?.status === 401 || error?.response?.status === 502) {
@@ -74,55 +58,8 @@ export default function ProfileScreen() {
     fetchProfile();
   }, [fetchProfile, router, userId]);
 
-  const loadCulturalCommunities = async (search?: string) => {
-    setCGLoading(true);
-    try {
-      const res = await getCulturalCommunities(search);
-      setCGList(res.data || []);
-    } catch (error) {
-      console.error('Error loading communities:', error);
-    } finally {
-      setCGLoading(false);
-    }
-  };
-
-  const handleOpenCGModal = () => {
-    loadCulturalCommunities();
-    setShowCGModal(true);
-  };
-
-  const handleSelectCG = async (community: string) => {
-    if (userCG?.is_locked) {
-      Alert.alert('Locked', 'You have already changed your cultural community 2 times. It is now locked.');
-      return;
-    }
-    
-    const changeMessage = userCG?.cultural_community 
-      ? `Change from "${userCG.cultural_community}" to "${community}"? You have ${2 - (userCG?.change_count || 0)} changes remaining.`
-      : `Set your cultural community to "${community}"?`;
-    
-    Alert.alert('Confirm', changeMessage, [
-      { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Confirm', 
-        onPress: async () => {
-          try {
-            await updateUserCulturalCommunity(community);
-            await fetchProfile();
-            setShowCGModal(false);
-            Alert.alert('Success', 'Cultural community updated!');
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
-          }
-        }
-      }
-    ]);
-  };
-
   const handleMenuPress = (item: any) => {
-    if (item.action === 'cultural') {
-      handleOpenCGModal();
-    } else if (item.route) {
+    if (item.route) {
       router.push(item.route as any);
     }
   };
@@ -246,84 +183,6 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <View style={{ height: 100 }} />
-
-      {/* Cultural Community Modal */}
-      <Modal
-        visible={showCGModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCGModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Cultural Community</Text>
-              <TouchableOpacity onPress={() => setShowCGModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-
-            {userCG?.is_locked && (
-              <View style={styles.lockedBanner}>
-                <Ionicons name="lock-closed" size={16} color={COLORS.error} />
-                <Text style={styles.lockedText}>Locked - Maximum changes reached</Text>
-              </View>
-            )}
-
-            {userCG?.cultural_community && !userCG?.is_locked && (
-              <View style={styles.currentCGBanner}>
-                <Text style={styles.currentCGText}>
-                  Current: {userCG.cultural_community} ({2 - (userCG.change_count || 0)} changes left)
-                </Text>
-              </View>
-            )}
-
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search communities..."
-              placeholderTextColor={COLORS.textLight}
-              value={cgSearch}
-              onChangeText={(text) => {
-                setCGSearch(text);
-                loadCulturalCommunities(text);
-              }}
-            />
-
-            {cgLoading ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
-            ) : (
-              <FlatList
-                data={cgList}
-                keyExtractor={(item, index) => `${item}-${index}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.cgItem,
-                      userCG?.cultural_community === item && styles.cgItemSelected
-                    ]}
-                    onPress={() => handleSelectCG(item)}
-                    disabled={userCG?.is_locked}
-                  >
-                    <Text style={[
-                      styles.cgItemText,
-                      userCG?.cultural_community === item && styles.cgItemTextSelected
-                    ]}>
-                      {item}
-                    </Text>
-                    {userCG?.cultural_community === item && (
-                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                    )}
-                  </TouchableOpacity>
-                )}
-                style={styles.cgList}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>No communities found</Text>
-                }
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
@@ -558,48 +417,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.error,
     marginLeft: SPACING.xs,
-  },
-  currentCGBanner: {
-    backgroundColor: `${COLORS.primary}15`,
-    padding: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.md,
-  },
-  currentCGText: {
-    fontSize: 13,
-    color: COLORS.primary,
-    textAlign: 'center',
-  },
-  searchInput: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    fontSize: 16,
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-  cgList: {
-    maxHeight: 400,
-  },
-  cgItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  cgItemSelected: {
-    backgroundColor: `${COLORS.primary}10`,
-  },
-  cgItemText: {
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  cgItemTextSelected: {
-    color: COLORS.primary,
-    fontWeight: '600',
   },
   emptyText: {
     textAlign: 'center',

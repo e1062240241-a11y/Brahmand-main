@@ -1,12 +1,48 @@
 import React, { useEffect } from 'react';
 import { Slot, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Linking } from 'react-native';
 import { useAuthStore } from '../src/store/authStore';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { useAdminStore } from '../src/store/adminStore';
+
+// Handle deep links for circle invites
+function useDeepLinkHandler() {
+  const { token } = useAuthStore();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const handleDeepLink = (event: any) => {
+      if (!token) return;
+      
+      const url = event.url;
+      try {
+        const urlObj = new URL(url);
+        const path = urlObj.pathname.replace(/^\/+/, '');
+        
+        if (path.startsWith('join-circle/')) {
+          const circleCode = path.replace('join-circle/', '');
+          if (circleCode && pathname !== '/circle/join') {
+            console.log('Deep link detected for circle:', circleCode);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to parse deep link:', error);
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+    
+    // Check initial URL
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => subscription.remove();
+  }, [token, pathname]);
+}
 
 // Safe Slot wrapper to isolate navigation errors
 function SafeSlot() {
@@ -35,6 +71,8 @@ export default function RootLayout() {
   const pathname = usePathname();
   const { isLoading, loadStoredAuth, token } = useAuthStore();
   const { loadStoredAdminAuth } = useAdminStore();
+  
+  useDeepLinkHandler();
 
   useEffect(() => {
     Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {

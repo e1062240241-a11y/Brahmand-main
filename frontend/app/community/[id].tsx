@@ -11,11 +11,13 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
-  Alert
+  Alert,
+  Share
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ExpoLinking from 'expo-linking';
 import { getCommunity, getCommunityMessages, sendCommunityMessage, getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -59,24 +61,33 @@ interface Community {
 }
 
 export default function CommunityDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, communityId } = useLocalSearchParams<{ id: string; communityId?: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
+  const resolvedCommunityId = communityId || id;
   
   const [community, setCommunity] = useState<Community | null>(null);
   const [activeTab, setActiveTab] = useState('Chat');
   const [messages, setMessages] = useState<Message[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
+  const [cachedRequests, setCachedRequests] = useState<Record<string, CommunityRequest[]>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [generalExpanded, setGeneralExpanded] = useState(false);
+
+  const handleBackPress = useCallback(() => {
+    if (router.canGoBack && router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/(tabs)/messages');
+  }, [router]);
 
   useEffect(() => {
     fetchCommunity();
-  }, [id]);
+  }, [resolvedCommunityId]);
 
   useEffect(() => {
     if (community) {
@@ -85,8 +96,12 @@ export default function CommunityDetailScreen() {
   }, [activeTab, community]);
 
   const fetchCommunity = async () => {
+    if (!resolvedCommunityId) {
+      setLoading(false);
+      return;
+    }
     try {
-      const response = await getCommunity(id!);
+      const response = await getCommunity(resolvedCommunityId);
       setCommunity(response.data);
     } catch (error) {
       console.error('Error fetching community:', error);
@@ -96,29 +111,47 @@ export default function CommunityDetailScreen() {
   };
 
   const fetchData = async () => {
+    if (!resolvedCommunityId) return;
     try {
       if (activeTab === 'Chat') {
         // Fetch chat messages
-        const response = await getCommunityMessages(id!, 'chat');
+        const response = await getCommunityMessages(resolvedCommunityId, 'chat');
         setMessages(response.data || []);
         setRequests([]);
       } else if (activeTab === 'General') {
-        // General tab does not fetch requests
+        // General tab - fetch requests created from outside general feed (help/financial/other)
+        const response = await getCommunityRequests({
+          community_id: resolvedCommunityId,
+          limit: 50
+        });
+
+        const allRequests = response.data || [];
+        const generalRequests = allRequests.filter((req: any) =>
+          ['help', 'financial', 'other'].includes(req.request_type)
+        );
+
+        setRequests(generalRequests);
+        setCachedRequests(prev => ({ ...prev, General: generalRequests }));
         setMessages([]);
-        setRequests([]);
       } else {
-        // Fetch community requests for this tab type
+        // Fetch community requests for this tab type (Blood/Medical/Petition)
         const requestTypeMap: Record<string, string> = {
           'Blood': 'blood',
           'Medical': 'medical',
           'Petition': 'petition'
         };
+        const targetType = requestTypeMap[activeTab];
         const response = await getCommunityRequests({
-          type: requestTypeMap[activeTab],
-          community_id: id,
+          type: targetType,
+          community_id: resolvedCommunityId,
           limit: 50
         });
-        setRequests(response.data || []);
+        // Frontend filter as backup in case API doesn't filter properly
+        const filteredRequests = (response.data || []).filter((req: any) => 
+          req.request_type === targetType
+        );
+        setRequests(filteredRequests);
+        setCachedRequests(prev => ({ ...prev, [activeTab]: filteredRequests }));
         setMessages([]);
       }
     } catch (error) {
@@ -132,21 +165,19 @@ export default function CommunityDetailScreen() {
 
   const handleTabChange = async (tab: string) => {
     setActiveTab(tab);
-    if (tab === 'General') {
-      setGeneralExpanded(false);
-      return;
-    }
-
+    setMessages([]);
+    setRequests(cachedRequests[tab] || []);
+    setRefreshing(true);
     // No request creation inside community group tabs; list only.
     // This tab switch is read-only in non-chat modes.
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || sending) return;
+    if (!newMessage.trim() || sending || !resolvedCommunityId) return;
     
     setSending(true);
     try {
-      await sendCommunityMessage(id!, 'chat', newMessage.trim());
+      await sendCommunityMessage(resolvedCommunityId, 'chat', newMessage.trim());
       setNewMessage('');
       fetchData();
     } catch (error) {
@@ -156,9 +187,43 @@ export default function CommunityDetailScreen() {
     }
   };
 
+  const handleShareCommunityInvite = async () => {
+    if (!community?.id) return;
+
+    const groupUnique = (community.code || community.name || community.id)
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || community.id;
+
+    const query = [
+      `communityId=${encodeURIComponent(community.id)}`,
+      `name=${encodeURIComponent(community.name)}`,
+      community.code ? `code=${encodeURIComponent(community.code)}` : '',
+    ].filter(Boolean).join('&');
+
+    const webBaseUrl =
+      process.env.EXPO_PUBLIC_APP_SHARE_URL ||
+      process.env.EXPO_PUBLIC_SHARE_BASE_URL ||
+      'https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app';
+    const webLink = `${webBaseUrl.replace(/\/$/, '')}/community/${groupUnique}${query ? `?${query}` : ''}`;
+    const appLink = ExpoLinking.createURL(`/community/${community.id}`);
+
+    try {
+      await Share.share({
+        title: 'Join my community on Brahmand',
+        message: `Join "${community.name}" on Brahmand.\n${webLink}\n\nApp link: ${appLink}`,
+        url: webLink,
+      });
+    } catch {
+      Alert.alert('Error', 'Unable to open share options right now. Please try again.');
+    }
+  };
+
   const handleResolveRequest = async (requestId: string) => {
     console.log('=== handleResolveRequest called ===');
     console.log('Request ID:', requestId);
+    console.log('API call about to be made...');
     
     Alert.alert(
       'Mark as Fulfilled',
@@ -170,6 +235,7 @@ export default function CommunityDetailScreen() {
           onPress: async () => {
             console.log('=== Confirm pressed, calling API ===');
             try {
+              console.log('Calling resolveCommunityRequest with ID:', requestId);
               const response = await resolveCommunityRequest(requestId);
               console.log('=== API Response ===', response);
               Alert.alert('Success', 'Request marked as fulfilled!');
@@ -178,6 +244,7 @@ export default function CommunityDetailScreen() {
               fetchData();
             } catch (error: any) {
               console.error('=== Error resolving request ===', error);
+              console.error('Error response:', error.response?.data);
               Alert.alert('Error', error.response?.data?.detail || 'Failed to resolve request');
             }
           }
@@ -249,6 +316,7 @@ export default function CommunityDetailScreen() {
 
   const renderRequest = ({ item }: { item: CommunityRequest }) => {
     const isOwn = item.user_id === user?.id;
+    const isFulfilled = item.status === 'fulfilled';
     console.log('=== renderRequest ===');
     console.log('item.user_id:', item.user_id);
     console.log('user?.id:', user?.id);
@@ -256,7 +324,7 @@ export default function CommunityDetailScreen() {
     console.log('item.status:', item.status);
     
     return (
-      <View style={styles.requestCard}>
+      <View style={[styles.requestCard, isFulfilled && styles.requestCardFulfilled]}>
         <View style={styles.requestHeader}>
           <View style={styles.requestTypeContainer}>
             <View style={[
@@ -272,6 +340,12 @@ export default function CommunityDetailScreen() {
               <View style={styles.bloodBadge}>
                 <Ionicons name="water" size={14} color="#E74C3C" />
                 <Text style={styles.bloodText}>{item.blood_group}</Text>
+              </View>
+            )}
+            {isFulfilled && (
+              <View style={styles.fulfilledBadge}>
+                <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
+                <Text style={styles.fulfilledText}>Fulfilled</Text>
               </View>
             )}
           </View>
@@ -347,7 +421,7 @@ export default function CommunityDetailScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
@@ -356,7 +430,12 @@ export default function CommunityDetailScreen() {
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.codeLabel}>Code</Text>
-          <Text style={styles.codeText}>{community.code}</Text>
+          <View style={styles.codeRow}>
+            <Text style={styles.codeText}>{community.code}</Text>
+            <TouchableOpacity style={styles.codeShareButton} onPress={handleShareCommunityInvite}>
+              <Ionicons name="share-social-outline" size={14} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -408,34 +487,8 @@ export default function CommunityDetailScreen() {
               }
             }}
           />
-        ) : activeTab === 'General' ? (
-          // General tab with expandable Study/Offerings options
-          <View style={styles.generalContainer}>
-            <TouchableOpacity
-              style={styles.generalBar}
-              onPress={() => setGeneralExpanded(!generalExpanded)}
-            >
-              <Text style={styles.generalBarText}>General Options</Text>
-              <Ionicons
-                name={generalExpanded ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color={COLORS.text}
-              />
-            </TouchableOpacity>
-
-            {generalExpanded && (
-              <View style={styles.generalOptions}>
-                <TouchableOpacity style={styles.generalOptionItem} onPress={() => { /** no-op placeholder */ }}>
-                  <Text style={styles.generalOptionText}>Study</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.generalOptionItem} onPress={() => { /** no-op placeholder */ }}>
-                <Text style={styles.generalOptionText}>Offerings</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
         ) : (
-          // Request List
+          // Request list for General/Blood/Medical/Petition tabs
           <FlatList
             data={requests}
             renderItem={renderRequest}
@@ -445,10 +498,16 @@ export default function CommunityDetailScreen() {
               <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
             }
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Ionicons name="document-text-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>No {activeTab.toLowerCase()} requests yet</Text>
-              </View>
+              refreshing ? (
+                <View style={styles.emptyState}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="document-text-outline" size={48} color={COLORS.textLight} />
+                  <Text style={styles.emptyText}>No {activeTab.toLowerCase()} requests yet</Text>
+                </View>
+              )
             }
           />
         )}
@@ -540,6 +599,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  codeShareButton: {
+    marginLeft: SPACING.xs,
+    padding: 2,
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -733,6 +800,10 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
+  requestCardFulfilled: {
+    borderWidth: 2,
+    borderColor: COLORS.success,
+  },
   requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -852,5 +923,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: SPACING.xs,
     fontSize: 12,
+  },
+  fulfilledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.success}20`,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 2,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  fulfilledText: {
+    fontSize: 10,
+    color: COLORS.success,
+    fontWeight: '600',
+    marginLeft: 2,
   },
 });

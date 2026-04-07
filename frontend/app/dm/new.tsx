@@ -1,37 +1,112 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, FlatList, Image, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
-import { searchUserBySLId, sendDirectMessage } from '../../src/services/api';
+import { getAllUsers, getConversations, sendDirectMessage } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
+import { useAuthStore } from '../../src/store/authStore';
+
+const toParamString = (value: string | string[] | undefined): string => {
+  if (Array.isArray(value)) {
+    return value[0] || '';
+  }
+  return value || '';
+};
 
 export default function NewDMScreen() {
   const router = useRouter();
-  const [slId, setSlId] = useState('');
+  const params = useLocalSearchParams<{ userId?: string; userName?: string; userSL?: string }>();
+  const { user } = useAuthStore();
+
+  const selectedUserId = toParamString(params.userId as any);
+  const selectedUserName = toParamString(params.userName as any);
+  const selectedUserSL = toParamString(params.userSL as any);
+
   const [message, setMessage] = useState('');
   const [foundUser, setFoundUser] = useState<any>(null);
-  const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
   const [error, setError] = useState('');
 
-  const handleSearch = async () => {
-    if (!slId.trim()) return;
+  // Pre-fill if coming from user list click (stable deps to avoid render loops on web)
+  useEffect(() => {
+    if (selectedUserId && selectedUserName && selectedUserSL) {
+      if (foundUser?.id === selectedUserId) {
+        return;
+      }
+      setFoundUser({
+        id: selectedUserId,
+        name: selectedUserName,
+        sl_id: selectedUserSL
+      });
+      setError('');
+    }
+  }, [selectedUserId, selectedUserName, selectedUserSL]);
 
-    setSearching(true);
-    setError('');
-    setFoundUser(null);
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
     try {
-      const response = await searchUserBySLId(slId.trim());
-      setFoundUser(response.data);
+      const response = await getAllUsers();
+      const allUsers = response.data || [];
+      const otherUsers = allUsers.filter((u: any) => u.id !== user?.id);
+      setUsers(otherUsers);
+      setFilteredUsers(otherUsers);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'User not found');
+      setError(err.response?.data?.detail || 'Failed to load users');
     } finally {
-      setSearching(false);
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleUserSearch = (query: string) => {
+    setUserSearchQuery(query);
+    if (!query.trim()) {
+      setFilteredUsers(users);
+      return;
+    }
+
+    const q = query.toLowerCase();
+    const filtered = users.filter((u: any) =>
+      u.name?.toLowerCase().includes(q) ||
+      u.sl_id?.toLowerCase().includes(q)
+    );
+    setFilteredUsers(filtered);
+  };
+
+  const handleBackNavigation = () => {
+    try {
+      router.replace('/messages');
+    } catch (e) {
+      console.warn('[New DM] Back navigation failed:', e);
+    }
+  };
+
+  const handleSelectUser = async (selectedUser: any) => {
+    setError('');
+    try {
+      const convResponse = await getConversations();
+      const conversations = convResponse.data || [];
+      const existingConv = conversations.find((c: any) => c.user?.id === selectedUser.id);
+      const conversationId = existingConv?.conversation_id || existingConv?.chat_id || existingConv?.id;
+
+      if (conversationId) {
+        router.replace(`/dm/${conversationId}`);
+        return;
+      }
+
+      setFoundUser(selectedUser);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Could not open chat');
     }
   };
 
@@ -49,6 +124,25 @@ export default function NewDMScreen() {
     }
   };
 
+  const renderUserItem = ({ item }: { item: any }) => (
+    <TouchableOpacity style={styles.userItem} onPress={() => handleSelectUser(item)}>
+      <View style={styles.userAvatar}>
+        {item.photo ? (
+          <Image source={{ uri: item.photo }} style={styles.avatarImage} />
+        ) : (
+          <View style={styles.avatarFallback}>
+            <Text style={styles.avatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+          </View>
+        )}
+      </View>
+      <View style={styles.userMeta}>
+        <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.userSl}>SL: {item.sl_id}</Text>
+      </View>
+      <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -57,7 +151,7 @@ export default function NewDMScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleBackNavigation}>
             <Ionicons name="close" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>New Message</Text>
@@ -65,33 +159,48 @@ export default function NewDMScreen() {
         </View>
 
         <View style={styles.content}>
-          {/* Search Section */}
-          <Text style={styles.label}>Enter Sanatan Lok ID</Text>
-          <View style={styles.searchRow}>
-            <View style={styles.searchInput}>
-              <Input
-                placeholder="e.g., SL-458921"
-                value={slId}
-                onChangeText={(text) => {
-                  setSlId(text.toUpperCase());
-                  setFoundUser(null);
-                  setError('');
-                }}
-                autoCapitalize="characters"
-              />
-            </View>
+          <View style={styles.topActions}>
             <TouchableOpacity
-              style={[styles.searchButton, !slId.trim() && styles.searchButtonDisabled]}
-              onPress={handleSearch}
-              disabled={!slId.trim() || searching}
+              style={styles.createGroupPill}
+              onPress={() => router.push('/circle/create')}
             >
-              {searching ? (
-                <ActivityIndicator size="small" color={COLORS.textWhite} />
-              ) : (
-                <Ionicons name="search" size={20} color={COLORS.textWhite} />
-              )}
+              <Ionicons name="add" size={16} color={COLORS.primary} />
+              <Text style={styles.createGroupText}>Create Group</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.searchWrap}>
+            <Ionicons name="search" size={18} color={COLORS.textLight} />
+            <TextInput
+              style={styles.searchInputText}
+              placeholder="Search users by name or SL number"
+              placeholderTextColor={COLORS.textLight}
+              value={userSearchQuery}
+              onChangeText={handleUserSearch}
+            />
+            {userSearchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => handleUserSearch('')}>
+                <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <Text style={styles.label}>All Registered Users</Text>
+
+          {loadingUsers ? (
+            <ActivityIndicator size="large" color={COLORS.primary} style={{ marginVertical: SPACING.lg }} />
+          ) : (
+            <FlatList
+              data={filteredUsers}
+              renderItem={renderUserItem}
+              keyExtractor={(item) => item.id}
+              style={styles.usersList}
+              contentContainerStyle={{ paddingBottom: SPACING.lg }}
+              ListEmptyComponent={
+                <Text style={styles.emptyUsersText}>No users found</Text>
+              }
+            />
+          )}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -110,9 +219,10 @@ export default function NewDMScreen() {
           {/* Message Input */}
           {foundUser && (
             <View style={styles.messageSection}>
-              <Input
-                label="Message"
+              <Text style={styles.label}>Message</Text>
+              <TextInput
                 placeholder="Type your message..."
+                placeholderTextColor={COLORS.textLight}
                 value={message}
                 onChangeText={setMessage}
                 multiline
@@ -127,13 +237,6 @@ export default function NewDMScreen() {
             </View>
           )}
 
-          {/* Info */}
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color={COLORS.info} />
-            <Text style={styles.infoText}>
-              You can only message someone if you have their Sanatan Lok ID. This ensures privacy and prevents spam.
-            </Text>
-          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -166,30 +269,100 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: SPACING.lg,
   },
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: SPACING.sm,
+  },
+  createGroupPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 16,
+    gap: 4,
+  },
+  createGroupText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  searchInputText: {
+    flex: 1,
+    color: COLORS.text,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    fontSize: 14,
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  searchInput: {
+  usersList: {
     flex: 1,
+    marginBottom: 0,
+  },
+  emptyUsersText: {
+    textAlign: 'center',
+    color: COLORS.textSecondary,
+    paddingVertical: SPACING.md,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  userAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
     marginRight: SPACING.sm,
   },
-  searchButton: {
-    width: 52,
-    height: 52,
-    borderRadius: BORDER_RADIUS.md,
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  searchButtonDisabled: {
-    opacity: 0.5,
+  avatarText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  userMeta: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  userSl: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   error: {
     color: COLORS.error,
@@ -222,20 +395,14 @@ const styles = StyleSheet.create({
   },
   messageInput: {
     height: 100,
-    textAlignVertical: 'top',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: `${COLORS.info}15`,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
     borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    marginTop: SPACING.xl,
-  },
-  infoText: {
-    flex: 1,
-    marginLeft: SPACING.sm,
-    fontSize: 13,
-    color: COLORS.info,
-    lineHeight: 18,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.md,
+    color: COLORS.text,
+    textAlignVertical: 'top',
   },
 });

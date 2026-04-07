@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,22 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
+import { HospitalSearchInput } from './HospitalSearchInput';
+import { sendOTP, verifyOTP } from '../services/api';
 
 interface CommunityOption {
   id: string;
   name: string;
+  type?: string;
+}
+
+interface User {
+  home_location?: {
+    area?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  };
 }
 
 interface RequestFormModalProps {
@@ -26,6 +38,7 @@ interface RequestFormModalProps {
   requestType: 'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition';
   selectedOfferingType?: 'Food' | 'Blanket' | 'Clothes' | null;
   communities?: CommunityOption[];
+  user?: User;
   onSubmit: (data: any) => Promise<void>;
 }
 
@@ -51,6 +64,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
   requestType,
   selectedOfferingType,
   communities = [],
+  user,
   onSubmit,
 }) => {
   const [loading, setLoading] = useState(false);
@@ -63,15 +77,23 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       setSelectedCommunityId(communities[0].id);
     }
   }, [communities, selectedCommunityId]);
-  
+
   // Common fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [contactNumber, setContactNumber] = useState('');
-  
+  const [phoneOtpStage, setPhoneOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [phoneOtpMessage, setPhoneOtpMessage] = useState<string | null>(null);
+  const [phoneOtpError, setPhoneOtpError] = useState<string | null>(null);
+  const [phoneSending, setPhoneSending] = useState(false);
+  const [phoneVerifying, setPhoneVerifying] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState('');
+
   // Blood specific
   const [bloodGroup, setBloodGroup] = useState('');
   const [hospitalName, setHospitalName] = useState('');
+  const [hospitalArea, setHospitalArea] = useState('');
   const [location, setLocation] = useState('');
   
   // Financial specific
@@ -86,8 +108,16 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
     setTitle('');
     setDescription('');
     setContactNumber('');
+    setPhoneOtpStage('idle');
+    setPhoneOtp('');
+    setPhoneOtpMessage(null);
+    setPhoneOtpError(null);
+    setPhoneSending(false);
+    setPhoneVerifying(false);
+    setVerifiedPhone('');
     setBloodGroup('');
     setHospitalName('');
+    setHospitalArea('');
     setLocation('');
     setAmount('');
     setPetitionTitle('');
@@ -107,8 +137,8 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       Alert.alert('Required Field', 'Please enter your contact number.');
       return;
     }
-    if (selectedCommunityId === null) {
-      Alert.alert('Required Field', 'Please select a community.');
+    if (requestType === 'Blood' && phoneOtpStage !== 'verified') {
+      Alert.alert('Verify Phone', 'Please verify your contact number with OTP before posting a blood request.');
       return;
     }
     if (requestType === 'Blood' && !bloodGroup) {
@@ -120,7 +150,38 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       return;
     }
 
+    // Determine community_id based on visibility level
+    let computedCommunityId: string | undefined;
+    
+    if (selectedCommunityId) {
+      // User explicitly selected a community
+      computedCommunityId = selectedCommunityId;
+    } else if (user?.home_location) {
+      // Find community based on visibility level and user's location
+      const userArea = user.home_location.area;
+      const userCity = user.home_location.city;
+      const userState = user.home_location.state;
+      
+      const foundCommunity = communities.find(c => {
+        if (visibility === 'area') {
+          // Match by area
+          return c.type === 'home_area' && c.name.toLowerCase().includes(userArea?.toLowerCase() || '');
+        } else if (visibility === 'city') {
+          return c.type === 'city' && c.name.toLowerCase().includes(userCity?.toLowerCase() || '');
+        } else if (visibility === 'state') {
+          return c.type === 'state' && c.name.toLowerCase().includes(userState?.toLowerCase() || '');
+        }
+        return false;
+      });
+      
+      if (foundCommunity) {
+        computedCommunityId = foundCommunity.id;
+      }
+    }
+
     try {
+      setLoading(true);
+
       const computedTitle = requestType === 'Petition'
         ? petitionTitle
         : selectedOfferingType
@@ -130,7 +191,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       const computedDescription = description || (selectedOfferingType ? `${selectedOfferingType} is required for community offerings.` : '');
 
       const data = {
-        community_id: selectedCommunityId,
+        community_id: computedCommunityId,
         request_type: requestType.toLowerCase(),
         visibility_level: visibility,
         urgency_level: urgency,
@@ -169,6 +230,62 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       Alert.alert('Error', error?.message || 'Failed to submit request. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const normalizePhoneDigits = (phone: string) => phone.replace(/[^0-9]/g, '');
+
+  useEffect(() => {
+    const normalized = normalizePhoneDigits(contactNumber);
+    if (normalized !== verifiedPhone) {
+      setPhoneOtpStage('idle');
+      setPhoneOtp('');
+      setPhoneOtpMessage(null);
+      setPhoneOtpError(null);
+    }
+  }, [contactNumber, verifiedPhone]);
+
+  const handleSendPhoneOtp = async () => {
+    const trimmedPhone = normalizePhoneDigits(contactNumber);
+    if (trimmedPhone.length !== 10) {
+      setPhoneOtpError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    setPhoneOtpError(null);
+    setPhoneOtpMessage(null);
+    setPhoneSending(true);
+
+    try {
+      await sendOTP(trimmedPhone);
+      setPhoneOtpStage('sent');
+      setPhoneOtpMessage(`OTP sent to +91${trimmedPhone}.`);
+    } catch (error: any) {
+      setPhoneOtpError(error?.response?.data?.detail || error?.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setPhoneSending(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!phoneOtp.trim()) {
+      setPhoneOtpError('Please enter the OTP sent to your phone.');
+      return;
+    }
+
+    setPhoneOtpError(null);
+    setPhoneVerifying(true);
+
+    try {
+      const trimmedPhone = normalizePhoneDigits(contactNumber);
+      await verifyOTP(trimmedPhone, phoneOtp.trim());
+      setPhoneOtpStage('verified');
+      setVerifiedPhone(trimmedPhone);
+      setPhoneOtpMessage('Phone verified successfully.');
+    } catch (error: any) {
+      setPhoneOtpError(error?.response?.data?.detail || error?.message || 'OTP verification failed. Please try again.');
+    } finally {
+      setPhoneVerifying(false);
     }
   };
 
@@ -315,13 +432,25 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
           </View>
 
           <Text style={styles.label}>Hospital Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter hospital name"
-            placeholderTextColor={COLORS.textLight}
+          <HospitalSearchInput
             value={hospitalName}
-            onChangeText={setHospitalName}
+            onSelect={(hospital) => {
+              setHospitalName(hospital.name);
+              setHospitalArea(hospital.area);
+              // Auto-fill location with area and city
+              if (hospital.area || hospital.city) {
+                setLocation(hospital.area ? `${hospital.area}, ${hospital.city}` : hospital.city);
+              }
+            }}
+            placeholder="Search hospital name..."
           />
+
+          {hospitalArea ? (
+            <View style={styles.areaInfoContainer}>
+              <Ionicons name="location" size={14} color={COLORS.primary} />
+              <Text style={styles.areaInfoText}>Area: {hospitalArea}</Text>
+            </View>
+          ) : null}
 
           <Text style={styles.label}>Location *</Text>
           <TextInput
@@ -338,13 +467,25 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       {requestType === 'Medical' && (
         <>
           <Text style={styles.label}>Hospital/Clinic Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter hospital or clinic name"
-            placeholderTextColor={COLORS.textLight}
+          <HospitalSearchInput
             value={hospitalName}
-            onChangeText={setHospitalName}
+            onSelect={(hospital) => {
+              setHospitalName(hospital.name);
+              setHospitalArea(hospital.area);
+              // Auto-fill location with area and city
+              if (hospital.area || hospital.city) {
+                setLocation(hospital.area ? `${hospital.area}, ${hospital.city}` : hospital.city);
+              }
+            }}
+            placeholder="Search hospital or clinic name..."
           />
+
+          {hospitalArea ? (
+            <View style={styles.areaInfoContainer}>
+              <Ionicons name="location" size={14} color={COLORS.primary} />
+              <Text style={styles.areaInfoText}>Area: {hospitalArea}</Text>
+            </View>
+          ) : null}
 
           <Text style={styles.label}>Location</Text>
           <TextInput
@@ -358,7 +499,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       )}
 
       {/* Community selector (for outside-community created request to be placed in a group) */}
-      {communities.length > 0 && (
+      {communities.length > 0 && requestType !== 'Blood' && (
         <>
           <Text style={styles.label}>Community *</Text>
           <View style={styles.communityDropdown}>
@@ -463,6 +604,60 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         onChangeText={setContactNumber}
         keyboardType="phone-pad"
       />
+
+      {requestType === 'Blood' && (
+        <View style={styles.otpSection}>
+          {phoneOtpMessage ? (
+            <Text style={phoneOtpStage === 'verified' ? styles.successText : styles.infoText}>
+              {phoneOtpMessage}
+            </Text>
+          ) : null}
+          {phoneOtpError ? (
+            <Text style={styles.errorText}>{phoneOtpError}</Text>
+          ) : null}
+
+          <View style={styles.otpButtonRow}>
+            <TouchableOpacity
+              style={[styles.otpButton, (phoneSending || phoneVerifying) && styles.otpButtonDisabled]}
+              onPress={handleSendPhoneOtp}
+              disabled={phoneSending || phoneVerifying}
+            >
+              {phoneSending ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.otpButtonText}>
+                  {phoneOtpStage === 'sent' ? 'Resend OTP' : 'Send OTP'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {phoneOtpStage === 'sent' && (
+            <>
+              <TextInput
+                style={[styles.input, styles.otpInput]}
+                placeholder="Enter OTP"
+                placeholderTextColor={COLORS.textLight}
+                value={phoneOtp}
+                onChangeText={setPhoneOtp}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+              <TouchableOpacity
+                style={[styles.otpButton, (phoneVerifying || !phoneOtp.trim()) && styles.otpButtonDisabled]}
+                onPress={handleVerifyPhoneOtp}
+                disabled={phoneVerifying || !phoneOtp.trim()}
+              >
+                {phoneVerifying ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.otpButtonText}>Verify OTP</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
     </>
   );
 
@@ -491,7 +686,11 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.form}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {requestType === 'Petition' ? renderPetitionForm() : renderStandardForm()}
 
             {/* Submit Button */}
@@ -674,12 +873,101 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
   },
+  areaInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    backgroundColor: `${COLORS.primary}10`,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  areaInfoText: {
+    marginLeft: SPACING.xs,
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  otpSection: {
+    marginTop: SPACING.sm,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  otpButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginTop: SPACING.sm,
+  },
+  otpButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpButtonDisabled: {
+    opacity: 0.6,
+  },
+  otpButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  otpInput: {
+    marginTop: SPACING.sm,
+  },
+  infoText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    marginBottom: SPACING.xs,
+  },
+  successText: {
+    color: COLORS.success,
+    fontSize: 13,
+    marginBottom: SPACING.xs,
+  },
+  errorText: {
+    color: COLORS.error,
+    fontSize: 13,
+    marginBottom: SPACING.xs,
+  },
   submitBtn: {
     backgroundColor: COLORS.primary,
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     marginTop: SPACING.lg,
+  },
+  communityDropdown: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.sm,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  communityOption: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginVertical: SPACING.xs,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  communityOptionActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: `${COLORS.primary}10`,
+  },
+  communityText: {
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  communityTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   submitBtnDisabled: {
     opacity: 0.6,

@@ -12,7 +12,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/send-otp")
 async def send_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
-    """Send OTP to phone (mock - always returns 123456)"""
+    """Send OTP to phone via Twilio SMS provider."""
     logger.info(f"/auth/send-otp called with phone={request.phone}")
     try:
         return await AuthService.send_otp(request.phone)

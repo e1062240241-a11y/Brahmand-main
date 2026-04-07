@@ -99,25 +99,48 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
     const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
     
     if (Platform.OS === 'web') {
-      // Web: Prefer an application-provided verifier (for example the
-      // FirebaseRecaptchaVerifierModal ref). If none exists, create a
-      // Use caller-provided verifier when available
+      // Web: Prefer an application-provided verifier. If none exists, create one.
       let usedVerifier = verifier || (window as any).recaptchaVerifier || null;
 
-      if (!usedVerifier) {
-        usedVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-        });
+      if (usedVerifier) {
+        try {
+          usedVerifier.clear();
+        } catch (err) {
+          console.warn('[Firebase] Failed to clear existing reCAPTCHA verifier', err);
+        }
+        usedVerifier = null;
       }
 
+      if (!usedVerifier) {
+        const container = document.getElementById('recaptcha-container');
+        if (container) {
+          container.innerHTML = '';
+        }
+
+        usedVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {
+            console.log('[Firebase] reCAPTCHA verified');
+          },
+          'expired-callback': () => {
+            console.log('[Firebase] reCAPTCHA expired');
+          },
+        });
+        (window as any).recaptchaVerifier = usedVerifier;
+      }
+
+      await usedVerifier.render();
       confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, usedVerifier);
       console.log('[Firebase] OTP sent successfully');
       return confirmationResult;
     } else {
-      // Native: Firebase handles reCAPTCHA automatically
-      // Note: For native apps, you might need to use @react-native-firebase/auth
-      console.log('[Firebase] OTP request for native - implement with @react-native-firebase/auth');
-      return null;
+      // Native: Firebase handles reCAPTCHA automatically through the native SDK.
+      const authModule = require('@react-native-firebase/auth');
+      const nativeAuth = authModule.default();
+      const confirmation = await nativeAuth.signInWithPhoneNumber(formattedPhone);
+      confirmationResult = confirmation;
+      console.log('[Firebase] Native OTP sent successfully');
+      return confirmation;
     }
   } catch (error: any) {
     console.error('[Firebase] Error sending OTP:', error, 'code=', error?.code);

@@ -17,7 +17,13 @@
         "NSCameraUsageDescription": "Take photos for profile and messages",
         "NSLocationWhenInUseUsageDescription": "Detect your location to join local communities",
         "NSLocationAlwaysUsageDescription": "Detect your location to join local communities",
-        "NSMicrophoneUsageDescription": "Use microphone for voice ordering"
+        "NSMicrophoneUsageDescription": "Use microphone for voice ordering",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleTypeRole": "Editor",
+            "CFBundleURLSchemes": ["sanatanlok"]
+          }
+        ]
       }
     },
     "android": {
@@ -35,6 +41,18 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO"
+      ],
+      "intentFilters": [
+        {
+          "action": "android.intent.action.VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "sanatanlok"
+            }
+          ],
+          "category": ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"]
+        }
       ]
     },
     "web": {

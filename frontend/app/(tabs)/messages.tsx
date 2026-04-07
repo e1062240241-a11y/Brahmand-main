@@ -12,26 +12,29 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Image,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
-import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
+import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity } from '../../src/services/api';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
+import { Avatar } from '../../src/components/Avatar';
 
 // Top tabs for Chat section
 const TOP_TABS = ['Community', 'Private Chat'];
-
-// Community sub-tabs
-const COMMUNITY_TABS = ['Chat', 'General', 'Blood', 'Medical', 'Petition'];
 
 interface Circle {
   id: string;
   name: string;
   description?: string;
+  photo?: string;
   member_count: number;
+  member_names?: string[];
   last_message?: string;
   last_message_time?: string;
 }
@@ -60,12 +63,28 @@ interface CommunityRequest {
   amount?: number;
 }
 
+interface DMConversation {
+  conversation_id?: string;
+  chat_id?: string;
+  id?: string;
+  user?: {
+    id: string;
+    name: string;
+    sl_id: string;
+    photo?: string;
+  };
+  last_message?: string;
+  last_message_at?: string;
+}
+
 export default function MessagesScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const { user } = useAuthStore();
   
   // Top tab state (Community vs Private Chat)
-  const [activeTopTab, setActiveTopTab] = useState('Community');
+  const defaultTopTab = params.tab && params.tab.toLowerCase().includes('private') ? 'Private Chat' : 'Community';
+  const [activeTopTab, setActiveTopTab] = useState(defaultTopTab);
   
   // Community sub-tab state
   const [activeCommunityTab, setActiveCommunityTab] = useState('Chat');
@@ -74,6 +93,8 @@ export default function MessagesScreen() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [circles, setCircles] = useState<Circle[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
+  const [conversations, setConversations] = useState<DMConversation[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,7 +103,12 @@ export default function MessagesScreen() {
   const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
-  const [requestType, setRequestType] = useState<'Blood' | 'Medical' | 'Petition' | 'Financial'>('Blood');
+  const [requestType, setRequestType] = useState<'Blood' | 'Medical' | 'Petition'>('Blood');
+  const [showCGModal, setShowCGModal] = useState(false);
+  const [cgSearch, setCGSearch] = useState('');
+  const [cgList, setCGList] = useState<string[]>([]);
+  const [cgLoading, setCGLoading] = useState(false);
+  const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -96,18 +122,6 @@ export default function MessagesScreen() {
           // General tab does not display requests
           setCommunities([]);
           setRequests([]);
-        } else {
-          // Fetch community requests for this tab type
-          const requestTypeMap: Record<string, string> = {
-            'Blood': 'blood',
-            'Medical': 'medical',
-            'Petition': 'petition'
-          };
-          const response = await getCommunityRequests({
-            type: requestTypeMap[activeCommunityTab],
-            limit: 50
-          });
-          setRequests(response.data || []);
         }
       } else {
         // Private Chat - fetch circles/groups
@@ -122,12 +136,78 @@ export default function MessagesScreen() {
     }
   }, [activeTopTab, activeCommunityTab]);
 
+  const fetchUserCG = useCallback(async () => {
+    try {
+      const res = await getUserCulturalCommunity();
+      setUserCG(res.data);
+    } catch (error) {
+      console.error('Error fetching My Culture Group:', error);
+    }
+  }, []);
+
+  const loadCulturalCommunities = useCallback(async (search?: string) => {
+    setCGLoading(true);
+    try {
+      const res = await getCulturalCommunities(search);
+      setCGList(res.data || []);
+    } catch (error) {
+      console.error('Error loading cultural communities:', error);
+    } finally {
+      setCGLoading(false);
+    }
+  }, []);
+
+  const handleOpenCGModal = () => {
+    loadCulturalCommunities();
+    fetchUserCG();
+    setShowCGModal(true);
+  };
+
+  const handleSelectCG = async (community: string) => {
+    const changeMessage = userCG?.cultural_community
+      ? `Change from "${userCG.cultural_community}" to "${community}"?`
+      : `Set your My Culture Group to "${community}"?`;
+
+    Alert.alert('Confirm', changeMessage, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Confirm',
+        onPress: async () => {
+          try {
+            await updateUserCulturalCommunity(community);
+            await fetchUserCG();
+            setShowCGModal(false);
+            Alert.alert('Success', 'My Culture Group updated!');
+          } catch (error: any) {
+            Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
+          }
+        }
+      }
+    ]);
+  };
+
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
     fetchData();
-  }, [fetchData]);
+    fetchUserCG();
+    if (activeTopTab === 'Private Chat') {
+      fetchConversations();
+    }
+  }, [fetchData, activeTopTab, fetchUserCG]);
+
+  const fetchConversations = async () => {
+    setLoadingConversations(true);
+    try {
+      const response = await getConversations();
+      setConversations(response.data || []);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    } finally {
+      setLoadingConversations(false);
+    }
+  };
 
   const handleCommunityTabChange = async (tab: string) => {
     setActiveCommunityTab(tab);
@@ -234,10 +314,10 @@ export default function MessagesScreen() {
   const renderCircle = ({ item }: { item: Circle }) => (
     <TouchableOpacity
       style={styles.circleCard}
-      onPress={() => router.push(`/circle/${item.id}`)}
+      onPress={() => router.push(`/chat/circle/${item.id}?name=${encodeURIComponent(item.name)}`)}
     >
       <View style={styles.circleAvatar}>
-        <Ionicons name="people" size={24} color={COLORS.primary} />
+        <Avatar name={item.name} photo={item.photo} size={48} />
       </View>
       <View style={styles.circleInfo}>
         <Text style={styles.circleName}>{item.name}</Text>
@@ -289,22 +369,40 @@ export default function MessagesScreen() {
     </View>
   );
 
-  const renderEmptyPrivateChat = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="chatbubble-ellipses" size={48} color={COLORS.textLight} />
-      </View>
-      <Text style={styles.emptyTitle}>Private Chats</Text>
-      <Text style={styles.emptyText}>Your private conversations and group chats will appear here</Text>
-      <TouchableOpacity 
-        style={styles.createButton}
-        onPress={() => router.push('/create-circle')}
+  const renderConversationItem = (item: DMConversation) => {
+    const conversationId = item.conversation_id || item.chat_id || item.id;
+    const otherUser = item.user;
+    if (!conversationId || !otherUser) {
+      return null;
+    }
+
+    return (
+      <TouchableOpacity
+        key={conversationId}
+        style={styles.userItem}
+        onPress={() => router.push(`/dm/${conversationId}`)}
       >
-        <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-        <Text style={styles.createButtonText}>Create Group</Text>
+        <View style={styles.userAvatar}>
+          {otherUser.photo ? (
+            <Image source={{ uri: otherUser.photo }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarInitial}>
+                {otherUser.name?.charAt(0)?.toUpperCase() || '?'}
+              </Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName} numberOfLines={1}>{otherUser.name}</Text>
+          <Text style={styles.userSL} numberOfLines={1}>
+            {item.last_message || `SL: ${otherUser.sl_id}`}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
       </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -331,99 +429,45 @@ export default function MessagesScreen() {
             </TouchableOpacity>
           ))}
         </View>
-
-        {activeTopTab === 'Community' && (
-          <View>
-            <TouchableOpacity
-              style={styles.headerAction}
-              onPress={() => setShowRequestTypeMenu(!showRequestTypeMenu)}
-            >
-              <Ionicons name="add" size={24} color={COLORS.primary} />
-            </TouchableOpacity>
-
-            {showRequestTypeMenu && (
-              <View style={styles.requestTypeMenu}>
-                {['Blood', 'Medical', 'Petition', 'Offerings'].map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={styles.requestTypeMenuItem}
-                    onPress={async () => {
-                      setShowRequestTypeMenu(false);
-                      if (type === 'Offerings') {
-                        setRequestType('Financial');
-                        setSelectedOfferingType(null);
-                        setOfferingsExpanded(true);
-                        return;
-                      }
-
-                      setRequestType(type as any);
-                      setSelectedOfferingType(null);
-
-                      try {
-                        const response = await getMyCommunityRequests();
-                        const myRequests = response.data || [];
-                        const hasActive = myRequests.some((req: any) => req.status === 'active');
-                        if (hasActive) {
-                          Alert.alert(
-                            'Active Request Exists',
-                            'You already have an active help request. Please fulfill it before creating a new one.'
-                          );
-                          return;
-                        }
-                      } catch (error) {
-                        console.error('Error checking active requests:', error);
-                      }
-
-                      setShowRequestModal(true);
-                    }}
-                  >
-                    <Text style={styles.requestTypeMenuText}>{type}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
       </View>
 
       {/* Community Tab Content */}
       {activeTopTab === 'Community' && (
         <>
-          {/* Community Sub-tabs */}
+          {/* Create Request button for Community */}
           <View style={styles.subTabsContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {COMMUNITY_TABS.map((tab) => (
+            <View style={styles.subTabsSpacer} />
+            <TouchableOpacity
+              style={styles.createRequestPill}
+              onPress={() => setShowRequestTypeMenu(!showRequestTypeMenu)}
+            >
+              <Ionicons name="add" size={16} color={COLORS.primary} />
+              <Text style={styles.createRequestPillText}>Create Request</Text>
+            </TouchableOpacity>
+          </View>
+
+          {showRequestTypeMenu && activeTopTab === 'Community' && (
+            <View style={styles.pillDropdown}>
+              {['Blood', 'Medical', 'Petition'].map((type) => (
                 <TouchableOpacity
-                  key={tab}
-                  style={[styles.subTab, activeCommunityTab === tab && styles.subTabActive]}
-                  onPress={() => handleCommunityTabChange(tab)}
+                  key={type}
+                  style={styles.pillDropdownItem}
+                  onPress={() => {
+                    setShowRequestTypeMenu(false);
+                    setRequestType(type as any);
+                    setSelectedOfferingType(null);
+                    setShowRequestModal(true);
+                  }}
                 >
-                  <Text style={[styles.subTabText, activeCommunityTab === tab && styles.subTabTextActive]}>
-                    {tab}
-                  </Text>
+                  <Text style={styles.pillDropdownText}>{type}</Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
-          </View>
+            </View>
+          )}
 
           {/* Community Content */}
           {activeCommunityTab === 'Chat' ? (
             <>
-              {/* Live Mantra Jaap Banner */}
-              <TouchableOpacity 
-                style={styles.liveMantraButton}
-                onPress={() => router.push('/mantra-jaap' as any)}
-              >
-                <View style={styles.liveMantraContent}>
-                  <Ionicons name="radio" size={28} color={COLORS.primary} />
-                  <View style={styles.liveMantraTextContainer}>
-                    <Text style={styles.liveMantraTitle}>Live Mantra Jaap</Text>
-                    <Text style={styles.liveMantraSubtitle}>Join divine chanting session</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={22} color={COLORS.primary} />
-                </View>
-              </TouchableOpacity>
-
               <FlatList
                 data={communities}
                 renderItem={renderCommunity}
@@ -439,6 +483,19 @@ export default function MessagesScreen() {
                     <Text style={styles.emptyText}>Set up your location to join communities</Text>
                   </View>
                 }
+                ListFooterComponent={() => (
+                  <View style={styles.culturalCommunityCard}>
+                    <Text style={styles.culturalCommunityTitle}>My Culture Group</Text>
+                    <Text style={styles.culturalCommunitySubtitle}>
+                      {userCG?.cultural_community || 'Tap to set'}
+                    </Text>
+                    <TouchableOpacity style={styles.culturalCommunityAction} onPress={handleOpenCGModal}>
+                      <Text style={styles.culturalCommunityActionText}>
+                        {userCG?.cultural_community ? 'Change' : 'Set'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               />
             </>
           ) : activeCommunityTab === 'General' ? (
@@ -461,7 +518,13 @@ export default function MessagesScreen() {
 
               {generalExpanded && (
                 <View style={styles.generalOptions}>
-                  <TouchableOpacity style={styles.generalOptionItem} onPress={() => Alert.alert('Study', 'Study option placeholder') }>
+                  <TouchableOpacity 
+                    style={styles.generalOptionItem} 
+                    onPress={() => {
+                      setRequestType('Help');
+                      setShowRequestModal(true);
+                    }}
+                  >
                     <Text style={styles.generalOptionText}>Study</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -487,26 +550,10 @@ export default function MessagesScreen() {
                         <TouchableOpacity
                           key={item}
                           style={styles.offeringsItem}
-                          onPress={async () => {
+                          onPress={() => {
                             setRequestType('Financial');
                             setSelectedOfferingType(item as 'Food' | 'Blanket' | 'Clothes');
                             setOfferingsExpanded(false);
-
-                            try {
-                              const response = await getMyCommunityRequests();
-                              const myRequests = response.data || [];
-                              const hasActive = myRequests.some((req: any) => req.status === 'active');
-                              if (hasActive) {
-                                Alert.alert(
-                                  'Active Request Exists',
-                                  'You already have an active request. Please fulfill it before creating a new one.'
-                                );
-                                return;
-                              }
-                            } catch (err) {
-                              console.error('Error checking active requests:', err);
-                            }
-
                             setShowRequestModal(true);
                           }}
                         >
@@ -519,7 +566,8 @@ export default function MessagesScreen() {
               )}
             </View>
           ) : (
-            <FlatList
+            <>
+              <FlatList
               data={requests}
               renderItem={renderRequest}
               keyExtractor={(item) => item.id}
@@ -535,22 +583,64 @@ export default function MessagesScreen() {
                 </View>
               }
             />
+            </>
           )}
         </>
       )}
 
       {/* Private Chat Tab Content */}
       {activeTopTab === 'Private Chat' && (
-        <FlatList
-          data={circles}
-          renderItem={renderCircle}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
-          }
-          ListEmptyComponent={renderEmptyPrivateChat}
-        />
+        <View style={styles.privateChatContainer}>
+          <View style={styles.privateTopBar}>
+            <Text style={styles.privateTopTitle}>Private Chat</Text>
+            <TouchableOpacity style={styles.newChatPill} onPress={() => router.push('/dm/new')}>
+              <Ionicons name="add" size={16} color={COLORS.primary} />
+              <Text style={styles.newChatPillText}>New Chat</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loadingConversations ? (
+            <ActivityIndicator size="large" color={COLORS.primary} style={styles.loadingUsers} />
+          ) : (
+            <ScrollView
+              contentContainerStyle={styles.listContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => {
+                    setRefreshing(true);
+                    fetchData();
+                    fetchConversations();
+                  }}
+                />
+              }
+            >
+                <Text style={styles.sectionHeader}>Groups</Text>
+              {circles.length > 0 ? (
+                circles.map((circle) => renderCircle({ item: circle }))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="people-outline" size={44} color={COLORS.textLight} />
+                  <Text style={styles.emptyTitle}>No Groups Yet</Text>
+                  <Text style={styles.emptyText}>Create a group to chat in a shared space.</Text>
+                </View>
+              )}
+
+              <Text style={styles.sectionHeader}>Recent Chats</Text>
+              {conversations.length > 0 ? (
+                conversations.map((conversation) => renderConversationItem(conversation))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={44} color={COLORS.textLight} />
+                  <Text style={styles.emptyTitle}>No Conversations Yet</Text>
+                  <Text style={styles.emptyText}>Tap New Chat to start messaging someone.</Text>
+                </View>
+              )}
+
+
+            </ScrollView>
+          )}
+        </View>
       )}
 
       {/* Request Form Modal for outside-community creation */}
@@ -563,10 +653,11 @@ export default function MessagesScreen() {
         requestType={requestType}
         selectedOfferingType={selectedOfferingType}
         communities={communities}
+        user={user ?? undefined}
         onSubmit={async (data: any) => {
-          // Existing patterns used inside previous flow
+          console.log('Full request data being sent:', JSON.stringify(data, null, 2));
           try {
-            await createCommunityRequest({
+            const response = await createCommunityRequest({
               community_id: data.community_id,
               request_type: data.request_type,
               visibility_level: data.visibility_level || 'area',
@@ -581,14 +672,94 @@ export default function MessagesScreen() {
               support_needed: data.support_needed,
               contact_person_name: data.contact_person_name,
             });
+            console.log('Request created successfully:', response);
             Alert.alert('Success', 'Your request has been posted!');
             fetchData();
           } catch (error: any) {
-            console.error('Error submitting request:', error);
-            Alert.alert('Error', error.response?.data?.detail || 'Failed to submit request');
+            console.error('Error submitting request full:', error);
+            const responseData = error.response?.data;
+            console.error('Response data:', JSON.stringify(responseData, null, 2));
+            let errorMessage = 'Failed to submit request';
+            if (responseData) {
+              if (Array.isArray(responseData.detail)) {
+                errorMessage = responseData.detail.map((e: any) => e.msg || e.message || JSON.stringify(e)).join(', ');
+              } else if (typeof responseData.detail === 'string') {
+                errorMessage = responseData.detail;
+              } else if (typeof responseData === 'object') {
+                errorMessage = JSON.stringify(responseData);
+              }
+            }
+            Alert.alert('Error', errorMessage);
+            throw error;
           }
         }}
       />
+
+      <Modal
+        visible={showCGModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCGModal(false)}
+      >
+        <View style={styles.cgModalOverlay}>
+          <View style={styles.cgModalContent}>
+            <View style={styles.cgModalHeader}>
+              <Text style={styles.cgModalTitle}>Select My Culture Group</Text>
+              <TouchableOpacity onPress={() => setShowCGModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            {userCG?.cultural_community && (
+              <View style={styles.cgCurrentBanner}>
+                <Text style={styles.cgCurrentText}>
+                  Current: {userCG.cultural_community}
+                </Text>
+              </View>
+            )}
+            <TextInput
+              style={styles.cgSearchInput}
+              placeholder="Search communities..."
+              placeholderTextColor={COLORS.textLight}
+              value={cgSearch}
+              onChangeText={(text) => {
+                setCGSearch(text);
+                loadCulturalCommunities(text);
+              }}
+            />
+            {cgLoading ? (
+              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
+            ) : (
+              <FlatList
+                data={cgList}
+                keyExtractor={(item, index) => `${item}-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.cgItem,
+                      userCG?.cultural_community === item && styles.cgItemSelected,
+                    ]}
+                    onPress={() => handleSelectCG(item)}
+                  >
+                    <Text style={[
+                      styles.cgItemText,
+                      userCG?.cultural_community === item && styles.cgItemTextSelected,
+                    ]}>
+                      {item}
+                    </Text>
+                    {userCG?.cultural_community === item && (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.cgList}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>No communities found</Text>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
 
     </SafeAreaView>
   );
@@ -651,6 +822,9 @@ const styles = StyleSheet.create({
   },
   headerAction: {
     padding: SPACING.sm,
+  },
+  headerActionContainer: {
+    position: 'relative',
   },
   requestTypeMenu: {
     position: 'absolute',
@@ -721,6 +895,27 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.divider,
     paddingVertical: SPACING.sm,
   },
+  subTabsSpacer: {
+    flex: 1,
+  },
+  subTabsScroll: {
+    flex: 1,
+  },
+  createRequestPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 20,
+    marginRight: SPACING.md,
+    gap: 4,
+  },
+  createRequestPillText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 12,
+  },
   subTab: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
@@ -738,6 +933,27 @@ const styles = StyleSheet.create({
   subTabTextActive: {
     color: COLORS.primary,
     fontWeight: '600',
+  },
+  pillDropdown: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  pillDropdownItem: {
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 16,
+  },
+  pillDropdownText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 13,
   },
   addButton: {
     padding: SPACING.sm,
@@ -795,12 +1011,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   circleAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: `${COLORS.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: SPACING.md,
   },
   circleInfo: {
@@ -961,6 +1171,112 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.md,
   },
+  culturalCommunityCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginTop: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  culturalCommunityTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: SPACING.xs,
+    color: COLORS.text,
+  },
+  culturalCommunitySubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+  },
+  culturalCommunityAction: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  culturalCommunityActionText: {
+    color: COLORS.surface,
+    fontWeight: '600',
+  },
+  cgModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    padding: SPACING.md,
+  },
+  cgModalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    maxHeight: '80%',
+  },
+  cgModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  cgModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  cgLockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.sm,
+    backgroundColor: `${COLORS.error}10`,
+    borderRadius: BORDER_RADIUS.sm,
+    marginBottom: SPACING.sm,
+  },
+  cgLockedText: {
+    color: COLORS.error,
+    marginLeft: SPACING.xs,
+  },
+  cgCurrentBanner: {
+    padding: SPACING.sm,
+    backgroundColor: `${COLORS.primary}10`,
+    borderRadius: BORDER_RADIUS.sm,
+    marginBottom: SPACING.sm,
+  },
+  cgCurrentText: {
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  cgSearchInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    padding: SPACING.sm,
+    marginBottom: SPACING.sm,
+    color: COLORS.text,
+  },
+  cgList: {
+    maxHeight: 300,
+  },
+  cgItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  cgItemSelected: {
+    backgroundColor: `${COLORS.primary}10`,
+  },
+  cgItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  cgItemTextSelected: {
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -987,5 +1303,118 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     marginLeft: SPACING.xs,
+  },
+  // Private Chat User List Styles
+  privateChatContainer: {
+    flex: 1,
+  },
+  privateTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
+  },
+  privateTopTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  newChatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 16,
+    gap: 4,
+  },
+  newChatPillText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  userSearchContainer: {
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  userSearchInput: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  loadingUsers: {
+    marginTop: SPACING.xl,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: SPACING.md,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  userSL: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  groupsSection: {
+    paddingTop: SPACING.sm,
+  },
+  groupsHeader: {
+    marginTop: SPACING.lg,
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
   },
 });

@@ -10,19 +10,25 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  Easing
+  Easing,
+  Keyboard,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useHelpRequestStore } from '../store/helpRequestStore';
 import { useAuthStore } from '../store/authStore';
 import { 
   getWisdom, 
+  getGitaShloka,
   createSOSAlert, 
   getMySOSAlert, 
   resolveSOSAlert,
-  getActiveSOSAlerts
+  getActiveSOSAlerts,
+  getMyActiveCommunityRequests,
+  resolveCommunityRequest
 } from '../services/api';
 import * as Location from 'expo-location';
 import LocationService from '../services/location';
@@ -47,6 +53,122 @@ const fetchJson = async (url: string) => {
     }
   } catch (error) {
     console.error(`Remote fetch error for ${url}:`, error);
+    return null;
+  }
+};
+
+// Chapter and verses count for Bhagavad Gita (18 chapters)
+const CHAPTER_VERSES = [47, 72, 43, 42, 42, 29, 30, 28, 34, 42, 55, 20, 35, 27, 20, 24, 28, 20];
+
+// Get day of year (1-366)
+const getDayOfYear = (): number => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now.getTime() - start.getTime();
+  const oneDay = 1000 * 60 * 60 * 24;
+  return Math.floor(diff / oneDay);
+};
+
+// Convert shloka index (0-699) to chapter and verse
+const getChapterVerse = (index: number): { chapter: number; verse: number } => {
+  let cumulative = 0;
+  for (let ch = 0; ch < CHAPTER_VERSES.length; ch++) {
+    if (index < cumulative + CHAPTER_VERSES[ch]) {
+      return { chapter: ch + 1, verse: index - cumulative + 1 };
+    }
+    cumulative += CHAPTER_VERSES[ch];
+  }
+  return { chapter: 1, verse: 1 }; // Fallback
+};
+
+// Get today's shloka index (same for all users)
+const getTodaysShlokaIndex = (): number => {
+  const dayOfYear = getDayOfYear();
+  return (dayOfYear - 1) % 700; // 0-699
+};
+
+// Storage key for caching
+const SHLOKA_CACHE_KEY = 'daily_gita_shloka';
+
+// Load cached shloka or fetch new one
+const loadDailyShloka = async (): Promise<{
+  chapter: number;
+  verse: number;
+  slok: string;
+  translation: string;
+} | null> => {
+  try {
+    const today = new Date().toDateString();
+    const cached = await AsyncStorage.getItem(SHLOKA_CACHE_KEY);
+    
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed.date === today && parsed.slok) {
+        console.log('Using cached shloka:', parsed.chapter, parsed.verse);
+        return parsed;
+      }
+    }
+    
+    // Fetch new shloka
+    const shlokaIndex = getTodaysShlokaIndex();
+    const { chapter, verse } = getChapterVerse(shlokaIndex);
+    
+    console.log('Fetching new shloka:', chapter, verse);
+    const data = await getGitaShloka(chapter, verse);
+    
+    if (data && data.slok) {
+      // Get English translation - check multiple sources and use the longest one
+      const translations: string[] = [];
+      
+      // Prefer full commentary (ec) over short translation (et)
+      if (data.siva?.ec) translations.push(data.siva.ec);
+      if (data.siva?.et) translations.push(data.siva.et);
+      if (data.adi?.et) translations.push(data.adi.et);
+      if (data.gambir?.et) translations.push(data.gambir.et);
+      if (data.purohit?.et) translations.push(data.purohit.et);
+      
+      // Use the longest translation (usually the full commentary)
+      let translation = translations.length > 0 
+        ? translations.reduce((a, b) => a.length > b.length ? a : b)
+        : 'Translation not available';
+      
+      // Clean up problematic characters from the API response
+      translation = translation
+        .replace(/[\u0000-\u001F\u007F-\uFFFF]/g, '')
+        .replace(/\?+/g, '?')
+        .replace(/\? /g, ' ')
+        .replace(/ \?/g, ' ')
+        .replace(/^\?+/, '')
+        .replace(/\?$/, '')
+        .trim();
+      
+      const shlokaData = {
+        chapter: data.chapter,
+        verse: data.verse,
+        slok: data.slok,
+        translation: translation,
+        date: today
+      };
+      
+      // Cache it
+      await AsyncStorage.setItem(SHLOKA_CACHE_KEY, JSON.stringify(shlokaData));
+      console.log('Cached new shloka');
+      
+      return shlokaData;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error loading daily shloka:', error);
+    
+    // Try to return cached data even if expired
+    try {
+      const cached = await AsyncStorage.getItem(SHLOKA_CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {}
+    
     return null;
   }
 };
@@ -93,6 +215,12 @@ export const FloatingUtilityButton = () => {
   const [activeSOS, setActiveSOS] = useState<any>(null);
   const [nearbySOSCount, setNearbySOSCount] = useState(0);
   
+  // Community requests state
+  const [myCommunityRequests, setMyCommunityRequests] = useState<any[]>([]);
+  const [communityRequestLoading, setCommunityRequestLoading] = useState(false);
+  const [communityRequestsExpanded, setCommunityRequestsExpanded] = useState(true);
+  const [resolvingRequestId, setResolvingRequestId] = useState<string | null>(null);
+  
   // Spiritual data
   const [wisdom, setWisdom] = useState<any>(null);
   const [panchang, setPanchang] = useState<any>(null);
@@ -128,14 +256,19 @@ export const FloatingUtilityButton = () => {
 
   const loadUtilityData = async () => {
     try {
-      const [wisdomRes, panchangData, festivalData] = await Promise.all([
+      const [wisdomRes, panchangData, festivalData, gitaShloka] = await Promise.all([
         getWisdom().catch(() => null),
         getPanchangData(),
-        getFestivalsData()
+        getFestivalsData(),
+        loadDailyShloka()
       ]);
       setWisdom(wisdomRes?.data);
       setPanchang(panchangData);
       setNextFestival(festivalData);
+      // Store Gita shloka separately
+      if (gitaShloka) {
+        setWisdom((prev: any) => ({ ...prev, gitaShloka }));
+      }
     } catch (error) {
       console.error('Error loading utility data:', error);
     }
@@ -166,6 +299,9 @@ export const FloatingUtilityButton = () => {
   };
 
   const loadInitialUtilityData = async () => {
+    // Always fetch fresh community requests when opening modal
+    fetchMyCommunityRequests();
+
     if (hasLoadedData) return;
 
     await Promise.allSettled([
@@ -174,6 +310,39 @@ export const FloatingUtilityButton = () => {
       checkSOSStatus(),
     ]);
     setHasLoadedData(true);
+  };
+
+  const fetchMyCommunityRequests = async () => {
+    try {
+      const response = await getMyActiveCommunityRequests();
+      let requests = response.data || [];
+      
+      console.log('=== fetchMyCommunityRequests ===');
+      console.log('Total requests from API:', requests.length);
+      console.log('Current user ID:', user?.id);
+      
+      // Filter to only show current user's active requests (robust check)
+      // Check multiple user ID fields for safety
+      if (user?.id) {
+        const beforeFilter = requests.length;
+        requests = requests.filter((req: any) => {
+          const isMyRequest = req.user_id === user.id || 
+                            req.creator_id === user.id ||
+                            req.created_by === user.id;
+          const isActive = req.status !== 'fulfilled' && req.status !== 'resolved';
+          return isMyRequest && isActive;
+        });
+        console.log('Filtered from', beforeFilter, 'to', requests.length, 'requests');
+        console.log('Sample request user_ids:', requests.slice(0, 3).map((r: any) => r.user_id));
+      } else {
+        console.log('No user logged in, showing empty');
+        requests = [];
+      }
+      
+      setMyCommunityRequests(requests);
+    } catch (error: any) {
+      console.error('Error fetching community requests:', error);
+    }
   };
 
   const handleCreateSOS = async () => {
@@ -212,6 +381,54 @@ export const FloatingUtilityButton = () => {
         }
       ]
     );
+  };
+
+  const handleResolveCommunityRequest = async (requestId: string) => {
+    console.log('handleResolveCommunityRequest called with:', requestId);
+    
+    // Use custom confirmation instead of Alert to avoid navigation issues on web
+    setResolvingRequestId(requestId);
+    setCommunityRequestLoading(true);
+    
+    try {
+      console.log('Making API call to resolve...');
+      const response = await resolveCommunityRequest(requestId);
+      console.log('Resolve response:', response);
+      
+      // Show success and refresh immediately
+      setMyCommunityRequests(prev => 
+        prev.map(req => req.id === requestId ? { ...req, status: 'fulfilled' } : req)
+      );
+      
+      Alert.alert('Success', 'Request marked as fulfilled!');
+    } catch (error: any) {
+      console.error('Error resolving request:', error);
+      console.error('Error response:', error.response?.data);
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to resolve request');
+    } finally {
+      setCommunityRequestLoading(false);
+      setResolvingRequestId(null);
+    }
+  };
+
+  const getCommunityRequestIcon = (type: string): string => {
+    switch (type) {
+      case 'blood': return 'water';
+      case 'medical': return 'medkit';
+      case 'petition': return 'document-text';
+      case 'financial': return 'cash';
+      default: return 'hand-left';
+    }
+  };
+
+  const getCommunityRequestColor = (type: string): string => {
+    switch (type) {
+      case 'blood': return '#E53935';
+      case 'medical': return '#1976D2';
+      case 'petition': return '#7C3AED';
+      case 'financial': return '#43A047';
+      default: return COLORS.primary;
+    }
   };
 
   const handleResolveActiveSOS = async (status: 'resolved' | 'cancelled') => {
@@ -320,6 +537,7 @@ export const FloatingUtilityButton = () => {
 
   const isActiveHelp = hasActiveRequest();
   const hasNearbyEmergency = nearbySOSCount > 0;
+  const hasCommunityRequests = myCommunityRequests.length > 0;
 
   return (
     <>
@@ -355,6 +573,8 @@ export const FloatingUtilityButton = () => {
               />
             ) : hasNearbyEmergency ? (
               <Ionicons name="alert" size={22} color="#FFFFFF" />
+            ) : hasCommunityRequests ? (
+              <View style={styles.communityRequestsDot} />
             ) : (
               <View style={styles.redDot} />
             )}
@@ -367,15 +587,27 @@ export const FloatingUtilityButton = () => {
         visible={modalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          setModalVisible(false);
+        }}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
-          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-            <View style={styles.modalHandle} />
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.overlayBackground} 
+            activeOpacity={1} 
+            onPress={() => setModalVisible(false)}
+          />
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHandle} />
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
             
             <Text style={styles.modalTitle}>Sanatan Utilities</Text>
 
@@ -453,6 +685,79 @@ export const FloatingUtilityButton = () => {
                 </View>
               )}
 
+              {/* My Community Requests Section */}
+              {myCommunityRequests.length > 0 && (
+                <View style={styles.communityRequestsSection}>
+                  <TouchableOpacity 
+                    style={styles.sectionHeader}
+                    onPress={() => setCommunityRequestsExpanded(!communityRequestsExpanded)}
+                  >
+                    <Text style={styles.sectionTitle}>My Community Requests ({myCommunityRequests.length})</Text>
+                    <Ionicons 
+                      name={communityRequestsExpanded ? 'chevron-up' : 'chevron-down'} 
+                      size={20} 
+                      color={COLORS.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                  
+                  {communityRequestsExpanded && myCommunityRequests.map((request) => (
+                    <View 
+                      key={request.id} 
+                      style={[
+                        styles.communityRequestCard,
+                        request.status === 'fulfilled' && styles.communityRequestCardFulfilled
+                      ]}
+                    >
+                      <View style={styles.communityRequestHeader}>
+                        <View style={[styles.requestTypeBadge, { backgroundColor: `${getCommunityRequestColor(request.request_type)}20` }]}>
+                          <Ionicons 
+                            name={getCommunityRequestIcon(request.request_type) as any} 
+                            size={16} 
+                            color={getCommunityRequestColor(request.request_type)} 
+                          />
+                        </View>
+                        <Text style={styles.communityRequestType}>
+                          {request.request_type?.toUpperCase()}
+                        </Text>
+                        {request.status === 'fulfilled' && (
+                          <View style={styles.fulfilledBadge}>
+                            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
+                            <Text style={styles.fulfilledText}>Fulfilled</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.communityRequestTitle} numberOfLines={1}>
+                        {request.title}
+                      </Text>
+                      <Text style={styles.communityRequestDescription} numberOfLines={2}>
+                        {request.description}
+                      </Text>
+                      <View style={styles.communityRequestFooter}>
+                        <Text style={styles.communityRequestMeta}>
+                          {request.location} • {request.urgency_level}
+                        </Text>
+                        {request.status !== 'fulfilled' && (
+                          <TouchableOpacity 
+                            style={styles.resolveButton}
+                            onPress={() => handleResolveCommunityRequest(request.id)}
+                            disabled={resolvingRequestId === request.id}
+                          >
+                            {resolvingRequestId === request.id ? (
+                              <ActivityIndicator size={14} color={COLORS.success} />
+                            ) : (
+                              <>
+                                <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
+                                <Text style={styles.resolveButtonText}>Mark Fulfilled</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
               {/* Gita Slok Card */}
               <View style={styles.gitaCard}>
                 <View style={styles.gitaHeader}>
@@ -460,18 +765,31 @@ export const FloatingUtilityButton = () => {
                     <Ionicons name="book" size={24} color={COLORS.success} />
                   </View>
                   <View>
-                    <Text style={styles.gitaTitle}>Bhagavad Gita Slok</Text>
+                    <Text style={styles.gitaTitle}>Bhagavad Gita</Text>
                     <Text style={styles.gitaSubtitle}>
-                      {wisdom?.chapter ? `Chapter ${wisdom.chapter}, Verse ${wisdom.verse}` : 'Daily Wisdom'}
+                      {wisdom?.gitaShloka 
+                        ? `Chapter ${wisdom.gitaShloka.chapter}, Verse ${wisdom.gitaShloka.verse}`
+                        : wisdom?.chapter 
+                          ? `Chapter ${wisdom.chapter}, Verse ${wisdom.verse}` 
+                          : 'Daily Wisdom'
+                      }
                     </Text>
                   </View>
                 </View>
                 <Text style={styles.gitaSanskrit}>
-                  {wisdom?.sanskrit || 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।'}
+                  {wisdom?.gitaShloka?.slok || wisdom?.sanskrit || 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।'}
                 </Text>
-                <Text style={styles.gitaTranslation}>
-                  {wisdom?.translation || wisdom?.quote || 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'}
-                </Text>
+                <ScrollView 
+                  style={styles.gitaTranslationScroll} 
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                  indicatorStyle="black"
+                  scrollEventThrottle={16}
+                >
+                  <Text style={styles.gitaTranslation}>
+                    {wisdom?.gitaShloka?.translation || wisdom?.translation || wisdom?.quote || 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'}
+                  </Text>
+                </ScrollView>
               </View>
 
               {/* Utility Shortcuts */}
@@ -568,7 +886,7 @@ export const FloatingUtilityButton = () => {
               )}
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </>
   );
@@ -621,10 +939,19 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: '#E53935',
   },
+  communityRequestsDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#7C3AED',
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
+  },
+  overlayBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   modalContent: {
     backgroundColor: COLORS.surface,
@@ -633,6 +960,14 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     paddingBottom: SPACING.xl,
     maxHeight: SCREEN_HEIGHT * 0.7,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  closeButton: {
+    padding: SPACING.xs,
   },
   modalHandle: {
     width: 40,
@@ -795,10 +1130,17 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
     textAlign: 'center',
   },
+  gitaTranslationScroll: {
+    maxHeight: 150,
+    backgroundColor: '#F9F9F9',
+    borderRadius: BORDER_RADIUS.sm,
+    padding: SPACING.sm,
+  },
   gitaTranslation: {
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.textSecondary,
-    lineHeight: 18,
+    lineHeight: 20,
+    textAlign: 'left',
   },
   utilityGrid: {
     flexDirection: 'row',
@@ -904,5 +1246,100 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textLight,
     textAlign: 'center',
+  },
+  // Community Requests Section
+  communityRequestsSection: {
+    marginBottom: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  communityRequestCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  communityRequestCardFulfilled: {
+    borderColor: COLORS.success,
+    backgroundColor: `${COLORS.success}10`,
+  },
+  communityRequestHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  requestTypeBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.xs,
+  },
+  communityRequestType: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  fulfilledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.success}20`,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 2,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  fulfilledText: {
+    fontSize: 10,
+    color: COLORS.success,
+    fontWeight: '600',
+    marginLeft: 2,
+  },
+  communityRequestTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  communityRequestDescription: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+  },
+  communityRequestFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  communityRequestMeta: {
+    fontSize: 11,
+    color: COLORS.textLight,
+  },
+  resolveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    backgroundColor: `${COLORS.success}15`,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  resolveButtonText: {
+    fontSize: 11,
+    color: COLORS.success,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
   },
 });

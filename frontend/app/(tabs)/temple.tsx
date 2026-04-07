@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getTemples, getNearbyEvents } from '../../src/services/api';
+import { getTemples } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 const TABS = ['Nearby', 'Aarti', 'Volunteers', 'Events', 'Donations'];
@@ -19,7 +19,6 @@ export default function TempleScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('Nearby');
   const [temples, setTemples] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -29,7 +28,6 @@ export default function TempleScreen() {
     } catch (error) {
       console.error('Error fetching temples:', error);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   }, []);
@@ -88,6 +86,30 @@ export default function TempleScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Live Mantra Jaap Banner */}
+      <TouchableOpacity 
+        style={styles.liveMantraButton}
+        onPress={() => router.push('/mantra-jaap' as any)}
+      >
+        <View style={styles.liveMantraContent}>
+          <View style={styles.liveMantraIconWrap}>
+            <Ionicons name="radio" size={28} color={COLORS.primary} />
+          </View>
+          <View style={styles.liveMantraTextContainer}>
+            <View style={styles.liveMantraHeaderRow}>
+              <Text style={styles.liveMantraTitle}>Live Mantra Jaap</Text>
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveBadgeText}>Live</Text>
+              </View>
+            </View>
+            <Text style={styles.liveMantraSubtitle}>Join the active chanting room from Temple tab</Text>
+            <Text style={styles.liveMantraMeta}>1.2k devotees chanting right now</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={22} color={COLORS.primary} />
+        </View>
+      </TouchableOpacity>
 
       {/* Temple List */}
       <FlatList
@@ -197,5 +219,76 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textSecondary,
     marginTop: SPACING.md,
+  },
+  // Live Mantra Jaap Button
+  liveMantraButton: {
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: `${COLORS.primary}08`,
+  },
+  liveMantraContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: SPACING.md,
+    gap: SPACING.md,
+  },
+  liveMantraIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: `${COLORS.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  liveMantraTextContainer: {
+    flex: 1,
+  },
+  liveMantraHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  liveMantraTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  liveMantraSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  liveMantraMeta: {
+    fontSize: 12,
+    color: COLORS.text,
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: `${COLORS.error}14`,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.error,
+  },
+  liveBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.error,
+    textTransform: 'uppercase',
   },
 });

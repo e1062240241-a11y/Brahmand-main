@@ -73,6 +73,34 @@ class FirebaseUserService:
         }
     
     @staticmethod
+    async def get_all_users(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get all registered users (for private chat user list)"""
+        db = await FirebaseUserService.get_db()
+        
+        # Get users collection
+        users_ref = db.client.collection('users')
+        
+        # Get all users with pagination
+        users = []
+        docs = users_ref.limit(limit).offset(offset).stream()
+        
+        async for doc in docs:
+            user_data = doc.to_dict()
+            if user_data:
+                users.append({
+                    "id": doc.id,
+                    "sl_id": user_data.get("sl_id", ""),
+                    "name": user_data.get("name", "Unknown"),
+                    "photo": user_data.get("photo"),
+                    "language": user_data.get("language"),
+                    "badges": user_data.get("badges", []),
+                    "reputation": user_data.get("reputation", 0),
+                    "created_at": user_data.get("created_at")
+                })
+        
+        return users
+    
+    @staticmethod
     async def setup_location(user_id: str, location: Dict[str, str]) -> Dict[str, Any]:
         """Setup user location and join communities"""
         from services.firebase_community_service import FirebaseCommunityService

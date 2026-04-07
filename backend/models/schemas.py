@@ -202,12 +202,15 @@ class CircleCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=50)
     description: Optional[str] = Field(None, max_length=500)
     privacy: CirclePrivacy = CirclePrivacy.PRIVATE
+    photo: Optional[str] = None
+    member_ids: Optional[List[str]] = None
 
 
 class CircleUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=50)
     description: Optional[str] = Field(None, max_length=500)
     privacy: Optional[CirclePrivacy] = None
+    photo: Optional[str] = None
 
 
 class CircleJoin(BaseModel):
@@ -226,6 +229,7 @@ class CircleResponse(BaseModel):
     privacy: str
     creator_id: str
     admin_id: str
+    photo: Optional[str] = None
     members: List[str] = []
     member_count: int
     is_admin: bool = False
@@ -492,6 +496,32 @@ class VendorResponse(BaseModel):
     kyc_status: Optional[KYCStatus] = KYCStatus.PENDING
     distance: Optional[float] = None
     created_at: datetime
+
+
+class JobProfileCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=120)
+    current_address: str = Field(..., min_length=5, max_length=500)
+    experience_years: int = Field(default=0, ge=0, le=60)
+    profession: str = Field(..., min_length=2, max_length=120)
+    preferred_work_city: str = Field(..., min_length=2, max_length=120)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    location_link: Optional[str] = None
+    photos: Optional[List[str]] = Field(default_factory=list, max_items=5)
+    cv_url: Optional[str] = None
+
+
+class JobProfileUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=120)
+    current_address: Optional[str] = Field(None, min_length=5, max_length=500)
+    experience_years: Optional[int] = Field(None, ge=0, le=60)
+    profession: Optional[str] = Field(None, min_length=2, max_length=120)
+    preferred_work_city: Optional[str] = Field(None, min_length=2, max_length=120)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    location_link: Optional[str] = None
+    photos: Optional[List[str]] = Field(None, max_items=5)
+    cv_url: Optional[str] = None
 
 
 # ================= CULTURAL COMMUNITY MODELS =================

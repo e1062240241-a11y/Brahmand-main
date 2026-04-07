@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../../src/components/Input';
@@ -10,9 +10,16 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 export default function JoinCircleScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  useEffect(() => {
+    if (params.code) {
+      setCode(String(params.code).toUpperCase());
+    }
+  }, [params.code]);
 
   const handleJoin = async () => {
     if (!code.trim()) {

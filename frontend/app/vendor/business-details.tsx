@@ -36,12 +36,10 @@ export default function VendorBusinessDetailsScreen() {
 
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
   const [visionLoading, setVisionLoading] = useState(false);
-  const [visionExtractedItems, setVisionExtractedItems] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Form states
-  const [menuItems, setMenuItems] = useState<string[]>([]);
-  const [menuInput, setMenuInput] = useState('');
+  const [menuText, setMenuText] = useState('');
   const [offersHomeDelivery, setOffersHomeDelivery] = useState(false);
   const [offersCashOnDelivery, setOffersCashOnDelivery] = useState(false);
   const [businessHours, setBusinessHours] = useState('');
@@ -60,7 +58,7 @@ export default function VendorBusinessDetailsScreen() {
 
   useEffect(() => {
     if (!myVendor) return;
-    setMenuItems(myVendor.menu_items || []);
+    setMenuText((myVendor.menu_items || []).join('\n'));
     setOffersHomeDelivery(Boolean(myVendor.offers_home_delivery));
     setOffersCashOnDelivery(Boolean(myVendor.offers_cash_on_delivery));
     setBusinessHours(myVendor.business_hours || '');
@@ -134,34 +132,6 @@ export default function VendorBusinessDetailsScreen() {
     }
   };
 
-  const addMenuItem = () => {
-    const value = menuInput.trim();
-    if (!value) return;
-    if (menuItems.length >= 30) {
-      Alert.alert('Limit reached', 'You can add up to 30 menu items.');
-      return;
-    }
-    if (menuItems.some((item) => item.toLowerCase() === value.toLowerCase())) {
-      setMenuInput('');
-      return;
-    }
-    setMenuItems([...menuItems, value]);
-    setMenuInput('');
-  };
-
-  const removeMenuItem = (index: number) => {
-    setMenuItems(menuItems.filter((_, i) => i !== index));
-  };
-
-  const handleAddExtractedItem = (item: string, idx: number) => {
-    if (menuItems.length >= 30) {
-      Alert.alert('Limit reached', 'Maximum 30 menu items allowed.');
-      return;
-    }
-    setMenuItems([...menuItems, item]);
-    setVisionExtractedItems(visionExtractedItems.filter((_, i) => i !== idx));
-  };
-
   const handleOcrUpload = async () => {
     if (!validateAccess() || !myVendor) return;
 
@@ -193,17 +163,14 @@ export default function VendorBusinessDetailsScreen() {
 
       const extracted = response?.data?.raw_texts || [];
       const fallbackText = response?.data?.text || response?.data?.full_text || '';
-      const source = extracted.length > 0 ? extracted.join('\n') : fallbackText;
-      const parsed: string[] = source
-        .split(/[\n;•●·,]/)
-        .map((t: string) => t.trim())
-        .filter((t: string): t is string => Boolean(t));
-      const uniqueParsed = Array.from(new Set(parsed));
-      setVisionExtractedItems(uniqueParsed);
+      const source = (extracted.length > 0 ? extracted.join('\n') : fallbackText).trim();
 
-      if (!uniqueParsed.length) {
+      if (!source) {
         Alert.alert('No items found', 'Cloud Vision did not detect menu text. Please try another image.');
+        return;
       }
+
+      setMenuText(source);
     } catch (error: any) {
       console.error('[OCR] Menu OCR failed:', error);
       Alert.alert('Upload failed', error?.message || 'Could not process menu image.');
@@ -217,8 +184,13 @@ export default function VendorBusinessDetailsScreen() {
 
     try {
       setSaving(true);
+      const normalizedMenuItems = menuText
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
       await updateBusinessProfile(myVendor.id, {
-        menu_items: menuItems,
+        menu_items: normalizedMenuItems,
         offers_home_delivery: offersHomeDelivery,
         offers_cash_on_delivery: offersCashOnDelivery,
         business_hours: businessHours,
@@ -299,46 +271,15 @@ export default function VendorBusinessDetailsScreen() {
             )}
           </TouchableOpacity>
 
-          {visionExtractedItems.length > 0 && (
-            <View style={styles.extractedSection}>
-              <Text style={styles.extractedTitle}>Detected items - tap + to add:</Text>
-              {visionExtractedItems.map((item, idx) => (
-                <TouchableOpacity key={`${item}-${idx}`} style={styles.extractedItem} onPress={() => handleAddExtractedItem(item, idx)}>
-                  <Text style={styles.extractedText}>• {item}</Text>
-                  <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity onPress={() => setVisionExtractedItems([])}>
-                <Text style={styles.clearText}>Clear all</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.menuInputRow}>
-            <TextInput
-              style={styles.menuInput}
-              placeholder="Add menu item (e.g., Paneer Thali - ₹250)"
-              placeholderTextColor={COLORS.textLight}
-              value={menuInput}
-              onChangeText={setMenuInput}
-            />
-            <TouchableOpacity style={styles.addButton} onPress={addMenuItem}>
-              <Ionicons name="add" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {menuItems.length > 0 && (
-            <View style={styles.menuList}>
-              {menuItems.map((item, idx) => (
-                <View key={`${item}-${idx}`} style={styles.menuItem}>
-                  <Text style={styles.menuItemText}>{item}</Text>
-                  <TouchableOpacity onPress={() => removeMenuItem(idx)}>
-                    <Ionicons name="close-circle" size={20} color={COLORS.error} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
+          <TextInput
+            style={[styles.textInput, styles.notesInput]}
+            placeholder="Enter menu/products as plain text. You can keep one item per line."
+            placeholderTextColor={COLORS.textLight}
+            value={menuText}
+            onChangeText={setMenuText}
+            multiline
+            numberOfLines={6}
+          />
         </CollapsibleSection>
 
         {/* Section 3: Business Hours */}
@@ -526,52 +467,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
   },
   ocrButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  
-  extractedSection: { marginTop: SPACING.md, gap: SPACING.xs },
-  extractedTitle: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.xs },
-  extractedItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  extractedText: { color: COLORS.text, flex: 1, fontSize: 13 },
-  clearText: { color: COLORS.error, fontSize: 12, marginTop: SPACING.xs },
-  
-  // Menu input
-  menuInputRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: SPACING.sm },
-  menuInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    color: COLORS.text,
-    backgroundColor: COLORS.background,
-  },
-  addButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  
-  // Menu list
-  menuList: { marginTop: SPACING.sm, gap: SPACING.xs },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  menuItemText: { color: COLORS.text, flex: 1 },
   
   // Text inputs
   textInput: {

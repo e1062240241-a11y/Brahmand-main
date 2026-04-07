@@ -41,6 +41,7 @@ from services.push_notification_service import push_service
 from services.notification_service import NotificationService
 from services.prokerala_panchang_service import prokerala_panchang_service
 from services.prokerala_astrology_service import prokerala_astrology_service
+from services.firebase_auth_service import FirebaseAuthService
 
 try:
     from google.cloud import vision
@@ -52,7 +53,7 @@ from models.schemas import (
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
     CircleCreate, CircleJoin, CircleUpdate, CircleInvite, CirclePrivacy,
     HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
-    VendorCreate, VendorUpdate, CulturalCommunityUpdate,
+    VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate, CulturalCommunityUpdate,
     SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel
 )
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -76,6 +77,29 @@ _sandbox_auth_cache = {
 }
 
 _panchang_prefetch_task: Optional[asyncio.Task] = None
+
+HOSPITAL_SEARCH_FALLBACK = [
+    "AIIMS Delhi",
+    "Apollo Hospitals, Chennai",
+    "Fortis Memorial Research Institute, Gurgaon",
+    "Narayana Institute of Cardiac Sciences, Bangalore",
+    "Tata Memorial Hospital, Mumbai",
+    "Christian Medical College, Vellore",
+    "Medanta - The Medicity, Gurgaon",
+    "Kokilaben Dhirubhai Ambani Hospital, Mumbai",
+    "PGIMER, Chandigarh",
+    "Sir Ganga Ram Hospital, Delhi",
+    "KEM Hospital, Mumbai",
+    "Max Super Speciality Hospital, Saket",
+    "Manipal Hospitals, Bangalore",
+    "Lilavati Hospital, Mumbai",
+    "King Edward Memorial Hospital, Mumbai",
+    "Sanjay Gandhi PGIMS, Lucknow",
+    "Amrita Institute of Medical Sciences, Kochi",
+    "JJ Hospital, Mumbai",
+    "NIMHANS, Bangalore",
+    "CMC Ludhiana",
+]
 
 
 def _seconds_until_next_midnight(tz_name: str) -> int:
@@ -327,12 +351,22 @@ async def _auto_approve_vendor_for_test_phone(db: FirestoreDB, user_id: str, pho
 
 # =================== MIDDLEWARE ===================
 
+cors_origins = os.getenv('CORS_ORIGINS', '*')
+if cors_origins == '*':
+    allowed_origins = []
+    allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app)$"
+else:
+    allowed_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    allow_origin_regex = None
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=allowed_origins,
+    allow_origin_regex=allow_origin_regex,
+    allow_methods=['*'],
+    allow_headers=['*'],
+    expose_headers=['*'],
 )
 
 
@@ -469,32 +503,14 @@ async def reset_database(confirm: str = ""):
 
 @api_router.post("/auth/send-otp")
 async def send_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
-    """
-    Send OTP via Firebase Phone Auth
-    Frontend should use Firebase Auth SDK to send OTP
-    This endpoint is for backend tracking only
-    """
-    phone = request.phone
-    if len(phone) < 10:
-        raise HTTPException(status_code=400, detail="Invalid phone number")
-    
-    db = await get_db()
-    
-    # Store OTP request for tracking (Firebase sends actual OTP)
-    otp_data = {
-        "phone": phone,
-        "requested_at": datetime.utcnow().isoformat(),
-        "verified": False
-    }
-    
-    existing = await db.find_one('otps', [('phone', '==', phone)])
-    if existing:
-        await db.update_document('otps', existing['id'], otp_data)
-    else:
-        await db.create_document('otps', otp_data)
-    
-    logger.info(f"OTP request for {phone} - Firebase will send actual SMS")
-    return {"message": "OTP sent successfully", "phone": phone}
+    """Send OTP via Twilio SMS provider."""
+    try:
+        return await FirebaseAuthService.send_otp(request.phone)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"/auth/send-otp failed for phone={request.phone}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
 
 
 @api_router.post("/auth/verify-firebase-token")
@@ -554,48 +570,14 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
-    """
-    Legacy OTP verification (kept for backward compatibility)
-    For production, use /auth/verify-firebase-token instead
-    """
-    db = await get_db()
-    
-    otp_record = await db.find_one('otps', [('phone', '==', request.phone)])
-    if not otp_record:
-        raise HTTPException(status_code=400, detail="OTP not found")
-    
-    if otp_record.get('attempts', 0) >= 5:
-        raise HTTPException(status_code=400, detail="Too many attempts")
-    
-    # Update attempts
-    await db.update_document('otps', otp_record['id'], {
-        'attempts': otp_record.get('attempts', 0) + 1
-    })
-    
-    # For development/testing, accept 123456
-    if request.otp != "123456":
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    
-    # Delete OTP
-    await db.delete_document('otps', otp_record['id'])
-    
-    # Check if user exists
-    user = await db.get_user_by_phone(request.phone)
-    if user and user.get('sl_id'):
-        await _auto_approve_vendor_for_test_phone(db, user['id'], request.phone)
-        token = create_jwt_token(user['id'], user['sl_id'])
-        return {
-            "message": "Login successful",
-            "token": token,
-            "user": user,
-            "is_new_user": False
-        }
-    
-    return {
-        "message": "OTP verified",
-        "is_new_user": True,
-        "phone": request.phone
-    }
+    """Verify OTP previously sent by Twilio."""
+    try:
+        return await FirebaseAuthService.verify_otp(request.phone, request.otp)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"/auth/verify-otp failed for phone={request.phone}: {e}")
+        raise HTTPException(status_code=500, detail="OTP verification failed")
 
 
 @api_router.post("/admin/auth/login")
@@ -942,6 +924,44 @@ async def search_user(sl_id: str, token_data: dict = Depends(verify_token)):
     return {"sl_id": user["sl_id"], "name": user["name"], "photo": user.get("photo"), "badges": user.get("badges", [])}
 
 
+@api_router.get("/users")
+async def list_users(
+    limit: int = 200,
+    search: Optional[str] = None,
+    token_data: dict = Depends(verify_token)
+):
+    """List users for private chat discovery (safe public fields only)."""
+    db = await get_db()
+
+    safe_limit = max(1, min(limit, 500))
+    users = await db.query_documents('users', limit=safe_limit)
+
+    current_user_id = token_data["user_id"]
+    query = (search or "").strip().lower()
+
+    result = []
+    for user in users:
+        if user.get('id') == current_user_id:
+            continue
+
+        name = str(user.get('name') or '').strip()
+        sl_id = str(user.get('sl_id') or '').strip()
+        if not name or not sl_id:
+            continue
+
+        if query and query not in name.lower() and query not in sl_id.lower():
+            continue
+
+        result.append({
+            "id": user.get('id'),
+            "name": name,
+            "sl_id": sl_id,
+            "photo": user.get('photo')
+        })
+
+    return result
+
+
 @api_router.get("/user/verification-status")
 async def get_verification_status(token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -1176,6 +1196,171 @@ async def forward_geocode(request: dict):
         raise HTTPException(status_code=500, detail="Failed to geocode this location")
 
 
+@api_router.post("/places/hospitals/search")
+async def search_hospitals(request: dict):
+    """Search hospitals via Google Places API from backend to avoid browser CORS issues."""
+    query = str(request.get("query") or "").strip()
+    limit = int(request.get("limit") or 10)
+    limit = max(1, min(limit, 20))
+
+    if len(query) < 2:
+        return {
+            "results": [
+                {"name": name, "address": name, "area": "", "city": ""}
+                for name in HOSPITAL_SEARCH_FALLBACK[:limit]
+            ]
+        }
+
+    api_key = (
+        os.environ.get("GOOGLE_PLACES_API_KEY")
+        or os.environ.get("GOOGLE_MAPS_API_KEY")
+        or os.environ.get("GOOGLE_CLOUD_VISION_API_KEY")
+    )
+
+    if not api_key:
+        filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+        return {
+            "results": [
+                {"name": name, "address": name, "area": "", "city": ""}
+                for name in filtered[:limit]
+            ]
+        }
+
+    try:
+        autocomplete_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        autocomplete_params = {
+            "input": query,
+            "key": api_key,
+            "language": "en",
+            "components": "country:in",
+            "types": "establishment",
+        }
+
+        autocomplete_response = await asyncio.to_thread(
+            requests.get,
+            autocomplete_url,
+            params=autocomplete_params,
+            timeout=10,
+        )
+
+        normalized = []
+
+        if autocomplete_response.status_code == 200:
+            autocomplete_payload = autocomplete_response.json() if autocomplete_response.content else {}
+            predictions = autocomplete_payload.get("predictions", []) if isinstance(autocomplete_payload, dict) else []
+
+            details_url = "https://maps.googleapis.com/maps/api/place/details/json"
+            seen_names = set()
+
+            for prediction in predictions:
+                place_id = prediction.get("place_id")
+                if not place_id:
+                    continue
+
+                details_params = {
+                    "key": api_key,
+                    "place_id": place_id,
+                    "fields": "name,formatted_address,address_components",
+                    "language": "en",
+                }
+
+                details_response = await asyncio.to_thread(
+                    requests.get,
+                    details_url,
+                    params=details_params,
+                    timeout=10,
+                )
+                if details_response.status_code != 200:
+                    continue
+
+                details_payload = details_response.json() if details_response.content else {}
+                result = details_payload.get("result", {}) if isinstance(details_payload, dict) else {}
+
+                name = str(result.get("name") or prediction.get("structured_formatting", {}).get("main_text") or "").strip()
+                if not name:
+                    continue
+
+                lowered = name.lower()
+                if lowered in seen_names:
+                    continue
+                seen_names.add(lowered)
+
+                address = str(result.get("formatted_address") or prediction.get("description") or name).strip()
+                components = result.get("address_components", []) if isinstance(result.get("address_components", []), list) else []
+
+                city = ""
+                area = ""
+                for component in components:
+                    types = component.get("types", [])
+                    if not area and ("sublocality" in types or "sublocality_level_1" in types or "neighborhood" in types):
+                        area = component.get("long_name", "")
+                    if not city and ("locality" in types or "administrative_area_level_2" in types):
+                        city = component.get("long_name", "")
+
+                normalized.append({
+                    "name": name,
+                    "address": address,
+                    "area": area,
+                    "city": city,
+                })
+
+                if len(normalized) >= limit:
+                    break
+
+        if not normalized:
+            textsearch_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+            textsearch_params = {
+                "query": f"{query} hospital",
+                "key": api_key,
+                "language": "en",
+                "region": "in",
+            }
+
+            textsearch_response = await asyncio.to_thread(
+                requests.get,
+                textsearch_url,
+                params=textsearch_params,
+                timeout=10,
+            )
+
+            if textsearch_response.status_code == 200:
+                textsearch_payload = textsearch_response.json() if textsearch_response.content else {}
+                rows = textsearch_payload.get("results", []) if isinstance(textsearch_payload, dict) else []
+                for row in rows:
+                    name = str(row.get("name") or "").strip()
+                    if not name:
+                        continue
+                    address = str(row.get("formatted_address") or name).strip()
+                    normalized.append({
+                        "name": name,
+                        "address": address,
+                        "area": "",
+                        "city": "",
+                    })
+                    if len(normalized) >= limit:
+                        break
+
+        if not normalized:
+            filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+            normalized = [
+                {"name": name, "address": name, "area": "", "city": ""}
+                for name in filtered[:limit]
+            ]
+
+        return {"results": normalized[:limit]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Hospital search error: {e}")
+        filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+        return {
+            "results": [
+                {"name": name, "address": name, "area": "", "city": ""}
+                for name in filtered[:limit]
+            ]
+        }
+
+
 # =================== COMMUNITIES ===================
 
 @api_router.get("/communities")
@@ -1367,15 +1552,86 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     
     # Check if chat exists
     chat = await db.get_document('chats', chat_id)
+    now = datetime.utcnow()
+    # Legacy chats created before request feature may have no request_status.
+    # Treat these as approved to preserve existing conversations.
+    request_status = (chat or {}).get('request_status', 'approved') if chat else 'pending'
+    if request_status not in ('pending', 'approved', 'rejected'):
+        request_status = 'approved'
+
+    request_by = (chat or {}).get('request_by') if chat else sender_id
+
+    # If existing chat has no request_status field, set it explicitly to approved.
+    if chat and 'request_status' not in chat:
+        await db.update_document('chats', chat_id, {
+            'request_status': 'approved',
+            'request_updated_at': now,
+            'updated_at': now,
+        })
+
+    def _as_datetime(value):
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return None
+        return None
+
+    retry_after_dt = _as_datetime((chat or {}).get('request_retry_after'))
+
+    if chat:
+        if request_status == 'pending':
+            if sender_id == request_by:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Message request is pending approval. Wait for approve/deny response."
+                )
+            raise HTTPException(
+                status_code=403,
+                detail="Approve this message request before sending messages."
+            )
+
+        if request_status == 'rejected':
+            if sender_id == request_by:
+                if retry_after_dt and now < retry_after_dt:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Request denied. You can send another request after {retry_after_dt.isoformat()}"
+                    )
+
+                await db.update_document('chats', chat_id, {
+                    'request_status': 'pending',
+                    'request_by': sender_id,
+                    'request_retry_after': None,
+                    'request_updated_at': now,
+                    'last_message': message.content[:100],
+                    'updated_at': now,
+                })
+                chat = await db.get_document('chats', chat_id)
+                request_status = 'pending'
+                request_by = sender_id
+            else:
+                raise HTTPException(
+                    status_code=403,
+                    detail="This conversation is blocked. Only requester can retry after cooldown."
+                )
     
     if not chat:
         # Create new private chat document
         chat_data = {
             'chat_type': 'private',
             'members': sorted_members,
-            'created_at': datetime.utcnow(),
+            'created_at': now,
             'last_message': message.content[:100],  # Preview of last message
-            'updated_at': datetime.utcnow()
+            'updated_at': now,
+            'request_status': 'pending',
+            'request_by': sender_id,
+            'request_updated_at': now,
+            'request_retry_after': None,
         }
         await db.set_document('chats', chat_id, chat_data)
         logger.info(f"Created new private chat: {chat_id}")
@@ -1383,11 +1639,10 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
         # Update chat with last message
         await db.update_document('chats', chat_id, {
             'last_message': message.content[:100],
-            'updated_at': datetime.utcnow()
+            'updated_at': now
         })
     
     # Create message in messages subcollection
-    now = datetime.utcnow()
     msg_data = {
         'sender_id': sender_id,
         'sender_name': sender['name'],
@@ -1403,6 +1658,7 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     # Response data (with proper timestamps for JSON)
     response_msg = {
         'id': msg_id,
+        'chat_id': chat_id,
         'sender_id': sender_id,
         'sender_name': sender['name'],
         'sender_photo': sender.get('photo'),
@@ -1415,6 +1671,15 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     
     # Emit via socket
     await sio.emit('new_dm', response_msg, room=chat_id)
+
+    if request_status == 'pending':
+        await sio.emit('dm_request_updated', {
+            'chat_id': chat_id,
+            'request_status': 'pending',
+            'request_by': request_by,
+            'request_retry_after': None,
+            'updated_at': now.isoformat(),
+        }, room=chat_id)
     
     # Send push notification to recipient
     try:
@@ -1486,7 +1751,10 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
                     "last_message_at": chat.get('updated_at', chat.get('created_at')),
                     "last_message_status": last_message_status,
                     "last_message_sender_id": last_message_sender_id,
-                    "created_at": chat.get('created_at')
+                    "created_at": chat.get('created_at'),
+                    "request_status": chat.get('request_status', 'approved'),
+                    "request_by": chat.get('request_by'),
+                    "request_retry_after": chat.get('request_retry_after'),
                 })
     
     # Sort by last_message_at (most recent first)
@@ -1505,6 +1773,133 @@ async def get_dm_messages(chat_id: str, limit: int = 50, token_data: dict = Depe
     chat = await db.get_document('chats', chat_id)
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    messages = await db.get_chat_messages(chat_id, limit)
+    return messages
+
+
+@api_router.post("/dm/{chat_id}/request/approve")
+async def approve_dm_request(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Approve a pending direct message request"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if chat.get('chat_type') != 'private':
+        raise HTTPException(status_code=400, detail="Only private chat requests can be approved")
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    request_status = chat.get('request_status', 'approved')
+    request_by = chat.get('request_by')
+    if request_status != 'pending':
+        raise HTTPException(status_code=400, detail="No pending request to approve")
+    if user_id == request_by:
+        raise HTTPException(status_code=400, detail="Requester cannot approve own request")
+
+    now = datetime.utcnow()
+    await db.update_document('chats', chat_id, {
+        'request_status': 'approved',
+        'request_updated_at': now,
+        'request_approved_by': user_id,
+        'request_retry_after': None,
+        'updated_at': now,
+    })
+
+    await sio.emit('dm_request_updated', {
+        'chat_id': chat_id,
+        'request_status': 'approved',
+        'request_by': request_by,
+        'request_retry_after': None,
+        'updated_at': now.isoformat(),
+    }, room=chat_id)
+
+    return {'message': 'Message request approved'}
+
+
+@api_router.post("/dm/{chat_id}/request/deny")
+async def deny_dm_request(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Deny a pending direct message request and lock requester for 24 hours"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if chat.get('chat_type') != 'private':
+        raise HTTPException(status_code=400, detail="Only private chat requests can be denied")
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    request_status = chat.get('request_status', 'approved')
+    request_by = chat.get('request_by')
+    if request_status != 'pending':
+        raise HTTPException(status_code=400, detail="No pending request to deny")
+    if user_id == request_by:
+        raise HTTPException(status_code=400, detail="Requester cannot deny own request")
+
+    now = datetime.utcnow()
+    retry_after = now + timedelta(hours=24)
+    await db.update_document('chats', chat_id, {
+        'request_status': 'rejected',
+        'request_updated_at': now,
+        'request_denied_by': user_id,
+        'request_retry_after': retry_after,
+        'updated_at': now,
+    })
+
+    await sio.emit('dm_request_updated', {
+        'chat_id': chat_id,
+        'request_status': 'rejected',
+        'request_by': request_by,
+        'request_retry_after': retry_after.isoformat(),
+        'updated_at': now.isoformat(),
+    }, room=chat_id)
+
+    return {
+        'message': 'Message request denied',
+        'retry_after': retry_after.isoformat(),
+    }
+
+
+@api_router.delete("/dm/{chat_id}/messages")
+async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Clear all messages in a private chat"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    if chat.get('chat_type') != 'private':
+        raise HTTPException(status_code=400, detail="Can only clear private chats")
+
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Delete all messages in messages subcollection
+    from google.cloud import firestore
+    message_docs = db.client.collection('chats').document(chat_id).collection('messages').stream()
+    deleted = 0
+    for msg in message_docs:
+        try:
+            msg.reference.delete()
+            deleted += 1
+        except Exception:
+            pass
+
+    # Reset chat preview
+    await db.update_document('chats', chat_id, {
+        'last_message': '',
+        'updated_at': datetime.utcnow()
+    })
+
+    return {"message": f"Cleared {deleted} messages"}
     
     if user_id not in chat.get('members', []):
         raise HTTPException(status_code=403, detail="Not authorized to view this chat")
@@ -1585,6 +1980,17 @@ async def update_privacy_settings(settings: dict, token_data: dict = Depends(ver
 
 # =================== CIRCLES ===================
 
+def _circle_admin_ids(circle: dict) -> List[str]:
+    admin_ids = circle.get('admin_ids')
+    if isinstance(admin_ids, list) and admin_ids:
+        return [admin_id for admin_id in admin_ids if admin_id]
+    legacy_admin_id = circle.get('admin_id')
+    return [legacy_admin_id] if legacy_admin_id else []
+
+
+def _is_circle_admin(circle: dict, user_id: str) -> bool:
+    return user_id in _circle_admin_ids(circle)
+
 @api_router.get("/circles")
 async def get_circles(token_data: dict = Depends(verify_token)):
     """Get all circles the user is a member of"""
@@ -1596,16 +2002,27 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     for cid in user.get('circles', []):
         circle = await db.get_document('circles', cid)
         if circle:
+            member_names = []
+            for member_id in circle.get('members', []):
+                if member_id == user_id:
+                    continue
+                member_doc = await db.get_document('users', member_id)
+                if member_doc and member_doc.get('name'):
+                    member_names.append(member_doc['name'])
+
             circles.append({
                 "id": circle['id'],
                 "name": circle['name'],
                 "description": circle.get('description', ''),
+                "photo": circle.get('photo'),
                 "code": circle['code'],
                 "privacy": circle.get('privacy', 'private'),
                 "creator_id": circle.get('creator_id', circle.get('admin_id')),
                 "admin_id": circle.get('admin_id'),
+                "admin_ids": _circle_admin_ids(circle),
                 "member_count": len(circle.get('members', [])),
-                "is_admin": circle.get('admin_id') == user_id,
+                "member_names": member_names,
+                "is_admin": _is_circle_admin(circle, user_id),
                 "created_at": circle.get('created_at')
             })
     return circles
@@ -1626,10 +2043,12 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
     circle_data = {
         "name": data.name,
         "description": data.description or "",
+        "photo": data.photo,
         "code": code,
-        "privacy": data.privacy.value,
+        "privacy": "invite_code",  # Enforce invite-code-only groups
         "creator_id": user_id,
         "admin_id": user_id,
+        "admin_ids": [user_id],
         "members": [user_id],
         "member_details": [{
             "user_id": user_id,
@@ -1639,9 +2058,42 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
             "joined_at": datetime.utcnow().isoformat()
         }]
     }
-    
+
+    # Add optional selected members to the circle (excluding creator duplicate)
+    added_member_ids = []
+    if data.member_ids:
+        for member_id in data.member_ids:
+            if member_id and member_id != user_id and member_id not in circle_data['members']:
+                member_doc = await db.get_document('users', member_id)
+                if member_doc:
+                    circle_data['members'].append(member_id)
+                    circle_data['member_details'].append({
+                        "user_id": member_id,
+                        "name": member_doc.get('name', ''),
+                        "sl_id": member_doc.get('sl_id'),
+                        "photo": member_doc.get('photo'),
+                        "joined_at": datetime.utcnow().isoformat()
+                    })
+                    added_member_ids.append(member_id)
+
     circle_id = await db.create_document('circles', circle_data)
     await db.array_union_update('users', user_id, 'circles', [circle_id])
+
+    for member_id in added_member_ids:
+        await db.array_union_update('users', member_id, 'circles', [circle_id])
+    
+    # Send push notification to added members
+    if added_member_ids:
+        try:
+            from services.push_notification_service import push_service
+            await push_service.notify_circle_invite(
+                circle_id=circle_id,
+                circle_name=circle_data['name'],
+                inviter_name=user.get('name', 'Someone'),
+                member_ids=added_member_ids
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send circle invite notifications: {e}")
     
     logger.info(f"Circle created: {data.name} by user {user_id}")
     
@@ -1649,10 +2101,12 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
         "id": circle_id,
         "name": circle_data['name'],
         "description": circle_data['description'],
+        "photo": circle_data.get('photo'),
         "code": circle_data['code'],
         "privacy": circle_data['privacy'],
         "creator_id": user_id,
         "admin_id": user_id,
+        "admin_ids": [user_id],
         "member_count": 1,
         "is_admin": True,
         "created_at": datetime.utcnow().isoformat()
@@ -1693,9 +2147,11 @@ async def get_circle(circle_id: str, token_data: dict = Depends(verify_token)):
         "privacy": circle.get('privacy', 'private'),
         "creator_id": circle.get('creator_id', circle.get('admin_id')),
         "admin_id": circle.get('admin_id'),
+        "admin_ids": _circle_admin_ids(circle),
+        "photo": circle.get('photo'),
         "members": members_info,
         "member_count": len(circle.get('members', [])),
-        "is_admin": circle.get('admin_id') == user_id,
+        "is_admin": _is_circle_admin(circle, user_id),
         "created_at": circle.get('created_at')
     }
 
@@ -1710,7 +2166,7 @@ async def update_circle(circle_id: str, data: CircleUpdate, token_data: dict = D
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
     
-    if circle.get('admin_id') != user_id:
+    if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can update circle")
     
     update_data = {}
@@ -1720,12 +2176,25 @@ async def update_circle(circle_id: str, data: CircleUpdate, token_data: dict = D
         update_data['description'] = data.description
     if data.privacy is not None:
         update_data['privacy'] = data.privacy.value
-    
+    if data.photo is not None:
+        photo_data = data.photo
+        if photo_data:
+            from services.image_service import compress_base64_image, is_valid_image
+            if not is_valid_image(photo_data):
+                raise HTTPException(status_code=400, detail="Invalid circle photo")
+            try:
+                photo_data = compress_base64_image(photo_data, max_size=512, quality=85)
+            except Exception as e:
+                logger.warning(f"Failed to compress circle photo: {e}")
+                raise HTTPException(status_code=400, detail="Invalid circle photo")
+            update_data['photo'] = photo_data
+        else:
+            update_data['photo'] = None
+
     if update_data:
         await db.update_document('circles', circle_id, update_data)
-    
-    return {"message": "Circle updated successfully"}
 
+    return {"message": "Circle updated successfully"}
 
 @api_router.post("/circles/join")
 async def join_circle(data: CircleJoin, token_data: dict = Depends(verify_token)):
@@ -1790,7 +2259,7 @@ async def get_circle_requests(circle_id: str, token_data: dict = Depends(verify_
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
     
-    if circle.get('admin_id') != user_id:
+    if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can view requests")
     
     requests = await db.query_documents('circle_requests', filters=[
@@ -1811,7 +2280,7 @@ async def approve_circle_request(circle_id: str, request_user_id: str, token_dat
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
     
-    if circle.get('admin_id') != user_id:
+    if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can approve requests")
     
     # Find the request
@@ -1835,6 +2304,38 @@ async def approve_circle_request(circle_id: str, request_user_id: str, token_dat
     return {"message": f"User {request.get('user_name', request_user_id)} approved"}
 
 
+@api_router.post("/circles/{circle_id}/transfer-admin/{member_id}")
+async def transfer_circle_admin(circle_id: str, member_id: str, token_data: dict = Depends(verify_token)):
+    """Add a co-admin to the circle while keeping existing admins."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can assign admin rights")
+
+    if member_id not in circle.get('members', []):
+        raise HTTPException(status_code=400, detail="User is not a member of the circle")
+
+    admin_ids = _circle_admin_ids(circle)
+    if member_id in admin_ids:
+        return {"message": "User is already an admin"}
+
+    updated_admin_ids = [*admin_ids, member_id]
+    update_payload = {
+        'admin_ids': updated_admin_ids,
+    }
+    if not circle.get('admin_id'):
+        update_payload['admin_id'] = admin_ids[0] if admin_ids else user_id
+
+    await db.update_document('circles', circle_id, update_payload)
+    logger.info(f"Admin rights for circle {circle_id} granted by {user_id} to {member_id}")
+    return {"message": "Admin added successfully"}
+
+
 @api_router.post("/circles/{circle_id}/reject/{request_user_id}")
 async def reject_circle_request(circle_id: str, request_user_id: str, token_data: dict = Depends(verify_token)):
     """Reject a join request (admin only)"""
@@ -1845,7 +2346,7 @@ async def reject_circle_request(circle_id: str, request_user_id: str, token_data
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
     
-    if circle.get('admin_id') != user_id:
+    if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can reject requests")
     
     # Find the request
@@ -1875,7 +2376,7 @@ async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict 
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
     
-    if circle.get('admin_id') != user_id:
+    if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can invite members")
     
     # Find user by SL-ID
@@ -1910,9 +2411,17 @@ async def leave_circle(circle_id: str, token_data: dict = Depends(verify_token))
     if user_id not in circle.get('members', []):
         raise HTTPException(status_code=400, detail="Not a member of this circle")
     
-    # Admin cannot leave - must transfer or delete
-    if circle.get('admin_id') == user_id:
-        raise HTTPException(status_code=400, detail="Admin cannot leave. Transfer admin rights or delete the circle.")
+    admin_ids = _circle_admin_ids(circle)
+    is_admin = user_id in admin_ids
+    if is_admin and len(admin_ids) <= 1:
+        raise HTTPException(status_code=400, detail="Last admin cannot leave. Assign another admin or delete the circle.")
+
+    if is_admin:
+        updated_admin_ids = [admin_id for admin_id in admin_ids if admin_id != user_id]
+        update_payload = {'admin_ids': updated_admin_ids}
+        if circle.get('admin_id') == user_id:
+            update_payload['admin_id'] = updated_admin_ids[0] if updated_admin_ids else None
+        await db.update_document('circles', circle_id, update_payload)
     
     # Remove from circle
     await db.array_remove_update('circles', circle_id, 'members', [user_id])
@@ -1932,7 +2441,7 @@ async def delete_circle(circle_id: str, token_data: dict = Depends(verify_token)
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
     
-    if circle.get('admin_id') != user_id:
+    if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can delete circle")
     
     # Remove circle from all members' circle lists
@@ -1959,7 +2468,7 @@ async def remove_circle_member(circle_id: str, member_id: str, token_data: dict 
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
     
-    if circle.get('admin_id') != user_id:
+    if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can remove members")
     
     if member_id == user_id:
@@ -1967,6 +2476,17 @@ async def remove_circle_member(circle_id: str, member_id: str, token_data: dict 
     
     if member_id not in circle.get('members', []):
         raise HTTPException(status_code=400, detail="User is not a member")
+
+    admin_ids = _circle_admin_ids(circle)
+    if member_id in admin_ids and len(admin_ids) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot remove the last admin")
+
+    if member_id in admin_ids:
+        updated_admin_ids = [admin_id for admin_id in admin_ids if admin_id != member_id]
+        update_payload = {'admin_ids': updated_admin_ids}
+        if circle.get('admin_id') == member_id:
+            update_payload['admin_id'] = updated_admin_ids[0] if updated_admin_ids else None
+        await db.update_document('circles', circle_id, update_payload)
     
     # Remove member
     await db.array_remove_update('circles', circle_id, 'members', [member_id])
@@ -2338,8 +2858,8 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if target_user.get('kyc_status') != 'pending':
-        raise HTTPException(status_code=400, detail="No pending KYC for this user")
+    if target_user.get('kyc_status') not in ['pending', 'manual_review']:
+        raise HTTPException(status_code=400, detail="No reviewable KYC for this user")
     
     action = data.get('action')
     if action == 'verify':
@@ -3428,19 +3948,21 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
     update_data = {}
 
     if menu_items is not None:
-        if not isinstance(menu_items, list):
-            raise HTTPException(status_code=400, detail="menu_items must be a list")
+        if isinstance(menu_items, str):
+            menu_items = [item.strip() for item in menu_items.replace('\r', '').split('\n') if item.strip()]
+        elif not isinstance(menu_items, list):
+            raise HTTPException(status_code=400, detail="menu_items must be a list or newline-separated string")
 
         cleaned_menu = [str(item).strip() for item in menu_items if str(item).strip()]
-        if len(cleaned_menu) > 30:
-            raise HTTPException(status_code=400, detail="Maximum 30 menu items allowed")
+        if len(cleaned_menu) > 100:
+            raise HTTPException(status_code=400, detail="Maximum 100 menu items allowed")
         update_data['menu_items'] = cleaned_menu
 
     if offers_home_delivery is not None:
-        update_data['offers_home_delivery'] = bool(offers_home_delivery)
+        update_data['offers_home_delivery'] = str(offers_home_delivery).strip().lower() in ['true', '1', 'yes', 'y']
 
     if offers_cash_on_delivery is not None:
-        update_data['offers_cash_on_delivery'] = bool(offers_cash_on_delivery)
+        update_data['offers_cash_on_delivery'] = str(offers_cash_on_delivery).strip().lower() in ['true', '1', 'yes', 'y']
 
     if business_hours is not None:
         update_data['business_hours'] = str(business_hours).strip()
@@ -3455,11 +3977,19 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
         update_data['website_link'] = str(website_link).strip()
 
     if social_media is not None:
+        if isinstance(social_media, str):
+            try:
+                import json
+
+                social_media = json.loads(social_media)
+            except Exception:
+                social_media = {'facebook': social_media}
+
         if isinstance(social_media, dict):
             update_data['social_media'] = {
-                'facebook': social_media.get('facebook', '').strip() if social_media.get('facebook') else '',
-                'instagram': social_media.get('instagram', '').strip() if social_media.get('instagram') else '',
-                'whatsapp': social_media.get('whatsapp', '').strip() if social_media.get('whatsapp') else '',
+                'facebook': str(social_media.get('facebook', '')).strip() if social_media.get('facebook') else '',
+                'instagram': str(social_media.get('instagram', '')).strip() if social_media.get('instagram') else '',
+                'whatsapp': str(social_media.get('whatsapp', '')).strip() if social_media.get('whatsapp') else '',
             }
 
     if not update_data:
@@ -3956,6 +4486,212 @@ async def delete_vendor(vendor_id: str, token_data: dict = Depends(verify_token)
     return {"message": "Vendor deleted successfully"}
 
 
+# =================== JOB PROFILES ===================
+
+@api_router.post("/jobs/profile")
+async def create_or_update_job_profile(data: JobProfileCreate, token_data: dict = Depends(verify_token)):
+    """Create or update current user's job profile."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+
+    profile_payload = {
+        "owner_id": user_id,
+        "name": (data.name or (user or {}).get('name') or '').strip(),
+        "current_address": (data.current_address or '').strip(),
+        "experience_years": int(data.experience_years or 0),
+        "profession": (data.profession or '').strip(),
+        "preferred_work_city": (data.preferred_work_city or '').strip(),
+        "latitude": data.latitude,
+        "longitude": data.longitude,
+        "location_link": data.location_link,
+        "photos": data.photos or [],
+        "cv_url": data.cv_url,
+    }
+
+    existing = await db.find_one('job_profiles', [('owner_id', '==', user_id)])
+    if existing:
+        await db.update_document('job_profiles', existing['id'], profile_payload)
+        profile = await db.get_document('job_profiles', existing['id'])
+        return profile
+
+    profile_id = await db.create_document('job_profiles', profile_payload)
+    await db.update_document('users', user_id, {'job_profile_id': profile_id})
+    profile_payload['id'] = profile_id
+    return profile_payload
+
+
+@api_router.get("/jobs/profile/my")
+async def get_my_job_profile(token_data: dict = Depends(verify_token)):
+    """Get current user's job profile."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    profile = await db.find_one('job_profiles', [('owner_id', '==', user_id)])
+    return profile
+
+
+def _can_view_job_cv(requester_user: Optional[dict], profile_owner_id: Optional[str]) -> bool:
+    if not requester_user:
+        return False
+    if requester_user.get('id') == profile_owner_id:
+        return True
+    return requester_user.get('kyc_status') == 'verified'
+
+
+@api_router.get("/jobs/profile/{profile_id}")
+async def get_job_profile(profile_id: str, token_data: dict = Depends(verify_token)):
+    """Get a single job profile with CV visibility gated by KYC verification."""
+    db = await get_db()
+    requester_id = token_data["user_id"]
+
+    profile = await db.get_document('job_profiles', profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Job profile not found")
+
+    requester_user = await db.get_document('users', requester_id)
+    if not _can_view_job_cv(requester_user, profile.get('owner_id')):
+        profile['cv_url'] = None
+
+    return profile
+
+
+@api_router.get("/jobs/profiles")
+async def get_job_profiles(
+    search: Optional[str] = None,
+    profession: Optional[str] = None,
+    city: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    limit: int = 50,
+    token_data: Optional[dict] = Depends(optional_verify_token)
+):
+    """Get job profiles with optional filters."""
+    db = await get_db()
+    profiles = await db.query_documents('job_profiles', limit=limit)
+    requester_user = None
+    requester_id = None
+    if token_data and token_data.get("user_id"):
+        requester_id = token_data["user_id"]
+        requester_user = await db.get_document('users', requester_id)
+
+    if profession:
+        profession_lower = profession.lower()
+        profiles = [p for p in profiles if profession_lower in str(p.get('profession', '')).lower()]
+
+    if city:
+        city_lower = city.lower()
+        profiles = [p for p in profiles if city_lower in str(p.get('preferred_work_city', '')).lower()]
+
+    if search:
+        term = search.lower()
+        profiles = [
+            p for p in profiles
+            if term in str(p.get('name', '')).lower()
+            or term in str(p.get('profession', '')).lower()
+            or term in str(p.get('preferred_work_city', '')).lower()
+        ]
+
+    if lat and lng:
+        import math
+        for profile in profiles:
+            if profile.get('latitude') and profile.get('longitude'):
+                R = 6371
+                lat1, lon1 = math.radians(lat), math.radians(lng)
+                lat2, lon2 = math.radians(profile['latitude']), math.radians(profile['longitude'])
+                dlat, dlon = lat2 - lat1, lon2 - lon1
+                a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+                profile['distance'] = R * 2 * math.asin(math.sqrt(a))
+            else:
+                profile['distance'] = None
+        profiles.sort(key=lambda p: p.get('distance') or 999999)
+
+    for profile in profiles:
+        if not _can_view_job_cv(requester_user, profile.get('owner_id')):
+            profile['cv_url'] = None
+
+    return profiles
+
+
+@api_router.post("/jobs/profile/{profile_id}/upload")
+async def upload_job_profile_file(
+    profile_id: str,
+    doc_type: str = Form(...),
+    file: UploadFile = File(...),
+    token_data: dict = Depends(verify_token)
+):
+    """Upload job profile assets (photo/cv) to Firebase Storage."""
+    from firebase_admin import storage as firebase_storage
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+    profile = await db.get_document('job_profiles', profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Job profile not found")
+
+    if profile.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can upload profile files")
+
+    if doc_type not in {'photo', 'cv'}:
+        raise HTTPException(status_code=400, detail="doc_type must be one of: photo, cv")
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    content_type = file.content_type or 'application/octet-stream'
+    if doc_type == 'photo' and content_type not in {'image/png', 'image/jpeg', 'image/jpg', 'image/webp'}:
+        raise HTTPException(status_code=400, detail="Photo must be an image")
+    if doc_type == 'cv' and content_type not in {
+        'application/pdf', 'image/png', 'image/jpeg', 'image/jpg',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    }:
+        raise HTTPException(status_code=400, detail="CV must be PDF, DOC, DOCX, or image")
+
+    extension = 'bin'
+    if '/' in content_type:
+        extension = content_type.split('/')[-1].replace('jpeg', 'jpg')
+
+    bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET') or 'sanatan-lok.firebasestorage.app'
+    try:
+        bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
+
+        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+        if doc_type == 'photo':
+            object_path = f"jobs/{profile_id}/photos/{timestamp}.{extension}"
+        else:
+            object_path = f"jobs/{profile_id}/cv/cv.{extension}"
+
+        blob = bucket.blob(object_path)
+        download_token = uuid4().hex
+        blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+        blob.upload_from_string(file_bytes, content_type=content_type)
+
+        public_url = (
+            f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
+            f"{quote(object_path, safe='')}?alt=media&token={download_token}"
+        )
+    except Exception as exc:
+        logger.exception("Job profile file upload failed for profile_id=%s doc_type=%s", profile_id, doc_type)
+        raise HTTPException(status_code=500, detail=f"Firebase Storage upload failed: {str(exc)}")
+
+    update_data = {}
+    if doc_type == 'photo':
+        update_data['photos'] = [public_url]
+    else:
+        update_data['cv_url'] = public_url
+
+    await db.update_document('job_profiles', profile_id, update_data)
+
+    return {
+        "message": "File uploaded",
+        "doc_type": doc_type,
+        "path": object_path,
+        "url": public_url,
+        **update_data,
+    }
+
+
 @api_router.get("/admin/vendors/review-queue")
 async def get_vendor_review_queue(
     status: Optional[str] = None,
@@ -4119,30 +4855,74 @@ async def get_user_cultural_community(token_data: dict = Depends(verify_token)):
     return {
         "cultural_community": user.get('cultural_community'),
         "change_count": user.get('cultural_change_count', 0),
-        "is_locked": user.get('cultural_change_count', 0) >= 2
+        "is_locked": False
     }
 
 
 @api_router.put("/user/cultural-community")
 async def update_cultural_community(data: CulturalCommunityUpdate, token_data: dict = Depends(verify_token)):
-    """Update user's cultural community (max 2 changes allowed)"""
+    """Update user's cultural community and auto-join/create matching culture group."""
     db = await get_db()
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
+
+    def _community_group_key(value: str) -> str:
+        return ''.join(ch.lower() if ch.isalnum() else '-' for ch in value).strip('-')
     
     current_count = user.get('cultural_change_count', 0)
     current_community = user.get('cultural_community')
     
     # If same community, no change needed
     if current_community == data.cultural_community:
-        return {"message": "Cultural community unchanged", "change_count": current_count}
+        return {
+            "message": "Cultural community unchanged",
+            "cultural_community": current_community,
+            "change_count": current_count,
+            "is_locked": False
+        }
     
-    # Check if locked
-    if current_count >= 2:
-        raise HTTPException(status_code=400, detail="Cultural community is locked. Maximum 2 changes allowed.")
-    
-    # Update community
-    new_count = current_count + 1 if current_community else 0  # First selection doesn't count as change
+    # Update community (no change limit)
+    new_count = current_count
+
+    previous_group_id = None
+    if current_community:
+        previous_key = _community_group_key(current_community)
+        previous_group = await db.find_one('circles', [('cultural_group_key', '==', previous_key)])
+        previous_group_id = previous_group.get('id') if previous_group else None
+
+    selected_key = _community_group_key(data.cultural_community)
+    selected_group = await db.find_one('circles', [('cultural_group_key', '==', selected_key)])
+
+    target_group_id = None
+    if not selected_group:
+        target_group_data = {
+            "name": f"My Culture Group • {data.cultural_community}",
+            "description": f"Members who selected {data.cultural_community} in My Culture Group.",
+            "photo": None,
+            "code": generate_circle_code(data.cultural_community),
+            "privacy": "invite_code",
+            "creator_id": user_id,
+            "admin_id": user_id,
+            "admin_ids": [user_id],
+            "members": [user_id],
+            "cultural_group_key": selected_key,
+            "cultural_group_name": data.cultural_community,
+        }
+        target_group_id = await db.create_document('circles', target_group_data)
+        await db.array_union_update('users', user_id, 'circles', [target_group_id])
+    else:
+        target_group_id = selected_group['id']
+        selected_members = selected_group.get('members', [])
+        if user_id not in selected_members:
+            await db.array_union_update('circles', target_group_id, 'members', [user_id])
+            await db.array_union_update('users', user_id, 'circles', [target_group_id])
+
+    if previous_group_id and previous_group_id != target_group_id:
+        try:
+            await db.array_remove_update('circles', previous_group_id, 'members', [user_id])
+            await db.array_remove_update('users', user_id, 'circles', [previous_group_id])
+        except Exception as exc:
+            logger.warning(f"Failed to remove user {user_id} from previous cultural group {previous_group_id}: {exc}")
     
     await db.update_document('users', user_id, {
         'cultural_community': data.cultural_community,
@@ -4154,8 +4934,9 @@ async def update_cultural_community(data: CulturalCommunityUpdate, token_data: d
     return {
         "message": "Cultural community updated",
         "cultural_community": data.cultural_community,
+        "group_id": target_group_id,
         "change_count": new_count,
-        "is_locked": new_count >= 2
+        "is_locked": False
     }
 
 
@@ -4183,13 +4964,45 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     # Get user location info for visibility matching
     location_area = user.get('home_location', {}) or user.get('location', {})
     
+    resolved_community_id = data.community_id
+    if not resolved_community_id:
+        visibility_type_map = {
+            "area": ["home_area", "office_area"],
+            "city": ["city"],
+            "state": ["state"],
+            "national": ["country"],
+        }
+        wanted_types = visibility_type_map.get(data.visibility_level.value, ["home_area", "office_area"])
+        user_community_ids = user.get('communities', []) or []
+
+        best_match_id = None
+        fallback_match_id = None
+        for comm_id in user_community_ids:
+            comm = await db.get_document('communities', comm_id)
+            if not comm:
+                continue
+            comm_type = comm.get('type')
+            if comm_type in wanted_types:
+                if data.visibility_level.value == "area" and comm_type == "home_area":
+                    best_match_id = comm_id
+                    break
+                if not best_match_id:
+                    best_match_id = comm_id
+            if not fallback_match_id:
+                fallback_match_id = comm_id
+
+        resolved_community_id = best_match_id or fallback_match_id
+
+    if not resolved_community_id:
+        raise HTTPException(status_code=400, detail="No target community found. Please set your location first.")
+
     request_data = {
         "user_id": user_id,
         "user_name": user.get('name'),
         "user_photo": user.get('photo'),
         "user_sl_id": user.get('sl_id'),
         "user_phone": user.get('phone'),
-        "community_id": data.community_id,
+        "community_id": resolved_community_id,
         "request_type": data.request_type.value,
         "visibility_level": data.visibility_level.value,
         "title": data.title,
@@ -4242,14 +5055,27 @@ async def get_community_requests(
         filters.append(('community_id', '==', community_id))
     
     # Filter by visibility based on user's location
-    location_area = user.get('location_area', {})
+    location_area = (
+        user.get('home_location')
+        or user.get('location')
+        or user.get('location_area')
+        or {}
+    )
     
     requests = await db.query_documents('community_requests', filters=filters, limit=limit)
     
     # Filter requests based on visibility level
     visible_requests = []
     for req in requests:
+        if req.get('user_id') == user_id:
+            visible_requests.append(req)
+            continue
+
         visibility = req.get('visibility_level', 'area')
+
+        if visibility_level and visibility != visibility_level:
+            continue
+
         if visibility == 'national':
             visible_requests.append(req)
         elif visibility == 'state' and req.get('state') == location_area.get('state'):

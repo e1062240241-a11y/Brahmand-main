@@ -2,25 +2,44 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Use localhost for local dev without .env
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const configuredApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+const configuredWebApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL_WEB;
+
+const isLocalhostUrl = (value?: string) =>
+  !!value && /localhost|127\.0\.0\.1/.test(value);
+
+const isWebRunningOnLocalhost =
+  Platform.OS === 'web' && typeof window !== 'undefined'
+    ? /localhost|127\.0\.0\.1/.test(window.location.hostname)
+    : false;
+
+const resolvedWebApiUrl =
+  configuredWebApiUrl && (!isLocalhostUrl(configuredWebApiUrl) || isWebRunningOnLocalhost)
+    ? configuredWebApiUrl
+    : configuredApiUrl;
+
+const API_URL = Platform.OS === 'web'
+  ? (resolvedWebApiUrl || 'http://localhost:8000')
+  : (configuredApiUrl || 'http://localhost:8000');
+
+const defaultHeaders: Record<string, string> = {
+  'Content-Type': 'application/json',
+};
+
+if (Platform.OS !== 'web') {
+  defaultHeaders['Bypass-Tunnel-Reminder'] = 'true';
+}
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-    'Bypass-Tunnel-Reminder': 'true', // Helps bypass localtunnel security warnings
-  },
+  headers: defaultHeaders,
 });
 
 const adminApi = axios.create({
   baseURL: `${API_URL}/api`,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-    'Bypass-Tunnel-Reminder': 'true',
-  },
+  headers: defaultHeaders,
 });
 
 const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);
@@ -59,8 +78,8 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    // If backend is temporarily unavailable, return a graceful fallback object.
-    if (RETRYABLE_STATUS_CODES.has(status)) {
+    // If backend is temporarily unavailable, return a graceful fallback only for read requests.
+    if (RETRYABLE_STATUS_CODES.has(status) && RETRYABLE_METHODS.has(method)) {
       console.warn('[API] Backend unavailable, returning fallback payload for 503/502');
       return Promise.resolve({
         data: null,
@@ -156,8 +175,14 @@ export const reverseGeocode = (latitude: number, longitude: number) =>
 export const forwardGeocode = (query: string) =>
   api.post('/geocode/forward', { query });
 
+export const searchHospitals = (query: string, limit: number = 10) =>
+  api.post('/places/hospitals/search', { query, limit });
+
 export const searchUserBySLId = (slId: string) => 
   api.get(`/user/search/${slId}`);
+
+export const getAllUsers = () => 
+  api.get('/users');
 
 // Community APIs
 export const getCommunities = () => 
@@ -173,7 +198,7 @@ export const agreeToRules = (communityId: string, subgroupType: string) =>
   api.post(`/communities/${communityId}/agree-rules`, { subgroup_type: subgroupType });
 
 // Circle APIs
-export const createCircle = (data: { name: string; description?: string; privacy?: 'private' | 'invite_code' }) => 
+export const createCircle = (data: { name: string; description?: string; privacy?: 'private' | 'invite_code'; member_ids?: string[] }) => 
   api.post('/circles', data);
 
 export const getCircles = () => 
@@ -182,7 +207,7 @@ export const getCircles = () =>
 export const getCircle = (circleId: string) => 
   api.get(`/circles/${circleId}`);
 
-export const updateCircle = (circleId: string, data: { name?: string; description?: string; privacy?: 'private' | 'invite_code' }) => 
+export const updateCircle = (circleId: string, data: { name?: string; description?: string; privacy?: 'private' | 'invite_code'; photo?: string }) => 
   api.put(`/circles/${circleId}`, data);
 
 export const joinCircle = (code: string) => 
@@ -199,6 +224,9 @@ export const rejectCircleRequest = (circleId: string, userId: string) =>
 
 export const inviteToCircle = (circleId: string, slId: string) => 
   api.post(`/circles/${circleId}/invite`, { sl_id: slId });
+
+export const transferCircleAdmin = (circleId: string, memberId: string) =>
+  api.post(`/circles/${circleId}/transfer-admin/${memberId}`);
 
 export const leaveCircle = (circleId: string) => 
   api.post(`/circles/${circleId}/leave`);
@@ -231,6 +259,18 @@ export const getConversations = () =>
 
 export const getDirectMessages = (conversationId: string, limit: number = 50) => 
   api.get(`/dm/${conversationId}?limit=${limit}`);
+
+export const markDirectMessagesRead = (conversationId: string) =>
+  api.post(`/dm/${conversationId}/read`);
+
+export const clearDirectMessages = (conversationId: string) => 
+  api.delete(`/dm/${conversationId}/messages`);
+
+export const approveDirectMessageRequest = (conversationId: string) =>
+  api.post(`/dm/${conversationId}/request/approve`);
+
+export const denyDirectMessageRequest = (conversationId: string) =>
+  api.post(`/dm/${conversationId}/request/deny`);
 
 // Discover APIs
 export const discoverCommunities = () => 
@@ -457,6 +497,9 @@ export const getCommunityRequests = (params?: {
 export const getMyCommunityRequests = () => 
   api.get('/community-requests/my');
 
+export const getMyActiveCommunityRequests = () => 
+  api.get('/community-requests/my', { params: { status: 'active' } });
+
 export const resolveCommunityRequest = (requestId: string) => 
   api.post(`/community-requests/${requestId}/resolve`);
 
@@ -575,7 +618,7 @@ export const uploadVendorBusinessImage = (
     await appendMultipartFile(formData, 'file', file);
 
     return api.post(`/vendors/${vendorId}/business/images/upload`, formData, {
-      headers: Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
     });
   })();
 };
@@ -591,7 +634,7 @@ export const uploadVendorKycFile = (
     await appendMultipartFile(formData, 'file', file);
 
     return api.post(`/vendors/${vendorId}/kyc/upload`, formData, {
-      headers: Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
     });
   })();
 };
@@ -683,6 +726,54 @@ export const addVendorPhoto = (vendorId: string, photo: string) =>
 export const deleteVendor = (vendorId: string) => 
   api.delete(`/vendors/${vendorId}`);
 
+export interface JobProfilePayload {
+  name: string;
+  current_address: string;
+  experience_years: number;
+  profession: string;
+  preferred_work_city: string;
+  latitude?: number;
+  longitude?: number;
+  location_link?: string;
+  photos?: string[];
+  cv_url?: string;
+}
+
+export const createOrUpdateJobProfile = (data: JobProfilePayload) =>
+  api.post('/jobs/profile', data);
+
+export const getMyJobProfile = () =>
+  api.get('/jobs/profile/my');
+
+export const getJobProfile = (profileId: string) =>
+  api.get(`/jobs/profile/${profileId}`);
+
+export const getJobProfiles = (params?: {
+  search?: string;
+  profession?: string;
+  city?: string;
+  lat?: number;
+  lng?: number;
+  limit?: number;
+}) =>
+  api.get('/jobs/profiles', { params });
+
+export const uploadJobProfileFile = (
+  profileId: string,
+  docType: 'photo' | 'cv',
+  file: { uri: string; name: string; type: string }
+) => {
+  return (async () => {
+    const formData = new FormData();
+    formData.append('doc_type', docType);
+    await appendMultipartFile(formData, 'file', file);
+
+    return api.post(`/jobs/profile/${profileId}/upload`, formData, {
+      headers: { 'Content-Type': undefined },
+    });
+  })();
+};
+
 // =================== CULTURAL COMMUNITY APIS ===================
 
 export const getCulturalCommunities = (search?: string) => 
@@ -698,6 +789,17 @@ export const updateUserCulturalCommunity = (cultural_community: string) =>
 
 export const getWisdom = () => 
   api.get('/wisdom/today');
+
+export const getGitaShloka = async (chapter: number, verse: number) => {
+  try {
+    const response = await fetch(`https://vedicscriptures.github.io/slok/${chapter}/${verse}`);
+    if (!response.ok) throw new Error('Failed to fetch');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching Gita shloka:', error);
+    throw error;
+  }
+};
 
 export const getPanchang = () => 
   api.get('/panchang/today');

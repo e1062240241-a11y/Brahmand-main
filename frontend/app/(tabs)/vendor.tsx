@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   ScrollView, 
+  Pressable,
   TouchableOpacity, 
   RefreshControl,
   FlatList,
@@ -12,19 +13,40 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Platform
+  Platform,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance from '../../src/utils/formatDistance';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
+import { JobProfileModal } from '../../src/components/JobProfileModal';
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore, Vendor, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
+import { createOrUpdateJobProfile, getJobProfiles, getMyJobProfile, uploadJobProfileFile } from '../../src/services/api';
 import * as Location from 'expo-location';
 
-const TABS = ['Nearby', 'Pooja', 'Grocery', 'Restaurant', 'Festival'];
+const TABS = ['Nearby'];
+const MAIN_SECTIONS = ['Vendors', 'Jobs'];
+const TOP_SKILL_SUGGESTIONS = ['Carpenter', 'Housemaid', 'Plumber', 'Electrician', 'Cook', 'Teacher', 'Painter', 'Beautician'];
+
+interface JobProfile {
+  id: string;
+  owner_id: string;
+  name: string;
+  current_address: string;
+  experience_years: number;
+  profession: string;
+  preferred_work_city: string;
+  latitude?: number;
+  longitude?: number;
+  location_link?: string;
+  photos?: string[];
+  cv_url?: string;
+  distance?: number;
+}
 
 export default function VendorScreen() {
   const router = useRouter();
@@ -42,19 +64,36 @@ export default function VendorScreen() {
   } = useVendorStore();
   
   const [activeTab, setActiveTab] = useState('Nearby');
+  const [activeSection, setActiveSection] = useState('Vendors');
   const [refreshing, setRefreshing] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const [showJobProfileModal, setShowJobProfileModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
   const [searchCategory, setSearchCategory] = useState<string>('All');
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [searchPlaceholderIndex, setSearchPlaceholderIndex] = useState(0);
+  const [typedSkillPlaceholder, setTypedSkillPlaceholder] = useState('');
+  const [isPlaceholderPaused, setIsPlaceholderPaused] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [jobProfiles, setJobProfiles] = useState<JobProfile[]>([]);
+  const [myJobProfile, setMyJobProfile] = useState<JobProfile | null>(null);
+  const [jobsLoading, setJobsLoading] = useState(false);
+
+  const searchAnim = useRef(new Animated.Value(0)).current;
+  const filterAnim = useRef(new Animated.Value(0)).current;
+  const searchInputRef = useRef<TextInput | null>(null);
 
   const homeLocation = (user as any)?.home_location;
   const homeLatitude = homeLocation?.latitude;
   const homeLongitude = homeLocation?.longitude;
   const hasHomeCoordinates = typeof homeLatitude === 'number' && typeof homeLongitude === 'number';
+
+  const jobProfessionFilters = React.useMemo(() => {
+    const professions = [...new Set((jobProfiles || []).map((profile) => (profile.profession || '').trim()).filter(Boolean))];
+    return professions.sort();
+  }, [jobProfiles]);
 
   const loadData = useCallback(async () => {
     // Get user location
@@ -118,6 +157,31 @@ export default function VendorScreen() {
     await fetchCategories();
   }, [fetchVendors, fetchMyVendor, fetchCategories, hasHomeCoordinates, homeLatitude, homeLongitude]);
 
+  const loadJobsData = useCallback(async () => {
+    setJobsLoading(true);
+    try {
+      const [profilesRes, myProfileRes] = await Promise.all([
+        getJobProfiles({
+          search: searchTerm || undefined,
+          profession: searchCategory !== 'All' ? searchCategory : undefined,
+          lat: userLocation?.lat,
+          lng: userLocation?.lng,
+          limit: 50,
+        }),
+        getMyJobProfile(),
+      ]);
+
+      setJobProfiles((profilesRes?.data || []) as JobProfile[]);
+      setMyJobProfile((myProfileRes?.data || null) as JobProfile | null);
+    } catch (error: any) {
+      console.warn('Error loading jobs:', error?.message || error);
+      setJobProfiles([]);
+      setMyJobProfile(null);
+    } finally {
+      setJobsLoading(false);
+    }
+  }, [searchTerm, searchCategory, userLocation?.lat, userLocation?.lng]);
+
   useEffect(() => {
     // Redirect to auth if not authenticated after auth is loaded
     if (!authLoading && !isAuthenticated) {
@@ -132,6 +196,13 @@ export default function VendorScreen() {
   }, [loadData, userId, authLoading, isAuthenticated, router]);
 
   useEffect(() => {
+    if (!userId) return;
+    if (activeSection === 'Jobs') {
+      loadJobsData();
+    }
+  }, [activeSection, userId, loadJobsData]);
+
+  useEffect(() => {
     if (searchTerm) {
       const filtered = categories.filter(cat => 
         cat.toLowerCase().includes(searchTerm.toLowerCase())
@@ -141,6 +212,109 @@ export default function VendorScreen() {
       setFilteredCategories([]);
     }
   }, [searchTerm, categories]);
+
+  const searchSuggestions = React.useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return [] as Array<{ label: string; type: 'vendor' | 'category' | 'job' | 'profession' }>;
+
+    const seen = new Set<string>();
+    const suggestions: Array<{ label: string; type: 'vendor' | 'category' | 'job' | 'profession' }> = [];
+
+    if (activeSection === 'Jobs') {
+      (jobProfiles || []).forEach((job) => {
+        const name = (job.name || '').trim();
+        if (name && name.toLowerCase().includes(term)) {
+          const key = `job:${name.toLowerCase()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            suggestions.push({ label: name, type: 'job' });
+          }
+        }
+
+        const role = (job.profession || '').trim();
+        if (role && role.toLowerCase().includes(term)) {
+          const key = `profession:${role.toLowerCase()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            suggestions.push({ label: role, type: 'profession' });
+          }
+        }
+      });
+
+      return suggestions.slice(0, 10);
+    }
+
+    (vendors || []).forEach((vendor) => {
+      const name = (vendor.business_name || '').trim();
+      if (!name || !name.toLowerCase().includes(term)) return;
+      const key = `vendor:${name.toLowerCase()}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      suggestions.push({ label: name, type: 'vendor' });
+    });
+
+    filteredCategories.forEach((category) => {
+      const key = `category:${category.toLowerCase()}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      suggestions.push({ label: category, type: 'category' });
+    });
+
+    return suggestions.slice(0, 10);
+  }, [activeSection, searchTerm, vendors, filteredCategories, jobProfiles]);
+
+  useEffect(() => {
+    let typeTimeout: ReturnType<typeof setTimeout> | null = null;
+    let switchTimeout: ReturnType<typeof setTimeout> | null = null;
+    const currentSuggestion = TOP_SKILL_SUGGESTIONS[searchPlaceholderIndex];
+
+    if (showSearch && !searchTerm && isPlaceholderPaused) {
+      setTypedSkillPlaceholder(currentSuggestion);
+    } else if (showSearch && !searchTerm) {
+      let index = 0;
+
+      const typeNext = () => {
+        if (index <= currentSuggestion.length) {
+          setTypedSkillPlaceholder(currentSuggestion.slice(0, index));
+          index += 1;
+          typeTimeout = setTimeout(typeNext, 80);
+        } else {
+          switchTimeout = setTimeout(() => {
+            setSearchPlaceholderIndex((prev) => (prev + 1) % TOP_SKILL_SUGGESTIONS.length);
+          }, 1000);
+        }
+      };
+
+      typeNext();
+    } else {
+      setTypedSkillPlaceholder('');
+    }
+
+    return () => {
+      if (typeTimeout) {
+        clearTimeout(typeTimeout);
+      }
+      if (switchTimeout) {
+        clearTimeout(switchTimeout);
+      }
+    };
+  }, [showSearch, searchTerm, searchPlaceholderIndex, isPlaceholderPaused]);
+
+  useEffect(() => {
+    Animated.timing(searchAnim, {
+      toValue: showSearch ? 1 : 0,
+      duration: 375,
+      useNativeDriver: false,
+    }).start();
+  }, [showSearch, searchAnim]);
+
+  useEffect(() => {
+    Animated.timing(filterAnim, {
+      toValue: showCategoryFilter ? 1 : 0,
+      duration: 375,
+      useNativeDriver: false,
+    }).start();
+  }, [showCategoryFilter, filterAnim]);
 
   const displayVendors = React.useMemo(() => {
     let filtered = vendors || [];
@@ -165,10 +339,111 @@ export default function VendorScreen() {
     return filtered.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
   }, [vendors, activeTab, searchTerm, searchCategory]);
 
+  const displayJobProfiles = React.useMemo(() => {
+    let filtered = [...(jobProfiles || [])];
+
+    if (searchCategory !== 'All') {
+      const target = searchCategory.toLowerCase();
+      filtered = filtered.filter((profile) => (profile.profession || '').toLowerCase().includes(target));
+    }
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter((profile) => {
+        const name = (profile.name || '').toLowerCase();
+        const profession = (profile.profession || '').toLowerCase();
+        const city = (profile.preferred_work_city || '').toLowerCase();
+        return name.includes(term) || profession.includes(term) || city.includes(term);
+      });
+    }
+
+    return filtered.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
+  }, [jobProfiles, searchCategory, searchTerm]);
+
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    if (activeSection === 'Jobs') {
+      await loadJobsData();
+    } else {
+      await loadData();
+    }
     setRefreshing(false);
+  };
+
+  const handleCreateJobProfile = async (data: {
+    name: string;
+    currentAddress: string;
+    experienceYears: number;
+    profession: string;
+    preferredWorkCity: string;
+    latitude?: number;
+    longitude?: number;
+    locationLink?: string;
+    photoFile?: { uri: string; name: string; type: string };
+    cvFile?: { uri: string; name: string; type: string };
+  }) => {
+    try {
+      const profileRes = await createOrUpdateJobProfile({
+        name: data.name,
+        current_address: data.currentAddress,
+        experience_years: data.experienceYears,
+        profession: data.profession,
+        preferred_work_city: data.preferredWorkCity,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        location_link: data.locationLink,
+        photos: [],
+        cv_url: undefined,
+      });
+
+      const profileId = profileRes?.data?.id;
+      if (!profileId) {
+        throw new Error('Could not create job profile.');
+      }
+
+      const uploadedPhotos: string[] = [];
+      if (data.photoFile) {
+        const uploadRes = await uploadJobProfileFile(profileId, 'photo', data.photoFile);
+        const photos = uploadRes?.data?.photos || [];
+        if (Array.isArray(photos)) {
+          uploadedPhotos.splice(0, uploadedPhotos.length, ...photos);
+        }
+      }
+
+      let uploadedCvUrl: string | undefined;
+      if (data.cvFile) {
+        const cvRes = await uploadJobProfileFile(profileId, 'cv', data.cvFile);
+        uploadedCvUrl = cvRes?.data?.cv_url || cvRes?.data?.url;
+      }
+
+      await createOrUpdateJobProfile({
+        name: data.name,
+        current_address: data.currentAddress,
+        experience_years: data.experienceYears,
+        profession: data.profession,
+        preferred_work_city: data.preferredWorkCity,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        location_link: data.locationLink,
+        photos: uploadedPhotos,
+        cv_url: uploadedCvUrl,
+      });
+
+      Alert.alert('Success', 'Job profile saved successfully.');
+      await loadJobsData();
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      const detailMessage = typeof detail === 'string'
+        ? detail
+        : detail?.message || (detail ? JSON.stringify(detail) : '');
+      throw new Error(detailMessage || error?.message || 'Failed to save job profile.');
+    }
+  };
+
+  const handleSkillPlaceholderPress = () => {
+    const selectedSkill = TOP_SKILL_SUGGESTIONS[searchPlaceholderIndex];
+    setSearchTerm(selectedSkill);
+    setIsPlaceholderPaused(false);
   };
 
   const handleRegisterVendor = async (data: any) => {
@@ -247,7 +522,12 @@ export default function VendorScreen() {
         </View>
 
         <View style={styles.vendorInfo}>
-          <Text style={styles.vendorName}>{item.business_name || 'Unnamed Business'}</Text>
+          <View style={styles.vendorNameRow}>
+            <Text style={styles.vendorName}>{item.business_name || 'Unnamed Business'}</Text>
+            {item.kyc_status === 'verified' && (
+              <Ionicons name="checkmark-circle" size={16} color={COLORS.info} style={styles.vendorVerifiedIcon} />
+            )}
+          </View>
           
           {/* Categories */}
           {vendorCategories.length > 0 && (
@@ -281,6 +561,75 @@ export default function VendorScreen() {
     );
   };
 
+  const renderJobProfile = ({ item }: { item: JobProfile }) => {
+    const firstPhoto = (item.photos || []).find((url) => !!url);
+
+    return (
+      <TouchableOpacity
+        style={styles.vendorCard}
+        onPress={() => router.push(`/jobs/${item.id}`)}
+      >
+        <View style={styles.vendorImageContainer}>
+          {firstPhoto ? (
+            <Image source={{ uri: firstPhoto }} style={styles.vendorImage} />
+          ) : (
+            <View style={styles.vendorImagePlaceholder}>
+              <Ionicons name="briefcase" size={28} color={COLORS.primary} />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.vendorInfo}>
+          <View style={styles.vendorNameRow}>
+            <Text style={styles.vendorName}>{item.name || 'Unnamed Profile'}</Text>
+            {myJobProfile?.id === item.id && (
+              <Ionicons name="person-circle" size={16} color={COLORS.info} style={styles.vendorVerifiedIcon} />
+            )}
+          </View>
+
+          <View style={styles.categoriesRow}>
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryBadgeText}>{item.profession || 'Profession'}</Text>
+            </View>
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryBadgeText}>{item.experience_years || 0} yrs</Text>
+            </View>
+          </View>
+
+          <View style={styles.distanceRow}>
+            <Ionicons name="location" size={12} color={COLORS.textLight} />
+            <Text style={styles.distanceText}>{item.preferred_work_city || 'Preferred city not set'}</Text>
+          </View>
+        </View>
+
+        {item.cv_url ? (
+          <TouchableOpacity
+            style={styles.callButton}
+            onPress={async () => {
+              try {
+                const url = typeof item.cv_url === 'string' ? item.cv_url : '';
+                if (!url) {
+                  Alert.alert('Unavailable', 'CV link is not available.');
+                  return;
+                }
+                const canOpen = await Linking.canOpenURL(url);
+                if (!canOpen) {
+                  Alert.alert('Unavailable', 'Could not open CV link.');
+                  return;
+                }
+                await Linking.openURL(url);
+              } catch {
+                Alert.alert('Unavailable', 'Could not open CV link.');
+              }
+            }}
+          >
+            <Ionicons name="document-text" size={18} color={COLORS.primary} />
+          </TouchableOpacity>
+        ) : null}
+      </TouchableOpacity>
+    );
+  };
+
   // Show loading while checking auth
   if (authLoading) {
     return (
@@ -294,6 +643,22 @@ export default function VendorScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.sectionTabsContainer}>
+        <View style={styles.sectionTabsInner}>
+          {MAIN_SECTIONS.map((section) => (
+            <TouchableOpacity
+              key={section}
+              style={[styles.sectionTab, activeSection === section && styles.sectionTabActive]}
+              onPress={() => setActiveSection(section)}
+            >
+              <Text style={[styles.sectionTabText, activeSection === section && styles.sectionTabTextActive]}>
+                {section}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* Top Tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
@@ -309,119 +674,156 @@ export default function VendorScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <TouchableOpacity 
-          style={styles.headerIcon}
-          onPress={() => setShowSearch(!showSearch)}
+        <Animated.View
+          style={[
+            styles.inlineSearchContainer,
+            {
+              width: searchAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 230],
+              }),
+              opacity: searchAnim,
+            },
+          ]}
+          pointerEvents={showSearch ? 'auto' : 'none'}
         >
-          <Ionicons name="search" size={22} color={COLORS.text} />
+          <Ionicons name="search" size={16} color={COLORS.textLight} />
+          <Pressable
+            style={styles.inlineInputWrapper}
+            onPress={() => searchInputRef.current?.focus()}
+          >
+            {!searchTerm && (
+              <View style={styles.inlinePlaceholderRow} pointerEvents="box-none">
+                <Text style={styles.inlinePlaceholderText}>Search for "</Text>
+                <Pressable
+                  onPress={handleSkillPlaceholderPress}
+                  onHoverIn={() => setIsPlaceholderPaused(true)}
+                  onHoverOut={() => setIsPlaceholderPaused(false)}
+                >
+                  <Text style={styles.inlinePlaceholderBold}>{typedSkillPlaceholder}</Text>
+                </Pressable>
+                <Text style={styles.inlinePlaceholderText}>"</Text>
+              </View>
+            )}
+            <TextInput
+              ref={searchInputRef}
+              style={styles.inlineSearchInput}
+              placeholder=""
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              returnKeyType="search"
+              blurOnSubmit={false}
+            />
+          </Pressable>
+          {!!searchTerm && (
+            <TouchableOpacity onPress={() => setSearchTerm('')}>
+              <Ionicons name="close-circle" size={16} color={COLORS.textLight} />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+
+        <TouchableOpacity
+          style={styles.inlineFilterButton}
+          onPress={() => {
+            if (!showSearch) {
+              setShowSearch(true);
+            }
+            setShowCategoryFilter((prev) => !prev);
+          }}
+        >
+          <Ionicons name={showCategoryFilter ? 'close' : 'filter'} size={18} color={COLORS.primary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.headerIcon}
+          onPress={() => {
+            if (showSearch) {
+              setShowSearch(false);
+              setShowCategoryFilter(false);
+            } else {
+              setShowSearch(true);
+            }
+          }}
+        >
+          <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={COLORS.text} />
         </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      {showSearch && (
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputRow}>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={18} color={COLORS.textLight} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by business name or category"
-                placeholderTextColor={COLORS.textLight}
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                returnKeyType="search"
-                blurOnSubmit={false}
-              />
-              {searchTerm && (
-                <TouchableOpacity onPress={() => setSearchTerm('')}>
-                  <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
-                </TouchableOpacity>
-              )}
-            </View>
-
+      <Animated.View
+        style={[
+          styles.inlineFilterPanelWrapper,
+          {
+            opacity: filterAnim,
+            height: filterAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 76],
+            }),
+            overflow: 'hidden',
+          },
+        ]}
+        pointerEvents={showCategoryFilter ? 'auto' : 'none'}
+      >
+        <View style={styles.filterPanel}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
             <TouchableOpacity
-              style={styles.filterIconButton}
-              onPress={() => setShowCategoryFilter((prev) => !prev)}
+              style={[styles.categoryChip, searchCategory === 'All' && styles.categoryChipActive]}
+              onPress={() => {
+                setSearchCategory('All');
+                setShowCategoryFilter(false);
+              }}
             >
-              <Ionicons name="filter" size={22} color={COLORS.primary} />
+              <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>All</Text>
             </TouchableOpacity>
-          </View>
-
-          {searchCategory !== 'All' && (
-            <View style={styles.activeFilterContainer}>
-              <Text style={styles.activeFilterText}>Category: {searchCategory}</Text>
+            {(activeSection === 'Jobs' ? jobProfessionFilters : categories).map((cat) => (
               <TouchableOpacity
+                key={cat}
+                style={[styles.categoryChip, searchCategory === cat && styles.categoryChipActive]}
                 onPress={() => {
-                  setSearchCategory('All');
+                  setSearchCategory(cat);
                   setShowCategoryFilter(false);
                 }}
               >
-                <Ionicons name="close-circle" size={16} color={COLORS.textLight} />
+                <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
               </TouchableOpacity>
-            </View>
-          )}
-
-          {showCategoryFilter && (
-            <View style={styles.filterPanel}>
-              <View style={styles.chipsContainer}>
-                <TouchableOpacity
-                  style={[styles.categoryChip, searchCategory === 'All' && styles.categoryChipActive]}
-                  onPress={() => {
-                    setSearchCategory('All');
-                    setShowCategoryFilter(false);
-                  }}
-                >
-                  <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>All</Text>
-                </TouchableOpacity>
-                {categories.map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[styles.categoryChip, searchCategory === cat && styles.categoryChipActive]}
-                    onPress={() => {
-                      setSearchCategory(cat);
-                      setShowCategoryFilter(false);
-                    }}
-                  >
-                    <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Category Suggestions */}
-          {filteredCategories.length > 0 && !showCategoryFilter && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionsScroll}>
-              {filteredCategories.slice(0, 5).map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={styles.suggestionChip}
-                  onPress={() => setSearchTerm(cat)}
-                >
-                  <Text style={styles.suggestionText}>{cat}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-
-          {/* Active Filter Badge */}
-          {searchCategory !== 'All' && !showCategoryFilter && (
-            <View style={styles.activeFilterContainer}>
-              <Text style={styles.activeFilterText}>Filtered: {searchCategory}</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setSearchCategory('All');
-                }}
-              >
-                <Ionicons name="close-circle" size={16} color={COLORS.primary} />
-              </TouchableOpacity>
-            </View>
-          )}
+            ))}
+          </ScrollView>
         </View>
+      </Animated.View>
+
+      {!!searchTerm && searchSuggestions.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.suggestionsScroll}
+          contentContainerStyle={styles.suggestionsContent}
+        >
+          {searchSuggestions.map((suggestion) => (
+            <TouchableOpacity
+              key={`${suggestion.type}-${suggestion.label}`}
+              style={styles.suggestionChip}
+              onPress={() => {
+                if (suggestion.type === 'category' || suggestion.type === 'profession') {
+                  setSearchCategory(suggestion.label);
+                  setSearchTerm('');
+                } else {
+                  setSearchTerm(suggestion.label);
+                }
+              }}
+            >
+              <Text style={styles.suggestionText}>
+                {suggestion.type === 'category'
+                  ? `Category: ${suggestion.label}`
+                  : suggestion.type === 'profession'
+                    ? `Profession: ${suggestion.label}`
+                    : suggestion.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       )}
 
       {/* My Business Section (if vendor owner) */}
-      {myVendor && (
+      {activeSection === 'Vendors' && myVendor && (
         <TouchableOpacity 
           style={styles.myBusinessCard}
           onPress={() => router.push('/vendor/dashboard')}
@@ -437,8 +839,8 @@ export default function VendorScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Register Vendor Button */}
-      {!myVendor && (
+      {/* Create button */}
+      {activeSection === 'Vendors' && !myVendor && (
         <TouchableOpacity 
           style={styles.registerButton}
           onPress={() => setShowRegistrationModal(true)}
@@ -448,18 +850,29 @@ export default function VendorScreen() {
         </TouchableOpacity>
       )}
 
+      {activeSection === 'Jobs' && (
+        <TouchableOpacity
+          style={styles.registerButton}
+          onPress={() => setShowJobProfileModal(true)}
+        >
+          <Ionicons name="add-circle" size={20} color={COLORS.primary} />
+          <Text style={styles.registerText}>{myJobProfile ? 'Update Job Profile' : 'Create Job Profile'}</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Loading State */}
-      {loading && vendors.length === 0 && (
+      {((activeSection === 'Vendors' && loading && vendors.length === 0) || (activeSection === 'Jobs' && jobsLoading && jobProfiles.length === 0)) && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       )}
 
-      {/* Vendor List */}
+      {/* Listing */}
       <FlatList
-        data={displayVendors}
-        renderItem={renderVendor}
-        keyExtractor={(item) => item.id}
+        key={activeSection}
+        data={activeSection === 'Jobs' ? displayJobProfiles : displayVendors}
+        renderItem={activeSection === 'Jobs' ? (renderJobProfile as any) : (renderVendor as any)}
+        keyExtractor={(item: any) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl 
@@ -469,11 +882,19 @@ export default function VendorScreen() {
           />
         }
         ListEmptyComponent={
-          !loading ? (
+          !((activeSection === 'Vendors' && loading) || (activeSection === 'Jobs' && jobsLoading)) ? (
             <View style={styles.emptyState}>
-              <Ionicons name="storefront-outline" size={48} color={COLORS.textLight} />
-              <Text style={styles.emptyText}>No vendors found</Text>
-              <Text style={styles.emptySubtext}>Be the first to register in this area!</Text>
+              <Ionicons name={activeSection === 'Jobs' ? 'briefcase-outline' : 'storefront-outline'} size={48} color={COLORS.textLight} />
+              <Text style={styles.emptyText}>
+                {searchTerm
+                  ? `No '${searchTerm}' in your area.`
+                  : (activeSection === 'Jobs' ? 'No jobs found' : 'No vendors found')}
+              </Text>
+              {!searchTerm && (
+                <Text style={styles.emptySubtext}>
+                  {activeSection === 'Jobs' ? 'Create a job profile to appear here.' : 'Be the first to register in this area!'}
+                </Text>
+              )}
             </View>
           ) : null
         }
@@ -485,6 +906,12 @@ export default function VendorScreen() {
         onClose={() => setShowRegistrationModal(false)}
         onSubmit={handleRegisterVendor}
       />
+
+      <JobProfileModal
+        visible={showJobProfileModal}
+        onClose={() => setShowJobProfileModal(false)}
+        onSubmit={handleCreateJobProfile}
+      />
     </View>
   );
 }
@@ -493,6 +920,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  sectionTabsContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.xs,
+    backgroundColor: COLORS.background,
+  },
+  sectionTabsInner: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.xs,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  sectionTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  sectionTabActive: {
+    backgroundColor: `${COLORS.primary}15`,
+  },
+  sectionTabText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sectionTabTextActive: {
+    color: COLORS.primary,
   },
   loadingContainer: {
     padding: SPACING.xl,
@@ -531,11 +990,60 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
     marginRight: SPACING.sm,
   },
-  searchContainer: {
+  inlineSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    marginRight: SPACING.xs,
+    overflow: 'hidden',
+  },
+  inlineFilterButton: {
+    width: 34,
+    height: 34,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: `${COLORS.primary}10`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.xs,
+  },
+  inlineInputWrapper: {
+    flex: 1,
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  inlineSearchInput: {
+    width: '100%',
+    fontSize: 14,
+    color: COLORS.text,
+    paddingVertical: 0,
+    paddingLeft: 0,
+  },
+  inlinePlaceholderRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inlinePlaceholderText: {
+    color: COLORS.textLight,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  inlinePlaceholderBold: {
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  inlineFilterPanelWrapper: {
     backgroundColor: COLORS.surface,
-    padding: SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
+    paddingHorizontal: SPACING.sm,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -578,11 +1086,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.divider,
     padding: SPACING.sm,
-    marginTop: SPACING.sm,
+    marginTop: SPACING.xs,
     width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
     maxHeight: 400,
   },
   filterModalOverlay: {
@@ -616,7 +1121,7 @@ const styles = StyleSheet.create({
   },
   chipsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: SPACING.sm,
     paddingVertical: SPACING.xs,
   },
@@ -675,12 +1180,18 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   suggestionsScroll: {
-    marginTop: SPACING.sm,
+    marginTop: SPACING.xs,
+    maxHeight: 44,
+    paddingHorizontal: SPACING.md,
+  },
+  suggestionsContent: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
   },
   suggestionChip: {
     backgroundColor: `${COLORS.primary}15`,
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
+    paddingVertical: 6,
     borderRadius: 16,
     marginRight: SPACING.sm,
   },
@@ -774,11 +1285,19 @@ const styles = StyleSheet.create({
   vendorInfo: {
     flex: 1,
   },
+  vendorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  vendorVerifiedIcon: {
+    marginLeft: 4,
+  },
   vendorName: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 4,
   },
   categoriesRow: {
     flexDirection: 'row',

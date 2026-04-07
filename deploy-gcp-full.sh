@@ -74,15 +74,21 @@ env_file = Path(r"$ENV_FILE")
 backend_url = r"$BACKEND_URL"
 lines = env_file.read_text().splitlines()
 out = []
-seen = False
+seen_backend = False
+seen_web = False
 for line in lines:
     if line.startswith("EXPO_PUBLIC_BACKEND_URL="):
         out.append(f"EXPO_PUBLIC_BACKEND_URL={backend_url}")
-        seen = True
+        seen_backend = True
+    elif line.startswith("EXPO_PUBLIC_BACKEND_URL_WEB="):
+        out.append(f"EXPO_PUBLIC_BACKEND_URL_WEB={backend_url}")
+        seen_web = True
     else:
         out.append(line)
-if not seen:
+if not seen_backend:
     out.append(f"EXPO_PUBLIC_BACKEND_URL={backend_url}")
+if not seen_web:
+    out.append(f"EXPO_PUBLIC_BACKEND_URL_WEB={backend_url}")
 env_file.write_text("\n".join(out) + "\n")
 PY
 

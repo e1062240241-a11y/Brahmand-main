@@ -104,6 +104,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="circles" options={{ href: null }} />
       <Tabs.Screen name="discover" options={{ href: null }} />
+      <Tabs.Screen name="jobs" options={{ href: null }} />
     </Tabs>
   );
 }
