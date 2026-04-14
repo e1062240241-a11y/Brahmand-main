@@ -25,7 +25,7 @@ const IMAGE_SLOTS = [0, 1, 2, 3, 4];
 export default function VendorBusinessDetailsScreen() {
   const router = useRouter();
   const { myVendor, fetchMyVendor, uploadBusinessImage, updateBusinessProfile } = useVendorStore();
-  const { isLoading: authLoading, isAuthenticated } = useAuthStore();
+  const { isLoading: authLoading, isAuthenticated, user } = useAuthStore();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -37,6 +37,7 @@ export default function VendorBusinessDetailsScreen() {
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
   const [visionLoading, setVisionLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [localImagePreviews, setLocalImagePreviews] = useState<Record<number, { uri: string; type: string; name: string }>>({});
 
   // Form states
   const [menuText, setMenuText] = useState('');
@@ -78,6 +79,10 @@ export default function VendorBusinessDetailsScreen() {
     return existing;
   }, [myVendor?.business_gallery_images]);
 
+  const displayedGalleryImages = useMemo(() => {
+    return galleryImages.map((url, index) => localImagePreviews[index]?.uri || url || '');
+  }, [galleryImages, localImagePreviews]);
+
   const handleBack = () => {
     if (router.canGoBack && router.canGoBack()) {
       router.back();
@@ -89,10 +94,13 @@ export default function VendorBusinessDetailsScreen() {
   const validateAccess = () => {
     if (!myVendor) {
       Alert.alert('Business not found', 'Please register your business first.');
-      router.replace('/(tabs)/vendor');
+      router.replace('/vendor');
       return false;
     }
-    if ((myVendor as any).kyc_status !== 'verified') {
+
+    const isVendorVerified = (myVendor as any).kyc_status === 'verified';
+    const isUserKycVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+    if (!isVendorVerified && !isUserKycVerified) {
       Alert.alert('Not available', 'This section is available only for approved businesses.');
       router.replace('/vendor/dashboard');
       return false;
@@ -120,10 +128,21 @@ export default function VendorBusinessDetailsScreen() {
     const asset = result.assets[0];
     const fileName = (asset as any).fileName || `business-${slot + 1}.jpg`;
     const mimeType = asset.mimeType || 'image/jpeg';
+    const localUri = asset.uri;
+
+    setLocalImagePreviews((prev) => ({
+      ...prev,
+      [slot]: { uri: localUri, type: mimeType, name: fileName },
+    }));
 
     try {
       setLoadingSlot(slot);
-      await uploadBusinessImage(myVendor.id, slot, { uri: asset.uri, name: fileName, type: mimeType });
+      await uploadBusinessImage(myVendor.id, slot, { uri: localUri, name: fileName, type: mimeType });
+      setLocalImagePreviews((prev) => {
+        const next = { ...prev };
+        delete next[slot];
+        return next;
+      });
       await fetchMyVendor();
     } catch (error: any) {
       Alert.alert('Upload failed', error?.response?.data?.detail || 'Could not upload image.');
@@ -184,6 +203,18 @@ export default function VendorBusinessDetailsScreen() {
 
     try {
       setSaving(true);
+
+      const pendingImageSlots = Object.entries(localImagePreviews);
+      for (const [slotKey, preview] of pendingImageSlots) {
+        const slot = Number(slotKey);
+        if (!Number.isFinite(slot)) continue;
+        await uploadBusinessImage(myVendor.id, slot, {
+          uri: preview.uri,
+          name: preview.name,
+          type: preview.type,
+        });
+      }
+
       const normalizedMenuItems = menuText
         .split('\n')
         .map((item) => item.trim())
@@ -203,6 +234,7 @@ export default function VendorBusinessDetailsScreen() {
           whatsapp,
         },
       });
+      setLocalImagePreviews({});
       Alert.alert('Saved', 'Business details updated successfully.');
     } catch (error: any) {
       Alert.alert('Save failed', error?.response?.data?.detail || 'Could not save business details.');
@@ -240,7 +272,7 @@ export default function VendorBusinessDetailsScreen() {
           <Text style={styles.sectionDescription}>Add photos of your shop, products, or services to attract customers</Text>
           <View style={styles.imageGrid}>
             {IMAGE_SLOTS.map((slot) => {
-              const imageUrl = galleryImages[slot];
+              const imageUrl = displayedGalleryImages[slot];
               const isUploading = loadingSlot === slot;
               return (
                 <TouchableOpacity key={slot} style={styles.imageBox} onPress={() => pickAndUploadImage(slot)}>

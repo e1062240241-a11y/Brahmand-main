@@ -1,11 +1,29 @@
-import React, { useEffect } from 'react';
-import { Slot, usePathname } from 'expo-router';
+import React, { useEffect, useCallback } from 'react';
+import { Slot, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet, Linking } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler } from 'react-native';
 import { useAuthStore } from '../src/store/authStore';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { useAdminStore } from '../src/store/adminStore';
+
+function useAndroidBackHandler() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleBackPress = useCallback(() => {
+    if (pathname.startsWith('/community/')) {
+      router.replace('/messages');
+      return true;
+    }
+    return false;
+  }, [pathname, router]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => subscription.remove();
+  }, [handleBackPress]);
+}
 
 // Handle deep links for circle invites
 function useDeepLinkHandler() {
@@ -72,6 +90,7 @@ export default function RootLayout() {
   const { loadStoredAdminAuth } = useAdminStore();
   
   useDeepLinkHandler();
+  useAndroidBackHandler();
 
   useEffect(() => {
     Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {

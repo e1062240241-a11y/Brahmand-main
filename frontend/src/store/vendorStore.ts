@@ -42,7 +42,10 @@ export interface Vendor {
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
-  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected';
+  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected' | 'approved';
+  is_verified?: boolean;
+  review_status?: string;
+  review_state?: string;
   distance?: number;
   created_at: string;
 }
@@ -183,9 +186,13 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
         phone_number: data.phoneNumber,
         latitude: data.latitude,
         longitude: data.longitude,
+        kyc_status: 'pending' as const,
       };
       const response = await createVendorAPI(transformedData);
-      const newVendor = response.data;
+      const newVendor = {
+        ...response.data,
+        kyc_status: (response?.data?.kyc_status || 'pending') as Vendor['kyc_status'],
+      } as Vendor;
       set({ myVendor: newVendor });
       return newVendor;
     } catch (error: any) {

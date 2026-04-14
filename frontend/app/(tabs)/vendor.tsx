@@ -22,10 +22,11 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance from '../../src/utils/formatDistance';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
+import { VendorKYCModal } from '../../src/components/VendorKYCModal';
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore, Vendor, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
-import { createOrUpdateJobProfile, getJobProfiles, getMyJobProfile, uploadJobProfileFile } from '../../src/services/api';
+import { createOrUpdateJobProfile, getJobProfiles, getMyJobProfile, getKYCStatus, uploadJobProfileFile } from '../../src/services/api';
 import * as Location from 'expo-location';
 
 const TABS = ['Nearby'];
@@ -50,8 +51,12 @@ interface JobProfile {
 
 export default function VendorScreen() {
   const router = useRouter();
-  const { user, isLoading: authLoading, isAuthenticated } = useAuthStore();
+  const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const userId = user?.id;
+  const [kycStatus, setKycStatus] = useState<string | null>((user as any)?.kyc_status || null);
+  const currentKycStatus = kycStatus || (user as any)?.kyc_status || null;
+  const isKycVerified = currentKycStatus === 'verified' || Boolean((user as any)?.is_verified);
+  const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
   const { 
     vendors, 
     myVendor, 
@@ -68,6 +73,8 @@ export default function VendorScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [showJobProfileModal, setShowJobProfileModal] = useState(false);
+  const [showKycModal, setShowKycModal] = useState(false);
+  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
@@ -82,6 +89,35 @@ export default function VendorScreen() {
   const [jobsLoading, setJobsLoading] = useState(false);
 
   const searchAnim = useRef(new Animated.Value(0)).current;
+
+  const loadKycStatus = useCallback(async (): Promise<string | null> => {
+    try {
+      const response = await getKYCStatus();
+      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      setKycStatus(serverStatus);
+      updateUser({
+        kyc_status: serverStatus,
+        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+      } as any);
+      return serverStatus;
+    } catch (error) {
+      console.warn('Failed to refresh KYC status:', error);
+      return null;
+    }
+  }, [updateUser]);
+
+  const ensureKycVerifiedForCv = useCallback(async () => {
+    const latestStatus = await loadKycStatus();
+    const effectiveStatus = latestStatus || currentKycStatus;
+
+    if (effectiveStatus === 'verified') {
+      return true;
+    }
+
+    setKycModalVendorId(myVendor?.id || '');
+    setShowKycModal(true);
+    return false;
+  }, [loadKycStatus, currentKycStatus, myVendor?.id]);
   const filterAnim = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput | null>(null);
 
@@ -199,8 +235,9 @@ export default function VendorScreen() {
     if (!userId) return;
     if (activeSection === 'Jobs') {
       loadJobsData();
+      loadKycStatus();
     }
-  }, [activeSection, userId, loadJobsData]);
+  }, [activeSection, userId, loadJobsData, loadKycStatus]);
 
   useEffect(() => {
     if (searchTerm) {
@@ -363,6 +400,7 @@ export default function VendorScreen() {
   const handleRefresh = async () => {
     setRefreshing(true);
     if (activeSection === 'Jobs') {
+      await loadKycStatus();
       await loadJobsData();
     } else {
       await loadData();
@@ -448,7 +486,7 @@ export default function VendorScreen() {
 
   const handleRegisterVendor = async (data: any) => {
     try {
-      await createVendor({
+      const newVendor = await createVendor({
         businessName: data.businessName,
         ownerName: data.ownerName,
         yearsInBusiness: data.yearsInBusiness || 0,
@@ -459,14 +497,43 @@ export default function VendorScreen() {
         latitude: data.latitude || undefined,
         longitude: data.longitude || undefined,
       });
-      Alert.alert('Success', 'Your business has been registered!');
-      setShowRegistrationModal(false);
-      // Force refresh data so it shows immediately
+      
+      console.log('Vendor registration response:', JSON.stringify(newVendor, null, 2));
+      
+      // Refresh vendor data to get the actual status
       await fetchMyVendor();
       if (userLocation) {
         await fetchVendors(userLocation);
       } else {
         await fetchVendors();
+      }
+      
+      // Check vendor status and prompt accordingly
+      const kycStatus = newVendor?.kyc_status;
+      
+      console.log('KYC Status from registration:', kycStatus);
+      
+      setShowRegistrationModal(false);
+      
+      if (kycStatus === 'verified' || hasVerifiedKyc) {
+        Alert.alert('Approved', 'Your business has been registered and your KYC is already verified.');
+      } else {
+        // Show KYC modal for verification
+        Alert.alert(
+          'Registration Complete', 
+          'Your business is registered. Please complete KYC verification to make it visible and access all features.',
+          [
+            { text: 'Later', style: 'cancel' },
+            { 
+              text: 'Complete KYC', 
+              onPress: () => {
+                console.log('Opening KYC modal with vendor ID:', newVendor?.id);
+                setKycModalVendorId(newVendor?.id);
+                setShowKycModal(true);
+              }
+            }
+          ]
+        );
       }
     } catch (error: any) {
       console.error('Vendor API Registration Error:', error.response?.data);
@@ -501,6 +568,13 @@ export default function VendorScreen() {
 
   const renderVendor = ({ item }: { item: Vendor }) => {
     const vendorCategories = item?.categories || [];
+    const isApprovedVendor =
+      item.kyc_status === 'verified' ||
+      item.kyc_status === 'approved' ||
+      item.is_verified ||
+      (item as any).review_status === 'approved' ||
+      (item as any).review_status === 'verified' ||
+      (item as any).review_state === 'closed';
     
     return (
       <TouchableOpacity 
@@ -524,8 +598,8 @@ export default function VendorScreen() {
         <View style={styles.vendorInfo}>
           <View style={styles.vendorNameRow}>
             <Text style={styles.vendorName}>{item.business_name || 'Unnamed Business'}</Text>
-            {item.kyc_status === 'verified' && (
-              <Ionicons name="checkmark-circle" size={16} color={COLORS.info} style={styles.vendorVerifiedIcon} />
+            {isApprovedVendor && (
+              <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={styles.vendorVerifiedIcon} />
             )}
           </View>
           
@@ -563,11 +637,16 @@ export default function VendorScreen() {
 
   const renderJobProfile = ({ item }: { item: JobProfile }) => {
     const firstPhoto = (item.photos || []).find((url) => !!url);
+    const cvIconName = isKycVerified ? 'document-text' : 'lock-closed';
+    const cvIconColor = isKycVerified ? COLORS.primary : COLORS.textLight;
 
     return (
       <TouchableOpacity
         style={styles.vendorCard}
-        onPress={() => router.push(`/jobs/${item.id}`)}
+        onPress={() => {
+          setSearchTerm('');
+          router.push(`/jobs/${item.id}`);
+        }}
       >
         <View style={styles.vendorImageContainer}>
           {firstPhoto ? (
@@ -606,6 +685,11 @@ export default function VendorScreen() {
           <TouchableOpacity
             style={styles.callButton}
             onPress={async () => {
+              const canViewCv = await ensureKycVerifiedForCv();
+              if (!canViewCv) {
+                return;
+              }
+
               try {
                 const url = typeof item.cv_url === 'string' ? item.cv_url : '';
                 if (!url) {
@@ -623,7 +707,7 @@ export default function VendorScreen() {
               }
             }}
           >
-            <Ionicons name="document-text" size={18} color={COLORS.primary} />
+            <Ionicons name={cvIconName} size={18} color={cvIconColor} />
           </TouchableOpacity>
         ) : null}
       </TouchableOpacity>
@@ -826,7 +910,18 @@ export default function VendorScreen() {
       {activeSection === 'Vendors' && myVendor && (
         <TouchableOpacity 
           style={styles.myBusinessCard}
-          onPress={() => router.push('/vendor/dashboard')}
+          onPress={() => {
+            if (hasVerifiedKyc) {
+              router.push('/vendor/dashboard');
+              return;
+            }
+            if (myVendor.kyc_status !== 'verified') {
+              setKycModalVendorId(myVendor.id);
+              setShowKycModal(true);
+            } else {
+              router.push('/vendor/dashboard');
+            }
+          }}
         >
           <View style={styles.myBusinessIcon}>
             <Ionicons name="storefront" size={24} color={COLORS.primary} />
@@ -834,6 +929,26 @@ export default function VendorScreen() {
           <View style={styles.myBusinessInfo}>
             <Text style={styles.myBusinessLabel}>Manage My Business</Text>
             <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
+            {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
+              <View style={styles.kycStatusBadge}>
+                <View style={[
+                  styles.kycStatusDot,
+                  { 
+                    backgroundColor: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning 
+                  }
+                ]} />
+                <Text style={[
+                  styles.kycStatusText,
+                  { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
+                ]}>
+                  {myVendor.kyc_status === 'rejected'
+                    ? 'KYC Rejected - Tap to Update'
+                    : myVendor.kyc_status === 'manual_review'
+                      ? 'KYC In Review'
+                      : 'KYC Pending - Tap to Complete'}
+                </Text>
+              </View>
+            )}
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
         </TouchableOpacity>
@@ -911,6 +1026,17 @@ export default function VendorScreen() {
         visible={showJobProfileModal}
         onClose={() => setShowJobProfileModal(false)}
         onSubmit={handleCreateJobProfile}
+      />
+
+      <VendorKYCModal
+        visible={showKycModal}
+        vendorId={kycModalVendorId || ''}
+        allowUserKycFallback
+        onClose={() => setShowKycModal(false)}
+        onKycUpdated={() => {
+          setShowKycModal(false);
+          loadKycStatus();
+        }}
       />
     </View>
   );
@@ -1232,6 +1358,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     marginTop: 2,
+  },
+  kycStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.xs,
+  },
+  kycStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: SPACING.xs,
+  },
+  kycStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   registerButton: {
     flexDirection: 'row',

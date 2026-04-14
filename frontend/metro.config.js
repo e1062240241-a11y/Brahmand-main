@@ -5,6 +5,14 @@ const { FileStore } = require('metro-cache');
 
 const config = getDefaultConfig(__dirname);
 
+// Force zustand to resolve to the CommonJS builds on web/metro.
+// This avoids ESM entrypoints that contain `import.meta` and are not compatible
+// with the React Native/Web bundling path used by Expo.
+config.resolver.extraNodeModules = {
+  zustand: path.resolve(__dirname, 'node_modules/zustand/index.js'),
+  'zustand/middleware': path.resolve(__dirname, 'node_modules/zustand/middleware.js'),
+};
+
 // Use a stable on-disk store (shared across web/android)
 const root = process.env.METRO_CACHE_ROOT || path.join(__dirname, '.metro-cache');
 config.cacheStores = [

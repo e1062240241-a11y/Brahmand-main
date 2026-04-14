@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { 
+import {
   View, 
   Text, 
+  Image,
   StyleSheet, 
   FlatList, 
   TextInput, 
@@ -13,11 +14,16 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   BackHandler,
-  Alert
+  Alert,
+  Animated,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
+import type * as ImageManipulatorType from 'expo-image-manipulator';
+import type * as ContactsType from 'expo-contacts';
 import {
   sendDirectMessage,
   getConversations,
@@ -26,6 +32,8 @@ import {
   markDirectMessagesRead,
   approveDirectMessageRequest,
   denyDirectMessageRequest,
+  uploadChatMedia,
+  uploadCompressedVideo,
 } from '../../src/services/api';
 import { ChatMessage } from '../../src/services/firebase/chatService';
 import { useAuthStore } from '../../src/store/authStore';
@@ -33,6 +41,22 @@ import { Conversation } from '../../src/types';
 import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { socketService } from '../../src/services/socket';
+
+let dmImageManipulator: typeof ImageManipulatorType | null = null;
+const getDMImageManipulator = async () => {
+  if (!dmImageManipulator) {
+    dmImageManipulator = await import('expo-image-manipulator');
+  }
+  return dmImageManipulator;
+};
+
+let dmContacts: typeof ContactsType | null = null;
+const getDMContacts = async () => {
+  if (!dmContacts) {
+    dmContacts = await import('expo-contacts');
+  }
+  return dmContacts;
+};
 
 export default function DirectMessageScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
@@ -46,12 +70,29 @@ export default function DirectMessageScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<{
+    uri: string;
+    name: string;
+    type: string;
+    mediaType: 'image' | 'video';
+  } | null>(null);
+  const [fullScreenMedia, setFullScreenMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [isRealtime, setIsRealtime] = useState(false);
   const [viewHeight, setViewHeight] = useState(Dimensions.get('window').height);
   const [hasMarkedRead, setHasMarkedRead] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [showOptions, setShowOptions] = useState(false);
+  const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [contactShareName, setContactShareName] = useState('');
+  const [contactSharePhone, setContactSharePhone] = useState('');
+  const [phoneContacts, setPhoneContacts] = useState<Contacts.Contact[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [sharingContact, setSharingContact] = useState(false);
   const [requestActionLoading, setRequestActionLoading] = useState(false);
+  const attachmentAnim = useRef(new Animated.Value(0)).current;
 
   // Mark messages as read when opening chat
   const markMessagesAsRead = useCallback(async () => {
@@ -68,7 +109,7 @@ export default function DirectMessageScreen() {
 
   const handleBackNavigation = useCallback(() => {
     try {
-      router.replace('/messages');
+      router.replace('/messages?tab=Private%20Chat');
     } catch (e) {
       console.warn('[DM] Back navigation failed:', e);
     }
@@ -271,6 +312,7 @@ export default function DirectMessageScreen() {
         sender_photo: msg.sender_photo,
         text: msg.text || msg.content || '',
         content: msg.content || msg.text || '',
+        message_type: msg.message_type || 'text',
         status: msg.status,
         created_at: msg.created_at || msg.timestamp || '',
         timestamp: msg.timestamp || msg.created_at || '',
@@ -295,8 +337,10 @@ export default function DirectMessageScreen() {
     if (Platform.OS === 'web') {
       setIsRealtime(false);
       pollingInterval = setInterval(() => {
-        fetchMessagesViaAPI();
-        fetchConversation();
+        if (!uploadingMedia) {
+          fetchMessagesViaAPI();
+          fetchConversation();
+        }
       }, 2000);
       setTimeout(() => markMessagesAsRead(), 1000);
 
@@ -324,8 +368,10 @@ export default function DirectMessageScreen() {
     })();
 
     pollingInterval = setInterval(() => {
-      fetchMessagesViaAPI();
-      fetchConversation();
+      if (!uploadingMedia) {
+        fetchMessagesViaAPI();
+        fetchConversation();
+      }
     }, 5000);
 
     // Mark messages as read after initial load
@@ -336,11 +382,90 @@ export default function DirectMessageScreen() {
       socketService.leaveRoom(conversationId!);
       if (pollingInterval) clearInterval(pollingInterval);
     };
-  }, [conversationId, fetchConversation, fetchMessagesViaAPI, markMessagesAsRead]);
+  }, [conversationId, fetchConversation, fetchMessagesViaAPI, markMessagesAsRead, uploadingMedia]);
+
+  const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
+    const pickerType = mediaType === 'image' ? 'Images' : 'Videos';
+    return ((ImagePicker as any).MediaType?.[pickerType]
+      ? [(ImagePicker as any).MediaType[pickerType]]
+      : mediaType === 'image'
+        ? ImagePicker.MediaTypeOptions.Images
+        : ImagePicker.MediaTypeOptions.Videos) as any;
+  };
+
+  const inferUploadMimeType = (asset: any, mediaType: 'image' | 'video') => {
+    if (asset.mimeType && typeof asset.mimeType === 'string') {
+      return asset.mimeType;
+    }
+    if (asset.type && typeof asset.type === 'string' && asset.type.includes('/')) {
+      return asset.type;
+    }
+
+    const uri = String(asset.uri || '');
+    const ext = uri.split('?')[0].split('.').pop()?.toLowerCase();
+    if (ext) {
+      if (mediaType === 'image') {
+        if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+        if (ext === 'png') return 'image/png';
+      }
+      if (mediaType === 'video') {
+        if (ext === 'mp4') return 'video/mp4';
+        if (ext === 'mov') return 'video/quicktime';
+        if (ext === 'webm') return 'video/webm';
+        if (ext === 'mkv') return 'video/x-matroska';
+      }
+    }
+    return mediaType === 'image' ? 'image/jpeg' : 'video/mp4';
+  };
+
+  const compressImageForUpload = async (uri: string) => {
+    try {
+      const ImageManipulator = await getDMImageManipulator();
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1280 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    } catch (error) {
+      console.warn('[DM] Image compression failed', error);
+      return uri;
+    }
+  };
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !conversation) return;
+    if ((!newMessage.trim() && !selectedMedia) || !conversation) return;
     if (isInputLocked) return;
+
+    const selected = selectedMedia;
+    if (selected) {
+      setUploadingMedia(true);
+      setSending(true);
+      try {
+        let uploadResp;
+        if (selected.mediaType === 'video') {
+          uploadResp = await uploadCompressedVideo({ uri: selected.uri, name: selected.name, type: selected.type });
+        } else {
+          const compressedUri = await compressImageForUpload(selected.uri);
+          uploadResp = await uploadChatMedia({ uri: compressedUri, name: selected.name, type: selected.type });
+        }
+        const mediaUrl = uploadResp?.data?.media_url || uploadResp?.data?.mediaUrl || uploadResp?.data?.url;
+        if (!mediaUrl) {
+          throw new Error('Upload failed');
+        }
+        await sendDirectMessage(conversation.user.sl_id, mediaUrl, selected.mediaType);
+        setSelectedMedia(null);
+        setNewMessage('');
+        setTimeout(() => fetchMessagesViaAPI(), 500);
+      } catch (error: any) {
+        Alert.alert('Upload failed', error?.response?.data?.detail || error?.message || 'Failed to send media.');
+      } finally {
+        setUploadingMedia(false);
+        setSending(false);
+      }
+      return;
+    }
+
     const messageText = newMessage.trim();
     setNewMessage('');
     setSending(true);
@@ -356,10 +481,504 @@ export default function DirectMessageScreen() {
     }
   };
 
+  const openAttachmentOptions = () => {
+    setShowAttachmentOptions(true);
+    Animated.timing(attachmentAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeAttachmentOptions = () => {
+    Animated.timing(attachmentAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowAttachmentOptions(false);
+    });
+  };
+
+  const toggleAttachmentOptions = () => {
+    if (showAttachmentOptions) {
+      closeAttachmentOptions();
+      return;
+    }
+    openAttachmentOptions();
+  };
+
+  const requestContactsPermission = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Contacts unsupported', 'Phone contacts are only available on native devices.');
+      return false;
+    }
+
+    try {
+      const permission = await Contacts.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission required', 'Please allow contacts access to share phone contacts.');
+        return false;
+      }
+      return true;
+    } catch (error: any) {
+      console.error('[DM] Contact permission error', error);
+      Alert.alert('Permission failed', 'Unable to request contacts permission.');
+      return false;
+    }
+  };
+
+  const loadPhoneContacts = async () => {
+    setLoadingContacts(true);
+    try {
+      const permissionGranted = await requestContactsPermission();
+      if (!permissionGranted) return false;
+
+      const contactResult = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers],
+        pageSize: 2000,
+        sort: Contacts.SortTypes.FirstName,
+      });
+
+      const contactsWithNumbers = (contactResult.data || []).filter((contact) => contact.phoneNumbers?.length);
+      setPhoneContacts(contactsWithNumbers);
+      if (!contactsWithNumbers.length) {
+        Alert.alert('No contacts found', 'No contacts with phone numbers were found on this device.');
+      }
+      return contactsWithNumbers.length > 0;
+    } catch (error: any) {
+      console.error('[DM] Failed to load contacts', error);
+      Alert.alert('Failed to load contacts', 'Unable to fetch phone contacts.');
+      return false;
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const handleOpenContactShare = async () => {
+    closeAttachmentOptions();
+    setContactShareName(user?.name || '');
+    setContactSharePhone(user?.phone || '');
+    const hasContacts = await loadPhoneContacts();
+    if (hasContacts) {
+      setShowContactPicker(true);
+    } else {
+      setShowContactModal(true);
+    }
+  };
+
+  const handleSelectPhoneContact = (contact: Contacts.Contact) => {
+    const phone = contact.phoneNumbers?.[0]?.number?.trim() || '';
+    const name = contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Contact';
+    if (!phone) {
+      Alert.alert('No phone number', 'Selected contact does not have a phone number.');
+      return;
+    }
+    setContactShareName(name);
+    setContactSharePhone(phone);
+    setShowContactPicker(false);
+    setShowContactModal(true);
+  };
+
+  const handleSendContact = async () => {
+    const name = contactShareName.trim() || 'Contact';
+    const phone = contactSharePhone.trim();
+    if (!phone) {
+      Alert.alert('Enter Contact', 'Please enter a phone number to share.');
+      return;
+    }
+
+    setSharingContact(true);
+    try {
+      const payload = `${name}\n${phone}`;
+      if (!conversation?.user?.sl_id) {
+        throw new Error('Unable to resolve recipient.');
+      }
+      await sendDirectMessage(conversation.user.sl_id, payload, 'contact');
+      setShowContactModal(false);
+      setContactShareName('');
+      setContactSharePhone('');
+      fetchMessagesViaAPI();
+    } catch (error: any) {
+      Alert.alert('Share failed', error?.response?.data?.detail || error?.message || 'Failed to share contact.');
+    } finally {
+      setSharingContact(false);
+    }
+  };
+
+  const handlePickMedia = async (mediaType: 'image' | 'video') => {
+    closeAttachmentOptions();
+    if (!conversation || !conversation.user?.sl_id || uploadingMedia || sending || isInputLocked) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Alert.alert('Permission Denied', 'Media library access is required.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: getPickerMediaTypes(mediaType),
+      allowsEditing: false,
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    const fileName = (asset as any).fileName || `chat-${mediaType}-${Date.now()}.${mediaType === 'image' ? 'jpg' : 'mp4'}`;
+    const mimeType = inferUploadMimeType(asset, mediaType);
+
+    setSelectedMedia({ uri: asset.uri, name: fileName, type: mimeType, mediaType });
+  };
+
   const formatTime = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const isMediaUrl = (url: string, type: 'image' | 'video') => {
+    const normalized = url.split('?')[0].toLowerCase();
+    if (type === 'image') {
+      return normalized.endsWith('.png') || normalized.endsWith('.jpg') || normalized.endsWith('.jpeg') || normalized.endsWith('.webp');
+    }
+    return normalized.endsWith('.mp4') || normalized.endsWith('.mov') || normalized.endsWith('.webm') || normalized.endsWith('.mkv');
+  };
+
+  const normalizeSharedPostKeys = (source: any) => {
+    const normalized: any = {};
+    if (!source || typeof source !== 'object') return normalized;
+
+    const canonicalMap: Record<string, string> = {
+      postid: 'postId',
+      post_id: 'postId',
+      mediaurl: 'mediaUrl',
+      media_url: 'mediaUrl',
+      caption: 'caption',
+      title: 'title',
+      uploadername: 'uploaderName',
+      uploader_name: 'uploaderName',
+      username: 'uploaderName',
+      user_name: 'uploaderName',
+      name: 'uploaderName',
+      displayname: 'uploaderName',
+      display_name: 'uploaderName',
+      fullname: 'uploaderName',
+      full_name: 'uploaderName',
+      author: 'uploaderName',
+      authorname: 'uploaderName',
+      author_name: 'uploaderName',
+      postedby: 'uploaderName',
+      posted_by: 'uploaderName',
+      uploaderphoto: 'uploaderPhoto',
+      uploader_photo: 'uploaderPhoto',
+      userphoto: 'uploaderPhoto',
+      user_photo: 'uploaderPhoto',
+      photo: 'uploaderPhoto',
+      photo_url: 'uploaderPhoto',
+      avatar: 'uploaderPhoto',
+      image: 'uploaderPhoto',
+      profileimage: 'uploaderPhoto',
+      profile_image: 'uploaderPhoto',
+      user_image: 'uploaderPhoto',
+    };
+
+    Object.entries(source).forEach(([key, value]) => {
+      const normalizedKey = key.toString().replace(/\s+/g, '').toLowerCase();
+      if (canonicalMap[normalizedKey]) {
+        normalized[canonicalMap[normalizedKey]] = value ?? '';
+      }
+    });
+
+    return normalized;
+  };
+
+  const parseSharedPostPayload = (source: any) => {
+    let parsed = { mediaUrl: '', caption: '', title: 'Shared post', postId: '', uploaderName: '', uploaderPhoto: '' };
+    if (!source) return parsed;
+
+    const findNestedField = (obj: any, candidateKeys: string[]): any => {
+      if (!obj || typeof obj !== 'object') return undefined;
+      if (Array.isArray(obj)) {
+        for (const item of obj) {
+          const nested = findNestedField(item, candidateKeys);
+          if (nested) return nested;
+        }
+        return undefined;
+      }
+
+      for (const [key, value] of Object.entries(obj)) {
+        const normalizedKey = key.toString().replace(/\s+/g, '').toLowerCase();
+        if (candidateKeys.includes(normalizedKey) && value) {
+          return value;
+        }
+        if (typeof value === 'object' && value !== null) {
+          const nested = findNestedField(value, candidateKeys);
+          if (nested) return nested;
+        }
+      }
+      return undefined;
+    };
+
+    const mergeParsed = (sourceObj: any) => {
+      let normalized = normalizeSharedPostKeys(sourceObj);
+      const nestedSources = [sourceObj?.user, sourceObj?.author, sourceObj?.creator, sourceObj?.post, sourceObj?.data, sourceObj?.attributes];
+      nestedSources.forEach((nestedSource) => {
+        if (nestedSource && typeof nestedSource === 'object') {
+          normalized = { ...normalized, ...normalizeSharedPostKeys(nestedSource) };
+        }
+      });
+
+      if (sourceObj?.post && typeof sourceObj.post === 'object') {
+        const nestedPostFields = [sourceObj.post.user, sourceObj.post.author, sourceObj.post.creator, sourceObj.post.data, sourceObj.post.attributes];
+        nestedPostFields.forEach((nestedSource) => {
+          if (nestedSource && typeof nestedSource === 'object') {
+            normalized = { ...normalized, ...normalizeSharedPostKeys(nestedSource) };
+          }
+        });
+      }
+
+      if (!normalized.uploaderName) {
+        const nestedName = findNestedField(sourceObj, [
+          'uploadername',
+          'uploader_name',
+          'username',
+          'user_name',
+          'displayname',
+          'display_name',
+          'fullname',
+          'full_name',
+          'author',
+          'authorname',
+          'author_name',
+          'postedby',
+          'posted_by',
+          'creatorname',
+          'creator_name',
+          'name',
+        ]);
+        if (nestedName) normalized.uploaderName = String(nestedName);
+      }
+      if (!normalized.uploaderPhoto) {
+        const nestedPhoto = findNestedField(sourceObj, [
+          'uploaderphoto',
+          'uploader_photo',
+          'userphoto',
+          'user_photo',
+          'photo',
+          'photo_url',
+          'avatar',
+          'image',
+          'profileimage',
+          'profile_image',
+          'user_image',
+        ]);
+        if (nestedPhoto) normalized.uploaderPhoto = String(nestedPhoto);
+      }
+
+      return { ...parsed, ...normalized };
+    };
+
+    if (typeof source === 'object' && source !== null) {
+      return mergeParsed(source);
+    }
+
+    try {
+      let decoded = JSON.parse(source);
+      if (typeof decoded === 'string') {
+        decoded = JSON.parse(decoded);
+      }
+      if (typeof decoded === 'object' && decoded !== null) {
+        return mergeParsed(decoded);
+      }
+    } catch (e: any) {
+      // Manual fallback parser just in case JSON is mangled
+      try {
+        const snake = (key: string) => key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        const extract = (key: string) => {
+          const candidates = [key, snake(key)];
+          for (const candidate of candidates) {
+            const match = source.match(new RegExp(`"${candidate}"\\s*:\\s*"([^\"]*)"`));
+            if (match) return match[1];
+            const singleMatch = source.match(new RegExp(`'${candidate}'\\s*:\\s*'([^']*)'`));
+            if (singleMatch) return singleMatch[1];
+          }
+          return '';
+        };
+        parsed.postId = extract('postId');
+        parsed.mediaUrl = extract('mediaUrl');
+        parsed.caption = extract('caption') || `Parse error: ${e.message}\nRaw: ${source}`;
+        parsed.title = extract('title') || 'Shared post';
+        parsed.uploaderName = extract('uploaderName') || extract('username') || extract('user_name') || extract('display_name') || extract('author_name') || extract('posted_by');
+        parsed.uploaderPhoto = extract('uploaderPhoto') || extract('userPhoto') || extract('user_photo') || extract('photo_url');
+        return parsed;
+      } catch {
+        // Absolute worst case fallback
+      }
+    }
+
+    try {
+      const lines = source.split('\n').map((line: string) => line.trim()).filter(Boolean);
+      const mediaLine = lines.find((line: string) => line.match(/https?:\/\/.+\.(jpg|jpeg|png|webp|mp4|mov|webm|mkv)(\?.*)?$/i));
+      return {
+        ...parsed,
+        mediaUrl: mediaLine || source,
+        caption: lines[0] || 'Shared post',
+      };
+    } catch {
+      return parsed;
+    }
+  };
+
+  const renderMessageContent = (message: any) => {
+    const rawContent = message.content ?? message.text ?? '';
+    const sourceUrl = typeof rawContent === 'string' ? rawContent : '';
+    const shared = parseSharedPostPayload(rawContent);
+    const rawString = typeof rawContent === 'string' ? rawContent : '';
+    const hasSharedKeys =
+      typeof rawContent === 'object' &&
+      rawContent !== null &&
+      (Object.prototype.hasOwnProperty.call(rawContent, 'postId') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'post_id') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'mediaUrl') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'media_url') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'uploaderName') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'uploader_name') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'username') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'user_name') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'name') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'author') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'author_name'));
+    const looksLikeSharedPost = /post(_)?id|media(_)?url|uploader(_)?name/i.test(rawString);
+    const isSharedPost =
+      message.message_type === 'post_share' ||
+      message.message_type === 'postShare' ||
+      hasSharedKeys ||
+      looksLikeSharedPost;
+
+    if (message.message_type === 'image' && sourceUrl) {
+      return (
+        <TouchableOpacity onPress={() => setFullScreenMedia({ uri: sourceUrl, type: 'image' })} activeOpacity={0.85}>
+          <Image source={{ uri: sourceUrl }} style={styles.messageMedia} resizeMode="cover" />
+        </TouchableOpacity>
+      );
+    }
+    if (message.message_type === 'video' && sourceUrl) {
+      return (
+        <Video
+          source={{ uri: sourceUrl }}
+          style={styles.messageVideo}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping={false}
+        />
+      );
+    }
+    if (isSharedPost) {
+      return (
+        <TouchableOpacity
+          style={styles.sharedPostContainer}
+          activeOpacity={0.85}
+          onPress={() => {
+            if (shared.postId) {
+              router.push({
+                pathname: '/post/[id]',
+                params: {
+                  id: shared.postId,
+                  mediaUrl: shared.mediaUrl || '',
+                  caption: shared.caption || '',
+                  uploaderName: shared.uploaderName || '',
+                  uploaderPhoto: shared.uploaderPhoto || '',
+                },
+              });
+            }
+          }}
+        >
+          {shared.uploaderName ? (
+            <View style={styles.sharedPostUploader}>
+              <Ionicons name="person-circle" size={24} color={COLORS.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.sharedPostUploaderText} numberOfLines={1}>
+                {shared.uploaderName}
+              </Text>
+            </View>
+          ) : null}
+          {shared.mediaUrl ? (
+            <Image source={{ uri: shared.mediaUrl }} style={styles.sharedPostImage} resizeMode="cover" />
+          ) : null}
+          <View style={styles.sharedPostMeta}>
+            <Text style={styles.sharedPostTitle}>{shared.title || 'Shared post'}</Text>
+            {shared.caption ? (
+              <Text style={styles.sharedPostCaption} numberOfLines={2}>
+                {shared.caption}
+              </Text>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+    if (message.message_type === 'contact') {
+      const { name: contactName, phone: contactPhone } = parseContactPayload(sourceUrl);
+      return (
+        <View style={styles.contactCard}>
+          <Ionicons name="person-circle-outline" size={24} color={COLORS.primary} />
+          <View style={styles.contactCardContent}>
+            <Text style={styles.contactName}>{contactName}</Text>
+            <Text style={styles.contactPhone}>{contactPhone}</Text>
+          </View>
+        </View>
+      );
+    }
+    if (sourceUrl && isMediaUrl(sourceUrl, 'image')) {
+      return (
+        <TouchableOpacity onPress={() => setFullScreenMedia({ uri: sourceUrl, type: 'image' })} activeOpacity={0.85}>
+          <Image source={{ uri: sourceUrl }} style={styles.messageMedia} resizeMode="cover" />
+        </TouchableOpacity>
+      );
+    }
+    if (sourceUrl && isMediaUrl(sourceUrl, 'video')) {
+      return (
+        <Video
+          source={{ uri: sourceUrl }}
+          style={styles.messageVideo}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping={false}
+        />
+      );
+    }
+    const fallbackText = typeof message.text === 'string'
+      ? message.text
+      : typeof message.content === 'string'
+      ? message.content
+      : JSON.stringify(message.content || {});
+
+    return <Text style={[styles.messageText, message.sender_id === user?.id && styles.ownMessageText]}>{fallbackText}</Text>;
+  };
+
+  const isSameDay = (dateA: Date, dateB: Date) =>
+    dateA.getFullYear() === dateB.getFullYear() &&
+    dateA.getMonth() === dateB.getMonth() &&
+    dateA.getDate() === dateB.getDate();
+
+  const formatChatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+
+    if (isSameDay(date, now)) return 'Today';
+    if (isSameDay(date, yesterday)) return 'Yesterday';
+    return date.toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+    });
+  };
+
+  const shouldShowDateSeparator = (index: number, currentDateString: string) => {
+    if (index === 0) return true;
+    const currentDate = new Date(currentDateString);
+    const previousDate = new Date(messages[index - 1]?.created_at || '');
+    return !isSameDay(currentDate, previousDate);
   };
 
   // Message status indicator component
@@ -385,25 +1004,63 @@ export default function DirectMessageScreen() {
     );
   };
 
-  const renderMessage = ({ item }: { item: ChatMessage }) => {
+  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
     const isOwnMessage = item.sender_id === user?.id;
+    const rawContent = item.content ?? item.text ?? '';
+    const rawString = typeof rawContent === 'string' ? rawContent : '';
+    const hasSharedKeys =
+      typeof rawContent === 'object' &&
+      rawContent !== null &&
+      (Object.prototype.hasOwnProperty.call(rawContent, 'postId') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'post_id') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'mediaUrl') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'media_url') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'uploaderName') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'uploader_name') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'username') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'user_name') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'name') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'author') ||
+        Object.prototype.hasOwnProperty.call(rawContent, 'author_name'));
+    const looksLikeSharedPost = /post(_)?id|media(_)?url|uploader(_)?name/i.test(rawString);
+    const isSharedPost =
+      item.message_type === 'post_share' ||
+      item.message_type === 'postShare' ||
+      hasSharedKeys ||
+      looksLikeSharedPost;
+
     return (
-      <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
+      <>
+        {shouldShowDateSeparator(index, item.created_at) && (
+          <View style={styles.dateSeparatorContainer}>
+            <View style={styles.dateSeparator}>
+              <Text style={styles.dateSeparatorText}>{formatChatDate(item.created_at)}</Text>
+            </View>
+          </View>
+        )}
+        <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
         {!isOwnMessage && (
           <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
         )}
-        <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
-          <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>
-            {item.text || item.content}
-          </Text>
-          <View style={styles.messageFooter}>
-            <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
-              {formatTime(item.created_at)}
-            </Text>
-            <MessageStatus status={(item as any).status} isOwn={isOwnMessage} />
-          </View>
+        <View
+          style={[
+            styles.messageBubble,
+            isOwnMessage && styles.ownMessageBubble,
+            isSharedPost && styles.sharedPostMessageBubble,
+          ]}
+        >
+          {renderMessageContent(item)}
+          {!isSharedPost && (
+            <View style={styles.messageFooter}>
+              <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
+                {formatTime(item.created_at)}
+              </Text>
+              <MessageStatus status={(item as any).status} isOwn={isOwnMessage} />
+            </View>
+          )}
         </View>
       </View>
+      </>
     );
   };
 
@@ -424,7 +1081,20 @@ export default function DirectMessageScreen() {
     : styles.container;
 
   const renderContent = () => (
-    <>
+    <View style={styles.chatScreen}>
+      <View style={styles.chatBackground}>
+        <View style={[styles.chatPatternCircle, { top: 40, left: 16, opacity: 0.08 }]} />
+        <View style={[styles.chatPatternCircle, { top: 220, right: 12, opacity: 0.06 }]} />
+        <View style={[styles.chatPatternCircle, { top: 420, left: 100, opacity: 0.05 }]} />
+        <View style={[styles.chatPatternDot, { top: 72, left: 24, opacity: 0.16 }]} />
+        <View style={[styles.chatPatternDot, { top: 140, right: 20, opacity: 0.12 }]} />
+        <View style={[styles.chatPatternDot, { top: 280, left: 130, opacity: 0.1 }]} />
+        <View style={[styles.chatPatternDot, { top: 380, right: 100, opacity: 0.11 }]} />
+        <View style={[styles.chatPatternStripe, { top: 120, left: 40, transform: [{ rotate: '16deg' }] }]} />
+        <View style={[styles.chatPatternStripe, { top: 280, right: 32, transform: [{ rotate: '-14deg' }] }]} />
+        <View style={[styles.chatPatternLine, { top: 190, left: 20, width: 180, opacity: 0.08, transform: [{ rotate: '8deg' }] }]} />
+        <View style={[styles.chatPatternLine, { top: 330, right: 20, width: 140, opacity: 0.06, transform: [{ rotate: '-8deg' }] }]} />
+      </View>
       {/* Safe area top */}
       <View style={{ height: insets.top, backgroundColor: COLORS.surface }} />
       
@@ -435,7 +1105,15 @@ export default function DirectMessageScreen() {
         </TouchableOpacity>
         {conversation && (
           <>
-            <Avatar name={conversation.user.name} photo={conversation.user.photo} size={40} />
+            <TouchableOpacity
+              onPress={() => {
+                if (conversation.user?.id) {
+                  router.push(`/profile/${conversation.user.id}`);
+                }
+              }}
+            >
+              <Avatar name={conversation.user.name} photo={conversation.user.photo} size={40} />
+            </TouchableOpacity>
             <View style={styles.headerInfo}>
               <Text style={styles.headerTitle}>{conversation.user.name}</Text>
               <View style={styles.statusRow}>
@@ -471,6 +1149,31 @@ export default function DirectMessageScreen() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={!!fullScreenMedia}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFullScreenMedia(null)}
+      >
+        <View style={styles.fullScreenMediaOverlay}>
+          <TouchableOpacity style={styles.fullScreenMediaClose} onPress={() => setFullScreenMedia(null)}>
+            <Ionicons name="close" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          {fullScreenMedia?.type === 'image' && (
+            <Image source={{ uri: fullScreenMedia.uri }} style={styles.fullScreenMediaImage} resizeMode="contain" />
+          )}
+          {fullScreenMedia?.type === 'video' && (
+            <Video
+              source={{ uri: fullScreenMedia.uri }}
+              style={styles.fullScreenMediaVideo}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              isLooping={false}
+            />
+          )}
+        </View>
       </Modal>
 
       {requestStatus !== 'approved' && (
@@ -525,7 +1228,180 @@ export default function DirectMessageScreen() {
       </View>
 
       {/* Input - anchored at bottom */}
+      {selectedMedia && (
+        <View style={styles.mediaPreviewContainer}>
+          <View style={styles.mediaPreviewHeader}>
+            <Text style={styles.mediaPreviewLabel}>
+              {selectedMedia.mediaType === 'image' ? 'Image ready to send' : 'Video ready to send'}
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewClose}>
+              <Ionicons name="close" size={18} color={COLORS.textWhite} />
+            </TouchableOpacity>
+          </View>
+          {selectedMedia.mediaType === 'image' ? (
+            <Image source={{ uri: selectedMedia.uri }} style={styles.mediaPreviewImage} resizeMode="cover" />
+          ) : (
+            <Video
+              source={{ uri: selectedMedia.uri }}
+              style={styles.mediaPreviewVideo}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              isLooping={false}
+            />
+          )}
+        </View>
+      )}
       <View style={[styles.inputContainer, { paddingBottom: bottomPadding }]}>
+        <View style={styles.attachmentButtons}>
+          <TouchableOpacity
+            style={styles.attachmentButton}
+            onPress={toggleAttachmentOptions}
+            disabled={uploadingMedia || sending || isInputLocked}
+          >
+            <Ionicons name="add" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+        {showAttachmentOptions && (
+          <Animated.View
+            style={[
+              styles.attachmentOverlay,
+              {
+                opacity: attachmentAnim,
+                transform: [
+                  {
+                    scale: attachmentAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.95, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.attachmentOption}
+              onPress={() => handlePickMedia('image')}
+              disabled={uploadingMedia || sending || isInputLocked}
+            >
+              <Ionicons name="image-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.attachmentOptionText}>Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.attachmentOption}
+              onPress={() => handlePickMedia('video')}
+              disabled={uploadingMedia || sending || isInputLocked}
+            >
+              <Ionicons name="videocam-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.attachmentOptionText}>Video</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.attachmentOption}
+              onPress={handleOpenContactShare}
+              disabled={uploadingMedia || sending || isInputLocked}
+            >
+              <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.attachmentOptionText}>Contact</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+        <Modal
+          visible={showContactModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowContactModal(false)}
+        >
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactModal(false)} />
+          <View style={styles.contactModalCard}>
+            <View style={styles.contactModalHeader}>
+              <Text style={styles.contactModalTitle}>Share Contact</Text>
+              <TouchableOpacity onPress={() => setShowContactModal(false)}>
+                <Ionicons name="close" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.contactModalBody}>
+              <Text style={styles.contactModalLabel}>Name</Text>
+              <TextInput
+                style={styles.contactModalInput}
+                value={contactShareName}
+                onChangeText={setContactShareName}
+                placeholder="Contact name"
+                placeholderTextColor={COLORS.textSecondary}
+              />
+              <Text style={styles.contactModalLabel}>Phone</Text>
+              <TextInput
+                style={styles.contactModalInput}
+                value={contactSharePhone}
+                onChangeText={setContactSharePhone}
+                placeholder="Phone number"
+                keyboardType="phone-pad"
+                placeholderTextColor={COLORS.textSecondary}
+              />
+              <TouchableOpacity
+                style={[styles.contactModalButton, styles.contactPickerButton]}
+                onPress={async () => {
+                  const hasContacts = await loadPhoneContacts();
+                  if (hasContacts) {
+                    setShowContactPicker(true);
+                  }
+                }}
+                disabled={loadingContacts}
+              >
+                {loadingContacts ? (
+                  <ActivityIndicator size="small" color={COLORS.textPrimary} />
+                ) : (
+                  <Text style={styles.contactPickerButtonText}>Pick from phone contacts</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contactModalButton, sharingContact ? styles.sendButtonDisabled : null]}
+                onPress={handleSendContact}
+                disabled={sharingContact}
+              >
+                {sharingContact ? (
+                  <ActivityIndicator size="small" color={COLORS.textWhite} />
+                ) : (
+                  <Text style={styles.contactModalButtonText}>Share</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={showContactPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowContactPicker(false)}
+        >
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactPicker(false)} />
+          <View style={[styles.contactModalCard, { maxHeight: '70%' }]}> 
+            <View style={styles.contactModalHeader}>
+              <Text style={styles.contactModalTitle}>Choose Contact</Text>
+              <TouchableOpacity onPress={() => setShowContactPicker(false)}>
+                <Ionicons name="close" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            {loadingContacts ? (
+              <ActivityIndicator size="large" color={COLORS.primary} />
+            ) : (
+              <FlatList
+                data={phoneContacts}
+                keyExtractor={(item) => item.id || item.name || item.phoneNumbers?.[0]?.id || String(Math.random())}
+                renderItem={({ item }) => {
+                  const phone = item.phoneNumbers?.[0]?.number || 'No number';
+                  const name = item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Unknown';
+                  return (
+                    <TouchableOpacity style={styles.phoneContactItem} onPress={() => handleSelectPhoneContact(item)}>
+                      <View>
+                        <Text style={styles.phoneContactName}>{name}</Text>
+                        <Text style={styles.phoneContactNumber}>{phone}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+          </View>
+        </Modal>
         <View style={styles.inputWrapper}>
           <TextInput
             style={[styles.input, isInputLocked && styles.inputDisabled]}
@@ -542,10 +1418,10 @@ export default function DirectMessageScreen() {
         <TouchableOpacity
           style={[
             styles.sendButton, 
-            (!newMessage.trim() || sending || isInputLocked) && styles.sendButtonDisabled
+            (!newMessage.trim() && !selectedMedia) || sending || uploadingMedia || isInputLocked ? styles.sendButtonDisabled : null
           ]}
           onPress={handleSend}
-          disabled={!newMessage.trim() || sending || isInputLocked}
+          disabled={!newMessage.trim() && !selectedMedia || sending || uploadingMedia || isInputLocked}
         >
           {sending ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
@@ -554,7 +1430,7 @@ export default function DirectMessageScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </>
+    </View>
   );
 
   // For web, use direct height-controlled container
@@ -592,6 +1468,43 @@ const styles = StyleSheet.create({
       bottom: 0,
       overflow: 'hidden',
     } : {}),
+  },
+  chatScreen: {
+    flex: 1,
+    backgroundColor: '#d8e7cf',
+  },
+  chatBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#d8e7cf',
+    pointerEvents: 'none',
+  },
+  chatPatternDot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#ffffff',
+  },
+  chatPatternCircle: {
+    position: 'absolute',
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 1,
+    borderColor: '#ffffff',
+  },
+  chatPatternLine: {
+    position: 'absolute',
+    height: 2,
+    backgroundColor: '#ffffff',
+  },
+  chatPatternStripe: {
+    position: 'absolute',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#ffffff',
+    opacity: 0.1,
   },
   loadingContainer: {
     flex: 1,
@@ -743,6 +1656,24 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     flexGrow: 1,
   },
+  dateSeparatorContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginVertical: SPACING.sm,
+  },
+  dateSeparator: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 4,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  dateSeparatorText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
   messageContainer: {
     flexDirection: 'row',
     marginBottom: SPACING.xs,
@@ -776,6 +1707,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 2,
+  },
+  sharedPostMessageBubble: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+    borderWidth: 0,
+    marginLeft: 0,
+    width: '100%',
+    maxWidth: 340,
+    alignSelf: 'flex-start',
   },
   messageText: {
     fontSize: 15,
@@ -824,6 +1768,202 @@ const styles = StyleSheet.create({
     borderTopColor: '#E8E0D8',
     flexShrink: 0,
   },
+  attachmentButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  attachmentButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E8F5FF',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginRight: SPACING.xs,
+  },
+  attachmentOverlay: {
+    position: 'absolute',
+    bottom: 60,
+    left: SPACING.sm,
+    width: 160,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 8,
+    paddingVertical: SPACING.xs,
+    zIndex: 20,
+  },
+  attachmentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  attachmentOptionText: {
+    marginLeft: SPACING.sm,
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  contactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4FAFF',
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginTop: SPACING.xs,
+  },
+  contactCardContent: {
+    marginLeft: SPACING.sm,
+  },
+  contactName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  contactPhone: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  sharedPostContainer: {
+    maxWidth: 340,
+    width: '100%',
+    minHeight: 220,
+    flexShrink: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    marginBottom: SPACING.xs,
+    alignSelf: 'flex-start',
+  },
+  sharedPostUploader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.sm,
+    backgroundColor: COLORS.surface,
+  },
+  sharedPostUploaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  sharedPostImage: {
+    width: '100%',
+    height: 180,
+    backgroundColor: COLORS.background, // Fallback color if image loads slowly
+  },
+  sharedPostMeta: {
+    padding: SPACING.sm,
+  },
+  sharedPostTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  sharedPostCaption: {
+    marginTop: SPACING.xs,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  contactModalCard: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    top: '30%',
+    zIndex: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  contactModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  contactModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  contactModalBody: {
+    marginTop: SPACING.sm,
+  },
+  contactModalLabel: {
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+    marginTop: SPACING.sm,
+  },
+  contactModalInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  contactModalButton: {
+    marginTop: SPACING.md,
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+  },
+  contactPickerButton: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  contactModalButtonText: {
+    color: COLORS.textWhite,
+    fontWeight: '700',
+  },
+  contactPickerButtonText: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  phoneContactItem: {
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  phoneContactName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  phoneContactNumber: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
   inputWrapper: {
     flex: 1,
     flexDirection: 'row',
@@ -839,10 +1979,78 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 0,
     paddingHorizontal: 0,
-    paddingVertical: 6,
-    fontSize: 16,
+    paddingVertical: 8,
+    fontSize: 15,
     color: '#1A1A1A',
     maxHeight: 100,
+  },
+  fullScreenMediaOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenMediaClose: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 40 : 24,
+    right: 20,
+    zIndex: 2,
+    padding: 10,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  fullScreenMediaImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fullScreenMediaVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  messageMedia: {
+    width: 200,
+    height: 140,
+    borderRadius: 18,
+    marginBottom: SPACING.xs,
+  },
+  messageVideo: {
+    width: 200,
+    height: 140,
+    borderRadius: 18,
+    marginBottom: SPACING.xs,
+  },
+  mediaPreviewContainer: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.xs,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+  },
+  mediaPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    backgroundColor: COLORS.primary,
+  },
+  mediaPreviewLabel: {
+    color: COLORS.textWhite,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  mediaPreviewClose: {
+    padding: SPACING.xs,
+  },
+  mediaPreviewImage: {
+    width: '100%',
+    height: 120,
+  },
+  mediaPreviewVideo: {
+    width: '100%',
+    height: 120,
   },
   inputDisabled: {
     opacity: 0.65,
@@ -863,5 +2071,17 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: '#CCCCCC',
     shadowOpacity: 0,
+  },
+  messageMedia: {
+    width: 200,
+    height: 140,
+    borderRadius: 18,
+    marginBottom: SPACING.xs,
+  },
+  messageVideo: {
+    width: 200,
+    height: 140,
+    borderRadius: 18,
+    marginBottom: SPACING.xs,
   },
 });

@@ -18,10 +18,15 @@ import {
   updateVendor,
   uploadVendorKycFile,
   extractKycTextFromImage,
+  extractUserKycTextFromImage,
   generateVendorAadhaarOtp,
   verifyVendorAadhaarOtp,
+  generateUserAadhaarOtp,
+  verifyUserAadhaarOtp,
+  submitKYC,
 } from '../services/api';
 import { useVendorStore } from '../store/vendorStore';
+import { useAuthStore } from '../store/authStore';
 
 const { width, height } = Dimensions.get('window');
 const PERSISTED_AADHAAR_PREFIX = 'vendor_kyc_aadhaar_';
@@ -31,10 +36,19 @@ interface VendorKYCModalProps {
   onClose: () => void;
   vendorId: string;
   onKycUpdated?: () => void;
+  allowUserKycFallback?: boolean;
 }
 
-export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose, vendorId, onKycUpdated }) => {
-  const { fetchMyVendor } = useVendorStore();
+export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose, vendorId, onKycUpdated, allowUserKycFallback = false }) => {
+  const { myVendor, fetchMyVendor } = useVendorStore();
+  const { user } = useAuthStore();
+  const isVendorFlow = !!vendorId;
+  const isUserFlow = !vendorId && allowUserKycFallback;
+  const hasVerifiedKyc = Boolean(
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified'
+  );
   
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -189,8 +203,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   };
 
   useEffect(() => {
-    if (visible && !vendorId) {
-      Alert.alert('Error', 'Vendor ID missing. Please register your business first.');
+    if (visible && hasVerifiedKyc) {
       onClose();
       return;
     }
@@ -211,7 +224,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     };
 
     loadSavedAadhaar();
-  }, [visible, vendorId, idType]);
+  }, [visible, hasVerifiedKyc, onClose, vendorId, idType]);
 
   useEffect(() => {
     if (!otpFlowActive || otpCooldown <= 0) return;
@@ -272,7 +285,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
               if (localOcrResult.aadhaar) {
                 setIdNumber(localOcrResult.aadhaar);
                 finalAadhaarNumber = localOcrResult.aadhaar;
-              } else {
+              } else if (isVendorFlow) {
                 // Backend Google Cloud Vision fallback
                 try {
                   const response = await extractKycTextFromImage(vendorId, {
@@ -293,6 +306,26 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                 } catch (backendError) {
                   console.warn('Google Vision fallback failed', backendError);
                 }
+              } else if (isUserFlow) {
+                try {
+                  const response = await extractUserKycTextFromImage({
+                    uri,
+                    name: fileName || 'kyc-input.jpg',
+                    type: asset.type || 'image/jpeg',
+                  });
+                  const visionText = response?.data?.text || '';
+                  if (visionText) {
+                    combinedEvidenceText += ` ${visionText}`;
+                  }
+                  const extracted = extractAadhaarFromText(visionText);
+                  if (extracted) {
+                    await saveAadhaarNumber(extracted);
+                    setHasAutoExtracted(true);
+                    finalAadhaarNumber = extracted;
+                  }
+                } catch (backendError) {
+                  console.warn('User Vision fallback failed', backendError);
+                }
               }
             }
           }
@@ -303,12 +336,12 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
             setAadhaarMismatch(false);
           }
 
-          if (!finalAadhaarNumber && !hasAadhaarSignals(combinedEvidenceText)) {
+          if (!finalAadhaarNumber) {
             setIdDocumentUri(null);
             setIdNumber('');
             setHasAutoExtracted(false);
             setAadhaarExtracting(false);
-            Alert.alert('Invalid Aadhaar', 'Please upload valid aadhar image.');
+            Alert.alert('OCR Required', 'Could not extract Aadhaar number from image. Please upload a clearer Aadhaar image.');
             return;
           }
           setAadhaarExtracting(false);
@@ -406,13 +439,76 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   };
 
   const handleSubmit = async () => {
-    if (!idNumber.trim() || !idDocumentUri || !faceScanUri) {
+    if (!idNumber.trim()) {
+      Alert.alert('Incomplete', 'Please provide your ID number.');
+      return;
+    }
+
+    if (!faceScanUri) {
+      Alert.alert('Face Scan Required', 'Please complete live face scan before submitting KYC.');
+      return;
+    }
+
+    if (!isUserFlow && (!idDocumentUri || !faceScanUri)) {
       Alert.alert('Incomplete', 'Please provide ID type, ID number, one ID document, and live face scan.');
+      return;
+    }
+
+    if (idType === 'aadhaar' && (idNumber.trim().length !== 12 || !/^\d{12}$/.test(idNumber.trim()))) {
+      Alert.alert('Invalid Aadhaar', 'Aadhaar number must be 12 digits.');
+      return;
+    }
+
+    if (idDocumentUri && !hasAutoExtracted) {
+      Alert.alert('OCR Required', 'If Aadhaar image is uploaded, OCR extraction of Aadhaar number is mandatory.');
+      return;
+    }
+
+    if (idType === 'pan' && idNumber.trim().length !== 10) {
+      Alert.alert('Invalid PAN', 'PAN number must be 10 characters.');
       return;
     }
 
     setLoading(true);
     try {
+      if (isUserFlow) {
+        if (idType === 'aadhaar') {
+          const otpResponse = await generateUserAadhaarOtp({
+            aadhaar_number: idNumber.trim(),
+            consent: 'Y',
+            reason: 'Jobs KYC Aadhaar verification',
+          });
+          const referenceId = otpResponse?.data?.reference_id || otpResponse?.data?.sandbox_response?.reference_id || otpResponse?.data?.sandbox_response?.data?.reference_id;
+          if (!referenceId) {
+            throw new Error('OTP generated but reference_id was not returned by sandbox');
+          }
+
+          setOtpReferenceId(referenceId);
+          setOtpFlowActive(true);
+          setOtpCooldown(30);
+          Alert.alert('OTP Sent', 'Aadhaar OTP sent successfully. Please verify to complete KYC.');
+          return;
+        }
+
+        await submitKYC({
+          kyc_role: 'organizer',
+          id_type: 'pan',
+          id_number: idNumber.trim().toUpperCase(),
+        });
+
+        if (onKycUpdated) {
+          onKycUpdated();
+        }
+        Alert.alert('Submitted', 'Your KYC was submitted and sent for review.');
+        closeAndReset();
+        return;
+      }
+
+      if (!isVendorFlow) {
+        Alert.alert('Business registration required', 'Please register your business first to continue vendor KYC.');
+        return;
+      }
+
       // 1. Upload files through backend (owner-verified)
       const idUpload = await uploadVendorKycFile(vendorId, idType, {
         uri: idDocumentUri,
@@ -489,6 +585,31 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
 
     setOtpLoading(true);
     try {
+      if (isUserFlow) {
+        await verifyUserAadhaarOtp({
+          reference_id: otpReferenceId,
+          otp: otpValue.trim(),
+        });
+
+        await submitKYC({
+          kyc_role: 'organizer',
+          id_type: 'aadhaar',
+          id_number: idNumber.trim(),
+        });
+
+        if (onKycUpdated) {
+          onKycUpdated();
+        }
+        Alert.alert('Submitted', 'Aadhaar OTP verified. KYC sent for review.');
+        closeAndReset();
+        return;
+      }
+
+      if (!isVendorFlow) {
+        Alert.alert('Business registration required', 'Please register your business first to continue vendor KYC.');
+        return;
+      }
+
       await verifyVendorAadhaarOtp(vendorId, {
         reference_id: otpReferenceId,
         otp: otpValue.trim(),
@@ -516,6 +637,26 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
 
     setOtpLoading(true);
     try {
+      if (isUserFlow) {
+        const otpResponse = await generateUserAadhaarOtp({
+          aadhaar_number: idNumber.trim(),
+          consent: 'Y',
+          reason: 'Jobs KYC Aadhaar verification resend',
+        });
+        const referenceId = otpResponse?.data?.reference_id || otpResponse?.data?.sandbox_response?.reference_id || otpResponse?.data?.sandbox_response?.data?.reference_id;
+        if (referenceId) {
+          setOtpReferenceId(referenceId);
+        }
+        setOtpCooldown(30);
+        Alert.alert('OTP Resent', 'A new Aadhaar OTP has been sent.');
+        return;
+      }
+
+      if (!isVendorFlow) {
+        Alert.alert('Business registration required', 'Please register your business first to continue vendor KYC.');
+        return;
+      }
+
       const otpResponse = await generateVendorAadhaarOtp(vendorId, {
         aadhaar_number: idNumber.trim(),
         consent: 'Y',
@@ -621,41 +762,30 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.sectionDesc}>To ensure trust, upload either Aadhaar or PAN card details and a live face scan.</Text>
+            {!isVendorFlow && !isUserFlow ? (
+              <View style={styles.infoCard}>
+                <Text style={styles.docTitle}>Business registration required</Text>
+                <Text style={styles.docStatus}>
+                  Please register your business first to continue vendor KYC.
+                </Text>
+              </View>
+            ) : (
+              <>
+            <Text style={styles.sectionDesc}>Aadhaar verification only. Enter Aadhaar number directly, or upload Aadhaar image to auto-extract number via OCR.</Text>
             
-            {/* ID Type Selector */}
-            <View style={styles.docRow}>
-              <View style={styles.docInfo}>
-                <Text style={styles.docTitle}>Choose ID Type</Text>
-                <Text style={styles.docStatus}>Select one: Aadhaar or PAN</Text>
-              </View>
-              <View style={styles.idTypeActions}>
-                <TouchableOpacity
-                  style={[styles.idTypeBtn, idType === 'aadhaar' && styles.idTypeBtnActive]}
-                  onPress={() => setIdType('aadhaar')}
-                >
-                  <Text style={[styles.idTypeBtnText, idType === 'aadhaar' && styles.idTypeBtnTextActive]}>Aadhaar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.idTypeBtn, idType === 'pan' && styles.idTypeBtnActive]}
-                  onPress={() => setIdType('pan')}
-                >
-                  <Text style={[styles.idTypeBtnText, idType === 'pan' && styles.idTypeBtnTextActive]}>PAN</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
             {/* ID Number & Upload Row */}
             <View style={styles.docRow}>
               <View style={styles.docInfo}>
-                <Text style={styles.docTitle}>{idType === 'aadhaar' ? 'Aadhaar Number' : 'PAN Number'}</Text>
-                <Text style={styles.docStatus}>{idDocumentUri ? 'Document uploaded' : 'Document pending'}</Text>
+                <Text style={styles.docTitle}>Aadhaar Number</Text>
+                <Text style={styles.docStatus}>{idDocumentUri ? 'Aadhaar uploaded (OCR required)' : 'Enter number or upload Aadhaar image'}</Text>
                 <TextInput
                   style={styles.idInput}
-                  placeholder={idType === 'aadhaar' ? 'Enter 12-digit Aadhaar' : 'Enter PAN number'}
+                  placeholder="Enter 12-digit Aadhaar"
                   value={idNumber}
-                  autoCapitalize={idType === 'pan' ? 'characters' : 'none'}
-                  onChangeText={setIdNumber}
+                  autoCapitalize="none"
+                  keyboardType="number-pad"
+                  maxLength={12}
+                  onChangeText={(value) => setIdNumber(value.replace(/[^\d]/g, '').slice(0, 12))}
                 />
               </View>
               <View style={styles.docActionCol}>
@@ -669,7 +799,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                   <Text style={styles.uploadBtnText}>
                     {documentPicking
                       ? 'Picking...'
-                      : idDocumentUri || (idType === 'aadhaar' && !!previousAadhaar)
+                      : idDocumentUri || !!previousAadhaar
                         ? 'Upload Different Image'
                         : 'Upload'}
                   </Text>
@@ -702,7 +832,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
               <Text style={styles.ocrInfo}>Scanning document text for Aadhaar number...</Text>
             )}
 
-            {previousAadhaar && idType === 'aadhaar' && (
+            {previousAadhaar && (
               <Text style={styles.autoExtractInfo}>
                 Previously uploaded Aadhaar: {previousAadhaar}
               </Text>
@@ -714,13 +844,13 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
               </Text>
             )}
 
-            {hasAutoExtracted && idType === 'aadhaar' && idNumber.length === 12 && !aadhaarMismatch && (
+            {hasAutoExtracted && idNumber.length === 12 && !aadhaarMismatch && (
               <Text style={styles.autoExtractInfo}>
                 Aadhaar number extracted automatically: {idNumber}
               </Text>
             )}
 
-            {otpFlowActive && idType === 'aadhaar' ? (
+            {otpFlowActive ? (
               <View style={styles.otpCard}>
                 <Text style={styles.docTitle}>Aadhaar OTP Verification</Text>
                 <Text style={styles.docStatus}>Enter OTP sent to Aadhaar linked mobile number</Text>
@@ -755,12 +885,14 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
               </View>
             ) : (
               <TouchableOpacity
-                style={[styles.submitBtn, (loading || documentPicking || aadhaarExtracting) && styles.submitBtnDisabled]}
+                style={[styles.submitBtn, (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri) && styles.submitBtnDisabled]}
                 onPress={handleSubmit}
-                disabled={loading || documentPicking || aadhaarExtracting}
+                disabled={loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri}
               >
                 {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Submit KYC Documents</Text>}
               </TouchableOpacity>
+            )}
+              </>
             )}
 
           </ScrollView>
@@ -779,6 +911,14 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
   content: { paddingHorizontal: SPACING.lg },
   contentContainer: { paddingTop: SPACING.lg, paddingBottom: 36 },
+  infoCard: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
   sectionDesc: { fontSize: 14, color: COLORS.textLight, marginBottom: SPACING.lg, lineHeight: 20 },
   
   docRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.divider },

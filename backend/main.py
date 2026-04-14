@@ -8,10 +8,12 @@ import logging
 import sys
 import os
 import asyncio
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from typing import Optional, List
+from tempfile import NamedTemporaryFile
 from uuid import uuid4
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -58,6 +60,16 @@ from models.schemas import (
 )
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
 from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit
+from routes.video_upload_routes import (
+    router as video_upload_router,
+    _compress_video,
+    _ensure_ffmpeg_tools_available,
+    _pick_target_profile,
+    _probe_video_metadata,
+    _save_upload_to_temp_file,
+    MAX_VIDEO_UPLOAD_BYTES,
+    MAX_VIDEO_DURATION_SECONDS,
+)
 from utils.helpers import (
     WISDOM_QUOTES, TITHIS, generate_sl_id, generate_circle_code,
     generate_community_code, SUBGROUPS, moderate_content
@@ -194,6 +206,180 @@ async def get_db() -> FirestoreDB:
     if not client:
         raise HTTPException(status_code=503, detail="Database unavailable")
     return FirestoreDB(client)
+
+
+def _build_firebase_public_url(bucket_name: str, object_path: str, token: str) -> str:
+    return (
+        f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/"
+        f"{quote(object_path, safe='')}?alt=media&token={token}"
+    )
+
+
+def _get_post_storage_bucket():
+    from firebase_admin import storage as firebase_storage
+
+    bucket_name = (
+        os.getenv('FIREBASE_STORAGE_BUCKET')
+        or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
+        or 'sanatan-lok.firebasestorage.app'
+    )
+    return firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
+
+
+async def _upload_post_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
+    extension_map = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'video/mp4': 'mp4',
+        'video/quicktime': 'mov',
+    }
+    extension = extension_map.get(content_type, 'bin')
+
+    bucket = _get_post_storage_bucket()
+
+    object_path = f"posts/{user_id}/{uuid4().hex}.{extension}"
+    blob = bucket.blob(object_path)
+    download_token = uuid4().hex
+    blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+    blob.upload_from_string(file_bytes, content_type=content_type)
+
+    media_url = _build_firebase_public_url(bucket.name, object_path, download_token)
+    return media_url, object_path
+
+
+def _upload_post_media_file_to_storage(user_id: str, file_path: str, content_type: str) -> tuple[str, str]:
+    extension_map = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'video/mp4': 'mp4',
+        'video/quicktime': 'mov',
+        'video/webm': 'webm',
+        'video/x-matroska': 'mkv',
+    }
+    extension = extension_map.get(content_type, 'bin')
+
+    bucket = _get_post_storage_bucket()
+
+    object_path = f"posts/{user_id}/{uuid4().hex}.{extension}"
+    blob = bucket.blob(object_path)
+    download_token = uuid4().hex
+    blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+
+    with open(file_path, 'rb') as media_file:
+        blob.upload_from_file(media_file, content_type=content_type)
+
+    media_url = _build_firebase_public_url(bucket.name, object_path, download_token)
+    return media_url, object_path
+
+
+async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
+    extension_map = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+    }
+    extension = extension_map.get(content_type, 'bin')
+
+    bucket = _get_post_storage_bucket()
+
+    object_path = f"chat_media/{user_id}/{uuid4().hex}.{extension}"
+    blob = bucket.blob(object_path)
+    download_token = uuid4().hex
+    blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+    blob.upload_from_string(file_bytes, content_type=content_type)
+
+    media_url = _build_firebase_public_url(bucket.name, object_path, download_token)
+    return media_url, object_path
+
+
+async def _delete_post_media_from_storage(object_path: str) -> bool:
+    if not object_path:
+        return False
+
+    try:
+        bucket = _get_post_storage_bucket()
+        blob = bucket.blob(object_path)
+        if not blob.exists():
+            return False
+        blob.delete()
+        return True
+    except Exception as err:
+        logger.warning(f"Failed deleting post media '{object_path}' from storage: {err}")
+        return False
+
+
+async def _create_post_document(
+    db: FirestoreDB,
+    user_id: str,
+    user: dict,
+    media_url: str,
+    object_path: str,
+    media_type: str,
+    content_type: str,
+    caption: str,
+    source: str,
+    filter_name: Optional[str],
+    metadata: Optional[dict] = None,
+) -> dict:
+    post_doc = {
+        'user_id': user_id,
+        'username': user.get('name') or user.get('sl_id') or 'User',
+        'user_photo': user.get('photo'),
+        'media_url': media_url,
+        'media_path': object_path,
+        'media_type': media_type,
+        'content_type': content_type,
+        'caption': (caption or '').strip(),
+        'source': source,
+        'filter_name': filter_name,
+        'visibility': 'public',
+        'likes_count': 0,
+        'comments_count': 0,
+        'created_at': datetime.utcnow(),
+        'updated_at': datetime.utcnow(),
+    }
+
+    if metadata:
+        post_doc['metadata'] = metadata
+
+    post_id = await db.create_document('posts', post_doc)
+    post_doc['id'] = post_id
+    return post_doc
+
+
+async def _delete_post_with_dependencies(db: FirestoreDB, post_id: str) -> dict:
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    media_path = post.get('media_path')
+
+    comments = await db.query_documents('post_comments', filters=[('post_id', '==', post_id)])
+    for comment in comments:
+        comment_id = comment.get('id')
+        if comment_id:
+            await db.delete_document('post_comments', comment_id)
+
+    await db.delete_document('posts', post_id)
+
+    media_deleted = False
+    if media_path:
+        remaining_posts = await db.query_documents(
+            'posts',
+            filters=[('media_path', '==', media_path)],
+            limit=1,
+        )
+        if not remaining_posts:
+            media_deleted = await _delete_post_media_from_storage(media_path)
+
+    return {
+        'post': post,
+        'post_id': post_id,
+        'media_deleted': media_deleted,
+        'comments_deleted': len(comments),
+    }
 
 
 async def _is_admin_user(db: FirestoreDB, user_id: str) -> bool:
@@ -352,12 +538,10 @@ async def _auto_approve_vendor_for_test_phone(db: FirestoreDB, user_id: str, pho
 # =================== MIDDLEWARE ===================
 
 cors_origins = os.getenv('CORS_ORIGINS', '*')
-if cors_origins == '*':
-    allowed_origins = []
-    allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app)$"
-else:
+allowed_origins = []
+allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)$"
+if cors_origins != '*':
     allowed_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
-    allow_origin_regex = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -368,6 +552,19 @@ app.add_middleware(
     allow_headers=['*'],
     expose_headers=['*'],
 )
+
+
+def _is_origin_allowed(origin: str) -> bool:
+    if not origin:
+        return False
+    if allowed_origins and origin in allowed_origins:
+        return True
+    if allow_origin_regex:
+        try:
+            return re.match(allow_origin_regex, origin) is not None
+        except re.error:
+            return False
+    return False
 
 
 @app.middleware("http")
@@ -382,10 +579,16 @@ async def add_process_time_header(request: Request, call_next):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return JSONResponse(
+    response = JSONResponse(
         status_code=500,
         content={"detail": str(exc) if settings.DEBUG else "Internal server error"}
     )
+    origin = request.headers.get("origin") or ""
+    if _is_origin_allowed(origin):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Vary"] = "Origin"
+    return response
 
 
 # =================== API ROUTER ===================
@@ -540,8 +743,6 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
         user = await db.get_user_by_phone(phone)
         
         if user and user.get('sl_id'):
-            await _auto_approve_vendor_for_test_phone(db, user['id'], phone)
-
             # Existing user - return token
             token = create_jwt_token(user['id'], user['sl_id'])
             return {
@@ -627,8 +828,26 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
         try:
             if is_valid_image(photo_data):
                 # Compress to 512px max and optimize
-                photo_data = compress_base64_image(photo_data, max_size=512, quality=85)
+                photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
                 logger.info(f"Profile photo compressed successfully")
+
+                # If the resulting photo still exceeds Firestore field limit, upload to Firebase Storage
+                if len(photo_data) > 950000:
+                    from firebase_admin import storage as firebase_storage
+                    bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
+                    bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
+                    object_path = f"users/{uuid4().hex}/profile.jpg"
+                    blob = bucket.blob(object_path)
+                    download_token = uuid4().hex
+                    blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+
+                    base64_payload = photo_data.split(',')[1] if ',' in photo_data else photo_data
+                    blob.upload_from_string(base64.b64decode(base64_payload), content_type='image/jpeg')
+                    photo_data = (
+                        f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
+                        f"{quote(object_path, safe='')}?alt=media&token={download_token}"
+                    )
+                    logger.info(f"Uploaded large profile image to storage: {photo_data}")
             else:
                 logger.warning("Invalid image format, skipping photo")
                 photo_data = None
@@ -688,6 +907,31 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
     if update_data:
+        photo_data = update_data.get('photo')
+        if photo_data:
+            from services.image_service import compress_base64_image, is_valid_image
+            if not is_valid_image(photo_data):
+                raise HTTPException(status_code=400, detail='Invalid profile photo')
+            try:
+                photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
+                if len(photo_data) > 950000:
+                    from firebase_admin import storage as firebase_storage
+                    bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
+                    bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
+                    object_path = f"users/{token_data['user_id']}/{uuid4().hex}.jpg"
+                    blob = bucket.blob(object_path)
+                    download_token = uuid4().hex
+                    blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+                    base64_payload = photo_data.split(',')[1] if ',' in photo_data else photo_data
+                    blob.upload_from_string(base64.b64decode(base64_payload), content_type='image/jpeg')
+                    photo_data = (
+                        f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
+                        f"{quote(object_path, safe='')}?alt=media&token={download_token}"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to compress profile photo: {e}")
+                raise HTTPException(status_code=400, detail='Invalid profile photo')
+            update_data['photo'] = photo_data
         await db.update_document('users', token_data["user_id"], update_data)
     return await db.get_document('users', token_data["user_id"])
 
@@ -960,6 +1204,902 @@ async def list_users(
         })
 
     return result
+
+
+@api_router.get('/users/{user_id}')
+async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    safe_user = {
+        'id': user.get('id'),
+        'name': user.get('name'),
+        'photo': user.get('photo'),
+        'sl_id': user.get('sl_id'),
+        'badges': user.get('badges', []),
+        'home_location': user.get('home_location'),
+        'followers': user.get('followers', []),
+        'following': user.get('following', []),
+    }
+    return safe_user
+
+
+@api_router.get('/users/{user_id}/posts')
+async def get_user_posts(
+    user_id: str,
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    db = await get_db()
+    viewer_user_id = token_data['user_id']
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    candidate_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)], limit=500)
+
+    def _created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    candidate_posts.sort(key=_created_at_sort_key, reverse=True)
+    total_count = len(candidate_posts)
+
+    paged_posts = candidate_posts[safe_offset:safe_offset + safe_limit]
+    normalized = []
+
+    for post in paged_posts:
+        post['user_photo'] = user.get('photo')
+        post['username'] = user.get('name') or user.get('sl_id') or post.get('username')
+
+        liked_by = post.get('liked_by', []) or []
+        post['likes_count'] = post.get('likes_count', len(liked_by))
+        post['comments_count'] = post.get('comments_count', 0)
+        post['liked_by_me'] = viewer_user_id in liked_by
+
+        top_comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post.get('id'))],
+            limit=200,
+        )
+        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+        post['top_comments'] = top_comments[:5]
+        normalized.append(post)
+
+    has_more = (safe_offset + safe_limit) < total_count
+    return {
+        'items': normalized,
+        'total_count': total_count,
+        'limit': safe_limit,
+        'offset': safe_offset,
+        'has_more': has_more,
+    }
+
+
+@api_router.post('/users/{user_id}/follow')
+async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    current_user_id = token_data['user_id']
+    if user_id == current_user_id:
+        raise HTTPException(status_code=400, detail='Cannot follow yourself')
+
+    current_user = await db.get_document('users', current_user_id)
+    if not current_user:
+        raise HTTPException(status_code=404, detail='Current user not found')
+
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    target_followers = target_user.get('followers', []) or []
+    if current_user_id in target_followers:
+        return {'message': 'Already following user', 'user_id': user_id}
+
+    await db.array_union_update('users', user_id, 'followers', [current_user_id])
+    await db.array_union_update('users', current_user_id, 'following', [user_id])
+
+    try:
+        follower_name = current_user.get('name') or current_user.get('sl_id') or 'Someone'
+        await db.create_document('notifications', {
+            'user_id': user_id,
+            'title': 'New follower',
+            'body': f'{follower_name} started following you.',
+            'notification_type': 'social',
+            'data': {
+                'actor_user_id': current_user_id,
+                'actor_name': follower_name,
+                'action': 'follow',
+            },
+            'is_read': False,
+        })
+    except Exception as notify_err:
+        logger.warning(f"Followed user {user_id} but failed to create notification: {notify_err}")
+
+    return {'message': 'Now following user', 'user_id': user_id}
+
+
+@api_router.post('/users/{user_id}/unfollow')
+async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    current_user_id = token_data['user_id']
+    if user_id == current_user_id:
+        raise HTTPException(status_code=400, detail='Cannot unfollow yourself')
+
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    await db.array_remove_update('users', user_id, 'followers', [current_user_id])
+    await db.array_remove_update('users', current_user_id, 'following', [user_id])
+
+    return {'message': 'Unfollowed user', 'user_id': user_id}
+
+
+# =================== SOCIAL POSTS ===================
+
+@api_router.post('/posts/upload')
+async def upload_post(
+    caption: str = Form(''),
+    source: str = Form('camera_roll'),
+    filter_name: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    token_data: dict = Depends(verify_token)
+):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    content_type = (file.content_type or '').lower()
+    if not content_type and file.filename:
+        filename_lower = file.filename.lower()
+        if filename_lower.endswith(('.mp4', '.mov', '.webm', '.mkv')):
+            content_type = 'video/mp4'
+        elif filename_lower.endswith(('.jpg', '.jpeg')):
+            content_type = 'image/jpeg'
+        elif filename_lower.endswith('.png'):
+            content_type = 'image/png'
+
+    allowed_content_types = {
+        'image/jpeg', 'image/jpg', 'image/png',
+        'video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska'
+    }
+    if content_type not in allowed_content_types:
+        raise HTTPException(status_code=400, detail='Unsupported media type. Use jpg, png, mp4, mov, webm, or mkv')
+
+    file_bytes = b''
+    temp_input_path = None
+    temp_output_file = None
+    media_url = None
+    object_path = None
+    original_size_bytes = 0
+    compressed_size_bytes = 0
+    duration_seconds = 0.0
+
+    try:
+        if content_type.startswith('video/'):
+            _ensure_ffmpeg_tools_available()
+            temp_input_path, original_size_bytes = await _save_upload_to_temp_file(file)
+            metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_path)
+            duration_seconds = metadata.get('duration') or 0.0
+
+            if duration_seconds <= 0:
+                raise HTTPException(status_code=400, detail='Unable to determine video duration')
+            if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
+                )
+
+            target_width, target_height, _ = _pick_target_profile(metadata.get('height'))
+            temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
+            temp_output_file.close()
+
+            await asyncio.to_thread(
+                _compress_video,
+                temp_input_path,
+                temp_output_file.name,
+                target_width,
+                target_height,
+            )
+
+            compressed_size_bytes = os.path.getsize(temp_output_file.name)
+            if compressed_size_bytes <= 0:
+                raise HTTPException(status_code=500, detail='Compressed video is empty')
+
+            content_type = 'video/mp4'
+            try:
+                media_url, object_path = await asyncio.to_thread(
+                    _upload_post_media_file_to_storage,
+                    user_id,
+                    temp_output_file.name,
+                    content_type,
+                )
+            except Exception as exc:
+                logger.exception('Post video upload to Firebase failed for user_id=%s', user_id)
+                raise HTTPException(status_code=500, detail=f'Firebase Storage upload failed: {str(exc)}')
+        else:
+            file_bytes = await file.read()
+            if not file_bytes:
+                raise HTTPException(status_code=400, detail='Empty upload file')
+
+            max_image_bytes = 30 * 1024 * 1024
+            if len(file_bytes) > max_image_bytes:
+                raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 30MB')
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Upload processing failed")
+        raise HTTPException(status_code=500, detail=f"Server error during processing: {str(e)}")
+    finally:
+        await file.close()
+        if temp_input_path and os.path.exists(temp_input_path):
+            os.unlink(temp_input_path)
+        if temp_output_file and os.path.exists(temp_output_file.name):
+            os.unlink(temp_output_file.name)
+
+    if media_url is None or object_path is None:
+        try:
+            media_url, object_path = await _upload_post_media_to_storage(user_id, file_bytes, content_type)
+        except Exception as exc:
+            logger.exception('Post media upload to Firebase failed for user_id=%s', user_id)
+            raise HTTPException(status_code=500, detail=f'Firebase Storage upload failed: {str(exc)}')
+    media_type = 'video' if content_type.startswith('video/') else 'image'
+
+    video_metadata = None
+    if content_type.startswith('video/'):
+        video_metadata = {
+            'original_size_bytes': original_size_bytes,
+            'compressed_size_bytes': compressed_size_bytes,
+            'duration_seconds': duration_seconds,
+        }
+
+    return await _create_post_document(
+        db=db,
+        user_id=user_id,
+        user=user,
+        media_url=media_url,
+        object_path=object_path,
+        media_type=media_type,
+        content_type=content_type,
+        caption=caption,
+        source=source,
+        filter_name=filter_name,
+        metadata=video_metadata,
+    )
+
+
+@api_router.post('/media/upload')
+async def upload_chat_media(
+    file: UploadFile = File(...),
+    token_data: dict = Depends(verify_token),
+):
+    user_id = token_data['user_id']
+    content_type = (file.content_type or '').lower()
+    if not content_type and file.filename:
+        filename_lower = file.filename.lower()
+        if filename_lower.endswith(('.jpg', '.jpeg')):
+            content_type = 'image/jpeg'
+        elif filename_lower.endswith('.png'):
+            content_type = 'image/png'
+
+    allowed_content_types = {'image/jpeg', 'image/jpg', 'image/png'}
+    if content_type not in allowed_content_types:
+        raise HTTPException(status_code=400, detail='Unsupported media type for chat upload. Use jpg, jpeg, or png')
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail='Empty upload file')
+
+    max_image_bytes = 30 * 1024 * 1024
+    if len(file_bytes) > max_image_bytes:
+        raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 30MB')
+
+    media_url, object_path = await _upload_chat_media_to_storage(user_id, file_bytes, content_type)
+    await file.close()
+
+    return {
+        'message': 'Chat media uploaded successfully',
+        'url': media_url,
+        'path': object_path,
+    }
+
+
+@api_router.post('/posts/upload-from-storage')
+async def upload_post_from_storage(
+    storage_path: str = Form(...),
+    caption: str = Form(''),
+    source: str = Form('camera_roll'),
+    filter_name: Optional[str] = Form(None),
+    token_data: dict = Depends(verify_token),
+):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    if not storage_path.startswith('raw-post-videos/'):
+        raise HTTPException(status_code=400, detail='Invalid storage path')
+
+    bucket = _get_post_storage_bucket()
+    raw_blob = bucket.blob(storage_path)
+    if not raw_blob.exists():
+        raise HTTPException(status_code=404, detail='Uploaded raw video not found in storage')
+
+    content_type = (raw_blob.content_type or 'video/mp4').lower()
+    if not content_type.startswith('video/'):
+        raise HTTPException(status_code=400, detail='Stored media is not a video')
+
+    original_size_bytes = int(raw_blob.size or 0)
+    if original_size_bytes <= 0:
+        raise HTTPException(status_code=400, detail='Stored video is empty')
+    if original_size_bytes > MAX_VIDEO_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail='Video upload exceeds maximum allowed size')
+
+    _ensure_ffmpeg_tools_available()
+
+    temp_input_file = NamedTemporaryFile(delete=False, suffix='.mp4')
+    temp_input_file.close()
+    temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
+    temp_output_file.close()
+
+    try:
+        raw_blob.download_to_filename(temp_input_file.name)
+
+        metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_file.name)
+        duration_seconds = metadata.get('duration') or 0.0
+        if duration_seconds <= 0:
+            raise HTTPException(status_code=400, detail='Unable to determine video duration')
+        if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
+            raise HTTPException(
+                status_code=400,
+                detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
+            )
+
+        target_width, target_height, _ = _pick_target_profile(metadata.get('height'))
+        await asyncio.to_thread(
+            _compress_video,
+            temp_input_file.name,
+            temp_output_file.name,
+            target_width,
+            target_height,
+        )
+
+        compressed_size_bytes = os.path.getsize(temp_output_file.name)
+        if compressed_size_bytes <= 0:
+            raise HTTPException(status_code=500, detail='Compressed video is empty')
+
+        media_url, object_path = await asyncio.to_thread(
+            _upload_post_media_file_to_storage,
+            user_id,
+            temp_output_file.name,
+            'video/mp4',
+        )
+
+        post_doc = await _create_post_document(
+            db=db,
+            user_id=user_id,
+            user=user,
+            media_url=media_url,
+            object_path=object_path,
+            media_type='video',
+            content_type='video/mp4',
+            caption=caption,
+            source=source,
+            filter_name=filter_name,
+            metadata={
+                'original_size_bytes': original_size_bytes,
+                'compressed_size_bytes': compressed_size_bytes,
+                'duration_seconds': duration_seconds,
+            },
+        )
+
+        try:
+            raw_blob.delete()
+        except Exception as cleanup_err:
+            logger.warning('Raw video cleanup failed for %s: %s', storage_path, cleanup_err)
+
+        return post_doc
+    finally:
+        if os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)
+        if os.path.exists(temp_output_file.name):
+            os.unlink(temp_output_file.name)
+
+
+@api_router.get('/posts/feed')
+async def get_posts_feed(limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+
+    fetch_count = min(500, max(200, safe_offset + safe_limit + 20))
+    posts = await db.query_documents('posts', limit=fetch_count)
+
+    visible_posts = posts
+
+    def _created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    visible_posts.sort(key=_created_at_sort_key, reverse=True)
+
+    post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
+    authors_by_id = {}
+    for author_id in post_author_ids:
+        try:
+            authors_by_id[author_id] = await db.get_document('users', author_id)
+        except Exception:
+            authors_by_id[author_id] = None
+
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
+
+    normalized = []
+    for post in paged_posts:
+        latest_author = authors_by_id.get(post.get('user_id'))
+        if latest_author:
+            post['user_photo'] = latest_author.get('photo')
+            post['username'] = latest_author.get('name') or latest_author.get('sl_id') or post.get('username')
+
+        liked_by = post.get('liked_by', []) or []
+        post['likes_count'] = post.get('likes_count', len(liked_by))
+        post['comments_count'] = post.get('comments_count', 0)
+        post['liked_by_me'] = user_id in liked_by
+
+        top_comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post.get('id'))],
+            limit=200,
+        )
+        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+        post['top_comments'] = top_comments[:5]
+        normalized.append(post)
+
+    has_more = (safe_offset + safe_limit) < len(visible_posts)
+    return {
+        'items': normalized,
+        'limit': safe_limit,
+        'offset': safe_offset,
+        'has_more': has_more,
+    }
+
+
+@api_router.get('/posts/{post_id}')
+async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    author = None
+    if post.get('user_id'):
+        try:
+            author = await db.get_document('users', post['user_id'])
+        except Exception:
+            author = None
+
+    if author:
+        post['user_photo'] = author.get('photo')
+        post['username'] = author.get('name') or author.get('sl_id') or post.get('username')
+
+    liked_by = post.get('liked_by', []) or []
+    post['likes_count'] = post.get('likes_count', len(liked_by))
+    post['comments_count'] = post.get('comments_count', 0)
+    post['liked_by_me'] = user_id in liked_by
+
+    top_comments = await db.query_documents(
+        'post_comments',
+        filters=[('post_id', '==', post.get('id'))],
+        limit=200,
+    )
+
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+    post['top_comments'] = top_comments[:5]
+    return post
+
+
+@api_router.get('/posts/hashtag')
+async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
+    if not hashtag or not hashtag.strip():
+        raise HTTPException(status_code=400, detail='Hashtag query is required')
+
+    db = await get_db()
+    user_id = token_data['user_id']
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_count = min(500, max(200, safe_offset + safe_limit + 20))
+
+    posts = await db.query_documents('posts', limit=fetch_count)
+    normalized_hashtag = hashtag.strip().lower()
+
+    def _matches_hashtag(post: dict) -> bool:
+        caption = (post.get('caption') or '').lower()
+        if not caption:
+            return False
+        if f'#{normalized_hashtag}' in caption:
+            return True
+        # also allow search without the leading hash
+        return any(
+            token.strip('.,!?:;"\'()[]{}') == normalized_hashtag
+            for token in caption.split()
+        )
+
+    visible_posts = [post for post in posts if _matches_hashtag(post)]
+
+    def _created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    visible_posts.sort(key=_created_at_sort_key, reverse=True)
+
+    post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
+    authors_by_id = {}
+    for author_id in post_author_ids:
+        try:
+            authors_by_id[author_id] = await db.get_document('users', author_id)
+        except Exception:
+            authors_by_id[author_id] = None
+
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
+
+    normalized = []
+    for post in paged_posts:
+        latest_author = authors_by_id.get(post.get('user_id'))
+        if latest_author:
+            post['user_photo'] = latest_author.get('photo')
+            post['username'] = latest_author.get('name') or latest_author.get('sl_id') or post.get('username')
+
+        liked_by = post.get('liked_by', []) or []
+        post['likes_count'] = post.get('likes_count', len(liked_by))
+        post['comments_count'] = post.get('comments_count', 0)
+        post['liked_by_me'] = user_id in liked_by
+
+        top_comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post.get('id'))],
+            limit=200,
+        )
+        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+        post['top_comments'] = top_comments[:5]
+        normalized.append(post)
+
+    has_more = (safe_offset + safe_limit) < len(visible_posts)
+    return {
+        'items': normalized,
+        'limit': safe_limit,
+        'offset': safe_offset,
+        'has_more': has_more,
+    }
+
+
+@api_router.post('/posts/{post_id}/repost')
+async def repost_post(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    original_post = await db.get_document('posts', post_id)
+    if not original_post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    repost_doc = {
+        'user_id': user_id,
+        'username': user.get('name') or user.get('sl_id') or 'User',
+        'user_photo': user.get('photo'),
+        'media_url': original_post.get('media_url'),
+        'media_path': original_post.get('media_path'),
+        'media_type': original_post.get('media_type'),
+        'content_type': original_post.get('content_type'),
+        'caption': original_post.get('caption') or '',
+        'source': 'repost',
+        'filter_name': original_post.get('filter_name'),
+        'visibility': 'public',
+        'original_post_id': post_id,
+        'reposted_by': user_id,
+        'likes_count': 0,
+        'comments_count': 0,
+        'created_at': datetime.utcnow(),
+        'updated_at': datetime.utcnow(),
+    }
+
+    new_post_id = await db.create_document('posts', repost_doc)
+    repost_doc['id'] = new_post_id
+    repost_doc['liked_by_me'] = False
+
+    return {
+        'message': 'Post reposted',
+        'post': repost_doc,
+    }
+
+
+@api_router.post('/posts/{post_id}/like')
+async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    liked_by = post.get('liked_by', []) or []
+    liked = user_id in liked_by
+
+    if liked:
+        await db.array_remove_update('posts', post_id, 'liked_by', [user_id])
+    else:
+        await db.array_union_update('posts', post_id, 'liked_by', [user_id])
+
+    updated_post = await db.get_document('posts', post_id)
+    updated_liked_by = updated_post.get('liked_by', []) or []
+    likes_count = len(updated_liked_by)
+    await db.update_document('posts', post_id, {'likes_count': likes_count})
+
+    updated_post = await db.get_document('posts', post_id)
+    updated_post['likes_count'] = likes_count
+    updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
+
+    return {
+        'message': 'Post unliked' if liked else 'Post liked',
+        'liked': not liked,
+        'post': updated_post,
+    }
+
+
+@api_router.delete('/posts/{post_id}')
+async def delete_post(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    if post.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail='You can only delete your own posts')
+
+    result = await _delete_post_with_dependencies(db, post_id)
+
+    return {
+        'message': 'Post deleted',
+        'post_id': post_id,
+        'media_deleted': result['media_deleted'],
+        'comments_deleted': result['comments_deleted'],
+    }
+
+
+@api_router.post('/posts/{post_id}/comments')
+async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    text = str(data.get('text') or '').strip()
+    if not text:
+        raise HTTPException(status_code=400, detail='Comment text is required')
+
+    if len(text) > 500:
+        raise HTTPException(status_code=400, detail='Comment too long (max 500 chars)')
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    comment_doc = {
+        'post_id': post_id,
+        'user_id': user_id,
+        'username': user.get('name') or user.get('sl_id') or 'User',
+        'user_photo': user.get('photo'),
+        'text': text,
+        'created_at': datetime.utcnow(),
+    }
+    comment_id = await db.create_document('post_comments', comment_doc)
+    comment_doc['id'] = comment_id
+
+    comments_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
+    await db.update_document('posts', post_id, {'comments_count': comments_count})
+
+    updated_post = await db.get_document('posts', post_id)
+    updated_post['comments_count'] = comments_count
+    updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
+    top_comments = await db.query_documents(
+        'post_comments',
+        filters=[('post_id', '==', post_id)],
+        limit=200,
+    )
+
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+    updated_post['top_comments'] = top_comments[:5]
+
+    return {
+        'message': 'Comment added',
+        'comment': comment_doc,
+        'comments_count': comments_count,
+        'post': updated_post,
+    }
+
+
+@api_router.get('/posts/{post_id}/comments')
+async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    safe_limit = max(1, min(limit, 500))
+    comments = await db.query_documents(
+        'post_comments',
+        filters=[('post_id', '==', post_id)],
+        limit=500,
+    )
+
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    comments.sort(key=_comment_created_at_sort_key, reverse=True)
+    return comments[:safe_limit]
+
+
+@api_router.post('/posts/{post_id}/report')
+async def report_post(post_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    reporter_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    if post.get('user_id') == reporter_id:
+        raise HTTPException(status_code=400, detail='You cannot report your own post')
+
+    existing_pending = await db.query_documents(
+        'reports',
+        filters=[
+            ('reporter_id', '==', reporter_id),
+            ('content_type', '==', 'post'),
+            ('content_id', '==', post_id),
+            ('status', '==', 'pending'),
+        ],
+        limit=1,
+    )
+    if existing_pending:
+        return {
+            'message': 'Report already submitted',
+            'report_id': existing_pending[0].get('id'),
+        }
+
+    category = str(data.get('category') or 'other').strip().lower()
+    valid_categories = ['religious_attack', 'disrespectful', 'spam', 'abuse', 'other']
+    if category not in valid_categories:
+        category = 'other'
+
+    report_data = {
+        'reporter_id': reporter_id,
+        'content_type': 'post',
+        'content_id': post_id,
+        'reported_user_id': post.get('user_id'),
+        'category': category,
+        'description': str(data.get('description') or '').strip(),
+        'status': 'pending',
+        'created_at': datetime.utcnow(),
+        'snapshot': {
+            'post_id': post_id,
+            'caption': post.get('caption') or '',
+            'media_url': post.get('media_url'),
+            'media_type': post.get('media_type'),
+            'post_user_id': post.get('user_id'),
+            'post_username': post.get('username'),
+        },
+    }
+
+    report_id = await db.create_document('reports', report_data)
+    return {
+        'message': 'Post reported successfully',
+        'report_id': report_id,
+    }
 
 
 @api_router.get("/user/verification-status")
@@ -2413,10 +3553,25 @@ async def leave_circle(circle_id: str, token_data: dict = Depends(verify_token))
     
     admin_ids = _circle_admin_ids(circle)
     is_admin = user_id in admin_ids
-    if is_admin and len(admin_ids) <= 1:
-        raise HTTPException(status_code=400, detail="Last admin cannot leave. Assign another admin or delete the circle.")
+    members = circle.get('members', []) or []
 
-    if is_admin:
+    if is_admin and len(admin_ids) <= 1:
+        if len(members) <= 1:
+            # Last member/admin deleting the circle
+            await db.array_remove_update('users', user_id, 'circles', [circle_id])
+            await db.delete_document('circles', circle_id)
+            logger.info(f"Circle {circle_id} deleted by last member {user_id}")
+            return {"message": "Circle deleted successfully"}
+
+        next_admin = next((member_id for member_id in members if member_id != user_id), None)
+        if next_admin:
+            await db.update_document('circles', circle_id, {
+                'admin_ids': [next_admin],
+                'admin_id': next_admin,
+            })
+            logger.info(f"Circle {circle_id} admin transferred to {next_admin} as last admin {user_id} left")
+
+    elif is_admin:
         updated_admin_ids = [admin_id for admin_id in admin_ids if admin_id != user_id]
         update_payload = {'admin_ids': updated_admin_ids}
         if circle.get('admin_id') == user_id:
@@ -2737,13 +3892,120 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
     """Get user's KYC status"""
     db = await get_db()
     user = await db.get_document('users', token_data["user_id"])
+    kyc_status = user.get('kyc_status')
+    is_verified = bool(user.get('is_verified'))
+
+    if not kyc_status and is_verified:
+        kyc_status = 'verified'
     
     return {
-        "kyc_status": user.get('kyc_status'),  # pending/verified/rejected
+        "kyc_status": kyc_status,  # pending/verified/rejected
         "kyc_role": user.get('kyc_role'),  # temple/vendor/organizer
         "submitted_at": user.get('kyc_submitted_at'),
         "verified_at": user.get('kyc_verified_at'),
-        "rejection_reason": user.get('kyc_rejection_reason')
+        "rejection_reason": user.get('kyc_rejection_reason'),
+        "is_verified": is_verified,
+    }
+
+
+@api_router.post("/kyc/aadhaar/otp")
+async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    """Generate Aadhaar OTP via Sandbox for user-level KYC (jobs/organizer flow)."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    aadhaar_number = str(data.get("aadhaar_number", "")).strip()
+    consent = str(data.get("consent", "Y")).strip()
+    reason = str(data.get("reason", "KYC verification")).strip()
+
+    if len(aadhaar_number) != 12 or not aadhaar_number.isdigit():
+        raise HTTPException(status_code=400, detail="aadhaar_number must be a 12-digit numeric string")
+    if consent.lower() != 'y':
+        raise HTTPException(status_code=400, detail="consent must be Y")
+    if not reason:
+        raise HTTPException(status_code=400, detail="reason is required")
+
+    payload = {
+        "@entity": "in.co.sandbox.kyc.aadhaar.okyc.otp.request",
+        "aadhaar_number": aadhaar_number,
+        "consent": "Y",
+        "reason": reason,
+    }
+
+    headers = _get_sandbox_headers()
+    sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp"
+
+    try:
+        resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
+        resp_data = resp.json() if resp.content else {}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Sandbox OTP request failed: {str(exc)}")
+
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP generation failed")
+
+    reference_id = (
+        resp_data.get("reference_id")
+        or (resp_data.get("data") or {}).get("reference_id")
+        or (resp_data.get("response") or {}).get("reference_id")
+    )
+
+    await db.update_document('users', user_id, {
+        'kyc_aadhaar_number': aadhaar_number,
+        'kyc_aadhaar_reference_id': reference_id,
+        'kyc_aadhaar_otp_requested_at': datetime.utcnow().isoformat(),
+        'kyc_aadhaar_otp_verified': False,
+    })
+
+    return {
+        "message": "Aadhaar OTP generated",
+        "reference_id": reference_id,
+        "sandbox_response": resp_data,
+    }
+
+
+@api_router.post("/kyc/aadhaar/otp/verify")
+async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    """Verify Aadhaar OTP via Sandbox for user-level KYC (jobs/organizer flow)."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    reference_id = str(data.get("reference_id", "")).strip()
+    otp = str(data.get("otp", "")).strip()
+
+    if not reference_id:
+        raise HTTPException(status_code=400, detail="reference_id is required")
+    if not otp:
+        raise HTTPException(status_code=400, detail="otp is required")
+
+    payload = {
+        "@entity": "in.co.sandbox.kyc.aadhaar.okyc.request",
+        "reference_id": reference_id,
+        "otp": otp,
+    }
+
+    headers = _get_sandbox_headers()
+    sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp/verify"
+
+    try:
+        resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
+        resp_data = resp.json() if resp.content else {}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Sandbox OTP verify failed: {str(exc)}")
+
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP verification failed")
+
+    await db.update_document('users', user_id, {
+        'kyc_aadhaar_reference_id': reference_id,
+        'kyc_aadhaar_otp_verified': True,
+        'kyc_aadhaar_otp_verified_at': datetime.utcnow().isoformat(),
+    })
+
+    return {
+        "message": "Aadhaar OTP verified",
+        "verified": True,
+        "sandbox_response": resp_data,
     }
 
 
@@ -2782,6 +4044,15 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail="Aadhaar must be 12 digits")
     if id_type == 'pan' and len(id_number) != 10:
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
+
+    if id_type == 'aadhaar':
+        user_doc = await db.get_document('users', user_id)
+        otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
+        otp_aadhaar = (user_doc.get('kyc_aadhaar_number') or '').strip()
+        if not otp_verified:
+            raise HTTPException(status_code=400, detail="Please verify Aadhaar OTP before submitting KYC")
+        if otp_aadhaar and otp_aadhaar != id_number:
+            raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
     
     # Compress photos if provided
     id_photo = data.get('id_photo')
@@ -2800,34 +4071,46 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_id_number': id_number,
         'kyc_id_photo': id_photo,
         'kyc_selfie_photo': selfie_photo if id_type == 'pan' else None,
-        'kyc_submitted_at': datetime.utcnow().isoformat()
+        'kyc_submitted_at': datetime.utcnow().isoformat(),
+        'kyc_rejection_reason': None,
+        'kyc_verified_at': None,
+        'is_verified': False,
     }
 
-    match_result = try_face_match(kyc_data['kyc_id_photo'], kyc_data['kyc_selfie_photo'])
-    if match_result['status'] == 'verified':
-        kyc_data['kyc_status'] = 'verified'
-        kyc_data['kyc_verified_at'] = datetime.utcnow().isoformat()
-        kyc_data['is_verified'] = True
-    elif match_result['status'] == 'manual_review':
-        kyc_data['kyc_status'] = 'manual_review'
+    match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
+    if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
+        match_result = try_face_match(kyc_data['kyc_id_photo'], kyc_data['kyc_selfie_photo'])
+        if match_result['status'] == 'verified':
+            kyc_data['kyc_status'] = 'verified'
+            kyc_data['kyc_verified_at'] = datetime.utcnow().isoformat()
+            kyc_data['is_verified'] = True
 
     kyc_data['kyc_match_distance'] = match_result.get('distance')
     kyc_data['kyc_match_reason'] = match_result.get('reason')
 
     await db.update_document('users', user_id, kyc_data)
 
-    # Send in-app notification
-    await NotificationService.create_notification(
-        user_id=user_id,
-        title='KYC status updated',
-        body=f"Your KYC status is now {kyc_data['kyc_status']}",
-        notification_type=NotificationService.TYPE_VERIFICATION,
-        data={
-            'kyc_status': kyc_data['kyc_status'],
-            'reason': kyc_data.get('kyc_match_reason'),
-            'distance': kyc_data.get('kyc_match_distance')
-        }
-    )
+    if id_type == 'aadhaar':
+        await db.update_document('users', user_id, {
+            'kyc_aadhaar_otp_verified': False,
+            'kyc_aadhaar_number': id_number,
+        })
+
+    # Send in-app notification (non-blocking for KYC response)
+    try:
+        await NotificationService.create_notification(
+            user_id=user_id,
+            title='KYC status updated',
+            body=f"Your KYC status is now {kyc_data['kyc_status']}",
+            notification_type=NotificationService.TYPE_VERIFICATION,
+            data={
+                'kyc_status': kyc_data['kyc_status'],
+                'reason': kyc_data.get('kyc_match_reason'),
+                'distance': kyc_data.get('kyc_match_distance')
+            }
+        )
+    except Exception as notify_err:
+        logger.warning(f"KYC submitted but notification failed for user {user_id}: {notify_err}")
 
     # Optional: send email / SMS via existing user contact fields (if user has phone/email)
     # Here you would fill in from existing send_email/send_sms utilities.
@@ -2847,21 +4130,27 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
     Admin endpoint to verify or reject KYC
     data: { action: 'verify' | 'reject', rejection_reason?: string }
     """
-    db = await get_db()
-    
-    # Check if current user is admin (simple check - in production use proper admin role)
-    admin_user = await db.get_document('users', token_data["user_id"])
-    if 'Admin' not in admin_user.get('badges', []):
-        raise HTTPException(status_code=403, detail="Admin access required")
+    db, _ = await _ensure_admin_user(token_data)
     
     target_user = await db.get_document('users', user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if target_user.get('kyc_status') not in ['pending', 'manual_review']:
-        raise HTTPException(status_code=400, detail="No reviewable KYC for this user")
-    
     action = data.get('action')
+    current_status = target_user.get('kyc_status')
+
+    if action not in ['verify', 'reject']:
+        raise HTTPException(status_code=400, detail="Invalid action")
+
+    # Idempotent behavior for stale UI clicks/retries
+    if action == 'verify' and current_status == 'verified':
+        return {"message": "KYC already verified", "badge_added": None}
+    if action == 'reject' and current_status == 'rejected':
+        return {"message": "KYC already rejected"}
+
+    if current_status not in ['pending', 'manual_review', 'rejected', None]:
+        raise HTTPException(status_code=400, detail="No reviewable KYC for this user")
+
     if action == 'verify':
         kyc_role = target_user.get('kyc_role')
         badge_map = {
@@ -2882,13 +4171,16 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
             await db.array_union_update('users', user_id, 'badges', [badge_map[kyc_role]])
 
         # Notify user about verification
-        await NotificationService.create_notification(
-            user_id=user_id,
-            title='KYC verified',
-            body='Your KYC has been verified successfully.',
-            notification_type=NotificationService.TYPE_VERIFICATION,
-            data={'kyc_role': kyc_role}
-        )
+        try:
+            await NotificationService.create_notification(
+                user_id=user_id,
+                title='KYC verified',
+                body='Your KYC has been verified successfully.',
+                notification_type=NotificationService.TYPE_VERIFICATION,
+                data={'kyc_role': kyc_role}
+            )
+        except Exception as notify_err:
+            logger.warning(f"KYC verified but notification failed for user {user_id}: {notify_err}")
         
         logger.info(f"KYC verified for user {user_id}")
         return {"message": "KYC verified", "badge_added": badge_map.get(kyc_role)}
@@ -2901,31 +4193,35 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
         await db.update_document('users', user_id, update_data)
 
         # Notify the user about rejection
-        await NotificationService.create_notification(
-            user_id=user_id,
-            title='KYC rejected',
-            body=f"Your KYC was rejected: {update_data.get('kyc_rejection_reason')}",
-            notification_type=NotificationService.TYPE_VERIFICATION,
-            data={'rejection_reason': update_data.get('kyc_rejection_reason')}
-        )
+        try:
+            await NotificationService.create_notification(
+                user_id=user_id,
+                title='KYC rejected',
+                body=f"Your KYC was rejected: {update_data.get('kyc_rejection_reason')}",
+                notification_type=NotificationService.TYPE_VERIFICATION,
+                data={'rejection_reason': update_data.get('kyc_rejection_reason')}
+            )
+        except Exception as notify_err:
+            logger.warning(f"KYC rejected but notification failed for user {user_id}: {notify_err}")
     
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
-    
-    raise HTTPException(status_code=400, detail="Invalid action")
 
 
 @api_router.get("/admin/kyc/pending")
 async def get_pending_kyc(token_data: dict = Depends(verify_token)):
     """Get all users with pending KYC (admin only)"""
-    db = await get_db()
-    
-    # Check admin
-    admin_user = await db.get_document('users', token_data["user_id"])
-    if 'Admin' not in admin_user.get('badges', []):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    pending = await db.query_documents('users', filters=[('kyc_status', 'in', ['pending', 'manual_review'])])
+    db, _ = await _ensure_admin_user(token_data)
+
+    try:
+        pending = await db.query_documents('users', filters=[('kyc_status', 'in', ['pending', 'manual_review'])])
+    except Exception as query_error:
+        logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
+        all_users = await db.query_documents('users')
+        pending = [
+            u for u in (all_users or [])
+            if u.get('kyc_status') in ['pending', 'manual_review']
+        ]
     
     # Return only necessary fields
     return [{
@@ -2982,43 +4278,103 @@ async def report_content(data: dict, token_data: dict = Depends(verify_token)):
 
 
 @api_router.get("/admin/reports")
-async def get_reports(status: str = 'pending', token_data: dict = Depends(verify_token)):
-    """Get all reports (admin only)"""
-    db = await get_db()
-    
-    # Check admin
-    admin_user = await db.get_document('users', token_data["user_id"])
-    if 'Admin' not in admin_user.get('badges', []):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    filters = [('status', '==', status)] if status else []
-    reports = await db.query_documents('reports', filters=filters, limit=50)
-    
+async def get_reports(
+    status: str = 'pending',
+    content_type: Optional[str] = None,
+    limit: int = 100,
+    token_data: dict = Depends(verify_token),
+):
+    """Get reports queue for admin review."""
+    db, _ = await _ensure_admin_user(token_data)
+
+    filters = []
+    if status:
+        filters.append(('status', '==', status))
+    if content_type:
+        filters.append(('content_type', '==', content_type))
+
+    try:
+        reports = await db.query_documents(
+            'reports',
+            filters=filters if filters else None,
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=max(1, min(limit, 300)),
+        )
+    except FailedPrecondition as exc:
+        logger.warning(
+            "Missing Firestore index for /admin/reports, falling back to in-memory sort. error=%s",
+            exc,
+        )
+        reports = await db.query_documents('reports', filters=filters if filters else None)
+        reports.sort(key=lambda item: item.get('created_at') or datetime.min, reverse=True)
+        reports = reports[:max(1, min(limit, 300))]
+
     return reports
 
 
-@api_router.post("/admin/reports/{report_id}/resolve")
-async def resolve_report(report_id: str, data: dict, token_data: dict = Depends(verify_token)):
-    """Resolve a report (admin only)"""
-    db = await get_db()
-    
-    # Check admin
-    admin_user = await db.get_document('users', token_data["user_id"])
-    if 'Admin' not in admin_user.get('badges', []):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    action = data.get('action')  # resolved/dismissed
-    if action not in ['resolved', 'dismissed']:
-        raise HTTPException(status_code=400, detail="Invalid action")
-    
+@api_router.post('/admin/reports/{report_id}/review')
+async def review_report(report_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Review report with approve/deny actions (admin only)."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    report = await db.get_document('reports', report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail='Report not found')
+
+    action = str(data.get('action') or '').strip().lower()
+    if action not in ['approve', 'deny']:
+        raise HTTPException(status_code=400, detail='Invalid action. Use approve or deny')
+
+    if report.get('status') in ['approved', 'denied']:
+        return {
+            'message': f"Report already {report.get('status')}",
+            'report_id': report_id,
+            'status': report.get('status'),
+        }
+
+    moderation_result = {
+        'post_deleted': False,
+        'media_deleted': False,
+        'comments_deleted': 0,
+    }
+
+    if action == 'approve' and report.get('content_type') == 'post':
+        content_id = report.get('content_id')
+        if content_id:
+            post = await db.get_document('posts', content_id)
+            if post:
+                delete_result = await _delete_post_with_dependencies(db, content_id)
+                moderation_result = {
+                    'post_deleted': True,
+                    'media_deleted': delete_result.get('media_deleted', False),
+                    'comments_deleted': delete_result.get('comments_deleted', 0),
+                }
+
+    updated_status = 'approved' if action == 'approve' else 'denied'
     await db.update_document('reports', report_id, {
-        'status': action,
-        'resolved_by': token_data["user_id"],
-        'resolved_at': datetime.utcnow().isoformat(),
-        'resolution_note': data.get('note', '')
+        'status': updated_status,
+        'reviewed_by': admin_user_id,
+        'reviewed_at': datetime.utcnow().isoformat(),
+        'review_note': str(data.get('note') or '').strip(),
+        'admin_action': action,
+        'moderation_result': moderation_result,
     })
-    
-    return {"message": f"Report {action}"}
+
+    return {
+        'message': f'Report {updated_status}',
+        'report_id': report_id,
+        'status': updated_status,
+        'moderation_result': moderation_result,
+    }
+
+
+@api_router.post('/admin/reports/{report_id}/resolve')
+async def resolve_report(report_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Backward-compatible alias: resolved->approve, dismissed->deny."""
+    raw_action = str(data.get('action') or '').strip().lower()
+    mapped_action = 'approve' if raw_action == 'resolved' else ('deny' if raw_action == 'dismissed' else raw_action)
+    return await review_report(report_id, {**data, 'action': mapped_action}, token_data)
 
 
 # =================== SAMPLE DATA INITIALIZATION ===================
@@ -3735,6 +5091,12 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
 
+    central_vendor_kyc_verified = (
+        (user or {}).get('kyc_status') == 'verified'
+        and (user or {}).get('kyc_role') == 'vendor'
+    )
+    verified_at = (user or {}).get('kyc_verified_at') or datetime.utcnow().isoformat()
+
     normalized_categories = [str(category).strip() for category in (data.categories or []) if str(category).strip()]
     owner_name = (data.owner_name or (user or {}).get('name') or 'Vendor Owner').strip()
     full_address = (data.full_address or '').strip()
@@ -3776,6 +5138,10 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "menu_items": data.menu_items if data.menu_items else [],
         "offers_home_delivery": bool(data.offers_home_delivery),
         "business_media_key": data.business_media_key,
+        "kyc_status": 'verified' if central_vendor_kyc_verified else 'pending',
+        "kyc_verified_at": verified_at if central_vendor_kyc_verified else None,
+        "kyc_reviewed_by": 'system_user_kyc_sync' if central_vendor_kyc_verified else None,
+        "kyc_review_note": 'Applied from central user KYC status' if central_vendor_kyc_verified else None,
     }
     
     vendor_id = await db.create_document('vendors', vendor_data)
@@ -3783,10 +5149,6 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     
     # Update user to mark as vendor
     await db.update_document('users', user_id, {'is_vendor': True, 'vendor_id': vendor_id})
-
-    user_phone = user.get('phone') if user else None
-    if user_phone:
-        await _auto_approve_vendor_for_test_phone(db, user_id, user_phone)
 
     await _sync_vendor_to_admin_queue(db, vendor_id)
     
@@ -3811,6 +5173,18 @@ async def get_vendors(
         filters.append(('categories', 'array_contains', category))
     
     vendors = await db.query_documents('vendors', filters=filters, limit=limit)
+
+    # Merge admin review snapshot fields for legacy approved vendors so public listings
+    # can show verified/approved badges consistently.
+    review_docs = await asyncio.gather(
+        *[db.get_document('vendor_admin_reviews', vendor['id']) for vendor in vendors]
+    )
+    for vendor, review_doc in zip(vendors, review_docs):
+        if review_doc:
+            vendor['review_status'] = review_doc.get('review_status', vendor.get('review_status'))
+            vendor['review_state'] = review_doc.get('review_state', vendor.get('review_state'))
+            if review_doc.get('kyc_status') and not vendor.get('kyc_status'):
+                vendor['kyc_status'] = review_doc.get('kyc_status')
     
     # Filter by search term if provided
     if search:
@@ -3933,7 +5307,11 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
 
-    if vendor.get('kyc_status') != 'verified':
+    user = await db.get_document('users', user_id)
+    user_verified = bool(user and ((user.get('kyc_status') == 'verified') or user.get('is_verified')))
+    vendor_verified = vendor.get('kyc_status') == 'verified'
+
+    if not (vendor_verified or user_verified):
         raise HTTPException(status_code=403, detail="Business profile updates are allowed only for approved vendors")
 
     menu_items = data.get('menu_items')
@@ -4025,7 +5403,11 @@ async def upload_vendor_business_image(
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can upload business images")
 
-    if vendor.get('kyc_status') != 'verified':
+    user = await db.get_document('users', user_id)
+    user_verified = bool(user and ((user.get('kyc_status') == 'verified') or user.get('is_verified')))
+    vendor_verified = vendor.get('kyc_status') == 'verified'
+
+    if not (vendor_verified or user_verified):
         raise HTTPException(status_code=403, detail="Business images can be uploaded only for approved vendors")
 
     if slot < 0 or slot > 4:
@@ -4165,6 +5547,131 @@ async def extract_kyc_text_from_image(
 
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can extract text")
+
+    contents = b""
+    if file is not None:
+        contents = await file.read()
+
+    if (not contents) and image_base64:
+        try:
+            normalized = image_base64.split(',', 1)[-1]
+            contents = base64.b64decode(normalized)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid image_base64 payload")
+
+    if not contents:
+        raise HTTPException(status_code=400, detail="No image provided. Send multipart field 'file' or form field 'image_base64'.")
+
+    vision_api_key = os.getenv('GOOGLE_CLOUD_VISION_API_KEY')
+    if vision_api_key:
+        # Use REST API key flow for Cloud Vision.
+        try:
+            image_content = base64.b64encode(contents).decode('utf-8')
+            json_payload = {
+                "requests": [
+                    {
+                        "image": {"content": image_content},
+                        "features": [{"type": "TEXT_DETECTION", "maxResults": 10}],
+                    }
+                ]
+            }
+
+            request_url = f"https://vision.googleapis.com/v1/images:annotate?key={vision_api_key}"
+            resp = requests.post(request_url, json=json_payload, timeout=30)
+
+            if resp.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"Cloud Vision REST failed ({resp.status_code}): {resp.text}")
+
+            data = resp.json()
+            vision_resp = data.get('responses', [{}])[0]
+            if 'error' in vision_resp:
+                err = vision_resp.get('error', {})
+                raise HTTPException(status_code=500, detail=f"Cloud Vision error: {err.get('message')}")
+
+            text_annotations = vision_resp.get('textAnnotations', [])
+            raw_texts = [a.get('description', '') for a in text_annotations if a.get('description')]
+            annotations = []
+            for a in text_annotations:
+                if not a.get('description'):
+                    continue
+                vertices = []
+                for v in (a.get('boundingPoly', {}).get('vertices', []) or []):
+                    vertices.append({
+                        'x': v.get('x', 0),
+                        'y': v.get('y', 0),
+                    })
+                annotations.append({
+                    'description': a.get('description'),
+                    'bounds': vertices,
+                })
+
+            full_text = raw_texts[0] if raw_texts else ''
+            return {
+                'message': 'Text extracted',
+                'text': full_text,
+                'full_text': full_text,
+                'raw_texts': raw_texts,
+                'annotations': annotations,
+                'total_annotations': len(annotations),
+            }
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Vision extraction failed (API key path): {str(exc)}")
+
+    # Fallback to service account library path
+    try:
+        client = vision.ImageAnnotatorClient()
+        image = vision.Image(content=contents)
+        response = client.text_detection(image=image)
+
+        if response.error.message:
+            raise HTTPException(status_code=500, detail=f"Vision API error: {response.error.message}")
+
+        annotations = []
+        raw_texts = []
+
+        for annotation in (response.text_annotations or []):
+            description = annotation.description or ""
+            if not description:
+                continue
+
+            raw_texts.append(description)
+            vertices = []
+            for vertex in (annotation.bounding_poly.vertices or []):
+                vertices.append({"x": vertex.x or 0, "y": vertex.y or 0})
+
+            annotations.append({
+                "description": description,
+                "bounds": vertices,
+            })
+
+        full_text = raw_texts[0] if raw_texts else ""
+        combined = " ".join(raw_texts)
+
+        return {
+            "message": "Text extracted",
+            "text": full_text or combined,
+            "full_text": full_text,
+            "raw_texts": raw_texts,
+            "annotations": annotations,
+            "total_annotations": len(annotations),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Vision extraction failed (library path): {str(exc)}")
+
+
+@api_router.post("/kyc/vision-extract")
+async def extract_user_kyc_text_from_image(
+    file: Optional[UploadFile] = File(None),
+    image_base64: Optional[str] = Form(None),
+    token_data: dict = Depends(verify_token)
+):
+    """Use Google Cloud Vision to extract text from user KYC images (jobs flow)."""
+    if vision is None:
+        raise HTTPException(status_code=501, detail="Google Cloud Vision client library is not installed")
+
+    _ = token_data["user_id"]
 
     contents = b""
     if file is not None:
@@ -5695,6 +7202,7 @@ async def get_astrology_profile(token_data: dict = Depends(verify_token)):
 
 # Include router
 app.include_router(api_router)
+app.include_router(video_upload_router)
 
 
 # =================== SOCKET.IO ===================

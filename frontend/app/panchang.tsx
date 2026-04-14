@@ -147,7 +147,7 @@ export default function PanchangScreen() {
   }, []);
 
   const handleBack = useCallback(() => {
-    router.replace('/(tabs)');
+    router.replace('/feed');
   }, [router]);
 
   const fetchBasePanchang = useCallback(async (forceRefresh = false, coords?: { lat?: number; lng?: number }) => {

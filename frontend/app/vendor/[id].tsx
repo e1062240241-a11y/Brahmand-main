@@ -58,12 +58,12 @@ export default function VendorProfileScreen() {
   };
 
   const handleBack = () => {
-    router.replace('/(tabs)/vendor');
+    router.replace('/vendor');
   };
 
   React.useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      router.replace('/(tabs)/vendor');
+      router.replace('/vendor');
       return true;
     });
 

@@ -117,7 +117,7 @@ export default function LocationVerifyScreen() {
       await AsyncStorage.removeItem('detected_location');
 
       updateUser(response.data.user);
-      router.replace('/(tabs)');
+      router.replace('/feed');
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to save location');
     } finally {

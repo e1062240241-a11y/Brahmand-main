@@ -5,8 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../src/constants/theme';
 
-const TabIcon = ({ name, color, focused }: { name: any; color: string; focused: boolean }) => (
-  <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+const TabIcon = ({ name, color }: { name: any; color: string }) => (
+  <View style={styles.iconContainer}>
     <Ionicons name={name} size={22} color={color} />
   </View>
 );
@@ -17,6 +17,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      initialRouteName="feed"
       screenOptions={{
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textLight,
@@ -43,23 +44,26 @@ export default function TabLayout() {
         headerShadowVisible: false,
       }}
     >
-      {/* 1. Photo/Video Feed - First Position */}
-      <Tabs.Screen
-        name="feed"
-        options={{
-          title: 'Feed',
-          headerTitle: 'Feed',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="play-circle" color={color} focused={focused} />
-          ),
-        }}
-      />
+{/* 1. Photo/Video Feed - First Position */}
+        <Tabs.Screen
+          name="feed"
+          options={{
+            title: '',
+            tabBarLabel: 'Feed',
+            headerShown: false,
+            tabBarIcon: ({ color, focused }) => (
+              <TabIcon name="play-circle" color={color} focused={focused} />
+            ),
+          }}
+        />
       
       {/* 2. Vendor */}
       <Tabs.Screen
         name="vendor"
         options={{
-          title: 'Vendor',
+          title: '',
+          tabBarLabel: 'Vendor',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="storefront" color={color} focused={focused} />
           ),
@@ -70,8 +74,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Chat',
-          headerTitle: 'Chat',
+          title: '',
+          tabBarLabel: 'Chat',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="chatbubbles" color={color} focused={focused} />
           ),
@@ -82,7 +87,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="temple"
         options={{
-          title: 'Temple',
+          title: '',
+          tabBarLabel: 'Temple',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="home" color={color} focused={focused} />
           ),
@@ -93,7 +100,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Settings',
+          title: '',
+          tabBarLabel: 'Settings',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="settings" color={color} focused={focused} />
           ),

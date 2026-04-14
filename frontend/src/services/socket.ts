@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { API_URL } from './api';
 
 const SOCKET_URL = API_URL;
@@ -15,14 +16,23 @@ class SocketService {
 
     const token = await AsyncStorage.getItem('auth_token');
 
-    this.socket = io(SOCKET_URL, {
+    const socketOptions: any = {
       path: '/socket.io',
-      transports: ['websocket', 'polling'],
+      transports: Platform.OS === 'web' ? ['polling'] : ['websocket', 'polling'],
       auth: { token },
       autoConnect: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-    });
+      ...(Platform.OS === 'web' ? { upgrade: false, withCredentials: false } : {}),
+    };
+
+    if (Platform.OS !== 'web') {
+      socketOptions.extraHeaders = {
+        'bypass-tunnel-reminder': 'true',
+      };
+    }
+
+    this.socket = io(SOCKET_URL, socketOptions);
 
     this.socket.on('connect', () => {
       console.log('Socket connected');
@@ -50,11 +60,21 @@ class SocketService {
 
       const onConnectError = (err: any) => {
         cleanup();
+        this.connectPromise = null;
+        if (this.socket) {
+          this.socket.disconnect();
+          this.socket = null;
+        }
         reject(err);
       };
 
       const onConnectTimeout = setTimeout(() => {
         cleanup();
+        this.connectPromise = null;
+        if (this.socket) {
+          this.socket.disconnect();
+          this.socket = null;
+        }
         reject(new Error('Socket connect timed out'));
       }, 8000);
 

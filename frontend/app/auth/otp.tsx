@@ -108,7 +108,7 @@ export default function OTPScreen() {
 
         await login(data.user, data.token);
         if (data.user.home_location || data.user.location) {
-          router.replace('/(tabs)');
+          router.replace('/feed');
         } else {
           router.replace('/auth/location');
         }
@@ -123,7 +123,7 @@ export default function OTPScreen() {
         } else if (data.user) {
           await login(data.user, data.token);
           if (data.user.home_location || data.user.location) {
-            router.replace('/(tabs)');
+            router.replace('/feed');
           } else {
             router.replace('/auth/location');
           }

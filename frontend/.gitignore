@@ -43,6 +43,10 @@ yarn-error.*
 web-build/
 .next/
 
+# Local native build files
+android/
+nginx.conf
+
 # typescript
 *.tsbuildinfo
 

@@ -85,7 +85,7 @@ export default function NewDMScreen() {
 
   const handleBackNavigation = () => {
     try {
-      router.replace('/messages');
+      router.replace('/messages?tab=Private%20Chat');
     } catch (e) {
       console.warn('[New DM] Back navigation failed:', e);
     }

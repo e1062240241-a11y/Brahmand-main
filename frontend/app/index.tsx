@@ -35,7 +35,7 @@ export default function WelcomeScreen() {
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.location) {
-        router.replace('/(tabs)');
+        router.replace('/feed');
       } else {
         router.replace('/auth/location');
       }

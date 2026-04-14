@@ -7,7 +7,7 @@ export default function MantraJaapRoute() {
 
   return (
     <JaapAppScreen
-      onExit={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/temple' as any))}
+      onExit={() => (router.canGoBack() ? router.back() : router.replace('/temple' as any))}
     />
   );
 }

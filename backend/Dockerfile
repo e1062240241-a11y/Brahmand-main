@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	cmake \
 	libopenblas-dev \
 	liblapack-dev \
+	ffmpeg \
 	&& rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt

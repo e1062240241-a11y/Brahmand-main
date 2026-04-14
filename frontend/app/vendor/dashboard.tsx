@@ -25,7 +25,7 @@ import { sendOTP, verifyOTP } from '../../src/services/api';
 export default function VendorDashboardScreen() {
   const router = useRouter();
   const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile, deleteVendor } = useVendorStore();
-  const { isLoading: authLoading, isAuthenticated } = useAuthStore();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
   const [phoneOtpStage, setPhoneOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
@@ -65,7 +65,7 @@ export default function VendorDashboardScreen() {
 
   useEffect(() => {
     const onBackPress = () => {
-      router.replace('/(tabs)/vendor');
+      router.replace('/vendor');
       return true; // prevent default behavior
     };
 
@@ -90,7 +90,7 @@ export default function VendorDashboardScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.replace('/(tabs)/vendor')}>
+          <TouchableOpacity onPress={() => router.replace('/vendor')}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Vendor Dashboard</Text>
@@ -101,7 +101,7 @@ export default function VendorDashboardScreen() {
           <Text style={styles.errorText}>No business registered</Text>
           <TouchableOpacity 
             style={styles.registerBtn}
-            onPress={() => router.replace('/(tabs)/vendor')}
+            onPress={() => router.replace('/vendor')}
           >
             <Text style={styles.registerBtnText}>Register Your Business</Text>
           </TouchableOpacity>
@@ -274,15 +274,18 @@ export default function VendorDashboardScreen() {
 
   const isVerified = myVendor?.kyc_status === 'verified';
   const isManualReview = myVendor?.kyc_status === 'manual_review';
-  const isReviewOrVerified = isManualReview || isVerified;
-  const isVendorApproved = isVerified;
+  const isUserKycVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+  const effectiveKycStatus = isVerified || isUserKycVerified ? 'verified' : myVendor?.kyc_status;
+  const isReviewOrVerified = isManualReview || effectiveKycStatus === 'verified';
+  const isVendorApproved = isVerified || isUserKycVerified;
+  const hasVerifiedKyc = isUserKycVerified || isVendorApproved;
 
   const handleTellBusiness = () => {
     router.push('/vendor/business-details');
   };
 
   const handleOpenKyc = () => {
-    if (isReviewOrVerified) {
+    if (hasVerifiedKyc || isReviewOrVerified) {
       router.push('/kyc');
       return;
     }
@@ -300,7 +303,7 @@ export default function VendorDashboardScreen() {
         } else {
           Alert.alert('Deleted', 'Your business has been deleted.');
         }
-        router.replace('/(tabs)/vendor');
+        router.replace('/vendor');
       } catch (error: any) {
         const message = error?.response?.data?.detail || error?.message || 'Failed to delete business.';
         if (Platform.OS === 'web') {
@@ -342,7 +345,7 @@ export default function VendorDashboardScreen() {
     emphasis?: boolean;
   };
 
-  const menuItems: MenuItem[] = isVerified
+  const menuItems: MenuItem[] = isVendorApproved
     ? [
         { icon: 'create', label: 'Tell about your business', action: handleTellBusiness },
       ]
@@ -363,7 +366,7 @@ export default function VendorDashboardScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/vendor')}>
+        <TouchableOpacity onPress={() => router.replace('/vendor')}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Vendor Dashboard</Text>
@@ -378,7 +381,7 @@ export default function VendorDashboardScreen() {
           </View>
           <View style={styles.businessNameRow}>
             <Text style={styles.businessName}>{myVendor.business_name}</Text>
-            {myVendor.kyc_status === 'verified' && (
+            {effectiveKycStatus === 'verified' && (
               <Ionicons name="checkmark-circle" size={18} color={COLORS.info} style={styles.verifiedIcon} />
             )}
           </View>
@@ -388,10 +391,10 @@ export default function VendorDashboardScreen() {
           ) : null}
 
           {/* KYC Status Badge */}
-          <View style={[styles.kycChip, { backgroundColor: getKycChipColor(myVendor.kyc_status) }]}> 
-            <Text style={styles.kycChipText}>{formatKycStatus(myVendor.kyc_status)}</Text>
+          <View style={[styles.kycChip, { backgroundColor: getKycChipColor(effectiveKycStatus) }]}> 
+            <Text style={styles.kycChipText}>{formatKycStatus(effectiveKycStatus)}</Text>
           </View>
-          {myVendor.kyc_status === 'manual_review' && (
+          {myVendor.kyc_status === 'manual_review' && !isUserKycVerified && (
             <Text style={styles.kycReviewText}>Your application is under review.</Text>
           )}
 

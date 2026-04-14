@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -12,7 +12,8 @@ import {
   RefreshControl,
   ScrollView,
   Alert,
-  Share
+  Share,
+  Modal
 } from 'react-native';
 
 interface MantraSession {
@@ -35,13 +36,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ExpoLinking from 'expo-linking';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, getCommunityRequests, resolveCommunityRequest, getAllUsers, getUserProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
 
 const TABS = ['Blood', 'Medical', 'Petition', 'Search'];
-const MAIN_TABS = ['Live Mantra'];
 
 interface Message {
   id: string;
@@ -76,6 +76,7 @@ interface Community {
   name: string;
   member_count: number;
   code: string;
+  members?: any[];
 }
 
 export default function CommunityDetailScreen() {
@@ -86,9 +87,10 @@ export default function CommunityDetailScreen() {
   const resolvedCommunityId = communityId || id;
   
   const [community, setCommunity] = useState<Community | null>(null);
+  const [showMembersPanel, setShowMembersPanel] = useState(false);
+  const [memberList, setMemberList] = useState<{id: string; name: string}[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
   const [activeTab, setActiveTab] = useState('Chat');
-  const [activeMainTab, setActiveMainTab] = useState('Live Mantra');
-  const [isMantraPlaying, setIsMantraPlaying] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [cachedRequests, setCachedRequests] = useState<Record<string, CommunityRequest[]>>({});
@@ -97,13 +99,12 @@ export default function CommunityDetailScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
 
-  const handleBackPress = useCallback(() => {
-    if (router.canGoBack && router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace('/(tabs)/messages');
+  // Navigate back to Chat tab (the Messages tab)
+  const goBackToChat = useCallback(() => {
+    router.replace('/messages');
   }, [router]);
+
+  const handleBackPress = goBackToChat;
 
   useEffect(() => {
     fetchCommunity();
@@ -115,6 +116,70 @@ export default function CommunityDetailScreen() {
     }
   }, [activeTab, community]);
 
+  const loadCommunityMembers = async (memberIds: (string | { user_id?: string; id?: string; name?: string; sl_id?: string })[]) => {
+    if (!memberIds?.length) {
+      setMemberList([]);
+      return;
+    }
+
+    const ids = memberIds
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        return item?.user_id || item?.id || item?.sl_id || null;
+      })
+      .filter((id): id is string => Boolean(id));
+
+    if (!ids.length) {
+      setMemberList([]);
+      return;
+    }
+
+    try {
+      setLoadingMembers(true);
+      const response = await getAllUsers('', 200);
+      const users = response.data || [];
+      const userMap = new Map<string, any>();
+      users.forEach((userItem: any) => {
+        if (userItem?.id) {
+          userMap.set(userItem.id, userItem);
+        }
+        if (userItem?.sl_id) {
+          userMap.set(userItem.sl_id, userItem);
+        }
+      });
+
+      const missingIds = ids.filter(id => !userMap.has(id));
+      if (missingIds.length > 0) {
+        await Promise.all(missingIds.slice(0, 20).map(async (id) => {
+          try {
+            const profileResponse = await getUserProfile(id);
+            const profile = profileResponse.data;
+            if (profile?.id || profile?.sl_id) {
+              userMap.set(id, profile);
+            }
+          } catch (err) {
+            // ignore missing profiles and keep id fallback
+          }
+        }));
+      }
+
+      const list = ids.map((id) => {
+        const user = userMap.get(id);
+        return {
+          id,
+          name: user?.name || user?.user_name || user?.sl_id || id,
+        };
+      });
+      setMemberList(list);
+    } catch (error) {
+      console.error('Error fetching member names:', error);
+      const list = ids.map((id) => ({ id, name: id }));
+      setMemberList(list);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
   const fetchCommunity = async () => {
     if (!resolvedCommunityId) {
       setLoading(false);
@@ -122,7 +187,9 @@ export default function CommunityDetailScreen() {
     }
     try {
       const response = await getCommunity(resolvedCommunityId);
-      setCommunity(response.data);
+      const communityData = response.data;
+      setCommunity(communityData);
+      await loadCommunityMembers(communityData?.members || []);
     } catch (error: any) {
       console.error('Error fetching community:', error);
       const message =
@@ -139,13 +206,6 @@ export default function CommunityDetailScreen() {
   const fetchData = async () => {
     if (!resolvedCommunityId) return;
     try {
-      if (activeTab === 'Live Mantra Jaap') {
-        // Live mantra mode does not require API calls here
-        setMessages([]);
-        setRequests([]);
-        return;
-      }
-
       if (activeTab === 'Chat') {
         // Fetch chat messages
         const response = await getCommunityMessages(resolvedCommunityId, 'chat');
@@ -465,7 +525,10 @@ export default function CommunityDetailScreen() {
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.communityName}>{community.name}</Text>
-          <Text style={styles.memberCount}>{community.member_count} members</Text>
+          <TouchableOpacity style={styles.memberCountRow} onPress={() => setShowMembersPanel(true)} activeOpacity={0.7}>
+            <Ionicons name="people" size={14} color={COLORS.primary} />
+            <Text style={styles.memberCount}>{community.member_count} members</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.codeLabel}>Code</Text>
@@ -478,130 +541,41 @@ export default function CommunityDetailScreen() {
         </View>
       </View>
 
-      {/* Top tab group (Community / Private Chat) */}
-      <View style={styles.topTabsContainer}>
-        <TouchableOpacity
-          style={[styles.topTab, activeTab !== 'Live Mantra Jaap' && styles.topTabActive]}
-          onPress={() => { setActiveMainTab('Live Mantra'); setActiveTab('Chat'); }}
-        >
-          <Text style={[styles.topTabText, activeTab !== 'Live Mantra Jaap' && styles.topTabTextActive]}>Community</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.topTab, activeTab === 'Live Mantra Jaap' && styles.topTabActive]}
-          onPress={() => setActiveTab('Private Chat')}
-        >
-          <Text style={[styles.topTabText, activeTab === 'Private Chat' && styles.topTabTextActive]}>Private Chat</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.topTabPlus}
-          onPress={() => Alert.alert('Create', 'Implement create new group or chat here')}
-        >
-          <Ionicons name="add" size={20} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Live Mantra section embed (in community) */}
-      <TouchableOpacity 
-        style={[styles.liveMantraSection, isMantraPlaying && styles.liveMantraSectionActive]}
-        onPress={() => router.push(`/community/${id}/mantra`)}
+      <Modal
+        visible={showMembersPanel}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMembersPanel(false)}
       >
-        <View style={styles.liveMantraSectionContent}>
-          <View style={styles.liveMantraIconContainer}>
-            <Ionicons 
-              name={isMantraPlaying ? 'musical-note' : 'musical-notes'} 
-              size={24} 
-              color={isMantraPlaying ? '#FFFFFF' : COLORS.primary} 
-            />
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowMembersPanel(false)} />
+        <View style={styles.membersModalCard}>
+          <View style={styles.membersModalHeader}>
+            <Text style={styles.membersModalTitle}>Members</Text>
+            <TouchableOpacity onPress={() => setShowMembersPanel(false)}>
+              <Ionicons name="close" size={22} color={COLORS.text} />
+            </TouchableOpacity>
           </View>
-          <View style={styles.liveMantraTextContainer}>
-            <Text style={[styles.communitySectionTitle, isMantraPlaying && styles.communitySectionTitleActive]}>
-              {isMantraPlaying ? '🎵 Now Playing' : '🕉️ Live Mantra Jaap'}
-            </Text>
-            <Text style={[styles.liveMantraCardTitle, isMantraPlaying && styles.liveMantraCardTitleActive]}>
-              {isMantraPlaying ? 'Tap to control playback' : 'Join live chanting sessions'}
-            </Text>
-          </View>
-          <Ionicons 
-            name={isMantraPlaying ? 'pause-circle' : 'play-circle'} 
-            size={32} 
-            color={isMantraPlaying ? '#FFFFFF' : COLORS.primary} 
-          />
-        </View>
-      </TouchableOpacity>
-
-      {/* Home area cards (Andheri, Mumbai, Maharashtra, Bharat) */}
-      <View style={styles.communityLevelContainer}>
-        <Text style={styles.communitySectionTitle}>Home Area</Text>
-        <TouchableOpacity style={styles.communityCard} onPress={() => { /* navigate to Andheri group */ }}>
-          <Ionicons name="people" size={24} color={COLORS.primary} />
-          <View style={styles.communityCardTextWrap}>
-            <Text style={styles.communityCardTitle}>Andheri Group</Text>
-            <Text style={styles.communityCardSub}>9 members</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-        </TouchableOpacity>
-
-        <Text style={styles.communitySectionTitle}>City Community</Text>
-        <TouchableOpacity style={styles.communityCard} onPress={() => { /* navigate to Mumbai */ }}>
-          <Ionicons name="location" size={24} color="#8E44AD" />
-          <View style={styles.communityCardTextWrap}>
-            <Text style={styles.communityCardTitle}>Mumbai Group</Text>
-            <Text style={styles.communityCardSub}>9 members</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-        </TouchableOpacity>
-
-        <Text style={styles.communitySectionTitle}>State Community</Text>
-        <TouchableOpacity style={styles.communityCard} onPress={() => { /* navigate to Maharashtra */ }}>
-          <Ionicons name="map" size={24} color="#F39C12" />
-          <View style={styles.communityCardTextWrap}>
-            <Text style={styles.communityCardTitle}>Maharashtra Group</Text>
-            <Text style={styles.communityCardSub}>10 members</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-        </TouchableOpacity>
-
-        <Text style={styles.communitySectionTitle}>National Community</Text>
-        <TouchableOpacity style={styles.communityCard} onPress={() => { /* navigate to Bharat */ }}>
-          <Ionicons name="flag" size={24} color="#E74C3C" />
-          <View style={styles.communityCardTextWrap}>
-            <Text style={styles.communityCardTitle}>Bharat Group</Text>
-            <Text style={styles.communityCardSub}>10 members</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Home area (static) */}
-      <View style={styles.homeArea}>
-        <Text style={styles.homeAreaTitle}>Community Home</Text>
-        <Text style={styles.homeAreaSubtitle}>Connect with members and access key community controls</Text>
-      </View>
-
-      {/* Live Mantra Header */}
-      <TouchableOpacity 
-        style={[styles.liveMantraHeader, isMantraPlaying && styles.liveMantraHeaderActive]}
-        onPress={() => { setActiveMainTab('Live Mantra'); setActiveTab('Live Mantra Jaap'); }}
-      >
-        <View style={styles.liveMantraHeaderLeft}>
-          {isMantraPlaying ? (
-            <Ionicons name="musical-note" size={20} color="#FFFFFF" />
+          {loadingMembers ? (
+            <View style={styles.membersLoadingContainer}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            </View>
           ) : (
-            <View style={[styles.liveDotAnimated, isMantraPlaying && styles.liveDotPlaying]} />
+            <FlatList
+              data={memberList.length ? memberList : (community?.members || []).map((item) => ({ id: typeof item === 'string' ? item : item?.user_id || item?.id || item?.sl_id || 'unknown', name: typeof item === 'string' ? item : item?.name || item?.user_name || item?.sl_id || item?.id || 'Member' })) }
+              keyExtractor={(item, index) => `${item?.id || 'member'}_${index}`}
+              renderItem={({ item }) => (
+                <View style={styles.memberItem}>
+                  <Ionicons name="person-circle-outline" size={18} color={COLORS.textSecondary} />
+                  <Text style={styles.memberName}>{item.name}</Text>
+                </View>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.emptyMembersText}>No members found</Text>
+              }
+            />
           )}
-          <Text style={[styles.liveMantraHeaderTitle, isMantraPlaying && styles.liveMantraHeaderTitleActive]}>
-            {isMantraPlaying ? 'Now Playing' : 'Live Mantra Jaap'}
-          </Text>
         </View>
-        <View style={styles.liveMantraHeaderRight}>
-          <Text style={[styles.liveMantraHeaderSubtitle, isMantraPlaying && styles.liveMantraHeaderSubtitleActive]}>
-            {isMantraPlaying ? 'Tap to control' : 'Tap to join'}
-          </Text>
-          <Ionicons name={isMantraPlaying ? 'pause-circle' : 'chevron-forward'} size={20} color={isMantraPlaying ? '#FFFFFF' : COLORS.primary} />
-        </View>
-      </TouchableOpacity>
-
-
+      </Modal>
       {/* Content */}
       <KeyboardAvoidingView 
         style={styles.chatContainer}
@@ -633,37 +607,36 @@ export default function CommunityDetailScreen() {
             }}
             ListHeaderComponent={
               <View style={styles.quickActionsContainer}>
-                <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-                <View style={styles.quickActionsGrid}>
-                  <TouchableOpacity 
-                    style={[styles.quickActionCard, { backgroundColor: '#FF6B00' }]}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.quickActionsPillsRow}
+                >
+                  <TouchableOpacity
+                    style={styles.quickActionPill}
                     onPress={() => setActiveTab('Blood')}
                   >
-                    <Ionicons name="water" size={24} color="#FFFFFF" />
-                    <Text style={styles.quickActionCardText}>Blood Request</Text>
+                    <Text style={styles.quickActionPillText}>Blood</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.quickActionCard, { backgroundColor: '#E74C3C' }]}
+                  <TouchableOpacity
+                    style={styles.quickActionPill}
                     onPress={() => setActiveTab('Medical')}
                   >
-                    <Ionicons name="medical" size={24} color="#FFFFFF" />
-                    <Text style={styles.quickActionCardText}>Medical Help</Text>
+                    <Text style={styles.quickActionPillText}>Medical</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.quickActionCard, { backgroundColor: '#9B59B6' }]}
-                    onPress={() => { setActiveMainTab('Live Mantra'); }}
+                  <TouchableOpacity
+                    style={styles.quickActionPill}
+                    onPress={() => setActiveTab('General')}
                   >
-                    <Ionicons name="musical-notes" size={24} color="#FFFFFF" />
-                    <Text style={styles.quickActionCardText}>Mantra Jaap</Text>
+                    <Text style={styles.quickActionPillText}>General</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.quickActionCard, { backgroundColor: '#3498DB' }]}
+                  <TouchableOpacity
+                    style={styles.quickActionPill}
                     onPress={() => setActiveTab('Petition')}
                   >
-                    <Ionicons name="document-text" size={24} color="#FFFFFF" />
-                    <Text style={styles.quickActionCardText}>Petition</Text>
+                    <Text style={styles.quickActionPillText}>Petition</Text>
                   </TouchableOpacity>
-                </View>
+                </ScrollView>
               </View>
             }
           />
@@ -690,23 +663,6 @@ export default function CommunityDetailScreen() {
               )
             }
           />
-        )}
-
-        {/* Live Mantra CTA Bar (below chat messages and above input) */}
-        {activeTab === 'Chat' && (
-          <View style={styles.liveMantraBottomBar}>
-            <View>
-              <Text style={styles.liveMantraBottomTitle}>Live Mantra Jaap</Text>
-              <Text style={styles.liveMantraBottomSubtitle}>Join the ongoing spiritual chant session</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.liveMantraBottomButton}
-              onPress={() => setActiveTab('Live Mantra Jaap')}
-            >
-              <Ionicons name="musical-notes" size={18} color="#fff" />
-              <Text style={styles.liveMantraBottomButtonText}>Go Live</Text>
-            </TouchableOpacity>
-          </View>
         )}
 
         {/* Input Area - Only show for Chat tab */}
@@ -783,7 +739,66 @@ const styles = StyleSheet.create({
   memberCount: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    marginTop: 2,
+    marginLeft: SPACING.xs,
+  },
+  memberCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.xs,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  membersModalCard: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 320,
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.divider,
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  membersModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  membersModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  membersLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  memberName: {
+    marginLeft: SPACING.sm,
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  emptyMembersText: {
+    color: COLORS.textSecondary,
+    marginTop: SPACING.md,
+    textAlign: 'center',
   },
   headerRight: {
     alignItems: 'flex-end',
@@ -908,35 +923,32 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   quickActionsContainer: {
-    padding: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.sm,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
   },
-  quickActionsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
-  quickActionsGrid: {
+  quickActionsPillsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  quickActionCard: {
-    width: '48%',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
   },
-  quickActionCardText: {
-    color: '#FFFFFF',
+  quickActionPill: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${COLORS.primary}15`,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}40`,
+  },
+  quickActionPillText: {
+    color: COLORS.primary,
     fontSize: 12,
     fontWeight: '600',
-    marginTop: SPACING.xs,
-    textAlign: 'center',
   },
   requestsList: {
     padding: SPACING.md,

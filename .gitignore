@@ -60,6 +60,7 @@ chainlit.md
 
 # Deployment
 .vercel
+.deploy/
 
 # Data and databases
 agenthub/agents/youtube/db
@@ -85,3 +86,39 @@ brahmand.zip
 *.env.*
 frontend/GoogleService-Info.plist
 frontend/google-services.json
+
+# Expo / Android generated native files
+/frontend/android/
+/frontend/nginx.conf
+
+# Android native build outputs and generated resources
+/frontend/android/build.log
+/frontend/android/.gradle/
+/frontend/android/app/build/
+/frontend/android/app/src/debug/
+/frontend/android/app/src/debugOptimized/
+/frontend/android/app/src/main/AndroidManifest.xml
+/frontend/android/app/src/main/res/values/strings.xml
+/frontend/android/app/src/main/res/values/styles.xml
+/frontend/android/app/src/main/res/drawable*/
+/frontend/android/app/src/main/res/mipmap*/
+/frontend/android/app/src/main/res/drawable/*splash*
+/frontend/android/app/src/main/res/drawable/*launcher*
+/frontend/android/app/src/main/res/mipmap-*/ic_launcher*.*
+/frontend/android/gradle.properties
+/frontend/android/gradle/wrapper/
+
+# Expo / Android generated files
+/frontend/android/gradlew
+/frontend/android/gradlew.bat
+/frontend/android/build.log
+/frontend/android/.gradle/
+/frontend/android/build/
+/frontend/android/app/proguard-rules.pro
+/frontend/android/app/src/main/java/**/MainActivity.kt
+/frontend/android/app/src/main/java/**/Application.kt
+/frontend/android/app/src/main/java/**/SplashActivity.kt
+/frontend/android/app/src/main/res/drawable/ic_launcher_background.xml
+/frontend/android/app/src/main/res/drawable/*splash*
+/frontend/android/app/src/main/res/mipmap-*/ic_launcher*.*
+/frontend/android/app/src/main/res/mipmap-*/ic_launcher_round*.*

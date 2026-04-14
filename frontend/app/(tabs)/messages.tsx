@@ -15,8 +15,6 @@ import {
   TextInput,
   UIManager,
   Image,
-  Modal,
-  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -373,6 +371,7 @@ export default function MessagesScreen() {
 
   const renderCircle = ({ item }: { item: Circle }) => (
     <TouchableOpacity
+      key={item.id}
       style={styles.circleCard}
       onPress={() => router.push(`/chat/circle/${item.id}?name=${encodeURIComponent(item.name)}`)}
     >
@@ -508,20 +507,22 @@ export default function MessagesScreen() {
 
           {showRequestTypeMenu && activeTopTab === 'Community' && (
             <View style={styles.pillDropdown}>
-              {['Blood', 'Medical', 'Petition'].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={styles.pillDropdownItem}
-                  onPress={() => {
-                    setShowRequestTypeMenu(false);
-                    setRequestType(type as any);
-                    setSelectedOfferingType(null);
-                    setShowRequestModal(true);
-                  }}
-                >
-                  <Text style={styles.pillDropdownText}>{type}</Text>
-                </TouchableOpacity>
-              ))}
+              {(['Blood', 'Medical', 'Petition'] as const)
+                .filter((type) => !(activeCommunityTab === 'Chat' && type === 'Medical'))
+                .map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={styles.pillDropdownItem}
+                    onPress={() => {
+                      setShowRequestTypeMenu(false);
+                      setRequestType(type as any);
+                      setSelectedOfferingType(null);
+                      setShowRequestModal(true);
+                    }}
+                  >
+                    <Text style={styles.pillDropdownText}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
             </View>
           )}
 

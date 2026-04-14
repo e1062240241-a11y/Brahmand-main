@@ -377,6 +377,16 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       return;
     }
 
+    if (phoneNumber.length !== 10) {
+      Alert.alert('Invalid Phone Number', 'Phone number must contain exactly 10 digits.');
+      return;
+    }
+
+    if (!/^[0-9]+$/.test(yearsInBusiness) || parseInt(yearsInBusiness, 10) <= 0) {
+      Alert.alert('Invalid Years in Business', 'Please enter a valid number of years in business.');
+      return;
+    }
+
     if (selectedCategories.length === 0) {
       Alert.alert('Missing Categories', 'Please select at least one business category.');
       return;
@@ -470,8 +480,12 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               placeholder="Enter phone number"
               placeholderTextColor={COLORS.textLight}
               value={phoneNumber}
-              onChangeText={setPhoneNumber}
+              onChangeText={(text) => {
+                const numericText = text.replace(/\D/g, '');
+                setPhoneNumber(numericText.slice(0, 10));
+              }}
               keyboardType="phone-pad"
+              maxLength={10}
             />
 
             {/* Years in Business */}
@@ -481,8 +495,12 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               placeholder="Enter years (e.g., 5)"
               placeholderTextColor={COLORS.textLight}
               value={yearsInBusiness}
-              onChangeText={setYearsInBusiness}
+              onChangeText={(text) => {
+                const numericText = text.replace(/\D/g, '');
+                setYearsInBusiness(numericText.slice(0, 2));
+              }}
               keyboardType="number-pad"
+              maxLength={2}
             />
 
             {/* Business Categories */}

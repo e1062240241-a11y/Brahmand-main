@@ -34,6 +34,10 @@ export default function TempleDetailScreen() {
     }
   };
 
+  const handleGoBack = () => {
+    router.replace('/temple');
+  };
+
   const handleFollowToggle = async () => {
     try {
       if (isFollowing) {
@@ -59,7 +63,7 @@ export default function TempleDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleGoBack}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
         </View>
@@ -75,7 +79,7 @@ export default function TempleDetailScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleGoBack}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{temple.name}</Text>

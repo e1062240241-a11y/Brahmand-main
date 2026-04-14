@@ -1,9 +1,37 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { ref, uploadBytesResumable } from 'firebase/storage';
+
+import { getFirebaseStorage } from './firebase/config';
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
 const configuredWebApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL_WEB;
+
+const getRuntimeWebApiUrl = (): string | undefined => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return undefined;
+  }
+
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    const queryApiUrl =
+      params.get('api')?.trim() ||
+      params.get('backend')?.trim() ||
+      params.get('backend_url')?.trim();
+    if (queryApiUrl) {
+      window.localStorage.setItem('BRAHMAND_RUNTIME_API_URL', queryApiUrl);
+      return queryApiUrl;
+    }
+
+    const storedApiUrl = window.localStorage.getItem('BRAHMAND_RUNTIME_API_URL')?.trim();
+    return storedApiUrl || undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const runtimeWebApiUrl = getRuntimeWebApiUrl();
 
 const isLocalhostUrl = (value?: string) =>
   !!value && /localhost|127\.0\.0\.1/.test(value);
@@ -14,20 +42,27 @@ const isWebRunningOnLocalhost =
     : false;
 
 const resolvedWebApiUrl =
-  configuredWebApiUrl && (!isLocalhostUrl(configuredWebApiUrl) || isWebRunningOnLocalhost)
+  runtimeWebApiUrl
+    ? runtimeWebApiUrl
+    : configuredWebApiUrl && (!isLocalhostUrl(configuredWebApiUrl) || isWebRunningOnLocalhost)
     ? configuredWebApiUrl
     : configuredApiUrl;
 
 const API_URL = Platform.OS === 'web'
   ? (resolvedWebApiUrl || 'http://localhost:8000')
   : (configuredApiUrl || 'http://localhost:8000');
+const isTunnelApiUrl = /\.loca\.lt$/i.test((API_URL || '').replace(/^https?:\/\//i, '').split('/')[0] || '');
 
 const defaultHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
 };
 
-if (Platform.OS !== 'web') {
+if (Platform.OS !== 'web' || isTunnelApiUrl) {
   defaultHeaders['Bypass-Tunnel-Reminder'] = 'true';
+}
+
+if (Platform.OS === 'web') {
+  console.info('[API] api.ts resolved API_URL:', API_URL);
 }
 
 const api = axios.create({
@@ -45,6 +80,54 @@ const adminApi = axios.create({
 const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);
 const RETRYABLE_STATUS_CODES = new Set([502, 503]);
 const MAX_RETRY_ATTEMPTS = 1;
+const CLOUD_RUN_SAFE_UPLOAD_BYTES = 28 * 1024 * 1024;
+const ENABLE_WEB_DIRECT_VIDEO_UPLOAD = process.env.EXPO_PUBLIC_ENABLE_WEB_DIRECT_VIDEO_UPLOAD === 'true';
+
+const isVideoMimeType = (value?: string) => (value || '').toLowerCase().startsWith('video/');
+
+const makeUploadId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const uploadLargeVideoViaFirebase = async (
+  file: { uri: string; name: string; type: string },
+  onProgress?: (progressEvent: any) => void,
+) => {
+  const response = await fetch(file.uri);
+  const blob = await response.blob();
+  if (!blob || blob.size <= 0) {
+    throw new Error('Could not read selected video file');
+  }
+
+  const uploadId = makeUploadId();
+  const safeName = (file.name || `video-${uploadId}.mp4`).replace(/[^a-zA-Z0-9._-]/g, '_');
+  const objectPath = `raw-post-videos/direct/${uploadId}-${safeName}`;
+
+  const storage = getFirebaseStorage();
+  const uploadRef = ref(storage, objectPath);
+  const task = uploadBytesResumable(uploadRef, blob, {
+    contentType: file.type || 'video/mp4',
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    task.on(
+      'state_changed',
+      (snapshot) => {
+        if (!onProgress) {
+          return;
+        }
+        const total = snapshot.totalBytes || blob.size;
+        const loaded = snapshot.bytesTransferred || 0;
+        onProgress({ loaded, total });
+      },
+      (error) => reject(error),
+      () => resolve(),
+    );
+  });
+
+  return {
+    objectPath,
+    fileSize: blob.size,
+  };
+};
 
 // Add auth token to requests
 api.interceptors.request.use(async (config) => {
@@ -90,6 +173,14 @@ api.interceptors.response.use(
       });
     }
 
+    // Enhance generic server errors with specific backend error payload if present
+    if (error.response && error.response.data && error.response.data.detail) {
+      error.message = typeof error.response.data.detail === 'string' 
+        ? error.response.data.detail 
+        : JSON.stringify(error.response.data.detail);
+    }
+
+
     return Promise.reject(error);
   }
 );
@@ -121,6 +212,41 @@ export interface AdminVendorReview {
   updated_at?: string;
 }
 
+export interface AdminUserKycRequest {
+  id: string;
+  name?: string;
+  sl_id?: string;
+  kyc_role?: string;
+  kyc_id_type?: string;
+  kyc_submitted_at?: string;
+}
+
+export interface AdminPostReport {
+  id: string;
+  reporter_id?: string;
+  reported_user_id?: string;
+  content_type?: string;
+  content_id?: string;
+  category?: string;
+  description?: string;
+  status?: string;
+  created_at?: string;
+  reviewed_at?: string;
+  snapshot?: {
+    post_id?: string;
+    caption?: string;
+    media_url?: string;
+    media_type?: string;
+    post_user_id?: string;
+    post_username?: string;
+  };
+  moderation_result?: {
+    post_deleted?: boolean;
+    media_deleted?: boolean;
+    comments_deleted?: number;
+  };
+}
+
 export const getAdminVendorReviewQueue = (adminToken: string, status: string = 'pending') =>
   adminApi.get<AdminVendorReview[]>('/admin/vendors/review-queue', {
     params: { status },
@@ -141,6 +267,48 @@ export const adminRejectVendor = (adminToken: string, vendorId: string, reason?:
     { headers: { Authorization: `Bearer ${adminToken}` } }
   );
 
+export const getAdminPendingKyc = (adminToken: string) =>
+  adminApi.get<AdminUserKycRequest[]>('/admin/kyc/pending', {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+
+export const adminVerifyUserKyc = (
+  adminToken: string,
+  userId: string,
+  action: 'verify' | 'reject',
+  rejection_reason?: string
+) =>
+  adminApi.post(
+    `/admin/kyc/verify/${userId}`,
+    action === 'reject'
+      ? { action, rejection_reason: rejection_reason || 'Denied by admin' }
+      : { action },
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
+export const getAdminReports = (
+  adminToken: string,
+  status: string = 'pending',
+  contentType: string = 'post',
+  limit: number = 100,
+) =>
+  adminApi.get<AdminPostReport[]>('/admin/reports', {
+    params: { status, content_type: contentType, limit },
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+
+export const adminReviewReport = (
+  adminToken: string,
+  reportId: string,
+  action: 'approve' | 'deny',
+  note?: string,
+) =>
+  adminApi.post(
+    `/admin/reports/${reportId}/review`,
+    { action, note },
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
 export const verifyFirebaseToken = (id_token: string) =>
   api.post('/auth/verify-firebase-token', { id_token });
 
@@ -154,10 +322,13 @@ export const registerUser = (data: { phone: string; name: string; photo?: string
 export const getProfile = () => 
   api.get('/user/profile');
 
-export const getUserProfile = () => 
-  api.get('/user/profile');
+export const getUserProfile = (userId?: string) => 
+  api.get(userId ? `/users/${userId}` : '/user/profile');
 
-export const updateProfile = (data: { name?: string; photo?: string; language?: string }) => 
+export const getUserPosts = (userId: string, limit: number = 20, offset: number = 0) =>
+  api.get(`/users/${userId}/posts`, { params: { limit, offset } });
+
+export const updateProfile = (data: { name?: string; photo?: string; language?: string; bio?: string }) =>
   api.put('/user/profile', data);
 
 export const setupLocation = (location: { country: string; state: string; city: string; area: string }) => 
@@ -181,8 +352,125 @@ export const searchHospitals = (query: string, limit: number = 10) =>
 export const searchUserBySLId = (slId: string) => 
   api.get(`/user/search/${slId}`);
 
-export const getAllUsers = () => 
-  api.get('/users');
+export const getAllUsers = (search?: string, limit: number = 200) => 
+  api.get('/users', { params: { search, limit } });
+
+export const getUserNotifications = () => 
+  api.get('/notifications');
+
+export const getUnreadNotificationCount = () => 
+  api.get('/notifications/unread-count');
+
+export const uploadUserPost = (
+  file: { uri: string; name: string; type: string },
+  caption: string,
+  filterName?: string,
+  onProgress?: (progressEvent: any) => void
+) => {
+  return (async () => {
+    if (Platform.OS === 'web' && ENABLE_WEB_DIRECT_VIDEO_UPLOAD && isVideoMimeType(file.type)) {
+      const localResponse = await fetch(file.uri);
+      const localBlob = await localResponse.blob();
+      if (localBlob.size > CLOUD_RUN_SAFE_UPLOAD_BYTES) {
+        const { objectPath } = await uploadLargeVideoViaFirebase(file, onProgress);
+
+        const formData = new FormData();
+        formData.append('storage_path', objectPath);
+        formData.append('caption', caption || '');
+        formData.append('source', 'camera_roll');
+        if (filterName) {
+          formData.append('filter_name', filterName);
+        }
+
+        return api.post('/posts/upload-from-storage', formData, {
+          headers: { 'Content-Type': undefined },
+          timeout: 30 * 60 * 1000,
+        });
+      }
+    }
+
+    const formData = new FormData();
+    formData.append('caption', caption || '');
+    if (filterName) {
+      formData.append('filter_name', filterName);
+    }
+    await appendMultipartFile(formData, 'file', file);
+
+    return api.post('/posts/upload', formData, {
+      headers: { 'Content-Type': undefined },
+      timeout: 10 * 60 * 1000,
+      onUploadProgress: onProgress,
+    });
+  })();
+};
+
+export const uploadChatMedia = (file: { uri: string; name: string; type: string }) => {
+  return (async () => {
+    const formData = new FormData();
+    await appendMultipartFile(formData, 'file', file);
+
+    return api.post('/media/upload', formData, {
+      headers: { 'Content-Type': undefined },
+      timeout: 10 * 60 * 1000,
+    });
+  })();
+};
+
+export const uploadCompressedVideo = (
+  file: { uri: string; name: string; type: string }
+) => {
+  return (async () => {
+    const formData = new FormData();
+    await appendMultipartFile(formData, 'file', file);
+
+    return api.post('/videos/upload', formData, {
+      headers: { 'Content-Type': undefined },
+      timeout: 10 * 60 * 1000,
+    });
+  })();
+};
+
+export const getPostsFeed = (limit: number = 20, offset: number = 0) =>
+  api.get('/posts/feed', { params: { limit, offset } });
+
+export const togglePostLike = (postId: string) =>
+  api.post(`/posts/${postId}/like`);
+
+export const addPostComment = (postId: string, text: string) =>
+  api.post(`/posts/${postId}/comments`, { text });
+
+export const getPostComments = (postId: string, limit: number = 200) =>
+  api.get(`/posts/${postId}/comments`, { params: { limit } });
+
+export const repostPost = (postId: string) =>
+  api.post(`/posts/${postId}/repost`);
+
+export const deletePost = (postId: string) =>
+  api.delete(`/posts/${postId}`);
+
+export const reportPost = (postId: string, category: string = 'other', description: string = '') =>
+  api.post(`/posts/${postId}/report`, { category, description });
+
+export const updatePost = (postId: string, data: { caption?: string }) =>
+  api.put(`/posts/${postId}`, data);
+
+export const addPostHashtags = (postId: string, hashtags: string[]) =>
+  api.post(`/posts/${postId}/hashtags`, { hashtags });
+
+export const removePostHashtags = (postId: string, hashtags: string[]) =>
+  api.delete(`/posts/${postId}/hashtags`, { data: { hashtags } });
+
+export const searchByHashtag = (hashtag: string, limit: number = 50, offset: number = 0) =>
+  api.get('/posts/hashtag', { params: { hashtag, limit, offset } });
+
+export const viewPost = (postId: string) =>
+  api.post(`/posts/${postId}/view`);
+
+export const getPostById = (postId: string) =>
+  api.get(`/posts/${postId}`);
+
+export const getPostViews = (postId: string) =>
+  api.get(`/posts/${postId}/views`);
 
 // Community APIs
 export const getCommunities = () => 
@@ -255,10 +543,10 @@ export const sendDirectMessage = (recipientSlId: string, content: string, messag
   api.post('/dm', { recipient_sl_id: recipientSlId, content, message_type: messageType });
 
 export const getConversations = () => 
-  api.get('/dm/conversations');
+  api.get('/dm/conversations', { timeout: 120000 });
 
 export const getDirectMessages = (conversationId: string, limit: number = 50) => 
-  api.get(`/dm/${conversationId}?limit=${limit}`);
+  api.get(`/dm/${conversationId}?limit=${limit}`, { timeout: 120000 });
 
 export const markDirectMessagesRead = (conversationId: string) =>
   api.post(`/dm/${conversationId}/read`);
@@ -340,6 +628,12 @@ export const followTemple = (templeId: string) =>
 export const unfollowTemple = (templeId: string) => 
   api.post(`/temples/${templeId}/unfollow`);
 
+export const followUser = (userId: string) =>
+  api.post(`/users/${userId}/follow`);
+
+export const unfollowUser = (userId: string) =>
+  api.post(`/users/${userId}/unfollow`);
+
 export const getTemplePosts = (templeId: string) => 
   api.get(`/temples/${templeId}/posts`);
 
@@ -398,6 +692,17 @@ export const submitKYC = (data: {
   selfie_photo?: string;
 }) => 
   api.post('/kyc/submit', data);
+
+export const generateUserAadhaarOtp = (data: {
+  aadhaar_number: string;
+  consent: 'Y' | 'y';
+  reason: string;
+}) => api.post('/kyc/aadhaar/otp', data);
+
+export const verifyUserAadhaarOtp = (data: {
+  reference_id: string;
+  otp: string;
+}) => api.post('/kyc/aadhaar/otp/verify', data);
 
 // Report APIs
 export const reportContent = (data: {
@@ -520,6 +825,7 @@ export const createVendor = (data: {
   longitude?: number;
   photos?: string[];
   business_description?: string;
+  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected';
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
@@ -703,6 +1009,72 @@ export const extractKycTextFromImage = async (vendorId: string, file: { uri: str
 
   const data = await response.json();
   console.log('[OCR API] Response data:', JSON.stringify(data).substring(0, 500));
+  return { data };
+};
+
+export const extractUserKycTextFromImage = async (file: { uri: string; name: string; type: string }) => {
+  const token = await AsyncStorage.getItem('auth_token');
+
+  const formData = new FormData();
+
+  let fileAttached = false;
+  try {
+    await appendMultipartFile(formData, 'file', file);
+    fileAttached = true;
+    console.log('[User OCR API] File attached successfully, has file:', formData.has('file'));
+  } catch (error) {
+    console.warn('extractUserKycTextFromImage: multipart file attach failed, will try base64 fallback', error);
+  }
+
+  if (Platform.OS === 'web') {
+    try {
+      console.log('[User OCR API] Converting to base64 for web...');
+      const imageBase64 = await getImageBase64FromUri(file);
+      if (imageBase64) {
+        formData.append('image_base64', imageBase64);
+        console.log('[User OCR API] Base64 attached, length:', imageBase64.length, 'has image_base64:', formData.has('image_base64'));
+      }
+    } catch (error) {
+      console.warn('extractUserKycTextFromImage: base64 fallback generation failed', error);
+    }
+  }
+
+  if (!fileAttached && !formData.get('image_base64')) {
+    throw new Error('Failed to prepare image payload for OCR upload');
+  }
+
+  console.log('[User OCR API] Sending request to backend...');
+  console.log('[User OCR API] Fetch URL:', `${API_URL}/api/kyc/vision-extract`);
+
+  let response;
+  try {
+    const headers: Record<string, string> = {
+      'Bypass-Tunnel-Reminder': 'true',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    response = await fetch(`${API_URL}/api/kyc/vision-extract`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+  } catch (fetchError: any) {
+    console.error('[User OCR API] Fetch error:', fetchError);
+    throw new Error(`Network error: ${fetchError.message}`);
+  }
+
+  console.log('[User OCR API] Response status:', response.status, response.statusText);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[User OCR API] Error response:', response.status, errorText);
+    throw new Error(`OCR failed: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  console.log('[User OCR API] Response data:', JSON.stringify(data).substring(0, 500));
   return { data };
 };
 

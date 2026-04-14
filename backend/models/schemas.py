@@ -1,5 +1,5 @@
 """Pydantic models for request/response validation"""
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, model_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -14,6 +14,8 @@ class MessageType(str, Enum):
     VOICE = "voice"
     DOCUMENT = "document"
     LOCATION = "location"
+    CONTACT = "contact"
+    POST_SHARE = "post_share"
 
 
 class CommunityType(str, Enum):
@@ -102,12 +104,14 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
+    bio: Optional[str] = Field(None, max_length=500)
     photo: Optional[str] = None
     language: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
+    bio: Optional[str] = Field(None, max_length=500)
     photo: Optional[str] = None
     language: Optional[str] = None
     kuldevi: Optional[str] = None
@@ -241,6 +245,18 @@ class CircleResponse(BaseModel):
 class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
     message_type: MessageType = MessageType.TEXT
+    post_id: Optional[str] = None  # Required for POST_SHARE
+    media_url: Optional[str] = None  # Required for POST_SHARE
+
+    @model_validator(mode='after')
+    def validate_post_share(cls, values):
+        message_type = values.message_type
+        if message_type == MessageType.POST_SHARE:
+            if not values.post_id:
+                raise ValueError("post_id is required for POST_SHARE messages")
+            if not values.media_url:
+                raise ValueError("media_url is required for POST_SHARE messages")
+        return values
 
 
 class DirectMessageCreate(BaseModel):

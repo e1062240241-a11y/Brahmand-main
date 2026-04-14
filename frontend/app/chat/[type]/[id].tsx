@@ -1,17 +1,36 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share } from 'react-native';
+import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ExpoLinking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
+import type * as ImageManipulatorType from 'expo-image-manipulator';
+import type * as ContactsType from 'expo-contacts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCommunityMessages, sendCommunityMessage, getCircleMessages, sendCircleMessage, getVerificationStatus, getCircle, updateCircle, leaveCircle, removeCircleMember, getAllUsers, inviteToCircle, transferCircleAdmin } from '../../../src/services/api';
+import { Video, ResizeMode } from 'expo-av';
+import { getCommunityMessages, sendCommunityMessage, getCircleMessages, sendCircleMessage, getVerificationStatus, getCommunity, getCircle, updateCircle, leaveCircle, removeCircleMember, getAllUsers, inviteToCircle, transferCircleAdmin, uploadChatMedia, uploadCompressedVideo } from '../../../src/services/api';
 import { socketService } from '../../../src/services/socket';
 import { useAuthStore } from '../../../src/store/authStore';
 import { Message } from '../../../src/types';
 import { Avatar } from '../../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
+
+let chatImageManipulator: typeof ImageManipulatorType | null = null;
+const getChatImageManipulator = async () => {
+  if (!chatImageManipulator) {
+    chatImageManipulator = await import('expo-image-manipulator');
+  }
+  return chatImageManipulator;
+};
+
+let chatContacts: typeof ContactsType | null = null;
+const getChatContacts = async () => {
+  if (!chatContacts) {
+    chatContacts = await import('expo-contacts');
+  }
+  return chatContacts;
+};
 
 export default function ChatScreen() {
   const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
@@ -28,11 +47,30 @@ export default function ChatScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<{
+    uri: string;
+    name: string;
+    type: string;
+    mediaType: 'image' | 'video';
+  } | null>(null);
+  const [fullScreenMedia, setFullScreenMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [circleInfo, setCircleInfo] = useState<any>(null);
   const [showCircleOptions, setShowCircleOptions] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [showMembersPanel, setShowMembersPanel] = useState(false);
+  const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [contactShareName, setContactShareName] = useState('');
+  const [contactSharePhone, setContactSharePhone] = useState('');
+  const [phoneContacts, setPhoneContacts] = useState<Contacts.Contact[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [sharingContact, setSharingContact] = useState(false);
+  const attachmentAnim = useRef(new Animated.Value(0)).current;
+  const [communityInfo, setCommunityInfo] = useState<any>(null);
   const [showAddUsers, setShowAddUsers] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   const [loadingAvailableUsers, setLoadingAvailableUsers] = useState(false);
@@ -135,6 +173,16 @@ export default function ChatScreen() {
     }
   }, [type, id]);
 
+  const fetchCommunityInfo = useCallback(async () => {
+    if (type !== 'community' || !id) return;
+    try {
+      const response = await getCommunity(id);
+      setCommunityInfo(response.data);
+    } catch (error) {
+      console.error('Error fetching community info:', error);
+    }
+  }, [type, id]);
+
   useEffect(() => {
     let pollingInterval: NodeJS.Timeout | null = null;
     let listenerId = `chat_${id}_${subgroup}_${Date.now()}`;
@@ -147,6 +195,7 @@ export default function ChatScreen() {
       }
       await fetchMessages();
       await fetchCircleInfo();
+      await fetchCommunityInfo();
     };
 
     const setupSocket = async () => {
@@ -165,13 +214,14 @@ export default function ChatScreen() {
     };
 
     loadClearedAtAndData();
-    setupSocket();
 
     if (Platform.OS === 'web') {
-      // ensure periodic refresh on web where socket reliability may vary
+      // Web uses polling only for group/community chat; socket transport is unreliable in this setup.
       pollingInterval = setInterval(() => {
         fetchMessages();
       }, 3000);
+    } else {
+      setupSocket();
     }
 
     return () => {
@@ -182,7 +232,7 @@ export default function ChatScreen() {
   }, [type, id, subgroup, fetchMessages, fetchCircleInfo, clearChatStorageKey, clearedAtMs, addRealtimeMessage]);
 
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && !selectedMedia) return;
 
     // Check verification for community posts
     if (type === 'community' && !isVerified) {
@@ -190,7 +240,48 @@ export default function ChatScreen() {
       return;
     }
 
+    const selected = selectedMedia;
+    if (selected) {
+      setUploadingMedia(true);
+      setSending(true);
+      try {
+        let uploadResp;
+        if (selected.mediaType === 'video') {
+          uploadResp = await uploadCompressedVideo({ uri: selected.uri, name: selected.name, type: selected.type });
+        } else {
+          const compressedUri = await compressImageForUpload(selected.uri);
+          uploadResp = await uploadChatMedia({ uri: compressedUri, name: selected.name, type: selected.type });
+        }
+
+        const mediaUrl = uploadResp?.data?.media_url || uploadResp?.data?.mediaUrl || uploadResp?.data?.url;
+        if (!mediaUrl) {
+          throw new Error('Upload failed');
+        }
+
+        if (type === 'circle') {
+          await sendCircleMessage(id!, mediaUrl, selected.mediaType);
+        }
+        if (type === 'community') {
+          await sendCommunityMessage(id!, subgroup, mediaUrl, selected.mediaType);
+        }
+
+        setSelectedMedia(null);
+        setNewMessage('');
+        setTimeout(async () => {
+          await fetchMessages();
+        }, 500);
+      } catch (error: any) {
+        Alert.alert('Upload failed', error?.response?.data?.detail || error?.message || 'Failed to send media.');
+      } finally {
+        setUploadingMedia(false);
+        setSending(false);
+      }
+      return;
+    }
+
     const messageText = newMessage.trim();
+    if (!messageText) return;
+
     const tempMessage: Message = {
       id: `local_${Date.now()}`,
       sender_id: user?.id || 'me',
@@ -239,16 +330,11 @@ export default function ChatScreen() {
     Alert.alert('Chat Cleared', 'This chat is cleared on this device only.');
   };
 
-  const navigateToPrivateChatTab = useCallback(() => {
-    router.replace('/(tabs)/messages?tab=Private%20Chat');
-  }, [router]);
-
   const handleGoBack = () => {
-    try {
-      navigateToPrivateChatTab();
-    } catch (err) {
-      navigateToPrivateChatTab();
-    }
+    const route = type === 'community' 
+      ? '/messages?tab=Community' 
+      : '/messages?tab=Private%20Chat';
+    router.replace(route);
   };
 
   const handleSaveGroupInfo = async () => {
@@ -360,6 +446,36 @@ export default function ChatScreen() {
     );
   };
 
+  const handleConfirmRemoveMember = async (memberId: string | undefined, memberName: string | undefined) => {
+    if (!memberId) return;
+
+    const confirmed = Platform.OS === 'web'
+      ? typeof window !== 'undefined' && window.confirm(`Are you sure you want to remove ${memberName || 'this user'}?`)
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Remove Member',
+            `Are you sure you want to remove ${memberName || 'this user'}?`,
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
+            ],
+          );
+        });
+
+    if (!confirmed) return;
+
+    try {
+      setRemovingMemberId(memberId);
+      await removeCircleMember(id!, memberId);
+      await fetchCircleInfo();
+      Alert.alert('Removed', `${memberName || 'User'} has been removed from group`);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to remove member');
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
   const readWebUriAsBase64 = async (uri: string): Promise<string | null> => {
     if (Platform.OS !== 'web') return null;
     try {
@@ -425,15 +541,14 @@ export default function ChatScreen() {
     setShowCircleOptions(true);
   };
 
+  const isSoloGroup = (circleInfo?.members?.length || 0) <= 1;
+  const leaveGroupLabel = isSoloGroup ? 'Delete Group' : 'Leave Group';
+  const leaveGroupDisabled = false;
+
   const handleLeaveGroup = async () => {
     console.log('[Chat] Leave group triggered', { type, id, circleInfo, userId: user?.id });
     if (type !== 'circle' || !id) {
       Alert.alert('Error', 'Invalid circle context.');
-      return;
-    }
-
-    if (isCircleAdmin && circleAdminIds.length <= 1) {
-      Alert.alert('Admin Action', 'Last admin cannot leave. Make another member admin first or delete the group.');
       return;
     }
 
@@ -488,6 +603,42 @@ export default function ChatScreen() {
     ? (circleMembersLabel || 'No members yet')
     : (type === 'community' ? (subgroup || 'Community') : 'Circle');
 
+  const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
+    const pickerType = mediaType === 'image' ? 'Images' : 'Videos';
+    return ((ImagePicker as any).MediaType?.[pickerType]
+      ? [(ImagePicker as any).MediaType[pickerType]]
+      : mediaType === 'image'
+        ? ImagePicker.MediaTypeOptions.Images
+        : ImagePicker.MediaTypeOptions.Videos) as any;
+  };
+
+  const inferUploadMimeType = (asset: any, mediaType: 'image' | 'video') => {
+    if (asset.mimeType && typeof asset.mimeType === 'string') {
+      return asset.mimeType;
+    }
+
+    if (asset.type && typeof asset.type === 'string' && asset.type.includes('/')) {
+      return asset.type;
+    }
+
+    const uri = String(asset.uri || '');
+    const ext = uri.split('?')[0].split('.').pop()?.toLowerCase();
+    if (ext) {
+      if (mediaType === 'image') {
+        if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+        if (ext === 'png') return 'image/png';
+      }
+      if (mediaType === 'video') {
+        if (ext === 'mp4') return 'video/mp4';
+        if (ext === 'mov') return 'video/quicktime';
+        if (ext === 'webm') return 'video/webm';
+        if (ext === 'mkv') return 'video/x-matroska';
+      }
+    }
+
+    return mediaType === 'image' ? 'image/jpeg' : 'video/mp4';
+  };
+
   const handleShareCommunityInvite = async () => {
     if (type !== 'community' || !id) return;
 
@@ -529,26 +680,323 @@ export default function ChatScreen() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
+  const isMediaUrl = (url: string, type: 'image' | 'video') => {
+    const normalized = url.split('?')[0].toLowerCase();
+    if (type === 'image') {
+      return normalized.endsWith('.png') || normalized.endsWith('.jpg') || normalized.endsWith('.jpeg') || normalized.endsWith('.webp');
+    }
+    return normalized.endsWith('.mp4') || normalized.endsWith('.mov') || normalized.endsWith('.webm') || normalized.endsWith('.mkv');
+  };
+
+  const parseContactPayload = (source: string) => {
+    if (!source) return { name: 'Contact', phone: '' };
+    try {
+      const contactData = JSON.parse(source);
+      return {
+        name: contactData?.name || 'Contact',
+        phone: contactData?.phone || source,
+      };
+    } catch {
+      const newlineParts = source.split('\n').map((part) => part.trim()).filter(Boolean);
+      if (newlineParts.length >= 2) {
+        return { name: newlineParts[0] || 'Contact', phone: newlineParts[1] };
+      }
+      const pipeParts = source.split('|').map((part) => part.trim());
+      if (pipeParts.length === 2) {
+        return { name: pipeParts[0] || 'Contact', phone: pipeParts[1] };
+      }
+      return { name: 'Contact', phone: source };
+    }
+  };
+
+  const renderMessageContent = (message: Message) => {
+    const sourceUrl = message.content || message.text || '';
+    if (message.message_type === 'image' && sourceUrl) {
+      return (
+        <TouchableOpacity onPress={() => setFullScreenMedia({ uri: sourceUrl, type: 'image' })} activeOpacity={0.85}>
+          <Image source={{ uri: sourceUrl }} style={styles.messageMedia} resizeMode="cover" />
+        </TouchableOpacity>
+      );
+    }
+    if (message.message_type === 'video' && sourceUrl) {
+      return (
+        <Video
+          source={{ uri: sourceUrl }}
+          style={styles.messageVideo}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping={false}
+        />
+      );
+    }
+    if (sourceUrl && isMediaUrl(sourceUrl, 'image')) {
+      return (
+        <TouchableOpacity onPress={() => setFullScreenMedia({ uri: sourceUrl, type: 'image' })} activeOpacity={0.85}>
+          <Image source={{ uri: sourceUrl }} style={styles.messageMedia} resizeMode="cover" />
+        </TouchableOpacity>
+      );
+    }
+    if (message.message_type === 'contact') {
+      const { name: contactName, phone: contactPhone } = parseContactPayload(sourceUrl);
+      return (
+        <View style={styles.contactCard}>
+          <Ionicons name="person-circle-outline" size={24} color={COLORS.primary} />
+          <View style={styles.contactCardContent}>
+            <Text style={styles.contactName}>{contactName}</Text>
+            <Text style={styles.contactPhone}>{contactPhone}</Text>
+          </View>
+        </View>
+      );
+    }
+    if (sourceUrl && isMediaUrl(sourceUrl, 'video')) {
+      return (
+        <Video
+          source={{ uri: sourceUrl }}
+          style={styles.messageVideo}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping={false}
+        />
+      );
+    }
+    return (
+      <Text style={[styles.messageText, message.sender_id === user?.id && styles.ownMessageText]}>
+        {message.text || message.content}
+      </Text>
+    );
+  };
+
+  const handlePickMedia = async (mediaType: 'image' | 'video') => {
+    closeAttachmentOptions();
+    if (!id || type === 'community' || uploadingMedia || sending) return;
+    if (!validateChatUploadAccess()) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Alert.alert('Permission Denied', 'Media library access is required.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: getPickerMediaTypes(mediaType),
+      allowsEditing: false,
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    const fileName = (asset as any).fileName || `chat-${mediaType}-${Date.now()}.${mediaType === 'image' ? 'jpg' : 'mp4'}`;
+    const mimeType = inferUploadMimeType(asset, mediaType);
+
+    setSelectedMedia({ uri: asset.uri, name: fileName, type: mimeType, mediaType });
+  };
+
+  const compressImageForUpload = async (uri: string) => {
+    try {
+      const ImageManipulator = await getChatImageManipulator();
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1280 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    } catch (error) {
+      console.warn('[Chat] Image compression failed', error);
+      return uri;
+    }
+  };
+
+  const validateChatUploadAccess = () => {
+    if (type === 'community') return false;
+    if (type === 'circle') return true;
+    return true;
+  };
+
+  const openAttachmentOptions = () => {
+    setShowAttachmentOptions(true);
+    Animated.timing(attachmentAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeAttachmentOptions = () => {
+    Animated.timing(attachmentAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowAttachmentOptions(false);
+    });
+  };
+
+  const requestContactsPermission = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Contacts unsupported', 'Phone contacts are only available on native devices.');
+      return false;
+    }
+
+    try {
+      const permission = await Contacts.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission required', 'Please allow contacts access to share phone contacts.');
+        return false;
+      }
+      return true;
+    } catch (error: any) {
+      console.error('[Chat] Contact permission error', error);
+      Alert.alert('Permission failed', 'Unable to request contacts permission.');
+      return false;
+    }
+  };
+
+  const loadPhoneContacts = async () => {
+    setLoadingContacts(true);
+    try {
+      const permissionGranted = await requestContactsPermission();
+      if (!permissionGranted) return false;
+
+      const contactResult = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers],
+        pageSize: 2000,
+        sort: Contacts.SortTypes.FirstName,
+      });
+
+      const contactsWithNumbers = (contactResult.data || []).filter((contact) => contact.phoneNumbers?.length);
+      setPhoneContacts(contactsWithNumbers);
+      if (!contactsWithNumbers.length) {
+        Alert.alert('No contacts found', 'No contacts with phone numbers were found on this device.');
+      }
+      return contactsWithNumbers.length > 0;
+    } catch (error: any) {
+      console.error('[Chat] Failed to load contacts', error);
+      Alert.alert('Failed to load contacts', 'Unable to fetch phone contacts.');
+      return false;
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const handleOpenContactShare = async () => {
+    closeAttachmentOptions();
+    setContactShareName(user?.name || '');
+    setContactSharePhone(user?.phone || '');
+    const hasContacts = await loadPhoneContacts();
+    if (hasContacts) {
+      setShowContactPicker(true);
+    } else {
+      setShowContactModal(true);
+    }
+  };
+
+  const handleSelectPhoneContact = (contact: Contacts.Contact) => {
+    const phone = contact.phoneNumbers?.[0]?.number?.trim() || '';
+    const name = contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Contact';
+    if (!phone) {
+      Alert.alert('No phone number', 'Selected contact does not have a phone number.');
+      return;
+    }
+    setContactShareName(name);
+    setContactSharePhone(phone);
+    setShowContactPicker(false);
+    setShowContactModal(true);
+  };
+
+  const handleSendContact = async () => {
+    const name = contactShareName.trim() || 'Contact';
+    const phone = contactSharePhone.trim();
+    if (!phone) {
+      Alert.alert('Enter Contact', 'Please enter a phone number to share.');
+      return;
+    }
+
+    if (type === 'community' && !isVerified) {
+      router.push('/verification');
+      return;
+    }
+
+    setSharingContact(true);
+    try {
+      const payload = `${name}\n${phone}`;
+      if (type === 'circle') {
+        await sendCircleMessage(id!, payload, 'contact');
+      } else if (type === 'community') {
+        await sendCommunityMessage(id!, subgroup, payload, 'contact');
+      }
+      setShowContactModal(false);
+      setContactShareName('');
+      setContactSharePhone('');
+      fetchMessages();
+    } catch (error: any) {
+      Alert.alert('Share failed', error?.response?.data?.detail || error?.message || 'Failed to share contact.');
+    } finally {
+      setSharingContact(false);
+    }
+  };
+
+  const toggleAttachmentOptions = () => {
+    if (showAttachmentOptions) {
+      closeAttachmentOptions();
+      return;
+    }
+    openAttachmentOptions();
+  };
+
+  const isSameDay = (dateA: Date, dateB: Date) =>
+    dateA.getFullYear() === dateB.getFullYear() &&
+    dateA.getMonth() === dateB.getMonth() &&
+    dateA.getDate() === dateB.getDate();
+
+  const formatChatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+
+    if (isSameDay(date, now)) return 'Today';
+    if (isSameDay(date, yesterday)) return 'Yesterday';
+    return date.toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+    });
+  };
+
+  const shouldShowDateSeparator = (index: number, currentDateString: string) => {
+    const currentDate = new Date(currentDateString);
+    if (index === 0) return true;
+    const previousDate = new Date(messages[index - 1]?.created_at || '');
+    return !isSameDay(currentDate, previousDate);
+  };
+
+  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isOwnMessage = item.sender_id === user?.id;
 
     return (
-      <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
-        {!isOwnMessage && (
-          <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
+      <>
+        {shouldShowDateSeparator(index, item.created_at) && (
+          <View style={styles.dateSeparatorContainer}>
+            <View style={styles.dateSeparator}>
+              <Text style={styles.dateSeparatorText}>{formatChatDate(item.created_at)}</Text>
+            </View>
+          </View>
         )}
-        <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
+        <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
           {!isOwnMessage && (
-            <Text style={styles.senderName}>{item.sender_name}</Text>
+            <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
           )}
-          <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>
-            {item.content}
-          </Text>
-          <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
-            {formatTime(item.created_at)}
-          </Text>
+          <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
+            {!isOwnMessage && (
+              <Text style={styles.senderName}>{item.sender_name}</Text>
+            )}
+            {renderMessageContent(item)}
+            <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
+              {formatTime(item.created_at)}
+            </Text>
+          </View>
         </View>
-      </View>
+      </>
     );
   };
 
@@ -562,6 +1010,30 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Modal
+        visible={!!fullScreenMedia}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFullScreenMedia(null)}
+      >
+        <View style={styles.fullScreenMediaOverlay}>
+          <TouchableOpacity style={styles.fullScreenMediaClose} onPress={() => setFullScreenMedia(null)}>
+            <Ionicons name="close" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          {fullScreenMedia?.type === 'image' && (
+            <Image source={{ uri: fullScreenMedia.uri }} style={styles.fullScreenMediaImage} resizeMode="contain" />
+          )}
+          {fullScreenMedia?.type === 'video' && (
+            <Video
+              source={{ uri: fullScreenMedia.uri }}
+              style={styles.fullScreenMediaVideo}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              isLooping={false}
+            />
+          )}
+        </View>
+      </Modal>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
@@ -577,6 +1049,14 @@ export default function ChatScreen() {
               </TouchableOpacity>
             )}
           </View>
+          {type === 'community' && (
+            <TouchableOpacity style={styles.memberCountRow} onPress={() => setShowMembersPanel(true)}>
+              <Ionicons name="people" size={14} color={COLORS.primary} />
+              <Text style={styles.memberCountText} numberOfLines={1}>
+                {communityInfo?.member_count ?? communityInfo?.members?.length ?? 0} members
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         {type === 'circle' && (
           <TouchableOpacity style={styles.menuButton} onPress={handleOpenCircleOptions}>
@@ -584,6 +1064,40 @@ export default function ChatScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Members Panel */}
+      {showMembersPanel && (
+        <View style={styles.membersPanelOverlay}>
+          <TouchableOpacity style={styles.membersPanelBackdrop} onPress={() => setShowMembersPanel(false)} />
+          <View style={styles.membersPanel}>
+            <View style={styles.membersPanelHeader}>
+              <Text style={styles.membersPanelTitle}>Members</Text>
+              <TouchableOpacity onPress={() => setShowMembersPanel(false)}>
+                <Ionicons name="close" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={type === 'circle' ? circleInfo?.members || [] : communityInfo?.members || []}
+              keyExtractor={(item, index) => `${typeof item === 'string' ? item : item?.user_id || item?.id || index}_${index}`}
+              renderItem={({ item }) => {
+                const memberName = typeof item === 'string'
+                  ? item
+                  : item?.name || item?.user_name || item?.sl_id || item?.id || 'Member';
+                return (
+                  <View style={styles.memberItem}>
+                    <Ionicons name="person-circle-outline" size={18} color={COLORS.textSecondary} />
+                    <Text style={styles.memberName}>{memberName}</Text>
+                  </View>
+                );
+              }}
+              ListEmptyComponent={
+                <Text style={styles.emptyMembersText}>No members found</Text>
+              }
+              style={styles.membersList}
+            />
+          </View>
+        </View>
+      )}
 
       {/* Messages */}
       <KeyboardAvoidingView
@@ -619,28 +1133,204 @@ export default function ChatScreen() {
             <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type a message..."
-              value={newMessage}
-              onChangeText={setNewMessage}
-              maxLength={1000}
-              placeholderTextColor={COLORS.textLight}
-              returnKeyType="send"
-              onSubmitEditing={handleSend}
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
-              onPress={handleSend}
-              disabled={!newMessage.trim() || sending}
+          <View style={styles.inputWrapperContainer}>
+            {selectedMedia && (
+              <View style={styles.mediaPreviewContainer}>
+                <View style={styles.mediaPreviewHeader}>
+                  <Text style={styles.mediaPreviewLabel}>
+                    {selectedMedia.mediaType === 'image' ? 'Image ready to send' : 'Video ready to send'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewClose}>
+                    <Ionicons name="close" size={18} color={COLORS.textWhite} />
+                  </TouchableOpacity>
+                </View>
+                {selectedMedia.mediaType === 'image' ? (
+                  <Image source={{ uri: selectedMedia.uri }} style={styles.mediaPreviewImage} resizeMode="cover" />
+                ) : (
+                  <Video
+                    source={{ uri: selectedMedia.uri }}
+                    style={styles.mediaPreviewVideo}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    isLooping={false}
+                  />
+                )}
+              </View>
+            )}
+
+            <View style={styles.inputContainer}>
+              <View style={styles.attachmentButtons}>
+              <TouchableOpacity
+                style={styles.attachmentButton}
+                onPress={toggleAttachmentOptions}
+                disabled={uploadingMedia || sending}
+              >
+                <Ionicons name="add" size={24} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+            {showAttachmentOptions && (
+              <Animated.View
+                style={[
+                  styles.attachmentOverlay,
+                  {
+                    opacity: attachmentAnim,
+                    transform: [
+                      {
+                        scale: attachmentAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.95, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.attachmentOption}
+                  onPress={() => handlePickMedia('image')}
+                  disabled={uploadingMedia || sending}
+                >
+                  <Ionicons name="image-outline" size={20} color={COLORS.primary} />
+                  <Text style={styles.attachmentOptionText}>Photo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.attachmentOption}
+                  onPress={() => handlePickMedia('video')}
+                  disabled={uploadingMedia || sending}
+                >
+                  <Ionicons name="videocam-outline" size={20} color={COLORS.primary} />
+                  <Text style={styles.attachmentOptionText}>Video</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.attachmentOption}
+                  onPress={handleOpenContactShare}
+                  disabled={uploadingMedia || sending}
+                >
+                  <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
+                  <Text style={styles.attachmentOptionText}>Contact</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+            <Modal
+              visible={showContactModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowContactModal(false)}
             >
-              {sending ? (
-                <ActivityIndicator size="small" color={COLORS.textWhite} />
-              ) : (
-                <Ionicons name="send" size={20} color={COLORS.textWhite} />
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactModal(false)} />
+              <View style={styles.contactModalCard}>
+                <View style={styles.contactModalHeader}>
+                  <Text style={styles.contactModalTitle}>Share Contact</Text>
+                  <TouchableOpacity onPress={() => setShowContactModal(false)}>
+                    <Ionicons name="close" size={22} color={COLORS.text} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.contactModalBody}>
+                  <Text style={styles.contactModalLabel}>Name</Text>
+                  <TextInput
+                    style={styles.contactModalInput}
+                    value={contactShareName}
+                    onChangeText={setContactShareName}
+                    placeholder="Contact name"
+                    placeholderTextColor={COLORS.textSecondary}
+                  />
+                  <Text style={styles.contactModalLabel}>Phone</Text>
+                  <TextInput
+                    style={styles.contactModalInput}
+                    value={contactSharePhone}
+                    onChangeText={setContactSharePhone}
+                    placeholder="Phone number"
+                    keyboardType="phone-pad"
+                    placeholderTextColor={COLORS.textSecondary}
+                  />
+                  <TouchableOpacity
+                    style={[styles.contactModalButton, styles.contactPickerButton]}
+                    onPress={async () => {
+                      const hasContacts = await loadPhoneContacts();
+                      if (hasContacts) {
+                        setShowContactPicker(true);
+                      }
+                    }}
+                    disabled={loadingContacts}
+                  >
+                    {loadingContacts ? (
+                      <ActivityIndicator size="small" color={COLORS.textPrimary} />
+                    ) : (
+                      <Text style={styles.contactPickerButtonText}>Pick from phone contacts</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.contactModalButton, sharingContact ? styles.sendButtonDisabled : null]}
+                    onPress={handleSendContact}
+                    disabled={sharingContact}
+                  >
+                    {sharingContact ? (
+                      <ActivityIndicator size="small" color={COLORS.textWhite} />
+                    ) : (
+                      <Text style={styles.contactModalButtonText}>Share</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+            <Modal
+              visible={showContactPicker}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowContactPicker(false)}
+            >
+              <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactPicker(false)} />
+              <View style={[styles.contactModalCard, { maxHeight: '70%' }]}> 
+                <View style={styles.contactModalHeader}>
+                  <Text style={styles.contactModalTitle}>Choose Contact</Text>
+                  <TouchableOpacity onPress={() => setShowContactPicker(false)}>
+                    <Ionicons name="close" size={22} color={COLORS.text} />
+                  </TouchableOpacity>
+                </View>
+                {loadingContacts ? (
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                ) : (
+                  <FlatList
+                    data={phoneContacts}
+                    keyExtractor={(item) => item.id || item.name || item.phoneNumbers?.[0]?.id || String(Math.random())}
+                    renderItem={({ item }) => {
+                      const phone = item.phoneNumbers?.[0]?.number || 'No number';
+                      const name = item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Unknown';
+                      return (
+                        <TouchableOpacity style={styles.phoneContactItem} onPress={() => handleSelectPhoneContact(item)}>
+                          <View>
+                            <Text style={styles.phoneContactName}>{name}</Text>
+                            <Text style={styles.phoneContactNumber}>{phone}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
+                )}
+              </View>
+            </Modal>
+              <TextInput
+                style={styles.input}
+                placeholder="Type a message..."
+                value={newMessage}
+                onChangeText={setNewMessage}
+                maxLength={1000}
+                placeholderTextColor={COLORS.textLight}
+                returnKeyType="send"
+                onSubmitEditing={handleSend}
+              />
+              <TouchableOpacity
+                style={[styles.sendButton, (!newMessage.trim() && !selectedMedia) || sending || uploadingMedia ? styles.sendButtonDisabled : null]}
+                onPress={handleSend}
+                disabled={!newMessage.trim() && !selectedMedia || sending || uploadingMedia}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color={COLORS.textWhite} />
+                ) : (
+                  <Ionicons name="send" size={20} color={COLORS.textWhite} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </KeyboardAvoidingView>
@@ -685,15 +1375,14 @@ export default function ChatScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.optionsItem, isCircleAdmin && styles.disabledAction]}
-              disabled={isCircleAdmin}
+              style={styles.optionsItem}
               onPress={() => {
                 setShowCircleOptions(false);
                 handleLeaveGroup();
               }}
             >
               <Ionicons name="exit-outline" size={18} color={COLORS.error} />
-              <Text style={[styles.optionsItemText, styles.leaveText]}>Leave Group</Text>
+              <Text style={[styles.optionsItemText, styles.leaveText]}>{leaveGroupLabel}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -738,14 +1427,15 @@ export default function ChatScreen() {
               <Text style={styles.groupSummaryDescription}>{circleInfo?.members?.length ?? 0} members</Text>
             </View>
 
-            <TouchableOpacity
-              style={[styles.leaveGroupButton, isCircleAdmin && styles.disabledAction]}
-              onPress={handleLeaveGroup}
-              disabled={isCircleAdmin}
-            >
-              <Ionicons name="exit-outline" size={16} color={COLORS.error} />
-              <Text style={styles.leaveGroupButtonText}>{isCircleAdmin ? 'Admin cannot leave group' : 'Leave Group'}</Text>
-            </TouchableOpacity>
+            <View style={styles.leaveGroupRow}>
+              <TouchableOpacity
+                style={styles.leaveGroupAction}
+                onPress={handleLeaveGroup}
+              >
+                <Ionicons name="exit-outline" size={16} color={COLORS.error} />
+                <Text style={styles.leaveGroupActionText}>{leaveGroupLabel}</Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.membersTitle}>Members</Text>
             <FlatList
@@ -781,18 +1471,7 @@ export default function ChatScreen() {
                         <TouchableOpacity
                           style={styles.removeMemberButton}
                           disabled={removingMemberId === item?.user_id}
-                          onPress={async () => {
-                            try {
-                              setRemovingMemberId(item?.user_id || null);
-                              await removeCircleMember(id!, item.user_id);
-                              await fetchCircleInfo();
-                              Alert.alert('Removed', `${item.name} has been removed from group`);
-                            } catch (error: any) {
-                              Alert.alert('Error', error.response?.data?.detail || 'Failed to remove member');
-                            } finally {
-                              setRemovingMemberId(null);
-                            }
-                          }}
+                          onPress={() => handleConfirmRemoveMember(item?.user_id, item?.name)}
                         >
                           <Ionicons
                             name={removingMemberId === item?.user_id ? 'hourglass-outline' : 'trash'}
@@ -988,6 +1667,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 2,
   },
+  memberCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.xs,
+  },
+  memberCountText: {
+    marginLeft: SPACING.xs,
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  membersPanelOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    flexDirection: 'row',
+  },
+  membersPanelBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  membersPanel: {
+    width: 300,
+    backgroundColor: COLORS.surface,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.divider,
+    padding: SPACING.md,
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 10,
+  },
+  membersPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  membersPanelTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  membersList: {
+    flexGrow: 0,
+  },
   chatContainer: {
     flex: 1,
   },
@@ -1065,12 +1794,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 15,
     color: COLORS.text,
-    maxHeight: 44,
-    minHeight: 44,
+    maxHeight: 40,
+    minHeight: 40,
   },
   sendButton: {
     width: 44,
@@ -1083,6 +1812,265 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+  },
+  inputWrapperContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+  },
+  mediaPreviewContainer: {
+    marginBottom: SPACING.xs,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+  },
+  mediaPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    backgroundColor: COLORS.primary,
+  },
+  mediaPreviewLabel: {
+    color: COLORS.textWhite,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  mediaPreviewClose: {
+    padding: SPACING.xs,
+  },
+  mediaPreviewImage: {
+    width: '100%',
+    height: 120,
+  },
+  mediaPreviewVideo: {
+    width: '100%',
+    height: 120,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    borderRadius: 22,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 15,
+    color: COLORS.text,
+    maxHeight: 40,
+    minHeight: 40,
+  },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: SPACING.sm,
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
+  },
+  attachmentButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  attachmentButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E8F5FF',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginRight: SPACING.xs,
+  },
+  attachmentOverlay: {
+    position: 'absolute',
+    bottom: 54,
+    left: 16,
+    width: 160,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 8,
+    paddingVertical: SPACING.xs,
+  },
+  attachmentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  attachmentOptionText: {
+    marginLeft: SPACING.sm,
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  contactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4FAFF',
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginTop: SPACING.xs,
+  },
+  contactCardContent: {
+    marginLeft: SPACING.sm,
+  },
+  contactName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  contactPhone: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  contactModalCard: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    top: '30%',
+    zIndex: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  contactModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  contactModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  contactModalBody: {
+    marginTop: SPACING.sm,
+  },
+  contactModalLabel: {
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+    marginTop: SPACING.sm,
+  },
+  contactModalInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  contactModalButton: {
+    marginTop: SPACING.md,
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+  },
+  contactPickerButton: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  contactModalButtonText: {
+    color: COLORS.textWhite,
+    fontWeight: '700',
+  },
+  contactPickerButtonText: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  phoneContactItem: {
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  phoneContactName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  phoneContactNumber: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  fullScreenMediaOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenMediaClose: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 40 : 24,
+    right: 20,
+    zIndex: 2,
+    padding: 10,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  fullScreenMediaImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fullScreenMediaVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  messageMedia: {
+    width: 200,
+    height: 140,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.xs,
+  },
+  messageVideo: {
+    width: 200,
+    height: 140,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.xs,
   },
   verificationBanner: {
     flexDirection: 'row',
@@ -1258,22 +2246,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  leaveGroupButton: {
+  leaveGroupRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: SPACING.md,
+  },
+  leaveGroupAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
     borderColor: `${COLORS.error}40`,
     backgroundColor: `${COLORS.error}10`,
-    borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.sm,
-    marginBottom: SPACING.md,
   },
-  leaveGroupButtonText: {
+  leaveGroupActionText: {
     marginLeft: SPACING.xs,
     color: COLORS.error,
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '700',
+    fontSize: 13,
   },
   membersTitle: {
     fontSize: 15,

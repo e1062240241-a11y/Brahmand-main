@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Input } from '../src/components/Input';
 import { Button } from '../src/components/Button';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
-import { getKYCStatus, submitKYC } from '../src/services/api';
+import { generateUserAadhaarOtp, getKYCStatus, submitKYC, verifyUserAadhaarOtp } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
 
 type KycStatus = 'pending' | 'manual_review' | 'verified' | 'rejected' | null;
@@ -34,6 +34,11 @@ export default function KycSubmitScreen() {
   const [idNumber, setIdNumber] = useState('');
   const [idPhotoBase64, setIdPhotoBase64] = useState<string | undefined>(undefined);
   const [selfieBase64, setSelfieBase64] = useState<string | undefined>(undefined);
+  const [otpFlowActive, setOtpFlowActive] = useState(false);
+  const [otpReferenceId, setOtpReferenceId] = useState('');
+  const [otpValue, setOtpValue] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   useEffect(() => {
     const loadStatus = async () => {
@@ -92,6 +97,85 @@ export default function KycSubmitScreen() {
     }
   };
 
+  useEffect(() => {
+    setOtpFlowActive(false);
+    setOtpReferenceId('');
+    setOtpValue('');
+    setOtpVerified(false);
+  }, [idType]);
+
+  useEffect(() => {
+    if (idType === 'aadhaar' && otpVerified) {
+      setOtpVerified(false);
+      setOtpFlowActive(false);
+      setOtpReferenceId('');
+      setOtpValue('');
+    }
+  }, [idNumber, idType, otpVerified]);
+
+  const handleGenerateOtp = async () => {
+    const trimmed = idNumber.trim();
+    if (trimmed.length !== 12) {
+      Alert.alert('Invalid Aadhaar', 'Aadhaar number must be 12 digits.');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const response = await generateUserAadhaarOtp({
+        aadhaar_number: trimmed,
+        consent: 'Y',
+        reason: 'Jobs KYC verification',
+      });
+      const referenceId =
+        response?.data?.reference_id ||
+        response?.data?.sandbox_response?.reference_id ||
+        response?.data?.sandbox_response?.data?.reference_id ||
+        '';
+
+      if (!referenceId) {
+        Alert.alert('OTP Error', 'OTP generated but reference ID is missing. Please retry.');
+        return;
+      }
+
+      setOtpReferenceId(referenceId);
+      setOtpFlowActive(true);
+      setOtpVerified(false);
+      Alert.alert('OTP Sent', 'OTP sent to your Aadhaar-linked mobile number.');
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || error?.message || 'Failed to generate OTP.';
+      Alert.alert('OTP Failed', typeof message === 'string' ? message : 'Failed to generate OTP.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpReferenceId) {
+      Alert.alert('Missing Reference', 'Please generate OTP first.');
+      return;
+    }
+    if (!otpValue.trim()) {
+      Alert.alert('Missing OTP', 'Please enter the OTP.');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      await verifyUserAadhaarOtp({
+        reference_id: otpReferenceId,
+        otp: otpValue.trim(),
+      });
+      setOtpVerified(true);
+      Alert.alert('Verified', 'Aadhaar OTP verified successfully.');
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || error?.message || 'Failed to verify OTP.';
+      Alert.alert('Verification Failed', typeof message === 'string' ? message : 'Failed to verify OTP.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const submit = async () => {
     if (!idNumber.trim()) {
       Alert.alert('Missing Details', 'Please enter your ID number.');
@@ -105,6 +189,11 @@ export default function KycSubmitScreen() {
 
     if (idType === 'pan' && idNumber.trim().length !== 10) {
       Alert.alert('Invalid PAN', 'PAN number must be 10 characters.');
+      return;
+    }
+
+    if (idType === 'aadhaar' && !otpVerified) {
+      Alert.alert('OTP Required', 'Please verify Aadhaar OTP before submitting KYC.');
       return;
     }
 
@@ -186,6 +275,45 @@ export default function KycSubmitScreen() {
                   onChangeText={setIdNumber}
                   autoCapitalize={idType === 'pan' ? 'characters' : 'none'}
                 />
+
+                {idType === 'aadhaar' && (
+                  <View style={styles.otpSection}>
+                    {!otpFlowActive ? (
+                      <Button
+                        title="Send Aadhaar OTP"
+                        onPress={handleGenerateOtp}
+                        loading={otpLoading}
+                        style={styles.otpActionBtn}
+                      />
+                    ) : (
+                      <>
+                        <Input
+                          label="Aadhaar OTP"
+                          placeholder="Enter OTP"
+                          value={otpValue}
+                          onChangeText={setOtpValue}
+                          keyboardType="number-pad"
+                        />
+                        <View style={styles.otpRow}>
+                          <Button
+                            title={otpVerified ? 'OTP Verified' : 'Verify OTP'}
+                            onPress={handleVerifyOtp}
+                            loading={otpLoading}
+                            disabled={otpVerified}
+                            style={styles.otpActionBtn}
+                          />
+                          <Button
+                            title="Resend OTP"
+                            onPress={handleGenerateOtp}
+                            variant="outline"
+                            loading={otpLoading}
+                            style={styles.otpActionBtn}
+                          />
+                        </View>
+                      </>
+                    )}
+                  </View>
+                )}
 
                 <Text style={styles.label}>ID Document (optional)</Text>
                 <TouchableOpacity style={styles.uploadRow} onPress={() => pickImageAsBase64(false)}>
@@ -315,6 +443,17 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: BORDER_RADIUS.md,
     backgroundColor: COLORS.surface,
+  },
+  otpSection: {
+    marginBottom: SPACING.md,
+  },
+  otpRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.sm,
+  },
+  otpActionBtn: {
+    flex: 1,
   },
   submitButton: {
     marginTop: SPACING.lg,

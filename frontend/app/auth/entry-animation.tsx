@@ -40,7 +40,7 @@ export default function EntryAnimationScreen() {
           useNativeDriver: true,
         }),
       ]).start(() => {
-        router.replace('/(tabs)');
+        router.replace('/feed');
       });
     }, 1500);
 

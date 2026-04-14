@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
-import { getJobProfile } from '../../../src/services/api';
+import { getJobProfile, getKYCStatus } from '../../../src/services/api';
 import { useAuthStore } from '../../../src/store/authStore';
+import { useVendorStore } from '../../../src/store/vendorStore';
+import { VendorKYCModal } from '../../../src/components/VendorKYCModal';
 
 interface JobProfile {
   id: string;
@@ -69,16 +71,75 @@ const normalizeJobProfile = (raw: any): JobProfile | null => {
 export default function JobProfileDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
+  const { myVendor, fetchMyVendor } = useVendorStore();
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<JobProfile | null>(null);
+  const [showKycModal, setShowKycModal] = useState(false);
+  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
 
-  const isKycVerified = (user as any)?.kyc_status === 'verified';
+  const isKycVerified =
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified';
+
+  const loadKycStatus = useCallback(async (): Promise<string | null> => {
+    try {
+      const response = await getKYCStatus();
+      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      updateUser({
+        kyc_status: serverStatus,
+        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+      } as any);
+      // Fetch vendor data to get vendor ID
+      if (!myVendor) {
+        await fetchMyVendor();
+      }
+      return serverStatus;
+    } catch (error) {
+      console.warn('Failed to refresh KYC status:', error);
+      return null;
+    }
+  }, [updateUser, myVendor, fetchMyVendor]);
+
+  const ensureKycVerifiedForCv = useCallback(async () => {
+    const latestStatus = await loadKycStatus();
+    const effectiveStatus =
+      latestStatus ||
+      (user as any)?.kyc_status ||
+      ((user as any)?.is_verified ? 'verified' : null) ||
+      (myVendor?.kyc_status === 'verified' ? 'verified' : null);
+
+    if (effectiveStatus === 'verified') {
+      return true;
+    }
+
+    let vendorId = myVendor?.id || null;
+    if (!vendorId) {
+      await fetchMyVendor();
+      vendorId = useVendorStore.getState().myVendor?.id || null;
+    }
+
+    setKycModalVendorId(vendorId || '');
+    setShowKycModal(true);
+    return false;
+  }, [loadKycStatus, user, myVendor?.id, fetchMyVendor]);
+
+  useEffect(() => {
+    loadKycStatus();
+  }, [loadKycStatus]);
+
+  useEffect(() => {
+    if (myVendor?.id) {
+      setKycModalVendorId(myVendor.id);
+    }
+  }, [myVendor?.id]);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!id) return;
+      setProfile(null);
       try {
         setLoading(true);
         const response = await getJobProfile(id);
@@ -94,12 +155,12 @@ export default function JobProfileDetailScreen() {
   }, [id]);
 
   const handleBack = () => {
-    router.replace('/(tabs)/vendor');
+    router.replace('/vendor');
   };
 
   const handleViewCv = async () => {
-    if (!isKycVerified) {
-      Alert.alert('Not Verified', 'Only verified users can view the CV.');
+    const canViewCv = await ensureKycVerifiedForCv();
+    if (!canViewCv) {
       return;
     }
 
@@ -115,6 +176,11 @@ export default function JobProfileDetailScreen() {
     }
 
     await Linking.openURL(profile.cv_url);
+  };
+
+  const handleKycSuccess = () => {
+    setShowKycModal(false);
+    loadKycStatus();
   };
 
   if (loading) {
@@ -157,49 +223,68 @@ export default function JobProfileDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.topCard}>
-          {photo ? (
-            <Image source={{ uri: photo }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={44} color={COLORS.primary} />
-            </View>
-          )}
-
-          <View style={styles.topInfo}>
-            <Text style={styles.name}>{asText(profile.name, 'Unnamed Profile')}</Text>
-            <Text style={styles.profession}>{asText(profile.profession, 'Profession')}</Text>
-            <View style={styles.expRow}>
-              <Ionicons name="briefcase" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.expText}>{profile.experience_years || 0} years experience</Text>
+        <View style={styles.heroCard}>
+          <View style={styles.heroImageWrap}>
+            {photo ? (
+              <Image source={{ uri: photo }} style={styles.heroImage} />
+            ) : (
+              <View style={styles.heroImagePlaceholder}>
+                <Ionicons name="person" size={40} color={COLORS.primary} />
+              </View>
+            )}
+          </View>
+          <View style={styles.heroDetails}>
+            <Text style={styles.jobTitle}>{asText(profile.name, 'Unnamed Candidate')}</Text>
+            <Text style={styles.jobMeta}>{asText(profile.profession, 'Profession')}</Text>
+            <View style={styles.badgeRow}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{profile.experience_years || 0} yrs exp</Text>
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{profile.preferred_work_city || 'No city set'}</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Address</Text>
-          <Text style={styles.sectionText}>{asText(profile.current_address, 'Address not available')}</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Job Details</Text>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Current Address</Text>
+            <Text style={styles.fieldValue}>{asText(profile.current_address, 'Not available')}</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Preferred City</Text>
+            <Text style={styles.fieldValue}>{asText(profile.preferred_work_city, 'Not provided')}</Text>
+          </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferred Work City</Text>
-          <Text style={styles.sectionText}>{asText(profile.preferred_work_city, 'Not provided')}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CV</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>CV Access</Text>
+          <Text style={styles.sectionText}>Only verified users can open candidate CVs. Complete KYC to unlock access.</Text>
           <TouchableOpacity
-            style={[styles.cvButton, !profile.cv_url && styles.cvButtonDisabled]}
+            style={[styles.cvButton, isKycVerified && !profile.cv_url && styles.cvButtonDisabled]}
             onPress={handleViewCv}
-            disabled={!profile.cv_url}
+            disabled={isKycVerified && !profile.cv_url}
           >
             <Ionicons name="document-text" size={18} color="#FFFFFF" />
-            <Text style={styles.cvButtonText}>{isKycVerified ? 'View CV' : 'Complete KYC to View CV'}</Text>
+            <Text style={styles.cvButtonText}>{isKycVerified ? (profile.cv_url ? 'View CV' : 'CV Unavailable') : 'Complete KYC to View CV'}</Text>
           </TouchableOpacity>
-          {!isKycVerified && (
-            <Text style={styles.cvHint}>Tap above to submit KYC. CV opens only after admin approval.</Text>
-          )}
+          <Text style={styles.cvHint}>
+            {isKycVerified
+              ? profile.cv_url
+                ? 'You can open the candidate CV now.'
+                : 'This candidate has not uploaded a CV yet.'
+              : 'Complete your vendor KYC to access CVs.'}
+          </Text>
         </View>
+        <VendorKYCModal
+          visible={showKycModal}
+          vendorId={kycModalVendorId || ''}
+          allowUserKycFallback
+          onClose={() => setShowKycModal(false)}
+          onKycUpdated={handleKycSuccess}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -292,6 +377,88 @@ const styles = StyleSheet.create({
   sectionText: {
     fontSize: 14,
     color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  sectionCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  heroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  heroImageWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    backgroundColor: `${COLORS.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.md,
+  },
+  heroImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+  },
+  heroImagePlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    backgroundColor: `${COLORS.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroDetails: {
+    flex: 1,
+  },
+  jobTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  jobMeta: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginBottom: SPACING.sm,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: SPACING.xs,
+  },
+  badge: {
+    backgroundColor: `${COLORS.primary}10`,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    marginRight: SPACING.xs,
+    marginBottom: SPACING.xs,
+  },
+  badgeText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fieldRow: {
+    marginTop: SPACING.sm,
+  },
+  fieldLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    marginBottom: SPACING.xs,
+  },
+  fieldValue: {
+    color: COLORS.text,
+    fontSize: 14,
     lineHeight: 20,
   },
   cvButton: {
