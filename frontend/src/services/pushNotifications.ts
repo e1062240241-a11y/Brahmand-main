@@ -19,14 +19,35 @@ async function getNotificationsModule() {
 // Configure how notifications appear when app is in foreground (if available)
 (async () => {
   const Notifications = await getNotificationsModule();
-  if (Notifications && Notifications.setNotificationHandler) {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
+  if (Notifications) {
+    if (Notifications.setNotificationHandler) {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
+    }
+
+    if (Notifications.setNotificationCategoryAsync) {
+      try {
+        await Notifications.setNotificationCategoryAsync('SOS_ALERT', [
+          {
+            identifier: 'accept_sos',
+            buttonTitle: 'Accept',
+          },
+          {
+            identifier: 'deny_sos',
+            buttonTitle: 'Deny',
+            options: { isDestructive: true },
+          },
+        ]);
+      } catch (e) {
+        console.warn('[Push] Failed to create SOS notification category:', e);
+      }
+    }
   } else if (isExpoGo) {
     console.warn('[Push] expo-notifications not available in Expo Go; skipping notification handler. Use dev-client for push support.');
   }
@@ -65,18 +86,21 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   try {
-    // Get the Expo push token (works with FCM on Android, APNs on iOS)
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-    
-    if (projectId) {
-      const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
-      token = pushToken.data;
-      console.log('[Push] Expo Push Token:', token);
-    } else {
-      // Fallback: Get device push token directly
-      const deviceToken = await Notifications.getDevicePushTokenAsync();
+    // Prefer native device push token for FCM-based backend delivery.
+    const deviceToken = await Notifications.getDevicePushTokenAsync();
+    if (deviceToken?.data) {
       token = deviceToken.data;
       console.log('[Push] Device Push Token:', token);
+    } else {
+      // Fallback: Expo push token can work only with Expo push service.
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      if (projectId) {
+        const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
+        token = pushToken.data;
+        console.warn('[Push] Received Expo push token; backend uses FCM and this token may not be deliverable. Use a standalone/custom client build to get a real FCM device token.');
+      } else {
+        console.warn('[Push] Unable to get device push token and no Expo projectId fallback available.');
+      }
     }
   } catch (error) {
     console.error('[Push] Error getting push token:', error);
@@ -98,7 +122,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
         importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
-        sound: 'default',
       });
     } catch (e) {
       console.warn('[Push] Failed to configure Android channels', e);
@@ -111,7 +134,18 @@ export async function registerForPushNotifications(): Promise<string | null> {
 /**
  * Save the FCM token to the backend/Firestore
  */
+function isExpoPushToken(token: string) {
+  return token.startsWith('ExponentPushToken') || token.startsWith('ExpoPushToken');
+}
+
 export async function saveFCMToken(token: string): Promise<boolean> {
+  if (isExpoPushToken(token)) {
+    console.warn(
+      '[Push] Expo push token detected. Backend expects a native FCM device token, so this token will not be sent. Use a standalone/custom client build for FCM support.'
+    );
+    return false;
+  }
+
   try {
     await api.post('/user/fcm-token', { fcm_token: token });
     console.log('[Push] FCM token saved to backend');
@@ -127,12 +161,12 @@ export async function saveFCMToken(token: string): Promise<boolean> {
  */
 export async function initializePushNotifications(): Promise<string | null> {
   const token = await registerForPushNotifications();
-  
-  if (token) {
-    await saveFCMToken(token);
+  if (!token) {
+    return null;
   }
-  
-  return token;
+
+  const saved = await saveFCMToken(token);
+  return saved ? token : null;
 }
 
 /**
@@ -187,7 +221,6 @@ export async function scheduleLocalNotification(
       title,
       body,
       data: data || {},
-      sound: 'default',
     },
     trigger: null, // Send immediately
   });

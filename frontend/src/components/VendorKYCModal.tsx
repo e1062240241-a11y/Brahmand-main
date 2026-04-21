@@ -4,15 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-let TextRecognition: typeof import('expo-text-recognition') | null = null;
-try {
-  TextRecognition = require('expo-text-recognition');
-} catch (error) {
-  console.warn('expo-text-recognition module unavailable:', error);
-}
-
-const CameraViewAny = CameraView as any;
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import {
   updateVendor,
@@ -27,6 +18,15 @@ import {
 } from '../services/api';
 import { useVendorStore } from '../store/vendorStore';
 import { useAuthStore } from '../store/authStore';
+
+let TextRecognition: typeof import('expo-text-recognition') | null = null;
+try {
+  TextRecognition = require('expo-text-recognition');
+} catch (error) {
+  console.warn('expo-text-recognition module unavailable:', error);
+}
+
+const CameraViewAny = CameraView as any;
 
 const { width, height } = Dimensions.get('window');
 const PERSISTED_AADHAAR_PREFIX = 'vendor_kyc_aadhaar_';
@@ -511,13 +511,13 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
 
       // 1. Upload files through backend (owner-verified)
       const idUpload = await uploadVendorKycFile(vendorId, idType, {
-        uri: idDocumentUri,
+        uri: idDocumentUri as string,
         name: `${idType}.jpg`,
         type: 'image/jpeg',
       });
 
       const faceUpload = await uploadVendorKycFile(vendorId, 'face_scan', {
-        uri: faceScanUri,
+        uri: faceScanUri as string,
         name: 'face_scan.jpg',
         type: 'image/jpeg',
       });

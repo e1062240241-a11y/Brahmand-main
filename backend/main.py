@@ -19,11 +19,12 @@ from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import base64
+import math
 import requests
 from google.api_core.exceptions import FailedPrecondition
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse, Response
 import socketio
 
 # Add backend directory to path
@@ -44,6 +45,7 @@ from services.notification_service import NotificationService
 from services.prokerala_panchang_service import prokerala_panchang_service
 from services.prokerala_astrology_service import prokerala_astrology_service
 from services.firebase_auth_service import FirebaseAuthService
+from services.firebase_notification_service import FirebaseNotificationService
 
 try:
     from google.cloud import vision
@@ -112,6 +114,10 @@ HOSPITAL_SEARCH_FALLBACK = [
     "NIMHANS, Bangalore",
     "CMC Ludhiana",
 ]
+
+LIBRARY_BOOK_PDF_SOURCES = {
+    "bhagvad-geeta": "https://firebasestorage.googleapis.com/v0/b/sanatan-lok.firebasestorage.app/o/279.pdf?alt=media&token=410da0d2-bddf-4a43-8c58-ffa27b2bae74",
+}
 
 
 def _seconds_until_next_midnight(tz_name: str) -> int:
@@ -538,10 +544,18 @@ async def _auto_approve_vendor_for_test_phone(db: FirestoreDB, user_id: str, pho
 # =================== MIDDLEWARE ===================
 
 cors_origins = os.getenv('CORS_ORIGINS', '*')
+default_allowed_origins = [
+    "https://brahmand.app",
+    "https://www.brahmand.app",
+    "https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app",
+]
 allowed_origins = []
 allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)$"
 if cors_origins != '*':
-    allowed_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
+else:
+    allowed_origins = default_allowed_origins.copy()
 
 app.add_middleware(
     CORSMiddleware,
@@ -567,12 +581,60 @@ def _is_origin_allowed(origin: str) -> bool:
     return False
 
 
+def _apply_cors_headers(response: Response, origin: str, request: Optional[Request] = None) -> Response:
+    if not _is_origin_allowed(origin):
+        return response
+
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD"
+
+    requested_headers = ""
+    if request is not None:
+        requested_headers = request.headers.get("access-control-request-headers") or ""
+
+    response.headers["Access-Control-Allow-Headers"] = requested_headers or "*"
+    response.headers["Access-Control-Expose-Headers"] = (
+        "Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag, Last-Modified, X-Process-Time"
+    )
+    response.headers["Vary"] = "Origin"
+    return response
+
+
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
+    origin = request.headers.get("origin") or ""
+
+    if request.method == "OPTIONS" and _is_origin_allowed(origin):
+        return _apply_cors_headers(Response(status_code=204), origin, request)
+
     start_time = datetime.utcnow()
     response = await call_next(request)
     process_time = (datetime.utcnow() - start_time).total_seconds()
     response.headers["X-Process-Time"] = str(process_time)
+    return _apply_cors_headers(response, origin, request)
+
+
+@app.middleware("http")
+async def dedupe_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+    header_keys = {
+        b'access-control-allow-origin',
+        b'access-control-allow-credentials',
+        b'access-control-expose-headers',
+    }
+    new_raw_headers = []
+    seen = set()
+
+    for name, value in response.raw_headers:
+        lower_name = name.lower()
+        if lower_name in header_keys:
+            if lower_name in seen:
+                continue
+            seen.add(lower_name)
+        new_raw_headers.append((name, value))
+
+    response.raw_headers = new_raw_headers
     return response
 
 
@@ -585,9 +647,24 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
     origin = request.headers.get("origin") or ""
     if _is_origin_allowed(origin):
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Vary"] = "Origin"
+        return _apply_cors_headers(response, origin, request)
+    return response
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    detail = exc.detail
+    if not isinstance(detail, (dict, list)):
+        detail = {"detail": detail}
+
+    response = JSONResponse(
+        status_code=exc.status_code,
+        content=detail,
+        headers=exc.headers or None,
+    )
+    origin = request.headers.get("origin") or ""
+    if _is_origin_allowed(origin):
+        return _apply_cors_headers(response, origin, request)
     return response
 
 
@@ -635,6 +712,92 @@ async def health_check():
         },
         "firebase_project": FIREBASE_WEB_CONFIG["projectId"]
     }
+
+
+@api_router.get("/library/books/{book_id}/pdf")
+@api_router.get("/library/books/{book_id}/pdf")
+@api_router.head("/library/books/{book_id}/pdf")
+async def proxy_library_book_pdf(book_id: str, request: Request):
+    """Proxy public library PDFs through backend to avoid browser CORS issues."""
+    source_url = LIBRARY_BOOK_PDF_SOURCES.get(book_id)
+    if not source_url:
+        raise HTTPException(status_code=404, detail="Library book not found")
+
+    upstream_headers = {}
+    requested_range = request.headers.get("range")
+
+    if request.method == "GET" and not requested_range:
+        raise HTTPException(
+            status_code=400,
+            detail="Range header required for library PDF proxy requests. Use byte-range requests."
+        )
+
+    if requested_range:
+        upstream_headers["Range"] = requested_range
+
+    try:
+        upstream_response = requests.get(
+            source_url,
+            headers=upstream_headers,
+            stream=True,
+            timeout=60,
+        )
+    except requests.RequestException as exc:
+        logger.warning("Library PDF proxy failed for book_id=%s error=%s", book_id, exc)
+        raise HTTPException(status_code=502, detail="Failed to fetch library PDF")
+
+    if upstream_response.status_code >= 400:
+        upstream_response.close()
+        raise HTTPException(status_code=upstream_response.status_code, detail="Failed to fetch library PDF")
+
+    response_headers = {}
+    passthrough_header_names = [
+        "Content-Type",
+        "Content-Length",
+        "Content-Range",
+        "Accept-Ranges",
+        "Cache-Control",
+        "ETag",
+        "Last-Modified",
+    ]
+    for header_name in passthrough_header_names:
+        header_value = upstream_response.headers.get(header_name)
+        if header_value:
+            response_headers[header_name] = header_value
+
+    if request.method == "HEAD":
+        upstream_response.close()
+        response = Response(status_code=upstream_response.status_code, headers=response_headers)
+        origin = request.headers.get("origin") or ""
+        return _apply_cors_headers(response, origin, request)
+
+    def stream_pdf():
+        try:
+            for chunk in upstream_response.iter_content(chunk_size=1024 * 64):
+                if chunk:
+                    yield chunk
+        finally:
+            upstream_response.close()
+
+    response = StreamingResponse(
+        stream_pdf(),
+        status_code=upstream_response.status_code,
+        headers=response_headers,
+        media_type=upstream_response.headers.get("Content-Type", "application/pdf"),
+    )
+    origin = request.headers.get("origin") or ""
+    return _apply_cors_headers(response, origin, request)
+
+
+@api_router.options("/library/books/{book_id}/pdf")
+async def proxy_library_book_pdf_options(book_id: str, request: Request):
+    """Explicit preflight support for library PDF proxy requests."""
+    source_url = LIBRARY_BOOK_PDF_SOURCES.get(book_id)
+    if not source_url:
+        raise HTTPException(status_code=404, detail="Library book not found")
+
+    origin = request.headers.get("origin") or ""
+    return _apply_cors_headers(Response(status_code=204), origin, request)
 
 
 @api_router.get("/firebase-config")
@@ -1025,6 +1188,34 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     return {"message": "Location set successfully", "user": user, "communities_joined": len(community_ids)}
 
 
+@api_router.post("/user/current-location")
+async def update_current_location(location: dict, token_data: dict = Depends(verify_token)):
+    """Update the user's current GPS location."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    latitude = location.get('latitude')
+    longitude = location.get('longitude')
+    if latitude is None or longitude is None:
+        raise HTTPException(status_code=400, detail="latitude and longitude are required")
+
+    current_location = {
+        'latitude': latitude,
+        'longitude': longitude,
+        'updated_at': datetime.utcnow().isoformat()
+    }
+
+    await db.update_document('users', user_id, {
+        'current_location': current_location
+    })
+
+    return {"message": "Current location updated", "current_location": current_location}
+
+
+@app.post("/user/current-location")
+async def update_current_location_root(location: dict, token_data: dict = Depends(verify_token)):
+    return await update_current_location(location, token_data)
+
+
 @api_router.post("/user/dual-location")
 async def setup_dual_location(locations: DualLocationSetup, token_data: dict = Depends(verify_token)):
     """
@@ -1218,6 +1409,10 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
         'name': user.get('name'),
         'photo': user.get('photo'),
         'sl_id': user.get('sl_id'),
+        'online_status': user.get('online_status'),
+        'last_seen_at': user.get('last_seen_at'),
+        'last_active': user.get('last_active'),
+        'updated_at': user.get('updated_at'),
         'badges': user.get('badges', []),
         'home_location': user.get('home_location'),
         'followers': user.get('followers', []),
@@ -1712,52 +1907,6 @@ async def get_posts_feed(limit: int = 20, offset: int = 0, token_data: dict = De
     }
 
 
-@api_router.get('/posts/{post_id}')
-async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    user_id = token_data['user_id']
-    post = await db.get_document('posts', post_id)
-    if not post:
-        raise HTTPException(status_code=404, detail='Post not found')
-
-    author = None
-    if post.get('user_id'):
-        try:
-            author = await db.get_document('users', post['user_id'])
-        except Exception:
-            author = None
-
-    if author:
-        post['user_photo'] = author.get('photo')
-        post['username'] = author.get('name') or author.get('sl_id') or post.get('username')
-
-    liked_by = post.get('liked_by', []) or []
-    post['likes_count'] = post.get('likes_count', len(liked_by))
-    post['comments_count'] = post.get('comments_count', 0)
-    post['liked_by_me'] = user_id in liked_by
-
-    top_comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post.get('id'))],
-        limit=200,
-    )
-
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    post['top_comments'] = top_comments[:5]
-    return post
-
-
 @api_router.get('/posts/hashtag')
 async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
     if not hashtag or not hashtag.strip():
@@ -1848,6 +1997,52 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         'offset': safe_offset,
         'has_more': has_more,
     }
+
+
+@api_router.get('/posts/{post_id}')
+async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    author = None
+    if post.get('user_id'):
+        try:
+            author = await db.get_document('users', post['user_id'])
+        except Exception:
+            author = None
+
+    if author:
+        post['user_photo'] = author.get('photo')
+        post['username'] = author.get('name') or author.get('sl_id') or post.get('username')
+
+    liked_by = post.get('liked_by', []) or []
+    post['likes_count'] = post.get('likes_count', len(liked_by))
+    post['comments_count'] = post.get('comments_count', 0)
+    post['liked_by_me'] = user_id in liked_by
+
+    top_comments = await db.query_documents(
+        'post_comments',
+        filters=[('post_id', '==', post.get('id'))],
+        limit=200,
+    )
+
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+    post['top_comments'] = top_comments[:5]
+    return post
 
 
 @api_router.post('/posts/{post_id}/repost')
@@ -6649,6 +6844,99 @@ async def delete_community_request(request_id: str, token_data: dict = Depends(v
 # =================== SOS EMERGENCY SYSTEM ===================
 
 
+async def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371  # Earth radius in km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+async def _get_nearest_users(
+    db: FirestoreDB,
+    user_id: str,
+    latitude: float,
+    longitude: float,
+    max_users: int = 200,
+    max_distance_km: float = 1.0
+):
+    users = await db.query_documents('users')
+    candidates = []
+    for user in users:
+        if user.get('id') == user_id:
+            continue
+        location = user.get('current_location') or user.get('home_location') or user.get('location') or {}
+        user_lat = location.get('latitude')
+        user_lng = location.get('longitude')
+        if user_lat is None or user_lng is None:
+            continue
+        distance = await _haversine_distance(latitude, longitude, user_lat, user_lng)
+        if distance <= max_distance_km:
+            candidates.append((distance, user.get('id')))
+
+    candidates.sort(key=lambda item: item[0])
+    return [user_id for _, user_id in candidates[:max_users]]
+
+
+async def _send_sos_notifications(user_ids: list, title: str, body: str, data: dict):
+    if not user_ids:
+        return {"sent": 0}
+    try:
+        result = await FirebaseNotificationService.send_multicast(user_ids, title, body, data)
+        logger.info(f"SOS notification sent to {len(user_ids)} users: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Failed to send SOS notifications: {e}")
+        return {"sent": 0}
+
+
+async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
+    db = await get_db()
+    batch_size = 50
+    step = 1
+    while step < 4:
+        await asyncio.sleep(10)
+        alert = await db.get_document('sos_alerts', sos_id)
+        if not alert or alert.get('status') != 'active':
+            logger.info(f"Stopping SOS escalation for {sos_id}: alert inactive or missing")
+            return
+        if len(alert.get('responders', [])) >= 1:
+            logger.info(f"Stopping SOS escalation for {sos_id}: responders present")
+            return
+
+        already_notified = set(alert.get('notified_user_ids', []))
+        remaining = [uid for uid in all_user_ids if uid not in already_notified]
+        if not remaining:
+            logger.info(f"No more users to notify for SOS {sos_id}")
+            return
+
+        next_batch = remaining[:batch_size]
+        if not next_batch:
+            return
+
+        notified_user_ids = list(already_notified) + next_batch
+        await db.update_document('sos_alerts', sos_id, {
+            'notified_user_ids': notified_user_ids,
+            'escalation_step': step + 1
+        })
+
+        sos_alert = await db.get_document('sos_alerts', sos_id)
+        title = f"Emergency SOS nearby: {sos_alert.get('emergency_type', 'Emergency')}"
+        body = f"{sos_alert.get('user_name')} needs help at {sos_alert.get('micro_location', 'nearby')}"
+        await _send_sos_notifications(next_batch, title, body, {
+            'type': 'sos_alert',
+            'sos_id': sos_id,
+            'creator_sl_id': sos_alert.get('user_sl_id'),
+            'latitude': str(sos_alert.get('latitude')),
+            'longitude': str(sos_alert.get('longitude')),
+            'action_accept': 'accept_sos',
+            'action_deny': 'deny_sos',
+            'action_label_accept': 'Accept',
+            'action_label_deny': 'Deny'
+        })
+        step += 1
+
+
 @api_router.post("/sos")
 async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_token)):
     """Create an SOS emergency alert"""
@@ -6681,17 +6969,53 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         "phone_number": user.get('phone'),
         "latitude": data.latitude,
         "longitude": data.longitude,
+        "emergency_type": data.emergency_type,
+        "micro_location": data.micro_location or '',
         "area": area,
         "city": city,
         "state": state,
         "status": "active",
         "responders": [],
+        "escalation_level": 1,
+        "notified_user_ids": [],
+        "escalation_step": 1,
+        "created_at": datetime.utcnow().isoformat(),
         "expires_at": expires_at.isoformat()
     }
     
     sos_id = await db.create_document('sos_alerts', sos_data)
     sos_data['id'] = sos_id
-    
+
+    nearest_user_ids = await _get_nearest_users(
+        db,
+        user_id,
+        data.latitude,
+        data.longitude,
+        max_users=200,
+        max_distance_km=1.0
+    )
+    initial_batch = nearest_user_ids[:50]
+    if initial_batch:
+        await db.update_document('sos_alerts', sos_id, {
+            'notified_user_ids': initial_batch,
+            'escalation_step': 1
+        })
+        title = f"Emergency SOS nearby: {sos_data['emergency_type'].title()}"
+        body = f"{user.get('name')} needs help at {sos_data['micro_location'] or 'nearby'}"
+        await _send_sos_notifications(initial_batch, title, body, {
+            'type': 'sos_alert',
+            'sos_id': sos_id,
+            'creator_sl_id': user.get('sl_id'),
+            'latitude': str(data.latitude),
+            'longitude': str(data.longitude),
+            'action_accept': 'accept_sos',
+            'action_deny': 'deny_sos',
+            'action_label_accept': 'Accept',
+            'action_label_deny': 'Deny'
+        })
+        if len(nearest_user_ids) > 50:
+            asyncio.create_task(_escalate_sos_notifications(sos_id, nearest_user_ids))
+
     # Broadcast to community chat
     community_ids = user.get('communities', [])
     for comm_id in community_ids[:3]:  # Broadcast to first 3 communities
@@ -6722,7 +7046,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
 async def get_nearby_sos_alerts(
     lat: Optional[float] = None,
     lng: Optional[float] = None,
-    radius: float = 10,  # km
+    radius: float = 1.0,  # km
     token_data: dict = Depends(verify_token)
 ):
     """Get active SOS alerts nearby"""
@@ -6789,7 +7113,29 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
         'resolved_at': datetime.utcnow().isoformat()
     })
     
-    # Notify responders
+    if status == 'resolved':
+        responders = alert.get('responders', []) or []
+        for responder in responders:
+            responder_id = responder.get('user_id')
+            if not responder_id:
+                continue
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    responder_id,
+                    'SOS Resolved',
+                    f"{alert.get('user_name')} is safe now. Thank you for helping.",
+                    {'type': 'sos_resolved', 'sos_id': sos_id}
+                )
+            except Exception:
+                pass
+            
+            responder_user = await db.get_document('users', responder_id)
+            if responder_user:
+                reputation = responder_user.get('reputation', 0) + 1
+                await db.update_document('users', responder_id, {
+                    'reputation': reputation
+                })
+    
     await sio.emit('sos_resolved', {'sos_id': sos_id, 'status': status})
     
     logger.info(f"SOS alert {sos_id} marked as {status} by {user_id}")
@@ -6810,23 +7156,84 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     if alert.get('status') != 'active':
         raise HTTPException(status_code=400, detail="SOS alert is no longer active")
     
+    if response not in ['coming', 'called']:
+        raise HTTPException(status_code=400, detail="Response must be 'coming' or 'called'")
+    
     responder_data = {
         "user_id": user_id,
         "user_name": user.get('name'),
         "response": response,
+        "status": 'on_the_way' if response == 'coming' else 'called',
         "responded_at": datetime.utcnow().isoformat()
     }
     
     await db.array_union_update('sos_alerts', sos_id, 'responders', [responder_data])
     
-    # Notify SOS creator
+    await FirebaseNotificationService.send_push_notification(
+        alert.get('user_id'),
+        'SOS response received',
+        f"{user.get('name')} has responded to your SOS.",
+        {'type': 'sos_response', 'sos_id': sos_id, 'response': response}
+    )
+
     await sio.emit('sos_response', {
         'sos_id': sos_id,
-        'responder': responder_data
-    }, room=f"user_{alert.get('user_id')}")
+        'responder_id': user_id,
+        'responder_name': user.get('name'),
+        'response': response
+    })
     
     logger.info(f"User {user_id} responded to SOS {sos_id}: {response}")
     return {"message": f"Response recorded: {response}"}
+
+
+@api_router.post("/sos/{sos_id}/responder/status")
+async def update_sos_responder_status(
+    sos_id: str,
+    status: str = Body(..., embed=True),
+    token_data: dict = Depends(verify_token)
+):
+    """Update a responder status for an SOS (on_the_way / reached)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    if status not in ['on_the_way', 'reached']:
+        raise HTTPException(status_code=400, detail="Status must be 'on_the_way' or 'reached'")
+
+    alert = await db.get_document('sos_alerts', sos_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="SOS alert not found")
+    if alert.get('status') != 'active':
+        raise HTTPException(status_code=400, detail="SOS alert is no longer active")
+
+    responders = alert.get('responders', []) or []
+    updated = False
+    for responder in responders:
+        if responder.get('user_id') == user_id:
+            responder['status'] = status
+            responder['updated_at'] = datetime.utcnow().isoformat()
+            updated = True
+            break
+
+    if not updated:
+        raise HTTPException(status_code=400, detail="You must respond first before updating status")
+
+    await db.update_document('sos_alerts', sos_id, {'responders': responders})
+
+    await FirebaseNotificationService.send_push_notification(
+        alert.get('user_id'),
+        'SOS update',
+        f"{user.get('name')} is now {status.replace('_', ' ')}.",
+        {'type': 'sos_responder_status', 'sos_id': sos_id, 'status': status}
+    )
+
+    await sio.emit('sos_responder_status', {
+        'sos_id': sos_id,
+        'responder_id': user_id,
+        'status': status
+    })
+
+    return {"message": "Responder status updated"}
 
 
 @api_router.post("/speech/transcribe")
@@ -7207,6 +7614,9 @@ app.include_router(video_upload_router)
 
 # =================== SOCKET.IO ===================
 
+ROOM_PEERS: dict[str, set[str]] = {}
+SID_TO_PEER: dict[str, tuple[str, str]] = {}
+
 @sio.event
 async def connect(sid, environ, auth):
     logger.info(f"Socket connected: {sid}")
@@ -7216,22 +7626,64 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket disconnected: {sid}")
+    if sid in SID_TO_PEER:
+        room, peer_id = SID_TO_PEER.pop(sid)
+        if room in ROOM_PEERS:
+            ROOM_PEERS[room].discard(peer_id)
+            if not ROOM_PEERS[room]:
+                ROOM_PEERS.pop(room, None)
+            else:
+                await sio.emit('peer_left', {'peerId': peer_id}, room=room)
 
 
 @sio.event
 async def join_room(sid, data):
     room = data.get('room')
-    if room:
+    peer_id = data.get('peerId')
+    if room and peer_id:
         await sio.enter_room(sid, room)
-        return {"status": "joined", "room": room}
+        ROOM_PEERS.setdefault(room, set()).add(peer_id)
+        SID_TO_PEER[sid] = (room, peer_id)
+
+        existing_peers = [peer for peer in ROOM_PEERS.get(room, set()) if peer != peer_id]
+        await sio.emit('peer_joined', {'peerId': peer_id}, room=room, skip_sid=sid)
+        return {
+            'status': 'joined',
+            'room': room,
+            'peerId': peer_id,
+            'peers': existing_peers,
+        }
 
 
 @sio.event
 async def leave_room(sid, data):
     room = data.get('room')
-    if room:
+    peer_id = data.get('peerId')
+    if room and peer_id:
         await sio.leave_room(sid, room)
+        if room in ROOM_PEERS:
+            ROOM_PEERS[room].discard(peer_id)
+            if not ROOM_PEERS[room]:
+                ROOM_PEERS.pop(room, None)
+        SID_TO_PEER.pop(sid, None)
+        await sio.emit('peer_left', {'peerId': peer_id}, room=room)
         return {"status": "left", "room": room}
+
+
+@sio.event
+async def voice_chunk(sid, data):
+    room = data.get('room')
+    if not room:
+        return
+
+    payload = {
+        'peerId': data.get('peerId'),
+        'chunk': data.get('chunk'),
+        'format': data.get('format', 'm4a'),
+        'timestamp': data.get('timestamp'),
+    }
+
+    await sio.emit('voice_chunk', payload, to=room, skip_sid=sid)
 
 
 app.mount("/socket.io", socket_app)

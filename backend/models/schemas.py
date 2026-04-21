@@ -551,6 +551,8 @@ class CulturalCommunityUpdate(BaseModel):
 class SOSCreate(BaseModel):
     latitude: float
     longitude: float
+    emergency_type: str
+    micro_location: Optional[str] = None
     area: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None

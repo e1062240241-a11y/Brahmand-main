@@ -1,18 +1,26 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS } from '../../src/constants/theme';
+import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useAuthStore } from '../../src/store/authStore';
 
 const { width } = Dimensions.get('window');
 
 export default function EntryAnimationScreen() {
   const router = useRouter();
+  const { token } = useAuthStore();
+  const [agreed, setAgreed] = useState(false);
+
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
-    // Fade in animation
+    if (token) {
+      router.replace('/feed');
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(logoOpacity, {
         toValue: 1,
@@ -25,27 +33,30 @@ export default function EntryAnimationScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+  }, [logoOpacity, logoScale, router, token]);
 
-    // After 2 seconds, fade out and navigate
-    const timer = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(logoOpacity, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoScale, {
-          toValue: 0.8,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        router.replace('/feed');
-      });
-    }, 1500);
+  const handleContinue = () => {
+    if (!agreed) return;
 
-    return () => clearTimeout(timer);
-  }, []);
+    Animated.parallel([
+      Animated.timing(logoOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoScale, {
+        toValue: 0.8,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      router.push('/auth/phone');
+    });
+  };
+
+  const handleOpenPrivacyPolicy = () => {
+    router.push('/privacy-policy');
+  };
 
   return (
     <LinearGradient
@@ -54,29 +65,64 @@ export default function EntryAnimationScreen() {
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
-      {/* Subtle background pattern */}
-      <View style={styles.patternContainer}>
-        <View style={styles.circle} />
-        <View style={[styles.circle, styles.circle2]} />
-        <View style={[styles.circle, styles.circle3]} />
+      <View style={styles.mandalaContainer}>
+        <View style={styles.mandalaCircle} />
+        <View style={[styles.mandalaCircle, styles.mandalaCircle2]} />
+        <View style={[styles.mandalaCircle, styles.mandalaCircle3]} />
       </View>
 
-      {/* Animated Logo */}
-      <Animated.View
-        style={[
-          styles.logoContainer,
-          {
-            opacity: logoOpacity,
-            transform: [{ scale: logoScale }],
-          },
-        ]}
-      >
-        <View style={styles.logoBg}>
-          <Text style={styles.omSymbol}>ॐ</Text>
+      <View style={styles.content}>
+        <Animated.View
+          style={[
+            styles.logoContainer,
+            {
+              opacity: logoOpacity,
+              transform: [{ scale: logoScale }],
+            },
+          ]}
+        >
+          <View style={styles.logoBg}>
+            <Text style={styles.omSymbol}>ॐ</Text>
+          </View>
+          <Text style={styles.appName}>Brahmand</Text>
+          <Text style={styles.tagline}>The Sanatan Community</Text>
+        </Animated.View>
+
+        <View style={styles.bottomSection}>
+          <View style={styles.checkboxContainer}>
+            <TouchableOpacity
+              style={[styles.checkbox, agreed && styles.checkboxChecked]}
+              onPress={() => setAgreed(!agreed)}
+              activeOpacity={0.8}
+            >
+              {agreed && <Text style={styles.checkmark}>✓</Text>}
+            </TouchableOpacity>
+            <Text style={styles.termsText}>
+              I agree to the{' '}
+              <Text style={styles.termsLink} onPress={handleOpenPrivacyPolicy}>
+                Terms of Service and Community Guidelines
+              </Text>
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.continueButton, !agreed && styles.continueButtonDisabled]}
+            onPress={handleContinue}
+            disabled={!agreed}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.continueButtonText}>Continue</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.adminLoginButton}
+            onPress={() => router.push('/admin/login')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.adminLoginText}>Login as Admin</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.appName}>Brahmand</Text>
-        <Text style={styles.tagline}>The Sanatan Community</Text>
-      </Animated.View>
+      </View>
     </LinearGradient>
   );
 }
@@ -84,16 +130,14 @@ export default function EntryAnimationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  patternContainer: {
+  mandalaContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     opacity: 0.08,
   },
-  circle: {
+  mandalaCircle: {
     position: 'absolute',
     width: width * 1.2,
     height: width * 1.2,
@@ -101,18 +145,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFFFFF',
   },
-  circle2: {
+  mandalaCircle2: {
     width: width * 0.9,
     height: width * 0.9,
     borderRadius: width * 0.45,
   },
-  circle3: {
+  mandalaCircle3: {
     width: width * 0.6,
     height: width * 0.6,
     borderRadius: width * 0.3,
   },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+  },
   logoContainer: {
     alignItems: 'center',
+    marginBottom: SPACING.xl * 1.5,
   },
   logoBg: {
     width: 140,
@@ -139,5 +190,69 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255,255,255,0.9)',
     letterSpacing: 0.5,
+  },
+  bottomSection: {
+    width: '100%',
+    maxWidth: 420,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 6,
+    marginRight: SPACING.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: '#FFFFFF',
+  },
+  checkmark: {
+    fontSize: 16,
+    color: COLORS.primary,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  termsText: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  termsLink: {
+    textDecorationLine: 'underline',
+    fontWeight: '700',
+  },
+  continueButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: BORDER_RADIUS.lg,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  continueButtonDisabled: {
+    opacity: 0.5,
+  },
+  continueButtonText: {
+    color: COLORS.primary,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  adminLoginButton: {
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+  },
+  adminLoginText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
 });

@@ -84,8 +84,6 @@ brahmand.zip
 # Environment files
 *.env
 *.env.*
-frontend/GoogleService-Info.plist
-frontend/google-services.json
 
 # Expo / Android generated native files
 /frontend/android/
@@ -122,3 +120,8 @@ frontend/google-services.json
 /frontend/android/app/src/main/res/drawable/*splash*
 /frontend/android/app/src/main/res/mipmap-*/ic_launcher*.*
 /frontend/android/app/src/main/res/mipmap-*/ic_launcher_round*.*
+
+# Temporary local helpers and policy draft artifacts
+/temp-check-frontend.sh
+/temp-check-pdf.sh
+/frontend/assets/pdf/Brahmand_Privacy_Policy_Final.pdf

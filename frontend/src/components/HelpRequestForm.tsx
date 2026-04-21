@@ -51,7 +51,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
   defaultType = 'other',
 }) => {
   const { user } = useAuthStore();
-  const { activeRequest, hasActiveRequest, setActiveRequest } = useHelpRequestStore();
+  const { hasActiveRequest, createRequest } = useHelpRequestStore();
   
   const [loading, setLoading] = useState(false);
   const [helpType, setHelpType] = useState<'blood' | 'medical' | 'financial' | 'other'>(defaultType);
@@ -88,22 +88,19 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
 
     setLoading(true);
     try {
-      const newRequest: HelpRequest = {
-        id: Date.now().toString(),
+      const urgencyLevel: 'normal' | 'urgent' | 'critical' =
+        urgency === 'urgent' ? 'urgent' : urgency === 'medium' ? 'normal' : 'critical';
+
+      const created = await createRequest({
         type: helpType,
         title: title.trim(),
         description: description.trim(),
-        urgency,
-        contactNumber: contactNumber.trim(),
-        visibility,
-        createdAt: new Date().toISOString(),
-        status: 'active',
-        verifications: 0,
-        verifiedBy: [],
-      };
+        community_level: visibility === 'national' ? 'country' : visibility,
+        contact_number: contactNumber.trim(),
+        urgency: urgencyLevel,
+      });
 
-      await setActiveRequest(newRequest);
-      await onSubmit(newRequest);
+      await onSubmit(created as HelpRequest);
       resetForm();
       onClose();
       Alert.alert('Success', 'Your help request has been posted to the community.');

@@ -1,13 +1,12 @@
 {
   "expo": {
-    "name": "Sanatan Lok",
+    "name": "Brahmand",
     "slug": "sanatan-lok",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "sanatanlok",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.brahmand.sanatanlok",
@@ -17,13 +16,23 @@
         "NSCameraUsageDescription": "Take photos for profile and messages",
         "NSLocationWhenInUseUsageDescription": "Detect your location to join local communities",
         "NSLocationAlwaysUsageDescription": "Detect your location to join local communities",
-        "NSMicrophoneUsageDescription": "Use microphone for voice ordering",
+        "NSMicrophoneUsageDescription": "Allow Sanatan Lok to use microphone for voice ordering.",
         "CFBundleURLTypes": [
           {
             "CFBundleTypeRole": "Editor",
-            "CFBundleURLSchemes": ["sanatanlok"]
+            "CFBundleURLSchemes": [
+              "sanatanlok"
+            ]
+          },
+          {
+            "CFBundleTypeRole": "Editor",
+            "CFBundleURLSchemes": [
+              "sanatanlok"
+            ]
           }
-        ]
+        ],
+        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -33,7 +42,6 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#FF6B00"
       },
-      "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -51,7 +59,10 @@
               "scheme": "sanatanlok"
             }
           ],
-          "category": ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"]
+          "category": [
+            "android.intent.category.DEFAULT",
+            "android.intent.category.BROWSABLE"
+          ]
         }
       ]
     },
@@ -98,7 +109,11 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "expo-font",
+      "expo-image",
+      "expo-video",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
@@ -106,8 +121,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "933904ab-ac71-4674-85bc-6af12d062e95"
+        "projectId": "4a6b7ff9-0931-43e9-9264-42f7dd7e63a5"
       }
-    }
+    },
+    "owner": "virralpatel"
   }
 }

@@ -161,7 +161,7 @@ export default function DiscoverScreen() {
                 <TouchableOpacity
                   key={event.id}
                   style={styles.eventCard}
-                  onPress={() => router.push(`/event/${event.id}`)}
+                  onPress={() => router.push(`/event/${event.id}` as any)}
                 >
                   <View style={styles.eventHeader}>
                     <View style={[styles.eventIcon, { backgroundColor: `${COLORS.success}20` }]}>

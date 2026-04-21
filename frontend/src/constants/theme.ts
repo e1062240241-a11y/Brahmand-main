@@ -17,6 +17,7 @@ export const COLORS = {
   card: '#FFF5EB',
   
   text: '#1A1A1A',
+  textPrimary: '#1A1A1A',
   textSecondary: '#666666',
   textLight: '#999999',
   textWhite: '#FFFFFF',
@@ -54,9 +55,11 @@ export const SPACING = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 40,
 };
 
 export const BORDER_RADIUS = {
+  xs: 4,
   sm: 8,
   md: 12,
   lg: 16,

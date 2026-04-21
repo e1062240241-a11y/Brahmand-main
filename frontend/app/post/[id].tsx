@@ -1,15 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Share, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, Modal, TextInput } from 'react-native';
+import { View, Text, Share, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../../src/constants/theme';
 import { getPostById, getPostComments, addPostComment, repostPost } from '../../src/services/api';
-import PostFeedCard from '../../src/components/PostFeedCard';
+import { PostFeedCard } from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 
-export default function PostScreen() {
-  const params = useLocalSearchParams();
+const PostScreen = () => {
+  const params = useLocalSearchParams<{ id: string | string[]; mediaUrl?: string | string[]; caption?: string | string[]; uploaderName?: string | string[]; uploaderPhoto?: string | string[] }>();
   const router = useRouter();
+  const routePostId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const routeMediaUrl = Array.isArray(params.mediaUrl) ? params.mediaUrl[0] : params.mediaUrl;
+  const routeCaption = Array.isArray(params.caption) ? params.caption[0] : params.caption;
+  const routeUploaderName = Array.isArray(params.uploaderName) ? params.uploaderName[0] : params.uploaderName;
+  const routeUploaderPhoto = Array.isArray(params.uploaderPhoto) ? params.uploaderPhoto[0] : params.uploaderPhoto;
   const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +48,7 @@ export default function PostScreen() {
   }, [loadComments]);
 
   const handleSubmitComment = useCallback(async () => {
-    const currentPostId = post?.id || params.id;
+    const currentPostId = post?.id || routePostId;
     if (!currentPostId || !commentText.trim()) return;
 
     setCommentSubmitting(true);
@@ -56,7 +62,7 @@ export default function PostScreen() {
     } finally {
       setCommentSubmitting(false);
     }
-  }, [commentText, loadComments, params.id, post]);
+  }, [commentText, loadComments, routePostId, post]);
 
   const handleShareExternal = useCallback(async (post: any) => {
     if (!post) return;
@@ -137,11 +143,11 @@ export default function PostScreen() {
 
   useEffect(() => {
     const fetchPost = async () => {
-      if (!params.id) return;
+      if (!routePostId) return;
       setLoading(true);
       setError(null);
       try {
-        const response = await getPostById(String(params.id));
+        const response = await getPostById(String(routePostId));
         setPost(response.data);
       } catch (err: any) {
         setError('Unable to load post.');
@@ -152,13 +158,13 @@ export default function PostScreen() {
     };
 
     fetchPost();
-  }, [params.id]);
+  }, [routePostId]);
 
-  const pId = params.id ? String(params.id) : '';
-  const pMedia = params.mediaUrl && params.mediaUrl !== 'undefined' ? String(params.mediaUrl) : '';
-  const pCap = params.caption && params.caption !== 'undefined' ? String(params.caption) : '';
-  const pName = params.uploaderName && params.uploaderName !== 'undefined' ? String(params.uploaderName) : '';
-  const pPhoto = params.uploaderPhoto && params.uploaderPhoto !== 'undefined' ? String(params.uploaderPhoto) : '';
+  const pId = routePostId ? String(routePostId) : '';
+  const pMedia = routeMediaUrl && routeMediaUrl !== 'undefined' ? String(routeMediaUrl) : '';
+  const pCap = routeCaption && routeCaption !== 'undefined' ? String(routeCaption) : '';
+  const pName = routeUploaderName && routeUploaderName !== 'undefined' ? String(routeUploaderName) : '';
+  const pPhoto = routeUploaderPhoto && routeUploaderPhoto !== 'undefined' ? String(routeUploaderPhoto) : '';
 
   const displayPost = post || {
     id: pId,
@@ -202,8 +208,9 @@ export default function PostScreen() {
             onRepost={handleRepost}
             onEdit={() => {}}
             onUserPress={(u: any) => {
-              if (u?.id) {
-                router.push(`/profile/${u.id}`);
+              const userId = u?.user_id || u?.user?.id || u?.id;
+              if (userId) {
+                router.push({ pathname: '/profile/[id]', params: { id: String(userId) } } as any);
               }
             }}
           />
@@ -211,7 +218,11 @@ export default function PostScreen() {
       )}
 
       <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
-        <View style={styles.commentModalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.commentModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+        >
           <View style={styles.commentModalSheet}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments</Text>
@@ -261,7 +272,7 @@ export default function PostScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <SharePostModal
@@ -314,7 +325,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: SPACING.md,
-    maxHeight: '80%',
+    paddingBottom: Platform.OS === 'ios' ? SPACING.lg : SPACING.md,
+    maxHeight: '90%',
   },
   commentModalHeader: {
     flexDirection: 'row',
@@ -385,3 +397,4 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.divider,
   },
 });
+export default PostScreen;

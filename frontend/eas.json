@@ -12,7 +12,10 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_BACKEND_URL": "https://brahmand-backend-hi4rz6fdrq-uc.a.run.app"
+      }
     }
   },
   "submit": {

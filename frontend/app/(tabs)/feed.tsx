@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
-import { View, Text, StyleSheet, Image, ScrollView, FlatList, TouchableOpacity, Dimensions, TextInput, Animated, Easing, ActivityIndicator, Modal, Share } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, FlatList, TouchableOpacity, Dimensions, TextInput, Animated, Easing, ActivityIndicator, Modal, Share, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -175,35 +175,69 @@ export default function FeedScreen() {
   const resizeHandle = useRef<string | null>(null);
   const lastPos = useRef({ x: 0, y: 0 });
   const initialCrop = useRef({ x: 0, y: 0, size: 0 });
+  const isWeb = Platform.OS === 'web';
+
+  const getPointerCoords = (event: any) => {
+    if (event == null) return null;
+    if (typeof event.clientX === 'number' && typeof event.clientY === 'number') {
+      return { x: event.clientX, y: event.clientY };
+    }
+    if (event.nativeEvent) {
+      const native = event.nativeEvent;
+      if (typeof native.locationX === 'number' && typeof native.locationY === 'number') {
+        return { x: native.locationX, y: native.locationY };
+      }
+      if (typeof native.pageX === 'number' && typeof native.pageY === 'number') {
+        return { x: native.pageX, y: native.pageY };
+      }
+    }
+    return null;
+  };
 
   const handlePointerDown = useCallback((event: any, handle?: string) => {
     if (!imageLayout) return;
-    event.stopPropagation();
+    event?.stopPropagation?.();
     isDragging.current = true;
     isResizing.current = !!handle;
     resizeHandle.current = handle || null;
-    
-    const containerRect = cropContainerRef.current?.getBoundingClientRect();
-    if (!containerRect) return;
-    
-    const clickX = event.clientX - containerRect.left;
-    const clickY = event.clientY - containerRect.top;
-    lastPos.current = { x: clickX, y: clickY };
-    initialCrop.current = { 
-      x: cropOriginRef.current.x, 
-      y: cropOriginRef.current.y, 
-      size: cropSize 
+
+    const coords = getPointerCoords(event);
+    if (!coords) return;
+
+    if (isWeb) {
+      const containerRect = cropContainerRef.current?.getBoundingClientRect();
+      if (!containerRect) return;
+      const clickX = coords.x - containerRect.left;
+      const clickY = coords.y - containerRect.top;
+      lastPos.current = { x: clickX, y: clickY };
+    } else {
+      lastPos.current = { x: coords.x, y: coords.y };
+    }
+
+    initialCrop.current = {
+      x: cropOriginRef.current.x,
+      y: cropOriginRef.current.y,
+      size: cropSize,
     };
-  }, [imageLayout, cropSize]);
+  }, [imageLayout, cropSize, isWeb]);
 
   const handlePointerMove = useCallback((event: any) => {
-    if (!isDragging.current || !imageLayout || !cropContainerRef.current) {
+    if (!isDragging.current || !imageLayout) {
       return;
     }
-    event.stopPropagation();
-    const containerRect = cropContainerRef.current.getBoundingClientRect();
-    const mouseX = event.clientX - containerRect.left;
-    const mouseY = event.clientY - containerRect.top;
+    event?.stopPropagation?.();
+    const coords = getPointerCoords(event);
+    if (!coords) return;
+
+    let mouseX = coords.x;
+    let mouseY = coords.y;
+    if (isWeb) {
+      const containerRect = cropContainerRef.current?.getBoundingClientRect();
+      if (!containerRect) return;
+      mouseX -= containerRect.left;
+      mouseY -= containerRect.top;
+    }
+
     const dx = mouseX - lastPos.current.x;
     const dy = mouseY - lastPos.current.y;
     lastPos.current = { x: mouseX, y: mouseY };
@@ -369,7 +403,7 @@ export default function FeedScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'] as any,
       allowsEditing: false,
       quality: 0.7,
     });
@@ -739,13 +773,14 @@ const searchIconOpacity = searchAnim.interpolate({
   }, [loadFeedPosts]);
 
   const searchHashtags = async (query: string) => {
-    if (!query.trim()) {
+    const normalizedQuery = query.trim().replace(/^#+/, '');
+    if (!normalizedQuery) {
       setHashtagResults([]);
       return;
     }
     setLoadingHashtags(true);
     try {
-      const response = await searchByHashtag(query.trim().replace('#', ''), 20, 0);
+      const response = await searchByHashtag(normalizedQuery, 20, 0);
       setHashtagResults(Array.isArray(response.data) ? response.data : response.data?.items || []);
     } catch (error) {
       console.warn('Failed to search hashtags:', error);
@@ -771,7 +806,7 @@ const searchIconOpacity = searchAnim.interpolate({
 
     const debounce = setTimeout(async () => {
       if (query.startsWith('#')) {
-        await searchHashtags(query);
+        await searchHashtags(query.replace(/^#+/, '#'));
       } else {
         setLoadingUsers(true);
         try {
@@ -939,8 +974,8 @@ const searchIconOpacity = searchAnim.interpolate({
                   style={styles.userResultContent}
                   activeOpacity={0.8}
                   onPress={() => {
-                    const hashtag = searchTerm.trim().replace('#', '');
-                    router.push(`/hashtag/${hashtag}`);
+                    const hashtag = searchTerm.trim().replace(/^#+/, '');
+                    router.push(`/hashtag/${encodeURIComponent(hashtag)}`);
                   }}
                 >
                   <View style={[styles.hashtagIcon, { width: 44, height: 44, borderRadius: 22 }]}> 
@@ -1098,7 +1133,7 @@ const searchIconOpacity = searchAnim.interpolate({
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <FlatList
         ref={flatListRef}
         data={feedPosts}
@@ -1141,10 +1176,15 @@ const searchIconOpacity = searchAnim.interpolate({
                       const { width, height } = event.nativeEvent.layout;
                       setImageLayout({ width, height });
                     }}
-                    onPointerDown={(e) => handlePointerDown(e)}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerLeave={handlePointerUp}
+                    onPointerDown={isWeb ? (e) => handlePointerDown(e) : undefined}
+                    onPointerMove={isWeb ? handlePointerMove : undefined}
+                    onPointerUp={isWeb ? handlePointerUp : undefined}
+                    onPointerLeave={isWeb ? handlePointerUp : undefined}
+                    onStartShouldSetResponder={!isWeb ? () => true : undefined}
+                    onResponderGrant={!isWeb ? (e: any) => handlePointerDown(e.nativeEvent) : undefined}
+                    onResponderMove={!isWeb ? (e: any) => handlePointerMove(e.nativeEvent) : undefined}
+                    onResponderRelease={!isWeb ? (e: any) => handlePointerUp(e.nativeEvent) : undefined}
+                    onResponderTerminate={!isWeb ? (e: any) => handlePointerUp(e.nativeEvent) : undefined}
                   >
                     <Image
                       source={{ uri: selectedImageUri }}
@@ -1163,42 +1203,46 @@ const searchIconOpacity = searchAnim.interpolate({
                           },
                         ]}
                       >
-                        <View 
-                          style={[styles.resizeHandle, styles.resizeHandleNW]} 
-                          onPointerDown={(e) => handlePointerDown(e, 'nw')}
-                        />
-                        <View 
-                          style={[styles.resizeHandle, styles.resizeHandleN]} 
-                          onPointerDown={(e) => handlePointerDown(e, 'n')}
-                        />
-                        <View 
-                          style={[styles.resizeHandle, styles.resizeHandleNE]} 
-                          onPointerDown={(e) => handlePointerDown(e, 'ne')}
-                        />
-                        <View 
-                          style={[styles.resizeHandle, styles.resizeHandleE]} 
-                          onPointerDown={(e) => handlePointerDown(e, 'e')}
-                        />
-                        <View 
-                          style={[styles.resizeHandle, styles.resizeHandleSE]} 
-                          onPointerDown={(e) => handlePointerDown(e, 'se')}
-                        />
-                        <View 
-                          style={[styles.resizeHandle, styles.resizeHandleS]} 
-                          onPointerDown={(e) => handlePointerDown(e, 's')}
-                        />
-                        <View 
-                          style={[styles.resizeHandle, styles.resizeHandleSW]} 
-                          onPointerDown={(e) => handlePointerDown(e, 'sw')}
-                        />
-                        <View 
-                          style={[styles.resizeHandle, styles.resizeHandleW]} 
-                          onPointerDown={(e) => handlePointerDown(e, 'w')}
-                        />
-                        <View 
-                          style={styles.centerHandle} 
-                          onPointerDown={(e) => handlePointerDown(e)}
-                        />
+                        {isWeb ? (
+                          <>
+                            <View 
+                              style={[styles.resizeHandle, styles.resizeHandleNW]} 
+                              onPointerDown={(e) => handlePointerDown(e, 'nw')}
+                            />
+                            <View 
+                              style={[styles.resizeHandle, styles.resizeHandleN]} 
+                              onPointerDown={(e) => handlePointerDown(e, 'n')}
+                            />
+                            <View 
+                              style={[styles.resizeHandle, styles.resizeHandleNE]} 
+                              onPointerDown={(e) => handlePointerDown(e, 'ne')}
+                            />
+                            <View 
+                              style={[styles.resizeHandle, styles.resizeHandleE]} 
+                              onPointerDown={(e) => handlePointerDown(e, 'e')}
+                            />
+                            <View 
+                              style={[styles.resizeHandle, styles.resizeHandleSE]} 
+                              onPointerDown={(e) => handlePointerDown(e, 'se')}
+                            />
+                            <View 
+                              style={[styles.resizeHandle, styles.resizeHandleS]} 
+                              onPointerDown={(e) => handlePointerDown(e, 's')}
+                            />
+                            <View 
+                              style={[styles.resizeHandle, styles.resizeHandleSW]} 
+                              onPointerDown={(e) => handlePointerDown(e, 'sw')}
+                            />
+                            <View 
+                              style={[styles.resizeHandle, styles.resizeHandleW]} 
+                              onPointerDown={(e) => handlePointerDown(e, 'w')}
+                            />
+                            <View 
+                              style={styles.centerHandle} 
+                              onPointerDown={(e) => handlePointerDown(e)}
+                            />
+                          </>
+                        ) : null}
                       </View>
                     ) : null}
                   </View>
@@ -1303,7 +1347,11 @@ const searchIconOpacity = searchAnim.interpolate({
             setPostComments([]);
           }}
         >
-          <View style={styles.unifiedModalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.unifiedModalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          >
             <View style={styles.unifiedBottomSheet}>
               <View style={styles.bottomSheetHandle} />
               <View style={styles.commentSheetHeader}>
@@ -1381,7 +1429,7 @@ const searchIconOpacity = searchAnim.interpolate({
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         <Modal visible={showMyPostsModal} transparent animationType="slide" onRequestClose={() => setShowMyPostsModal(false)}>
@@ -1455,17 +1503,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchBar: {
-    height: 28,
+    height: 32,
     backgroundColor: '#F5F5F5',
-    borderRadius: 6,
-    paddingHorizontal: 8,
+    borderRadius: 8,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
   },
   searchInput: {
     flex: 1,
+    height: '100%',
     fontSize: 14,
     color: COLORS.text,
+    paddingVertical: 0,
+  },
+  closeBtn: {
+    width: 32,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
   },
   notificationBadge: {
     position: 'absolute',
@@ -2106,6 +2163,7 @@ myPostsOverlay: {
     paddingTop: SPACING.xs,
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.xl,
+    maxHeight: '90%',
   },
   bottomSheetHandle: {
     width: 40,

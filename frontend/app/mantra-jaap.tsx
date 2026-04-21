@@ -1,13 +1,7 @@
-import React from 'react';
-import { useRouter } from 'expo-router';
-import JaapAppScreen from '../jaap-app/app/(tabs)/index';
+import { LiveMantraRoom } from '../src/features/live-mantra';
 
-export default function MantraJaapRoute() {
-  const router = useRouter();
+const MantraJaapRoute = () => {
+  return <LiveMantraRoom />;
+};
 
-  return (
-    <JaapAppScreen
-      onExit={() => (router.canGoBack() ? router.back() : router.replace('/temple' as any))}
-    />
-  );
-}
+export default MantraJaapRoute;

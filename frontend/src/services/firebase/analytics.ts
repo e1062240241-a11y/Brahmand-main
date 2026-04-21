@@ -9,7 +9,7 @@ if (Platform.OS !== 'web') {
   try {
     // prefer @react-native-firebase/analytics on native
     // use require to avoid bundling on web
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     rnAnalytics = require('@react-native-firebase/analytics').default;
   } catch (e) {
     rnAnalytics = null;
@@ -17,7 +17,7 @@ if (Platform.OS !== 'web') {
 } else {
   try {
     // try expo-firebase-analytics for web-compatible behavior if present
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     expoAnalytics = require('expo-firebase-analytics');
   } catch (e) {
     expoAnalytics = null;
@@ -31,9 +31,9 @@ export async function logEvent(name: string, params?: Params) {
     }
     try {
       // fallback to Firebase Web SDK if available
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+       
       const { getAnalytics, logEvent: firebaseLogEvent } = require('firebase/analytics');
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+       
       const { getApp } = require('firebase/app');
       const analytics = getAnalytics(getApp());
       return firebaseLogEvent(analytics, name, params || {});

@@ -18,7 +18,7 @@ interface AuthState {
   logout: () => Promise<void>;
   loadStoredAuth: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
-  initPushNotifications: () => Promise<void>;
+  initPushNotifications: () => Promise<string | null>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -85,8 +85,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (fcmToken) {
         set({ fcmToken });
       }
+      return fcmToken;
     } catch (error) {
       console.log('[Push] Could not initialize push notifications:', error);
+      return null;
     }
   },
 }));

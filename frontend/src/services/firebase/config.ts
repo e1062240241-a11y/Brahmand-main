@@ -1,8 +1,9 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { getAuth, initializeAuth } from 'firebase/auth';
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Firebase configuration for Sanatan Lok - loaded from environment variables
 // For web/local development, ensure .env file is present and variables are loaded
@@ -49,7 +50,7 @@ export function initializeFirebase(): FirebaseApp {
   if (getApps().length === 0) {
     // Log minimal config to verify environment variables are loaded in the web bundle
     try {
-      // eslint-disable-next-line no-console
+       
       console.log('[Firebase] initializing with apiKey=', firebaseConfig.apiKey ? 'SET' : 'MISSING', ' authDomain=', firebaseConfig.authDomain || '');
     } catch (e) {}
     app = initializeApp(firebaseConfig);
@@ -62,17 +63,20 @@ export function initializeFirebase(): FirebaseApp {
 export function getFirebaseAuth() {
   if (!auth) {
     const firebaseApp = initializeFirebase();
-    // On native platforms, we need to use initializeAuth with persistence
-    // On web, getAuth works fine
     if (Platform.OS === 'web') {
       auth = getAuth(firebaseApp);
     } else {
-      // For React Native, we'll use getAuth which works with the default in-memory persistence
-      // To enable persistence, you'd need to set up with AsyncStorage
       try {
-        auth = getAuth(firebaseApp);
-      } catch (e) {
-        console.warn('[Firebase Auth] Failed to initialize auth:', e);
+        auth = initializeAuth(firebaseApp, {
+          persistence: getReactNativePersistence(AsyncStorage),
+        });
+      } catch (e: any) {
+        if (e?.code === 'auth/already-initialized' || String(e?.message || '').includes('already been initialized')) {
+          auth = getAuth(firebaseApp);
+        } else {
+          console.warn('[Firebase Auth] Failed to initialize auth with persistence, falling back to default auth:', e);
+          auth = getAuth(firebaseApp);
+        }
       }
     }
   }

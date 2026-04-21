@@ -18,7 +18,7 @@ import {
   Animated,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
@@ -34,6 +34,7 @@ import {
   denyDirectMessageRequest,
   uploadChatMedia,
   uploadCompressedVideo,
+  getUserProfile,
 } from '../../src/services/api';
 import { ChatMessage } from '../../src/services/firebase/chatService';
 import { useAuthStore } from '../../src/store/authStore';
@@ -58,7 +59,126 @@ const getDMContacts = async () => {
   return dmContacts;
 };
 
-export default function DirectMessageScreen() {
+const MessageStatus = ({ status, isOwn }: { status?: string; isOwn: boolean }) => {
+  if (!isOwn) return null;
+
+  const color = isOwn ? 'rgba(255,255,255,0.7)' : COLORS.textLight;
+
+  if (status === 'read') {
+    return (
+      <View style={styles.statusContainer}>
+        <Ionicons name="checkmark-done" size={14} color={color} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.statusContainer}>
+      <Ionicons name="checkmark" size={14} color={color} />
+    </View>
+  );
+};
+
+type DMMessageItemProps = {
+  item: ChatMessage;
+  index: number;
+  userId?: string;
+  renderMessageContent: (message: ChatMessage) => React.ReactNode;
+  formatChatDate: (dateString: string) => string;
+  formatTime: (dateString: string) => string;
+  showDateSeparator: boolean;
+};
+
+const DMMessageItem = React.memo(({
+  item,
+  index,
+  userId,
+  renderMessageContent,
+  formatChatDate,
+  formatTime,
+  showDateSeparator,
+}: DMMessageItemProps) => {
+  const isOwnMessage = item.sender_id === userId;
+  const rawContent = item.content ?? item.text ?? '';
+  const rawString = typeof rawContent === 'string' ? rawContent : '';
+  const hasSharedKeys =
+    typeof rawContent === 'object' &&
+    rawContent !== null &&
+    (Object.prototype.hasOwnProperty.call(rawContent, 'postId') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'post_id') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'mediaUrl') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'media_url') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'uploaderName') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'uploader_name') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'username') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'user_name') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'name') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'author') ||
+      Object.prototype.hasOwnProperty.call(rawContent, 'author_name'));
+  const looksLikeSharedPost = /post(_)?id|media(_)?url|uploader(_)?name/i.test(rawString);
+  const itemMessageType = (item as any).message_type;
+  const isSharedPost =
+    itemMessageType === 'post_share' ||
+    itemMessageType === 'postShare' ||
+    hasSharedKeys ||
+    looksLikeSharedPost;
+
+  return (
+    <>
+      {showDateSeparator && (
+        <View style={styles.dateSeparatorContainer}>
+          <View style={styles.dateSeparator}>
+            <Text style={styles.dateSeparatorText}>{formatChatDate(item.created_at)}</Text>
+          </View>
+        </View>
+      )}
+      <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
+        {!isOwnMessage && (
+          <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
+        )}
+        <View
+          style={[
+            styles.messageBubble,
+            isOwnMessage && styles.ownMessageBubble,
+            isSharedPost && styles.sharedPostMessageBubble,
+          ]}
+        >
+          {renderMessageContent(item)}
+          {!isSharedPost && (
+            <View style={styles.messageFooter}>
+              <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
+                {formatTime(item.created_at)}
+              </Text>
+              <MessageStatus status={(item as any).status} isOwn={isOwnMessage} />
+            </View>
+          )}
+        </View>
+      </View>
+    </>
+  );
+}, (prevProps, nextProps) => {
+  const prevItem = prevProps.item;
+  const nextItem = nextProps.item;
+  return (
+    prevItem.id === nextItem.id &&
+    prevItem.sender_id === nextItem.sender_id &&
+    prevItem.created_at === nextItem.created_at &&
+    prevItem.content === nextItem.content &&
+    prevItem.text === nextItem.text &&
+    (prevItem as any).message_type === (nextItem as any).message_type &&
+    prevItem.sender_name === nextItem.sender_name &&
+    prevItem.sender_photo === nextItem.sender_photo &&
+    (prevItem as any).status === (nextItem as any).status &&
+    prevProps.userId === nextProps.userId &&
+    prevProps.index === nextProps.index &&
+    prevProps.showDateSeparator === nextProps.showDateSeparator &&
+    prevProps.renderMessageContent === nextProps.renderMessageContent &&
+    prevProps.formatChatDate === nextProps.formatChatDate &&
+    prevProps.formatTime === nextProps.formatTime
+  );
+});
+
+const DirectMessageScreen = () => {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -67,6 +187,12 @@ export default function DirectMessageScreen() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [otherUserPresence, setOtherUserPresence] = useState<{
+    online_status?: boolean;
+    last_seen_at?: string;
+    last_active?: string;
+    updated_at?: string;
+  } | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -88,7 +214,7 @@ export default function DirectMessageScreen() {
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [contactShareName, setContactShareName] = useState('');
   const [contactSharePhone, setContactSharePhone] = useState('');
-  const [phoneContacts, setPhoneContacts] = useState<Contacts.Contact[]>([]);
+  const [phoneContacts, setPhoneContacts] = useState<ContactsType.Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sharingContact, setSharingContact] = useState(false);
   const [requestActionLoading, setRequestActionLoading] = useState(false);
@@ -102,8 +228,13 @@ export default function DirectMessageScreen() {
       await markDirectMessagesRead(conversationId);
       setHasMarkedRead(true);
       console.log('[Chat] Messages marked as read');
-    } catch (error) {
-      console.error('[Chat] Error marking messages as read:', error);
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 502 || status === 503) {
+        console.warn('[Chat] Backend unavailable, unable to mark messages as read:', status);
+      } else {
+        console.error('[Chat] Error marking messages as read:', error);
+      }
     }
   }, [conversationId, hasMarkedRead]);
 
@@ -163,6 +294,56 @@ export default function DirectMessageScreen() {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   };
 
+  const getPresenceSource = () => {
+    if (otherUserPresence && (otherUserPresence.online_status !== undefined || otherUserPresence.last_seen_at || otherUserPresence.last_active || otherUserPresence.updated_at)) {
+      return otherUserPresence;
+    }
+    return conversation?.user;
+  };
+
+  const getPresenceLabel = () => {
+    const presence = getPresenceSource();
+    if (!presence) return '';
+
+    if (presence.online_status === true) {
+      return 'Online';
+    }
+
+    const lastSeen = presence.last_seen_at || presence.last_active || presence.updated_at;
+    const date = parseDateOrNull(lastSeen);
+    if (!date) return '';
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+    if (diffMinutes < 1) return 'Online';
+    if (diffMinutes < 60) return `Last seen ${diffMinutes} min ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `Last seen ${diffHours} hr ago`;
+
+    return `Last seen ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  };
+
+  useEffect(() => {
+    const loadOtherUserPresence = async () => {
+      if (!conversation?.user?.id) return;
+      try {
+        const response = await getUserProfile(conversation.user.id);
+        const profile = response?.data || {};
+        setOtherUserPresence({
+          online_status: profile.online_status,
+          last_seen_at: profile.last_seen_at || profile.last_active || profile.updated_at,
+          last_active: profile.last_active,
+          updated_at: profile.updated_at,
+        });
+      } catch (error) {
+        console.warn('[DM] Failed to load other user profile for presence', error);
+      }
+    };
+
+    loadOtherUserPresence();
+  }, [conversation?.user?.id]);
+
   const requestStatus = conversation?.request_status || 'approved';
   const isRequester = !!conversation?.request_by && conversation.request_by === user?.id;
   const retryAfterDate = parseDateOrNull(conversation?.request_retry_after);
@@ -221,9 +402,9 @@ export default function DirectMessageScreen() {
       return true;
     };
 
-    BackHandler.addEventListener('hardwareBackPress', onHardwareBackPress);
+    const backHandlerSubscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBackPress);
     return () => {
-      BackHandler.removeEventListener('hardwareBackPress', onHardwareBackPress);
+      backHandlerSubscription.remove();
     };
   }, [handleBackNavigation]);
 
@@ -292,10 +473,14 @@ export default function DirectMessageScreen() {
   const fetchConversation = useCallback(async () => {
     try {
       const convResponse = await getConversations();
-      const conv = convResponse.data.find((c: Conversation) => 
+      const conversations = Array.isArray(convResponse?.data) ? convResponse.data : [];
+      const conv = conversations.find((c: Conversation) => 
         c.conversation_id === conversationId || c.chat_id === conversationId
       );
       if (conv) setConversation(conv);
+      else if (convResponse?.data == null) {
+        console.warn('[Chat] Conversation list response was empty or invalid');
+      }
     } catch (error) {
       console.error('Error fetching conversation:', error);
     }
@@ -305,6 +490,12 @@ export default function DirectMessageScreen() {
   const fetchMessagesViaAPI = useCallback(async () => {
     try {
       const response = await getDirectMessages(conversationId!);
+      if (!Array.isArray(response?.data)) {
+        console.warn('[Chat] Direct messages response was empty or invalid');
+        setLoading(false);
+        return;
+      }
+
       const apiMessages = response.data.map((msg: any) => ({
         id: msg.id,
         sender_id: msg.sender_id || '',
@@ -321,8 +512,12 @@ export default function DirectMessageScreen() {
       setLoading(false);
       setIsRealtime(false);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 100);
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Chat] Error fetching messages:', error);
+      const status = error?.response?.status;
+      if (status !== 502 && status !== 503) {
+        setMessages([]);
+      }
       setLoading(false);
     }
   }, [conversationId]);
@@ -385,12 +580,7 @@ export default function DirectMessageScreen() {
   }, [conversationId, fetchConversation, fetchMessagesViaAPI, markMessagesAsRead, uploadingMedia]);
 
   const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
-    const pickerType = mediaType === 'image' ? 'Images' : 'Videos';
-    return ((ImagePicker as any).MediaType?.[pickerType]
-      ? [(ImagePicker as any).MediaType[pickerType]]
-      : mediaType === 'image'
-        ? ImagePicker.MediaTypeOptions.Images
-        : ImagePicker.MediaTypeOptions.Videos) as any;
+    return [mediaType === 'image' ? 'images' : 'videos'] as any;
   };
 
   const inferUploadMimeType = (asset: any, mediaType: 'image' | 'video') => {
@@ -515,7 +705,8 @@ export default function DirectMessageScreen() {
     }
 
     try {
-      const permission = await Contacts.requestPermissionsAsync();
+      const contactsModule = await getDMContacts();
+      const permission = await contactsModule.requestPermissionsAsync();
       if (permission.status !== 'granted') {
         Alert.alert('Permission required', 'Please allow contacts access to share phone contacts.');
         return false;
@@ -534,13 +725,14 @@ export default function DirectMessageScreen() {
       const permissionGranted = await requestContactsPermission();
       if (!permissionGranted) return false;
 
-      const contactResult = await Contacts.getContactsAsync({
-        fields: [Contacts.Fields.PhoneNumbers],
+      const contactsModule = await getDMContacts();
+      const contactResult = await contactsModule.getContactsAsync({
+        fields: [contactsModule.Fields.PhoneNumbers],
         pageSize: 2000,
-        sort: Contacts.SortTypes.FirstName,
+        sort: contactsModule.SortTypes.FirstName,
       });
 
-      const contactsWithNumbers = (contactResult.data || []).filter((contact) => contact.phoneNumbers?.length);
+      const contactsWithNumbers = (contactResult.data || []).filter((contact: ContactsType.Contact) => contact.phoneNumbers?.length);
       setPhoneContacts(contactsWithNumbers);
       if (!contactsWithNumbers.length) {
         Alert.alert('No contacts found', 'No contacts with phone numbers were found on this device.');
@@ -567,7 +759,7 @@ export default function DirectMessageScreen() {
     }
   };
 
-  const handleSelectPhoneContact = (contact: Contacts.Contact) => {
+  const handleSelectPhoneContact = (contact: ContactsType.Contact) => {
     const phone = contact.phoneNumbers?.[0]?.number?.trim() || '';
     const name = contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Contact';
     if (!phone) {
@@ -630,11 +822,11 @@ export default function DirectMessageScreen() {
     setSelectedMedia({ uri: asset.uri, name: fileName, type: mimeType, mediaType });
   };
 
-  const formatTime = (dateString: string) => {
+  const formatTime = useCallback((dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  }, []);
 
   const isMediaUrl = (url: string, type: 'image' | 'video') => {
     const normalized = url.split('?')[0].toLowerCase();
@@ -829,7 +1021,28 @@ export default function DirectMessageScreen() {
     }
   };
 
-  const renderMessageContent = (message: any) => {
+  const parseContactPayload = (source: string) => {
+    if (!source) return { name: 'Contact', phone: '' };
+    try {
+      const contactData = JSON.parse(source);
+      return {
+        name: contactData?.name || 'Contact',
+        phone: contactData?.phone || source,
+      };
+    } catch {
+      const newlineParts = source.split('\n').map((part) => part.trim()).filter(Boolean);
+      if (newlineParts.length >= 2) {
+        return { name: newlineParts[0] || 'Contact', phone: newlineParts[1] };
+      }
+      const pipeParts = source.split('|').map((part) => part.trim());
+      if (pipeParts.length === 2) {
+        return { name: pipeParts[0] || 'Contact', phone: pipeParts[1] };
+      }
+      return { name: 'Contact', phone: source };
+    }
+  };
+
+  const renderMessageContent = useCallback((message: any) => {
     const rawContent = message.content ?? message.text ?? '';
     const sourceUrl = typeof rawContent === 'string' ? rawContent : '';
     const shared = parseSharedPostPayload(rawContent);
@@ -952,14 +1165,14 @@ export default function DirectMessageScreen() {
       : JSON.stringify(message.content || {});
 
     return <Text style={[styles.messageText, message.sender_id === user?.id && styles.ownMessageText]}>{fallbackText}</Text>;
-  };
+  }, [router]);
 
   const isSameDay = (dateA: Date, dateB: Date) =>
     dateA.getFullYear() === dateB.getFullYear() &&
     dateA.getMonth() === dateB.getMonth() &&
     dateA.getDate() === dateB.getDate();
 
-  const formatChatDate = (dateString: string) => {
+  const formatChatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const yesterday = new Date(now);
@@ -972,97 +1185,22 @@ export default function DirectMessageScreen() {
       day: 'numeric',
       year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
     });
-  };
+  }, []);
 
-  const shouldShowDateSeparator = (index: number, currentDateString: string) => {
-    if (index === 0) return true;
-    const currentDate = new Date(currentDateString);
-    const previousDate = new Date(messages[index - 1]?.created_at || '');
-    return !isSameDay(currentDate, previousDate);
-  };
-
-  // Message status indicator component
-  const MessageStatus = ({ status, isOwn }: { status?: string; isOwn: boolean }) => {
-    if (!isOwn) return null;
-    
-    const color = isOwn ? 'rgba(255,255,255,0.7)' : COLORS.textLight;
-    
-    if (status === 'read') {
-      // Double tick (read)
-      return (
-        <View style={styles.statusContainer}>
-          <Ionicons name="checkmark-done" size={14} color={color} />
-        </View>
-      );
-    }
-    
-    // Single tick (delivered)
+  const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
+    const showDateSeparator = index === 0 || !isSameDay(new Date(item.created_at), new Date(messages[index - 1]?.created_at || ''));
     return (
-      <View style={styles.statusContainer}>
-        <Ionicons name="checkmark" size={14} color={color} />
-      </View>
+      <DMMessageItem
+        item={item}
+        index={index}
+        userId={user?.id}
+        renderMessageContent={renderMessageContent}
+        formatChatDate={formatChatDate}
+        formatTime={formatTime}
+        showDateSeparator={showDateSeparator}
+      />
     );
-  };
-
-  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
-    const isOwnMessage = item.sender_id === user?.id;
-    const rawContent = item.content ?? item.text ?? '';
-    const rawString = typeof rawContent === 'string' ? rawContent : '';
-    const hasSharedKeys =
-      typeof rawContent === 'object' &&
-      rawContent !== null &&
-      (Object.prototype.hasOwnProperty.call(rawContent, 'postId') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'post_id') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'mediaUrl') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'media_url') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'uploaderName') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'uploader_name') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'username') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'user_name') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'name') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'author') ||
-        Object.prototype.hasOwnProperty.call(rawContent, 'author_name'));
-    const looksLikeSharedPost = /post(_)?id|media(_)?url|uploader(_)?name/i.test(rawString);
-    const isSharedPost =
-      item.message_type === 'post_share' ||
-      item.message_type === 'postShare' ||
-      hasSharedKeys ||
-      looksLikeSharedPost;
-
-    return (
-      <>
-        {shouldShowDateSeparator(index, item.created_at) && (
-          <View style={styles.dateSeparatorContainer}>
-            <View style={styles.dateSeparator}>
-              <Text style={styles.dateSeparatorText}>{formatChatDate(item.created_at)}</Text>
-            </View>
-          </View>
-        )}
-        <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
-        {!isOwnMessage && (
-          <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
-        )}
-        <View
-          style={[
-            styles.messageBubble,
-            isOwnMessage && styles.ownMessageBubble,
-            isSharedPost && styles.sharedPostMessageBubble,
-          ]}
-        >
-          {renderMessageContent(item)}
-          {!isSharedPost && (
-            <View style={styles.messageFooter}>
-              <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
-                {formatTime(item.created_at)}
-              </Text>
-              <MessageStatus status={(item as any).status} isOwn={isOwnMessage} />
-            </View>
-          )}
-        </View>
-      </View>
-      </>
-    );
-  };
+  }, [user?.id, renderMessageContent, formatChatDate, formatTime, messages]);
 
   if (loading) {
     return (
@@ -1095,9 +1233,6 @@ export default function DirectMessageScreen() {
         <View style={[styles.chatPatternLine, { top: 190, left: 20, width: 180, opacity: 0.08, transform: [{ rotate: '8deg' }] }]} />
         <View style={[styles.chatPatternLine, { top: 330, right: 20, width: 140, opacity: 0.06, transform: [{ rotate: '-8deg' }] }]} />
       </View>
-      {/* Safe area top */}
-      <View style={{ height: insets.top, backgroundColor: COLORS.surface }} />
-      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackNavigation}>
@@ -1118,6 +1253,9 @@ export default function DirectMessageScreen() {
               <Text style={styles.headerTitle}>{conversation.user.name}</Text>
               <View style={styles.statusRow}>
                 <Text style={styles.headerSubtitle}>{conversation.user.sl_id}</Text>
+                {!!getPresenceLabel() && (
+                  <Text style={styles.statusInfoText}>{getPresenceLabel()}</Text>
+                )}
                 {isRealtime && (
                   <View style={styles.realtimeBadge}>
                     <View style={styles.realtimeDot} />
@@ -1215,7 +1353,7 @@ export default function DirectMessageScreen() {
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messagesList}
+          contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 90 }]}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
@@ -1385,7 +1523,7 @@ export default function DirectMessageScreen() {
             ) : (
               <FlatList
                 data={phoneContacts}
-                keyExtractor={(item) => item.id || item.name || item.phoneNumbers?.[0]?.id || String(Math.random())}
+                keyExtractor={(item, index) => String((item as any).id || item.name || item.phoneNumbers?.[0]?.id || index)}
                 renderItem={({ item }) => {
                   const phone = item.phoneNumbers?.[0]?.number || 'No number';
                   const name = item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Unknown';
@@ -1442,15 +1580,17 @@ export default function DirectMessageScreen() {
     );
   }
 
-  // For native, use KeyboardAvoidingView
+  // For native, wrap the screen in SafeAreaView first and let KeyboardAvoidingView adjust content.
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
-    >
-      {renderContent()}
-    </KeyboardAvoidingView>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
+        {renderContent()}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -1551,6 +1691,11 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     color: '#0088CC',
+  },
+  statusInfoText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginLeft: SPACING.sm,
   },
   realtimeBadge: {
     flexDirection: 'row',
@@ -2072,16 +2217,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#CCCCCC',
     shadowOpacity: 0,
   },
-  messageMedia: {
-    width: 200,
-    height: 140,
-    borderRadius: 18,
-    marginBottom: SPACING.xs,
-  },
-  messageVideo: {
-    width: 200,
-    height: 140,
-    borderRadius: 18,
-    marginBottom: SPACING.xs,
-  },
 });
+export default DirectMessageScreen;

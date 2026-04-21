@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -10,11 +10,12 @@ import {
   FlatList,
   TextInput,
   Image,
-  Alert
+  Alert,
+  Share,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
-import { Share, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../../src/components/Input';
@@ -25,7 +26,54 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 type PrivacyType = 'private' | 'invite_code';
 
-export default function CreateCircleScreen() {
+type InviteUser = {
+  id: string;
+  name?: string;
+  photo?: string;
+  sl_id?: string;
+};
+
+type UserListItemProps = {
+  item: InviteUser;
+  selected: boolean;
+  onPress: (userId: string) => void;
+};
+
+const UserListItem = React.memo(({ item, selected, onPress }: UserListItemProps) => {
+  return (
+    <TouchableOpacity
+      style={[styles.userCard, selected && styles.userCardSelected]}
+      onPress={() => onPress(item.id)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.userAvatar}>
+        {item.photo ? (
+          <Image source={{ uri: item.photo }} style={styles.avatarImage} />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Text style={styles.avatarInitial}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+          </View>
+        )}
+        {selected && (
+          <View style={styles.selectedBadge}>
+            <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+          </View>
+        )}
+      </View>
+      <View style={styles.userInfo}>
+        <Text style={styles.userName}>{item.name}</Text>
+        <Text style={styles.userSL}>SL: {item.sl_id}</Text>
+      </View>
+      <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+        {selected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+      </View>
+    </TouchableOpacity>
+  );
+}, (prev, next) => {
+  return prev.item.id === next.item.id && prev.selected === next.selected && prev.onPress === next.onPress;
+});
+
+const CreateCircleScreen = () => {
   const router = useRouter();
   const { user } = useAuthStore();
   const [name, setName] = useState('');
@@ -56,11 +104,22 @@ export default function CreateCircleScreen() {
     loadUsers();
   }, [user?.id]);
 
-  const toggleUserSelection = (userId: string) => {
+  const toggleUserSelection = useCallback((userId: string) => {
     setSelectedUsers((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
-  };
+  }, []);
+
+  const renderUserItem = useCallback(
+    ({ item }: { item: InviteUser }) => (
+      <UserListItem
+        item={item}
+        selected={selectedUsers.includes(item.id)}
+        onPress={toggleUserSelection}
+      />
+    ),
+    [selectedUsers, toggleUserSelection]
+  );
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -70,7 +129,7 @@ export default function CreateCircleScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'] as any,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -234,42 +293,14 @@ export default function CreateCircleScreen() {
                 ) : (
                   <FlatList
                     data={users}
+                    extraData={selectedUsers}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => {
-                      const selected = selectedUsers.includes(item.id);
-                      return (
-                        <TouchableOpacity
-                          style={[styles.userCard, selected && styles.userCardSelected]}
-                          onPress={() => toggleUserSelection(item.id)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.userAvatar}>
-                            {item.photo ? (
-                              <Image source={{ uri: item.photo }} style={styles.avatarImage} />
-                            ) : (
-                              <View style={styles.avatarPlaceholder}>
-                                <Text style={styles.avatarInitial}>
-                                  {item.name?.charAt(0)?.toUpperCase() || '?'}
-                                </Text>
-                              </View>
-                            )}
-                            {selected && (
-                              <View style={styles.selectedBadge}>
-                                <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                              </View>
-                            )}
-                          </View>
-                          <View style={styles.userInfo}>
-                            <Text style={styles.userName}>{item.name}</Text>
-                            <Text style={styles.userSL}>SL: {item.sl_id}</Text>
-                          </View>
-                          <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-                            {selected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    }}
+                    renderItem={renderUserItem}
                     showsVerticalScrollIndicator={false}
+                    initialNumToRender={8}
+                    maxToRenderPerBatch={12}
+                    windowSize={5}
+                    removeClippedSubviews={true}
                   />
                 )}
               </View>
@@ -522,6 +553,46 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
     backgroundColor: '#FFFFFF',
   },
+  emptyText: {
+    padding: SPACING.md,
+    textAlign: 'center',
+    color: '#666666',
+    fontSize: 14,
+  },
+  subHeaderText: {
+    fontSize: 13,
+    color: '#666666',
+    lineHeight: 20,
+    marginBottom: SPACING.sm,
+  },
+  joinBox: {
+    backgroundColor: '#FFF8F0',
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: '#E8E0D8',
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  joinButton: {
+    marginTop: SPACING.sm,
+  },
+  infoBox: {
+    marginTop: SPACING.md,
+    borderWidth: 1,
+    borderColor: `${COLORS.info}25`,
+    backgroundColor: `${COLORS.info}10`,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  infoText: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+    fontSize: 13,
+    color: '#4A5A63',
+    lineHeight: 18,
+  },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -642,6 +713,51 @@ const styles = StyleSheet.create({
   button: {
     marginTop: SPACING.lg,
   },
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.xxl,
+  },
+  successIcon: {
+    marginBottom: SPACING.md,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  circleName: {
+    marginTop: SPACING.xs,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0088CC',
+  },
+  circleDescription: {
+    marginTop: SPACING.sm,
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: SPACING.md,
+  },
+  privacyBadge: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: '#F3F4F6',
+    marginBottom: SPACING.sm,
+    gap: SPACING.xs,
+  },
+  privacyBadgeText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
   closeButton: {
     marginTop: SPACING.sm,
     width: '100%',
@@ -694,3 +810,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+export default CreateCircleScreen;

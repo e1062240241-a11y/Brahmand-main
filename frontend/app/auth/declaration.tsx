@@ -21,11 +21,20 @@ export default function DeclarationScreen() {
 
   const handleContinue = () => {
     if (agreed) {
-      router.push({ 
-        pathname: '/auth/profile', 
-        params: { phone: params.phone, firebase_uid: params.firebase_uid } 
-      });
+      if (params.phone) {
+        router.push({
+          pathname: '/auth/profile',
+          params: { phone: params.phone, firebase_uid: params.firebase_uid },
+        });
+        return;
+      }
+
+      router.push('/auth/phone');
     }
+  };
+
+  const handleAdmin = () => {
+    router.push('/admin/login');
   };
 
   return (
@@ -96,6 +105,11 @@ export default function DeclarationScreen() {
             disabled={!agreed}
             style={styles.button}
           />
+
+          <TouchableOpacity style={styles.adminButton} onPress={handleAdmin} activeOpacity={0.8}>
+            <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
+            <Text style={styles.adminButtonText}>Admin</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -203,5 +217,23 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: SPACING.md,
+  },
+  adminButton: {
+    marginTop: SPACING.md,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: `${COLORS.primary}10`,
+  },
+  adminButtonText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

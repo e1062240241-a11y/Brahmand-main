@@ -17,12 +17,18 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 
-let DocumentPickerModule: any = null;
-try {
-  DocumentPickerModule = require('expo-document-picker');
-} catch (error) {
-  console.warn('expo-document-picker unavailable:', error);
-}
+let hasLoggedDocumentPickerError = false;
+const getDocumentPickerModule = async () => {
+  try {
+    return await import('expo-document-picker');
+  } catch (error) {
+    if (!hasLoggedDocumentPickerError) {
+      console.warn('expo-document-picker unavailable:', error);
+      hasLoggedDocumentPickerError = true;
+    }
+    return null;
+  }
+};
 
 const JOB_ROLE_OPTIONS = [
   'App Developer', 'Accountant', 'Cook', 'Driver', 'Electrician', 'Plumber', 'Carpenter',
@@ -225,6 +231,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   };
 
   const pickCvDocument = async () => {
+    const DocumentPickerModule = await getDocumentPickerModule();
     if (!DocumentPickerModule) {
       Alert.alert('Unavailable', 'Document picker is not installed. You can still capture CV as an image.');
       return;

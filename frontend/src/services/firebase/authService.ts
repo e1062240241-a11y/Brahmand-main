@@ -3,13 +3,13 @@ import {
   getAuth, 
   initializeAuth,
   getReactNativePersistence,
-  signInWithPhoneNumber, 
+  signInWithPhoneNumber,
   RecaptchaVerifier,
   ConfirmationResult,
   Auth
 } from 'firebase/auth';
 import { Platform } from 'react-native';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Firebase configuration - must match Firebase project "sanatan-lok"
 const firebaseConfig = {
@@ -34,13 +34,19 @@ export function initializeFirebaseAuth(): Auth {
   }
   
   try {
-    // Try to get existing auth instance first to prevent re-initialization errors
-    auth = getAuth(app);
+    if (Platform.OS === 'web') {
+      auth = getAuth(app);
+    } else {
+      auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      });
+    }
   } catch (error) {
-    // If not initialized, initialize with proper native persistence
-    auth = initializeAuth(app, {
-      persistence: getReactNativePersistence(ReactNativeAsyncStorage)
-    });
+    try {
+      auth = getAuth(app);
+    } catch {
+      throw error;
+    }
   }
   
   return auth;
@@ -97,30 +103,42 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
       console.log('[Firebase] OTP sent successfully');
       return confirmationResult;
     } else {
-      // Native: Firebase handles reCAPTCHA automatically through the native SDK.
-      const authModule = require('@react-native-firebase/auth');
-      const nativeAuth = authModule.default();
-      const confirmation = await nativeAuth.signInWithPhoneNumber(formattedPhone);
-      confirmationResult = confirmation;
-      console.log('[Firebase] Native OTP sent successfully');
-      return confirmation;
-    }
+      try {
+        const authModule = require('@react-native-firebase/auth');
+        const getNativeAuth = authModule.getAuth;
+        const nativeSignInWithPhoneNumber = authModule.signInWithPhoneNumber;
 
-    // Native: use @react-native-firebase/auth if installed
-    let nativeAuthModule: any = null;
-    try {
-      nativeAuthModule = require('@react-native-firebase/auth').default;
-    } catch (error) {
-      console.warn('[Firebase] Native auth module not available:', error);
-    }
+        let confirmation: any = null;
+        if (typeof getNativeAuth === 'function' && typeof nativeSignInWithPhoneNumber === 'function') {
+          confirmation = await nativeSignInWithPhoneNumber(getNativeAuth(), formattedPhone);
+        } else {
+          const nativeAuth = authModule.default();
+          confirmation = await nativeAuth.signInWithPhoneNumber(formattedPhone);
+        }
 
-    if (!nativeAuthModule) {
-      throw new Error('Native Firebase Auth not available. Install @react-native-firebase/auth or use web auth.');
-    }
+        confirmationResult = confirmation;
+        console.log('[Firebase] Native OTP sent successfully');
+        return confirmation;
+      } catch (nativeError: any) {
+        console.error('[Firebase] Native OTP failed:', nativeError, 'code=', nativeError?.code);
 
-    confirmationResult = await nativeAuthModule().signInWithPhoneNumber(formattedPhone);
-    console.log('[Firebase] Native OTP sent successfully');
-    return confirmationResult;
+        if (nativeError?.code === 'auth/missing-client-identifier' || nativeError?.code === 'auth/app-not-authorized') {
+          if (verifier) {
+            try {
+              const webConfirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
+              confirmationResult = webConfirmation;
+              console.log('[Firebase] OTP sent using web verifier fallback');
+              return webConfirmation;
+            } catch (fallbackError) {
+              console.error('[Firebase] Web verifier fallback failed:', fallbackError);
+            }
+          }
+          throw new Error('Phone auth is not fully configured for this Android build. Add SHA-1/SHA-256 for com.brahmand.sanatanlok in Firebase and enable Play Integrity for Phone Auth.');
+        }
+
+        throw nativeError;
+      }
+    }
   } catch (error: any) {
     console.error('[Firebase] Error sending OTP:', error, 'code=', error?.code);
     throw error;

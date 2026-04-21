@@ -3,17 +3,16 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Video, ResizeMode } from 'expo-av';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, followUser, unfollowUser, getUserPosts, deletePost, reportPost } from '../../src/services/api';
+import { getUserProfile, followUser, unfollowUser, getUserPosts } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
-import PostFeedCard from '../../src/components/PostFeedCard';
+import { PostFeedCard } from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
-export default function UserProfileScreen() {
+const UserProfileScreen = () => {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string }>();
-  const profileUserId = params?.id;
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const profileUserId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const { user } = useAuthStore();
   const currentUserId = user?.id;
 
@@ -22,12 +21,13 @@ export default function UserProfileScreen() {
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
-    const [selectedPost, setSelectedPost] = useState<any>(null);
-    const [postModalVisible, setPostModalVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [postModalVisible, setPostModalVisible] = useState(false);
 
-    const openPostModal = (post: any) => {
+  const openPostModal = (post: any) => {
     if (!post?.id) return;
-    router.push(`/post/${post.id}`);
+    setSelectedPost(post);
+    setPostModalVisible(true);
   };
   const loadUserPosts = useCallback(async (withLoading: boolean = true) => {
     if (!profileUserId) {
@@ -115,59 +115,6 @@ export default function UserProfileScreen() {
     router.push(`/dm/new?userId=${profile.id}&userName=${userName}&userSL=${userSL}`);
   };
 
-  const handleDeletePost = async (post: any) => {
-    const postId = post?.id;
-    if (!postId) {
-      return;
-    }
-
-    const deletedPost = post;
-    setPosts((prev) => prev.filter((item) => item.id !== postId));
-
-    try {
-      await deletePost(postId);
-    } catch (error) {
-      console.warn('Failed to delete post:', error);
-      setPosts((prev) => (prev.some((item) => item.id === postId) ? prev : [deletedPost, ...prev]));
-      alert('Could not delete post. Please try again.');
-    }
-  };
-
-  const handleReportPost = async (post: any) => {
-    const postId = post?.id;
-    if (!postId) {
-      return;
-    }
-
-    try {
-      await reportPost(postId, 'other', 'Reported from post menu');
-      alert('Report submitted. Admin will review this post.');
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail;
-      if (detail) {
-        alert(String(detail));
-        return;
-      }
-      console.warn('Failed to report post:', error);
-      alert('Could not submit report. Please try again.');
-    }
-  };
-
-  const handlePostMenuPress = (post: any) => {
-    if (!post?.id) {
-      return;
-    }
-
-    const isOwnPost = post?.user_id === currentUserId;
-
-    if (isOwnPost) {
-      handleDeletePost(post);
-      return;
-    }
-
-    handleReportPost(post);
-  };
-
   if (!profileUserId) {
     return (
       <SafeAreaView style={styles.container}>
@@ -190,7 +137,7 @@ export default function UserProfileScreen() {
                 } else {
                   router.navigate('/feed');
                 }
-              } catch (error) {
+              } catch {
                 router.replace('/feed');
               }
             }}
@@ -307,15 +254,8 @@ export default function UserProfileScreen() {
                                   )}
                                 </View>
                               ) : isVideo && item.media_url ? (
-                                <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-                                  <Video
-                                    source={{ uri: item.media_url }}
-                                    style={styles.gridImage}
-                                    resizeMode={ResizeMode.COVER}
-                                    shouldPlay={false}
-                                    isMuted={true}
-                                    positionMillis={0}
-                                  />
+                                <View style={styles.gridPlaceholder}>
+                                  <Ionicons name="videocam" size={32} color={COLORS.textSecondary} />
                                   <View style={styles.videoIndicator}>
                                     <Ionicons name="play-circle" size={24} color="#FFF" />
                                   </View>
@@ -406,8 +346,9 @@ export default function UserProfileScreen() {
                   onEdit={() => {}}
                   onUserPress={(postUser) => {
                     setPostModalVisible(false);
-                    if (postUser?.id && postUser?.id !== profileUserId) {
-                      router.push(`/profile/${postUser.id}`);
+                    const postUserId = postUser?.user_id || postUser?.user?.id || postUser?.id;
+                    if (postUserId && postUserId !== profileUserId) {
+                      router.push({ pathname: '/profile/[id]', params: { id: String(postUserId) } } as any);
                     }
                   }}
                 />
@@ -640,3 +581,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+export default UserProfileScreen;

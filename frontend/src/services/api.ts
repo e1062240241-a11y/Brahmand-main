@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 
 import { getFirebaseStorage } from './firebase/config';
@@ -41,6 +42,58 @@ const isWebRunningOnLocalhost =
     ? /localhost|127\.0\.0\.1/.test(window.location.hostname)
     : false;
 
+const normalizeMimeType = (type?: string, name?: string) => {
+  const normalized = (type || '').toLowerCase();
+  if (normalized === 'image/png' || normalized === 'image/jpeg' || normalized === 'image/jpg' || normalized === 'image/webp') {
+    return normalized === 'image/jpg' ? 'image/jpeg' : normalized;
+  }
+
+  if (normalized.startsWith('image/')) {
+    return normalized;
+  }
+
+  if (typeof name === 'string') {
+    const lowerName = name.toLowerCase();
+    if (lowerName.endsWith('.png')) return 'image/png';
+    if (lowerName.endsWith('.webp')) return 'image/webp';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+  }
+
+  return 'image/jpeg';
+};
+
+const normalizeNativeUploadFile = async (file: { uri: string; name: string; type: string }) => {
+  const fileName = file.name || 'upload.jpg';
+  const fileType = normalizeMimeType(file.type, fileName);
+
+  if (Platform.OS !== 'web' && file.uri?.startsWith('content://')) {
+    try {
+      const fileSystem = FileSystem as any;
+      const cacheDir = fileSystem.cacheDirectory || fileSystem.documentDirectory || '';
+      const localUri = `${cacheDir}upload-${Date.now()}-${fileName}`;
+      const downloadResult = await FileSystem.downloadAsync(file.uri, localUri);
+      return {
+        uri: downloadResult.uri,
+        name: fileName,
+        type: fileType,
+      };
+    } catch (error) {
+      console.warn('[API] Failed to convert content URI to local file:', error);
+      return {
+        uri: file.uri,
+        name: fileName,
+        type: fileType,
+      };
+    }
+  }
+
+  return {
+    uri: file.uri,
+    name: fileName,
+    type: fileType,
+  };
+};
+
 const resolvedWebApiUrl =
   runtimeWebApiUrl
     ? runtimeWebApiUrl
@@ -48,7 +101,7 @@ const resolvedWebApiUrl =
     ? configuredWebApiUrl
     : configuredApiUrl;
 
-const API_URL = Platform.OS === 'web'
+export const API_URL = Platform.OS === 'web'
   ? (resolvedWebApiUrl || 'http://localhost:8000')
   : (configuredApiUrl || 'http://localhost:8000');
 const isTunnelApiUrl = /\.loca\.lt$/i.test((API_URL || '').replace(/^https?:\/\//i, '').split('/')[0] || '');
@@ -156,8 +209,10 @@ api.interceptors.response.use(
       console.warn(
         `[API] Retrying ${method.toUpperCase()} ${config.url}... Attempt ${config._retryCount}`
       );
-      const delay = 1000 * config._retryCount;
-      await new Promise(resolve => setTimeout(resolve, delay));
+      const delay = error.code === 'ERR_NETWORK' ? 1000 * config._retryCount : 0;
+      if (delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
       return api(config);
     }
 
@@ -340,6 +395,31 @@ export const setupDualLocation = (locations: {
 }) => 
   api.post('/user/dual-location', locations);
 
+export const updateCurrentLocation = async (location: { latitude: number; longitude: number }) => {
+  try {
+    return await api.post('/user/current-location', location);
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      try {
+        const token = await AsyncStorage.getItem('auth_token');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+        return axios.post(`${API_URL}/user/current-location`, location, { headers, timeout: 30000 });
+      } catch (rootError: any) {
+        if (rootError.response?.status === 404) {
+          return { data: null };
+        }
+        throw rootError;
+      }
+    }
+    throw error;
+  }
+};
+
 export const reverseGeocode = (latitude: number, longitude: number) => 
   api.post('/geocode/reverse', { latitude, longitude });
 
@@ -360,6 +440,28 @@ export const getUserNotifications = () =>
 
 export const getUnreadNotificationCount = () => 
   api.get('/notifications/unread-count');
+
+const nativeMultipartPost = async (endpoint: string, formData: FormData) => {
+  const token = await AsyncStorage.getItem('auth_token');
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Upload failed: ${response.status} ${text}`);
+  }
+
+  const data = await response.json();
+  return { data };
+};
 
 export const uploadUserPost = (
   file: { uri: string; name: string; type: string },
@@ -383,7 +485,7 @@ export const uploadUserPost = (
         }
 
         return api.post('/posts/upload-from-storage', formData, {
-          headers: { 'Content-Type': undefined },
+          headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 30 * 60 * 1000,
         });
       }
@@ -396,11 +498,37 @@ export const uploadUserPost = (
     }
     await appendMultipartFile(formData, 'file', file);
 
-    return api.post('/posts/upload', formData, {
-      headers: { 'Content-Type': undefined },
-      timeout: 10 * 60 * 1000,
-      onUploadProgress: onProgress,
-    });
+    try {
+      return await api.post('/posts/upload', formData, {
+        headers: Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
+        timeout: 10 * 60 * 1000,
+        onUploadProgress: onProgress,
+      });
+    } catch (error: any) {
+      console.warn('[API] axios upload failed, retrying native fetch multipart upload', error);
+      if (Platform.OS !== 'web') {
+        const token = await AsyncStorage.getItem('auth_token');
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${API_URL}/api/posts/upload`, {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Upload failed: ${response.status} ${text}`);
+        }
+
+        const data = await response.json();
+        return { data };
+      }
+      throw error;
+    }
   })();
 };
 
@@ -409,8 +537,12 @@ export const uploadChatMedia = (file: { uri: string; name: string; type: string 
     const formData = new FormData();
     await appendMultipartFile(formData, 'file', file);
 
+    if (Platform.OS !== 'web') {
+      return nativeMultipartPost('/media/upload', formData);
+    }
+
     return api.post('/media/upload', formData, {
-      headers: { 'Content-Type': undefined },
+      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 10 * 60 * 1000,
     });
   })();
@@ -423,8 +555,12 @@ export const uploadCompressedVideo = (
     const formData = new FormData();
     await appendMultipartFile(formData, 'file', file);
 
+    if (Platform.OS !== 'web') {
+      return nativeMultipartPost('/videos/upload', formData);
+    }
+
     return api.post('/videos/upload', formData, {
-      headers: { 'Content-Type': undefined },
+      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 10 * 60 * 1000,
     });
   })();
@@ -659,6 +795,8 @@ export const requestVerification = (data: { full_name: string; id_type: string; 
 
 // Profile APIs
 export const updateExtendedProfile = (data: {
+  name?: string;
+  language?: string;
   kuldevi?: string;
   kuldevi_temple_area?: string;
   gotra?: string;
@@ -825,7 +963,7 @@ export const createVendor = (data: {
   longitude?: number;
   photos?: string[];
   business_description?: string;
-  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected';
+  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected' | 'approved';
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
@@ -871,8 +1009,25 @@ export const updateVendor = (vendorId: string, data: {
   menu_items?: string[];
   offers_home_delivery?: boolean;
   business_media_key?: string | null;
-  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected';
+  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected' | 'approved';
 }) => api.put(`/vendors/${vendorId}`, data);
+
+export const parseApiError = (error: any): string => {
+  const data = error?.response?.data;
+  if (!data) {
+    return error?.message || 'Something went wrong';
+  }
+  if (typeof data?.detail === 'string') {
+    return data.detail;
+  }
+  if (Array.isArray(data?.detail)) {
+    return data.detail.map((item: any) => item?.msg || item?.message || String(item)).join(', ');
+  }
+  if (typeof data?.message === 'string') {
+    return data.message;
+  }
+  return error?.message || 'Something went wrong';
+};
 
 export const updateVendorBusinessProfile = (
   vendorId: string,
@@ -892,7 +1047,19 @@ const appendMultipartFile = async (
     return;
   }
 
-  formData.append(fieldName, file as any);
+  const preparedFile = await normalizeNativeUploadFile(file);
+  try {
+    formData.append(fieldName, {
+      uri: preparedFile.uri,
+      name: preparedFile.name,
+      type: preparedFile.type,
+    } as any);
+  } catch (error) {
+    console.warn('[API] Multipart append failed, falling back to blob upload:', error);
+    const response = await fetch(preparedFile.uri);
+    const blob = await response.blob();
+    formData.append(fieldName, blob as any, preparedFile.name || 'upload.jpg');
+  }
 };
 
 const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -923,8 +1090,36 @@ export const uploadVendorBusinessImage = (
     formData.append('slot', String(slot));
     await appendMultipartFile(formData, 'file', file);
 
+    if (Platform.OS !== 'web') {
+      try {
+        const token = await AsyncStorage.getItem('auth_token');
+        const url = `${API_URL}/api/vendors/${vendorId}/business/images/upload`;
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Upload failed: ${response.status} ${text}`);
+        }
+
+        const data = await response.json();
+        return { data };
+      } catch (error) {
+        console.warn('[API] Native vendor upload failed, retrying via axios:', error);
+        return api.post(`/vendors/${vendorId}/business/images/upload`, formData);
+      }
+    }
+
     return api.post(`/vendors/${vendorId}/business/images/upload`, formData, {
-      headers: { 'Content-Type': undefined },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
   })();
 };
@@ -940,7 +1135,7 @@ export const uploadVendorKycFile = (
     await appendMultipartFile(formData, 'file', file);
 
     return api.post(`/vendors/${vendorId}/kyc/upload`, formData, {
-      headers: { 'Content-Type': undefined },
+      headers: Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
     });
   })();
 };
@@ -1140,7 +1335,7 @@ export const uploadJobProfileFile = (
     await appendMultipartFile(formData, 'file', file);
 
     return api.post(`/jobs/profile/${profileId}/upload`, formData, {
-      headers: { 'Content-Type': undefined },
+      headers: Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
     });
   })();
 };
@@ -1180,9 +1375,12 @@ export const getPanchang = () =>
 export const createSOSAlert = (data: {
   latitude: number;
   longitude: number;
+  emergency_type: string;
+  micro_location?: string;
   area?: string;
   city?: string;
   state?: string;
+  radius?: number;
 }) => api.post('/sos', data);
 
 export const getActiveSOSAlerts = (params?: {

@@ -12,12 +12,27 @@ import {
   Platform,
   Animated,
 } from 'react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { Video as ExpoAvVideo, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
+
+let ExpoVideoModule: any = null;
+try {
+  ExpoVideoModule = require('expo-video');
+} catch (error) {
+  console.warn('expo-video unavailable, using expo-av fallback:', error);
+}
+
+const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
+  if (!ExpoVideoModule?.useVideoPlayer) {
+    return null;
+  }
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return ExpoVideoModule.useVideoPlayer(source, setup);
+};
 
 type PostFeedCardProps = {
   post: any;
@@ -107,7 +122,7 @@ export const PostFeedCard = ({
 
   // ─── native video player (non-web only) ───
   const playerSource = Platform.OS === 'web' ? null : mediaUrl;
-  const player = useVideoPlayer(playerSource, (p) => {
+  const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = true;
     p.muted = isMuted;
     if (shouldPlay) p.play();
@@ -302,15 +317,24 @@ export const PostFeedCard = ({
                     pointerEvents: 'none',
                   }}
                 />
-              ) : (
-                <VideoView
+              ) : ExpoVideoModule?.VideoView && player ? (
+                <ExpoVideoModule.VideoView
                   player={player}
                   style={styles.videoBackground}
                   contentFit="cover"
                   allowsPictureInPicture={false}
                   nativeControls={false}
                   playsInline={true}
-                  // pointerEvents handled by overlay Pressable below
+                />
+              ) : (
+                <ExpoAvVideo
+                  source={{ uri: mediaUrl }}
+                  style={styles.videoBackground}
+                  resizeMode={ResizeMode.COVER}
+                  shouldPlay={shouldPlay}
+                  isMuted={isMuted}
+                  isLooping
+                  useNativeControls={false}
                 />
               )}
 

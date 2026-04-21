@@ -13,8 +13,17 @@ import {
   ScrollView,
   Alert,
   Share,
-  Modal
+  Modal,
+  Linking,
 } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as ExpoLinking from 'expo-linking';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, getCommunityRequests, resolveCommunityRequest, getAllUsers, getUserProfile } from '../../src/services/api';
+import { useAuthStore } from '../../src/store/authStore';
+import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { Avatar } from '../../src/components/Avatar';
 
 interface MantraSession {
   id: string;
@@ -32,14 +41,6 @@ const MANTRA_SESSIONS: MantraSession[] = [
   { id: '4', name: 'Om Namah Shivaya', mantra: 'Om Namah Shivaya', participants: 12, duration: '15 min', isLive: false },
   { id: '5', name: 'Hanuman Chalisa', mantra: 'Shri Guru Charan Saroj Raj', participants: 8, duration: '25 min', isLive: false },
 ];
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as ExpoLinking from 'expo-linking';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, getCommunityRequests, resolveCommunityRequest, getAllUsers, getUserProfile } from '../../src/services/api';
-import { useAuthStore } from '../../src/store/authStore';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { Avatar } from '../../src/components/Avatar';
 
 const TABS = ['Blood', 'Medical', 'Petition', 'Search'];
 
@@ -98,6 +99,8 @@ export default function CommunityDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [blinkOn, setBlinkOn] = useState(true);
+  const [now, setNow] = useState(Date.now());
 
   // Navigate back to Chat tab (the Messages tab)
   const goBackToChat = useCallback(() => {
@@ -105,6 +108,81 @@ export default function CommunityDetailScreen() {
   }, [router]);
 
   const handleBackPress = goBackToChat;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+      setBlinkOn((prev) => !prev);
+    }, 600);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getMessageAgeSeconds = (dateString: string) => {
+    const date = new Date(dateString).getTime();
+    return Math.max(0, Math.floor((Date.now() - date) / 1000));
+  };
+
+  const isSOSMessage = (item: Message) => {
+    return item.message_type === 'sos' || /\bSOS\b/i.test(item.content);
+  };
+
+  const getPhoneNumber = (text: string) => {
+    const match = text.match(/\+?\d{10,12}/);
+    return match?.[0] ?? null;
+  };
+
+  const getLocationUrl = (text: string) => {
+    const urlMatch = text.match(/https?:\/\/\S+/i);
+    if (urlMatch) return urlMatch[0];
+
+    const geoMatch = text.match(/geo:\S+/i);
+    if (geoMatch) return geoMatch[0];
+
+    const locationMatch = text.match(/location\s*[:\-]?\s*([^\n]+)/i);
+    if (locationMatch) {
+      const place = locationMatch[1].trim();
+      if (place) {
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+      }
+    }
+
+    return null;
+  };
+
+  const openLocationLink = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(url)}`);
+      }
+    } catch (error) {
+      console.warn('Unable to open location link:', error);
+    }
+  };
+
+  const renderSOSBanner = () => {
+    const latestSOS = [...messages].reverse().find((message) => {
+      return isSOSMessage(message) && getMessageAgeSeconds(message.created_at) <= 10;
+    });
+
+    if (!latestSOS) return null;
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.sosBanner,
+          blinkOn ? styles.sosBannerActive : styles.sosBannerInactive,
+        ]}
+        activeOpacity={0.9}
+      >
+        <Text style={styles.sosBannerText} numberOfLines={2}>
+          SOS ALERT: {latestSOS.sender_name} needs help now.
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   useEffect(() => {
     fetchCommunity();
@@ -380,7 +458,11 @@ export default function CommunityDetailScreen() {
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isOwnMessage = item.sender_id === user?.id;
-    
+    const sos = isSOSMessage(item);
+    const recentSOS = sos && getMessageAgeSeconds(item.created_at) <= 10;
+    const hasLocationLink = getLocationUrl(item.content);
+    const phoneNumber = getPhoneNumber(item.content);
+
     return (
       <View style={[
         styles.messageContainer,
@@ -391,17 +473,32 @@ export default function CommunityDetailScreen() {
         )}
         <View style={[
           styles.messageBubble,
-          isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble
+          isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble,
+          sos && styles.sosMessageBubble,
+          recentSOS && blinkOn && styles.sosMessageBlink,
         ]}>
           {!isOwnMessage && (
             <Text style={styles.senderName}>{item.sender_name}</Text>
           )}
           <Text style={[
             styles.messageText,
-            isOwnMessage && styles.ownMessageText
+            isOwnMessage && styles.ownMessageText,
+            sos && styles.sosMessageText,
           ]}>
             {item.content}
           </Text>
+          {phoneNumber ? (
+            <Text style={styles.sosContactText}>Call: {phoneNumber}</Text>
+          ) : null}
+          {hasLocationLink ? (
+            <TouchableOpacity
+              style={styles.sosLinkButton}
+              onPress={() => openLocationLink(hasLocationLink)}
+            >
+              <Ionicons name="location" size={14} color="#FFFFFF" />
+              <Text style={styles.sosLinkButtonText}>Open location</Text>
+            </TouchableOpacity>
+          ) : null}
           <Text style={[
             styles.messageTime,
             isOwnMessage && styles.ownMessageTime
@@ -607,6 +704,7 @@ export default function CommunityDetailScreen() {
             }}
             ListHeaderComponent={
               <View style={styles.quickActionsContainer}>
+                {renderSOSBanner()}
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1038,6 +1136,65 @@ const styles = StyleSheet.create({
   },
   ownMessageTime: {
     color: 'rgba(255,255,255,0.7)',
+  },
+  sosMessageBubble: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#D32F2F',
+    borderWidth: 1,
+  },
+  sosMessageText: {
+    color: '#B71C1C',
+    fontWeight: '700',
+  },
+  sosMessageBlink: {
+    shadowColor: '#B71C1C',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 8,
+    transform: [{ scale: 1.01 }],
+  },
+  sosContactText: {
+    marginTop: SPACING.xs,
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  sosLinkButton: {
+    marginTop: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  sosLinkButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: SPACING.xs,
+  },
+  sosBanner: {
+    marginBottom: SPACING.sm,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sosBannerText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  sosBannerActive: {
+    backgroundColor: '#D32F2F',
+    opacity: 1,
+  },
+  sosBannerInactive: {
+    backgroundColor: '#F44336',
+    opacity: 0.65,
   },
   emptyState: {
     flex: 1,

@@ -1,13 +1,30 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Dimensions, FlatList, Modal, SafeAreaView, TouchableOpacity, TouchableWithoutFeedback, Text, Platform, useWindowDimensions, Image } from 'react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { View, Dimensions, FlatList, Modal, TouchableOpacity, TouchableWithoutFeedback, Text, Platform, useWindowDimensions, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Video as ExpoAvVideo, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
 import api from '../services/api';
 
-const ReelVideoItem = ({ post, isActive, onClose, onLike, onComment, onShare, onNext, hasNext }: any) => {
-  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+let ExpoVideoModule: any = null;
+try {
+  ExpoVideoModule = require('expo-video');
+} catch (error) {
+  console.warn('expo-video unavailable in ReelViewer, using expo-av fallback:', error);
+}
+
+const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
+  if (!ExpoVideoModule?.useVideoPlayer) {
+    return null;
+  }
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return ExpoVideoModule.useVideoPlayer(source, setup);
+};
+
+const ReelVideoItem = React.memo(
+  ({ post, isActive, onClose, onLike, onComment, onShare, onNext, hasNext }: any) => {
+    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [isMuted, setIsMuted] = useState(false);
   const [localPost, setLocalPost] = useState(post);
   const mediaUrl = String(localPost?.media_url || '');
@@ -15,7 +32,7 @@ const ReelVideoItem = ({ post, isActive, onClose, onLike, onComment, onShare, on
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
   const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
-  const player = useVideoPlayer(playerSource, (p) => {
+  const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = true;
     p.muted = isMuted;
     if (isActive) p.play();
@@ -78,14 +95,24 @@ const ReelVideoItem = ({ post, isActive, onClose, onLike, onComment, onShare, on
               }
             }}
           />
-        ) : (
-          <VideoView
+        ) : ExpoVideoModule?.VideoView && player ? (
+          <ExpoVideoModule.VideoView
             player={player}
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
             allowsPictureInPicture={false}
             nativeControls={false}
             playsInline={true}
+          />
+        ) : (
+          <ExpoAvVideo
+            source={{ uri: mediaUrl }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay={isActive}
+            isMuted={isMuted}
+            isLooping
+            useNativeControls={false}
           />
         )}
       </View>
@@ -120,22 +147,49 @@ const ReelVideoItem = ({ post, isActive, onClose, onLike, onComment, onShare, on
       </View>
     </View>
   );
-};
+}, (prev: any, next: any) => {
+  return (
+    prev.post?.id === next.post?.id &&
+    prev.isActive === next.isActive &&
+    prev.hasNext === next.hasNext &&
+    prev.onClose === next.onClose &&
+    prev.onLike === next.onLike &&
+    prev.onComment === next.onComment &&
+    prev.onShare === next.onShare &&
+    prev.onNext === next.onNext
+  );
+});
 
 export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
   const [videos, setVideos] = useState([initialPost]);
   const [activeIndex, setActiveIndex] = useState(0);
-const { height: SCREEN_HEIGHT } = useWindowDimensions();
-    const flatListRef = useRef<FlatList<any>>(null);
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
+  const flatListRef = useRef<FlatList<any>>(null);
 
-    const handleNext = () => {
-      if (activeIndex < videos.length - 1) {
-        flatListRef.current?.scrollToOffset({
-          offset: (activeIndex + 1) * SCREEN_HEIGHT,
-          animated: true,
-        });
-      }
-    };
+  const handleNext = useCallback(() => {
+    if (activeIndex < videos.length - 1) {
+      flatListRef.current?.scrollToOffset({
+        offset: (activeIndex + 1) * SCREEN_HEIGHT,
+        animated: true,
+      });
+    }
+  }, [activeIndex, SCREEN_HEIGHT, videos.length]);
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: any; index: number }) => (
+      <ReelVideoItem
+        post={item}
+        isActive={index === activeIndex}
+        onClose={onClose}
+        onLike={onLike}
+        onComment={onComment}
+        onShare={onShare}
+        onNext={handleNext}
+        hasNext={index < videos.length - 1}
+      />
+    ),
+    [activeIndex, onClose, onLike, onComment, onShare, handleNext, videos.length]
+  );
 
   useEffect(() => {
     if (isVisible) {
@@ -186,18 +240,12 @@ const { height: SCREEN_HEIGHT } = useWindowDimensions();
           })}
           snapToAlignment="start"
           decelerationRate="fast"
-          renderItem={({ item, index }) => (
-             <ReelVideoItem
-              post={item}
-              isActive={index === activeIndex}
-              onClose={onClose}
-              onLike={onLike}
-              onComment={onComment}
-              onShare={onShare}
-              onNext={handleNext}
-              hasNext={index < videos.length - 1}
-            />
-          )}
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews={true}
+          renderItem={renderItem}
         />
       </View>
     </Modal>

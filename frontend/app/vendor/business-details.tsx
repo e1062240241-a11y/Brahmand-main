@@ -145,6 +145,11 @@ export default function VendorBusinessDetailsScreen() {
       });
       await fetchMyVendor();
     } catch (error: any) {
+      setLocalImagePreviews((prev) => {
+        const next = { ...prev };
+        delete next[slot];
+        return next;
+      });
       Alert.alert('Upload failed', error?.response?.data?.detail || 'Could not upload image.');
     } finally {
       setLoadingSlot(null);

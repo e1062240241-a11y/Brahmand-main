@@ -19,11 +19,11 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 const MENU_ITEMS = [
   { id: 'edit', icon: 'person-circle', label: 'Edit Profile', route: '/profile/edit' },
-  { id: 'location', icon: 'location', label: 'Change Location', route: '/settings/location' },
-  { id: 'privacy', icon: 'shield-checkmark', label: 'Privacy', route: '/settings/privacy' },
+  { id: 'location', icon: 'location', label: 'Change Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon' },
+  { id: 'privacy', icon: 'shield-checkmark', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon' },
   { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications' },
   { id: 'kyc', icon: 'document-text', label: 'KYC Verification', route: '/kyc' },
-  { id: 'badges', icon: 'ribbon', label: 'Community Badges', route: '/badges' },
+  { id: 'badges', icon: 'ribbon', label: 'Community Badges', route: '/badges', disabled: true, subLabel: 'Coming soon' },
 ];
 
 export default function ProfileScreen() {
@@ -43,7 +43,7 @@ export default function ProfileScreen() {
       if (error?.response?.status === 401 || error?.response?.status === 502) {
         // token may be invalid/expired, force logout and go to login
         await logout();
-        router.replace('/auth/phone');
+        router.replace('/');
       }
     } finally {
       setRefreshing(false);
@@ -52,13 +52,16 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!userId) {
-      router.replace('/auth/phone');
+      router.replace('/');
       return;
     }
     fetchProfile();
   }, [fetchProfile, router, userId]);
 
   const handleMenuPress = (item: any) => {
+    if (item.disabled) {
+      return;
+    }
     if (item.route) {
       router.push(item.route as any);
     }
@@ -149,7 +152,8 @@ export default function ProfileScreen() {
         {MENU_ITEMS.map((item) => (
           <TouchableOpacity
             key={item.id}
-            style={styles.menuItem}
+            style={[styles.menuItem, item.disabled && styles.menuItemDisabled]}
+            activeOpacity={item.disabled ? 1 : 0.7}
             onPress={() => handleMenuPress(item)}
           >
             <View style={styles.menuIconContainer}>
@@ -157,7 +161,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.menuLabelContainer}>
               <Text style={styles.menuLabel}>{item.label}</Text>
-            {/* Horoscope menu item removed */}
+              {item.disabled && <Text style={styles.menuSubLabel}>{item.subLabel}</Text>}
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
           </TouchableOpacity>
@@ -351,8 +355,11 @@ const styles = StyleSheet.create({
   },
   menuSubLabel: {
     fontSize: 12,
-    color: COLORS.primary,
+    color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  menuItemDisabled: {
+    backgroundColor: `${COLORS.divider}15`,
   },
   guidelinesLink: {
     flexDirection: 'row',

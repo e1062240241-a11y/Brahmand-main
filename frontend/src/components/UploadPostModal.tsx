@@ -14,6 +14,10 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Video, ResizeMode } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
+
+import { COLORS, SPACING } from '../constants/theme';
+import { uploadUserPost } from '../services/api';
 
 let UploadDocumentPicker: any = null;
 const getUploadDocumentPicker = async () => {
@@ -22,10 +26,6 @@ const getUploadDocumentPicker = async () => {
   }
   return UploadDocumentPicker;
 };
-import { Ionicons } from '@expo/vector-icons';
-
-import { COLORS, SPACING } from '../constants/theme';
-import { uploadUserPost } from '../services/api';
 
 type SelectedMedia = {
   uri: string;
@@ -114,7 +114,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ['images', 'videos'] as any,
       allowsEditing: true,
       quality: 0.9,
       videoMaxDuration: 33,
@@ -156,7 +156,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ['images', 'videos'] as any,
       allowsEditing: true,
       quality: 0.9,
       videoMaxDuration: 33,

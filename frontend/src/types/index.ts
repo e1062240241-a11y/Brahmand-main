@@ -3,6 +3,12 @@ export interface User {
   sl_id: string;
   name: string;
   photo?: string;
+  phone?: string;
+  online_status?: boolean;
+  last_seen_at?: string;
+  last_active?: string;
+  updated_at?: string;
+  bio?: string;
   language: string;
   date_of_birth?: string;
   time_of_birth?: string;
@@ -11,8 +17,20 @@ export interface User {
   place_of_birth_longitude?: number;
   location?: Location;
   home_location?: {
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
+    area?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  };
+  office_location?: {
+    latitude?: number;
+    longitude?: number;
+    area?: string;
+    city?: string;
+    state?: string;
+    country?: string;
   };
   badges: string[];
   reputation: number;
@@ -81,7 +99,8 @@ export interface Message {
   sender_id: string;
   sender_name: string;
   sender_photo?: string;
-  content: string;
+  content?: string;
+  text?: string;
   message_type: string;
   created_at: string;
 }
@@ -94,6 +113,10 @@ export interface Conversation {
     sl_id: string;
     name: string;
     photo?: string;
+    online_status?: boolean;
+    last_seen_at?: string;
+    last_active?: string;
+    updated_at?: string;
   };
   last_message: string;
   last_message_at: string;

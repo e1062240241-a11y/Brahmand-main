@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../src/constants/theme';
 
-const TabIcon = ({ name, color }: { name: any; color: string }) => (
+const TabIcon = ({ name, color }: { name: any; color: string; focused?: boolean }) => (
   <View style={styles.iconContainer}>
     <Ionicons name={name} size={22} color={color} />
   </View>

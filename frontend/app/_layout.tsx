@@ -1,8 +1,11 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
+import { addNotificationResponseReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
+import { sendDirectMessage } from '../src/services/api';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { useAdminStore } from '../src/store/adminStore';
@@ -61,6 +64,93 @@ function useDeepLinkHandler() {
   }, [token, pathname]);
 }
 
+function useNotificationResponseHandler() {
+  const { user, isAuthenticated } = useAuthStore();
+  const router = useRouter();
+  const processedResponseKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.name) {
+      return;
+    }
+
+    const getResponseKey = (response: any) => {
+      const actionId = response?.actionIdentifier || response?.actionId || 'default';
+      const data = response?.notification?.request?.content?.data;
+      const chatId = data?.chat_id;
+      const sosId = data?.sos_id;
+      if (chatId) {
+        return `${chatId}:${actionId}`;
+      }
+      return sosId ? `${sosId}:${actionId}` : null;
+    };
+
+    const navigateToDm = (chatId: string) => {
+      if (!chatId) return;
+      console.log('[Push] Navigating to DM chat:', chatId);
+      router.push(`/dm/${chatId}`);
+    };
+
+    const handleResponse = async (response: any) => {
+      if (!response?.notification?.request?.content?.data) {
+        return;
+      }
+
+      const actionId = response.actionIdentifier || response.actionId || 'default';
+      const data = response.notification.request.content.data;
+      const responseKey = getResponseKey(response);
+      if (!responseKey || responseKey === processedResponseKey.current) {
+        return;
+      }
+      processedResponseKey.current = responseKey;
+
+      if (data.type === 'dm' && data.chat_id) {
+        navigateToDm(data.chat_id);
+        return;
+      }
+
+      if (data.type === 'sos_alert' && actionId === 'accept_sos') {
+        const creatorSlId = data.creator_sl_id;
+        if (!creatorSlId) {
+          console.warn('[Push] SOS creator sl_id missing in notification data');
+          return;
+        }
+
+        try {
+          await sendDirectMessage(creatorSlId, 'accepted your SOS request.');
+          console.log('[Push] Sent SOS acceptance message to creator', creatorSlId);
+        } catch (error) {
+          console.warn('[Push] Failed to send SOS acceptance DM:', error);
+        }
+      }
+    };
+
+    let subscription: any;
+    const initListener = async () => {
+      try {
+        const lastResponse = await getLastNotificationResponse();
+        if (lastResponse) {
+          await handleResponse(lastResponse);
+        }
+      } catch (error) {
+        console.warn('[Push] Failed to read last notification response:', error);
+      }
+
+      try {
+        subscription = await addNotificationResponseReceivedListener(handleResponse);
+      } catch (error) {
+        console.warn('[Push] Failed to register notification response listener:', error);
+      }
+    };
+
+    initListener();
+
+    return () => {
+      subscription?.remove?.();
+    };
+  }, [isAuthenticated, user?.name]);
+}
+
 // Safe Slot wrapper to isolate navigation errors
 function SafeSlot() {
   try {
@@ -91,6 +181,7 @@ export default function RootLayout() {
   
   useDeepLinkHandler();
   useAndroidBackHandler();
+  useNotificationResponseHandler();
 
   useEffect(() => {
     Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {
@@ -116,10 +207,10 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="dark" />
-      <View style={styles.root}>
+      <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
         <Slot />
         {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
-      </View>
+      </SafeAreaView>
     </>
   );
 }
@@ -135,4 +226,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
+  fallbackContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+  },
+  fallbackText: {
+    marginTop: 8,
+    color: COLORS.textSecondary,
+    fontSize: 14,
+  }
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, BackHandler, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,19 @@ interface LocationData {
   display_name?: string;
 }
 
+const normalizeUserLocation = (location: any): LocationData | null => {
+  if (!location) return null;
+  return {
+    country: location.country || '',
+    state: location.state || '',
+    city: location.city || '',
+    area: location.area || '',
+    latitude: location.latitude,
+    longitude: location.longitude,
+    display_name: location.display_name,
+  };
+};
+
 export default function ChangeLocationScreen() {
   const router = useRouter();
   const handleBack = useCallback(() => {
@@ -37,10 +50,10 @@ export default function ChangeLocationScreen() {
   const { user, updateUser } = useAuthStore();
 
   const [homeLocation, setHomeLocation] = useState<LocationData | null>(
-    user?.home_location || null
+    normalizeUserLocation(user?.home_location) || null
   );
   const [officeLocation, setOfficeLocation] = useState<LocationData | null>(
-    user?.office_location || null
+    normalizeUserLocation((user as any)?.office_location) || null
   );
   const [loading, setLoading] = useState(false);
   const [detectingHome, setDetectingHome] = useState(false);

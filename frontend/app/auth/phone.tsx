@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { initializeFirebase, firebaseConfig } from '../../src/services/firebase/config';
 import { sendFirebaseOTP } from '../../src/services/firebase/authService';
 
+import { COLORS, SPACING } from '../../src/constants/theme';
+
 // Debug: Log Firebase config on web
 if (typeof window !== 'undefined' && Platform.OS === 'web') {
   console.log('[Phone Auth] Firebase Config:', {
@@ -26,8 +28,6 @@ if (typeof window !== 'undefined' && Platform.OS === 'web') {
     appId: firebaseConfig.appId ? 'SET' : 'MISSING',
   });
 }
-
-import { COLORS, SPACING } from '../../src/constants/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -49,6 +49,16 @@ export default function PhoneScreen() {
   React.useEffect(() => {
     initializeFirebase();
   }, []);
+
+  React.useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    if (!router.canGoBack()) {
+      router.replace('/auth/entry-animation');
+    }
+  }, [router]);
 
   const handleBack = () => {
     if (router.canGoBack()) {

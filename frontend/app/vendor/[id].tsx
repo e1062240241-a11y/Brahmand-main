@@ -14,9 +14,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore } from '../../src/store/vendorStore';
+import { getUserProfile, sendDirectMessage } from '../../src/services/api';
 import { formatDistance } from '../../src/utils/formatDistance';
-import VoiceOrder from '../../src/components/VoiceOrder';
 
 const TRUST_LABELS = {
   trusted: { label: 'Trusted Vendor', color: COLORS.success, icon: 'shield-checkmark' },
@@ -31,6 +32,8 @@ export default function VendorProfileScreen() {
   const actionBarBottomInset = Math.max(insets.bottom, SPACING.sm);
   const actionBarHeight = 64 + actionBarBottomInset;
   const { vendors, fetchMyVendor } = useVendorStore();
+  const { user } = useAuthStore();
+  const [isSendingRequest, setIsSendingRequest] = React.useState(false);
   
   const vendor = vendors.find(v => v.id === id);
 
@@ -107,6 +110,47 @@ export default function VendorProfileScreen() {
     Linking.openURL(`tel:${vendor.phone_number}`);
   };
 
+  const notifyVendorOwner = async () => {
+    if (!user) {
+      throw new Error('Please login to notify the business owner.');
+    }
+    if (!vendor.owner_id) {
+      throw new Error('Vendor owner information is unavailable.');
+    }
+    if (vendor.owner_id === user.id) {
+      return;
+    }
+
+    const profileResponse = await getUserProfile(vendor.owner_id);
+    const ownerProfile = profileResponse?.data;
+    const ownerSlId = ownerProfile?.sl_id;
+    if (!ownerSlId) {
+      throw new Error('Vendor owner SL ID is unavailable.');
+    }
+
+    const callerName = user.name || 'A user';
+    const callerPhone = user.phone || 'phone number unavailable';
+    const message = `${callerName} wants to connect to your business and is waiting for your call. Phone: ${callerPhone}`;
+    await sendDirectMessage(ownerSlId, message);
+  };
+
+  const handleGetCall = async () => {
+    setIsSendingRequest(true);
+    try {
+      await notifyVendorOwner();
+      if (user && vendor.owner_id === user.id) {
+        Alert.alert('Info', 'You are the owner of this business.');
+      } else {
+        Alert.alert('Request sent', 'The business owner has been notified and can call you back.');
+      }
+    } catch (error: any) {
+      console.warn('Failed to notify vendor owner:', error?.message || error);
+      Alert.alert('Could not send request', 'Please try again later.');
+    } finally {
+      setIsSendingRequest(false);
+    }
+  };
+
   const handleDirections = () => {
     if (vendor.location_link) {
       Linking.openURL(vendor.location_link);
@@ -120,13 +164,7 @@ export default function VendorProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{vendor.business_name}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <View style={styles.header}><TouchableOpacity onPress={handleBack}><Ionicons name="arrow-back" size={24} color={COLORS.text} /></TouchableOpacity><Text style={styles.headerTitle}>{vendor.business_name}</Text><TouchableOpacity style={styles.topCallButton} onPress={handleGetCall} disabled={isSendingRequest}><Text style={styles.topCallButtonText}>{isSendingRequest ? 'Sending...' : 'Get call'}</Text></TouchableOpacity></View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Photo */}
@@ -209,13 +247,6 @@ export default function VendorProfileScreen() {
               <Text key={`${item}-${index}`} style={styles.hoursText}>• {item}</Text>
             ))}
             
-            <View style={{ marginTop: SPACING.md }}>
-              <VoiceOrder 
-                menuItems={menuItems} 
-                vendorPhone={vendor.phone_number}
-                vendorName={vendor.business_name}
-              />
-            </View>
           </View>
         )}
 
@@ -266,7 +297,7 @@ export default function VendorProfileScreen() {
             <Text style={styles.sectionTitle}>Connect</Text>
             
             {vendor.website_link && (
-              <TouchableOpacity style={styles.socialRow} onPress={() => openExternalUrl(vendor.website_link)}>
+              <TouchableOpacity style={styles.socialRow} onPress={() => vendor.website_link && openExternalUrl(vendor.website_link)}>
                 <Ionicons name="globe" size={18} color={COLORS.primary} />
                 <Text style={styles.linkText}>{vendor.website_link}</Text>
               </TouchableOpacity>
@@ -345,6 +376,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  topCallButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topCallButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   errorContainer: {
     flex: 1,

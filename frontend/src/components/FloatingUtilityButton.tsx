@@ -1,21 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
+  TextInput,
   StyleSheet, 
   TouchableOpacity, 
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
   Dimensions,
   Alert,
   ActivityIndicator,
   Animated,
   Easing,
   Keyboard,
+  Linking,
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useHelpRequestStore } from '../store/helpRequestStore';
@@ -28,10 +31,12 @@ import {
   resolveSOSAlert,
   getActiveSOSAlerts,
   getMyActiveCommunityRequests,
-  resolveCommunityRequest
+  resolveCommunityRequest,
+  updateCurrentLocation
 } from '../services/api';
 import * as Location from 'expo-location';
 import LocationService from '../services/location';
+import { socketService } from '../services/socket';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -204,7 +209,9 @@ const getHelpColor = (type: string): string => {
 
 export const FloatingUtilityButton = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuthStore();
+  const isChatPage = typeof pathname === 'string' && (pathname.startsWith('/chat/') || pathname.startsWith('/dm/'));
   const [modalVisible, setModalVisible] = useState(false);
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -214,6 +221,19 @@ export const FloatingUtilityButton = () => {
   // SOS state
   const [activeSOS, setActiveSOS] = useState<any>(null);
   const [nearbySOSCount, setNearbySOSCount] = useState(0);
+  const [nearbySOSAlerts, setNearbySOSAlerts] = useState<any[]>([]);
+  const [sosStage, setSosStage] = useState<'idle' | 'hold' | 'type' | 'micro' | 'countdown'>('idle');
+  const [sosType, setSosType] = useState<string>('');
+  const [microLocation, setMicroLocation] = useState('');
+  const [microLocationLoading, setMicroLocationLoading] = useState(false);
+  const [locationFetched, setLocationFetched] = useState(false);
+  const [fetchedCoordinates, setFetchedCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [countdownValue, setCountdownValue] = useState(8);
+  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const holdConfirmedRef = useRef(false);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const sosRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Community requests state
   const [myCommunityRequests, setMyCommunityRequests] = useState<any[]>([]);
@@ -254,6 +274,74 @@ export const FloatingUtilityButton = () => {
     }
   }, [nearbySOSCount]);
 
+  const resetSOSFlow = () => {
+    setSosStage('idle');
+    setSosType('');
+    setMicroLocation('');
+    setMicroLocationLoading(false);
+    setLocationFetched(false);
+    setFetchedCoordinates(null);
+    setHoldProgress(0);
+    setCountdownValue(5);
+    holdConfirmedRef.current = false;
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+  };
+
+  const openSOSLocation = async () => {
+    if (!activeSOS?.latitude || !activeSOS?.longitude) {
+      Alert.alert('Location unavailable', 'Cannot open map without coordinates.');
+      return;
+    }
+
+    const lat = activeSOS.latitude;
+    const lng = activeSOS.longitude;
+    const label = encodeURIComponent('SOS Location');
+    const url = Platform.OS === 'ios'
+      ? `maps://maps.apple.com/?q=${label}&ll=${lat},${lng}`
+      : `geo:${lat},${lng}?q=${lat},${lng}(${label})`;
+
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      await Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`);
+    }
+  };
+
+  const openNearbySOSLocation = async (sos: any) => {
+    const lat = sos.latitude;
+    const lng = sos.longitude;
+    if (lat == null || lng == null) {
+      Alert.alert('Location unavailable', 'Cannot open map without coordinates.');
+      return;
+    }
+
+    const label = encodeURIComponent('Nearby SOS Location');
+    const url = Platform.OS === 'ios'
+      ? `maps://maps.apple.com/?q=${label}&ll=${lat},${lng}`
+      : `geo:${lat},${lng}?q=${lat},${lng}(${label})`;
+
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      await Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      resetSOSFlow();
+    };
+  }, []);
+
   const loadUtilityData = async () => {
     try {
       const [wisdomRes, panchangData, festivalData, gitaShloka] = await Promise.all([
@@ -274,7 +362,7 @@ export const FloatingUtilityButton = () => {
     }
   };
 
-  const checkSOSStatus = async () => {
+  const checkSOSStatus = useCallback(async () => {
     try {
       // Check for user's active SOS
       const mySOSRes = await getMySOSAlert();
@@ -284,33 +372,89 @@ export const FloatingUtilityButton = () => {
       const ok = await LocationService.ensureForegroundPermission();
       if (ok) {
         const location = await LocationService.getCurrentPosition({});
+        try {
+          await updateCurrentLocation({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          });
+        } catch (updateError) {
+          console.warn('[SOS] Failed to update current location:', updateError);
+        }
         const nearbyRes = await getActiveSOSAlerts({
           lat: location.coords.latitude,
           lng: location.coords.longitude,
-          radius: 10
+          radius: 1
         });
         // Don't count user's own SOS
         const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== mySOSRes.data?.id);
         setNearbySOSCount(otherSOS.length);
+        setNearbySOSAlerts(otherSOS);
       }
     } catch (error) {
       console.error('Error checking SOS status:', error);
     }
-  };
+  }, []);
 
   const loadInitialUtilityData = async () => {
-    // Always fetch fresh community requests when opening modal
+    // Always refresh community requests and nearby SOS when opening modal
     fetchMyCommunityRequests();
-
-    if (hasLoadedData) return;
 
     await Promise.allSettled([
       fetchActiveRequest(),
-      loadUtilityData(),
+      hasLoadedData ? Promise.resolve() : loadUtilityData(),
       checkSOSStatus(),
     ]);
-    setHasLoadedData(true);
+
+    if (!hasLoadedData) {
+      setHasLoadedData(true);
+    }
   };
+
+  const closeUtilityModal = () => {
+    setModalVisible(false);
+    resetSOSFlow();
+    if (!activeSOS && !hasActiveRequest()) {
+      setNearbySOSCount(0);
+      setNearbySOSAlerts([]);
+    }
+  };
+
+  const handleIncomingSOSAlert = useCallback(async () => {
+    try {
+      await checkSOSStatus();
+    } catch (error) {
+      console.warn('[SOS] incoming alert refresh failed', error);
+    }
+  }, [checkSOSStatus]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initSOSRefresh = async () => {
+      try {
+        await socketService.connect();
+        socketService.onEvent('sos_alert', handleIncomingSOSAlert);
+      } catch (error) {
+        console.warn('[SOS] socket connect failed', error);
+      }
+    };
+
+    initSOSRefresh();
+    checkSOSStatus();
+
+    sosRefreshTimerRef.current = setInterval(() => {
+      if (!mounted) return;
+      checkSOSStatus();
+    }, 60_000);
+
+    return () => {
+      mounted = false;
+      if (sosRefreshTimerRef.current) {
+        clearInterval(sosRefreshTimerRef.current);
+      }
+      socketService.offEvent('sos_alert', handleIncomingSOSAlert);
+    };
+  }, [checkSOSStatus, handleIncomingSOSAlert]);
 
   const fetchMyCommunityRequests = async () => {
     try {
@@ -345,42 +489,222 @@ export const FloatingUtilityButton = () => {
     }
   };
 
-  const handleCreateSOS = async () => {
-    Alert.alert(
-      'Emergency SOS',
-      'This will alert nearby community members with your location. Are you sure you need emergency help?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'SEND SOS', 
-          style: 'destructive', 
-          onPress: async () => {
-            setSOSLoading(true);
-            try {
-              const ok = await LocationService.ensureForegroundPermission();
-              if (!ok) {
-                Alert.alert('Location Required', 'Please enable location to send SOS alert');
-                return;
-              }
+  const SOS_TYPES = [
+    { label: 'Medical', value: 'medical' },
+    { label: 'Accident', value: 'accident' },
+    { label: 'Safety', value: 'safety' },
+    { label: 'Other', value: 'other' }
+  ];
 
-              const location = await LocationService.getCurrentPosition({});
-              
-              const response = await createSOSAlert({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude
-              });
-              
-              setActiveSOS(response.data);
-              Alert.alert('SOS Alert Sent', 'Your emergency alert has been sent to nearby community members. Stay safe!');
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.detail || 'Failed to send SOS alert');
-            } finally {
-              setSOSLoading(false);
-            }
-          }
+  const startSOSFlow = () => {
+    resetSOSFlow();
+    setSosType('medical');
+    setSosStage('type');
+  };
+
+  const getLocationText = async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      const geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (geocoded.length > 0) {
+        const place = geocoded[0];
+        return [place.name, place.street, place.district, place.city, place.region]
+          .filter(Boolean)
+          .join(', ');
+      }
+    } catch (error) {
+      console.warn('Reverse geocode failed:', error);
+    }
+    return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+  };
+
+  const fetchCurrentMicroLocation = async (showAlert: boolean = true) => {
+    setMicroLocationLoading(true);
+    try {
+      const ok = await LocationService.ensureForegroundPermission();
+      if (!ok) {
+        if (showAlert) {
+          Alert.alert('Location Required', 'Please enable location services and grant permission to fetch your current location.');
         }
-      ]
-    );
+        setLocationFetched(false);
+        setFetchedCoordinates(null);
+        return;
+      }
+
+      const location = await LocationService.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+      });
+      if (location?.coords) {
+        setLocationFetched(true);
+        setFetchedCoordinates({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    } catch (error: any) {
+      if (showAlert) {
+        Alert.alert('Location Error', 'Unable to fetch current location. Please enable location permissions and try again.');
+      }
+      setLocationFetched(false);
+      setFetchedCoordinates(null);
+      console.warn('Fetch current micro location failed:', error);
+    } finally {
+      setMicroLocationLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (sosStage === 'micro') {
+      fetchCurrentMicroLocation(true);
+    }
+  }, [sosStage]);
+
+  const openFetchedLocation = async () => {
+    if (!fetchedCoordinates) return;
+
+    const { latitude, longitude } = fetchedCoordinates;
+    const label = encodeURIComponent('Current Location');
+    const url = Platform.OS === 'ios'
+      ? `maps://maps.apple.com/?q=${label}&ll=${latitude},${longitude}`
+      : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`;
+
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      await Linking.openURL(`https://maps.google.com/?q=${latitude},${longitude}`);
+    }
+  };
+
+  useEffect(() => {
+    if (sosStage === 'micro') {
+      fetchCurrentMicroLocation(true);
+    }
+  }, [sosStage]);
+
+  const handleSOSHoldStart = () => {
+    if (sosStage !== 'hold') return;
+    holdConfirmedRef.current = false;
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    const start = Date.now();
+    setHoldProgress(0);
+    holdTimerRef.current = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(1, elapsed / 3000);
+      setHoldProgress(progress);
+      if (progress >= 1) {
+        handleSOSHoldComplete();
+      }
+    }, 50);
+  };
+
+  const handleSOSHoldComplete = () => {
+    if (sosStage !== 'hold') return;
+    holdConfirmedRef.current = true;
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    setHoldProgress(1);
+    setSosStage('type');
+  };
+
+  const handleSOSHoldEnd = () => {
+    if (holdConfirmedRef.current) {
+      return;
+    }
+    if (sosStage !== 'hold') return;
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    setHoldProgress(0);
+    setSosStage('idle');
+  };
+
+  const handleStartSOSCountdown = () => {
+    setSosStage('countdown');
+  };
+
+  const handleCancelSOSCountdown = () => {
+    resetSOSFlow();
+  };
+
+  const handleSubmitSOS = async () => {
+    setSOSLoading(true);
+    try {
+      const ok = await LocationService.ensureForegroundPermission();
+      if (!ok) {
+        Alert.alert('Location Required', 'Please enable location to send SOS alert');
+        resetSOSFlow();
+        return;
+      }
+
+      let latitude: number;
+      let longitude: number;
+      if (fetchedCoordinates) {
+        latitude = fetchedCoordinates.latitude;
+        longitude = fetchedCoordinates.longitude;
+      } else {
+        const location = await LocationService.getCurrentPosition({});
+        latitude = location.coords.latitude;
+        longitude = location.coords.longitude;
+      }
+
+      const response = await createSOSAlert({
+        latitude,
+        longitude,
+        emergency_type: sosType || 'other',
+        micro_location: microLocation || '',
+        radius: 1,
+      });
+
+      setActiveSOS(response.data);
+      resetSOSFlow();
+      Alert.alert('SOS Alert Sent', 'Your emergency alert has been sent to nearby community members. Stay safe!');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to send SOS alert');
+      resetSOSFlow();
+    } finally {
+      setSOSLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (sosStage !== 'countdown') return;
+    setCountdownValue(8);
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    countdownTimerRef.current = setInterval(() => {
+      setCountdownValue((prev) => {
+        if (prev <= 1) {
+          if (countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+          }
+          handleSubmitSOS();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
+  }, [sosStage]);
+
+  const handleCreateSOS = () => {
+    startSOSFlow();
   };
 
   const handleResolveCommunityRequest = async (requestId: string) => {
@@ -544,6 +868,7 @@ export const FloatingUtilityButton = () => {
       {/* Floating Button */}
       <Animated.View style={[
         styles.floatingButtonContainer,
+        isChatPage && { bottom: 150 },
         { transform: [{ scale: hasNearbyEmergency ? pulseAnim : 1 }] }
       ]}>
         <TouchableOpacity
@@ -553,6 +878,7 @@ export const FloatingUtilityButton = () => {
             activeSOS && styles.floatingButtonActiveSOS
           ]}
           onPress={() => {
+            resetSOSFlow();
             setModalVisible(true);
             loadInitialUtilityData();
           }}
@@ -587,31 +913,33 @@ export const FloatingUtilityButton = () => {
         visible={modalVisible}
         transparent
         animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => {
-          setModalVisible(false);
-        }}
+        onRequestClose={closeUtilityModal}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity 
-            style={styles.overlayBackground} 
+            style={[styles.overlayBackground, sosStage === 'countdown' && styles.countdownOverlay]} 
             activeOpacity={1} 
-            onPress={() => setModalVisible(false)}
+            onPress={closeUtilityModal}
           />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHandle} />
-              <TouchableOpacity 
-                style={styles.closeButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.modalTitle}>Sanatan Utilities</Text>
+          <KeyboardAvoidingView
+            style={styles.modalContentWrapper}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={80}
+          >
+            <View style={[styles.modalContent, sosStage === 'countdown' && styles.countdownModalContent]}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalHandle} />
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={closeUtilityModal}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={styles.modalTitle}>Sanatan Utilities</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScrollContent}>
               {/* Active SOS Section */}
               {activeSOS && (
                 <View style={styles.activeSosCard}>
@@ -622,11 +950,31 @@ export const FloatingUtilityButton = () => {
                   <Text style={styles.activeSosLocation}>
                     Location: {activeSOS.area}, {activeSOS.city}
                   </Text>
+                  {activeSOS.latitude && activeSOS.longitude ? (
+                    <TouchableOpacity style={styles.activeSosLink} onPress={openSOSLocation}>
+                      <Text style={styles.activeSosLinkText}>View creator location</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <Text style={styles.activeSosStatus}>
+                    {activeSOS.responders?.length > 0 ? 'Help is on the way' : 'Searching for help'}
+                  </Text>
+                  <Text style={styles.activeSosLocation}>
+                    Emergency: {activeSOS.emergency_type ? activeSOS.emergency_type.toUpperCase() : 'UNKNOWN'}
+                  </Text>
+                  {activeSOS.micro_location ? (
+                    <Text style={styles.activeSosLocation}>
+                      Micro-location: {activeSOS.micro_location}
+                    </Text>
+                  ) : null}
                   {activeSOS.responders?.length > 0 && (
                     <Text style={styles.activeSosResponders}>
                       {activeSOS.responders.length} people responding
                     </Text>
                   )}
+                  <TouchableOpacity style={styles.sosMapButton} onPress={openSOSLocation}>
+                    <Ionicons name="navigate" size={16} color="#FFFFFF" />
+                    <Text style={[styles.sosButtonText, { marginLeft: SPACING.xs }]}>Open Map</Text>
+                  </TouchableOpacity>
                   
                   <View style={styles.sosButtonRow}>
                     <TouchableOpacity 
@@ -653,6 +1001,31 @@ export const FloatingUtilityButton = () => {
                       <Text style={[styles.sosButtonText, { color: COLORS.error }]}>CANCEL</Text>
                     </TouchableOpacity>
                   </View>
+                </View>
+              )}
+
+              {/* Nearby SOS Alerts */}
+              {!activeSOS && nearbySOSAlerts.length > 0 && (
+                <View style={styles.nearbySOSSection}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Nearby SOS Alerts</Text>
+                    <Text style={styles.nearbySOSMeta}>{nearbySOSCount} nearby</Text>
+                  </View>
+                  {nearbySOSAlerts.map((sos) => (
+                    <View key={sos.id} style={styles.nearbySOSCard}>
+                      <View style={styles.nearbySOSHeader}>
+                        <Text style={styles.nearbySOSTitle}>{sos.emergency_type?.toUpperCase() || 'SOS'}</Text>
+                        <Text style={styles.nearbySOSDistance}>{sos.distance?.toFixed(2)} km</Text>
+                      </View>
+                      <Text style={styles.nearbySOSLocation}>{sos.micro_location || `${sos.area}, ${sos.city}`}</Text>
+                      <View style={styles.nearbySOSActions}>
+                        <TouchableOpacity style={styles.sosMapButton} onPress={() => openNearbySOSLocation(sos)}>
+                          <Ionicons name="navigate" size={16} color="#FFFFFF" />
+                          <Text style={[styles.sosButtonText, { marginLeft: SPACING.xs }]}>Open Map</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
                 </View>
               )}
 
@@ -795,28 +1168,25 @@ export const FloatingUtilityButton = () => {
               {/* Utility Shortcuts */}
               <View style={styles.utilityGrid}>
                 <TouchableOpacity 
-                  style={styles.utilityCard}
-                  onPress={openPanchangWithLocation}
+                  style={[styles.utilityCard, styles.disabledUtilityCard]}
+                  disabled={true}
                 >
-                  <View style={[styles.utilityIconBg, { backgroundColor: '#FFE5CC' }]}>
+                  <View style={[styles.utilityIconBg, { backgroundColor: '#FFE5CC' }]}> 
                     <Ionicons name="calendar" size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.utilityTitle}>Panchang</Text>
-                  <Text style={styles.utilitySubtitle}>{panchang?.tithi || 'Loading...'}</Text>
+                  <Text style={styles.utilitySubtitle}>Coming soon</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.utilityCard}
-                  onPress={() => {
-                    setModalVisible(false);
-                    router.push('/astrology?mode=horoscope');
-                  }}
+                  style={[styles.utilityCard, styles.disabledUtilityCard]}
+                  disabled={true}
                 >
-                  <View style={[styles.utilityIconBg, { backgroundColor: '#E3F2FD' }]}>
+                  <View style={[styles.utilityIconBg, { backgroundColor: '#E3F2FD' }]}> 
                     <Ionicons name="star" size={20} color={COLORS.info} />
                   </View>
                   <Text style={styles.utilityTitle}>Horoscope</Text>
-                  <Text style={styles.utilitySubtitle}>Birth profile</Text>
+                  <Text style={styles.utilitySubtitle}>Coming soon</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -834,19 +1204,34 @@ export const FloatingUtilityButton = () => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.festivalCard}>
-                <View style={styles.festivalHeader}>
-                  <View style={[styles.utilityIconBg, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="sparkles" size={20} color={COLORS.success} />
+<View style={styles.festivalRow}>
+                <View style={[styles.festivalCard, styles.festivalCardCompact]}>
+                  <View style={styles.festivalHeader}>
+                    <View style={[styles.utilityIconBg, { backgroundColor: '#E8F5E9' }]}> 
+                      <Ionicons name="sparkles" size={20} color={COLORS.success} />
+                    </View>
+                    <View style={styles.festivalContent}>
+                      <Text style={styles.utilityTitle}>Next Festival</Text>
+                      <Text style={styles.utilitySubtitle}>{nextFestival?.name || 'Loading...'}</Text>
+                    </View>
                   </View>
-                  <View style={styles.festivalContent}>
-                    <Text style={styles.utilityTitle}>Next Festival</Text>
-                    <Text style={styles.utilitySubtitle}>{nextFestival?.name || 'Loading...'}</Text>
-                  </View>
+                  <Text style={styles.mediumDetail}>
+                    {nextFestival?.days_until !== undefined ? `Starts in ${nextFestival.days_until} days` : ''}
+                  </Text>
                 </View>
-                <Text style={styles.mediumDetail}>
-                  {nextFestival?.days_until !== undefined ? `Starts in ${nextFestival.days_until} days` : ''}
-                </Text>
+                <TouchableOpacity
+                  style={styles.libraryButton}
+                  onPress={() => {
+                    setModalVisible(false);
+                    router.push('/library');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.utilityIconBg, { backgroundColor: '#E3F2FD' }]}> 
+                    <Ionicons name="book" size={20} color={COLORS.info} />
+                  </View>
+                  <Text style={styles.libraryButtonTitle}>Brahmand Library</Text>
+                </TouchableOpacity>
               </View>
 
               {/* SOS Card */}
@@ -858,35 +1243,159 @@ export const FloatingUtilityButton = () => {
                     </View>
                     <Text style={styles.sosTitle}>Emergency SOS</Text>
                   </View>
-                  
-                  <Text style={styles.sosDescription}>
-                    Use this if you need urgent help. This will instantly alert nearby community members with your location.
-                  </Text>
 
-                  <TouchableOpacity 
-                    style={styles.sosButton}
-                    onPress={handleCreateSOS}
-                    activeOpacity={0.8}
-                    disabled={sosLoading}
-                  >
-                    {sosLoading ? (
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                    ) : (
-                      <>
-                        <Ionicons name="alert" size={20} color="#FFFFFF" />
-                        <Text style={styles.sosButtonMainText}>SEND SOS</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                  {sosStage === 'idle' && (
+                    <>
+                      <Text style={styles.sosDescription}>
+                        Tap START SOS to begin the medical confirmation flow and send an emergency alert to nearby community members.
+                      </Text>
+                      <TouchableOpacity 
+                        style={styles.sosButton}
+                        onPress={handleCreateSOS}
+                        activeOpacity={0.8}
+                        disabled={sosLoading}
+                      >
+                        {sosLoading ? (
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                          <>
+                            <Ionicons name="alert" size={20} color="#FFFFFF" />
+                            <Text style={styles.sosButtonMainText}>START SOS</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <Text style={styles.sosNote}>
+                        Your location will be shared to help people reach you faster.
+                      </Text>
+                    </>
+                  )}
 
-                  <Text style={styles.sosNote}>
-                    Your location will be shared to help people reach you faster.
-                  </Text>
+                  {sosStage === 'hold' && (
+                    <>
+                      <Text style={styles.sosStepTitle}>Hold to Confirm</Text>
+                      <Text style={styles.sosStepSubtitle}>Keep pressing the button for 3 seconds to confirm your emergency.</Text>
+                      <TouchableOpacity
+                        style={styles.sosHoldButton}
+                        activeOpacity={1}
+                        onPressIn={handleSOSHoldStart}
+                        onPressOut={handleSOSHoldEnd}
+                        onLongPress={handleSOSHoldComplete}
+                        delayLongPress={3000}
+                      >
+                        <Text style={styles.sosHoldButtonText}>HOLD TO CONFIRM</Text>
+                        <View style={styles.sosHoldProgressBar}>
+                          <View style={[styles.sosHoldProgressFill, { width: `${Math.round(holdProgress * 100)}%`}]} />
+                        </View>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {sosStage === 'type' && (
+                    <>
+                      <Text style={styles.sosStepTitle}>Confirm Emergency Type</Text>
+                      <Text style={styles.sosStepSubtitle}>Medical is selected by default for fast response.</Text>
+                      <View style={styles.sosTypeGrid}>
+                        {SOS_TYPES.map((typeOption) => (
+                          <TouchableOpacity
+                            key={typeOption.value}
+                            style={[
+                              styles.sosTypeButton,
+                              sosType === typeOption.value && styles.sosTypeButtonSelected,
+                            ]}
+                            onPress={() => setSosType(typeOption.value)}
+                          >
+                            <Text style={[
+                              styles.sosTypeButtonText,
+                              sosType === typeOption.value && styles.sosTypeButtonTextSelected,
+                            ]}>
+                              {typeOption.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.sosButton, !sosType ? styles.sosButtonDisabled : null]}
+                        onPress={() => setSosStage('micro')}
+                        disabled={!sosType}
+                      >
+                        <Text style={styles.sosButtonMainText}>CONTINUE</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.sosSecondaryButton} onPress={resetSOSFlow}>
+                        <Text style={styles.sosSecondaryText}>Cancel SOS</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {sosStage === 'micro' && (
+                    <>
+                      <Text style={styles.sosStepTitle}>Add Micro Location</Text>
+                      <Text style={styles.sosStepSubtitle}>Specify floor, flat, landmark or any nearby detail.</Text>
+                      <View style={styles.sosFetchRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.sosLocationButton,
+                            locationFetched && styles.sosLocationButtonFetched,
+                          ]}
+                          onPress={() => fetchCurrentMicroLocation()}
+                          disabled={microLocationLoading}
+                        >
+                          {microLocationLoading ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <>
+                              <Ionicons name="location" size={18} color="#FFFFFF" />
+                              <Text style={styles.sosLocationButtonText}>
+                                {locationFetched ? 'Location fetched' : 'Fetching current location...'}
+                              </Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                        {locationFetched && (
+                          <TouchableOpacity style={styles.sosLocationLink} onPress={openFetchedLocation}>
+                            <Text style={styles.sosLocationLinkText}>Open fetched location</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <TextInput
+                        style={styles.sosInput}
+                        placeholder="If you are in building or apartment, add floor/flat/block"
+                        placeholderTextColor={COLORS.textSecondary}
+                        value={microLocation}
+                        onChangeText={setMicroLocation}
+                        multiline
+                      />
+                      <TouchableOpacity
+                        style={[styles.sosButton, !locationFetched ? styles.sosButtonDisabled : null]}
+                        onPress={() => setSosStage('countdown')}
+                        disabled={!locationFetched}
+                      >
+                        <Text style={styles.sosButtonMainText}>CREATE SOS</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.sosSecondaryButton} onPress={() => setSosStage('type')}>
+                        <Text style={styles.sosSecondaryText}>Back</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {sosStage === 'countdown' && (
+                    <>
+                      <Text style={styles.sosStepTitle}>SOS sending in</Text>
+                      <Text style={styles.sosCountdownText}>{countdownValue}</Text>
+                      <Text style={styles.sosStepSubtitle}>You can cancel before the alert is sent.</Text>
+                      <TouchableOpacity
+                        style={[styles.sosButton, styles.sosCancelCountdownButton]}
+                        onPress={handleCancelSOSCountdown}
+                      >
+                        <Text style={styles.sosButtonMainText}>CANCEL SOS</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
               )}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
+      </View>
       </Modal>
     </>
   );
@@ -953,6 +1462,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
+  modalContentWrapper: {
+    width: '100%',
+  },
   modalContent: {
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
@@ -960,6 +1472,25 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     paddingBottom: SPACING.xl,
     maxHeight: SCREEN_HEIGHT * 0.7,
+  },
+  countdownModalContent: {
+    backgroundColor: '#FFCDD2',
+  },
+  modalScrollContent: {
+    paddingBottom: SPACING.xl,
+  },
+  countdownOverlay: {
+    backgroundColor: 'rgba(244, 67, 54, 0.35)',
+  },
+  activeSosLink: {
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.xs,
+  },
+  activeSosLinkText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1007,6 +1538,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 4,
   },
+  activeSosStatus: {
+    color: 'rgba(255,255,255,0.95)',
+    fontSize: 13,
+    marginBottom: SPACING.sm,
+    fontWeight: '600',
+  },
   activeSosResponders: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 13,
@@ -1015,6 +1552,16 @@ const styles = StyleSheet.create({
   sosButtonRow: {
     flexDirection: 'row',
     gap: SPACING.sm,
+  },
+  sosMapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1976D2',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.sm,
   },
   sosResolveButton: {
     flex: 1,
@@ -1155,6 +1702,9 @@ const styles = StyleSheet.create({
     minHeight: 124,
     justifyContent: 'space-between',
   },
+  disabledUtilityCard: {
+    opacity: 0.55,
+  },
   utilityIconBg: {
     width: 36,
     height: 36,
@@ -1179,11 +1729,35 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginTop: 2,
   },
+  festivalRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
   festivalCard: {
     backgroundColor: COLORS.background,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.md,
+  },
+  festivalCardCompact: {
+    flex: 2,
+    marginBottom: 0,
+  },
+  libraryButton: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  libraryButtonTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: SPACING.sm,
   },
   festivalHeader: {
     flexDirection: 'row',
@@ -1242,10 +1816,193 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.sm,
     letterSpacing: 1,
   },
+  sosButtonDisabled: {
+    opacity: 0.55,
+  },
+  sosSecondaryButton: {
+    alignSelf: 'center',
+    marginTop: SPACING.sm,
+  },
+  sosSecondaryText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sosStepTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  sosStepSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+    lineHeight: 20,
+  },
+  sosHoldButton: {
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.error,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sosHoldButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  sosHoldProgressBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginTop: SPACING.sm,
+  },
+  sosHoldProgressFill: {
+    height: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  sosTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+    marginBottom: SPACING.sm,
+  },
+  sosTypeButton: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    marginBottom: SPACING.xs,
+  },
+  sosTypeButtonSelected: {
+    backgroundColor: COLORS.error,
+    borderColor: COLORS.error,
+  },
+  sosTypeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  sosTypeButtonTextSelected: {
+    color: '#FFFFFF',
+  },
+  sosFetchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  sosLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.error,
+  },
+  sosLocationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: SPACING.xs,
+  },
+  sosLocationButtonFetched: {
+    backgroundColor: COLORS.success,
+  },
+  sosLocationLink: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  sosLocationLinkText: {
+    color: COLORS.success,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  sosLocationStatus: {
+    color: COLORS.success,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sosInput: {
+    backgroundColor: COLORS.background,
+    borderColor: COLORS.divider,
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.sm,
+    color: COLORS.text,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: SPACING.sm,
+  },
+  sosCountdownText: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: COLORS.error,
+    textAlign: 'center',
+    marginVertical: SPACING.sm,
+  },
+  sosCancelCountdownButton: {
+    backgroundColor: '#B71C1C',
+  },
   sosNote: {
     fontSize: 11,
     color: COLORS.textLight,
     textAlign: 'center',
+  },
+  nearbySOSSection: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  nearbySOSCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  nearbySOSHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  nearbySOSTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  nearbySOSDistance: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  nearbySOSLocation: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    marginBottom: SPACING.sm,
+  },
+  nearbySOSActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  nearbySOSMeta: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
   },
   // Community Requests Section
   communityRequestsSection: {

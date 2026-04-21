@@ -56,7 +56,6 @@ export default function VendorScreen() {
   const [kycStatus, setKycStatus] = useState<string | null>((user as any)?.kyc_status || null);
   const currentKycStatus = kycStatus || (user as any)?.kyc_status || null;
   const isKycVerified = currentKycStatus === 'verified' || Boolean((user as any)?.is_verified);
-  const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
   const { 
     vendors, 
     myVendor, 
@@ -67,6 +66,7 @@ export default function VendorScreen() {
     fetchCategories,
     createVendor 
   } = useVendorStore();
+  const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
   
   const [activeTab, setActiveTab] = useState('Nearby');
   const [activeSection, setActiveSection] = useState('Vendors');
@@ -252,10 +252,10 @@ export default function VendorScreen() {
 
   const searchSuggestions = React.useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return [] as Array<{ label: string; type: 'vendor' | 'category' | 'job' | 'profession' }>;
+    if (!term) return [] as { label: string; type: 'vendor' | 'category' | 'job' | 'profession' }[];
 
     const seen = new Set<string>();
-    const suggestions: Array<{ label: string; type: 'vendor' | 'category' | 'job' | 'profession' }> = [];
+    const suggestions: { label: string; type: 'vendor' | 'category' | 'job' | 'profession' }[] = [];
 
     if (activeSection === 'Jobs') {
       (jobProfiles || []).forEach((job) => {

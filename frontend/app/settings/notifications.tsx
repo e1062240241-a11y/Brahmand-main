@@ -1,16 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity, BackHandler, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useAuthStore } from '../../src/store/authStore';
 
 function NotificationsSettingsScreen() {
   const router = useRouter();
+  const { fcmToken, initPushNotifications } = useAuthStore();
 
   const handleBack = useCallback(() => {
     router.replace('/profile');
   }, [router]);
+
+  const [receivePush, setReceivePush] = useState(false);
+  const [receiveEmail, setReceiveEmail] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushStatus, setPushStatus] = useState(fcmToken ? 'Enabled' : 'Disabled');
 
   useEffect(() => {
     const backAction = () => {
@@ -21,8 +28,27 @@ function NotificationsSettingsScreen() {
     return () => subscription.remove();
   }, [handleBack]);
 
-  const [receivePush, setReceivePush] = useState(true);
-  const [receiveEmail, setReceiveEmail] = useState(true);
+  useEffect(() => {
+    setReceivePush(!!fcmToken);
+    setPushStatus(fcmToken ? 'Enabled' : 'Disabled');
+  }, [fcmToken]);
+
+  const handleEnablePush = async () => {
+    if (pushLoading) return;
+
+    setPushLoading(true);
+    setPushStatus('Enabling...');
+
+    const token = await initPushNotifications();
+    setPushLoading(false);
+
+    if (token) {
+      setReceivePush(true);
+      setPushStatus('Enabled');
+    } else {
+      setPushStatus('Unable to enable push notifications');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -36,20 +62,43 @@ function NotificationsSettingsScreen() {
 
       <View style={styles.content}>
         <View style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Push Notifications</Text>
+          <View>
+            <Text style={styles.settingLabel}>Push Notifications</Text>
+          </View>
           <Switch
             value={receivePush}
-            onValueChange={setReceivePush}
+            onValueChange={() => {}}
+            disabled
             trackColor={{ false: COLORS.divider, true: `${COLORS.primary}80` }}
             thumbColor={receivePush ? COLORS.primary : '#f4f3f4'}
           />
         </View>
 
+        <View style={styles.pushStatusContainer}>
+          <Text style={styles.pushStatusText}>{pushStatus}</Text>
+          <TouchableOpacity
+            style={[styles.pushButton, pushLoading && styles.pushButtonDisabled]}
+            onPress={handleEnablePush}
+            disabled={pushLoading}
+          >
+            {pushLoading ? (
+              <ActivityIndicator color={COLORS.background} />
+            ) : (
+              <Text style={styles.pushButtonText}>
+                {receivePush ? 'Push Enabled' : 'Enable Push Notifications'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Email Notifications</Text>
+          <View>
+            <Text style={styles.settingLabel}>Email Notifications</Text>
+          </View>
           <Switch
             value={receiveEmail}
-            onValueChange={setReceiveEmail}
+            onValueChange={() => {}}
+            disabled
             trackColor={{ false: COLORS.divider, true: `${COLORS.primary}80` }}
             thumbColor={receiveEmail ? COLORS.primary : '#f4f3f4'}
           />
@@ -100,8 +149,36 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.sm,
   },
+  pushStatusContainer: {
+    marginBottom: SPACING.sm,
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  pushStatusText: {
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+  },
+  pushButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+  },
+  pushButtonDisabled: {
+    backgroundColor: COLORS.divider,
+  },
+  pushButtonText: {
+    color: COLORS.background,
+    fontWeight: '600',
+  },
   settingLabel: {
     fontSize: 16,
     color: COLORS.text,
+  },
+  settingSubLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 4,
   },
 });

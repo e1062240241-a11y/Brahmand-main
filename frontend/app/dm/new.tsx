@@ -209,7 +209,7 @@ export default function NewDMScreen() {
             <View style={styles.userCard}>
               <Avatar name={foundUser.name} photo={foundUser.photo} size={50} />
               <View style={styles.userInfo}>
-                <Text style={styles.userName}>{foundUser.name}</Text>
+                <Text style={styles.selectedUserName}>{foundUser.name}</Text>
                 <Text style={styles.userSlId}>{foundUser.sl_id}</Text>
               </View>
               <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.md,
   },
-  userName: {
+  selectedUserName: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,

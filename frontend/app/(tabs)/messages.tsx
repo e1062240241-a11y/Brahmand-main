@@ -21,7 +21,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
-import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity } from '../../src/services/api';
+import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { Avatar } from '../../src/components/Avatar';
 
@@ -109,7 +109,7 @@ export default function MessagesScreen() {
   const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
-  const [requestType, setRequestType] = useState<'Blood' | 'Medical' | 'Petition'>('Blood');
+  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Blood');
   const [showCGModal, setShowCGModal] = useState(false);
   const [cgSearch, setCGSearch] = useState('');
   const [cgList, setCGList] = useState<string[]>([]);
@@ -194,9 +194,9 @@ export default function MessagesScreen() {
   };
 
   useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
+    // if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    //   UIManager.setLayoutAnimationEnabledExperimental(true);
+    // }
     fetchData();
     fetchUserCG();
     if (activeTopTab === 'Private Chat') {
@@ -250,6 +250,15 @@ export default function MessagesScreen() {
     loadLokSangmaOptions();
     setShowLokSangmaModal(true);
   };
+
+  const fetchUserLokSangma = useCallback(async () => {
+    try {
+      const res = await getUserCulturalCommunity();
+      setUserLokSangma(res.data);
+    } catch (error) {
+      console.error('Error fetching Lok Sangam:', error);
+    }
+  }, []);
 
   const handleSelectLokSangma = async (community: string) => {
     if (userLokSangma?.is_locked) {
@@ -867,33 +876,46 @@ export default function MessagesScreen() {
             {cgLoading ? (
               <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
             ) : (
-              <FlatList
-                data={cgList}
-                keyExtractor={(item, index) => `${item}-${index}`}
-                renderItem={({ item }) => (
+              <>
+                {cgSearch.trim().length > 0 && !cgList.some((item) => item.toLowerCase() === cgSearch.trim().toLowerCase()) && (
                   <TouchableOpacity
-                    style={[
-                      styles.cgItem,
-                      userCG?.cultural_community === item && styles.cgItemSelected,
-                    ]}
-                    onPress={() => handleSelectCG(item)}
+                    style={styles.cgCreateButton}
+                    onPress={() => handleSelectCG(cgSearch.trim())}
+                    disabled={userCG?.is_locked}
                   >
-                    <Text style={[
-                      styles.cgItemText,
-                      userCG?.cultural_community === item && styles.cgItemTextSelected,
-                    ]}>
-                      {item}
+                    <Text style={styles.cgCreateButtonText}>
+                      Use "{cgSearch.trim()}" as my culture group
                     </Text>
-                    {userCG?.cultural_community === item && (
-                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                    )}
                   </TouchableOpacity>
                 )}
-                style={styles.cgList}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>No communities found</Text>
-                }
-              />
+                <FlatList
+                  data={cgList}
+                  keyExtractor={(item, index) => `${item}-${index}`}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.cgItem,
+                        userCG?.cultural_community === item && styles.cgItemSelected,
+                      ]}
+                      onPress={() => handleSelectCG(item)}
+                    >
+                      <Text style={[
+                        styles.cgItemText,
+                        userCG?.cultural_community === item && styles.cgItemTextSelected,
+                      ]}>
+                        {item}
+                      </Text>
+                      {userCG?.cultural_community === item && (
+                        <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  style={styles.cgList}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>No communities found</Text>
+                  }
+                />
+              </>
             )}
           </View>
         </View>
@@ -1491,6 +1513,17 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
     marginBottom: SPACING.sm,
     color: COLORS.text,
+  },
+  cgCreateButton: {
+    padding: SPACING.sm,
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.sm,
+    alignItems: 'center',
+  },
+  cgCreateButtonText: {
+    color: COLORS.background,
+    fontWeight: '700',
   },
   cgList: {
     maxHeight: 300,

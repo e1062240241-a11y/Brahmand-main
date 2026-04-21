@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getCommunities, createCommunityRequest, getCommunityRequests, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity } from '../../src/services/api';
+import { getCommunities, createCommunityRequest, getCommunityRequests, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
@@ -494,34 +494,47 @@ export default function CommunityScreen() {
             {cgLoading ? (
               <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
             ) : (
-              <FlatList
-                data={cgList}
-                keyExtractor={(item, index) => `${item}-${index}`}
-                renderItem={({ item }) => (
+              <>
+                {cgSearch.trim().length > 0 && !cgList.some((item) => item.toLowerCase() === cgSearch.trim().toLowerCase()) && (
                   <TouchableOpacity
-                    style={[
-                      styles.cgItem,
-                      userCG?.cultural_community === item && styles.cgItemSelected
-                    ]}
-                    onPress={() => handleSelectCG(item)}
+                    style={styles.cgCreateButton}
+                    onPress={() => handleSelectCG(cgSearch.trim())}
                     disabled={userCG?.is_locked}
                   >
-                    <Text style={[
-                      styles.cgItemText,
-                      userCG?.cultural_community === item && styles.cgItemTextSelected
-                    ]}>
-                      {item}
+                    <Text style={styles.cgCreateButtonText}>
+                      Use "{cgSearch.trim()}" as my Lok Sangam
                     </Text>
-                    {userCG?.cultural_community === item && (
-                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                    )}
                   </TouchableOpacity>
                 )}
-                style={styles.cgList}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>No communities found</Text>
-                }
-              />
+                <FlatList
+                  data={cgList}
+                  keyExtractor={(item, index) => `${item}-${index}`}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.cgItem,
+                        userCG?.cultural_community === item && styles.cgItemSelected
+                      ]}
+                      onPress={() => handleSelectCG(item)}
+                      disabled={userCG?.is_locked}
+                    >
+                      <Text style={[
+                        styles.cgItemText,
+                        userCG?.cultural_community === item && styles.cgItemTextSelected
+                      ]}>
+                        {item}
+                      </Text>
+                      {userCG?.cultural_community === item && (
+                        <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  style={styles.cgList}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>No communities found</Text>
+                  }
+                />
+              </>
             )}
           </View>
         </View>
@@ -855,6 +868,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.primary,
     textAlign: 'center',
+  },
+  cgCreateButton: {
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.primary,
+    marginBottom: SPACING.md,
+    alignItems: 'center',
+  },
+  cgCreateButtonText: {
+    fontWeight: '700',
+    color: COLORS.background,
   },
   searchInput: {
     backgroundColor: COLORS.background,

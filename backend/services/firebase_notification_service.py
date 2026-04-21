@@ -145,11 +145,38 @@ class FirebaseNotificationService:
             total_success = 0
             
             for chunk in chunks:
-                message = fcm.MulticastMessage(
-                    notification=fcm.Notification(title=title, body=body),
-                    data=data or {},
-                    tokens=chunk
-                )
+                if data and data.get('type') == 'sos_alert':
+                    android_config = fcm.AndroidConfig(
+                        priority='high',
+                        notification=fcm.AndroidNotification(
+                            channel_id='messages',
+                            click_action='SOS_ACTION',
+                            sound='default'
+                        )
+                    )
+                    apns_config = fcm.APNSConfig(
+                        payload=fcm.APNSPayload(
+                            aps=fcm.Aps(
+                                sound='default',
+                                badge=1,
+                                content_available=True,
+                                category='SOS_ALERT'
+                            )
+                        )
+                    )
+                    message = fcm.MulticastMessage(
+                        notification=fcm.Notification(title=title, body=body),
+                        data=data or {},
+                        android=android_config,
+                        apns=apns_config,
+                        tokens=chunk
+                    )
+                else:
+                    message = fcm.MulticastMessage(
+                        notification=fcm.Notification(title=title, body=body),
+                        data=data or {},
+                        tokens=chunk
+                    )
                 response = fcm.send_multicast(message)
                 total_success += response.success_count
             

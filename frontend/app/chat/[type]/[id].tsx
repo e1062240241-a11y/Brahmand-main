@@ -24,6 +24,70 @@ const getChatImageManipulator = async () => {
   return chatImageManipulator;
 };
 
+type ChatMessageItemProps = {
+  item: Message;
+  index: number;
+  userId?: string;
+  renderMessageContent: (message: Message) => React.ReactNode;
+  formatChatDate: (dateString: string) => string;
+  formatTime: (dateString: string) => string;
+  shouldShowDateSeparator: (index: number, currentDateString: string) => boolean;
+};
+
+const ChatMessageItem = React.memo(({
+  item,
+  index,
+  userId,
+  renderMessageContent,
+  formatChatDate,
+  formatTime,
+  shouldShowDateSeparator,
+}: ChatMessageItemProps) => {
+  const isOwnMessage = item.sender_id === userId;
+
+  return (
+    <>
+      {shouldShowDateSeparator(index, item.created_at) && (
+        <View style={styles.dateSeparatorContainer}>
+          <View style={styles.dateSeparator}>
+            <Text style={styles.dateSeparatorText}>{formatChatDate(item.created_at)}</Text>
+          </View>
+        </View>
+      )}
+      <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
+        {!isOwnMessage && (
+          <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
+        )}
+        <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
+          {!isOwnMessage && (
+            <Text style={styles.senderName}>{item.sender_name}</Text>
+          )}
+          {renderMessageContent(item)}
+          <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
+            {formatTime(item.created_at)}
+          </Text>
+        </View>
+      </View>
+    </>
+  );
+}, (prevProps, nextProps) => {
+  const prevItem = prevProps.item;
+  const nextItem = nextProps.item;
+  return (
+    prevItem.id === nextItem.id &&
+    prevItem.sender_id === nextItem.sender_id &&
+    prevItem.created_at === nextItem.created_at &&
+    prevItem.content === nextItem.content &&
+    prevItem.text === nextItem.text &&
+    prevItem.message_type === nextItem.message_type &&
+    prevItem.sender_name === nextItem.sender_name &&
+    prevItem.sender_photo === nextItem.sender_photo &&
+    prevItem.status === nextItem.status &&
+    prevProps.userId === nextProps.userId &&
+    prevProps.index === nextProps.index
+  );
+});
+
 let chatContacts: typeof ContactsType | null = null;
 const getChatContacts = async () => {
   if (!chatContacts) {
@@ -32,7 +96,7 @@ const getChatContacts = async () => {
   return chatContacts;
 };
 
-export default function ChatScreen() {
+const ChatScreen = () => {
   const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -66,7 +130,7 @@ export default function ChatScreen() {
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [contactShareName, setContactShareName] = useState('');
   const [contactSharePhone, setContactSharePhone] = useState('');
-  const [phoneContacts, setPhoneContacts] = useState<Contacts.Contact[]>([]);
+  const [phoneContacts, setPhoneContacts] = useState<ContactsType.Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sharingContact, setSharingContact] = useState(false);
   const attachmentAnim = useRef(new Animated.Value(0)).current;
@@ -505,9 +569,7 @@ export default function ChatScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ((ImagePicker as any).MediaType?.Images
-          ? [(ImagePicker as any).MediaType.Images]
-          : ImagePicker.MediaTypeOptions.Images) as any,
+        mediaTypes: ['images'] as any,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
@@ -544,6 +606,10 @@ export default function ChatScreen() {
   const isSoloGroup = (circleInfo?.members?.length || 0) <= 1;
   const leaveGroupLabel = isSoloGroup ? 'Delete Group' : 'Leave Group';
   const leaveGroupDisabled = false;
+
+  const navigateToPrivateChatTab = () => {
+    router.replace('/messages?tab=Private%20Chat');
+  };
 
   const handleLeaveGroup = async () => {
     console.log('[Chat] Leave group triggered', { type, id, circleInfo, userId: user?.id });
@@ -604,12 +670,7 @@ export default function ChatScreen() {
     : (type === 'community' ? (subgroup || 'Community') : 'Circle');
 
   const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
-    const pickerType = mediaType === 'image' ? 'Images' : 'Videos';
-    return ((ImagePicker as any).MediaType?.[pickerType]
-      ? [(ImagePicker as any).MediaType[pickerType]]
-      : mediaType === 'image'
-        ? ImagePicker.MediaTypeOptions.Images
-        : ImagePicker.MediaTypeOptions.Videos) as any;
+    return [mediaType === 'image' ? 'images' : 'videos'] as any;
   };
 
   const inferUploadMimeType = (asset: any, mediaType: 'image' | 'video') => {
@@ -838,7 +899,8 @@ export default function ChatScreen() {
     }
 
     try {
-      const permission = await Contacts.requestPermissionsAsync();
+      const contactsModule = await getChatContacts();
+      const permission = await contactsModule.requestPermissionsAsync();
       if (permission.status !== 'granted') {
         Alert.alert('Permission required', 'Please allow contacts access to share phone contacts.');
         return false;
@@ -857,13 +919,14 @@ export default function ChatScreen() {
       const permissionGranted = await requestContactsPermission();
       if (!permissionGranted) return false;
 
-      const contactResult = await Contacts.getContactsAsync({
-        fields: [Contacts.Fields.PhoneNumbers],
+      const contactsModule = await getChatContacts();
+      const contactResult = await contactsModule.getContactsAsync({
+        fields: [contactsModule.Fields.PhoneNumbers],
         pageSize: 2000,
-        sort: Contacts.SortTypes.FirstName,
+        sort: contactsModule.SortTypes.FirstName,
       });
 
-      const contactsWithNumbers = (contactResult.data || []).filter((contact) => contact.phoneNumbers?.length);
+      const contactsWithNumbers = (contactResult.data || []).filter((contact: ContactsType.Contact) => contact.phoneNumbers?.length);
       setPhoneContacts(contactsWithNumbers);
       if (!contactsWithNumbers.length) {
         Alert.alert('No contacts found', 'No contacts with phone numbers were found on this device.');
@@ -890,7 +953,7 @@ export default function ChatScreen() {
     }
   };
 
-  const handleSelectPhoneContact = (contact: Contacts.Contact) => {
+  const handleSelectPhoneContact = (contact: ContactsType.Contact) => {
     const phone = contact.phoneNumbers?.[0]?.number?.trim() || '';
     const name = contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Contact';
     if (!phone) {
@@ -970,35 +1033,19 @@ export default function ChatScreen() {
     return !isSameDay(currentDate, previousDate);
   };
 
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isOwnMessage = item.sender_id === user?.id;
-
+  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
     return (
-      <>
-        {shouldShowDateSeparator(index, item.created_at) && (
-          <View style={styles.dateSeparatorContainer}>
-            <View style={styles.dateSeparator}>
-              <Text style={styles.dateSeparatorText}>{formatChatDate(item.created_at)}</Text>
-            </View>
-          </View>
-        )}
-        <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
-          {!isOwnMessage && (
-            <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
-          )}
-          <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
-            {!isOwnMessage && (
-              <Text style={styles.senderName}>{item.sender_name}</Text>
-            )}
-            {renderMessageContent(item)}
-            <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
-              {formatTime(item.created_at)}
-            </Text>
-          </View>
-        </View>
-      </>
+      <ChatMessageItem
+        item={item}
+        index={index}
+        userId={user?.id}
+        renderMessageContent={renderMessageContent}
+        formatChatDate={formatChatDate}
+        formatTime={formatTime}
+        shouldShowDateSeparator={shouldShowDateSeparator}
+      />
     );
-  };
+  }, [user?.id, renderMessageContent, formatChatDate, formatTime, shouldShowDateSeparator]);
 
   if (loading) {
     return (
@@ -1217,7 +1264,7 @@ export default function ChatScreen() {
               animationType="fade"
               onRequestClose={() => setShowContactModal(false)}
             >
-              <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactModal(false)} />
+              <TouchableOpacity style={styles.contactModalBackdrop} activeOpacity={1} onPress={() => setShowContactModal(false)} />
               <View style={styles.contactModalCard}>
                 <View style={styles.contactModalHeader}>
                   <Text style={styles.contactModalTitle}>Share Contact</Text>
@@ -1279,7 +1326,7 @@ export default function ChatScreen() {
               animationType="fade"
               onRequestClose={() => setShowContactPicker(false)}
             >
-              <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactPicker(false)} />
+              <TouchableOpacity style={styles.contactModalBackdrop} activeOpacity={1} onPress={() => setShowContactPicker(false)} />
               <View style={[styles.contactModalCard, { maxHeight: '70%' }]}> 
                 <View style={styles.contactModalHeader}>
                   <Text style={styles.contactModalTitle}>Choose Contact</Text>
@@ -1292,7 +1339,7 @@ export default function ChatScreen() {
                 ) : (
                   <FlatList
                     data={phoneContacts}
-                    keyExtractor={(item) => item.id || item.name || item.phoneNumbers?.[0]?.id || String(Math.random())}
+                    keyExtractor={(item, index) => String((item as any).id || item.name || item.phoneNumbers?.[0]?.id || index)}
                     renderItem={({ item }) => {
                       const phone = item.phoneNumbers?.[0]?.number || 'No number';
                       const name = item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Unknown';
@@ -1724,6 +1771,24 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     flexGrow: 1,
   },
+  dateSeparatorContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginVertical: SPACING.sm,
+  },
+  dateSeparator: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 4,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  dateSeparatorText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
   messageContainer: {
     flexDirection: 'row',
     marginBottom: SPACING.md,
@@ -1780,38 +1845,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 22,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 15,
-    color: COLORS.text,
-    maxHeight: 40,
-    minHeight: 40,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: SPACING.sm,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
   },
   inputWrapperContainer: {
     paddingHorizontal: 16,
@@ -2029,7 +2062,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
-  modalBackdrop: {
+  contactModalBackdrop: {
     position: 'absolute',
     top: 0,
     bottom: 0,
@@ -2398,3 +2431,4 @@ const styles = StyleSheet.create({
     marginVertical: SPACING.md,
   },
 });
+export default ChatScreen;

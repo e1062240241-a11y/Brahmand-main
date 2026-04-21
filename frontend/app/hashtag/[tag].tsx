@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { searchByHashtag, getPostComments, addPostComment } from '../../src/services/api';
-import PostFeedCard from '../../src/components/PostFeedCard';
+import { PostFeedCard } from '../../src/components/PostFeedCard';
 import { Avatar } from '../../src/components/Avatar';
-import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING } from '../../src/constants/theme';
 
 // Helper
@@ -31,9 +31,11 @@ const formatTimeAgo = (dateString: string | null | undefined) => {
 };
 
 
-export default function HashtagPage() {
-  const { tag } = useLocalSearchParams<{ tag: string }>();
+const HashtagPage = () => {
+  const { tag } = useLocalSearchParams<{ tag: string | string[] }>();
   const router = useRouter();
+  const rawTag = Array.isArray(tag) ? tag[0] : tag;
+  const normalizedTag = rawTag ? decodeURIComponent(rawTag) : rawTag;
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [offset, setOffset] = useState(0);
@@ -49,10 +51,15 @@ export default function HashtagPage() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
 
 
-  const loadHashtagPosts = async (pageOffset: number = 0) => {
+  const loadHashtagPosts = useCallback(async (pageOffset: number = 0) => {
+    if (!normalizedTag) {
+      setLoading(false);
+      setHasMore(false);
+      return;
+    }
     if (pageOffset === 0) setLoading(true);
     try {
-      const response = await searchByHashtag(tag, 20, pageOffset);
+      const response = await searchByHashtag(normalizedTag, 20, pageOffset);
       const newPosts = response.data?.items || [];
       
       if (pageOffset === 0) {
@@ -68,11 +75,11 @@ export default function HashtagPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [normalizedTag]);
 
   useEffect(() => {
     loadHashtagPosts(0);
-  }, [tag]);
+  }, [loadHashtagPosts]);
 
   const handleLoadMore = () => {
     if (!loading && hasMore) {
@@ -142,17 +149,14 @@ export default function HashtagPage() {
     }
   };
 
-  const handleOpenPostUserProfile = (userId: string) => {
-    router.push(`/profile/${userId}`);
+  const handleOpenPostUserProfile = (post: any) => {
+    const userId = post?.user_id || post?.user?.id;
+    if (!userId) return;
+    router.push({ pathname: '/profile/[id]', params: { id: String(userId) } } as any);
   };
 
   const handleSharePost = async (post: any) => {
     try {
-      const appLink = `https://brahmand.app/posts/${post.id}`;
-      const mediaUrl = post.media_url;
-      const message = post.text || post.title || 'Check this out!';
-
-      // Share logic would go here
       alert('Share functionality would open share sheet');
     } catch (error) {
       console.warn('Share failed:', error);
@@ -175,7 +179,7 @@ export default function HashtagPage() {
             <Ionicons name="chevron-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={{ fontSize: 18, fontWeight: '600', color: COLORS.text, marginLeft: 12 }}>
-            #{tag}
+            #{normalizedTag || ''}
           </Text>
         </View>
       </View>
@@ -214,7 +218,7 @@ export default function HashtagPage() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
           <Ionicons name="search" size={48} color={COLORS.textLight} />
           <Text style={{ fontSize: 16, color: COLORS.textLight, marginTop: 12, textAlign: 'center' }}>
-            No posts found for #{tag}
+            No posts found for #{normalizedTag || ''}
           </Text>
         </View>
       )}
@@ -461,3 +465,4 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
   },
 });
+export default HashtagPage;
