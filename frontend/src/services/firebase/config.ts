@@ -1,9 +1,8 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Firebase configuration for Sanatan Lok - loaded from environment variables
 // For web/local development, ensure .env file is present and variables are loaded
@@ -46,6 +45,21 @@ let db: Firestore;
 let storage: FirebaseStorage;
 let auth: any;
 
+function getNativeAuthModule() {
+  try {
+    return require('@react-native-firebase/auth');
+  } catch (e) {
+    try {
+      return require('@react-native-firebase/auth/lib/modular');
+    } catch (innerError: any) {
+      const errorMessage =
+        innerError?.message ||
+        (typeof innerError === 'string' ? innerError : JSON.stringify(innerError));
+      throw new Error(`@react-native-firebase/auth package is not available: ${errorMessage}`);
+    }
+  }
+}
+
 export function initializeFirebase(): FirebaseApp {
   if (getApps().length === 0) {
     // Log minimal config to verify environment variables are loaded in the web bundle
@@ -62,21 +76,19 @@ export function initializeFirebase(): FirebaseApp {
 
 export function getFirebaseAuth() {
   if (!auth) {
-    const firebaseApp = initializeFirebase();
     if (Platform.OS === 'web') {
+      const firebaseApp = initializeFirebase();
       auth = getAuth(firebaseApp);
     } else {
-      try {
-        auth = initializeAuth(firebaseApp, {
-          persistence: getReactNativePersistence(AsyncStorage),
-        });
-      } catch (e: any) {
-        if (e?.code === 'auth/already-initialized' || String(e?.message || '').includes('already been initialized')) {
-          auth = getAuth(firebaseApp);
-        } else {
-          console.warn('[Firebase Auth] Failed to initialize auth with persistence, falling back to default auth:', e);
-          auth = getAuth(firebaseApp);
-        }
+      const authModule = getNativeAuthModule();
+      if (typeof authModule.getAuth === 'function') {
+        auth = authModule.getAuth();
+      } else if (typeof authModule.default === 'function') {
+        auth = authModule.default();
+      } else if (typeof authModule === 'function') {
+        auth = authModule();
+      } else {
+        throw new Error('@react-native-firebase/auth was loaded but no auth initializer was found');
       }
     }
   }

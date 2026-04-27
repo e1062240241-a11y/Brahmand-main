@@ -1,54 +1,48 @@
-import { initializeApp, getApps } from 'firebase/app';
 import { 
-  getAuth, 
-  initializeAuth,
-  getReactNativePersistence,
   signInWithPhoneNumber,
   RecaptchaVerifier,
-  ConfirmationResult,
-  Auth
+  ConfirmationResult
 } from 'firebase/auth';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Firebase configuration - must match Firebase project "sanatan-lok"
-const firebaseConfig = {
-  apiKey: "AIzaSyAfMGn2Njs6Wdp8ZTpBS0jDS4KD7B7cTp4",
-  authDomain: "sanatan-lok.firebaseapp.com",
-  projectId: "sanatan-lok",
-  storageBucket: "sanatan-lok.firebasestorage.app",
-  messagingSenderId: "103222994071",
-  appId: "1:103222994071:web:bf5b9aa1775e0c84e8f5d2",
-  measurementId: "G-X7VBBCHKXG"
-};
+import { getFirebaseAuth } from './config';
 
 // Initialize Firebase
-let app: any;
-let auth: Auth;
+let auth: any;
 
-export function initializeFirebaseAuth(): Auth {
-  if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApps()[0];
-  }
-  
+function getNativeAuthModule() {
   try {
-    if (Platform.OS === 'web') {
-      auth = getAuth(app);
-    } else {
-      auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage),
-      });
-    }
-  } catch (error) {
+    return require('@react-native-firebase/auth');
+  } catch (e) {
     try {
-      auth = getAuth(app);
-    } catch {
-      throw error;
+      return require('@react-native-firebase/auth/lib/modular');
+    } catch (innerError) {
+      const errorMessage =
+        (innerError as any)?.message ||
+        (typeof innerError === 'string' ? innerError : JSON.stringify(innerError));
+      throw new Error(`@react-native-firebase/auth package is not available: ${errorMessage}`);
     }
   }
-  
+}
+
+export function initializeFirebaseAuth(): any {
+  if (Platform.OS === 'web') {
+    auth = getFirebaseAuth();
+    return auth;
+  }
+
+  if (!auth) {
+    const authModule = getNativeAuthModule();
+    if (typeof authModule.getAuth === 'function') {
+      auth = authModule.getAuth();
+    } else if (typeof authModule.default === 'function') {
+      auth = authModule.default();
+    } else if (typeof authModule === 'function') {
+      auth = authModule();
+    } else {
+      throw new Error('@react-native-firebase/auth was loaded but no auth initializer was found');
+    }
+  }
+
   return auth;
 }
 
@@ -104,7 +98,7 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
       return confirmationResult;
     } else {
       try {
-        const authModule = require('@react-native-firebase/auth');
+        const authModule = getNativeAuthModule();
         const getNativeAuth = authModule.getAuth;
         const nativeSignInWithPhoneNumber = authModule.signInWithPhoneNumber;
 
@@ -121,22 +115,7 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
         return confirmation;
       } catch (nativeError: any) {
         console.error('[Firebase] Native OTP failed:', nativeError, 'code=', nativeError?.code);
-
-        if (nativeError?.code === 'auth/missing-client-identifier' || nativeError?.code === 'auth/app-not-authorized') {
-          if (verifier) {
-            try {
-              const webConfirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
-              confirmationResult = webConfirmation;
-              console.log('[Firebase] OTP sent using web verifier fallback');
-              return webConfirmation;
-            } catch (fallbackError) {
-              console.error('[Firebase] Web verifier fallback failed:', fallbackError);
-            }
-          }
-          throw new Error('Phone auth is not fully configured for this Android build. Add SHA-1/SHA-256 for com.brahmand.sanatanlok in Firebase and enable Play Integrity for Phone Auth.');
-        }
-
-        throw nativeError;
+        throw new Error('Phone auth is not configured for this native build. Ensure @react-native-firebase/auth is installed and linked, the Android package has SHA-1/SHA-256 in Firebase (com.brahmand.app), and Play Integrity is enabled.');
       }
     }
   } catch (error: any) {

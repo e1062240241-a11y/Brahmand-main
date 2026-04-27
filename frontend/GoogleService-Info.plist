@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.brahmand.sanatanlok</string>
+	<string>com.brahmand.app</string>
 	<key>PROJECT_ID</key>
 	<string>sanatan-lok</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:103222994071:ios:8e26c99ecd345f82e8f5d2</string>
+	<string>1:103222994071:ios:3b0a738a0cb398f7e8f5d2</string>
 </dict>
 </plist>

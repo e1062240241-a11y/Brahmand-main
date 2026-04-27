@@ -1532,6 +1532,22 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
             },
             'is_read': False,
         })
+
+        try:
+            target_token = await push_service.get_user_fcm_token(user_id)
+            if target_token:
+                push_service.send_notification(
+                    token=target_token,
+                    title='New follower',
+                    body=f'{follower_name} started following you.',
+                    data={
+                        'type': 'follow',
+                        'actor_user_id': current_user_id,
+                    },
+                    channel_id='messages'
+                )
+        except Exception as push_err:
+            logger.warning(f"Followed user {user_id} but failed to send push: {push_err}")
     except Exception as notify_err:
         logger.warning(f"Followed user {user_id} but failed to create notification: {notify_err}")
 
@@ -2105,6 +2121,46 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     else:
         await db.array_union_update('posts', post_id, 'liked_by', [user_id])
 
+        post_owner_id = post.get('user_id')
+        if post_owner_id and post_owner_id != user_id:
+            try:
+                actor_user = await db.get_document('users', user_id)
+                actor_name = (
+                    (actor_user or {}).get('name')
+                    or (actor_user or {}).get('sl_id')
+                    or 'Someone'
+                )
+
+                await db.create_document('notifications', {
+                    'user_id': post_owner_id,
+                    'title': 'New like on your post',
+                    'body': f'{actor_name} liked your post.',
+                    'notification_type': 'social',
+                    'data': {
+                        'post_id': post_id,
+                        'actor_user_id': user_id,
+                        'actor_name': actor_name,
+                        'action': 'like',
+                    },
+                    'is_read': False,
+                })
+
+                post_owner_token = await push_service.get_user_fcm_token(post_owner_id)
+                if post_owner_token:
+                    push_service.send_notification(
+                        token=post_owner_token,
+                        title='New like on your post',
+                        body=f'{actor_name} liked your post.',
+                        data={
+                            'type': 'post_like',
+                            'post_id': str(post_id),
+                            'actor_user_id': str(user_id),
+                        },
+                        channel_id='messages'
+                    )
+            except Exception as notify_err:
+                logger.warning(f"Post like notification failed for post {post_id}: {notify_err}")
+
     updated_post = await db.get_document('posts', post_id)
     updated_liked_by = updated_post.get('liked_by', []) or []
     likes_count = len(updated_liked_by)
@@ -2199,6 +2255,44 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
     top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
     updated_post['top_comments'] = top_comments[:5]
+
+    post_owner_id = post.get('user_id')
+    if post_owner_id and post_owner_id != user_id:
+        try:
+            actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
+            preview_text = text if len(text) <= 80 else f"{text[:77]}..."
+
+            await db.create_document('notifications', {
+                'user_id': post_owner_id,
+                'title': 'New comment on your post',
+                'body': f'{actor_name} commented: "{preview_text}"',
+                'notification_type': 'social',
+                'data': {
+                    'post_id': str(post_id),
+                    'comment_id': str(comment_id),
+                    'actor_user_id': str(user_id),
+                    'actor_name': actor_name,
+                    'action': 'comment',
+                },
+                'is_read': False,
+            })
+
+            post_owner_token = await push_service.get_user_fcm_token(post_owner_id)
+            if post_owner_token:
+                push_service.send_notification(
+                    token=post_owner_token,
+                    title='New comment on your post',
+                    body=f'{actor_name} commented: "{preview_text}"',
+                    data={
+                        'type': 'post_comment',
+                        'post_id': str(post_id),
+                        'comment_id': str(comment_id),
+                        'actor_user_id': str(user_id),
+                    },
+                    channel_id='messages'
+                )
+        except Exception as notify_err:
+            logger.warning(f"Post comment notification failed for post {post_id}: {notify_err}")
 
     return {
         'message': 'Comment added',
@@ -6875,11 +6969,44 @@ async def _get_nearest_users(
             candidates.append((distance, user.get('id')))
 
     candidates.sort(key=lambda item: item[0])
-    return [user_id for _, user_id in candidates[:max_users]]
+    logger.info(f"_get_nearby_users: found {len(candidates)} users within {max_distance_km}km")
+    return [uid for _, uid in candidates[:max_users]]
+
+
+async def _get_community_users(
+    db: FirestoreDB,
+    user_id: str,
+    max_users: int = 100
+):
+    """Fallback: Get users from same community as the SOS creator"""
+    user = await db.get_document('users', user_id)
+    if not user:
+        return []
+    
+    user_communities = user.get('communities', []) or user.get('default_communities', [])
+    if not user_communities:
+        return []
+    
+    community_members = set()
+    for comm_id in user_communities[:3]:
+        comm = await db.get_document('communities', comm_id)
+        if comm:
+            members = comm.get('members', [])
+            for member_id in members:
+                if member_id != user_id:
+                    community_members.add(member_id)
+                    if len(community_members) >= max_users:
+                        break
+        if len(community_members) >= max_users:
+            break
+    
+    logger.info(f"_get_community_users: found {len(community_members)} community members")
+    return list(community_members)[:max_users]
 
 
 async def _send_sos_notifications(user_ids: list, title: str, body: str, data: dict):
     if not user_ids:
+        logger.warning("_send_sos_notifications: no user_ids provided")
         return {"sent": 0}
     try:
         result = await FirebaseNotificationService.send_multicast(user_ids, title, body, data)
@@ -6986,35 +7113,49 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     sos_id = await db.create_document('sos_alerts', sos_data)
     sos_data['id'] = sos_id
 
+    # First try to get nearest users by location
     nearest_user_ids = await _get_nearest_users(
         db,
         user_id,
         data.latitude,
         data.longitude,
-        max_users=200,
+        max_users=150,
         max_distance_km=1.0
     )
-    initial_batch = nearest_user_ids[:50]
-    if initial_batch:
+    
+    # Fallback to community members if no nearby users found
+    all_target_user_ids = nearest_user_ids
+    if len(nearest_user_ids) < 10:
+        community_users = await _get_community_users(db, user_id, 100)
+        all_target_user_ids = list(set(nearest_user_ids + community_users))
+        logger.info(f"SOS: using {len(all_target_user_ids)} total targets (nearby: {len(nearest_user_ids)}, community: {len(community_users)})")
+    
+    # Send simple SOS notification to all target users
+    if all_target_user_ids:
         await db.update_document('sos_alerts', sos_id, {
-            'notified_user_ids': initial_batch,
+            'notified_user_ids': all_target_user_ids,
             'escalation_step': 1
         })
-        title = f"Emergency SOS nearby: {sos_data['emergency_type'].title()}"
-        body = f"{user.get('name')} needs help at {sos_data['micro_location'] or 'nearby'}"
-        await _send_sos_notifications(initial_batch, title, body, {
+        
+        # Simple message format
+        sos_type_display = sos_data['emergency_type'].title() if sos_data['emergency_type'] else 'Emergency'
+        title = f"🚨 {user.get('name')} created a {sos_type_display} SOS"
+        body = f"Location: {sos_data['micro_location'] or area}"
+        
+        notification_data = {
             'type': 'sos_alert',
             'sos_id': sos_id,
-            'creator_sl_id': user.get('sl_id'),
+            'creator_name': user.get('name', 'User'),
+            'creator_sl_id': user.get('sl_id', ''),
+            'sos_type': sos_data['emergency_type'] or 'emergency',
             'latitude': str(data.latitude),
             'longitude': str(data.longitude),
-            'action_accept': 'accept_sos',
-            'action_deny': 'deny_sos',
-            'action_label_accept': 'Accept',
-            'action_label_deny': 'Deny'
-        })
-        if len(nearest_user_ids) > 50:
-            asyncio.create_task(_escalate_sos_notifications(sos_id, nearest_user_ids))
+            'phone': user.get('phone', ''),
+            'micro_location': sos_data['micro_location'] or '',
+        }
+        
+        await _send_sos_notifications(all_target_user_ids, title, body, notification_data)
+        logger.info(f"SOS: sent notification to {len(all_target_user_ids)} users")
 
     # Broadcast to community chat
     community_ids = user.get('communities', [])
@@ -7159,9 +7300,16 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     if response not in ['coming', 'called']:
         raise HTTPException(status_code=400, detail="Response must be 'coming' or 'called'")
     
+    # Check if already responded
+    existing_responders = alert.get('responders', []) or []
+    for existing in existing_responders:
+        if existing.get('user_id') == user_id:
+            raise HTTPException(status_code=400, detail="You already responded to this SOS")
+    
     responder_data = {
         "user_id": user_id,
         "user_name": user.get('name'),
+        "user_photo": user.get('photo'),
         "response": response,
         "status": 'on_the_way' if response == 'coming' else 'called',
         "responded_at": datetime.utcnow().isoformat()
@@ -7169,21 +7317,37 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     
     await db.array_union_update('sos_alerts', sos_id, 'responders', [responder_data])
     
-    await FirebaseNotificationService.send_push_notification(
-        alert.get('user_id'),
-        'SOS response received',
-        f"{user.get('name')} has responded to your SOS.",
-        {'type': 'sos_response', 'sos_id': sos_id, 'response': response}
-    )
+    # Get updated responder count
+    updated_alert = await db.get_document('sos_alerts', sos_id)
+    responder_count = len(updated_alert.get('responders', []) or [])
+    
+    # Send notification to SOS creator with count
+    creator_user_id = updated_alert.get('user_id')
+    if creator_user_id:
+        count_msg = f"{responder_count} {'person is' if responder_count == 1 else 'people are'} on the way to help"
+        await FirebaseNotificationService.send_push_notification(
+            creator_user_id,
+            f'{user.get("name")} is coming to help!',
+            count_msg,
+            {
+                'type': 'sos_responder_count', 
+                'sos_id': sos_id, 
+                'responder_count': str(responder_count),
+                'responder_name': user.get('name'),
+                'response': response
+            }
+        )
+        logger.info(f"SOS {sos_id}: Notified creator of {responder_count} responder(s)")
 
     await sio.emit('sos_response', {
         'sos_id': sos_id,
         'responder_id': user_id,
         'responder_name': user.get('name'),
+        'responder_count': responder_count,
         'response': response
     })
     
-    logger.info(f"User {user_id} responded to SOS {sos_id}: {response}")
+    logger.info(f"User {user_id} responded to SOS {sos_id}: {response} (total responders: {responder_count})")
     return {"message": f"Response recorded: {response}"}
 
 

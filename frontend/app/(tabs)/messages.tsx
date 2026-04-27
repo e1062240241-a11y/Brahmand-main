@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -16,6 +17,7 @@ import {
   UIManager,
   Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +26,23 @@ import { useAuthStore } from '../../src/store/authStore';
 import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { Avatar } from '../../src/components/Avatar';
+
+const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
+const COMMUNITIES_CACHE_KEY = 'communities_cache';
+
+// Cache helpers
+const getCachedData = async (key: string) => {
+  try {
+    const cached = await AsyncStorage.getItem(key);
+    return cached ? JSON.parse(cached) : null;
+  } catch { return null; }
+};
+
+const setCachedData = async (key: string, data: any) => {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch {}
+};
 
 // Top tabs for Chat section
 const TOP_TABS = ['Community', 'Private Chat'];
@@ -117,22 +136,34 @@ export default function MessagesScreen() {
   const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
 
   const fetchData = useCallback(async () => {
+    // Show cached data first for instant load
+    const cacheKey = activeTopTab === 'Community' ? `communities_${activeCommunityTab}` : 'circles_cache';
+    const cached = await getCachedData(cacheKey);
+    if (cached?.data) {
+      if (activeTopTab === 'Community') {
+        if (activeCommunityTab === 'Chat') setCommunities(cached.data);
+      } else {
+        setCircles(cached.data);
+      }
+    }
+    
     try {
       if (activeTopTab === 'Community') {
         if (activeCommunityTab === 'Chat') {
-          // Fetch communities list
           const res = await getCommunities();
           setCommunities(res.data || []);
           setRequests([]);
+          // Cache
+          await setCachedData('communities_Chat', res.data || []);
         } else if (activeCommunityTab === 'General') {
-          // General tab does not display requests
           setCommunities([]);
           setRequests([]);
         }
       } else {
-        // Private Chat - fetch circles/groups
         const res = await getCircles();
         setCircles(res.data || []);
+        // Cache
+        await setCachedData('circles_cache', res.data || []);
       }
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -193,22 +224,47 @@ export default function MessagesScreen() {
     ]);
   };
 
+  // Only fetch when screen is focused (not on every tab switch)
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserCG();
+      if (activeTopTab === 'Private Chat') {
+        fetchConversations();
+      }
+    }, [activeTopTab])
+  );
+
+  // Only fetch when screen is focused (not on every tab switch)
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserCG();
+      if (activeTopTab === 'Private Chat') {
+        fetchConversations();
+      }
+    }, [activeTopTab])
+  );
+
+  // Use regular useEffect only for initial load
   useEffect(() => {
-    // if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    //   UIManager.setLayoutAnimationEnabledExperimental(true);
-    // }
     fetchData();
-    fetchUserCG();
-    if (activeTopTab === 'Private Chat') {
-      fetchConversations();
-    }
-  }, [fetchData, activeTopTab, fetchUserCG]);
+  }, []);
 
   const fetchConversations = async () => {
     setLoadingConversations(true);
+    
+    // Show cached data first for instant load
+    const cached = await getCachedData(CONVERSATIONS_CACHE_KEY);
+    if (cached?.data) {
+      setConversations(cached.data);
+      setLoadingConversations(false);
+    }
+    
     try {
       const response = await getConversations();
-      setConversations(response.data || []);
+      const newConversations = response.data || [];
+      setConversations(newConversations);
+      // Cache for next time
+      await setCachedData(CONVERSATIONS_CACHE_KEY, newConversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {

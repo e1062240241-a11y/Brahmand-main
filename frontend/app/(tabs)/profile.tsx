@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +8,8 @@ import {
   Image,
   RefreshControl,
   Alert,
-  Platform
+  Platform,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,13 +18,45 @@ import { getUserProfile } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
-const MENU_ITEMS = [
-  { id: 'edit', icon: 'person-circle', label: 'Edit Profile', route: '/profile/edit' },
-  { id: 'location', icon: 'location', label: 'Change Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon' },
-  { id: 'privacy', icon: 'shield-checkmark', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon' },
-  { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications' },
-  { id: 'kyc', icon: 'document-text', label: 'KYC Verification', route: '/kyc' },
-  { id: 'badges', icon: 'ribbon', label: 'Community Badges', route: '/badges', disabled: true, subLabel: 'Coming soon' },
+type SettingItem = {
+  id: string;
+  icon: string;
+  label: string;
+  route?: string;
+  disabled?: boolean;
+  subLabel?: string;
+  value?: string;
+  action?: 'logout';
+};
+
+const SETTINGS_SECTIONS: { id: string; title: string; items: SettingItem[] }[] = [
+  {
+    id: 'account',
+    title: 'Account',
+    items: [
+      { id: 'edit', icon: 'person-circle-outline', label: 'Manage Profile', route: '/profile/edit' },
+      { id: 'kyc', icon: 'id-card-outline', label: 'KYC Verification', route: '/kyc' },
+      { id: 'notifications', icon: 'notifications-outline', label: 'Notifications', route: '/settings/notifications' },
+      { id: 'privacy', icon: 'lock-closed-outline', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon' },
+    ],
+  },
+  {
+    id: 'preferences',
+    title: 'Preferences',
+    items: [
+      { id: 'about', icon: 'information-circle-outline', label: 'About Us', route: '/settings/guidelines' },
+      { id: 'location', icon: 'location-outline', label: 'Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon' },
+      { id: 'language', icon: 'language-outline', label: 'Language', value: 'English', disabled: true },
+    ],
+  },
+  {
+    id: 'support',
+    title: 'Support',
+    items: [
+      { id: 'guidelines', icon: 'document-text-outline', label: 'Community Guidelines', route: '/settings/guidelines' },
+      { id: 'logout', icon: 'log-out-outline', label: 'Logout', action: 'logout' },
+    ],
+  },
 ];
 
 export default function ProfileScreen() {
@@ -32,6 +65,7 @@ export default function ProfileScreen() {
   const userId = user?.id;
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -41,7 +75,6 @@ export default function ProfileScreen() {
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       if (error?.response?.status === 401 || error?.response?.status === 502) {
-        // token may be invalid/expired, force logout and go to login
         await logout();
         router.replace('/');
       }
@@ -58,8 +91,12 @@ export default function ProfileScreen() {
     fetchProfile();
   }, [fetchProfile, router, userId]);
 
-  const handleMenuPress = (item: any) => {
+  const handleMenuPress = (item: SettingItem) => {
     if (item.disabled) {
+      return;
+    }
+    if (item.action === 'logout') {
+      handleLogout();
       return;
     }
     if (item.route) {
@@ -90,100 +127,184 @@ export default function ProfileScreen() {
     );
   };
 
-  const displayUser = profile || user;
+const displayUser = profile || user;
 
-  return (
+  const onScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: false }
+  );
+
+return (
     <ScrollView 
       style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      onScroll={onScroll}
+      scrollEventThrottle={1}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchProfile(); }} />
       }
     >
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <View style={styles.avatarContainer}>
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>Profile</Text>
+      </View>
+
+      <Animated.View style={[
+          styles.profileCard,
+          {
+            transform: [
+              { scale: scrollY.interpolate({
+                inputRange: [-100, 0, 34],
+                outputRange: [1.04, 1, 0.92],
+                extrapolate: 'clamp',
+              })},
+            ],
+          },
+        ]}>
+        <Animated.View style={[
+          styles.profileAvatarWrap,
+          {
+            marginRight: scrollY.interpolate({
+              inputRange: [0, 34],
+              outputRange: [0, SPACING.sm],
+              extrapolate: 'clamp',
+            }),
+            marginBottom: scrollY.interpolate({
+              inputRange: [0, 34],
+              outputRange: [SPACING.md, 0],
+              extrapolate: 'clamp',
+            }),
+          },
+        ]}>
           {displayUser?.photo ? (
-            <Image source={{ uri: displayUser.photo }} style={styles.avatar} />
+            <Animated.Image
+              source={{ uri: displayUser.photo }}
+              style={[
+                styles.profileAvatar,
+                {
+                  width: scrollY.interpolate({
+                    inputRange: [0, 34],
+                    outputRange: [96, 56],
+                    extrapolate: 'clamp',
+                  }),
+                  height: scrollY.interpolate({
+                    inputRange: [0, 34],
+                    outputRange: [96, 56],
+                    extrapolate: 'clamp',
+                  }),
+                  borderRadius: scrollY.interpolate({
+                    inputRange: [0, 34],
+                    outputRange: [48, 28],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ]}
+            />
           ) : (
-            <Avatar name={displayUser?.name || 'User'} size={100} />
+            <Avatar 
+              name={displayUser?.name || 'User'} 
+              size={56} 
+            />
           )}
-          {displayUser?.is_verified && (
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
-            </View>
-          )}
-        </View>
-        <Text style={styles.userName}>{displayUser?.name || 'User'}</Text>
-        <Text style={styles.userId}>{displayUser?.sl_id || ''}</Text>
-        
-        {/* Location Info */}
-        {displayUser?.home_location && (
-          <View style={styles.locationRow}>
-            <Ionicons name="location" size={14} color={COLORS.textSecondary} />
-            <Text style={styles.locationText}>
-              {displayUser.home_location.area}, {displayUser.home_location.city}
-            </Text>
+        </Animated.View>
+        <View style={styles.profileTextWrap}>
+          <View style={styles.profileNameRow}>
+            <Animated.Text style={[
+              styles.profileName,
+              {
+                fontSize: scrollY.interpolate({
+                  inputRange: [0, 34],
+                  outputRange: [24, 18],
+                  extrapolate: 'clamp',
+                }),
+              },
+            ]}>
+              {displayUser?.name || 'User'}
+            </Animated.Text>
+            {displayUser?.is_verified && (
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            )}
           </View>
-        )}
+          <Animated.Text style={[
+            styles.profileSubText,
+            {
+              fontSize: scrollY.interpolate({
+                inputRange: [0, 34],
+                outputRange: [15, 13],
+                extrapolate: 'clamp',
+              }),
+},
+            ]}>
+            <Text style={styles.slIdText}>
+              {displayUser?.sl_id || ''}
+            </Text>
+          </Animated.Text>
+        </View>
+      </Animated.View>
+
+      <View style={styles.statsStrip}>
+        <View style={styles.statItemCompact}>
+          <Text style={styles.statValueCompact}>
+            {displayUser?.contribution_count ?? displayUser?.communities?.length ?? 0}
+          </Text>
+          <Text style={styles.statLabelCompact}>Contribution</Text>
+        </View>
+        <View style={styles.statsStripDivider} />
+        <View style={styles.statItemCompact}>
+          <Text style={styles.statValueCompact}>{displayUser?.reputation ?? 0}</Text>
+          <Text style={styles.statLabelCompact}>Reputation</Text>
+        </View>
+        <View style={styles.statsStripDivider} />
+        <View style={styles.statItemCompact}>
+          <Text style={styles.statValueCompact}>{displayUser?.badges?.length ?? 0}</Text>
+          <Text style={styles.statLabelCompact}>Badges</Text>
+        </View>
       </View>
 
-      {/* Stats Row */}
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{displayUser?.communities?.length || 0}</Text>
-          <Text style={styles.statLabel}>Communities</Text>
+      {SETTINGS_SECTIONS.map((section) => (
+        <View key={section.id} style={styles.settingsSection}>
+          <Text style={styles.sectionLabel}>{section.title}</Text>
+          <View style={styles.settingsCard}>
+            {section.items.map((item, index) => {
+              const isLast = index === section.items.length - 1;
+              const isLogout = item.action === 'logout';
+
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.settingsRow,
+                    !isLast && styles.settingsRowDivider,
+                    item.disabled && styles.settingsRowDisabled,
+                  ]}
+                  activeOpacity={item.disabled ? 1 : 0.7}
+                  onPress={() => handleMenuPress(item)}
+                >
+                  <View style={styles.settingsRowLeft}>
+                    <View style={styles.settingsIconWrap}>
+                      <Ionicons
+                        name={item.icon as any}
+                        size={19}
+                        color={isLogout ? COLORS.error : COLORS.textSecondary}
+                      />
+                    </View>
+                    <View style={styles.settingsLabelWrap}>
+                      <Text style={[styles.settingsLabel, isLogout && styles.settingsLabelLogout]}>{item.label}</Text>
+                      {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+                    </View>
+                  </View>
+
+                  <View style={styles.settingsRowRight}>
+                    {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                    {!item.disabled && <Ionicons name="chevron-forward" size={16} color={COLORS.textLight} />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{displayUser?.badges?.length || 0}</Text>
-          <Text style={styles.statLabel}>Badges</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{displayUser?.reputation || 0}</Text>
-          <Text style={styles.statLabel}>Reputation</Text>
-        </View>
-      </View>
+      ))}
 
-      {/* Horoscope Profile removed per request */}
-
-      {/* Menu Items */}
-      <View style={styles.menuSection}>
-        {MENU_ITEMS.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={[styles.menuItem, item.disabled && styles.menuItemDisabled]}
-            activeOpacity={item.disabled ? 1 : 0.7}
-            onPress={() => handleMenuPress(item)}
-          >
-            <View style={styles.menuIconContainer}>
-              <Ionicons name={item.icon as any} size={22} color={COLORS.primary} />
-            </View>
-            <View style={styles.menuLabelContainer}>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              {item.disabled && <Text style={styles.menuSubLabel}>{item.subLabel}</Text>}
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Guidelines Link */}
-      <TouchableOpacity 
-        style={styles.guidelinesLink}
-        onPress={() => router.push('/settings/guidelines')}
-      >
-        <Ionicons name="document-text" size={18} color={COLORS.info} />
-        <Text style={styles.guidelinesText}>Community Guidelines</Text>
-      </TouchableOpacity>
-
-      {/* Logout Button */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Ionicons name="log-out" size={20} color={COLORS.error} />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-
-      <View style={{ height: 100 }} />
+      <View style={styles.bottomSpacer} />
     </ScrollView>
   );
 }
@@ -191,7 +312,207 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: `${COLORS.primary}08`,
+  },
+  contentContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+  },
+  pageHeader: {
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  profileCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 22,
+    paddingVertical: SPACING.xl,
+    paddingHorizontal: SPACING.md,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}20`,
+  },
+  profileCardCollapsed: {
+    paddingVertical: SPACING.md,
+    flexDirection: 'row',
+    borderRadius: 16,
+  },
+  statsStrip: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    marginBottom: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}20`,
+  },
+  statItemCompact: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.xs,
+  },
+  statValueCompact: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  statLabelCompact: {
+    marginTop: 2,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  statsStripDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: `${COLORS.primary}25`,
+  },
+  profileAvatarWrap: {
+    marginRight: 0,
+    marginBottom: SPACING.md,
+  },
+  profileAvatarWrapCollapsed: {
+    marginRight: SPACING.sm,
+    marginBottom: 0,
+  },
+  profileAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  profileAvatarExpanded: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 3,
+    borderColor: COLORS.primary,
+  },
+  profileTextWrap: {
+    flex: 1,
+    alignItems: 'center',
+    width: '100%',
+  },
+  profileTextWrapCollapsed: {
+    flex: 1,
+    alignItems: 'flex-start',
+    width: 'auto',
+  },
+  profileNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileNameRowCollapsed: {
+    justifyContent: 'flex-start',
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  profileNameCollapsed: {
+    fontSize: 18,
+    textAlign: 'left',
+  },
+  profileSubText: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+  },
+  profileSubTextCollapsed: {
+    fontSize: 13,
+    textAlign: 'left',
+    marginTop: 2,
+  },
+  slIdText: {
+    fontSize: 15,
+    color: '#007AFF',
+    fontWeight: '500',
+    marginTop: SPACING.xs,
+  },
+  settingsSection: {
+    marginBottom: SPACING.md,
+  },
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginBottom: SPACING.xs,
+    paddingHorizontal: 4,
+  },
+  settingsCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}20`,
+  },
+  settingsRow: {
+    minHeight: 56,
+    paddingHorizontal: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  settingsRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.divider,
+  },
+  settingsRowDisabled: {
+    opacity: 0.75,
+  },
+  settingsRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  settingsIconWrap: {
+    width: 28,
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+    backgroundColor: `${COLORS.primary}12`,
+    borderRadius: 14,
+    height: 28,
+    justifyContent: 'center',
+  },
+  settingsLabelWrap: {
+    flex: 1,
+  },
+  settingsLabel: {
+    fontSize: 16,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  settingsLabelLogout: {
+    color: COLORS.error,
+  },
+  settingsSubLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    color: COLORS.textSecondary,
+  },
+  settingsRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  settingsValue: {
+    fontSize: 13,
+    color: COLORS.primary,
+  },
+  bottomSpacer: {
+    height: 100,
   },
   header: {
     alignItems: 'center',

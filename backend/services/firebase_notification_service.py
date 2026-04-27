@@ -128,14 +128,28 @@ class FirebaseNotificationService:
         """Send push notification to multiple users"""
         db = await FirebaseNotificationService.get_db()
         
+        if not user_ids:
+            logger.warning("send_multicast: No user_ids provided")
+            return {"message": "No user_ids", "sent": 0}
+        
+        # Collect all FCM tokens from users
         all_tokens = []
+        users_with_tokens = 0
         for user_id in user_ids:
             user = await db.get_document('users', user_id)
-            if user and user.get('fcm_tokens'):
-                all_tokens.extend(user['fcm_tokens'])
+            if user:
+                tokens = user.get('fcm_tokens', [])
+                if tokens:
+                    users_with_tokens += 1
+                    all_tokens.extend(tokens)
+                    # Deduplicate tokens
+                    all_tokens = list(set(all_tokens))
         
         if not all_tokens:
+            logger.warning(f"send_multicast: No FCM tokens found for {len(user_ids)} users ({users_with_tokens} had fcm_tokens)")
             return {"message": "No tokens found", "sent": 0}
+        
+        logger.info(f"SOS: Sending to {len(user_ids)} users, {len(all_tokens)} unique tokens")
         
         try:
             from firebase_admin import messaging as fcm
@@ -143,15 +157,22 @@ class FirebaseNotificationService:
             # FCM allows max 500 tokens per multicast
             chunks = [all_tokens[i:i+500] for i in range(0, len(all_tokens), 500)]
             total_success = 0
+            total_failure = 0
             
-            for chunk in chunks:
-                if data and data.get('type') == 'sos_alert':
+            for i, chunk in enumerate(chunks):
+                android_config = None
+                apns_config = None
+                
+                notification_type = data.get('type') if data else None
+                
+                # High-priority for SOS
+                if notification_type in ['sos_alert', 'sos_responder_count']:
                     android_config = fcm.AndroidConfig(
                         priority='high',
                         notification=fcm.AndroidNotification(
-                            channel_id='messages',
-                            click_action='SOS_ACTION',
-                            sound='default'
+                            channel_id='sos_alerts',
+                            sound='default',
+                            priority='high'
                         )
                     )
                     apns_config = fcm.APNSConfig(
@@ -160,27 +181,34 @@ class FirebaseNotificationService:
                                 sound='default',
                                 badge=1,
                                 content_available=True,
-                                category='SOS_ALERT'
+                                mutable_content=True
                             )
                         )
                     )
-                    message = fcm.MulticastMessage(
-                        notification=fcm.Notification(title=title, body=body),
-                        data=data or {},
-                        android=android_config,
-                        apns=apns_config,
-                        tokens=chunk
-                    )
-                else:
-                    message = fcm.MulticastMessage(
-                        notification=fcm.Notification(title=title, body=body),
-                        data=data or {},
-                        tokens=chunk
-                    )
+                
+                message_kwargs = {
+                    'notification': fcm.Notification(title=title, body=body),
+                    'data': data or {},
+                    'tokens': chunk
+                }
+                if android_config:
+                    message_kwargs['android'] = android_config
+                if apns_config:
+                    message_kwargs['apns'] = apns_config
+                
+                message = fcm.MulticastMessage(**message_kwargs)
                 response = fcm.send_multicast(message)
                 total_success += response.success_count
+                total_failure += response.failure_count
+                
+                if response.failure_count > 0:
+                    logger.warning(f"SOS chunk {i}: {response.success_count} success, {response.failure_count} failed")
+                    # Log which tokens failed
+                    for idx, err in enumerate(response.errors):
+                        logger.warning(f"  Token error {idx}: {err}")
             
-            return {"message": "Multicast sent", "sent": total_success}
+            logger.info(f"SOS: Multicast complete - {total_success} sent, {total_failure} failed")
+            return {"message": "Sent", "sent": total_success, "failed": total_failure}
             
         except Exception as e:
             logger.error(f"Multicast error: {e}")

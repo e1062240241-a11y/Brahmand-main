@@ -36,12 +36,29 @@ import {
   uploadCompressedVideo,
   getUserProfile,
 } from '../../src/services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatMessage } from '../../src/services/firebase/chatService';
 import { useAuthStore } from '../../src/store/authStore';
 import { Conversation } from '../../src/types';
 import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { socketService } from '../../src/services/socket';
+
+const DM_MESSAGES_CACHE_KEY = 'dm_messages_cache';
+
+// Cache functions
+const getCachedMessages = async (conversationId: string): Promise<Message[]> => {
+  try {
+    const cached = await AsyncStorage.getItem(`${DM_MESSAGES_CACHE_KEY}_${conversationId}`);
+    return cached ? JSON.parse(cached) : [];
+  } catch { return []; }
+};
+
+const setCachedMessages = async (conversationId: string, messages: Message[]) => {
+  try {
+    await AsyncStorage.setItem(`${DM_MESSAGES_CACHE_KEY}_${conversationId}`, JSON.stringify(messages));
+  } catch {}
+};
 
 let dmImageManipulator: typeof ImageManipulatorType | null = null;
 const getDMImageManipulator = async () => {
@@ -487,7 +504,16 @@ const DirectMessageScreen = () => {
   }, [conversationId]);
 
   // Fetch messages via REST API
-  const fetchMessagesViaAPI = useCallback(async () => {
+  const fetchMessagesViaAPI = useCallback(async (fromCache = true) => {
+    // Show cached messages first for instant load (only once)
+    if (fromCache && messages.length === 0) {
+      const cached = await getCachedMessages(conversationId);
+      if (cached.length > 0) {
+        setMessages(cached);
+        setLoading(false);
+      }
+    }
+    
     try {
       const response = await getDirectMessages(conversationId!);
       if (!Array.isArray(response?.data)) {
@@ -508,19 +534,25 @@ const DirectMessageScreen = () => {
         created_at: msg.created_at || msg.timestamp || '',
         timestamp: msg.timestamp || msg.created_at || '',
       }));
-      setMessages(apiMessages);
+      
+      // Check if messages actually changed before updating
+      const existingIds = new Set(messages.map(m => m.id));
+      const hasNewMessages = apiMessages.some(m => !existingIds.has(m.id));
+      
+      if (hasNewMessages || apiMessages.length !== messages.length) {
+        // Update cache only when needed
+        await setCachedMessages(conversationId, apiMessages);
+        setMessages(apiMessages);
+      }
+      
       setLoading(false);
       setIsRealtime(false);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 100);
     } catch (error: any) {
       console.error('[Chat] Error fetching messages:', error);
-      const status = error?.response?.status;
-      if (status !== 502 && status !== 503) {
-        setMessages([]);
-      }
       setLoading(false);
     }
-  }, [conversationId]);
+  }, [conversationId, messages.length]);
 
   useEffect(() => {
     fetchConversation();
@@ -536,7 +568,7 @@ const DirectMessageScreen = () => {
           fetchMessagesViaAPI();
           fetchConversation();
         }
-      }, 2000);
+      }, 5000); // Reduced from 2000 to 5000ms
       setTimeout(() => markMessagesAsRead(), 1000);
 
       return () => {
@@ -627,6 +659,10 @@ const DirectMessageScreen = () => {
     if ((!newMessage.trim() && !selectedMedia) || !conversation) return;
     if (isInputLocked) return;
 
+    // Optimistic UI - add message immediately
+    const tempId = `temp_${Date.now()}`;
+    const messageText = newMessage.trim();
+
     const selected = selectedMedia;
     if (selected) {
       setUploadingMedia(true);
@@ -646,7 +682,6 @@ const DirectMessageScreen = () => {
         await sendDirectMessage(conversation.user.sl_id, mediaUrl, selected.mediaType);
         setSelectedMedia(null);
         setNewMessage('');
-        setTimeout(() => fetchMessagesViaAPI(), 500);
       } catch (error: any) {
         Alert.alert('Upload failed', error?.response?.data?.detail || error?.message || 'Failed to send media.');
       } finally {
@@ -656,14 +691,31 @@ const DirectMessageScreen = () => {
       return;
     }
 
-    const messageText = newMessage.trim();
+    // Optimistic update - add message immediately before API call
     setNewMessage('');
+    const optimisticMessage: Message = {
+      id: tempId,
+      content: messageText,
+      sender_id: user?.id || '',
+      sender_name: user?.name || 'Me',
+      sender_photo: user?.photo,
+      created_at: new Date().toISOString(),
+      message_type: 'text',
+      status: 'sending',
+    };
+    setMessages(prev => [...prev, optimisticMessage]);
     setSending(true);
     
     try {
       await sendDirectMessage(conversation.user.sl_id, messageText);
-      setTimeout(() => fetchMessagesViaAPI(), 300);
+      // Update cache with new message
+      const updatedMessages = [...messages, { ...optimisticMessage, status: 'sent' }];
+      await setCachedMessages(conversationId, updatedMessages);
+      // Refresh messages in background
+      setTimeout(() => fetchMessagesViaAPI(false), 300);
     } catch (error: any) {
+      // Remove optimistic message on failure
+      setMessages(prev => prev.filter(m => m.id !== tempId));
       setNewMessage(messageText);
       alert(error.response?.data?.detail || 'Failed to send message');
     } finally {
@@ -1585,8 +1637,8 @@ const DirectMessageScreen = () => {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 44}
       >
         {renderContent()}
       </KeyboardAvoidingView>
@@ -1598,16 +1650,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    display: 'flex',
-    flexDirection: 'column',
-    ...(Platform.OS === 'web' ? {
-      position: 'absolute' as any,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      overflow: 'hidden',
-    } : {}),
   },
   chatScreen: {
     flex: 1,
@@ -1908,6 +1950,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.sm,
+    paddingBottom: Platform.OS === 'android' ? SPACING.lg : SPACING.sm,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E8E0D8',

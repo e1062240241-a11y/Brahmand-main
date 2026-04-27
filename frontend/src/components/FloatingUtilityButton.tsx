@@ -32,7 +32,9 @@ import {
   getActiveSOSAlerts,
   getMyActiveCommunityRequests,
   resolveCommunityRequest,
-  updateCurrentLocation
+  updateCurrentLocation,
+  respondToSOS,
+  getPanchang
 } from '../services/api';
 import * as Location from 'expo-location';
 import LocationService from '../services/location';
@@ -178,12 +180,19 @@ const loadDailyShloka = async (): Promise<{
   }
 };
 
-// Temporarily disable remote Panchang API calls during dev to avoid 403/auth issues.
+// Helper functions for Panch data
 const getPanchangData = async () => {
-  return null;
+  try {
+    const response = await getPanchang();
+    return response.data;
+  } catch (error) {
+    console.warn('Panchang fetch error:', error);
+    return null;
+  }
 };
 
 const getFestivalsData = async () => {
+  // Festivals data - could be added later
   return null;
 };
 
@@ -222,6 +231,7 @@ export const FloatingUtilityButton = () => {
   const [activeSOS, setActiveSOS] = useState<any>(null);
   const [nearbySOSCount, setNearbySOSCount] = useState(0);
   const [nearbySOSAlerts, setNearbySOSAlerts] = useState<any[]>([]);
+  const [respondedSOSIds, setRespondedSOSIds] = useState<Set<string>>(new Set());
   const [sosStage, setSosStage] = useState<'idle' | 'hold' | 'type' | 'micro' | 'countdown'>('idle');
   const [sosType, setSosType] = useState<string>('');
   const [microLocation, setMicroLocation] = useState('');
@@ -245,6 +255,7 @@ export const FloatingUtilityButton = () => {
   const [wisdom, setWisdom] = useState<any>(null);
   const [panchang, setPanchang] = useState<any>(null);
   const [nextFestival, setNextFestival] = useState<any>(null);
+  const [gitaDropdownOpen, setGitaDropdownOpen] = useState(false);
   const homeLocation = (user as any)?.home_location;
   
   // Pulse animation for nearby SOS
@@ -427,6 +438,24 @@ export const FloatingUtilityButton = () => {
     }
   }, [checkSOSStatus]);
 
+  // Handle responding to a nearby SOS (I'm on my way)
+  const handleSOSRespond = async (sos: any, response: string) => {
+    if (!sos?.id) return;
+    if (respondedSOSIds.has(sos.id)) return;
+    
+    try {
+      await respondToSOS(sos.id, response as 'coming' | 'called');
+      setRespondedSOSIds(new Set([...respondedSOSIds, sos.id]));
+      Alert.alert(
+        'Response Sent',
+        `You've told ${sos.user_name || 'the person'} that you're coming!`
+      );
+    } catch (error: any) {
+      console.warn('[SOS] respond failed', error);
+      Alert.alert('Error', 'Failed to send response. Please try again.');
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -576,12 +605,6 @@ export const FloatingUtilityButton = () => {
       await Linking.openURL(`https://maps.google.com/?q=${latitude},${longitude}`);
     }
   };
-
-  useEffect(() => {
-    if (sosStage === 'micro') {
-      fetchCurrentMicroLocation(true);
-    }
-  }, [sosStage]);
 
   const handleSOSHoldStart = () => {
     if (sosStage !== 'hold') return;
@@ -947,12 +970,9 @@ export const FloatingUtilityButton = () => {
                     <Ionicons name="alert-circle" size={24} color="#FFFFFF" />
                     <Text style={styles.activeSosTitle}>YOUR SOS IS ACTIVE</Text>
                   </View>
-                  <Text style={styles.activeSosLocation}>
-                    Location: {activeSOS.area}, {activeSOS.city}
-                  </Text>
                   {activeSOS.latitude && activeSOS.longitude ? (
                     <TouchableOpacity style={styles.activeSosLink} onPress={openSOSLocation}>
-                      <Text style={styles.activeSosLinkText}>View creator location</Text>
+                      <Text style={styles.activeSosLinkText}>View Creator Location</Text>
                     </TouchableOpacity>
                   ) : null}
                   <Text style={styles.activeSosStatus}>
@@ -1019,6 +1039,34 @@ export const FloatingUtilityButton = () => {
                       </View>
                       <Text style={styles.nearbySOSLocation}>{sos.micro_location || `${sos.area}, ${sos.city}`}</Text>
                       <View style={styles.nearbySOSActions}>
+                        {respondedSOSIds.has(sos.id) ? (
+                          <TouchableOpacity 
+                            style={[styles.sosMapButton, { backgroundColor: COLORS.success, opacity: 0.7 }]} 
+                            disabled
+                          >
+                            <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                            <Text style={[styles.sosButtonText, { marginLeft: SPACING.xs }]}>Response Sent</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity 
+                            style={[styles.sosMapButton, { backgroundColor: COLORS.success }]} 
+                            onPress={() => handleSOSRespond(sos, 'coming')}
+                          >
+                            <Ionicons name="walk" size={16} color="#FFFFFF" />
+                            <Text style={[styles.sosButtonText, { marginLeft: SPACING.xs }]}>I'm on my way</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity 
+                          style={[styles.sosMapButton, { backgroundColor: COLORS.primary }]} 
+                          onPress={() => {
+                            if (sos.phone_number) {
+                              Linking.openURL(`tel:${sos.phone_number}`);
+                            }
+                          }}
+                        >
+                          <Ionicons name="call" size={16} color="#FFFFFF" />
+                          <Text style={[styles.sosButtonText, { marginLeft: SPACING.xs }]}>Call</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity style={styles.sosMapButton} onPress={() => openNearbySOSLocation(sos)}>
                           <Ionicons name="navigate" size={16} color="#FFFFFF" />
                           <Text style={[styles.sosButtonText, { marginLeft: SPACING.xs }]}>Open Map</Text>
@@ -1131,62 +1179,66 @@ export const FloatingUtilityButton = () => {
                 </View>
               )}
 
-              {/* Gita Slok Card */}
-              <View style={styles.gitaCard}>
-                <View style={styles.gitaHeader}>
-                  <View style={styles.gitaIconBg}>
-                    <Ionicons name="book" size={24} color={COLORS.success} />
+              {/* Gita Slok Card - Full Sanskrit, Dropdown for Explanation */}
+              <View style={styles.gitaCardCompact}>
+                <TouchableOpacity 
+                  style={styles.gitaHeaderRow}
+                  onPress={() => setGitaDropdownOpen(!gitaDropdownOpen)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.gitaIconBgSmall}>
+                    <Ionicons name="book" size={16} color={COLORS.success} />
                   </View>
-                  <View>
-                    <Text style={styles.gitaTitle}>Bhagavad Gita</Text>
-                    <Text style={styles.gitaSubtitle}>
-                      {wisdom?.gitaShloka 
-                        ? `Chapter ${wisdom.gitaShloka.chapter}, Verse ${wisdom.gitaShloka.verse}`
-                        : wisdom?.chapter 
-                          ? `Chapter ${wisdom.chapter}, Verse ${wisdom.verse}` 
-                          : 'Daily Wisdom'
-                      }
+                  <View style={styles.gitaInfo}>
+                    <Text style={styles.gitaTitleCompact}>Gita {wisdom?.gitaShloka ? `Ch ${wisdom.gitaShloka.chapter}:${wisdom.gitaShloka.verse}` : wisdom?.chapter ? `Ch ${wisdom.chapter}:${wisdom.verse}` : 'Daily'}</Text>
+                    <Text style={styles.gitaSanskritCompact}>
+                      {wisdom?.gitaShloka?.slok || wisdom?.sanskrit || 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।'}
                     </Text>
                   </View>
-                </View>
-                <Text style={styles.gitaSanskrit}>
-                  {wisdom?.gitaShloka?.slok || wisdom?.sanskrit || 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।'}
-                </Text>
-                <ScrollView 
-                  style={styles.gitaTranslationScroll} 
-                  showsVerticalScrollIndicator={true}
-                  nestedScrollEnabled={true}
-                  indicatorStyle="black"
-                  scrollEventThrottle={16}
-                >
-                  <Text style={styles.gitaTranslation}>
-                    {wisdom?.gitaShloka?.translation || wisdom?.translation || wisdom?.quote || 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'}
-                  </Text>
-                </ScrollView>
+                  <Ionicons 
+                    name={gitaDropdownOpen ? 'chevron-up' : 'chevron-down'} 
+                    size={20} 
+                    color={COLORS.textSecondary} 
+                  />
+                </TouchableOpacity>
+                {gitaDropdownOpen && (
+                  <View style={styles.gitaDropdownContent}>
+                    <Text style={styles.gitaTranslation}>
+                      {wisdom?.gitaShloka?.translation || wisdom?.translation || wisdom?.quote || 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               {/* Utility Shortcuts */}
               <View style={styles.utilityGrid}>
                 <TouchableOpacity 
-                  style={[styles.utilityCard, styles.disabledUtilityCard]}
-                  disabled={true}
+                  style={styles.utilityCard}
+                  onPress={() => {
+                    openPanchangWithLocation();
+                  }}
+                  activeOpacity={0.7}
                 >
                   <View style={[styles.utilityIconBg, { backgroundColor: '#FFE5CC' }]}> 
                     <Ionicons name="calendar" size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.utilityTitle}>Panchang</Text>
-                  <Text style={styles.utilitySubtitle}>Coming soon</Text>
+                  <Text style={styles.utilitySubtitle}>Daily</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.utilityCard, styles.disabledUtilityCard]}
-                  disabled={true}
+                  style={styles.utilityCard}
+                  onPress={() => {
+                    setModalVisible(false);
+                    router.push('/astrology');
+                  }}
+                  activeOpacity={0.7}
                 >
                   <View style={[styles.utilityIconBg, { backgroundColor: '#E3F2FD' }]}> 
                     <Ionicons name="star" size={20} color={COLORS.info} />
                   </View>
                   <Text style={styles.utilityTitle}>Horoscope</Text>
-                  <Text style={styles.utilitySubtitle}>Coming soon</Text>
+                  <Text style={styles.utilitySubtitle}>Daily</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1195,6 +1247,7 @@ export const FloatingUtilityButton = () => {
                     setModalVisible(false);
                     router.push('/astrology?mode=kundli');
                   }}
+                  activeOpacity={0.7}
                 >
                   <View style={[styles.utilityIconBg, { backgroundColor: '#F3E8FF' }]}>
                     <Ionicons name="planet" size={20} color="#7C3AED" />
@@ -1204,21 +1257,26 @@ export const FloatingUtilityButton = () => {
                 </TouchableOpacity>
               </View>
 
-<View style={styles.festivalRow}>
-                <View style={[styles.festivalCard, styles.festivalCardCompact]}>
-                  <View style={styles.festivalHeader}>
-                    <View style={[styles.utilityIconBg, { backgroundColor: '#E8F5E9' }]}> 
-                      <Ionicons name="sparkles" size={20} color={COLORS.success} />
-                    </View>
-                    <View style={styles.festivalContent}>
-                      <Text style={styles.utilityTitle}>Next Festival</Text>
-                      <Text style={styles.utilitySubtitle}>{nextFestival?.name || 'Loading...'}</Text>
-                    </View>
+{/* Next Festival - Full Width Bar */}
+              <View style={styles.festivalBar}>
+                <View style={styles.festivalBarContent}>
+                  <View style={[styles.utilityIconBg, { backgroundColor: '#E8F5E9' }]}> 
+                    <Ionicons name="sparkles" size={20} color={COLORS.success} />
                   </View>
-                  <Text style={styles.mediumDetail}>
-                    {nextFestival?.days_until !== undefined ? `Starts in ${nextFestival.days_until} days` : ''}
-                  </Text>
+                  <View style={styles.festivalInfo}>
+                    <Text style={styles.festivalTitle}>Next Festival</Text>
+                    <Text style={styles.festivalName}>{nextFestival?.name || 'Loading...'}</Text>
+                  </View>
+                  <View style={styles.festivalDays}>
+                    <Text style={styles.festivalDaysText}>
+                      {nextFestival?.days_until !== undefined ? `${nextFestival.days_until}d` : '--'}
+                    </Text>
+                  </View>
                 </View>
+              </View>
+
+              {/* Library & Passport Row */}
+              <View style={styles.festivalRow}>
                 <TouchableOpacity
                   style={styles.libraryButton}
                   onPress={() => {
@@ -1231,6 +1289,20 @@ export const FloatingUtilityButton = () => {
                     <Ionicons name="book" size={20} color={COLORS.info} />
                   </View>
                   <Text style={styles.libraryButtonTitle}>Brahmand Library</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.passportButton}
+                  onPress={() => {
+                    setModalVisible(false);
+                    router.push('/passport');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.utilityIconBg, { backgroundColor: '#FFD700' }]}> 
+                    <Ionicons name="airplane" size={20} color="#B8860B" />
+                  </View>
+                  <Text style={styles.passportButtonTitle}>Brahmand Passport</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1408,15 +1480,15 @@ const styles = StyleSheet.create({
     right: 16,
   },
   floatingButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   floatingButtonEmergency: {
     shadowColor: '#E53935',
@@ -1429,15 +1501,13 @@ const styles = StyleSheet.create({
   glassBackground: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(200, 200, 200, 0.6)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 28,
   },
   glassBackgroundEmergency: {
-    backgroundColor: '#E53935',
+    backgroundColor: '#FF3B30',
   },
   glassBackgroundActiveSOS: {
     backgroundColor: '#E53935',
@@ -1466,12 +1536,17 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   modalContent: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#F9F9F9',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: SPACING.md,
-    paddingBottom: SPACING.xl,
-    maxHeight: SCREEN_HEIGHT * 0.7,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xl * 2,
+    maxHeight: SCREEN_HEIGHT * 0.75,
+    shadowColor: '#000',
+    shadowOffset: { width: -4, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   countdownModalContent: {
     backgroundColor: '#FFCDD2',
@@ -1496,22 +1571,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: SPACING.xs,
   },
   closeButton: {
-    padding: SPACING.xs,
+    padding: SPACING.sm,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
   },
   modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: COLORS.divider,
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#DDD',
     alignSelf: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#1A1A1A',
     textAlign: 'center',
     marginBottom: SPACING.md,
   },
@@ -1557,10 +1635,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1976D2',
+    backgroundColor: '#007AFF',
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: 12,
     marginBottom: SPACING.sm,
   },
   sosResolveButton: {
@@ -1689,40 +1767,92 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'left',
   },
+  // Compact Gita Card
+  gitaCardCompact: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  gitaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  gitaIconBgSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  gitaInfo: {
+    flex: 1,
+  },
+  gitaTitleCompact: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  gitaSanskritCompact: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  gitaDropdownContent: {
+    marginTop: SPACING.sm,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: '#E8F5E9',
+  },
   utilityGrid: {
     flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
+    gap: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   utilityCard: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: SPACING.md,
-    minHeight: 124,
-    justifyContent: 'space-between',
+    minHeight: 110,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   disabledUtilityCard: {
     opacity: 0.55,
   },
   utilityIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
   },
   utilityTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
     marginBottom: 2,
   },
   utilitySubtitle: {
     fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '500',
+    color: '#8E8E93',
+    fontWeight: '400',
   },
   mediumDetail: {
     fontSize: 11,
@@ -1744,20 +1874,82 @@ const styles = StyleSheet.create({
     flex: 2,
     marginBottom: 0,
   },
+  festivalBar: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 16,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  festivalBarContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  festivalInfo: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  festivalTitle: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  festivalName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  festivalDays: {
+    backgroundColor: '#34C759',
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: SPACING.sm,
+    alignItems: 'center',
+  },
+  festivalDaysText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   libraryButton: {
     flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: SPACING.md,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   libraryButtonTitle: {
-    color: COLORS.text,
-    fontSize: 13,
-    fontWeight: '700',
+    color: '#1A1A1A',
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
-    marginTop: SPACING.sm,
+    marginTop: SPACING.xs,
+  },
+  passportButton: {
+    flex: 1,
+    backgroundColor: '#FFF9C4',
+    borderRadius: 16,
+    padding: SPACING.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  passportButtonTitle: {
+    color: '#B8860B',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: SPACING.xs,
   },
   festivalHeader: {
     flexDirection: 'row',
@@ -1769,11 +1961,14 @@ const styles = StyleSheet.create({
   },
   // SOS Card
   sosCard: {
-    backgroundColor: '#FFF5F5',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: '#FFCDD2',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: SPACING.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sosHeader: {
     flexDirection: 'row',
@@ -1784,15 +1979,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#FFF0F0',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.sm,
   },
   sosTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.error,
+    fontWeight: '600',
+    color: '#FF3B30',
   },
   sosDescription: {
     fontSize: 13,
@@ -1961,20 +2156,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   nearbySOSSection: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: SPACING.md,
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
+    marginBottom: SPACING.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   nearbySOSCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
     padding: SPACING.md,
     marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
   },
   nearbySOSHeader: {
     flexDirection: 'row',
@@ -2006,21 +2202,24 @@ const styles = StyleSheet.create({
   },
   // Community Requests Section
   communityRequestsSection: {
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1A1A1A',
     marginBottom: SPACING.sm,
   },
   communityRequestCard: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: SPACING.md,
     marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   communityRequestCardFulfilled: {
     borderColor: COLORS.success,

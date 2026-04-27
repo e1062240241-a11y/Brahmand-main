@@ -77,18 +77,42 @@ function useNotificationResponseHandler() {
     const getResponseKey = (response: any) => {
       const actionId = response?.actionIdentifier || response?.actionId || 'default';
       const data = response?.notification?.request?.content?.data;
+      const type = data?.type;
       const chatId = data?.chat_id;
       const sosId = data?.sos_id;
+      const postId = data?.post_id;
+      const actorUserId = data?.actor_user_id;
       if (chatId) {
         return `${chatId}:${actionId}`;
       }
-      return sosId ? `${sosId}:${actionId}` : null;
+      if (sosId) {
+        return `${sosId}:${actionId}`;
+      }
+      if (postId) {
+        return `post:${postId}:${actionId}`;
+      }
+      if (type === 'follow' && actorUserId) {
+        return `follow:${actorUserId}:${actionId}`;
+      }
+      return null;
     };
 
     const navigateToDm = (chatId: string) => {
       if (!chatId) return;
       console.log('[Push] Navigating to DM chat:', chatId);
       router.push(`/dm/${chatId}`);
+    };
+
+    const navigateToProfile = (userId: string) => {
+      if (!userId) return;
+      console.log('[Push] Navigating to profile:', userId);
+      router.push(`/profile/${userId}`);
+    };
+
+    const navigateToPost = (postId: string) => {
+      if (!postId) return;
+      console.log('[Push] Navigating to post:', postId);
+      router.push(`/post/${postId}`);
     };
 
     const handleResponse = async (response: any) => {
@@ -109,6 +133,33 @@ function useNotificationResponseHandler() {
         return;
       }
 
+      if (data.type === 'follow' && data.actor_user_id) {
+        navigateToProfile(String(data.actor_user_id));
+        return;
+      }
+
+      if (data.type === 'post_like') {
+        if (data.post_id) {
+          navigateToPost(String(data.post_id));
+          return;
+        }
+        if (data.actor_user_id) {
+          navigateToProfile(String(data.actor_user_id));
+          return;
+        }
+      }
+
+      if (data.type === 'post_comment') {
+        if (data.post_id) {
+          navigateToPost(String(data.post_id));
+          return;
+        }
+        if (data.actor_user_id) {
+          navigateToProfile(String(data.actor_user_id));
+          return;
+        }
+      }
+
       if (data.type === 'sos_alert' && actionId === 'accept_sos') {
         const creatorSlId = data.creator_sl_id;
         if (!creatorSlId) {
@@ -122,6 +173,29 @@ function useNotificationResponseHandler() {
         } catch (error) {
           console.warn('[Push] Failed to send SOS acceptance DM:', error);
         }
+        return;
+      }
+
+      // Handle SOS notification tap - open app with SOS modal
+      if (data.type === 'sos_alert') {
+        console.log('[Push] SOS notification received, data:', data);
+        if (typeof window !== 'undefined') {
+          (window as any).__PENDING_SOS = data;
+        }
+        return;
+      }
+
+      // Handle SOS responder count update
+      if (data.type === 'sos_responder_count') {
+        console.log('[Push] SOS responder count update:', data);
+        if (typeof window !== 'undefined') {
+          (window as any).__SOS_RESPONDER_COUNT = {
+            sos_id: data.sos_id,
+            count: parseInt(data.responder_count || '0', 10),
+            name: data.responder_name || 'Someone'
+          };
+        }
+        return;
       }
     };
 
@@ -176,8 +250,9 @@ function SafeSlot() {
 
 export default function RootLayout() {
   const pathname = usePathname();
-  const { isLoading, loadStoredAuth, token } = useAuthStore();
+  const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
   const { loadStoredAdminAuth } = useAdminStore();
+  const pushInitStartedRef = useRef(false);
   
   useDeepLinkHandler();
   useAndroidBackHandler();
@@ -195,6 +270,17 @@ export default function RootLayout() {
       }
     });
   }, [loadStoredAuth, loadStoredAdminAuth]);
+
+  useEffect(() => {
+    if (isLoading || !token || !isAuthenticated || pushInitStartedRef.current) {
+      return;
+    }
+
+    pushInitStartedRef.current = true;
+    initPushNotifications().catch((error) => {
+      console.warn('[Push] Auto init on app load failed:', error);
+    });
+  }, [isLoading, token, isAuthenticated, initPushNotifications]);
 
   if (isLoading) {
     return (

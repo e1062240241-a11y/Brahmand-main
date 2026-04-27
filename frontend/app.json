@@ -9,14 +9,14 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.brahmand.sanatanlok",
+      "bundleIdentifier": "com.brahmand.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Upload profile photo to your account",
         "NSCameraUsageDescription": "Take photos for profile and messages",
         "NSLocationWhenInUseUsageDescription": "Detect your location to join local communities",
         "NSLocationAlwaysUsageDescription": "Detect your location to join local communities",
-        "NSMicrophoneUsageDescription": "Allow Sanatan Lok to use microphone for voice ordering.",
+        "NSMicrophoneUsageDescription": "Allow Brahmand to use microphone for voice ordering.",
         "CFBundleURLTypes": [
           {
             "CFBundleTypeRole": "Editor",
@@ -36,7 +36,7 @@
       }
     },
     "android": {
-      "package": "com.brahmand.sanatanlok",
+      "package": "com.brahmand.app",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
@@ -85,7 +85,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Sanatan Lok to access your photos for profile and sharing."
+          "photosPermission": "Allow Brahmand to access your photos for profile and sharing."
         }
       ],
       [
@@ -99,13 +99,13 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Sanatan Lok to use your location to join local communities."
+          "locationAlwaysAndWhenInUsePermission": "Allow Brahmand to use your location to join local communities."
         }
       ],
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "Allow Sanatan Lok to use microphone for voice ordering."
+          "microphonePermission": "Allow Brahmand to use microphone for voice ordering."
         }
       ],
       "@react-native-firebase/app",

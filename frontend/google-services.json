@@ -7,9 +7,28 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:103222994071:android:ded9a4d12d837f40e8f5d2",
+        "android_client_info": {
+          "package_name": "com.brahmand.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqj-JGtJNoRBE-5Brl0p_NALobh_PWPxE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:103222994071:android:29232f2c3cb1fdc1e8f5d2",
         "android_client_info": {
-          "package_name": "com.brahmand.sanatanlok"
+          "package_name": "com.brahmand.app"
         }
       },
       "oauth_client": [],

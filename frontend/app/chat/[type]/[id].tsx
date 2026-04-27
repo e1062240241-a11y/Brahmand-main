@@ -1150,7 +1150,7 @@ const ChatScreen = () => {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.chatContainer}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 44}
       >
         <FlatList
           ref={flatListRef}
@@ -1890,6 +1890,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
+    paddingBottom: Platform.OS === 'android' ? 24 : 10,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,

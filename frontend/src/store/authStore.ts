@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAuth, signOut } from 'firebase/auth';
 import { User } from '../types';
 import { initializePushNotifications } from '../services/pushNotifications';
+import { getFirebaseAuth } from '../services/firebase/config';
 
 interface AuthState {
   user: User | null;
@@ -36,14 +36,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await AsyncStorage.setItem('auth_token', token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
     set({ user, token, isAuthenticated: true, isLoading: false });
-    // Do not auto-start push notifications to reduce startup load and avoid Expo Go issues.
-    // Call initPushNotifications explicitly from Notifications tab if desired.
+    initializePushNotifications()
+      .then((fcmToken) => {
+        if (fcmToken) {
+          set({ fcmToken });
+        }
+      })
+      .catch((error) => {
+        console.log('[Push] Auto init after login failed:', error);
+      });
   },
 
   logout: async () => {
     try {
-      const auth = getAuth();
-      await signOut(auth);
+      const auth = getFirebaseAuth();
+      if (auth && typeof auth.signOut === 'function') {
+        await auth.signOut();
+      }
     } catch (error) {
       console.warn('[Auth] Firebase signOut failed (ignored):', error);
     }

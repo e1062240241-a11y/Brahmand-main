@@ -1395,6 +1395,9 @@ export const getMySOSAlert = () =>
 export const resolveSOSAlert = (sosId: string, status: 'resolved' | 'cancelled') => 
   api.post(`/sos/${sosId}/resolve`, { status });
 
+export const resolveMyActiveSOS = (status: 'resolved' | 'cancelled') =>
+  api.post('/sos/my/resolve', { status });
+
 export const respondToSOS = (sosId: string, response: 'coming' | 'called') => 
   api.post(`/sos/${sosId}/respond`, { response });
 
