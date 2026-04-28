@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
-import { BHAGVAD_GEETA_BOOK, BHAGVAD_GEETA_READER_HREF } from '../src/features/pdf-book-reader/books';
 
 const geetaCover = require('../assets/images/Bhagvad-geeta.jpg');
 
@@ -16,15 +15,15 @@ const LibraryPage = () => {
         <Text style={styles.title}>Brahmand Library</Text>
         <TouchableOpacity
           style={styles.coverCard}
-          onPress={() => router.push(BHAGVAD_GEETA_READER_HREF)}
+          onPress={() => router.push('/library/bhagvad-geeta')}
           activeOpacity={0.85}
         >
           <Image source={geetaCover} style={styles.coverImage} resizeMode="cover" />
           <View style={styles.coverLabelContainer}>
-            <Text style={styles.coverLabel}>{BHAGVAD_GEETA_BOOK.title}</Text>
+            <Text style={styles.coverLabel}>Bhagvad Geeta</Text>
           </View>
         </TouchableOpacity>
-        <Text style={styles.coverHint}>Tap to open the Bhagvad Geeta reader</Text>
+        <Text style={styles.coverHint}>Tap to open Bhagvad Geeta chapter 1 in book layout.</Text>
       </View>
     </SafeAreaView>
   );

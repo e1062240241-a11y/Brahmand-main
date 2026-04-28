@@ -608,6 +608,9 @@ export const getPostById = (postId: string) =>
 export const getPostViews = (postId: string) =>
   api.get(`/posts/${postId}/views`);
 
+export const getBhagavadGitaChapter = (chapterNumber: number = 1) =>
+  api.get(`/library/bhagavad-gita/chapter/${chapterNumber}`);
+
 // Community APIs
 export const getCommunities = () => 
   api.get('/communities');

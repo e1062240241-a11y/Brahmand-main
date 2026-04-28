@@ -33,12 +33,30 @@ export function initializeFirebaseAuth(): any {
   if (!auth) {
     const authModule = getNativeAuthModule();
     if (typeof authModule.getAuth === 'function') {
-      auth = authModule.getAuth();
-    } else if (typeof authModule.default === 'function') {
-      auth = authModule.default();
-    } else if (typeof authModule === 'function') {
-      auth = authModule();
-    } else {
+      try {
+        auth = authModule.getAuth();
+      } catch (error) {
+        console.warn('[Firebase] authModule.getAuth() failed, trying fallback auth initializer:', error);
+      }
+    }
+
+    if (!auth && typeof authModule.default === 'function') {
+      try {
+        auth = authModule.default();
+      } catch (error) {
+        console.warn('[Firebase] authModule.default() failed, trying fallback auth initializer:', error);
+      }
+    }
+
+    if (!auth && typeof authModule === 'function') {
+      try {
+        auth = authModule();
+      } catch (error) {
+        console.warn('[Firebase] authModule() failed, no auth initializer found:', error);
+      }
+    }
+
+    if (!auth) {
       throw new Error('@react-native-firebase/auth was loaded but no auth initializer was found');
     }
   }
@@ -115,6 +133,15 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
         return confirmation;
       } catch (nativeError: any) {
         console.error('[Firebase] Native OTP failed:', nativeError, 'code=', nativeError?.code);
+
+        if (nativeError?.code === 'auth/too-many-requests' || nativeError?.code === 'too-many-requests') {
+          throw new Error('Too many OTP requests. Please wait a while and try again.');
+        }
+
+        if (nativeError?.code === 'auth/quota-exceeded') {
+          throw new Error('OTP quota exceeded. Please try again later.');
+        }
+
         throw new Error('Phone auth is not configured for this native build. Ensure @react-native-firebase/auth is installed and linked, the Android package has SHA-1/SHA-256 in Firebase (com.brahmand.app), and Play Integrity is enabled.');
       }
     }
@@ -127,6 +154,23 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
 /**
  * Verify OTP and get Firebase ID token
  */
+async function getFirebaseIdToken(user: any): Promise<string> {
+  if (!user) {
+    throw new Error('Firebase user is not available');
+  }
+
+  if (Platform.OS === 'web') {
+    return await user.getIdToken();
+  }
+
+  const authModule = getNativeAuthModule();
+  if (typeof authModule.getIdToken === 'function') {
+    return await authModule.getIdToken(user);
+  }
+
+  return await user.getIdToken();
+}
+
 export async function verifyFirebaseOTP(otp: string): Promise<string> {
   try {
     if (!confirmationResult) {
@@ -134,7 +178,7 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
     }
     
     const userCredential = await confirmationResult.confirm(otp);
-    const idToken = await userCredential.user.getIdToken();
+    const idToken = await getFirebaseIdToken(userCredential.user);
     
     console.log('[Firebase] OTP verified successfully');
     return idToken;
@@ -164,7 +208,7 @@ export async function getCurrentUserToken(): Promise<string | null> {
   const user = auth.currentUser;
   
   if (user) {
-    return await user.getIdToken();
+    return await getFirebaseIdToken(user);
   }
   
   return null;

@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
-  ActivityIndicator,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -10,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { BORDER_RADIUS, COLORS, SPACING } from '../../constants/theme';
-import { buildNativeBookReaderHtml } from './nativeBookHtml';
 
 type Props = {
   bookId?: string;
@@ -18,18 +16,8 @@ type Props = {
   pdfUrl: string;
 };
 
-export default function PdfBookReaderScreen({ title, pdfUrl }: Props) {
+export default function PdfBookReaderScreen({ title }: Props) {
   const router = useRouter();
-  const [isFrameReady, setIsFrameReady] = useState(false);
-
-  const viewerHtml = useMemo(
-    () =>
-      buildNativeBookReaderHtml({
-        pdfUrl,
-        title,
-      }),
-    [pdfUrl, title]
-  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -46,23 +34,11 @@ export default function PdfBookReaderScreen({ title, pdfUrl }: Props) {
         </View>
 
         <View style={styles.viewer}>
-          <View style={styles.previewShell}>
-            {!isFrameReady && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator color={COLORS.primary} size="large" />
-              </View>
-            )}
-            {React.createElement('iframe', {
-              title,
-              srcDoc: viewerHtml,
-              onLoad: () => setIsFrameReady(true),
-              style: {
-                width: '100%',
-                height: '100%',
-                border: '0',
-                backgroundColor: '#F4EFE7',
-              },
-            })}
+          <View style={styles.messageBox}>
+            <Text style={styles.messageTitle}>PDF rendering disabled</Text>
+            <Text style={styles.messageText}>
+              The library no longer renders PDFs inside the app. This reader has been disabled for web.
+            </Text>
           </View>
         </View>
       </View>
@@ -122,24 +98,24 @@ const styles = StyleSheet.create({
   },
   viewer: {
     flex: 1,
-  },
-  previewShell: {
-    flex: 1,
-    overflow: 'hidden',
-    borderRadius: BORDER_RADIUS.xl,
-    backgroundColor: COLORS.surface,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
-    position: 'relative',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 248, 240, 0.72)',
-    zIndex: 2,
+  },
+  messageBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  messageTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  messageText: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

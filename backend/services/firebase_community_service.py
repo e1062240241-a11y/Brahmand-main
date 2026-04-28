@@ -54,17 +54,9 @@ class FirebaseCommunityService:
         user_id: str,
         location: Dict[str, Any]
     ) -> List[str]:
-        """Join all communities for a location"""
+        """Join all communities for a location (city, state, country)"""
         db = await FirebaseCommunityService.get_db()
         community_ids = []
-        
-        # Area Community
-        area_community = await FirebaseCommunityService.get_or_create_community(
-            f"{location['area'].title()} Group",
-            "area",
-            location
-        )
-        community_ids.append(area_community['id'])
         
         # City Community
         city_community = await FirebaseCommunityService.get_or_create_community(
@@ -115,7 +107,7 @@ class FirebaseCommunityService:
         for cid in community_ids:
             try:
                 community = await db.get_document('communities', cid)
-                if community:
+                if community and community.get('type') not in ['home_area', 'area']:
                     communities.append({
                         "id": community['id'],
                         "name": community['name'],

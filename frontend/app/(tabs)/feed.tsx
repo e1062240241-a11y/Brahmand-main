@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text, StyleSheet, Image, ScrollView, FlatList, TouchableOpacity, Dimensions, TextInput, Animated, Easing, ActivityIndicator, Modal, Share, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +14,8 @@ import UploadPostModal from '../../src/components/UploadPostModal';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import { getAllUsers, getUserNotifications, getUnreadNotificationCount, followUser, unfollowUser, getUserProfile, updateProfile, getPostsFeed, togglePostLike, addPostComment, getPostComments, repostPost, deletePost, reportPost, viewPost, addPostHashtags, searchByHashtag, getUserPosts } from '../../src/services/api';
+
+const FEED_STATS_CACHE_KEY = 'feed_stats_cache';
 
 let feedImageManipulator: typeof ImageManipulatorType | null = null;
 const getFeedImageManipulator = async () => {
@@ -93,8 +96,20 @@ export default function FeedScreen() {
   const [feedOffset, setFeedOffset] = useState(0);
   const [hasMoreFeed, setHasMoreFeed] = useState(true);
   const [showMyPostsModal, setShowMyPostsModal] = useState(false);
+  const [postsCount, setPostsCount] = useState<number>(myRealPosts.length);
+  const [followersCount, setFollowersCount] = useState<number>((user as any)?.followers?.length || 0);
+  const [followingCount, setFollowingCount] = useState<number>(Array.isArray((user as any)?.following) ? (user as any).following.length : 0);
   const [bioText, setBioText] = useState(user?.bio || 'Sanatan Lok Community');
+  const [feedStatsLoaded, setFeedStatsLoaded] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
+
+  useEffect(() => {
+    setFollowingCount(followingIds.length);
+  }, [followingIds]);
+
+  useEffect(() => {
+    setPostsCount(myRealPosts.length);
+  }, [myRealPosts]);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
@@ -314,24 +329,65 @@ export default function FeedScreen() {
   const userName = user?.name || 'User';
   const currentUserId = (user as any)?.id;
   const myPosts = myRealPosts;
-  const postsCount = myPosts.length;
-  const followersCount = (user as any)?.followers?.length || 0;
-  const followingCount = followingIds.length;
 
   useEffect(() => {
     setProfileImageError(false);
   }, [profilePhoto]);
 
+  const getCachedFeedStats = useCallback(async () => {
+    try {
+      const cached = await AsyncStorage.getItem(FEED_STATS_CACHE_KEY);
+      if (!cached) {
+        return null;
+      }
+      return JSON.parse(cached) as { posts?: number; followers?: number; following?: number };
+    } catch (error) {
+      console.warn('Failed to load cached feed stats:', error);
+      return null;
+    }
+  }, []);
+
+  const saveCachedFeedStats = useCallback(async (stats: { posts: number; followers: number; following: number }) => {
+    try {
+      await AsyncStorage.setItem(FEED_STATS_CACHE_KEY, JSON.stringify({ ...stats, timestamp: Date.now() }));
+    } catch (error) {
+      console.warn('Failed to save cached feed stats:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadCachedStats = async () => {
+      const cached = await getCachedFeedStats();
+      if (cached) {
+        setPostsCount(cached.posts ?? 0);
+        setFollowersCount(cached.followers ?? 0);
+        setFollowingCount(cached.following ?? 0);
+      }
+      setFeedStatsLoaded(true);
+    };
+    loadCachedStats();
+  }, [getCachedFeedStats]);
+
+  useEffect(() => {
+    if (feedStatsLoaded) {
+      saveCachedFeedStats({ posts: postsCount, followers: followersCount, following: followingCount });
+    }
+  }, [feedStatsLoaded, postsCount, followersCount, followingCount, saveCachedFeedStats]);
+
   const syncCurrentUser = useCallback(async () => {
     try {
       const response = await getUserProfile();
       const profile = response.data || {};
-      setFollowingIds(Array.isArray(profile.following) ? profile.following : []);
+      const nextFollowingIds = Array.isArray(profile.following) ? profile.following : [];
+      const nextFollowersCount = Array.isArray(profile.followers) ? profile.followers.length : (user as any)?.followers?.length || 0;
+      setFollowingIds(nextFollowingIds);
+      setFollowersCount(nextFollowersCount);
+      setFollowingCount(nextFollowingIds.length);
       updateUser(profile);
     } catch (error) {
       console.warn('Failed to sync current user profile:', error);
     }
-  }, [updateUser]);
+  }, [updateUser, user]);
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false) => {
     if (append) {
@@ -380,6 +436,7 @@ export default function FeedScreen() {
       : [...followingIds, userId];
 
     setFollowingIds(nextIds);
+    setFollowingCount(nextIds.length);
 
     try {
       if (isFollowing) {
@@ -389,6 +446,7 @@ export default function FeedScreen() {
       }
     } catch (error) {
       setFollowingIds(followingIds);
+      setFollowingCount(followingIds.length);
       console.warn('Follow request failed:', error);
     } finally {
       await syncCurrentUser();
@@ -503,6 +561,7 @@ export default function FeedScreen() {
       const payload = res.data;
       const items = Array.isArray(payload) ? payload : (payload?.items || []);
       setMyRealPosts(items);
+      setPostsCount(items.length);
     } catch (err) {
       console.warn('Failed to load my real posts:', err);
     }
@@ -609,6 +668,8 @@ const searchIconOpacity = searchAnim.interpolate({
 
   const handleUploadPostSuccess = (post: any) => {
     setFeedPosts((prev) => [post, ...prev]);
+    setMyRealPosts((prev) => [post, ...prev]);
+    setPostsCount((prev) => prev + 1);
   };
 
   const handleLikePost = useCallback(async (post: any) => {
@@ -833,6 +894,7 @@ const searchIconOpacity = searchAnim.interpolate({
     const deletedPost = post;
     setFeedPosts((prev) => prev.filter((item) => item.id !== postId));
     setMyRealPosts((prev) => prev.filter((item) => item.id !== postId));
+    setPostsCount((prev) => Math.max(0, prev - 1));
 
     if (selectedCommentPostId === postId) {
       setCommentModalVisible(false);
@@ -847,6 +909,7 @@ const searchIconOpacity = searchAnim.interpolate({
       console.warn('Failed to delete post:', error);
       setFeedPosts((prev) => (prev.some((item) => item.id === postId) ? prev : [deletedPost, ...prev]));
       setMyRealPosts((prev) => (prev.some((item) => item.id === postId) ? prev : [deletedPost, ...prev]));
+      setPostsCount((prev) => prev + 1);
       alert('Could not delete post. Please try again.');
     }
   }, [selectedCommentPostId]);
@@ -1645,12 +1708,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
     marginTop: 4,
-  },
-  closeBtn: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   divider: {
     height: 1,

@@ -46,6 +46,14 @@ import { socketService } from '../../src/services/socket';
 
 const DM_MESSAGES_CACHE_KEY = 'dm_messages_cache';
 
+type Message = Omit<ChatMessage, 'content' | 'text' | 'timestamp'> & {
+  content?: string;
+  text?: string;
+  timestamp?: string;
+  message_type?: string;
+  status?: 'sending' | 'sent' | 'delivered' | 'read' | string;
+};
+
 // Cache functions
 const getCachedMessages = async (conversationId: string): Promise<Message[]> => {
   try {
@@ -97,10 +105,10 @@ const MessageStatus = ({ status, isOwn }: { status?: string; isOwn: boolean }) =
 };
 
 type DMMessageItemProps = {
-  item: ChatMessage;
+  item: Message;
   index: number;
   userId?: string;
-  renderMessageContent: (message: ChatMessage) => React.ReactNode;
+  renderMessageContent: (message: Message) => React.ReactNode;
   formatChatDate: (dateString: string) => string;
   formatTime: (dateString: string) => string;
   showDateSeparator: boolean;
@@ -202,7 +210,7 @@ const DirectMessageScreen = () => {
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [otherUserPresence, setOtherUserPresence] = useState<{
     online_status?: boolean;
@@ -1239,7 +1247,7 @@ const DirectMessageScreen = () => {
     });
   }, []);
 
-  const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
+  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
     const showDateSeparator = index === 0 || !isSameDay(new Date(item.created_at), new Date(messages[index - 1]?.created_at || ''));
     return (
       <DMMessageItem

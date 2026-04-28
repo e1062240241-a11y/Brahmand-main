@@ -72,7 +72,7 @@ export default function CommunityScreen() {
       if (activeTab === 'Chat') {
         // Fetch communities list
         const res = await getCommunities();
-        setCommunities(res.data || []);
+        setCommunities((res.data || []).filter((item: Community) => item.type !== 'home_area' && item.type !== 'area'));
         setRequests([]);
       } else {
         // Fetch community requests for this tab type

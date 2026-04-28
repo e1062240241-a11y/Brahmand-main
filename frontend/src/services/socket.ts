@@ -131,12 +131,15 @@ class SocketService {
       return join();
     }
 
+    const socket = this.socket;
+    if (!socket) return Promise.reject(new Error('Socket not initialized'));
+
     return new Promise((resolve, reject) => {
       const onConnect = () => {
         if (!this.socket) return reject(new Error('Socket not initialized'));
         join().then(resolve).catch(reject);
       };
-      this.socket.once('connect', onConnect);
+      socket.once('connect', onConnect);
     });
   }
 

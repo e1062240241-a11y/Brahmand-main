@@ -102,6 +102,7 @@ export interface Message {
   content?: string;
   text?: string;
   message_type: string;
+  status?: 'sending' | 'sent' | 'delivered' | 'read' | string;
   created_at: string;
 }
 

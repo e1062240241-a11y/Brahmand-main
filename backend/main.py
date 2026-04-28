@@ -9,10 +9,11 @@ import sys
 import os
 import asyncio
 import re
+import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from tempfile import NamedTemporaryFile
 from uuid import uuid4
 from urllib.parse import quote
@@ -62,6 +63,7 @@ from models.schemas import (
 )
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
 from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit
+from routes.bhagavad_gita_routes import router as bhagavad_gita_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -114,10 +116,6 @@ HOSPITAL_SEARCH_FALLBACK = [
     "NIMHANS, Bangalore",
     "CMC Ludhiana",
 ]
-
-LIBRARY_BOOK_PDF_SOURCES = {
-    "bhagvad-geeta": "https://firebasestorage.googleapis.com/v0/b/sanatan-lok.firebasestorage.app/o/279.pdf?alt=media&token=410da0d2-bddf-4a43-8c58-ffa27b2bae74",
-}
 
 
 def _seconds_until_next_midnight(tz_name: str) -> int:
@@ -547,10 +545,12 @@ cors_origins = os.getenv('CORS_ORIGINS', '*')
 default_allowed_origins = [
     "https://brahmand.app",
     "https://www.brahmand.app",
+    "http://brahmand.app",
+    "http://www.brahmand.app",
     "https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app",
 ]
 allowed_origins = []
-allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)$"
+allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)(:\d+)?$"
 if cors_origins != '*':
     configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
     allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
@@ -714,90 +714,7 @@ async def health_check():
     }
 
 
-@api_router.get("/library/books/{book_id}/pdf")
-@api_router.get("/library/books/{book_id}/pdf")
-@api_router.head("/library/books/{book_id}/pdf")
-async def proxy_library_book_pdf(book_id: str, request: Request):
-    """Proxy public library PDFs through backend to avoid browser CORS issues."""
-    source_url = LIBRARY_BOOK_PDF_SOURCES.get(book_id)
-    if not source_url:
-        raise HTTPException(status_code=404, detail="Library book not found")
-
-    upstream_headers = {}
-    requested_range = request.headers.get("range")
-
-    if request.method == "GET" and not requested_range:
-        raise HTTPException(
-            status_code=400,
-            detail="Range header required for library PDF proxy requests. Use byte-range requests."
-        )
-
-    if requested_range:
-        upstream_headers["Range"] = requested_range
-
-    try:
-        upstream_response = requests.get(
-            source_url,
-            headers=upstream_headers,
-            stream=True,
-            timeout=60,
-        )
-    except requests.RequestException as exc:
-        logger.warning("Library PDF proxy failed for book_id=%s error=%s", book_id, exc)
-        raise HTTPException(status_code=502, detail="Failed to fetch library PDF")
-
-    if upstream_response.status_code >= 400:
-        upstream_response.close()
-        raise HTTPException(status_code=upstream_response.status_code, detail="Failed to fetch library PDF")
-
-    response_headers = {}
-    passthrough_header_names = [
-        "Content-Type",
-        "Content-Length",
-        "Content-Range",
-        "Accept-Ranges",
-        "Cache-Control",
-        "ETag",
-        "Last-Modified",
-    ]
-    for header_name in passthrough_header_names:
-        header_value = upstream_response.headers.get(header_name)
-        if header_value:
-            response_headers[header_name] = header_value
-
-    if request.method == "HEAD":
-        upstream_response.close()
-        response = Response(status_code=upstream_response.status_code, headers=response_headers)
-        origin = request.headers.get("origin") or ""
-        return _apply_cors_headers(response, origin, request)
-
-    def stream_pdf():
-        try:
-            for chunk in upstream_response.iter_content(chunk_size=1024 * 64):
-                if chunk:
-                    yield chunk
-        finally:
-            upstream_response.close()
-
-    response = StreamingResponse(
-        stream_pdf(),
-        status_code=upstream_response.status_code,
-        headers=response_headers,
-        media_type=upstream_response.headers.get("Content-Type", "application/pdf"),
-    )
-    origin = request.headers.get("origin") or ""
-    return _apply_cors_headers(response, origin, request)
-
-
-@api_router.options("/library/books/{book_id}/pdf")
-async def proxy_library_book_pdf_options(book_id: str, request: Request):
-    """Explicit preflight support for library PDF proxy requests."""
-    source_url = LIBRARY_BOOK_PDF_SOURCES.get(book_id)
-    if not source_url:
-        raise HTTPException(status_code=404, detail="Library book not found")
-
-    origin = request.headers.get("origin") or ""
-    return _apply_cors_headers(Response(status_code=204), origin, request)
+api_router.include_router(bhagavad_gita_router)
 
 
 @api_router.get("/firebase-config")
@@ -1118,19 +1035,6 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     # Create/get communities
     community_ids = []
     
-    # Area Group
-    area_name = f"{loc['area'].title()} Group"
-    area = await db.get_community_by_name(area_name)
-    if not area:
-        area_id = await db.create_community({
-            "name": area_name, "type": "area", "location": loc,
-            "code": generate_community_code(loc['area']), "members": [], "subgroups": SUBGROUPS
-        })
-        logger.info(f"Created community: {area_name}")
-    else:
-        area_id = area['id']
-    community_ids.append(area_id)
-    
     # City Group
     city_name = f"{loc['city'].title()} Group"
     city = await db.get_community_by_name(city_name)
@@ -1219,12 +1123,11 @@ async def update_current_location_root(location: dict, token_data: dict = Depend
 @api_router.post("/user/dual-location")
 async def setup_dual_location(locations: DualLocationSetup, token_data: dict = Depends(verify_token)):
     """
-    Setup home and optionally office location, join 5 default communities:
-    1. Home Area Group
-    2. Office Area Group (if provided)
-    3. City Group
-    4. State Group
-    5. Country Group (Bharat)
+    Setup home and optionally office location, join default communities:
+    1. City Group
+    2. State Group
+    3. Country Group (Bharat)
+    4. Office Area Group (if provided)
     """
     db = await get_db()
     user_id = token_data["user_id"]
@@ -1283,26 +1186,21 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         update_data['home_location'] = home_loc
         update_data['location'] = home_loc
         
-        # 1. Home Area Group
-        area_name = f"{home_loc['area'].title()} Group"
-        area_id = await create_or_get_community(area_name, 'home_area', home_loc)
-        default_community_ids.append(area_id)
-        
-        # 3. City Group
+        # City Group
         city_name = f"{home_loc['city'].title()} Group"
         city_id = await create_or_get_community(city_name, 'city', {
             "country": home_loc['country'], "state": home_loc['state'], "city": home_loc['city']
         })
         default_community_ids.append(city_id)
         
-        # 4. State Group
+        # State Group
         state_name = f"{home_loc['state'].title()} Group"
         state_id = await create_or_get_community(state_name, 'state', {
             "country": home_loc['country'], "state": home_loc['state']
         })
         default_community_ids.append(state_id)
         
-        # 5. Country Group
+        # Country Group
         country = home_loc['country'].replace('India', 'Bharat')
         country_name = f"{country.title()} Group"
         country_id = await create_or_get_community(country_name, 'country', {
@@ -1532,6 +1430,7 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
             },
             'is_read': False,
         })
+        logger.info(f"Follow notification created for user {user_id} by {current_user_id}")
 
         try:
             target_token = await push_service.get_user_fcm_token(user_id)
@@ -1546,6 +1445,9 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
                     },
                     channel_id='messages'
                 )
+                logger.info(f"Follow push sent to user {user_id} for follower {current_user_id}")
+            else:
+                logger.info(f"Follow notification created for user {user_id} but no FCM token found")
         except Exception as push_err:
             logger.warning(f"Followed user {user_id} but failed to send push: {push_err}")
     except Exception as notify_err:
@@ -2144,6 +2046,7 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                     },
                     'is_read': False,
                 })
+                logger.info(f"Like notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
                 post_owner_token = await push_service.get_user_fcm_token(post_owner_id)
                 if post_owner_token:
@@ -2158,6 +2061,9 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                         },
                         channel_id='messages'
                     )
+                    logger.info(f"Like push sent to post owner {post_owner_id} for post {post_id}")
+                else:
+                    logger.info(f"Like notification created for post {post_id} but no FCM token found for owner {post_owner_id}")
             except Exception as notify_err:
                 logger.warning(f"Post like notification failed for post {post_id}: {notify_err}")
 
@@ -2276,6 +2182,7 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
                 },
                 'is_read': False,
             })
+            logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
             post_owner_token = await push_service.get_user_fcm_token(post_owner_id)
             if post_owner_token:
@@ -2291,6 +2198,9 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
                     },
                     channel_id='messages'
                 )
+                logger.info(f"Comment push sent to post owner {post_owner_id} for post {post_id}")
+            else:
+                logger.info(f"Comment notification created for post {post_id} but no FCM token found for owner {post_owner_id}")
         except Exception as notify_err:
             logger.warning(f"Post comment notification failed for post {post_id}: {notify_err}")
 
@@ -2836,6 +2746,8 @@ async def get_communities(token_data: dict = Depends(verify_token)):
             comm = await db.get_document('communities', cid)
             if comm:
                 comm_type = comm.get('type', 'other')
+                if comm_type in ['home_area', 'area']:
+                    continue
                 communities.append({
                     "id": comm['id'],
                     "name": comm['name'],

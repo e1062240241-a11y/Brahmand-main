@@ -161,8 +161,12 @@ const ReelVideoItem = React.memo(
 });
 
 export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
+  const REEL_PAGE_SIZE = 20;
   const [videos, setVideos] = useState([initialPost]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [reelOffset, setReelOffset] = useState(0);
+  const [reelHasMore, setReelHasMore] = useState(true);
+  const [reelLoading, setReelLoading] = useState(false);
   const { height: SCREEN_HEIGHT } = useWindowDimensions();
   const flatListRef = useRef<FlatList<any>>(null);
 
@@ -191,33 +195,62 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     [activeIndex, onClose, onLike, onComment, onShare, handleNext, videos.length]
   );
 
+  const loadReelPage = useCallback(async (offset: number, replace: boolean = false) => {
+    if (reelLoading || !reelHasMore) {
+      return;
+    }
+
+    setReelLoading(true);
+    try {
+      const res = await api.get('/posts/feed', { params: { limit: REEL_PAGE_SIZE, offset } });
+      const payload = res.data;
+      const incomingItems = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
+      if (incomingItems.length === 0) {
+        setReelHasMore(false);
+        return;
+      }
+
+      setVideos((prev) => {
+        const existingIds = new Set(prev.map((item: any) => item?.id));
+        const deduped = incomingItems.filter((item: any) => item?.id && !existingIds.has(item.id));
+        if (deduped.length === 0) {
+          return prev;
+        }
+        return replace ? [initialPost, ...deduped] : [...prev, ...deduped];
+      });
+      setReelOffset(offset + incomingItems.length);
+      setReelHasMore(incomingItems.length === REEL_PAGE_SIZE);
+    } catch (err) {
+      console.log('Reel fetch error', err);
+    } finally {
+      setReelLoading(false);
+    }
+  }, [initialPost, reelHasMore, reelLoading]);
+
   useEffect(() => {
     if (isVisible) {
       setVideos([initialPost]);
-      // Fetch more randomly/recently exactly like the feed
-      api.get('/posts/feed', { params: { limit: 50, offset: 0 } })
-        .then(res => {
-          const payload = res.data;
-          const incomingItems = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
-          if (incomingItems.length > 0) {
-            const vids = incomingItems.filter((p: any) => {
-              return p.id !== initialPost.id;
-            });
-            setVideos([initialPost, ...vids]);
-          }
-        })
-        .catch(err => console.log('Reel fetch error', err));
+      setActiveIndex(0);
+      setReelOffset(0);
+      setReelHasMore(true);
+      loadReelPage(0, true);
     } else {
       setActiveIndex(0);
     }
-  }, [isVisible, initialPost.id]);
+  }, [isVisible, initialPost, loadReelPage]);
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      setActiveIndex(viewableItems[0].index);
+      const nextIndex = viewableItems[0].index;
+      if (typeof nextIndex === 'number') {
+        setActiveIndex(nextIndex);
+        if (nextIndex >= videos.length - 2 && reelHasMore && !reelLoading) {
+          loadReelPage(reelOffset);
+        }
+      }
     }
-  }, []);
+  }, [videos.length, reelHasMore, reelLoading, reelOffset, loadReelPage]);
 
   return (
     <Modal visible={isVisible} transparent={false} animationType="slide" onRequestClose={onClose}>
@@ -230,16 +263,35 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           data={videos}
           keyExtractor={(item, index) => String(item.id || index)}
           pagingEnabled
+          snapToInterval={SCREEN_HEIGHT}
+          snapToAlignment="start"
+          decelerationRate="fast"
           showsVerticalScrollIndicator={false}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
+          onScrollEndDrag={({ nativeEvent }) => {
+            const offsetY = nativeEvent.contentOffset.y;
+            const nextIndex = Math.round(offsetY / SCREEN_HEIGHT);
+            const targetOffset = nextIndex * SCREEN_HEIGHT;
+            if (Math.abs(offsetY - targetOffset) > SCREEN_HEIGHT * 0.1) {
+              flatListRef.current?.scrollToOffset({ offset: targetOffset, animated: true });
+            }
+          }}
+          onMomentumScrollEnd={(event) => {
+            const offsetY = event.nativeEvent.contentOffset.y;
+            const nextIndex = Math.round(offsetY / SCREEN_HEIGHT);
+            if (nextIndex !== activeIndex) {
+              setActiveIndex(nextIndex);
+            }
+            if (nextIndex >= videos.length - 2 && reelHasMore && !reelLoading) {
+              loadReelPage(reelOffset);
+            }
+          }}
           getItemLayout={(data, index) => ({
             length: SCREEN_HEIGHT,
             offset: SCREEN_HEIGHT * index,
             index,
           })}
-          snapToAlignment="start"
-          decelerationRate="fast"
           initialNumToRender={2}
           maxToRenderPerBatch={2}
           windowSize={3}

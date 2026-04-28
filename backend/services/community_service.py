@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
+from bson.objectid import ObjectId
 
 from config.database import get_database
 from utils.helpers import serialize_doc, generate_community_code, SUBGROUPS
@@ -48,17 +49,9 @@ class CommunityService:
         user_id: str,
         location: Dict[str, Any]
     ) -> List[str]:
-        """Join all communities for a location (area, city, state, country)"""
+        """Join all communities for a location (city, state, country)"""
         db = await get_database()
         community_ids = []
-        
-        # Area Community
-        area_community = await CommunityService.get_or_create_community(
-            f"{location['area'].title()} Group",
-            "area",
-            location
-        )
-        community_ids.append(str(area_community["_id"]))
         
         # City Community
         city_community = await CommunityService.get_or_create_community(
@@ -112,7 +105,7 @@ class CommunityService:
         for cid in community_ids:
             try:
                 community = await db.communities.find_one({"_id": ObjectId(cid)})
-                if community:
+                if community and community.get("type") not in ["home_area", "area"]:
                     communities.append({
                         "id": str(community["_id"]),
                         "name": community["name"],

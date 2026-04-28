@@ -141,7 +141,9 @@ export default function MessagesScreen() {
     const cached = await getCachedData(cacheKey);
     if (cached?.data) {
       if (activeTopTab === 'Community') {
-        if (activeCommunityTab === 'Chat') setCommunities(cached.data);
+        if (activeCommunityTab === 'Chat') {
+          setCommunities((cached.data as Community[]).filter((item) => item.type !== 'home_area' && item.type !== 'area'));
+        }
       } else {
         setCircles(cached.data);
       }
@@ -151,10 +153,11 @@ export default function MessagesScreen() {
       if (activeTopTab === 'Community') {
         if (activeCommunityTab === 'Chat') {
           const res = await getCommunities();
-          setCommunities(res.data || []);
+          const filtered = (res.data || []).filter((item: Community) => item.type !== 'home_area' && item.type !== 'area');
+          setCommunities(filtered);
           setRequests([]);
           // Cache
-          await setCachedData('communities_Chat', res.data || []);
+          await setCachedData('communities_Chat', filtered);
         } else if (activeCommunityTab === 'General') {
           setCommunities([]);
           setRequests([]);
