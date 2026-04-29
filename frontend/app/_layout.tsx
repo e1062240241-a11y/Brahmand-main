@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
+import { startAuthStateListener } from '../src/services/firebase/authService';
 import { addNotificationResponseReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
 import { sendDirectMessage } from '../src/services/api';
 import { COLORS } from '../src/constants/theme';
@@ -270,6 +271,17 @@ export default function RootLayout() {
       }
     });
   }, [loadStoredAuth, loadStoredAdminAuth]);
+
+  // Start Firebase auth state listener to catch silent auto-verification on Android
+  useEffect(() => {
+    const unsubscribe = startAuthStateListener((user) => {
+      if (user) {
+        console.log('[Auth] onAuthStateChanged: user signed in via auto-verification');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (isLoading || !token || !isAuthenticated || pushInitStartedRef.current) {

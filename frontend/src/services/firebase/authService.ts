@@ -173,15 +173,48 @@ async function getFirebaseIdToken(user: any): Promise<string> {
 
 export async function verifyFirebaseOTP(otp: string): Promise<string> {
   try {
+    const auth = initializeFirebaseAuth();
+
+    // If auto-verification already signed the user in (Play Services), just return the token.
+    if (auth && auth.currentUser) {
+      console.log('[Firebase] User already signed in (auto-verification). Returning token.');
+      return await getFirebaseIdToken(auth.currentUser);
+    }
+
     if (!confirmationResult) {
       throw new Error('No OTP request found. Please request OTP first.');
     }
-    
-    const userCredential = await confirmationResult.confirm(otp);
-    const idToken = await getFirebaseIdToken(userCredential.user);
-    
-    console.log('[Firebase] OTP verified successfully');
-    return idToken;
+
+    try {
+      const userCredential = await confirmationResult.confirm(otp);
+      const idToken = await getFirebaseIdToken(userCredential.user);
+      console.log('[Firebase] OTP verified successfully');
+      return idToken;
+    } catch (confirmError: any) {
+      console.warn('[Firebase] confirmationResult.confirm failed:', confirmError);
+      // If the code was silently consumed by Play Services, check currentUser again and return token.
+      if (confirmError?.code === 'auth/session-expired' || confirmError?.code === 'auth/code-expired') {
+        // If Firebase has already signed in the user in the background, return token.
+        if (auth && auth.currentUser) {
+          console.log('[Firebase] confirmation expired but user is signed in; returning token.');
+          return await getFirebaseIdToken(auth.currentUser);
+        }
+
+        // Poll briefly for the currentUser to appear (small race where Play Services finishes after confirm() fails)
+        const start = Date.now();
+        const timeoutMs = 2000; // wait up to 2s
+        const intervalMs = 200;
+        while (Date.now() - start < timeoutMs) {
+          await new Promise((r) => setTimeout(r, intervalMs));
+          if (auth && auth.currentUser) {
+            console.log('[Firebase] currentUser appeared after confirm() failure; returning token.');
+            return await getFirebaseIdToken(auth.currentUser);
+          }
+        }
+      }
+
+      throw confirmError;
+    }
   } catch (error: any) {
     console.error('[Firebase] Error verifying OTP:', error);
     
@@ -198,6 +231,43 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
     
     throw new Error(error.message || 'Failed to verify OTP');
   }
+}
+
+/**
+ * Start listening to auth state changes.
+ * Clears any pending confirmationResult when a user becomes signed in (handles auto-verification).
+ * Returns an unsubscribe function.
+ */
+export function startAuthStateListener(onChange?: (user: any) => void): (() => void) {
+  const auth = initializeFirebaseAuth();
+  if (!auth || typeof auth.onAuthStateChanged !== 'function') {
+    return () => {};
+  }
+
+  const unsubscribe = auth.onAuthStateChanged((user: any) => {
+    try {
+      // Clear pending confirmation result on both sign-in and sign-out to avoid stale confirmation state
+      confirmationResult = null;
+    } catch (e) {
+      // ignore
+    }
+
+    if (typeof onChange === 'function') {
+      try {
+        onChange(user);
+      } catch (e) {
+        // ignore user callback errors
+      }
+    }
+  });
+
+  return () => {
+    try {
+      unsubscribe();
+    } catch (e) {
+      // ignore
+    }
+  };
 }
 
 /**

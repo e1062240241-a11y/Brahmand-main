@@ -611,6 +611,24 @@ export const getPostViews = (postId: string) =>
 export const getBhagavadGitaChapter = (chapterNumber: number = 1) =>
   api.get(`/library/bhagavad-gita/chapter/${chapterNumber}`);
 
+export const getRamcharitmanasKand = (kandNumber: number = 1) =>
+  api.get(`/library/ramcharitmanas/chapter/${kandNumber}`);
+
+export const getAtharvavedChapter = (chapterNumber: number = 1) =>
+  api.get(`/library/atharvaved/chapter/${chapterNumber}`);
+
+export const getRamayanChapter = (chapterNumber: number = 1) =>
+  api.get(`/library/ramayan/chapter/${chapterNumber}`);
+
+export const getRigvedaChapter = (chapterNumber: number = 1) =>
+  api.get(`/library/rigveda/chapter/${chapterNumber}`);
+
+export const getYajurvedaChapter = (chapterNumber: number = 1) =>
+  api.get(`/library/yajurveda/chapter/${chapterNumber}`);
+
+export const getMahabharataBook = (bookNumber: number = 1) =>
+  api.get(`/library/mahabharata/book/${bookNumber}`);
+
 // Community APIs
 export const getCommunities = () => 
   api.get('/communities');

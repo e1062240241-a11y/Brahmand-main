@@ -64,6 +64,12 @@ from models.schemas import (
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
 from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit
 from routes.bhagavad_gita_routes import router as bhagavad_gita_router
+from routes.ramcharitmanas_routes import router as ramcharitmanas_router
+from routes.atharvaved_routes import router as atharvaved_router
+from routes.mahabharata_routes import router as mahabharata_router
+from routes.rigveda_routes import router as rigveda_router
+from routes.ramayan_routes import router as ramayan_router
+from routes.yajurveda_routes import router as yajurveda_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -715,6 +721,12 @@ async def health_check():
 
 
 api_router.include_router(bhagavad_gita_router)
+api_router.include_router(ramcharitmanas_router)
+api_router.include_router(atharvaved_router)
+api_router.include_router(mahabharata_router)
+api_router.include_router(rigveda_router)
+api_router.include_router(ramayan_router)
+api_router.include_router(yajurveda_router)
 
 
 @api_router.get("/firebase-config")

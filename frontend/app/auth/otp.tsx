@@ -14,7 +14,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { verifyOTP, verifyFirebaseToken } from '../../src/services/api';
-import { verifyFirebaseOTP, sendFirebaseOTP, confirmationResult } from '../../src/services/firebase/authService';
+import { verifyFirebaseOTP, sendFirebaseOTP, confirmationResult, getCurrentUserToken } from '../../src/services/firebase/authService';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING } from '../../src/constants/theme';
 
@@ -82,6 +82,16 @@ export default function OTPScreen() {
     try {
       let idToken: string | null = null;
       let firebaseError: any = null;
+
+      // Bail out early: if Firebase already has a signed-in user (auto-verification), use its token.
+      try {
+        const existingToken = await getCurrentUserToken();
+        if (existingToken) {
+          idToken = existingToken;
+        }
+      } catch (e) {
+        // ignore and continue to confirmation flow
+      }
 
       if (confirmationResult) {
         try {
