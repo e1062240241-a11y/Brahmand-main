@@ -14,8 +14,8 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { initializeFirebase, firebaseConfig } from '../../src/services/firebase/config';
-import { sendFirebaseOTP } from '../../src/services/firebase/authService';
+import { initializeFirebase, firebaseConfig, isAnonymousPhone } from '../../src/services/firebase/config';
+import { sendFirebaseOTP, cleanupRecaptchaVerifier } from '../../src/services/firebase/authService';
 
 import { COLORS, SPACING } from '../../src/constants/theme';
 
@@ -48,6 +48,11 @@ export default function PhoneScreen() {
   // Ensure Firebase app is initialized before RecaptchaVerifier runs
   React.useEffect(() => {
     initializeFirebase();
+    return () => {
+      if (Platform.OS === 'web') {
+        cleanupRecaptchaVerifier();
+      }
+    };
   }, []);
 
   React.useEffect(() => {
@@ -80,6 +85,11 @@ export default function PhoneScreen() {
 
     try {
       const fullPhone = `+91${phone}`;
+      if (isAnonymousPhone(fullPhone)) {
+        console.log('[Phone Auth] Detected anonymous predefined number, skipping OTP');
+        router.push({ pathname: '/auth/profile', params: { phone: fullPhone, anonymous: 'true' } });
+        return;
+      }
       const confirmation = await sendFirebaseOTP(fullPhone);
       console.log('[Phone Auth] OTP sent successfully', confirmation ? 'confirmation ready' : '');
       router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });

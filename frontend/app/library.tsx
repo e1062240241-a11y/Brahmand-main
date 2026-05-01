@@ -22,15 +22,6 @@ const rigvedaCover = require('../assets/images/Rigveda.jpg');
 const ramayanCover = require('../assets/images/Ramayan-hardcover-front-scaled.jpg');
 const yajurvedaCover = require('../assets/images/Yajurveda.jpg');
 
-const categories = [
-  'Science',
-  'Magazine',
-  'Story',
-  'History',
-  'General',
-  'Lifestyle',
-];
-
 const books = [
   {
     id: 'geeta',
@@ -97,6 +88,24 @@ const books = [
   },
 ];
 
+const sectionDefinitions = [
+  {
+    id: 'mythological',
+    title: 'Mythological Story',
+    bookIds: ['mahabharata', 'ramayan'],
+  },
+  {
+    id: 'vedas',
+    title: 'Vedas',
+    bookIds: ['atharvaved', 'rigveda', 'yajurveda'],
+  },
+  {
+    id: 'learning',
+    title: 'Learning',
+    bookIds: ['geeta'],
+  },
+];
+
 const LibraryPage = () => {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -126,6 +135,11 @@ const LibraryPage = () => {
   const filteredBooks = books.filter((book) =>
     book.title.toLowerCase().includes(query.trim().toLowerCase()),
   );
+
+  const sectionBooks = sectionDefinitions.map((section) => ({
+    ...section,
+    books: filteredBooks.filter((book) => section.bookIds.includes(book.id)),
+  }));
 
   const renderHighlightedTitle = (title: string, queryText: string) => {
     const normalizedQuery = queryText.trim().toLowerCase();
@@ -183,6 +197,10 @@ const LibraryPage = () => {
       </View>
 
       <View style={styles.header}>
+        <View style={styles.pageTitleBlock}>
+          <Text style={styles.pageSubtitle}>My Favourite</Text>
+          <Text style={styles.pageTitle}>BOOKS</Text>
+        </View>
         <View style={styles.searchBar}>
           <TextInput
             value={query}
@@ -201,23 +219,43 @@ const LibraryPage = () => {
           contentContainerStyle={styles.booksListContent}
           showsVerticalScrollIndicator={false}
         >
-          {filteredBooks.map((book) => (
-            <TouchableOpacity
-              key={book.id}
-              style={[styles.bookCard, { backgroundColor: book.bgColor }]}
-              activeOpacity={0.9}
-              onPress={() => router.push(book.route as any)}
-            >
-              <View style={styles.bookCardContent}>
-                <View style={styles.bookTextBlock}>
-                  {renderHighlightedTitle(book.title, query)}
-                  <Text style={styles.bookCardLabel}>{book.label}</Text>
-                  <Text style={styles.bookCardDetails}>{book.details}</Text>
+          {sectionBooks.map((section) =>
+            section.books.length > 0 ? (
+              <View key={section.id} style={styles.sectionBlock}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>{section.title}</Text>
+                  <Text style={styles.sectionCount}>{section.books.length} books</Text>
                 </View>
-                <Image source={book.cover} style={styles.bookImage} resizeMode="cover" />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.sectionList}
+                >
+                  {section.books.map((book) => (
+                    <TouchableOpacity
+                      key={book.id}
+                      style={[styles.sectionCard, { backgroundColor: book.bgColor }]}
+                      activeOpacity={0.9}
+                      onPress={() => router.push(book.route as any)}
+                    >
+                      <Image source={book.cover} style={styles.sectionBookImage} resizeMode="cover" />
+                      <View style={styles.sectionCardText}>
+                        {renderHighlightedTitle(book.title, query)}
+                        <Text style={styles.bookCardLabel}>{book.label}</Text>
+                        <Text style={styles.bookCardDetails}>{book.details}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
-            </TouchableOpacity>
-          ))}
+            ) : null,
+          )}
+
+          {filteredBooks.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No books match your search.</Text>
+            </View>
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -296,6 +334,59 @@ const styles = StyleSheet.create({
   },
   booksListContent: {
     paddingBottom: SPACING.lg,
+  },
+  sectionBlock: {
+    marginBottom: SPACING.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+  },
+  sectionTitle: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  sectionCount: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+  },
+  sectionList: {
+    paddingLeft: SPACING.sm,
+    paddingBottom: SPACING.sm,
+  },
+  sectionCard: {
+    width: 180,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.md,
+    marginRight: SPACING.md,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  sectionBookImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.border,
+  },
+  sectionCardText: {
+    flex: 1,
+  },
+  emptyState: {
+    padding: SPACING.lg,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: COLORS.textSecondary,
+    fontSize: 16,
   },
   bookCard: {
     width: '100%',

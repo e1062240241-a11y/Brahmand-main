@@ -135,10 +135,10 @@ const UserProfileScreen = () => {
                 if (router.canGoBack()) {
                   router.back();
                 } else {
-                  router.navigate('/feed');
+                  router.navigate('/home');
                 }
               } catch {
-                router.replace('/feed');
+                router.replace('/home');
               }
             }}
             style={styles.backButton}

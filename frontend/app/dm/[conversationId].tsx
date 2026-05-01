@@ -87,7 +87,7 @@ const getDMContacts = async () => {
 const MessageStatus = ({ status, isOwn }: { status?: string; isOwn: boolean }) => {
   if (!isOwn) return null;
 
-  const color = isOwn ? 'rgba(255,255,255,0.7)' : COLORS.textLight;
+  const color = isOwn ? '#000000' : COLORS.textLight;
 
   if (status === 'read') {
     return (
@@ -1612,6 +1612,9 @@ const DirectMessageScreen = () => {
             placeholderTextColor="#999999"
             onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 300)}
           />
+          <TouchableOpacity style={styles.iconButton} onPress={toggleAttachmentOptions} disabled={uploadingMedia || sending || isInputLocked}>
+            <Ionicons name="attach-outline" size={22} color={COLORS.primary} />
+          </TouchableOpacity>
         </View>
         <TouchableOpacity
           style={[
@@ -1661,11 +1664,11 @@ const styles = StyleSheet.create({
   },
   chatScreen: {
     flex: 1,
-    backgroundColor: '#d8e7cf',
+    backgroundColor: '#F7F5EA',
   },
   chatBackground: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#d8e7cf',
+    backgroundColor: '#F7F5EA',
     pointerEvents: 'none',
   },
   chatPatternDot: {
@@ -1880,28 +1883,33 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '75%',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     marginLeft: SPACING.xs,
+    borderWidth: 1,
+    borderColor: '#ECECEA',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   ownMessageBubble: {
-    backgroundColor: '#0088CC',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: '#E8E8E8',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     marginLeft: 0,
-    shadowColor: '#0088CC',
+    marginRight: SPACING.sm,
+    borderBottomRightRadius: 12,
+    borderBottomLeftRadius: 20,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
   },
   sharedPostMessageBubble: {
     backgroundColor: 'transparent',
@@ -1922,7 +1930,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   ownMessageText: {
-    color: '#FFFFFF',
+    color: '#000000',
   },
   timeText: {
     fontSize: 10,
@@ -2164,21 +2172,47 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 24,
-    paddingHorizontal: SPACING.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: '#E8E3D0',
+    paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     marginRight: SPACING.sm,
+  },
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E3D0',
+    marginRight: SPACING.xs,
   },
   input: {
     flex: 1,
     backgroundColor: 'transparent',
     borderRadius: 0,
     paddingHorizontal: 0,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 15,
     color: '#1A1A1A',
-    maxHeight: 100,
+    maxHeight: 120,
+  },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#2F2F2F',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   fullScreenMediaOverlay: {
     flex: 1,

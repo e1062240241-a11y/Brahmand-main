@@ -5,7 +5,7 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity, 
-  Image,
+  Modal,
   RefreshControl,
   Alert,
   Platform,
@@ -14,8 +14,9 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile } from '../../src/services/api';
+import { getUserPosts, getUserProfile } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
+import PostFeedCard from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 type SettingItem = {
@@ -65,13 +66,21 @@ export default function ProfileScreen() {
   const userId = user?.id;
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [myPosts, setMyPosts] = useState<any[]>([]);
+  const [showMyPostsModal, setShowMyPostsModal] = useState(false);
+  const [postsCount, setPostsCount] = useState(0);
+  const [followersCount, setFollowersCount] = useState(Array.isArray((user as any)?.followers) ? (user as any).followers.length : 0);
+  const [followingCount, setFollowingCount] = useState(Array.isArray((user as any)?.following) ? (user as any).following.length : 0);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const fetchProfile = useCallback(async () => {
     try {
       const res = await getUserProfile();
-      setProfile(res.data);
-      updateUser(res.data || {});
+      const nextProfile = res.data || {};
+      setProfile(nextProfile);
+      setFollowersCount(Array.isArray(nextProfile.followers) ? nextProfile.followers.length : 0);
+      setFollowingCount(Array.isArray(nextProfile.following) ? nextProfile.following.length : 0);
+      updateUser(nextProfile);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       if (error?.response?.status === 401 || error?.response?.status === 502) {
@@ -90,6 +99,23 @@ export default function ProfileScreen() {
     }
     fetchProfile();
   }, [fetchProfile, router, userId]);
+
+  useEffect(() => {
+    const loadPostsCount = async () => {
+      if (!userId) return;
+      try {
+        const res = await getUserPosts(userId, 50, 0);
+        const payload = res.data;
+        const items = Array.isArray(payload) ? payload : (payload?.items || []);
+        setMyPosts(items);
+        setPostsCount(items.length);
+      } catch (error) {
+        console.warn('Failed to load settings posts count:', error);
+      }
+    };
+
+    loadPostsCount();
+  }, [userId]);
 
   const handleMenuPress = (item: SettingItem) => {
     if (item.disabled) {
@@ -242,22 +268,28 @@ return (
       </Animated.View>
 
       <View style={styles.statsStrip}>
-        <View style={styles.statItemCompact}>
-          <Text style={styles.statValueCompact}>
-            {displayUser?.contribution_count ?? displayUser?.communities?.length ?? 0}
-          </Text>
-          <Text style={styles.statLabelCompact}>Contribution</Text>
-        </View>
+        <TouchableOpacity style={styles.statItemCompact} activeOpacity={0.8} onPress={() => setShowMyPostsModal(true)}>
+          <Text style={styles.statValueCompact}>{postsCount}</Text>
+          <Text style={styles.statLabelCompact}>Posts</Text>
+        </TouchableOpacity>
         <View style={styles.statsStripDivider} />
-        <View style={styles.statItemCompact}>
-          <Text style={styles.statValueCompact}>{displayUser?.reputation ?? 0}</Text>
-          <Text style={styles.statLabelCompact}>Reputation</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.statItemCompact}
+          activeOpacity={0.8}
+          onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
+        >
+          <Text style={styles.statValueCompact}>{followersCount}</Text>
+          <Text style={styles.statLabelCompact}>Followers</Text>
+        </TouchableOpacity>
         <View style={styles.statsStripDivider} />
-        <View style={styles.statItemCompact}>
-          <Text style={styles.statValueCompact}>{displayUser?.badges?.length ?? 0}</Text>
-          <Text style={styles.statLabelCompact}>Badges</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.statItemCompact}
+          activeOpacity={0.8}
+          onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
+        >
+          <Text style={styles.statValueCompact}>{followingCount}</Text>
+          <Text style={styles.statLabelCompact}>Following</Text>
+        </TouchableOpacity>
       </View>
 
       {SETTINGS_SECTIONS.map((section) => (
@@ -303,6 +335,34 @@ return (
           </View>
         </View>
       ))}
+
+      <Modal visible={showMyPostsModal} transparent animationType="slide" onRequestClose={() => setShowMyPostsModal(false)}>
+        <View style={styles.myPostsOverlay}>
+          <View style={styles.myPostsSheet}>
+            <View style={styles.myPostsHeader}>
+              <Text style={styles.myPostsTitle}>My Posts ({postsCount})</Text>
+              <TouchableOpacity onPress={() => setShowMyPostsModal(false)} style={styles.myPostsCloseBtn}>
+                <Ionicons name="close" size={20} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.myPostsContent}>
+              {myPosts.length > 0 ? (
+                myPosts.map((post) => (
+                  <PostFeedCard
+                    key={`settings-post-${post.id || post.media_url}`}
+                    post={post}
+                    onUserPress={() => {}}
+                    postMenuType="delete"
+                  />
+                ))
+              ) : (
+                <Text style={styles.myPostsEmptyText}>You have not uploaded posts yet.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.bottomSpacer} />
     </ScrollView>
@@ -513,6 +573,47 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 100,
+  },
+  myPostsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  myPostsSheet: {
+    height: '85%',
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingTop: SPACING.md,
+  },
+  myPostsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  myPostsTitle: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  myPostsCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.border,
+  },
+  myPostsContent: {
+    paddingBottom: SPACING.xl,
+  },
+  myPostsEmptyText: {
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.xl,
+    fontSize: 14,
   },
   header: {
     alignItems: 'center',

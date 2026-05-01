@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import {
   Animated,
   Easing,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,10 +16,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { socketService } from '../../services/socket';
+import { getRealtimeIceServers, getRealtimeSfuToken, type RealtimeIceServer } from '../../services/api';
 import { isWithinGayatriMantraWindow } from './schedule';
+
+declare const require: any;
 
 const ROOM_NAME = 'mantra-jaap-live-room';
 const CHUNK_DURATION_MS = 1800;
+const DEFAULT_ICE_SERVERS: RealtimeIceServer[] = [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+];
 const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
 const WORDS = MANTRA.split(' ');
 
@@ -28,6 +35,82 @@ const getUriExtension = (uri: string) => {
 };
 
 const createPeerId = () => `peer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+type VoiceTransport = 'connecting' | 'sfu' | 'webrtc' | 'relay';
+
+type WebRTCApi = {
+  RTCPeerConnection: any;
+  RTCSessionDescription?: any;
+  RTCIceCandidate?: any;
+  mediaDevices: {
+    getUserMedia: (constraints: any) => Promise<any>;
+  };
+};
+
+type LiveKitApi = {
+  Room: any;
+  RoomEvent: Record<string, string>;
+  AudioSession?: {
+    startAudioSession?: () => Promise<void>;
+    stopAudioSession?: () => Promise<void>;
+  };
+};
+
+const loadWebRTCApi = (): WebRTCApi | null => {
+  if (Platform.OS === 'web') {
+    const webGlobal = globalThis as any;
+    if (webGlobal.RTCPeerConnection && webGlobal.navigator?.mediaDevices?.getUserMedia) {
+      return {
+        RTCPeerConnection: webGlobal.RTCPeerConnection,
+        RTCSessionDescription: webGlobal.RTCSessionDescription,
+        RTCIceCandidate: webGlobal.RTCIceCandidate,
+        mediaDevices: webGlobal.navigator.mediaDevices,
+      };
+    }
+    return null;
+  }
+
+  try {
+    const nativeWebRTC = require('react-native-webrtc');
+    if (nativeWebRTC?.RTCPeerConnection && nativeWebRTC?.mediaDevices?.getUserMedia) {
+      return {
+        RTCPeerConnection: nativeWebRTC.RTCPeerConnection,
+        RTCSessionDescription: nativeWebRTC.RTCSessionDescription,
+        RTCIceCandidate: nativeWebRTC.RTCIceCandidate,
+        mediaDevices: nativeWebRTC.mediaDevices,
+      };
+    }
+  } catch {
+    // The old Socket.IO audio relay remains available when native WebRTC is not bundled.
+  }
+
+  return null;
+};
+
+const loadLiveKitApi = (): LiveKitApi | null => {
+  try {
+    const livekitClient = require('livekit-client');
+    let AudioSession;
+
+    if (Platform.OS !== 'web') {
+      const livekitNative = require('@livekit/react-native');
+      livekitNative.registerGlobals?.();
+      AudioSession = livekitNative.AudioSession;
+    }
+
+    if (livekitClient?.Room && livekitClient?.RoomEvent) {
+      return {
+        Room: livekitClient.Room,
+        RoomEvent: livekitClient.RoomEvent,
+        AudioSession,
+      };
+    }
+  } catch {
+    // SFU packages are optional in local/dev builds; mesh fallback remains available.
+  }
+
+  return null;
+};
 
 export const LiveMantraRoom = () => {
   const router = useRouter();
@@ -42,9 +125,18 @@ export const LiveMantraRoom = () => {
   const [participantLabel, setParticipantLabel] = useState('Joining room...');
   const [remoteSpeakers, setRemoteSpeakers] = useState<string[]>([]);
   const [remotePeers, setRemotePeers] = useState<string[]>([]);
+  const [voiceTransport, setVoiceTransport] = useState<VoiceTransport>('connecting');
 
   const roomMutedRef = useRef(roomMuted);
   const isMutedRef = useRef(isMuted);
+  const isMicEnabledRef = useRef(isMicEnabled);
+  const micPermissionGrantedRef = useRef(micPermissionGranted);
+  const voiceTransportRef = useRef<VoiceTransport>('connecting');
+  const liveKitApiRef = useRef<LiveKitApi | null>(null);
+  const sfuRoomRef = useRef<any>(null);
+  const webRTCApiRef = useRef<WebRTCApi | null>(null);
+  const iceServersRef = useRef<RealtimeIceServer[]>(DEFAULT_ICE_SERVERS);
+  const turnEnabledRef = useRef(false);
 
   const localPeerId = useMemo(() => createPeerId(), []);
 
@@ -58,6 +150,9 @@ export const LiveMantraRoom = () => {
   const recordingActiveRef = useRef(false);
   const isMountedRef = useRef(true);
   const soundPlayersRef = useRef<Audio.Sound[]>([]);
+  const localStreamRef = useRef<any>(null);
+  const peerConnectionsRef = useRef<Map<string, any>>(new Map());
+  const remoteAudioTracksRef = useRef<Map<string, any[]>>(new Map());
 
   const addRemoteSpeaker = (peerId: string) => {
     setRemoteSpeakers((current) => {
@@ -88,6 +183,400 @@ export const LiveMantraRoom = () => {
       })
     );
     soundPlayersRef.current = [];
+  };
+
+  const setLocalTracksEnabled = (enabled: boolean) => {
+    const localStream = localStreamRef.current;
+    if (!localStream?.getAudioTracks) {
+      return;
+    }
+
+    localStream.getAudioTracks().forEach((track: any) => {
+      track.enabled = enabled;
+    });
+  };
+
+  const setRemoteTracksEnabled = (enabled: boolean) => {
+    remoteAudioTracksRef.current.forEach((tracks) => {
+      tracks.forEach((track) => {
+        track.enabled = enabled;
+      });
+    });
+  };
+
+  const rememberRemoteTrack = (peerId: string, track: any) => {
+    if (!track || track.kind !== 'audio') {
+      return;
+    }
+
+    const currentTracks = remoteAudioTracksRef.current.get(peerId) ?? [];
+    if (!currentTracks.some((item) => item.id === track.id)) {
+      track.enabled = !isMutedRef.current && !roomMutedRef.current;
+      remoteAudioTracksRef.current.set(peerId, [...currentTracks, track]);
+    }
+  };
+
+  const ensureLocalStream = async () => {
+    if (localStreamRef.current) {
+      setLocalTracksEnabled(isMicEnabledRef.current && !roomMutedRef.current);
+      return localStreamRef.current;
+    }
+
+    const webRTCApi = webRTCApiRef.current;
+    if (!webRTCApi) {
+      return null;
+    }
+
+    const granted = micPermissionGrantedRef.current || (await requestMicPermission());
+    if (!granted) {
+      return null;
+    }
+
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: false,
+      playThroughEarpieceAndroid: false,
+    });
+
+    const stream = await webRTCApi.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    });
+
+    localStreamRef.current = stream;
+    setLocalTracksEnabled(isMicEnabledRef.current && !roomMutedRef.current);
+    return stream;
+  };
+
+  const serializeRTCDescription = (description: any) => {
+    if (!description) return description;
+    return typeof description.toJSON === 'function' ? description.toJSON() : description;
+  };
+
+  const serializeRTCCandidate = (candidate: any) => {
+    if (!candidate) return candidate;
+    return typeof candidate.toJSON === 'function' ? candidate.toJSON() : candidate;
+  };
+
+  const buildRTCSessionDescription = (description: any) => {
+    const webRTCApi = webRTCApiRef.current;
+    if (webRTCApi?.RTCSessionDescription) {
+      return new webRTCApi.RTCSessionDescription(description);
+    }
+    return description;
+  };
+
+  const buildRTCIceCandidate = (candidate: any) => {
+    const webRTCApi = webRTCApiRef.current;
+    if (webRTCApi?.RTCIceCandidate) {
+      return new webRTCApi.RTCIceCandidate(candidate);
+    }
+    return candidate;
+  };
+
+  const attachLocalStreamToPeer = async (peerConnection: any) => {
+    const localStream = localStreamRef.current;
+    if (!localStream?.getTracks) {
+      return;
+    }
+
+    const existingSenders = typeof peerConnection.getSenders === 'function'
+      ? peerConnection.getSenders()
+      : [];
+
+    localStream.getTracks().forEach((track: any) => {
+      const alreadyAttached = existingSenders.some((sender: any) => sender.track?.id === track.id);
+      if (!alreadyAttached && typeof peerConnection.addTrack === 'function') {
+        peerConnection.addTrack(track, localStream);
+      }
+    });
+
+    if (!peerConnection.addTrack && typeof peerConnection.addStream === 'function') {
+      peerConnection.addStream(localStream);
+    }
+  };
+
+  const createPeerConnection = (peerId: string) => {
+    const existing = peerConnectionsRef.current.get(peerId);
+    if (existing) {
+      return existing;
+    }
+
+    const webRTCApi = webRTCApiRef.current;
+    if (!webRTCApi) {
+      return null;
+    }
+
+    const peerConnection = new webRTCApi.RTCPeerConnection({
+      iceServers: iceServersRef.current,
+      iceCandidatePoolSize: 4,
+    });
+    if (typeof peerConnection.addTransceiver === 'function') {
+      try {
+        peerConnection.addTransceiver('audio', { direction: 'recvonly' });
+      } catch {
+        // Older native WebRTC builds may not support transceiver constraints.
+      }
+    }
+
+    peerConnection.onicecandidate = (event: any) => {
+      if (!event.candidate) {
+        return;
+      }
+      socketService.emit('webrtc_ice_candidate', {
+        room: ROOM_NAME,
+        fromPeerId: localPeerId,
+        toPeerId: peerId,
+        candidate: serializeRTCCandidate(event.candidate),
+      });
+    };
+
+    peerConnection.ontrack = (event: any) => {
+      rememberRemoteTrack(peerId, event.track);
+      addRemoteSpeaker(peerId);
+      setMicStatus('Receiving live audio');
+    };
+
+    peerConnection.onaddstream = (event: any) => {
+      event.stream?.getAudioTracks?.().forEach((track: any) => rememberRemoteTrack(peerId, track));
+      addRemoteSpeaker(peerId);
+      setMicStatus('Receiving live audio');
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+      const state = peerConnection.connectionState;
+      if (state === 'connected') {
+        addRemoteSpeaker(peerId);
+        setMicStatus(isMicEnabledRef.current ? 'Live audio connected' : 'Listening live');
+      }
+      if (state === 'failed' || state === 'closed' || state === 'disconnected') {
+        removeRemotePeer(peerId);
+      }
+    };
+
+    peerConnectionsRef.current.set(peerId, peerConnection);
+    return peerConnection;
+  };
+
+  const negotiateWithPeer = async (peerId: string) => {
+    if (!webRTCApiRef.current || !isMountedRef.current) {
+      return;
+    }
+
+    try {
+      const peerConnection = createPeerConnection(peerId);
+      if (!peerConnection) {
+        return;
+      }
+
+      await attachLocalStreamToPeer(peerConnection);
+      const offer = await peerConnection.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false,
+      });
+      await peerConnection.setLocalDescription(offer);
+
+      socketService.emit('webrtc_offer', {
+        room: ROOM_NAME,
+        fromPeerId: localPeerId,
+        toPeerId: peerId,
+        description: serializeRTCDescription(peerConnection.localDescription ?? offer),
+      });
+    } catch (error) {
+      console.warn('Failed to negotiate Jaap audio peer', error);
+      setMicStatus('Live audio reconnecting…');
+    }
+  };
+
+  const renegotiateAllPeers = async () => {
+    const peers = Array.from(peerConnectionsRef.current.keys());
+    await Promise.all(peers.map((peerId) => negotiateWithPeer(peerId)));
+  };
+
+  const handleWebRTCOffer = async (data: any) => {
+    if (!data?.fromPeerId || data.toPeerId !== localPeerId || !data.description) {
+      return;
+    }
+
+    try {
+      const peerConnection = createPeerConnection(data.fromPeerId);
+      if (!peerConnection) {
+        return;
+      }
+
+      await attachLocalStreamToPeer(peerConnection);
+      await peerConnection.setRemoteDescription(buildRTCSessionDescription(data.description));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      socketService.emit('webrtc_answer', {
+        room: ROOM_NAME,
+        fromPeerId: localPeerId,
+        toPeerId: data.fromPeerId,
+        description: serializeRTCDescription(peerConnection.localDescription ?? answer),
+      });
+
+      addRemotePeer(data.fromPeerId);
+    } catch (error) {
+      console.warn('Failed to answer Jaap audio peer', error);
+    }
+  };
+
+  const handleWebRTCAnswer = async (data: any) => {
+    if (!data?.fromPeerId || data.toPeerId !== localPeerId || !data.description) {
+      return;
+    }
+
+    try {
+      const peerConnection = peerConnectionsRef.current.get(data.fromPeerId);
+      if (!peerConnection) {
+        return;
+      }
+      await peerConnection.setRemoteDescription(buildRTCSessionDescription(data.description));
+      addRemotePeer(data.fromPeerId);
+    } catch (error) {
+      console.warn('Failed to apply Jaap audio answer', error);
+    }
+  };
+
+  const handleWebRTCIceCandidate = async (data: any) => {
+    if (!data?.fromPeerId || data.toPeerId !== localPeerId || !data.candidate) {
+      return;
+    }
+
+    try {
+      const peerConnection = createPeerConnection(data.fromPeerId);
+      if (!peerConnection) {
+        return;
+      }
+      await peerConnection.addIceCandidate(buildRTCIceCandidate(data.candidate));
+    } catch (error) {
+      console.warn('Failed to add Jaap audio ICE candidate', error);
+    }
+  };
+
+  const closePeerConnection = (peerId: string) => {
+    const peerConnection = peerConnectionsRef.current.get(peerId);
+    if (peerConnection) {
+      try {
+        peerConnection.close();
+      } catch {
+        // noop
+      }
+    }
+    peerConnectionsRef.current.delete(peerId);
+    remoteAudioTracksRef.current.delete(peerId);
+  };
+
+  const cleanupWebRTC = () => {
+    peerConnectionsRef.current.forEach((peerConnection) => {
+      try {
+        peerConnection.close();
+      } catch {
+        // noop
+      }
+    });
+    peerConnectionsRef.current.clear();
+    remoteAudioTracksRef.current.clear();
+
+    const localStream = localStreamRef.current;
+    if (localStream?.getTracks) {
+      localStream.getTracks().forEach((track: any) => {
+        try {
+          track.stop();
+        } catch {
+          // noop
+        }
+      });
+    }
+    localStreamRef.current = null;
+  };
+
+  const connectSfuRoom = async () => {
+    const liveKitApi = loadLiveKitApi();
+    if (!liveKitApi) {
+      return false;
+    }
+
+    const sfuConfig = await getRealtimeSfuToken(ROOM_NAME);
+    if (!sfuConfig.enabled || !sfuConfig.url || !sfuConfig.token) {
+      return false;
+    }
+
+    const room = new liveKitApi.Room({
+      adaptiveStream: false,
+      dynacast: true,
+      publishDefaults: {
+        stopMicTrackOnMute: false,
+      },
+    });
+
+    liveKitApiRef.current = liveKitApi;
+    sfuRoomRef.current = room;
+
+    const roomEvent = liveKitApi.RoomEvent;
+    room.on(roomEvent.ParticipantConnected, (participant: any) => {
+      addRemotePeer(participant.identity);
+    });
+    room.on(roomEvent.ParticipantDisconnected, (participant: any) => {
+      removeRemotePeer(participant.identity);
+    });
+    room.on(roomEvent.TrackSubscribed, (_track: any, publication: any, participant: any) => {
+      if (publication?.kind === 'audio' || publication?.source === 'microphone') {
+        addRemotePeer(participant.identity);
+        addRemoteSpeaker(participant.identity);
+        setMicStatus('Receiving SFU audio');
+      }
+    });
+    room.on(roomEvent.Disconnected, () => {
+      setRemotePeers([]);
+      setRemoteSpeakers([]);
+    });
+    room.on(roomEvent.ConnectionStateChanged, (state: string) => {
+      if (state === 'connected') {
+        setMicStatus('SFU audio connected');
+      }
+    });
+
+    await liveKitApi.AudioSession?.startAudioSession?.();
+    await room.connect(sfuConfig.url, sfuConfig.token, {
+      autoSubscribe: true,
+    });
+
+    room.remoteParticipants?.forEach?.((participant: any) => {
+      addRemotePeer(participant.identity);
+    });
+
+    await room.localParticipant?.setMicrophoneEnabled?.(false);
+    voiceTransportRef.current = 'sfu';
+    setVoiceTransport('sfu');
+    setMicStatus('SFU room ready');
+    return true;
+  };
+
+  const cleanupSfu = async () => {
+    const room = sfuRoomRef.current;
+    sfuRoomRef.current = null;
+    if (room) {
+      try {
+        await room.localParticipant?.setMicrophoneEnabled?.(false);
+        room.disconnect?.();
+      } catch {
+        // noop
+      }
+    }
+
+    try {
+      await liveKitApiRef.current?.AudioSession?.stopAudioSession?.();
+    } catch {
+      // noop
+    }
   };
 
   const handleRemoteChunk = async (data: any) => {
@@ -210,6 +699,32 @@ export const LiveMantraRoom = () => {
   };
 
   const startVoiceLoop = async () => {
+    if (voiceTransportRef.current === 'sfu') {
+      try {
+        await sfuRoomRef.current?.localParticipant?.setMicrophoneEnabled?.(true);
+        setMicStatus('SFU mic live');
+      } catch (error) {
+        console.warn('Failed to start SFU mic', error);
+        setMicStatus('Microphone unavailable');
+        setIsMicEnabled(false);
+      }
+      return;
+    }
+
+    if (voiceTransportRef.current === 'webrtc') {
+      try {
+        await ensureLocalStream();
+        setLocalTracksEnabled(true);
+        await renegotiateAllPeers();
+        setMicStatus('Live mantra mic ready');
+      } catch (error) {
+        console.warn('Failed to start WebRTC mic', error);
+        setMicStatus('Microphone unavailable');
+        setIsMicEnabled(false);
+      }
+      return;
+    }
+
     if (recordingActiveRef.current || roomMuted || !isMicEnabled || !isConnected) {
       return;
     }
@@ -219,6 +734,23 @@ export const LiveMantraRoom = () => {
   };
 
   const stopVoiceLoop = async () => {
+    if (voiceTransportRef.current === 'sfu') {
+      try {
+        await sfuRoomRef.current?.localParticipant?.setMicrophoneEnabled?.(false);
+      } catch {
+        // noop
+      }
+      setMicStatus(isMicEnabledRef.current ? 'Microphone paused' : 'Microphone off');
+      return;
+    }
+
+    if (voiceTransportRef.current === 'webrtc') {
+      setLocalTracksEnabled(false);
+      setMicStatus(isMicEnabledRef.current ? 'Microphone paused' : 'Microphone off');
+      await renegotiateAllPeers();
+      return;
+    }
+
     recordingActiveRef.current = false;
     await stopCurrentRecording();
     setMicStatus(isMicEnabled ? 'Microphone paused' : 'Microphone off');
@@ -228,6 +760,7 @@ export const LiveMantraRoom = () => {
     try {
       const { granted } = await Audio.requestPermissionsAsync();
       setMicPermissionGranted(granted);
+      micPermissionGrantedRef.current = granted;
       if (!granted) {
         setIsMicEnabled(false);
         setMicStatus('Microphone permission denied');
@@ -246,17 +779,19 @@ export const LiveMantraRoom = () => {
   const handleMicToggle = async () => {
     if (isMicEnabled) {
       setIsMicEnabled(false);
+      isMicEnabledRef.current = false;
       await stopVoiceLoop();
       setMicStatus('Microphone off');
       return;
     }
 
-    const granted = micPermissionGranted || (await requestMicPermission());
+    const granted = micPermissionGrantedRef.current || (await requestMicPermission());
     if (!granted) {
       return;
     }
 
     setIsMicEnabled(true);
+    isMicEnabledRef.current = true;
     setMicStatus('Microphone enabled');
     if (!roomMuted) {
       await startVoiceLoop();
@@ -265,11 +800,22 @@ export const LiveMantraRoom = () => {
 
   useEffect(() => {
     roomMutedRef.current = roomMuted;
+    setRemoteTracksEnabled(!isMutedRef.current && !roomMuted);
   }, [roomMuted]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
-  }, [isMuted]);
+    setRemoteTracksEnabled(!isMuted && !roomMuted);
+  }, [isMuted, roomMuted]);
+
+  useEffect(() => {
+    isMicEnabledRef.current = isMicEnabled;
+    setLocalTracksEnabled(isMicEnabled && !roomMuted);
+  }, [isMicEnabled, roomMuted]);
+
+  useEffect(() => {
+    micPermissionGrantedRef.current = micPermissionGranted;
+  }, [micPermissionGranted]);
 
   const handleRoomMute = async () => {
     const nextRoomMuted = !roomMuted;
@@ -294,24 +840,67 @@ export const LiveMantraRoom = () => {
     if (!data?.peerId) {
       return;
     }
+    closePeerConnection(data.peerId);
     removeRemotePeer(data.peerId);
   };
 
   const connectSocket = async () => {
     try {
+      try {
+        const sfuConnected = await connectSfuRoom();
+        if (sfuConnected) {
+          setIsConnected(true);
+          setParticipantLabel('SFU room connected');
+          return;
+        }
+      } catch (error) {
+        console.warn('SFU connection failed, falling back to mesh', error);
+        await cleanupSfu();
+      }
+
+      const webRTCApi = loadWebRTCApi();
+      webRTCApiRef.current = webRTCApi;
+      voiceTransportRef.current = webRTCApi ? 'webrtc' : 'relay';
+      setVoiceTransport(webRTCApi ? 'webrtc' : 'relay');
+
+      if (webRTCApi) {
+        try {
+          const realtimeConfig = await getRealtimeIceServers();
+          if (realtimeConfig.iceServers?.length) {
+            iceServersRef.current = realtimeConfig.iceServers;
+          }
+          turnEnabledRef.current = realtimeConfig.turnEnabled;
+          setMicStatus(realtimeConfig.turnEnabled ? 'TURN relay ready' : 'STUN room ready');
+        } catch (error) {
+          console.warn('Failed to load realtime ICE servers', error);
+          iceServersRef.current = DEFAULT_ICE_SERVERS;
+          turnEnabledRef.current = false;
+        }
+      }
+
       await socketService.connect();
       setIsConnected(true);
       setParticipantLabel('Room connected');
-      setMicStatus('Live room ready');
-
-      const joinResult = await socketService.joinRoom(ROOM_NAME, localPeerId);
-      if (joinResult?.peers?.length) {
-        setRemotePeers(joinResult.peers);
-      }
+      setMicStatus(
+        webRTCApi
+          ? turnEnabledRef.current ? 'Live audio room ready with TURN' : 'Live audio room ready'
+          : 'Relay audio room ready'
+      );
 
       socketService.onEvent('voice_chunk', handleRemoteChunk);
       socketService.onEvent('peer_joined', handlePeerJoined);
       socketService.onEvent('peer_left', handlePeerLeft);
+      socketService.onEvent('webrtc_offer', handleWebRTCOffer);
+      socketService.onEvent('webrtc_answer', handleWebRTCAnswer);
+      socketService.onEvent('webrtc_ice_candidate', handleWebRTCIceCandidate);
+
+      const joinResult = await socketService.joinRoom(ROOM_NAME, localPeerId);
+      if (joinResult?.peers?.length) {
+        setRemotePeers(joinResult.peers);
+        if (webRTCApi) {
+          await Promise.all(joinResult.peers.map((peerId: string) => negotiateWithPeer(peerId)));
+        }
+      }
     } catch (error) {
       console.warn('Socket connection failed', error);
       setIsConnected(false);
@@ -329,10 +918,17 @@ export const LiveMantraRoom = () => {
       socketService.offEvent('voice_chunk', handleRemoteChunk);
       socketService.offEvent('peer_joined', handlePeerJoined);
       socketService.offEvent('peer_left', handlePeerLeft);
+      socketService.offEvent('webrtc_offer', handleWebRTCOffer);
+      socketService.offEvent('webrtc_answer', handleWebRTCAnswer);
+      socketService.offEvent('webrtc_ice_candidate', handleWebRTCIceCandidate);
       socketService.leaveRoom(ROOM_NAME, localPeerId);
       stopVoiceLoop();
+      cleanupSfu();
+      cleanupWebRTC();
       cleanupRemoteSounds();
     };
+    // The socket room is intentionally joined once for this peer id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -351,6 +947,8 @@ export const LiveMantraRoom = () => {
     if (isMicEnabled && !roomMuted && isConnected) {
       startVoiceLoop();
     }
+    // Mic state transitions are guarded by refs inside the voice loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMicEnabled, roomMuted, isConnected]);
 
   useEffect(() => {
@@ -549,7 +1147,8 @@ export const LiveMantraRoom = () => {
           </View>
 
           <Text style={styles.micStatus} numberOfLines={1}>
-            Remote users: {remotePeers.length || 0}
+            {voiceTransport === 'sfu' ? 'SFU peers' : voiceTransport === 'webrtc' ? 'Live peers' : 'Relay peers'}: {remotePeers.length || 0}
+            {remoteSpeakers.length ? ` · voices ${remoteSpeakers.length}` : ''}
           </Text>
         </View>
 

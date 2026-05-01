@@ -1,4 +1,5 @@
 import { getMahabharataBook } from '../../src/services/api';
+import { loadCachedBookContent } from './book-cache';
 
 const normalizeMahabharataVerse = (verse: any) => ({
   ...verse,
@@ -7,15 +8,13 @@ const normalizeMahabharataVerse = (verse: any) => ({
 
 export const loadMahabharataBook = async (bookNumber: number) => {
   try {
-    const response = await Promise.race([
-      getMahabharataBook(bookNumber),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Book ${bookNumber} loading timed out`)), 12000);
-      }),
-    ]);
-
-    const verses = Array.isArray(response.data?.verses) ? response.data.verses : [];
-    return verses.map(normalizeMahabharataVerse);
+    return await loadCachedBookContent({
+      cacheKey: `mahabharata:book:${bookNumber}`,
+      fetcher: () => getMahabharataBook(bookNumber),
+      extractVerses: (response) => Array.isArray(response.data?.verses) ? response.data.verses : [],
+      normalizeVerse: normalizeMahabharataVerse,
+      timeoutMessage: `Book ${bookNumber} loading timed out`,
+    });
   } catch (error) {
     console.error('Failed to load Mahabharata book:', error);
     throw error;

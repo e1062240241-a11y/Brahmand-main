@@ -18,7 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { registerUser } from '../../src/services/api';
+import { loginAnonymous, registerUser } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, LANGUAGES } from '../../src/constants/theme';
 
@@ -33,8 +33,9 @@ const MandalaPattern = () => (
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, anonymous } = useLocalSearchParams<{ phone: string; anonymous?: string }>();
   const { login } = useAuthStore();
+  const isAnonymous = anonymous === 'true';
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -81,15 +82,22 @@ export default function ProfileScreen() {
     setError('');
 
     try {
-      const response = await registerUser({
-        phone: phone || '',
-        name: name.trim(),
-        photo,
-        language,
-      });
+      const response = isAnonymous
+        ? await loginAnonymous({
+            phone: phone || '',
+            name: name.trim(),
+            photo,
+            language,
+          })
+        : await registerUser({
+            phone: phone || '',
+            name: name.trim(),
+            photo,
+            language,
+          });
 
       await login(response.data.user, response.data.token);
-      router.replace('/auth/location');
+      router.replace(isAnonymous ? '/home' : '/auth/location');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed');
     } finally {

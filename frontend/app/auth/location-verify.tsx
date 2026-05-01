@@ -117,7 +117,7 @@ export default function LocationVerifyScreen() {
       await AsyncStorage.removeItem('detected_location');
 
       updateUser(response.data.user);
-      router.replace('/feed');
+      router.replace('/home');
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to save location');
     } finally {
@@ -222,7 +222,7 @@ export default function LocationVerifyScreen() {
           <View style={styles.noDetectionNote}>
             <Ionicons name="information-circle" size={20} color={COLORS.textSecondary} />
             <Text style={styles.noDetectionText}>
-              Location detection was skipped. We'll use your entered address.
+              Location detection was skipped. We&apos;ll use your entered address.
             </Text>
           </View>
         )}

@@ -17,7 +17,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      initialRouteName="feed"
+      initialRouteName="home"
       screenOptions={{
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textLight,
@@ -27,6 +27,9 @@ export default function TabLayout() {
           height: 58 + insets.bottom,
           paddingBottom: bottomInset,
           paddingTop: 8,
+        },
+        tabBarItemStyle: {
+          flex: 1,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -44,29 +47,26 @@ export default function TabLayout() {
         headerShadowVisible: false,
       }}
     >
-{/* 1. Photo/Video Feed - First Position */}
-        <Tabs.Screen
-          name="feed"
-          options={{
-            title: '',
-            tabBarLabel: 'Feed',
-            headerShown: false,
-            tabBarIcon: ({ color, focused }) => (
-              <TabIcon name="play-circle" color={color} focused={focused} />
-            ),
-          }}
-        />
-      
-      {/* 2. Vendor */}
+      {/* 1. Home */}
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: '',
+          tabBarLabel: 'Home',
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="home" color={color} focused={focused} />
+          ),
+        }}
+      />
+
+      {/* 2. Vendor (hidden from bottom tab bar, still accessible via route) */}
       <Tabs.Screen
         name="vendor"
         options={{
+          href: null,
           title: '',
-          tabBarLabel: 'Vendor',
           headerShown: false,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="storefront" color={color} focused={focused} />
-          ),
         }}
       />
       
@@ -91,7 +91,7 @@ export default function TabLayout() {
           tabBarLabel: 'Temple',
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="home" color={color} focused={focused} />
+            <TabIcon name="business" color={color} focused={focused} />
           ),
         }}
       />
@@ -125,8 +125,5 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  iconContainerActive: {
-    backgroundColor: `${COLORS.primary}15`,
   },
 });

@@ -1,4 +1,5 @@
 import { getBhagavadGitaChapter } from '../../src/services/api';
+import { loadCachedBookContent } from './book-cache';
 
 const TEJOMAYANANDA_KEYS = ['swami tejomayananda', 'Swami Tejomayananda'] as const;
 
@@ -25,14 +26,13 @@ const normalizeVerse = (verse: any) => {
 };
 
 export const loadBhagavadGitaChapter = async (chapterNumber: number) => {
-  const response = await Promise.race([
-    getBhagavadGitaChapter(chapterNumber),
-    new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Chapter ${chapterNumber} loading timed out`)), 12000);
-    }),
-  ]);
-  const verses = Array.isArray(response.data?.verses) ? response.data.verses : [];
-  return verses.map(normalizeVerse);
+  return loadCachedBookContent({
+    cacheKey: `bhagavad-gita:chapter:${chapterNumber}`,
+    fetcher: () => getBhagavadGitaChapter(chapterNumber),
+    extractVerses: (response) => Array.isArray(response.data?.verses) ? response.data.verses : [],
+    normalizeVerse,
+    timeoutMessage: `Chapter ${chapterNumber} loading timed out`,
+  });
 };
 
 export const getPreferredTranslation = (translations: Record<string, string>) => {

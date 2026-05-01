@@ -247,6 +247,9 @@ export const sendOTP = (phone: string) =>
 export const verifyOTP = (phone: string, otp: string) => 
   api.post('/auth/verify-otp', { phone, otp });
 
+export const loginAnonymous = (data: { phone: string; name: string; photo?: string | null; language: string }) =>
+  api.post('/auth/login-anonymous', data);
+
 export const adminPanelLogin = (data: { username: string; password: string }) =>
   adminApi.post('/admin/auth/login', data);
 
@@ -302,11 +305,34 @@ export interface AdminPostReport {
   };
 }
 
+export interface AdminAnonymousUser {
+  id: string;
+  phone?: string;
+  name?: string;
+  anonymous_disabled?: boolean;
+  anonymous_account?: boolean;
+  anonymous_disabled_at?: string;
+  anonymous_created_at?: string;
+  anonymous_login_source?: string;
+}
+
 export const getAdminVendorReviewQueue = (adminToken: string, status: string = 'pending') =>
   adminApi.get<AdminVendorReview[]>('/admin/vendors/review-queue', {
     params: { status },
     headers: { Authorization: `Bearer ${adminToken}` },
   });
+
+export const getAdminAnonymousUsers = (adminToken: string) =>
+  adminApi.get<{ users: AdminAnonymousUser[] }>('/admin/anonymous-users', {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+
+export const disableAdminAnonymousUser = (adminToken: string, userId: string) =>
+  adminApi.post(
+    `/admin/anonymous-users/${userId}/disable`,
+    {},
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
 
 export const adminApproveVendor = (adminToken: string, vendorId: string, note?: string) =>
   adminApi.post(
@@ -1390,6 +1416,41 @@ export const getGitaShloka = async (chapter: number, verse: number) => {
 
 export const getPanchang = () => 
   api.get('/panchang/today');
+
+export const getNextFestival = () =>
+  api.get('/spiritual/festival/next');
+
+export const getFestivalList = () =>
+  api.get('/spiritual/festivals/all');
+
+// =================== REALTIME APIS ===================
+
+export type RealtimeIceServer = {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+};
+
+export const getRealtimeIceServers = async () => {
+  const response = await api.get<{
+    iceServers: RealtimeIceServer[];
+    turnEnabled: boolean;
+    expiresAt?: number | null;
+  }>('/realtime/ice-servers');
+  return response.data;
+};
+
+export const getRealtimeSfuToken = async (room: string) => {
+  const response = await api.get<{
+    enabled: boolean;
+    url?: string;
+    token?: string;
+    room?: string;
+    expiresAt?: number;
+    reason?: string;
+  }>('/realtime/sfu-token', { params: { room } });
+  return response.data;
+};
 
 // =================== SOS EMERGENCY APIS ===================
 

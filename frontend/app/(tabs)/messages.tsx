@@ -152,10 +152,13 @@ export default function MessagesScreen() {
     try {
       if (activeTopTab === 'Community') {
         if (activeCommunityTab === 'Chat') {
-          const res = await getCommunities();
-          const filtered = (res.data || []).filter((item: Community) => item.type !== 'home_area' && item.type !== 'area');
+          const [communityRes, requestRes] = await Promise.all([
+            getCommunities(),
+            getCommunityRequests({ status: 'active', limit: 10 }),
+          ]);
+          const filtered = (communityRes.data || []).filter((item: Community) => item.type !== 'home_area' && item.type !== 'area');
           setCommunities(filtered);
-          setRequests([]);
+          setRequests(requestRes.data || []);
           // Cache
           await setCachedData('communities_Chat', filtered);
         } else if (activeCommunityTab === 'General') {
@@ -414,8 +417,17 @@ export default function MessagesScreen() {
     return date.toLocaleDateString();
   };
 
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
+    const hours = `${date.getHours()}`.padStart(2, '0');
+    const minutes = `${date.getMinutes()}`.padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   const renderCommunity = ({ item }: { item: Community }) => (
-    <View>
+    <View key={item.id}>
       {item.label && (
         <Text style={[styles.communityLabel, { color: getCommunityColor(item.type) }]}>
           {item.label}
@@ -496,6 +508,26 @@ export default function MessagesScreen() {
     </View>
   );
 
+  const renderActiveRequestCard = (item: CommunityRequest) => (
+    <View key={item.id} style={styles.activeRequestCard}>
+      <View style={styles.activeRequestHeader}>
+        <View style={styles.activeRequestBadge}>
+          <Text style={styles.activeRequestBadgeText}>{item.urgency_level?.toUpperCase() || 'ACTIVE'}</Text>
+        </View>
+        <View style={styles.activeRequestType}>
+          <Text style={styles.activeRequestTypeText}>{item.request_type || 'Request'}</Text>
+        </View>
+      </View>
+      <Text style={styles.activeRequestTitle}>{item.title}</Text>
+      <Text style={styles.activeRequestDescription} numberOfLines={3}>
+        {item.description || 'Community request needing support.'}
+      </Text>
+      <View style={styles.activeRequestFooter}>
+        <Text style={styles.activeRequestMetaText}>{item.contact_number ? `Contact ${item.contact_number}` : 'Open request'}</Text>
+      </View>
+    </View>
+  );
+
   const renderConversationItem = (item: DMConversation) => {
     const conversationId = item.conversation_id || item.chat_id || item.id;
     const otherUser = item.user;
@@ -526,7 +558,10 @@ export default function MessagesScreen() {
             {item.last_message || `SL: ${otherUser.sl_id}`}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
+        <View style={styles.userRight}>
+          <Text style={styles.userTime}>{formatTime(item.last_message_at)}</Text>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -541,13 +576,16 @@ export default function MessagesScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Top Tabs: Community | Private Chat */}
       <View style={styles.topTabsContainer}>
         <View style={styles.topTabsInner}>
-          {TOP_TABS.map((tab) => (
+          {TOP_TABS.map((tab, index) => (
             <TouchableOpacity
               key={tab}
-              style={[styles.topTab, activeTopTab === tab && styles.topTabActive]}
+              style={[
+                styles.topTab,
+                index !== TOP_TABS.length - 1 && styles.topTabSpacing,
+                activeTopTab === tab && styles.topTabActive,
+              ]}
               onPress={() => setActiveTopTab(tab)}
             >
               <Text style={[styles.topTabText, activeTopTab === tab && styles.topTabTextActive]}>
@@ -560,23 +598,42 @@ export default function MessagesScreen() {
 
       {/* Community Tab Content */}
       {activeTopTab === 'Community' && (
-        <>
-          {/* Create Request button for Community */}
-          <View style={styles.subTabsContainer}>
-            <View style={styles.subTabsSpacer} />
+        <ScrollView
+          contentContainerStyle={styles.communityScroll}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                fetchData();
+              }}
+            />
+          }
+        >
+          <View style={styles.heroCard}>
+            <View style={styles.heroCardTop}>
+              <View style={styles.heroTextBlock}>
+                <Text style={styles.heroTitle}>Help your community</Text>
+                <Text style={styles.heroSubtitle}>Together we can make a difference</Text>
+              </View>
+              <View style={styles.heroIconWrapper}>
+                <Ionicons name="sparkles" size={24} color={COLORS.primary} />
+              </View>
+            </View>
+
             <TouchableOpacity
-              style={styles.createRequestPill}
+              style={styles.heroActionButton}
               onPress={() => setShowRequestTypeMenu(!showRequestTypeMenu)}
             >
-              <Ionicons name="add" size={16} color={COLORS.primary} />
-              <Text style={styles.createRequestPillText}>Create Request</Text>
+              <Ionicons name="add" size={16} color={COLORS.surface} />
+              <Text style={styles.heroActionText}>Create Request</Text>
             </TouchableOpacity>
           </View>
 
           {showRequestTypeMenu && activeTopTab === 'Community' && (
             <View style={styles.pillDropdown}>
               {(['Blood', 'Medical', 'Petition'] as const)
-                .filter((type) => !(activeCommunityTab === 'Chat' && type === 'Medical'))
                 .map((type) => (
                   <TouchableOpacity
                     key={type}
@@ -594,127 +651,55 @@ export default function MessagesScreen() {
             </View>
           )}
 
-          {/* Community Content */}
-          {activeCommunityTab === 'Chat' ? (
-            <>
-              <FlatList
-                data={communities}
-                renderItem={renderCommunity}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-                refreshControl={
-                  <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
-                }
-                ListEmptyComponent={
-                  <View style={styles.emptyState}>
-                    <Ionicons name="people-outline" size={48} color={COLORS.textLight} />
-                    <Text style={styles.emptyTitle}>No Communities</Text>
-                    <Text style={styles.emptyText}>Set up your location to join communities</Text>
-                  </View>
-                }
-                ListFooterComponent={() => (
-                  <View style={styles.culturalCommunityCard}>
-                    <Text style={styles.culturalCommunityTitle}>My Culture Group</Text>
-                    <Text style={styles.culturalCommunitySubtitle}>
-                      {userCG?.cultural_community || 'Tap to set'}
-                    </Text>
-                    <TouchableOpacity style={styles.culturalCommunityAction} onPress={handleOpenCGModal}>
-                      <Text style={styles.culturalCommunityActionText}>
-                        {userCG?.cultural_community ? 'Change' : 'Set'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              />
-            </>
-          ) : activeCommunityTab === 'General' ? (
-            <View style={styles.generalContainer}>
-              <TouchableOpacity
-                style={styles.generalBar}
-                onPress={() => {
-                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                  setGeneralExpanded(!generalExpanded);
-                  setOfferingsExpanded(false);
-                }}
-              >
-                <Text style={styles.generalBarText}>General Options</Text>
-                <Ionicons
-                  name={generalExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color={COLORS.text}
-                />
-              </TouchableOpacity>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeading}>Active Requests</Text>
+            <TouchableOpacity activeOpacity={0.7}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
 
-              {generalExpanded && (
-                <View style={styles.generalOptions}>
-                  <TouchableOpacity 
-                    style={styles.generalOptionItem} 
-                    onPress={() => {
-                      setRequestType('Help');
-                      setShowRequestModal(true);
-                    }}
-                  >
-                    <Text style={styles.generalOptionText}>Study</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.generalOptionItem}
-                    onPress={() => {
-                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                      setOfferingsExpanded(!offeringsExpanded);
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Text style={styles.generalOptionText}>Offerings</Text>
-                      <Ionicons
-                        name={offeringsExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={18}
-                        color={COLORS.textSecondary}
-                      />
-                    </View>
-                  </TouchableOpacity>
-
-                  {offeringsExpanded && (
-                    <View style={styles.offeringsList}>
-                      {['Food', 'Blanket', 'Clothes'].map((item) => (
-                        <TouchableOpacity
-                          key={item}
-                          style={styles.offeringsItem}
-                          onPress={() => {
-                            setRequestType('Financial');
-                            setSelectedOfferingType(item as 'Food' | 'Blanket' | 'Clothes');
-                            setOfferingsExpanded(false);
-                            setShowRequestModal(true);
-                          }}
-                        >
-                          <Text style={styles.offeringsText}>{item}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
+          {requests.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.activeRequestsRow}
+            >
+              {requests.map(renderActiveRequestCard)}
+            </ScrollView>
           ) : (
-            <>
-              <FlatList
-              data={requests}
-              renderItem={renderRequest}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContent}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
-              }
-              ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <Ionicons name="document-text-outline" size={48} color={COLORS.textLight} />
-                  <Text style={styles.emptyTitle}>No {activeCommunityTab} Requests</Text>
-                  <Text style={styles.emptyText}>Tap + in the top-right to create a new {activeCommunityTab.toLowerCase()} request</Text>
-                </View>
-              }
-            />
-            </>
+            <View style={styles.emptyRequestRow}>
+              <Text style={styles.emptyText}>There are no active community requests yet.</Text>
+            </View>
           )}
-        </>
+
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeading}>Our Groups</Text>
+          </View>
+
+          <View style={styles.groupsContainer}>
+            {communities.length > 0 ? (
+              communities.map((item) => renderCommunity({ item }))
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={44} color={COLORS.textLight} />
+                <Text style={styles.emptyTitle}>No Groups Yet</Text>
+                <Text style={styles.emptyText}>Join your first community group to start helping.</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.culturalCommunityCard}>
+            <Text style={styles.culturalCommunityTitle}>My Culture Group</Text>
+            <Text style={styles.culturalCommunitySubtitle}>
+              {userCG?.cultural_community || 'Tap to set'}
+            </Text>
+            <TouchableOpacity style={styles.culturalCommunityAction} onPress={handleOpenCGModal}>
+              <Text style={styles.culturalCommunityActionText}>
+                {userCG?.cultural_community ? 'Change' : 'Set'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       )}
 
       {/* Private Chat Tab Content */}
@@ -1026,18 +1011,215 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   // Top Tabs (Community | Private Chat)
-  topTabsContainer: {
+  chatHeader: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.sm,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  chatHeaderTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  chatHeaderButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topTabsContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.sm,
+    paddingTop: SPACING.sm,
+    backgroundColor: COLORS.background,
+  },
+  communityScroll: {
+    padding: SPACING.md,
+    paddingBottom: 120,
+    backgroundColor: COLORS.background,
+  },
+  heroCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.xxl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  heroCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+  heroTextBlock: {
+    flex: 1,
+    paddingRight: SPACING.sm,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  heroIconWrapper: {
+    width: 54,
+    height: 54,
+    borderRadius: BORDER_RADIUS.xxl,
+    backgroundColor: `${COLORS.primary}10`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.xl,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    alignSelf: 'flex-start',
+    marginTop: SPACING.md,
+  },
+  heroActionText: {
+    color: COLORS.surface,
+    fontWeight: '700',
+    marginLeft: SPACING.xs,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  viewAllText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  activeRequestsRow: {
+    paddingBottom: SPACING.sm,
+  },
+  activeRequestCard: {
+    minWidth: 240,
+    maxWidth: 260,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.md,
+    marginRight: SPACING.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  activeRequestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  activeRequestBadge: {
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: `${COLORS.primary}10`,
     paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+  },
+  activeRequestBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primary,
+    textTransform: 'uppercase',
+  },
+  activeRequestType: {
+    backgroundColor: `${COLORS.secondary}10`,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  activeRequestTypeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.secondary,
+    textTransform: 'uppercase',
+  },
+  activeRequestTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  activeRequestDescription: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: SPACING.md,
+  },
+  activeRequestFooter: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+    paddingTop: SPACING.sm,
+  },
+  activeRequestMetaText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  emptyRequestRow: {
+    marginBottom: SPACING.md,
+    paddingVertical: SPACING.lg,
+    alignItems: 'center',
+  },
+  groupsContainer: {
+    marginBottom: SPACING.md,
+  },
+  groupCard: {
+    marginBottom: SPACING.sm,
   },
   topTabsInner: {
     flexDirection: 'row',
+  },
+  topTab: {
     flex: 1,
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: COLORS.surface,
+  },
+  topTabSpacing: {
+    marginRight: SPACING.sm,
+  },
+  topTabActive: {
+    backgroundColor: COLORS.primary,
+  },
+  topTabText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  topTabTextActive: {
+    color: COLORS.background,
+    fontWeight: '600',
   },
   headerAction: {
     padding: SPACING.sm,
@@ -1185,25 +1367,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '500',
   },
-  topTab: {
-    flex: 1,
-    paddingVertical: SPACING.md,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  topTabActive: {
-    borderBottomColor: COLORS.primary,
-  },
-  topTabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-  },
-  topTabTextActive: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
   // Sub Tabs (Chat | Help | Blood...)
   subTabsContainer: {
     flexDirection: 'row',
@@ -1295,8 +1458,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: SPACING.md,
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   communityIcon: {
     width: 48,
@@ -1325,8 +1493,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: SPACING.md,
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   circleAvatar: {
     marginRight: SPACING.md,
@@ -1694,9 +1867,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderRadius: BORDER_RADIUS.xl,
     backgroundColor: COLORS.surface,
+    marginBottom: SPACING.sm,
   },
   userAvatar: {
     width: 48,
@@ -1723,6 +1896,16 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+  },
+  userRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginLeft: SPACING.sm,
+  },
+  userTime: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
   },
   userName: {
     fontSize: 16,

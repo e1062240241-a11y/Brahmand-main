@@ -168,7 +168,7 @@ export default function RamayanReaderScreen() {
         setError('Kaanda 1 is taking too long to load. Please check the connection and try again.');
         setLoading(false);
       }
-    }, 15000);
+    }, 45000);
     return () => clearTimeout(timeout);
   }, [loading, chapters]);
 

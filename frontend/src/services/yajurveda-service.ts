@@ -1,4 +1,5 @@
 import { getYajurvedaChapter } from '../../src/services/api';
+import { loadCachedBookContent } from './book-cache';
 
 const normalizeYajurvedaVerse = (verse: any) => ({
   ...verse,
@@ -7,15 +8,13 @@ const normalizeYajurvedaVerse = (verse: any) => ({
 
 export const loadYajurvedaChapter = async (chapterNumber: number) => {
   try {
-    const response = await Promise.race([
-      getYajurvedaChapter(chapterNumber),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Chapter ${chapterNumber} loading timed out`)), 12000);
-      }),
-    ]);
-
-    const verses = Array.isArray(response.data?.verses) ? response.data.verses : [];
-    return verses.map(normalizeYajurvedaVerse);
+    return await loadCachedBookContent({
+      cacheKey: `yajurveda:chapter:${chapterNumber}`,
+      fetcher: () => getYajurvedaChapter(chapterNumber),
+      extractVerses: (response) => Array.isArray(response.data?.verses) ? response.data.verses : [],
+      normalizeVerse: normalizeYajurvedaVerse,
+      timeoutMessage: `Chapter ${chapterNumber} loading timed out`,
+    });
   } catch (error) {
     console.error('Failed to load Yajurveda chapter:', error);
     throw error;

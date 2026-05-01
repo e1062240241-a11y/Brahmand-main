@@ -4,6 +4,7 @@ from models.schemas import MessageCreate, DirectMessageCreate
 from services.firebase_messaging_service import FirebaseMessagingService as MessagingService
 from middleware.security import verify_token
 from middleware.rate_limiter import messaging_rate_limit
+from offensive_detector import is_offensive
 
 router = APIRouter(prefix="/messages", tags=["Messaging"])
 
@@ -18,6 +19,13 @@ async def send_community_message(
     _: bool = Depends(messaging_rate_limit)
 ):
     """Send message to community subgroup"""
+    offensive_check = is_offensive(message.content)
+    if offensive_check.get('offensive'):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Offensive message blocked: {offensive_check.get('reason', 'offensive content')}"
+        )
+
     try:
         return await MessagingService.send_community_message(
             user_id=token_data["user_id"],
@@ -52,6 +60,13 @@ async def send_circle_message(
     _: bool = Depends(messaging_rate_limit)
 ):
     """Send message to circle"""
+    offensive_check = is_offensive(message.content)
+    if offensive_check.get('offensive'):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Offensive message blocked: {offensive_check.get('reason', 'offensive content')}"
+        )
+
     try:
         return await MessagingService.send_circle_message(
             user_id=token_data["user_id"],
@@ -81,6 +96,13 @@ async def send_direct_message(
     _: bool = Depends(messaging_rate_limit)
 ):
     """Send direct message to user by SL ID"""
+    offensive_check = is_offensive(message.content)
+    if offensive_check.get('offensive'):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Offensive message blocked: {offensive_check.get('reason', 'offensive content')}"
+        )
+
     try:
         return await MessagingService.send_direct_message(
             sender_id=token_data["user_id"],

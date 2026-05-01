@@ -30,8 +30,10 @@ const getEnvVar = (key: string, fallback: string = ''): string => {
   return value || fallback;
 };
 
+const anonymousPhoneList = getEnvVar('EXPO_PUBLIC_ANONYMOUS_PREDEFINED_NUMBERS', '');
+
 export const firebaseConfig = {
-  apiKey: getEnvVar('EXPO_PUBLIC_FIREBASE_API_KEY', 'AIzaSyAfMGn2Njs6Wdp8ZTpBS0jDS4KD7B7cTp4'),
+  apiKey: getEnvVar('EXPO_PUBLIC_FIREBASE_API_KEY', 'AIzaSyBqj-JGtJNoRBE-5Brl0p_NALobh_PWPxE'),
   authDomain: getEnvVar('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN', 'sanatan-lok.firebaseapp.com'),
   projectId: getEnvVar('EXPO_PUBLIC_FIREBASE_PROJECT_ID', 'sanatan-lok'),
   storageBucket: getEnvVar('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET', 'sanatan-lok.firebasestorage.app'),
@@ -39,6 +41,36 @@ export const firebaseConfig = {
   appId: getEnvVar('EXPO_PUBLIC_FIREBASE_APP_ID', '1:103222994071:web:bf5b9aa1775e0c84e8f5d2'),
   measurementId: getEnvVar('EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID', 'G-X7VBBCHKXG')
 };
+
+function normalizePhone(phone: string): string {
+  if (!phone) return '';
+  const digits = phone.replace(/[^0-9+]/g, '');
+  if (digits.startsWith('+')) {
+    const cleaned = digits.replace(/[^0-9]/g, '');
+    if (cleaned.length === 10) {
+      return `+91${cleaned}`;
+    }
+    return `+${cleaned}`;
+  }
+  if (digits.length === 10) {
+    return `+91${digits}`;
+  }
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `+${digits}`;
+  }
+  return digits;
+}
+
+export const anonymousPhoneNumbers = new Set(
+  anonymousPhoneList
+    .split(',')
+    .map((item) => normalizePhone(item.trim()))
+    .filter(Boolean)
+);
+
+export function isAnonymousPhone(phone: string): boolean {
+  return anonymousPhoneNumbers.has(normalizePhone(phone));
+}
 
 let app: FirebaseApp;
 let db: Firestore;

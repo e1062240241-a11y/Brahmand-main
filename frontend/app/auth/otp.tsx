@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { verifyOTP, verifyFirebaseToken } from '../../src/services/api';
 import { verifyFirebaseOTP, sendFirebaseOTP, confirmationResult, getCurrentUserToken } from '../../src/services/firebase/authService';
+import { isAnonymousPhone } from '../../src/services/firebase/config';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING } from '../../src/constants/theme';
 
@@ -46,6 +47,13 @@ export default function OTPScreen() {
   const [resendTimer, setResendTimer] = useState(30);
   
   const inputRefs = useRef<TextInput[]>([]);
+
+  useEffect(() => {
+    if (phone && isAnonymousPhone(phone as string)) {
+      router.replace({ pathname: '/auth/profile', params: { phone, anonymous: 'true' } });
+      return;
+    }
+  }, [phone, router]);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -118,7 +126,7 @@ export default function OTPScreen() {
 
         await login(data.user, data.token);
         if (data.user.home_location || data.user.location) {
-          router.replace('/feed');
+          router.replace('/home');
         } else {
           router.replace('/auth/location');
         }
@@ -133,7 +141,7 @@ export default function OTPScreen() {
         } else if (data.user) {
           await login(data.user, data.token);
           if (data.user.home_location || data.user.location) {
-            router.replace('/feed');
+            router.replace('/home');
           } else {
             router.replace('/auth/location');
           }

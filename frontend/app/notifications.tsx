@@ -67,7 +67,7 @@ export default function NotificationsScreen() {
           style={styles.backButton}
           onPress={() => {
             dismissBadge();
-            router.replace('/feed');
+            router.replace('/home');
           }}
         >
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />

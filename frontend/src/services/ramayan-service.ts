@@ -1,4 +1,5 @@
 import { getRamayanChapter } from '../../src/services/api';
+import { loadCachedBookContent } from './book-cache';
 
 const normalizeRamayanVerse = (verse: any) => ({
   ...verse,
@@ -7,15 +8,13 @@ const normalizeRamayanVerse = (verse: any) => ({
 
 export const loadRamayanChapter = async (chapterNumber: number) => {
   try {
-    const response = await Promise.race([
-      getRamayanChapter(chapterNumber),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Kaanda ${chapterNumber} loading timed out`)), 12000);
-      }),
-    ]);
-
-    const verses = Array.isArray(response.data?.verses) ? response.data.verses : [];
-    return verses.map(normalizeRamayanVerse);
+    return await loadCachedBookContent({
+      cacheKey: `ramayan:kaanda:${chapterNumber}`,
+      fetcher: () => getRamayanChapter(chapterNumber),
+      extractVerses: (response) => Array.isArray(response.data?.verses) ? response.data.verses : [],
+      normalizeVerse: normalizeRamayanVerse,
+      timeoutMessage: `Kaanda ${chapterNumber} loading timed out`,
+    });
   } catch (error) {
     console.error('Failed to load Ramayan kaanda:', error);
     throw error;

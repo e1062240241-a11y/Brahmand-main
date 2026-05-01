@@ -236,6 +236,10 @@ export default function TempleScreen() {
  });
  };
 
+ const openVendorSection = () => {
+ router.push('/vendor');
+ };
+
  useEffect(() => {
  if (!isSearchOpen || searchQuery.trim()) {
  if (placeholderTimerRef.current) {
@@ -416,6 +420,10 @@ export default function TempleScreen() {
  )}
  <TouchableOpacity style={styles.headerIcon} onPress={() => setShowFilterModal(true)}>
  <Ionicons name="filter" size={22} color={COLORS.text} />
+ </TouchableOpacity>
+ <TouchableOpacity style={styles.vendorButton} onPress={openVendorSection}>
+ <Ionicons name="storefront" size={18} color={COLORS.text} />
+ <Text style={styles.vendorButtonText}>Vendor</Text>
  </TouchableOpacity>
  </View>
  </View>
@@ -623,6 +631,23 @@ const styles = StyleSheet.create({
  },
  searchCloseButton: {
  padding: 4,
+ },
+ vendorButton: {
+ flexDirection: 'row',
+ alignItems: 'center',
+ backgroundColor: COLORS.surface,
+ borderWidth: 1,
+ borderColor: COLORS.border,
+ borderRadius: BORDER_RADIUS.full,
+ paddingHorizontal: SPACING.sm,
+ paddingVertical: SPACING.xs,
+ marginLeft: SPACING.sm,
+ },
+ vendorButtonText: {
+ color: COLORS.text,
+ fontSize: 14,
+ fontWeight: '600',
+ marginLeft: SPACING.xs,
  },
  listContent: {
  paddingBottom: SPACING.lg,

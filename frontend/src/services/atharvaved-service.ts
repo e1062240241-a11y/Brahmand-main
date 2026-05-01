@@ -1,4 +1,5 @@
 import { getAtharvavedChapter } from '../../src/services/api';
+import { loadCachedBookContent } from './book-cache';
 
 const normalizeAtharvavedVerse = (verse: any) => ({
   ...verse,
@@ -7,15 +8,13 @@ const normalizeAtharvavedVerse = (verse: any) => ({
 
 export const loadAtharvavedChapter = async (chapterNumber: number) => {
   try {
-    const response = await Promise.race([
-      getAtharvavedChapter(chapterNumber),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Kaanda ${chapterNumber} loading timed out`)), 12000);
-      }),
-    ]);
-
-    const verses = Array.isArray(response.data?.verses) ? response.data.verses : [];
-    return verses.map(normalizeAtharvavedVerse);
+    return await loadCachedBookContent({
+      cacheKey: `atharvaved:kaanda:${chapterNumber}`,
+      fetcher: () => getAtharvavedChapter(chapterNumber),
+      extractVerses: (response) => Array.isArray(response.data?.verses) ? response.data.verses : [],
+      normalizeVerse: normalizeAtharvavedVerse,
+      timeoutMessage: `Kaanda ${chapterNumber} loading timed out`,
+    });
   } catch (error) {
     console.error('Failed to load Atharvaved kaanda:', error);
     throw error;

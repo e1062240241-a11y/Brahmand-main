@@ -34,7 +34,8 @@ import {
   resolveCommunityRequest,
   updateCurrentLocation,
   respondToSOS,
-  getPanchang
+  getPanchang,
+  getNextFestival
 } from '../services/api';
 import * as Location from 'expo-location';
 import LocationService from '../services/location';
@@ -192,8 +193,13 @@ const getPanchangData = async () => {
 };
 
 const getFestivalsData = async () => {
-  // Festivals data - could be added later
-  return null;
+  try {
+    const response = await getNextFestival();
+    return response.data;
+  } catch (error) {
+    console.warn('Next festival fetch error:', error);
+    return null;
+  }
 };
 
 const getHelpIcon = (type: string): string => {
@@ -1258,7 +1264,14 @@ export const FloatingUtilityButton = () => {
               </View>
 
 {/* Next Festival - Full Width Bar */}
-              <View style={styles.festivalBar}>
+              <TouchableOpacity
+                style={styles.festivalBar}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setModalVisible(false);
+                  router.push('/festivals');
+                }}
+              >
                 <View style={styles.festivalBarContent}>
                   <View style={[styles.utilityIconBg, { backgroundColor: '#E8F5E9' }]}> 
                     <Ionicons name="sparkles" size={20} color={COLORS.success} />
@@ -1266,6 +1279,9 @@ export const FloatingUtilityButton = () => {
                   <View style={styles.festivalInfo}>
                     <Text style={styles.festivalTitle}>Next Festival</Text>
                     <Text style={styles.festivalName}>{nextFestival?.name || 'Loading...'}</Text>
+                    {nextFestival?.summary ? (
+                      <Text style={styles.festivalSummary}>{nextFestival.summary}</Text>
+                    ) : null}
                   </View>
                   <View style={styles.festivalDays}>
                     <Text style={styles.festivalDaysText}>
@@ -1273,7 +1289,7 @@ export const FloatingUtilityButton = () => {
                     </Text>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
 
               {/* Library & Passport Row */}
               <View style={styles.festivalRow}>
@@ -1896,6 +1912,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',
+  },
+  festivalSummary: {
+    fontSize: 12,
+    color: '#4B5563',
+    marginTop: 2,
   },
   festivalDays: {
     backgroundColor: '#34C759',

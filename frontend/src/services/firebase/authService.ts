@@ -24,6 +24,93 @@ function getNativeAuthModule() {
   }
 }
 
+function ensureRecaptchaContainer() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const existing = document.getElementById('recaptcha-container');
+  if (existing) {
+    return existing;
+  }
+
+  const newDiv = document.createElement('div');
+  newDiv.id = 'recaptcha-container';
+  document.body.appendChild(newDiv);
+  return newDiv;
+}
+
+let currentRecaptchaContainerId: string | null = null;
+
+function generateRecaptchaContainerId() {
+  return `recaptcha-container-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createHiddenRecaptchaContainer(containerId: string) {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const existing = document.getElementById(containerId);
+  if (existing) {
+    return existing;
+  }
+
+  const element = document.createElement('div');
+  element.id = containerId;
+  element.style.position = 'absolute';
+  element.style.width = '1px';
+  element.style.height = '1px';
+  element.style.left = '-9999px';
+  element.style.top = '-9999px';
+  document.body.appendChild(element);
+  return element;
+}
+
+export function cleanupRecaptchaVerifier() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const existingVerifier = (window as any).recaptchaVerifier;
+  if (existingVerifier && typeof existingVerifier.clear === 'function') {
+    try {
+      existingVerifier.clear();
+    } catch (err) {
+      console.warn('[Firebase] Failed to clear existing reCAPTCHA verifier', err);
+    }
+  }
+
+  (window as any).recaptchaVerifier = null;
+
+  if (currentRecaptchaContainerId) {
+    const oldContainer = document.getElementById(currentRecaptchaContainerId);
+    if (oldContainer && oldContainer.parentNode) {
+      oldContainer.parentNode.removeChild(oldContainer);
+    }
+    currentRecaptchaContainerId = null;
+  }
+}
+
+function createWebRecaptchaVerifier(authInstance: any) {
+  const containerId = generateRecaptchaContainerId();
+  createHiddenRecaptchaContainer(containerId);
+
+  const verifier = new RecaptchaVerifier(authInstance, containerId, {
+    size: 'invisible',
+    callback: () => {
+      console.log('[Firebase] reCAPTCHA verified');
+    },
+    'expired-callback': () => {
+      console.log('[Firebase] reCAPTCHA expired');
+    },
+  });
+
+  currentRecaptchaContainerId = containerId;
+  (window as any).recaptchaVerifier = verifier;
+  return verifier;
+}
+
 export function initializeFirebaseAuth(): any {
   if (Platform.OS === 'web') {
     auth = getFirebaseAuth();
@@ -81,37 +168,52 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
     
     if (Platform.OS === 'web') {
       // Web: Prefer an application-provided verifier. If none exists, create one.
+      cleanupRecaptchaVerifier();
       let usedVerifier = verifier || (window as any).recaptchaVerifier || null;
 
-      if (usedVerifier) {
-        try {
-          usedVerifier.clear();
-        } catch (err) {
-          console.warn('[Firebase] Failed to clear existing reCAPTCHA verifier', err);
-        }
-        usedVerifier = null;
-      }
-
       if (!usedVerifier) {
-        const container = document.getElementById('recaptcha-container');
-        if (container) {
-          container.innerHTML = '';
-        }
-
-        usedVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: () => {
-            console.log('[Firebase] reCAPTCHA verified');
-          },
-          'expired-callback': () => {
-            console.log('[Firebase] reCAPTCHA expired');
-          },
-        });
-        (window as any).recaptchaVerifier = usedVerifier;
+        usedVerifier = createWebRecaptchaVerifier(auth);
       }
 
-      await usedVerifier.render();
-      confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, usedVerifier);
+      const attemptSendOtp = async () => {
+        try {
+          await usedVerifier.render();
+        } catch (renderError: any) {
+          const message = String(renderError?.message || '');
+          if (
+            message.includes('already rendered') ||
+            renderError?.code === 'auth/invalid-app-credential' ||
+            renderError?.code === 'auth/invalid-app-id'
+          ) {
+            console.warn('[Firebase] Recaptcha render failed, resetting verifier and retrying', renderError);
+            cleanupRecaptchaVerifier();
+            usedVerifier = createWebRecaptchaVerifier(auth);
+            await usedVerifier.render();
+          } else {
+            throw renderError;
+          }
+        }
+
+        return await signInWithPhoneNumber(auth, formattedPhone, usedVerifier);
+      };
+
+      try {
+        confirmationResult = await attemptSendOtp();
+      } catch (firstError: any) {
+        if (
+          firstError?.code === 'auth/invalid-app-credential' ||
+          firstError?.code === 'auth/invalid-app-id' ||
+          String(firstError?.message || '').includes('already rendered')
+        ) {
+          console.warn('[Firebase] Invalid app credential or rendered verifier during OTP send, resetting and retrying', firstError);
+          cleanupRecaptchaVerifier();
+          usedVerifier = createWebRecaptchaVerifier(auth);
+          confirmationResult = await attemptSendOtp();
+        } else {
+          throw firstError;
+        }
+      }
+
       console.log('[Firebase] OTP sent successfully');
       return confirmationResult;
     } else {
@@ -192,6 +294,13 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
       return idToken;
     } catch (confirmError: any) {
       console.warn('[Firebase] confirmationResult.confirm failed:', confirmError);
+
+      if (confirmError?.code === 'auth/invalid-app-credential' || confirmError?.code === 'auth/invalid-app-id') {
+        cleanupRecaptchaVerifier();
+        confirmationResult = null;
+        throw new Error('Firebase phone authentication failed due to an invalid app credential. Please refresh and try again.');
+      }
+
       // If the code was silently consumed by Play Services, check currentUser again and return token.
       if (confirmError?.code === 'auth/session-expired' || confirmError?.code === 'auth/code-expired') {
         // If Firebase has already signed in the user in the background, return token.

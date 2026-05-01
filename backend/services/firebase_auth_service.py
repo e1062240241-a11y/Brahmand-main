@@ -23,6 +23,8 @@ class FirebaseAuthService:
     OTP_EXPIRY_MINUTES = 10
     MOCK_OTP = "123456"  # Default development OTP
     
+    _anonymous_phone_set: Optional[set[str]] = None
+
     @staticmethod
     def normalize_phone(phone: str) -> str:
         """Normalize phone numbers into E.164 format for Twilio."""
@@ -47,6 +49,30 @@ class FirebaseAuthService:
         raise ValueError("Invalid phone number")
 
     @staticmethod
+    def get_anonymous_phone_set() -> set[str]:
+        """Get predefined anonymous login phone numbers from env."""
+        if FirebaseAuthService._anonymous_phone_set is not None:
+            return FirebaseAuthService._anonymous_phone_set
+
+        raw = os.getenv('ANONYMOUS_PREDEFINED_NUMBERS', '')
+        phone_numbers = set()
+        for item in [p.strip() for p in raw.split(',') if p.strip()]:
+            try:
+                phone_numbers.add(FirebaseAuthService.normalize_phone(item))
+            except ValueError:
+                logger.warning(f"Invalid anonymous phone number in config: {item}")
+        FirebaseAuthService._anonymous_phone_set = phone_numbers
+        return phone_numbers
+
+    @staticmethod
+    def is_anonymous_phone(phone: str) -> bool:
+        try:
+            normalized_phone = FirebaseAuthService.normalize_phone(phone)
+        except ValueError:
+            return False
+        return normalized_phone in FirebaseAuthService.get_anonymous_phone_set()
+
+    @staticmethod
     async def get_db() -> FirestoreDB:
         """Get Firestore database instance"""
         client = await get_firestore()
@@ -60,6 +86,11 @@ class FirebaseAuthService:
             TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID
         """
         normalized_phone = FirebaseAuthService.normalize_phone(phone)
+
+        if FirebaseAuthService.is_anonymous_phone(normalized_phone):
+            raise ValueError(
+                "Anonymous login numbers bypass OTP. Use /auth/login-anonymous instead."
+            )
 
         logger.info(f"send_otp called for phone: {phone} normalized={normalized_phone}")
 
@@ -141,6 +172,11 @@ class FirebaseAuthService:
         db = await FirebaseAuthService.get_db()
 
         use_mock = os.getenv("USE_MOCK_OTP", "true").lower() in ("1", "true", "yes")
+        if FirebaseAuthService.is_anonymous_phone(normalized_phone):
+            raise ValueError(
+                "Anonymous login numbers bypass OTP. Use /auth/login-anonymous instead."
+            )
+
         if use_mock:
             otp_record = await db.find_one('otps', [('phone', '==', normalized_phone)])
             if not otp_record:
@@ -214,10 +250,16 @@ class FirebaseAuthService:
         language: str = "English"
     ) -> Dict[str, Any]:
         """Register new user"""
+        normalized_phone = FirebaseAuthService.normalize_phone(phone)
+        if FirebaseAuthService.is_anonymous_phone(normalized_phone):
+            raise ValueError(
+                "Anonymous login numbers cannot register through OTP flows. Use /auth/login-anonymous instead."
+            )
+
         db = await FirebaseAuthService.get_db()
         
         # Check if user already exists
-        existing = await db.get_user_by_phone(phone)
+        existing = await db.get_user_by_phone(normalized_phone)
         if existing:
             raise ValueError("User already exists")
         
@@ -232,7 +274,7 @@ class FirebaseAuthService:
         
         # Create user document
         user_data = {
-            "phone": phone,
+            "phone": normalized_phone,
             "sl_id": sl_id,
             "name": name,
             "photo": photo,
@@ -268,6 +310,104 @@ class FirebaseAuthService:
             "token": token,
             "user": user_data
         }
+
+    @staticmethod
+    async def login_anonymous(
+        phone: str,
+        name: str,
+        photo: Optional[str] = None,
+        language: str = "English"
+    ) -> Dict[str, Any]:
+        """Login or register a predefined anonymous user without OTP."""
+        normalized_phone = FirebaseAuthService.normalize_phone(phone)
+        if not FirebaseAuthService.is_anonymous_phone(normalized_phone):
+            raise ValueError("Phone number is not configured for anonymous login")
+
+        db = await FirebaseAuthService.get_db()
+        existing = await db.get_user_by_phone(normalized_phone)
+        if existing:
+            if not existing.get('anonymous_account'):
+                raise ValueError("Phone already registered with a normal account")
+            if existing.get('anonymous_disabled'):
+                raise ValueError("Anonymous login has been permanently disabled for this number")
+
+            token = create_jwt_token(existing['id'], existing['sl_id'])
+            return {
+                "message": "Anonymous login successful",
+                "token": token,
+                "user": existing,
+                "is_new_user": False
+            }
+
+        if language not in SUPPORTED_LANGUAGES:
+            raise ValueError(f"Unsupported language. Choose from: {SUPPORTED_LANGUAGES}")
+
+        sl_id = generate_sl_id()
+        while await db.get_user_by_sl_id(sl_id):
+            sl_id = generate_sl_id()
+
+        user_data = {
+            "phone": normalized_phone,
+            "sl_id": sl_id,
+            "name": name,
+            "photo": photo,
+            "language": language,
+            "location": None,
+            "home_location": None,
+            "office_location": None,
+            "is_verified": True,
+            "badges": ["Anonymous Member"],
+            "reputation": 0,
+            "temple_passbook": {
+                "temples_followed": [],
+                "seva_participation": [],
+                "donation_participation": [],
+                "festival_participation": []
+            },
+            "communities": [],
+            "circles": [],
+            "fcm_tokens": [],
+            "agreed_rules": [],
+            "sanatan_declaration_agreed": True,
+            "kyc_status": "verified",
+            "kyc_role": None,
+            "kyc_documents": None,
+            "kyc_verified_at": datetime.utcnow().isoformat(),
+            "anonymous_account": True,
+            "anonymous_disabled": False,
+            "anonymous_login_source": "predefined_number",
+            "anonymous_created_at": datetime.utcnow().isoformat(),
+            "privacy_settings": {
+                "read_receipts": True,
+                "online_status": True,
+                "profile_photo": "everyone"
+            }
+        }
+
+        user_id = await db.create_user(user_data)
+        user_data['id'] = user_id
+
+        token = create_jwt_token(user_id, sl_id)
+        logger.info(f"Anonymous user logged in: {sl_id} ({normalized_phone})")
+        return {
+            "message": "Anonymous login successful",
+            "token": token,
+            "user": user_data,
+            "is_new_user": True
+        }
+
+    @staticmethod
+    async def disable_anonymous_user(user_id: str) -> Dict[str, Any]:
+        """Permanently disable a predefined anonymous user after logout."""
+        db = await FirebaseAuthService.get_db()
+        user = await db.get_document('users', user_id)
+        if not user or not user.get('anonymous_account'):
+            raise ValueError("Anonymous user not found")
+        await db.update_document('users', user_id, {
+            'anonymous_disabled': True,
+            'anonymous_disabled_at': datetime.utcnow().isoformat()
+        })
+        return {"message": "Anonymous account permanently disabled"}
     
     @staticmethod
     async def verify_firebase_token(id_token: str) -> Dict[str, Any]:

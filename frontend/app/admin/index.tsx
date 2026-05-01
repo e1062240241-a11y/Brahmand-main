@@ -17,6 +17,7 @@ import {
   AdminPostReport,
   AdminUserKycRequest,
   AdminVendorReview,
+  AdminAnonymousUser,
   adminApproveVendor,
   adminRejectVendor,
   adminReviewReport,
@@ -24,6 +25,8 @@ import {
   getAdminReports,
   getAdminPendingKyc,
   getAdminVendorReviewQueue,
+  getAdminAnonymousUsers,
+  disableAdminAnonymousUser,
 } from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
 
@@ -37,6 +40,7 @@ export default function AdminPanelScreen() {
   const [vendorRequests, setVendorRequests] = useState<AdminVendorReview[]>([]);
   const [userKycRequests, setUserKycRequests] = useState<AdminUserKycRequest[]>([]);
   const [reportedPosts, setReportedPosts] = useState<AdminPostReport[]>([]);
+  const [anonymousUsers, setAnonymousUsers] = useState<AdminAnonymousUser[]>([]);
 
   const isKycCompleted = (record: AdminVendorReview) => {
     const hasOtpVerified = !!record.aadhaar_otp_verified_at;
@@ -59,17 +63,29 @@ export default function AdminPanelScreen() {
     [reportedPosts]
   );
 
+  const activeAnonymousUsers = useMemo(
+    () => (anonymousUsers || []).filter((user) => !user.anonymous_disabled),
+    [anonymousUsers]
+  );
+
+  const disabledAnonymousUsers = useMemo(
+    () => (anonymousUsers || []).filter((user) => !!user.anonymous_disabled),
+    [anonymousUsers]
+  );
+
   const loadRequests = async () => {
     if (!adminToken) return;
     try {
-      const [vendorResponse, userKycResponse, reportsResponse] = await Promise.all([
+      const [vendorResponse, userKycResponse, reportsResponse, anonymousResponse] = await Promise.all([
         getAdminVendorReviewQueue(adminToken, 'pending'),
         getAdminPendingKyc(adminToken),
         getAdminReports(adminToken, 'pending', 'post', 150),
+        getAdminAnonymousUsers(adminToken),
       ]);
       setVendorRequests(Array.isArray(vendorResponse.data) ? vendorResponse.data : []);
       setUserKycRequests(Array.isArray(userKycResponse.data) ? userKycResponse.data : []);
       setReportedPosts(Array.isArray(reportsResponse.data) ? reportsResponse.data : []);
+      setAnonymousUsers(Array.isArray(anonymousResponse.data?.users) ? anonymousResponse.data.users : []);
     } catch (error: any) {
       const detail = error?.response?.data?.detail || 'Failed to load review queue';
       Alert.alert('Error', detail);
@@ -170,6 +186,21 @@ export default function AdminPanelScreen() {
       Alert.alert('Updated', 'Report denied.');
     } catch (error: any) {
       const detail = error?.response?.data?.detail || 'Deny failed';
+      Alert.alert('Error', detail);
+    } finally {
+      setProcessingKey(null);
+    }
+  };
+
+  const handleDisableAnonymousUser = async (userId: string) => {
+    if (!adminToken) return;
+    setProcessingKey(`anonymous:${userId}`);
+    try {
+      await disableAdminAnonymousUser(adminToken, userId);
+      await loadRequests();
+      Alert.alert('Success', 'Anonymous user disabled. They can no longer login.');
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || 'Disable failed';
       Alert.alert('Error', detail);
     } finally {
       setProcessingKey(null);
@@ -304,6 +335,27 @@ export default function AdminPanelScreen() {
     );
   }
 
+  const renderAnonymousUserItem = ({ item }: { item: AdminAnonymousUser }) => {
+    const busy = processingKey === `anonymous:${item.id}`;
+    const displayName = item.name || item.phone || item.id;
+    return (
+      <View style={styles.card}>
+        <Text style={styles.businessName}>{displayName}</Text>
+        <Text style={styles.meta}>Phone: {item.phone || 'N/A'}</Text>
+        <Text style={styles.meta}>Status: {item.anonymous_disabled ? 'Disabled' : 'Active'}</Text>
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
+            disabled={busy || item.anonymous_disabled}
+            onPress={() => handleDisableAnonymousUser(item.id)}
+          >
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Disable</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -338,6 +390,32 @@ export default function AdminPanelScreen() {
               pendingUserKycRequests.map((item) => (
                 <View key={item.id}>
                   {renderUserKycItem({ item })}
+                </View>
+              ))
+            )}
+
+            <Text style={styles.subtitle}>Active anonymous predefined users ({activeAnonymousUsers.length})</Text>
+            {activeAnonymousUsers.length === 0 ? (
+              <View style={styles.centeredCompact}>
+                <Text style={styles.emptyText}>No active anonymous predefined users.</Text>
+              </View>
+            ) : (
+              activeAnonymousUsers.map((item) => (
+                <View key={item.id}>
+                  {renderAnonymousUserItem({ item })}
+                </View>
+              ))
+            )}
+
+            <Text style={styles.subtitle}>Disabled anonymous predefined users ({disabledAnonymousUsers.length})</Text>
+            {disabledAnonymousUsers.length === 0 ? (
+              <View style={styles.centeredCompact}>
+                <Text style={styles.emptyText}>No disabled anonymous predefined users.</Text>
+              </View>
+            ) : (
+              disabledAnonymousUsers.map((item) => (
+                <View key={item.id}>
+                  {renderAnonymousUserItem({ item })}
                 </View>
               ))
             )}

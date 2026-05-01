@@ -44,6 +44,22 @@ class Settings:
     # WebSocket
     WS_PING_INTERVAL: int = 25
     WS_PING_TIMEOUT: int = 20
+
+    # Realtime audio ICE servers
+    STUN_URLS: str = os.environ.get(
+        'STUN_URLS',
+        'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302'
+    )
+    TURN_URLS: str = os.environ.get('TURN_URLS', '')
+    TURN_USERNAME: str = os.environ.get('TURN_USERNAME', '')
+    TURN_CREDENTIAL: str = os.environ.get('TURN_CREDENTIAL', '')
+    TURN_SHARED_SECRET: str = os.environ.get('TURN_SHARED_SECRET', '')
+    TURN_TTL_SECONDS: int = int(os.environ.get('TURN_TTL_SECONDS', 3600))
+    LIVEKIT_URL: str = os.environ.get('LIVEKIT_URL', '')
+    LIVEKIT_API_KEY: str = os.environ.get('LIVEKIT_API_KEY', '')
+    LIVEKIT_API_SECRET: str = os.environ.get('LIVEKIT_API_SECRET', '')
+    LIVEKIT_ROOM_PREFIX: str = os.environ.get('LIVEKIT_ROOM_PREFIX', 'jaap')
+    LIVEKIT_TOKEN_TTL_SECONDS: int = int(os.environ.get('LIVEKIT_TOKEN_TTL_SECONDS', 3600))
     
     # Logging
     LOG_LEVEL: str = os.environ.get('LOG_LEVEL', 'INFO')

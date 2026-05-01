@@ -10,6 +10,8 @@ import os
 import asyncio
 import re
 import json
+import hmac
+import hashlib
 from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
@@ -22,6 +24,7 @@ from zoneinfo import ZoneInfo
 import base64
 import math
 import requests
+import jwt
 from google.api_core.exceptions import FailedPrecondition
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,6 +64,7 @@ from models.schemas import (
     VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate, CulturalCommunityUpdate,
     SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel
 )
+from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
 from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit
 from routes.bhagavad_gita_routes import router as bhagavad_gita_router
@@ -81,10 +85,10 @@ from routes.video_upload_routes import (
     MAX_VIDEO_DURATION_SECONDS,
 )
 from utils.helpers import (
-    WISDOM_QUOTES, TITHIS, generate_sl_id, generate_circle_code,
-    generate_community_code, SUBGROUPS, moderate_content
+    moderate_content
 )
 from utils.cache import cache_manager
+from offensive_detector import is_offensive, is_text_safe
 
 # Configure logging
 logging.basicConfig(
@@ -720,6 +724,71 @@ async def health_check():
     }
 
 
+# Content Moderation Endpoints
+class ContentCheckRequest(BaseModel):
+    text: str
+    use_hybrid: bool = True
+    ml_threshold: float = 0.5
+
+
+class ContentCheckResponse(BaseModel):
+    offensive: bool
+    method: str
+    reason: Optional[str] = None
+    confidence: float = 0.0
+    censored_text: Optional[str] = None
+
+
+class AnonymousLoginRequest(BaseModel):
+    phone: str
+    name: str = Field(..., min_length=2, max_length=100)
+    photo: Optional[str] = None
+    language: str = "English"
+
+
+@api_router.post("/moderation/check", response_model=ContentCheckResponse)
+async def check_content_moderation(request: ContentCheckRequest):
+    """
+    Check if content is offensive using hybrid ML + regex approach.
+    
+    - Fast: uses regex for obvious bad words first
+    - Smart: uses ML model (Detoxify) for doubtful cases
+    - Supports: Hindi, English, mix-language
+    """
+    result = is_offensive(
+        text=request.text,
+        use_hybrid=request.use_hybrid,
+        ml_threshold=request.ml_threshold
+    )
+    
+    return ContentCheckResponse(
+        offensive=result.get('offensive', False),
+        method=result.get('method', 'unknown'),
+        reason=result.get('reason'),
+        confidence=result.get('confidence', 0.0)
+    )
+
+
+@api_router.post("/moderation/censor", response_model=ContentCheckResponse)
+async def censor_content_moderation(request: ContentCheckRequest):
+    """
+    Check and auto-censor offensive content.
+    Replaces bad words with asterisks.
+    """
+    result = is_text_safe(
+        text=request.text,
+        auto_censor=True
+    )
+    
+    return ContentCheckResponse(
+        offensive=result.get('offensive', False),
+        method=result.get('method', 'unknown'),
+        reason=result.get('reason'),
+        confidence=result.get('confidence', 0.0),
+        censored_text=result.get('censored_text')
+    )
+
+
 api_router.include_router(bhagavad_gita_router)
 api_router.include_router(ramcharitmanas_router)
 api_router.include_router(atharvaved_router)
@@ -733,6 +802,109 @@ api_router.include_router(yajurveda_router)
 async def get_firebase_config():
     """Get Firebase web config for frontend SDK"""
     return FIREBASE_WEB_CONFIG
+
+
+def _split_ice_urls(value: str) -> list[str]:
+    return [url.strip() for url in (value or '').split(',') if url.strip()]
+
+
+def _build_turn_credential(user_id: str) -> tuple[Optional[str], Optional[str], Optional[int]]:
+    turn_urls = _split_ice_urls(settings.TURN_URLS)
+    if not turn_urls:
+        return None, None, None
+
+    if settings.TURN_SHARED_SECRET:
+        ttl_seconds = max(settings.TURN_TTL_SECONDS, 300)
+        expires_at = int((datetime.utcnow() + timedelta(seconds=ttl_seconds)).timestamp())
+        username = f"{expires_at}:{user_id}"
+        digest = hmac.new(
+            settings.TURN_SHARED_SECRET.encode('utf-8'),
+            username.encode('utf-8'),
+            hashlib.sha1,
+        ).digest()
+        credential = base64.b64encode(digest).decode('utf-8')
+        return username, credential, expires_at
+
+    if settings.TURN_USERNAME and settings.TURN_CREDENTIAL:
+        return settings.TURN_USERNAME, settings.TURN_CREDENTIAL, None
+
+    return None, None, None
+
+
+def _sanitize_livekit_room(value: str) -> str:
+    normalized = re.sub(r'[^a-zA-Z0-9_-]+', '-', value or 'jaap-live').strip('-')
+    return normalized[:96] or 'jaap-live'
+
+
+def _build_livekit_token(user_id: str, sl_id: str, room: str) -> tuple[str, int]:
+    ttl_seconds = max(settings.LIVEKIT_TOKEN_TTL_SECONDS, 300)
+    now = datetime.utcnow()
+    expires_at = int((now + timedelta(seconds=ttl_seconds)).timestamp())
+    identity = _sanitize_livekit_room(f"{user_id}-{uuid4().hex[:8]}")
+    participant_name = sl_id or user_id
+
+    payload = {
+        'iss': settings.LIVEKIT_API_KEY,
+        'sub': identity,
+        'name': participant_name,
+        'nbf': int(now.timestamp()),
+        'exp': expires_at,
+        'video': {
+            'roomJoin': True,
+            'room': room,
+            'canPublish': True,
+            'canSubscribe': True,
+            'canPublishData': True,
+        },
+    }
+
+    token = jwt.encode(payload, settings.LIVEKIT_API_SECRET, algorithm='HS256')
+    return token, expires_at
+
+
+@api_router.get("/realtime/ice-servers")
+async def get_realtime_ice_servers(token_data: dict = Depends(verify_token)):
+    """Return STUN/TURN config for realtime audio rooms."""
+    ice_servers = [{'urls': _split_ice_urls(settings.STUN_URLS)}]
+    turn_urls = _split_ice_urls(settings.TURN_URLS)
+    username, credential, expires_at = _build_turn_credential(token_data.get('user_id', 'anonymous'))
+
+    if turn_urls and username and credential:
+        ice_servers.append({
+            'urls': turn_urls,
+            'username': username,
+            'credential': credential,
+        })
+
+    return {
+        'iceServers': [server for server in ice_servers if server.get('urls')],
+        'turnEnabled': bool(turn_urls and username and credential),
+        'expiresAt': expires_at,
+    }
+
+
+@api_router.get("/realtime/sfu-token")
+async def get_realtime_sfu_token(room: str = 'mantra-jaap-live-room', token_data: dict = Depends(verify_token)):
+    """Return an SFU room token when LiveKit is configured."""
+    livekit_ready = bool(settings.LIVEKIT_URL and settings.LIVEKIT_API_KEY and settings.LIVEKIT_API_SECRET)
+    if not livekit_ready:
+        return {
+            'enabled': False,
+            'reason': 'livekit_not_configured',
+        }
+
+    user_id = token_data.get('user_id', 'anonymous')
+    sl_id = token_data.get('sl_id', user_id)
+    livekit_room = _sanitize_livekit_room(f"{settings.LIVEKIT_ROOM_PREFIX}-{room}")
+    token, expires_at = _build_livekit_token(user_id, sl_id, livekit_room)
+
+    return {
+        'enabled': True,
+        'url': settings.LIVEKIT_URL,
+        'token': token,
+        'room': livekit_room,
+        'expiresAt': expires_at,
+    }
 
 
 # =================== AUTH ENDPOINTS ===================
@@ -873,6 +1045,65 @@ async def verify_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
         raise HTTPException(status_code=500, detail="OTP verification failed")
 
 
+@api_router.post("/auth/login-anonymous")
+async def login_anonymous(request: AnonymousLoginRequest):
+    """Login using a predefined anonymous number without OTP."""
+    try:
+        return await FirebaseAuthService.login_anonymous(
+            phone=request.phone,
+            name=request.name,
+            photo=request.photo,
+            language=request.language,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"/auth/login-anonymous failed for phone={request.phone}: {e}")
+        raise HTTPException(status_code=500, detail="Anonymous login failed")
+
+
+@api_router.post("/auth/logout")
+async def logout_user(data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user = await db.get_document('users', token_data['user_id'])
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    fcm_token = str(data.get('fcm_token', '')).strip()
+    if fcm_token:
+        try:
+            await FirebaseAuthService.remove_fcm_token(token_data['user_id'], fcm_token)
+        except Exception:
+            logger.warning(f"Failed to remove FCM token for user {token_data['user_id']}")
+
+    if user.get('anonymous_account'):
+        try:
+            await FirebaseAuthService.disable_anonymous_user(token_data['user_id'])
+        except ValueError as e:
+            logger.warning(f"Anonymous logout disabled failed: {e}")
+
+    return {"message": "Logout successful"}
+
+
+@api_router.get("/admin/anonymous-users")
+async def get_admin_anonymous_users(token_data: dict = Depends(verify_token)):
+    db, _ = await _ensure_admin_user(token_data)
+    anonymous_users = await db.query_documents('users', [('anonymous_account', '==', True)])
+    return {"users": anonymous_users}
+
+
+@api_router.post("/admin/anonymous-users/{user_id}/disable")
+async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(verify_token)):
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user or not user.get('anonymous_account'):
+        raise HTTPException(status_code=404, detail="Anonymous user not found")
+    if user.get('anonymous_disabled'):
+        return {"message": "Anonymous user already disabled"}
+    await FirebaseAuthService.disable_anonymous_user(user_id)
+    return {"message": "Anonymous user disabled"}
+
+
 @api_router.post("/admin/auth/login")
 async def admin_panel_login(data: dict = Body(...)):
     """Admin panel login with static credentials for internal review console."""
@@ -900,12 +1131,19 @@ async def admin_panel_login(data: dict = Body(...)):
 @api_router.post("/auth/register")
 async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit)):
     """Register new user"""
+    normalized_phone = FirebaseAuthService.normalize_phone(user_data.phone)
+    if FirebaseAuthService.is_anonymous_phone(normalized_phone):
+        raise HTTPException(
+            status_code=400,
+            detail="Anonymous login numbers cannot register through OTP flows. Use /auth/login-anonymous instead."
+        )
+
     from services.image_service import compress_base64_image, is_valid_image
     
     db = await get_db()
     
     # Check existing
-    existing = await db.get_user_by_phone(user_data.phone)
+    existing = await db.get_user_by_phone(normalized_phone)
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
     
@@ -948,7 +1186,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
             photo_data = None
     
     user = {
-        "phone": user_data.phone,
+        "phone": normalized_phone,
         "sl_id": sl_id,
         "name": user_data.name,
         "photo": photo_data,
@@ -1042,6 +1280,9 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     """Setup user location and join communities"""
     db = await get_db()
     user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if user and user.get('anonymous_account'):
+        raise HTTPException(status_code=403, detail="Anonymous accounts cannot set location")
     loc = location.dict()
     
     # Create/get communities
@@ -1109,6 +1350,9 @@ async def update_current_location(location: dict, token_data: dict = Depends(ver
     """Update the user's current GPS location."""
     db = await get_db()
     user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if user and user.get('anonymous_account'):
+        raise HTTPException(status_code=403, detail="Anonymous accounts cannot update current location")
     latitude = location.get('latitude')
     longitude = location.get('longitude')
     if latitude is None or longitude is None:
@@ -1143,6 +1387,9 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     """
     db = await get_db()
     user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if user and user.get('anonymous_account'):
+        raise HTTPException(status_code=403, detail="Anonymous accounts cannot update dual location")
     update_data = {}
     default_community_ids = []  # Track the 5 default communities (cannot leave)
     
@@ -2132,6 +2379,13 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
     if len(text) > 500:
         raise HTTPException(status_code=400, detail='Comment too long (max 500 chars)')
+
+    offensive_check = is_offensive(text)
+    if offensive_check.get('offensive'):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Offensive comment blocked: {offensive_check.get('reason', 'offensive content')}"
+        )
 
     user = await db.get_document('users', user_id)
     if not user:
@@ -7383,6 +7637,33 @@ FESTIVALS = [
     {"name": "Tulsi Vivah", "month": 11, "day": 3, "tithi": "Kartik Shukla Dwadashi", "importance": "medium"},
 ]
 
+FESTIVAL_JSON_PATH = Path(__file__).parent / 'data' / 'festival' / 'festival.json'
+
+def load_festival_json():
+    try:
+        with open(FESTIVAL_JSON_PATH, 'r', encoding='utf-8') as festival_file:
+            return json.load(festival_file)
+    except Exception as e:
+        logger.error(f"Failed to load festival JSON: {e}")
+        return []
+
+
+def _parse_festival_date(festival: dict, year: int) -> Optional[datetime]:
+    if not festival or 'date' not in festival:
+        return None
+
+    try:
+        parsed = datetime.strptime(festival['date'], '%d %B %Y')
+        return parsed.replace(year=year)
+    except Exception:
+        try:
+            # fallback if year is missing in date string
+            parsed = datetime.strptime(festival['date'], '%d %B')
+            return parsed.replace(year=year)
+        except Exception:
+            return None
+
+
 # Rashis (Zodiac Signs) for horoscope
 RASHIS = {
     "Mesh": {"english": "Aries", "element": "Fire", "ruling_planet": "Mars"},
@@ -7591,6 +7872,73 @@ async def get_upcoming_festivals(limit: int = 5):
     return sorted(upcoming, key=lambda x: x["days_until"])[:limit]
 
 
+@api_router.get('/spiritual/festival/next')
+async def get_next_festival():
+    """Get the next festival from the festival JSON file"""
+    today = datetime.utcnow()
+    festivals = load_festival_json()
+    candidates = []
+
+    for festival in festivals:
+        festival_date = _parse_festival_date(festival, today.year)
+        if festival_date is None:
+            continue
+        if festival_date.date() >= today.date():
+            days_until = (festival_date.date() - today.date()).days
+            candidates.append({
+                **festival,
+                "name": festival.get("festival_name", festival.get("name")),
+                "date": festival_date.strftime("%Y-%m-%d"),
+                "days_until": days_until,
+            })
+
+    if not candidates:
+        for festival in festivals:
+            festival_date = _parse_festival_date(festival, today.year + 1)
+            if festival_date is None:
+                continue
+            days_until = (festival_date.date() - today.date()).days
+            candidates.append({
+                **festival,
+                "name": festival.get("festival_name", festival.get("name")),
+                "date": festival_date.strftime("%Y-%m-%d"),
+                "days_until": days_until,
+            })
+
+    if not candidates:
+        raise HTTPException(status_code=404, detail="No festival data available")
+
+    next_festival = min(candidates, key=lambda item: item["days_until"])
+    return next_festival
+
+
+@api_router.get('/spiritual/festivals/all')
+async def get_all_festivals():
+    """Get full festival list from JSON data"""
+    today = datetime.utcnow()
+    festivals = load_festival_json()
+    response_items = []
+
+    for festival in festivals:
+        festival_date = _parse_festival_date(festival, today.year)
+        if festival_date is None:
+            continue
+        if festival_date.date() < today.date():
+            festival_date = _parse_festival_date(festival, today.year + 1)
+            if festival_date is None:
+                continue
+
+        response_items.append({
+            **festival,
+            "name": festival.get("festival_name", festival.get("name")),
+            "date": festival_date.strftime("%Y-%m-%d"),
+            "days_until": (festival_date.date() - today.date()).days,
+        })
+
+    sorted_items = sorted(response_items, key=lambda item: item["days_until"])
+    return sorted_items
+
+
 @api_router.get("/spiritual/horoscope/{rashi}")
 async def get_horoscope(rashi: str):
     """Get daily horoscope for a rashi"""
@@ -7703,7 +8051,29 @@ app.include_router(video_upload_router)
 # =================== SOCKET.IO ===================
 
 ROOM_PEERS: dict[str, set[str]] = {}
+ROOM_PARTICIPANTS: dict[str, dict[str, str]] = {}
 SID_TO_PEER: dict[str, tuple[str, str]] = {}
+
+
+async def _remove_socket_from_voice_room(sid: str):
+    peer_context = SID_TO_PEER.pop(sid, None)
+    if not peer_context:
+        return
+
+    room, peer_id = peer_context
+    if room in ROOM_PEERS:
+        ROOM_PEERS[room].discard(peer_id)
+        if not ROOM_PEERS[room]:
+            ROOM_PEERS.pop(room, None)
+
+    if room in ROOM_PARTICIPANTS:
+        current_sid = ROOM_PARTICIPANTS[room].get(peer_id)
+        if current_sid == sid:
+            ROOM_PARTICIPANTS[room].pop(peer_id, None)
+        if not ROOM_PARTICIPANTS[room]:
+            ROOM_PARTICIPANTS.pop(room, None)
+
+    await sio.emit('peer_left', {'peerId': peer_id}, room=room, skip_sid=sid)
 
 @sio.event
 async def connect(sid, environ, auth):
@@ -7714,14 +8084,7 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket disconnected: {sid}")
-    if sid in SID_TO_PEER:
-        room, peer_id = SID_TO_PEER.pop(sid)
-        if room in ROOM_PEERS:
-            ROOM_PEERS[room].discard(peer_id)
-            if not ROOM_PEERS[room]:
-                ROOM_PEERS.pop(room, None)
-            else:
-                await sio.emit('peer_left', {'peerId': peer_id}, room=room)
+    await _remove_socket_from_voice_room(sid)
 
 
 @sio.event
@@ -7729,8 +8092,18 @@ async def join_room(sid, data):
     room = data.get('room')
     peer_id = data.get('peerId')
     if room and peer_id:
+        previous_context = SID_TO_PEER.get(sid)
+        if previous_context and previous_context != (room, peer_id):
+            await _remove_socket_from_voice_room(sid)
+
+        existing_sid = ROOM_PARTICIPANTS.get(room, {}).get(peer_id)
+        if existing_sid and existing_sid != sid:
+            SID_TO_PEER.pop(existing_sid, None)
+            await sio.leave_room(existing_sid, room)
+
         await sio.enter_room(sid, room)
         ROOM_PEERS.setdefault(room, set()).add(peer_id)
+        ROOM_PARTICIPANTS.setdefault(room, {})[peer_id] = sid
         SID_TO_PEER[sid] = (room, peer_id)
 
         existing_peers = [peer for peer in ROOM_PEERS.get(room, set()) if peer != peer_id]
@@ -7749,13 +8122,51 @@ async def leave_room(sid, data):
     peer_id = data.get('peerId')
     if room and peer_id:
         await sio.leave_room(sid, room)
-        if room in ROOM_PEERS:
-            ROOM_PEERS[room].discard(peer_id)
-            if not ROOM_PEERS[room]:
-                ROOM_PEERS.pop(room, None)
-        SID_TO_PEER.pop(sid, None)
-        await sio.emit('peer_left', {'peerId': peer_id}, room=room)
+        await _remove_socket_from_voice_room(sid)
         return {"status": "left", "room": room}
+
+
+async def _emit_to_voice_peer(event_name: str, sid: str, data: dict):
+    room = data.get('room')
+    to_peer_id = data.get('toPeerId')
+    from_peer_id = data.get('fromPeerId')
+    if not room or not to_peer_id or not from_peer_id:
+        return {'status': 'error', 'reason': 'missing_room_or_peer'}
+
+    current_context = SID_TO_PEER.get(sid)
+    if current_context != (room, from_peer_id):
+        return {'status': 'error', 'reason': 'not_in_room'}
+
+    target_sid = ROOM_PARTICIPANTS.get(room, {}).get(to_peer_id)
+    if not target_sid:
+        return {'status': 'missed', 'reason': 'peer_not_found'}
+
+    payload = {
+        'room': room,
+        'fromPeerId': from_peer_id,
+        'toPeerId': to_peer_id,
+    }
+    for key in ('description', 'candidate'):
+        if key in data:
+            payload[key] = data.get(key)
+
+    await sio.emit(event_name, payload, to=target_sid)
+    return {'status': 'sent'}
+
+
+@sio.event
+async def webrtc_offer(sid, data):
+    return await _emit_to_voice_peer('webrtc_offer', sid, data)
+
+
+@sio.event
+async def webrtc_answer(sid, data):
+    return await _emit_to_voice_peer('webrtc_answer', sid, data)
+
+
+@sio.event
+async def webrtc_ice_candidate(sid, data):
+    return await _emit_to_voice_peer('webrtc_ice_candidate', sid, data)
 
 
 @sio.event

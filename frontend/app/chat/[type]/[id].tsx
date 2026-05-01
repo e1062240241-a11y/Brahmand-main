@@ -1206,16 +1206,25 @@ const ChatScreen = () => {
             )}
 
             <View style={styles.inputContainer}>
-              <View style={styles.attachmentButtons}>
+              <View style={styles.inputFieldContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={newMessage}
+                  onChangeText={setNewMessage}
+                  placeholder="Type a message"
+                  placeholderTextColor={COLORS.textSecondary}
+                  returnKeyType="send"
+                  onSubmitEditing={handleSend}
+                />
+              </View>
               <TouchableOpacity
-                style={styles.attachmentButton}
+                style={styles.attachButton}
                 onPress={toggleAttachmentOptions}
                 disabled={uploadingMedia || sending}
               >
-                <Ionicons name="add" size={24} color={COLORS.primary} />
+                <Ionicons name="attach-outline" size={22} color={COLORS.primary} />
               </TouchableOpacity>
-            </View>
-            {showAttachmentOptions && (
+              {showAttachmentOptions && (
               <Animated.View
                 style={[
                   styles.attachmentOverlay,
@@ -1680,10 +1689,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: '#F7F5EA',
+    borderBottomWidth: 0,
   },
   backButton: {
     marginRight: SPACING.md,
@@ -1696,13 +1705,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '800',
     color: COLORS.text,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  headerStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3DC07D',
+    marginRight: 6,
   },
   headerSubtitleRow: {
     flexDirection: 'row',
@@ -1799,40 +1821,56 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '75%',
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    borderBottomLeftRadius: BORDER_RADIUS.sm,
-    padding: SPACING.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     marginLeft: SPACING.sm,
+    borderWidth: 1,
+    borderColor: '#ECECEA',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 2,
   },
   ownMessageBubble: {
-    backgroundColor: COLORS.primary,
-    borderBottomLeftRadius: BORDER_RADIUS.lg,
-    borderBottomRightRadius: BORDER_RADIUS.sm,
+    backgroundColor: '#E6E8D4',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     marginLeft: 0,
+    marginRight: SPACING.sm,
+    borderBottomRightRadius: BORDER_RADIUS.sm,
+    borderBottomLeftRadius: BORDER_RADIUS.lg,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   senderName: {
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.primary,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   messageText: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 20,
+    fontSize: 15,
+    color: '#09121A',
+    lineHeight: 22,
   },
   ownMessageText: {
-    color: COLORS.textWhite,
+    color: '#000000',
   },
   timeText: {
-    fontSize: 10,
-    color: COLORS.textLight,
-    marginTop: 4,
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 8,
     alignSelf: 'flex-end',
   },
   ownTimeText: {
-    color: 'rgba(255,255,255,0.7)',
+    color: '#4E4E4E',
   },
   emptyContainer: {
     flex: 1,
@@ -1888,32 +1926,52 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingBottom: Platform.OS === 'android' ? 24 : 10,
-    backgroundColor: COLORS.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === 'android' ? 24 : 12,
+    backgroundColor: '#F4F1E4',
     borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
+    borderTopColor: '#E8E0D0',
+  },
+  inputFieldContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E8E3D0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 22,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     fontSize: 15,
     color: COLORS.text,
-    maxHeight: 40,
     minHeight: 40,
+  },
+  attachButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E3D0',
+    marginLeft: SPACING.sm,
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#67D238',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: SPACING.sm,
+    marginLeft: SPACING.xs,
   },
   sendButtonDisabled: {
     opacity: 0.5,

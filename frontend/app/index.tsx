@@ -16,7 +16,7 @@ export default function IndexRoute() {
   }
 
   if (token) {
-    return <Redirect href="/feed" />;
+    return <Redirect href="/home" />;
   }
 
   return <Redirect href="/auth/entry-animation" />;

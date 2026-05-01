@@ -1,4 +1,5 @@
 import { getRigvedaChapter } from '../../src/services/api';
+import { loadCachedBookContent } from './book-cache';
 
 const normalizeRigvedaVerse = (verse: any) => ({
   ...verse,
@@ -7,15 +8,13 @@ const normalizeRigvedaVerse = (verse: any) => ({
 
 export const loadRigvedaChapter = async (chapterNumber: number) => {
   try {
-    const response = await Promise.race([
-      getRigvedaChapter(chapterNumber),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Mandala ${chapterNumber} loading timed out`)), 12000);
-      }),
-    ]);
-
-    const verses = Array.isArray(response.data?.verses) ? response.data.verses : [];
-    return verses.map(normalizeRigvedaVerse);
+    return await loadCachedBookContent({
+      cacheKey: `rigveda:mandala:${chapterNumber}`,
+      fetcher: () => getRigvedaChapter(chapterNumber),
+      extractVerses: (response) => Array.isArray(response.data?.verses) ? response.data.verses : [],
+      normalizeVerse: normalizeRigvedaVerse,
+      timeoutMessage: `Mandala ${chapterNumber} loading timed out`,
+    });
   } catch (error) {
     console.error('Failed to load Rigveda mandala:', error);
     throw error;

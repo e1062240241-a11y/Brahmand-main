@@ -64,7 +64,7 @@ export default function AstrologyScreen() {
   const glowAnim = useRef(new Animated.Value(0.92)).current;
 
   const handleBack = useCallback(() => {
-    router.replace('/feed');
+    router.replace('/home');
   }, [router]);
 
   const fetchBaseAstrology = useCallback(async (forceRefresh = false) => {

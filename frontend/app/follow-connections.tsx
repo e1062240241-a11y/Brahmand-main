@@ -227,8 +227,10 @@ export default function FollowConnectionsScreen() {
   }, [activeTab, followersSearch, followingSearch, followerIds.length, profileFollowingIds.length, listOpacity, listTranslateY]);
 
   const handleBackPress = () => {
-    router.replace('/feed' as any);
+    router.replace('/profile' as any);
   };
+
+  const totalConnections = new Set([...followerIds, ...profileFollowingIds]).size;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -241,25 +243,38 @@ export default function FollowConnectionsScreen() {
           },
         ]}
       >
-        <View style={styles.header}>
+        <View style={styles.heroHeader}>
           <TouchableOpacity onPress={handleBackPress} style={styles.backButton} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={25} color="#111544" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{targetUserId ? 'User Connections' : 'Connections'}</Text>
-          <View style={styles.headerSpacer} />
+          <View style={styles.headerAvatarWrap}>
+            <Avatar name={user?.name || 'User'} photo={user?.photo} size={48} />
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>{Math.min(totalConnections, 9)}</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.tabRow}>
+        <View style={styles.titleBlock}>
+          <Text style={styles.headerTitle}>{targetUserId ? 'User friends' : 'Your friends'}</Text>
+          <Text style={styles.headerSubtitle}>{totalConnections} available</Text>
+        </View>
+
+        <View style={styles.tabBar}>
           {renderTabButton('followers', 'Followers', followerIds.length)}
           {renderTabButton('following', 'Following', profileFollowingIds.length)}
+          <TouchableOpacity style={styles.addMoreButton} activeOpacity={0.85} onPress={() => router.push('/home' as any)}>
+            <Ionicons name="add" size={16} color="#FFFFFF" />
+            <Text style={styles.addMoreText}>ADD MORE</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color={COLORS.textLight} />
+          <Ionicons name="search" size={22} color="#AAA8BA" />
           <TextInput
             style={styles.searchInput}
-            placeholder={activeTab === 'followers' ? 'Search followers...' : 'Search following...'}
-            placeholderTextColor={COLORS.textLight}
+            placeholder="Search by names and numbers"
+            placeholderTextColor="#B8B6C8"
             value={activeTab === 'followers' ? followersSearch : followingSearch}
             onChangeText={activeTab === 'followers' ? setFollowersSearch : setFollowingSearch}
             autoCapitalize="none"
@@ -355,6 +370,13 @@ export default function FollowConnectionsScreen() {
             </ScrollView>
           )}
         </Animated.View>
+        {!loading && filteredUsers.length > 0 ? (
+          <View style={styles.alphaRail} pointerEvents="none">
+            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letter) => (
+              <Text key={letter} style={styles.alphaLetter}>{letter}</Text>
+            ))}
+          </View>
+        ) : null}
       </Animated.View>
     </SafeAreaView>
   );
@@ -363,18 +385,18 @@ export default function FollowConnectionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFFFFF',
   },
   screenContent: {
     flex: 1,
   },
-  header: {
+  heroHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.md,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 18,
   },
   backButton: {
     width: 40,
@@ -382,67 +404,123 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
+  },
+  headerAvatarWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#1A1A1A',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  headerBadge: {
+    position: 'absolute',
+    right: -2,
+    top: 0,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FF3355',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  titleBlock: {
+    paddingHorizontal: 22,
+    paddingBottom: 26,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: '900',
+    color: '#101445',
   },
-  headerSpacer: {
-    width: 40,
+  headerSubtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#B0ADBF',
   },
-  tabRow: {
+  tabBar: {
     flexDirection: 'row',
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
+    alignItems: 'center',
+    height: 58,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F1F0F6',
   },
   tabButton: {
     flex: 1,
-    paddingVertical: SPACING.sm + 2,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    height: 58,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   activeTabButton: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    borderBottomWidth: 4,
+    borderBottomColor: '#536BFF',
   },
   tabLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#A9A6B8',
   },
   activeTabLabel: {
-    color: COLORS.textWhite,
+    color: '#101445',
   },
   tabCount: {
-    marginTop: 2,
-    fontSize: 11,
-    color: COLORS.textSecondary,
+    display: 'none',
   },
   activeTabCount: {
-    color: COLORS.textWhite,
+    color: '#536BFF',
+  },
+  addMoreButton: {
+    height: 36,
+    borderRadius: 18,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#536BFF',
+    shadowColor: '#536BFF',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+  },
+  addMoreText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
   },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    height: 48,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.surface,
+    marginHorizontal: 8,
+    marginTop: 20,
+    paddingHorizontal: 18,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FBFAFD',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#EFEDF4',
   },
   searchInput: {
     flex: 1,
-    marginLeft: SPACING.sm,
-    fontSize: 15,
-    color: COLORS.text,
+    marginLeft: 12,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#101445',
   },
   centerState: {
     flex: 1,
@@ -454,12 +532,11 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
-    marginTop: SPACING.md,
+    marginTop: 22,
   },
   listContent: {
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.xl,
-    gap: SPACING.sm,
+    paddingHorizontal: 22,
+    paddingBottom: 120,
   },
   emptyContent: {
     flexGrow: 1,
@@ -470,11 +547,12 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    minHeight: 76,
+    paddingVertical: 10,
+    paddingRight: 34,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F0F6',
+    backgroundColor: '#FFFFFF',
   },
   userInfoButton: {
     flex: 1,
@@ -484,57 +562,59 @@ const styles = StyleSheet.create({
   },
   userText: {
     flex: 1,
-    marginLeft: SPACING.md,
+    marginLeft: 16,
   },
   userNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '900',
+    color: '#171B55',
   },
   mutualBadge: {
     marginLeft: SPACING.sm,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: BORDER_RADIUS.full,
-    backgroundColor: COLORS.border,
+    backgroundColor: '#EEF1FF',
     borderWidth: 1,
     borderColor: COLORS.primary,
   },
   mutualBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: '#536BFF',
   },
   userMeta: {
-    marginTop: 4,
-    fontSize: 13,
-    color: COLORS.textSecondary,
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#A9A6B8',
   },
   followButton: {
-    minWidth: 96,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 10,
-    borderRadius: BORDER_RADIUS.full,
-    backgroundColor: COLORS.primary,
+    minWidth: 94,
+    paddingHorizontal: 14,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#536BFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   followingButton: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: '#536BFF',
   },
   followButtonText: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: '#FFFFFF',
   },
   followingButtonText: {
-    color: COLORS.primary,
+    color: '#536BFF',
   },
   disabledButton: {
     opacity: 0.7,
@@ -547,7 +627,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#101445',
   },
   emptySubtitle: {
     marginTop: SPACING.sm,
@@ -555,5 +635,18 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  alphaRail: {
+    position: 'absolute',
+    right: 10,
+    top: 285,
+    bottom: 20,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  alphaLetter: {
+    color: '#C5C2D0',
+    fontSize: 13,
+    fontWeight: '900',
   },
 });
