@@ -81,11 +81,13 @@ from routes.video_upload_routes import (
     _pick_target_profile,
     _probe_video_metadata,
     _save_upload_to_temp_file,
+    _generate_video_thumbnail,
     MAX_VIDEO_UPLOAD_BYTES,
     MAX_VIDEO_DURATION_SECONDS,
 )
 from utils.helpers import (
-    moderate_content
+    moderate_content,
+    generate_sl_id
 )
 from utils.cache import cache_manager
 from offensive_detector import is_offensive, is_text_safe
@@ -351,12 +353,18 @@ async def _create_post_document(
         'visibility': 'public',
         'likes_count': 0,
         'comments_count': 0,
+        'views_count': 0,
         'created_at': datetime.utcnow(),
         'updated_at': datetime.utcnow(),
     }
 
     if metadata:
         post_doc['metadata'] = metadata
+        # Flatten for easier frontend access
+        if 'width' in metadata: post_doc['media_width'] = metadata['width']
+        if 'height' in metadata: post_doc['media_height'] = metadata['height']
+        if 'duration_seconds' in metadata: post_doc['duration'] = metadata['duration_seconds']
+        if 'thumbnail_url' in metadata: post_doc['thumbnail_url'] = metadata['thumbnail_url']
 
     post_id = await db.create_document('posts', post_doc)
     post_doc['id'] = post_id
@@ -907,6 +915,48 @@ async def get_realtime_sfu_token(room: str = 'mantra-jaap-live-room', token_data
     }
 
 
+@api_router.get("/realtime/agora-token")
+async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: dict = Depends(verify_token)):
+    """Return an Agora RTC token for the specified channel."""
+    if not settings.AGORA_APP_ID or not settings.AGORA_APP_CERTIFICATE:
+        return {
+            'enabled': False,
+            'reason': 'agora_not_configured',
+        }
+
+    from agora_token_builder import RtcTokenBuilder
+    import time
+
+    user_id = token_data.get('user_id', 'anonymous')
+    # Generate a random integer UID for Agora (it prefers integers)
+    # We can use a hash of the user_id or just 0 for testing, but let's use a hash-based int
+    try:
+        uid = int(hashlib.md5(user_id.encode()).hexdigest(), 16) % 1000000
+    except:
+        uid = 0
+
+    role = 1  # Role_Publisher
+    privilege_expiration_time = int(time.time()) + settings.AGORA_TOKEN_TTL_SECONDS
+
+    token = RtcTokenBuilder.buildTokenWithUid(
+        settings.AGORA_APP_ID, 
+        settings.AGORA_APP_CERTIFICATE, 
+        channel, 
+        uid, 
+        role, 
+        privilege_expiration_time
+    )
+
+    return {
+        'enabled': True,
+        'appId': settings.AGORA_APP_ID,
+        'token': token,
+        'channel': channel,
+        'uid': uid,
+        'expiresAt': privilege_expiration_time,
+    }
+
+
 # =================== AUTH ENDPOINTS ===================
 
 @api_router.post("/admin/reset-database")
@@ -1024,9 +1074,11 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
             "firebase_uid": firebase_uid
         }
         
-    except firebase_auth.InvalidIdTokenError:
-        raise HTTPException(status_code=401, detail="Invalid Firebase token")
-    except firebase_auth.ExpiredIdTokenError:
+    except firebase_auth.InvalidIdTokenError as e:
+        logger.error(f"InvalidIdTokenError: {str(e)}")
+        raise HTTPException(status_code=401, detail=f"Invalid Firebase token: {str(e)}")
+    except firebase_auth.ExpiredIdTokenError as e:
+        logger.error(f"ExpiredIdTokenError: {str(e)}")
         raise HTTPException(status_code=401, detail="Firebase token expired")
     except Exception as e:
         logger.error(f"Firebase token verification error: {e}")
@@ -1574,6 +1626,8 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
         'home_location': user.get('home_location'),
         'followers': user.get('followers', []),
         'following': user.get('following', []),
+        'followers_count': user.get('followers_count', len(user.get('followers', []))),
+        'following_count': user.get('following_count', len(user.get('following', []))),
     }
     return safe_user
 
@@ -1595,7 +1649,7 @@ async def get_user_posts(
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
 
-    candidate_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)], limit=500)
+    candidate_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)], limit=2000)
 
     def _created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -1632,6 +1686,7 @@ async def get_user_posts(
         liked_by = post.get('liked_by', []) or []
         post['likes_count'] = post.get('likes_count', len(liked_by))
         post['comments_count'] = post.get('comments_count', 0)
+        post['views_count'] = post.get('views_count', 0)
         post['liked_by_me'] = viewer_user_id in liked_by
 
         top_comments = await db.query_documents(
@@ -1692,36 +1747,32 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
         logger.info(f"Follow notification created for user {user_id} by {current_user_id}")
 
         try:
-            target_token = await push_service.get_user_fcm_token(user_id)
-            if target_token:
-                push_service.send_notification(
-                    token=target_token,
-                    title='New follower',
-                    body=f'{follower_name} started following you.',
-                    data={
-                        'type': 'follow',
-                        'actor_user_id': current_user_id,
-                    },
-                    channel_id='messages'
-                )
-                logger.info(f"Follow push sent to user {user_id} for follower {current_user_id}")
-            else:
-                logger.info(f"Follow notification created for user {user_id} but no FCM token found")
+            await FirebaseNotificationService.send_push_notification(
+                user_id=user_id,
+                title='New follower',
+                body=f'{follower_name} started following you.',
+                data={
+                    'type': 'follow',
+                    'actor_user_id': current_user_id,
+                }
+            )
+            logger.info(f"Follow push sent to user {user_id} for follower {current_user_id}")
         except Exception as push_err:
             logger.warning(f"Followed user {user_id} but failed to send push: {push_err}")
     except Exception as notify_err:
         logger.warning(f"Followed user {user_id} but failed to create notification: {notify_err}")
 
-    return {'message': 'Now following user', 'user_id': user_id}
+    await db.update_document('users', user_id, {'followers_count': len(target_followers) + 1})
+    current_following = current_user.get('following', []) or []
+    await db.update_document('users', current_user_id, {'following_count': len(current_following) + 1})
 
+    return {'message': 'Now following user', 'user_id': user_id}
 
 @api_router.post('/users/{user_id}/unfollow')
 async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
     current_user_id = token_data['user_id']
-    if user_id == current_user_id:
-        raise HTTPException(status_code=400, detail='Cannot unfollow yourself')
-
+    
     target_user = await db.get_document('users', user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
@@ -1729,7 +1780,30 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     await db.array_remove_update('users', user_id, 'followers', [current_user_id])
     await db.array_remove_update('users', current_user_id, 'following', [user_id])
 
+    target_followers = target_user.get('followers', []) or []
+    new_followers_count = max(0, len(target_followers) - 1)
+    await db.update_document('users', user_id, {'followers_count': new_followers_count})
+    
+    current_user = await db.get_document('users', current_user_id)
+    current_following = (current_user or {}).get('following', []) or []
+    new_following_count = max(0, len(current_following) - 1)
+    await db.update_document('users', current_user_id, {'following_count': new_following_count})
+
     return {'message': 'Unfollowed user', 'user_id': user_id}
+
+
+@api_router.post('/posts/{post_id}/view')
+async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+    
+    # Increment views_count
+    current_views = post.get('views_count', 0)
+    await db.update_document('posts', post_id, {'views_count': current_views + 1})
+    
+    return {'message': 'View recorded', 'views_count': current_views + 1}
 
 
 # =================== SOCIAL POSTS ===================
@@ -1769,11 +1843,15 @@ async def upload_post(
     file_bytes = b''
     temp_input_path = None
     temp_output_file = None
+    temp_thumb_file = None
     media_url = None
+    thumbnail_url = None
     object_path = None
     original_size_bytes = 0
     compressed_size_bytes = 0
     duration_seconds = 0.0
+    media_width = 0
+    media_height = 0
 
     try:
         if content_type.startswith('video/'):
@@ -1781,6 +1859,8 @@ async def upload_post(
             temp_input_path, original_size_bytes = await _save_upload_to_temp_file(file)
             metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_path)
             duration_seconds = metadata.get('duration') or 0.0
+            media_width = metadata.get('width') or 0
+            media_height = metadata.get('height') or 0
 
             if duration_seconds <= 0:
                 raise HTTPException(status_code=400, detail='Unable to determine video duration')
@@ -1790,7 +1870,7 @@ async def upload_post(
                     detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
                 )
 
-            target_width, target_height, _ = _pick_target_profile(metadata.get('height'))
+            target_width, target_height, _ = _pick_target_profile(media_width, media_height)
             temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
             temp_output_file.close()
 
@@ -1801,6 +1881,11 @@ async def upload_post(
                 target_width,
                 target_height,
             )
+
+            # Generate thumbnail
+            temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
+            temp_thumb_file.close()
+            await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name)
 
             compressed_size_bytes = os.path.getsize(temp_output_file.name)
             if compressed_size_bytes <= 0:
@@ -1814,6 +1899,18 @@ async def upload_post(
                     temp_output_file.name,
                     content_type,
                 )
+                
+                # Upload thumbnail
+                if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+                    try:
+                        thumbnail_url, _ = await asyncio.to_thread(
+                            _upload_post_media_file_to_storage,
+                            user_id,
+                            temp_thumb_file.name,
+                            'image/jpeg',
+                        )
+                    except Exception:
+                        logger.warning("Failed to upload video thumbnail")
             except Exception as exc:
                 logger.exception('Post video upload to Firebase failed for user_id=%s', user_id)
                 raise HTTPException(status_code=500, detail=f'Firebase Storage upload failed: {str(exc)}')
@@ -1836,6 +1933,8 @@ async def upload_post(
             os.unlink(temp_input_path)
         if temp_output_file and os.path.exists(temp_output_file.name):
             os.unlink(temp_output_file.name)
+        if temp_thumb_file and os.path.exists(temp_thumb_file.name):
+            os.unlink(temp_thumb_file.name)
 
     if media_url is None or object_path is None:
         try:
@@ -1851,6 +1950,9 @@ async def upload_post(
             'original_size_bytes': original_size_bytes,
             'compressed_size_bytes': compressed_size_bytes,
             'duration_seconds': duration_seconds,
+            'width': media_width,
+            'height': media_height,
+            'thumbnail_url': thumbnail_url,
         }
 
     return await _create_post_document(
@@ -1957,7 +2059,7 @@ async def upload_post_from_storage(
                 detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
             )
 
-        target_width, target_height, _ = _pick_target_profile(metadata.get('height'))
+        target_width, target_height, _ = _pick_target_profile(metadata.get('width'), metadata.get('height'))
         await asyncio.to_thread(
             _compress_video,
             temp_input_file.name,
@@ -2009,29 +2111,47 @@ async def upload_post_from_storage(
 
 
 @api_router.get('/posts/feed')
-async def get_posts_feed(limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
+async def get_posts_feed(
+    limit: int = 20, 
+    offset: int = 0, 
+    tab: str = 'for_you',
+    token_data: dict = Depends(verify_token)
+):
     db = await get_db()
-    user_id = token_data['user_id']
+    current_user_id = token_data['user_id']
     safe_limit = max(1, min(limit, 100))
     safe_offset = max(0, offset)
 
-    fetch_count = min(500, max(200, safe_offset + safe_limit + 20))
+    # Fetch enough posts to handle filtering/sorting
+    fetch_count = 1000 if tab in ['trending', 'following'] else min(500, max(200, safe_offset + safe_limit + 20))
     posts = await db.query_documents('posts', limit=fetch_count)
 
     visible_posts = posts
 
-    def _created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    visible_posts.sort(key=_created_at_sort_key, reverse=True)
+    if tab == 'following':
+        current_user = await db.get_document('users', current_user_id)
+        following_ids = set(current_user.get('following', []) or [])
+        visible_posts = [p for p in posts if p.get('user_id') in following_ids]
+    elif tab == 'trending':
+        # Simple trending score: views + (likes * 2)
+        def _trending_score(item: dict):
+            views = item.get('views_count', 0) or 0
+            likes = item.get('likes_count', 0) or 0
+            return views + (likes * 2)
+        visible_posts.sort(key=_trending_score, reverse=True)
+    else:
+        # Default 'for_you' latest sort
+        def _created_at_sort_key(item: dict):
+            value = item.get('created_at')
+            if isinstance(value, datetime):
+                return value
+            if isinstance(value, str):
+                try:
+                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                except Exception:
+                    return datetime.min
+            return datetime.min
+        visible_posts.sort(key=_created_at_sort_key, reverse=True)
 
     post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
     authors_by_id = {}
@@ -2064,7 +2184,8 @@ async def get_posts_feed(limit: int = 20, offset: int = 0, token_data: dict = De
         liked_by = post.get('liked_by', []) or []
         post['likes_count'] = post.get('likes_count', len(liked_by))
         post['comments_count'] = post.get('comments_count', 0)
-        post['liked_by_me'] = user_id in liked_by
+        post['views_count'] = post.get('views_count', 0)
+        post['liked_by_me'] = current_user_id in liked_by
 
         top_comments = await db.query_documents(
             'post_comments',
@@ -2156,6 +2277,7 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         liked_by = post.get('liked_by', []) or []
         post['likes_count'] = post.get('likes_count', len(liked_by))
         post['comments_count'] = post.get('comments_count', 0)
+        post['views_count'] = post.get('views_count', 0)
         post['liked_by_me'] = user_id in liked_by
 
         top_comments = await db.query_documents(
@@ -2307,22 +2429,17 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                 })
                 logger.info(f"Like notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
-                post_owner_token = await push_service.get_user_fcm_token(post_owner_id)
-                if post_owner_token:
-                    push_service.send_notification(
-                        token=post_owner_token,
-                        title='New like on your post',
-                        body=f'{actor_name} liked your post.',
-                        data={
-                            'type': 'post_like',
-                            'post_id': str(post_id),
-                            'actor_user_id': str(user_id),
-                        },
-                        channel_id='messages'
-                    )
-                    logger.info(f"Like push sent to post owner {post_owner_id} for post {post_id}")
-                else:
-                    logger.info(f"Like notification created for post {post_id} but no FCM token found for owner {post_owner_id}")
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=post_owner_id,
+                    title='New like on your post',
+                    body=f'{actor_name} liked your post.',
+                    data={
+                        'type': 'post_like',
+                        'post_id': str(post_id),
+                        'actor_user_id': str(user_id),
+                    }
+                )
+                logger.info(f"Like push sent to post owner {post_owner_id} for post {post_id}")
             except Exception as notify_err:
                 logger.warning(f"Post like notification failed for post {post_id}: {notify_err}")
 
@@ -8155,6 +8272,11 @@ async def _emit_to_voice_peer(event_name: str, sid: str, data: dict):
 
 
 @sio.event
+async def join(sid, data):
+    """Alias for join_room to support DeepSeek implementation."""
+    return await join_room(sid, data)
+
+@sio.event
 async def webrtc_offer(sid, data):
     return await _emit_to_voice_peer('webrtc_offer', sid, data)
 
@@ -8167,6 +8289,18 @@ async def webrtc_answer(sid, data):
 @sio.event
 async def webrtc_ice_candidate(sid, data):
     return await _emit_to_voice_peer('webrtc_ice_candidate', sid, data)
+
+@sio.event
+async def webrtc_ice(sid, data):
+    """Alias for webrtc_ice_candidate to support DeepSeek implementation."""
+    # DeepSeek uses 'from' instead of 'fromPeerId' often, but _emit_to_voice_peer expects fromPeerId
+    # Let's normalize it if needed.
+    if 'from' in data and 'fromPeerId' not in data:
+        data['fromPeerId'] = data['from']
+    if 'to' in data and 'toPeerId' not in data:
+        data['toPeerId'] = data['to']
+        
+    return await _emit_to_voice_peer('webrtc_ice', sid, data)
 
 
 @sio.event
@@ -8183,6 +8317,23 @@ async def voice_chunk(sid, data):
     }
 
     await sio.emit('voice_chunk', payload, to=room, skip_sid=sid)
+
+@sio.event
+async def audio_chunk(sid, data):
+    """Relay raw audio chunks for the live mantra jaap room."""
+    room = data.get('room')
+    if not room:
+        return
+        
+    # DeepSeek format compatibility
+    payload = {
+        'from': data.get('from') or data.get('peerId'),
+        'data': data.get('data') or data.get('chunk'),
+        'timestamp': data.get('timestamp'),
+        'format': data.get('format', 'm4a')
+    }
+    
+    await sio.emit('audio_chunk', payload, to=room, skip_sid=sid)
 
 
 app.mount("/socket.io", socket_app)

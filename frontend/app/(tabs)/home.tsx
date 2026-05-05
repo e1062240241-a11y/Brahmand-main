@@ -20,7 +20,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../src/store/authStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
@@ -43,10 +45,11 @@ import {
   togglePostLike,
   unfollowUser,
   updateProfile,
+  uploadUserPost,
 } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
 
@@ -113,6 +116,7 @@ export default function HomeScreen() {
   const [feedPosts, setFeedPosts] = useState<any[]>([]);
   const [loadingFeed, setLoadingFeed] = useState(false);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
+  const [activeTab, setActiveTab] = useState('for_you');
   const [feedOffset, setFeedOffset] = useState(0);
   const [hasMoreFeed, setHasMoreFeed] = useState(true);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
@@ -147,6 +151,52 @@ export default function HomeScreen() {
   const [feedTabsY, setFeedTabsY] = useState(0);
   const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
   const [postSnapEnabled, setPostSnapEnabled] = useState(false);
+  const [activePostKey, setActivePostKey] = useState<string | null>(null);
+  const [backgroundUpload, setBackgroundUpload] = useState<{
+    uploading: boolean;
+    progress: number;
+    isCompressing: boolean;
+    mediaUri?: string;
+  }>({ uploading: false, progress: 0, isCompressing: false });
+
+  const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
+    setBackgroundUpload({ 
+      uploading: true, 
+      progress: 0, 
+      isCompressing: false, 
+      mediaUri: media.uri 
+    });
+
+    try {
+      const response = await uploadUserPost(
+        {
+          uri: media.uri,
+          type: media.mimeType,
+          name: media.name,
+        },
+        caption,
+        filterName,
+        (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setBackgroundUpload(prev => ({ ...prev, progress: percent }));
+            if (percent >= 100 && media.mediaType === 'video') {
+              setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
+            }
+          }
+        }
+      );
+      
+      if (response.data) {
+        setFeedPosts(prev => [response.data, ...prev]);
+      }
+    } catch (error: any) {
+      console.warn('Background upload failed:', error);
+      Alert.alert('Upload Failed', error?.message || 'Could not upload post.');
+    } finally {
+      setBackgroundUpload({ uploading: false, progress: 0, isCompressing: false });
+    }
+  };
 
   useEffect(() => {
     setBioText(user?.bio || 'Sanatan Lok Community');
@@ -205,15 +255,35 @@ export default function HomeScreen() {
     return () => clearTimeout(debounce);
   }, [searchTerm, searchActive]);
 
-  const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false) => {
+  const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
+    const tabToLoad = tabOverride || activeTab;
+    let hasCachedData = false;
+    
+    if (!append && offset === 0) {
+      try {
+        const cacheKey = `home_feed_cache_${tabToLoad}`;
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setFeedPosts(parsed);
+            setFeedOffset(parsed.length);
+            hasCachedData = true;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse home feed cache', e);
+      }
+    }
+
     if (append) {
       setLoadingMoreFeed(true);
-    } else {
+    } else if (!hasCachedData) {
       setLoadingFeed(true);
     }
 
     try {
-      const response = await getPostsFeed(FEED_PAGE_SIZE, offset);
+      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
       const payload = response.data;
       const incomingItems = Array.isArray(payload)
         ? payload
@@ -231,6 +301,8 @@ export default function HomeScreen() {
       } else {
         setFeedPosts(incomingItems);
         setFeedOffset(incomingItems.length);
+        const cacheKey = `home_feed_cache_${tabToLoad}`;
+        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => {});
       }
       setHasMoreFeed(nextHasMore);
     } catch (error) {
@@ -242,8 +314,20 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    loadFeedPosts(0, false);
-  }, [loadFeedPosts]);
+    loadFeedPosts(0, false, activeTab);
+  }, [loadFeedPosts, activeTab]);
+
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
+      // If we are already on home tab, scroll to top
+      if (navigation.isFocused()) {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 15_000);
@@ -270,7 +354,40 @@ export default function HomeScreen() {
     const y = event.nativeEvent.contentOffset.y;
     const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
     setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
-  }, []);
+
+    // Visibility tracking for video autoplay - focus on screen center
+    let closestKey = null;
+    let minDiff = 9999; 
+    const viewportCenter = y + (SCREEN_HEIGHT / 2);
+
+    for (const key of feedPostKeys) {
+      const offset = postOffsets[key];
+      if (typeof offset === 'number') {
+        // Assume post center is offset + 300 (approximate average height)
+        const postCenter = offset + 250; 
+        const diff = Math.abs(postCenter - viewportCenter); 
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestKey = key;
+        }
+      }
+    }
+    // Only set active if the closest post is reasonably centered
+    if (minDiff < 400) {
+      setActivePostKey(closestKey);
+    } else {
+      setActivePostKey(null);
+    }
+
+    // Infinite Scroll Logic
+    if (hasMoreFeed && !loadingMoreFeed && !loadingFeed) {
+      const scrollHeight = event.nativeEvent.contentSize.height;
+      const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+      if (y + layoutHeight > scrollHeight - 800) {
+        loadFeedPosts(feedOffset, true);
+      }
+    }
+  }, [feedPostKeys, postOffsets]);
 
   const loadHomeRequests = useCallback(async () => {
     setRequestsLoading(true);
@@ -656,14 +773,15 @@ export default function HomeScreen() {
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
-        stickyHeaderIndices={[searchActive ? 9 : 8]}
+        stickyHeaderIndices={[1]}
         onScroll={handleHomeScroll}
         scrollEventThrottle={16}
         snapToOffsets={postSnapOffsets}
         snapToEnd={false}
         decelerationRate="fast"
       >
-        <View style={styles.header}>
+        <View style={styles.upperContentWrapper}>
+          <View style={styles.header}>
           <TouchableOpacity
             activeOpacity={0.86}
             style={styles.profileButton}
@@ -918,15 +1036,16 @@ export default function HomeScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Quick Access</Text>
-        <View style={styles.quickRow}>
-          {quickAccess.map((item) => (
-            <TouchableOpacity key={item.label} activeOpacity={0.86} style={styles.quickItem} onPress={() => goTo(item.route)}>
-              <LinearGradient colors={['rgba(255,211,106,0.18)', 'rgba(255,255,255,0.02)']} style={styles.quickCircle}>
-                <Ionicons name={item.icon as any} size={30} color="#FFD577" />
-              </LinearGradient>
-              <Text style={styles.quickLabel}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.quickRow}>
+            {quickAccess.map((item) => (
+              <TouchableOpacity key={item.label} activeOpacity={0.86} style={styles.quickItem} onPress={() => goTo(item.route)}>
+                <LinearGradient colors={['rgba(255,211,106,0.18)', 'rgba(255,255,255,0.02)']} style={styles.quickCircle}>
+                  <Ionicons name={item.icon as any} size={30} color="#FFD577" />
+                </LinearGradient>
+                <Text style={styles.quickLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View
@@ -938,11 +1057,43 @@ export default function HomeScreen() {
           }}
         >
           <View style={styles.stickyFeedTabs}>
-            <HomeFeedTabs onCreatePost={() => setShowUploadPostModal(true)} />
+            <HomeFeedTabs 
+              activeTab={activeTab}
+              onTabChange={(tab) => {
+                setActiveTab(tab);
+                setFeedPosts([]);
+                loadFeedPosts(0, false, tab);
+              }}
+              onCreatePost={() => setShowUploadPostModal(true)} 
+            />
           </View>
         </View>
 
         <View style={styles.feedPanel}>
+          {backgroundUpload.uploading && (
+            <View style={styles.uploadingStatusBar}>
+              <View style={styles.uploadingStatusContent}>
+                {backgroundUpload.mediaUri ? (
+                  <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
+                ) : (
+                  <View style={[styles.uploadingThumbnail, { backgroundColor: '#F0F0F0' }]} />
+                )}
+                <View style={styles.uploadingTextContainer}>
+                  <Text style={styles.uploadingTitle}>
+                    {backgroundUpload.isCompressing ? 'Processing Video...' : 'Posting new Video...'}
+                  </Text>
+                  <View style={styles.progressBarBg}>
+                    <LinearGradient
+                      colors={['#FFD26C', '#FF7F50', '#FF4500']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.progressBarFill, { width: `${backgroundUpload.progress}%` }]}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
           {loadingFeed ? (
             <View style={styles.feedLoading}>
               <ActivityIndicator color="#FFD26C" />
@@ -969,25 +1120,16 @@ export default function HomeScreen() {
                       onUserPress={handleOpenPostUserProfile}
                       onPostMenuPress={handlePostMenuPress}
                       postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
-                      isActive={false}
+                      isActive={activePostKey === postKey}
                     />
                   </View>
                 );
               })}
-              {hasMoreFeed ? (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.loadMoreButton}
-                  disabled={loadingMoreFeed}
-                  onPress={() => loadFeedPosts(feedOffset, true)}
-                >
-                  {loadingMoreFeed ? (
-                    <ActivityIndicator size="small" color="#321B3E" />
-                  ) : (
-                    <Text style={styles.loadMoreText}>Load More</Text>
-                  )}
-                </TouchableOpacity>
-              ) : null}
+              {hasMoreFeed && (
+                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <ActivityIndicator color="#FFD26C" />
+                </View>
+              )}
             </>
           ) : (
             <View style={styles.emptyFeed}>
@@ -1074,6 +1216,7 @@ export default function HomeScreen() {
         visible={showUploadPostModal}
         onClose={() => setShowUploadPostModal(false)}
         onUploadSuccess={handleUploadPostSuccess}
+        onUploadStart={handleUploadStart}
       />
 
       <RequestFormModal
@@ -1219,9 +1362,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: PAGE_PADDING,
     paddingTop: 12,
     paddingBottom: 106,
+  },
+  upperContentWrapper: {
+    paddingHorizontal: PAGE_PADDING,
   },
   header: {
     flexDirection: 'row',
@@ -1805,8 +1950,6 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
   stickyFeedTabsShell: {
-    marginHorizontal: -PAGE_PADDING,
-    paddingHorizontal: PAGE_PADDING,
     backgroundColor: '#241039',
     zIndex: 30,
     elevation: 12,
@@ -1822,11 +1965,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   feedPanel: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'transparent',
     overflow: 'hidden',
   },
   feedLoading: {
@@ -2229,4 +2368,40 @@ const styles = StyleSheet.create({
   bookmark: {
     marginLeft: 'auto',
   },
+  uploadingStatusBar: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    padding: 12,
+  },
+  uploadingStatusContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  uploadingThumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    marginRight: 12,
+    backgroundColor: '#333',
+  },
+  uploadingTextContainer: {
+    flex: 1,
+  },
+  uploadingTitle: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  progressBarBg: {
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+  },
+
 });

@@ -1,13 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { useNotificationStore } from '../src/store/notificationStore';
 import { getUserNotifications, getUnreadNotificationCount } from '../src/services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const NOTIFICATION_ICONS: Record<string, any> = {
+  sos: { icon: 'alert-circle', color: '#E53935', bg: '#FFEBEE' },
+  help: { icon: 'hand-left', color: '#FF6600', bg: '#FFF3E0' },
+  comment: { icon: 'chatbubble', color: '#2196F3', bg: '#E3F2FD' },
+  like: { icon: 'heart', color: '#E91E63', bg: '#FCE4EC' },
+  follow: { icon: 'person-add', color: '#4CAF50', bg: '#E8F5E9' },
+  default: { icon: 'notifications', color: '#795548', bg: '#EFEBE9' }
+};
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -21,8 +33,8 @@ export default function NotificationsScreen() {
     setLoading(true);
     try {
       const [countRes, notificationsRes] = await Promise.all([
-        getUnreadNotificationCount(),
-        getUserNotifications(),
+        getUnreadNotificationCount().catch(() => ({ data: 0 })),
+        getUserNotifications().catch(() => ({ data: [] })),
       ]);
 
       const countValue = typeof countRes.data === 'number'
@@ -39,20 +51,11 @@ export default function NotificationsScreen() {
 
   useEffect(() => {
     dismissBadge();
-    if (!user?.id) {
-      return;
-    }
-    loadNotifications();
-  }, [user?.id, dismissBadge]);
+    if (user?.id) loadNotifications();
+  }, [user?.id]);
 
   const handleNotificationPress = (item: any) => {
-    try {
-      if (item?.link) {
-        router.push(item.link);
-      }
-    } catch (error) {
-      console.warn('Failed to navigate from notification:', error);
-    }
+    if (item?.link) router.push(item.link);
   };
 
   const handleMarkAllRead = () => {
@@ -60,148 +63,98 @@ export default function NotificationsScreen() {
     setUnreadCount(0);
   };
 
+  const getNotificationStyle = (type: string) => {
+    const key = type?.toLowerCase() || 'default';
+    return NOTIFICATION_ICONS[key] || NOTIFICATION_ICONS.default;
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-            dismissBadge();
-            router.replace('/home');
-          }}
-        >
-          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Notifications</Text>
-        <TouchableOpacity style={styles.markAllButton} onPress={handleMarkAllRead}>
-          <Text style={styles.markAllText}>Mark all read</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <LinearGradient colors={['#FF6600', '#FF9933']} style={styles.headerGradient}>
+        <SafeAreaView edges={['top']}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
+              <Ionicons name="chevron-back" size={26} color="#FFF" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleWrap}>
+              <Text style={styles.title}>Notifications</Text>
+              {unreadCount > 0 && <Text style={styles.subtitle}>{unreadCount} unread messages</Text>}
+            </View>
+            <TouchableOpacity style={styles.markAllButton} onPress={handleMarkAllRead}>
+              <Ionicons name="checkmark-done-circle" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       {loading ? (
         <View style={styles.loadingWrapper}>
           <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Gathering your updates...</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.listWrapper}>
+        <ScrollView contentContainerStyle={styles.listWrapper} showsVerticalScrollIndicator={false}>
           {notifications.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No notifications yet.</Text>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="notifications-off-outline" size={60} color="#D8C8D6" />
+              </View>
+              <Text style={styles.emptyTitle}>All caught up!</Text>
+              <Text style={styles.emptyText}>You don't have any notifications right now. Enjoy your peaceful day.</Text>
             </View>
           ) : (
-            notifications.map((item) => (
-              <TouchableOpacity
-                key={item.id || item._id || item.title}
-                style={[styles.notificationItem, item.unread && styles.notificationItemUnread]}
-                activeOpacity={0.8}
-                onPress={() => handleNotificationPress(item)}
-              >
-                <View style={styles.notificationBody}>
-                  <Text style={styles.notificationTitle}>{item.title || 'Notification'}</Text>
-                  <Text style={styles.notificationText} numberOfLines={2}>
-                    {item.body || 'You have a new notification.'}
-                  </Text>
-                </View>
-                <View style={styles.notificationMeta}> 
-                  <Text style={styles.notificationTime}>{item.time || item.created_at || ''}</Text>
-                  {item.unread && <View style={styles.unreadDot} />}
-                </View>
-              </TouchableOpacity>
-            ))
+            notifications.map((item) => {
+              const style = getNotificationStyle(item.type);
+              return (
+                <TouchableOpacity
+                  key={item.id || item._id || Math.random().toString()}
+                  style={[styles.notificationItem, item.unread && styles.notificationItemUnread]}
+                  activeOpacity={0.7}
+                  onPress={() => handleNotificationPress(item)}
+                >
+                  <View style={[styles.iconCircle, { backgroundColor: style.bg }]}>
+                    <Ionicons name={style.icon} size={22} color={style.color} />
+                  </View>
+                  <View style={styles.notificationBody}>
+                    <Text style={styles.notificationTitle}>{item.title || 'Notification'}</Text>
+                    <Text style={styles.notificationText} numberOfLines={2}>
+                      {item.body || 'You have a new notification.'}
+                    </Text>
+                    <Text style={styles.notificationTime}>{item.time || item.created_at || 'Recently'}</Text>
+                  </View>
+                  {item.unread && <View style={styles.unreadPulse} />}
+                </TouchableOpacity>
+              );
+            })
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backButton: {
-    padding: SPACING.sm,
-  },
-  title: {
-    flex: 1,
-    textAlign: 'center',
-    color: COLORS.text,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  markAllButton: {
-    padding: SPACING.sm,
-  },
-  markAllText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  loadingWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listWrapper: {
-    padding: SPACING.md,
-  },
-  emptyState: {
-    marginTop: SPACING.xl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: COLORS.textSecondary,
-    fontSize: 15,
-  },
-  notificationItem: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  notificationItemUnread: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#F7F9FF',
-  },
-  notificationBody: {
-    marginBottom: SPACING.xs,
-  },
-  notificationTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  notificationText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    marginTop: SPACING.xs,
-  },
-  notificationMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: SPACING.sm,
-  },
-  notificationTime: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
-  },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  headerGradient: { borderBottomLeftRadius: 30, borderBottomRightRadius: 30, paddingBottom: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16 },
+  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  headerTitleWrap: { flex: 1, marginLeft: 16 },
+  title: { color: '#FFF', fontSize: 22, fontWeight: '900' },
+  subtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600', marginTop: 2 },
+  markAllButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  loadingWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  loadingText: { color: '#666', fontSize: 14, fontWeight: '600' },
+  listWrapper: { padding: 16, paddingTop: 24 },
+  notificationItem: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 20, padding: 16, marginBottom: 12, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3, borderWidth: 1, borderColor: '#F0F0F0' },
+  notificationItemUnread: { borderColor: 'rgba(255,102,0,0.2)', backgroundColor: '#FFFBF7' },
+  iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  notificationBody: { flex: 1 },
+  notificationTitle: { color: '#222', fontSize: 15, fontWeight: '800', marginBottom: 2 },
+  notificationText: { color: '#666', fontSize: 13, lineHeight: 18, marginBottom: 6 },
+  notificationTime: { color: '#999', fontSize: 11, fontWeight: '600' },
+  unreadPulse: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FF6600', marginLeft: 10 },
+  emptyState: { marginTop: 80, alignItems: 'center', paddingHorizontal: 40 },
+  emptyIconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  emptyTitle: { fontSize: 20, fontWeight: '900', color: '#333', marginBottom: 8 },
+  emptyText: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20 },
 });

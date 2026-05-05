@@ -23,12 +23,6 @@
             "CFBundleURLSchemes": [
               "sanatanlok"
             ]
-          },
-          {
-            "CFBundleTypeRole": "Editor",
-            "CFBundleURLSchemes": [
-              "sanatanlok"
-            ]
           }
         ],
         "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
@@ -92,12 +86,12 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static"
+            "deploymentTarget": "15.1",
+            "useFrameworks": "static",
+            "buildReactNativeFromSource": true
           }
         }
       ],
-      "@livekit/react-native-expo-plugin",
-      "@config-plugins/react-native-webrtc",
       [
         "expo-location",
         {

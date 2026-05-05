@@ -592,8 +592,8 @@ export const uploadCompressedVideo = (
   })();
 };
 
-export const getPostsFeed = (limit: number = 20, offset: number = 0) =>
-  api.get('/posts/feed', { params: { limit, offset } });
+export const getPostsFeed = (limit: number = 20, offset: number = 0, tab: string = 'for_you') =>
+  api.get('/posts/feed', { params: { limit, offset, tab } });
 
 export const togglePostLike = (postId: string) =>
   api.post(`/posts/${postId}/like`);
@@ -1449,6 +1449,19 @@ export const getRealtimeSfuToken = async (room: string) => {
     expiresAt?: number;
     reason?: string;
   }>('/realtime/sfu-token', { params: { room } });
+  return response.data;
+};
+
+export const getAgoraToken = async (channel: string = 'mantra-jaap-live-room') => {
+  const response = await api.get<{
+    enabled: boolean;
+    appId?: string;
+    token?: string;
+    channel?: string;
+    uid?: number;
+    expiresAt?: number;
+    reason?: string;
+  }>('/realtime/agora-token', { params: { channel } });
   return response.data;
 };
 

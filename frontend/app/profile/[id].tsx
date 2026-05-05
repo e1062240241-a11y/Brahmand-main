@@ -1,13 +1,28 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Modal, Dimensions } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Image, 
+  ActivityIndicator, 
+  Modal, 
+  Dimensions, 
+  FlatList,
+  RefreshControl,
+  Platform
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, followUser, unfollowUser, getUserPosts } from '../../src/services/api';
+import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+
+const { width } = Dimensions.get('window');
+const COLUMN_WIDTH = width / 3;
 
 const UserProfileScreen = () => {
   const router = useRouter();
@@ -20,91 +35,111 @@ const UserProfileScreen = () => {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const LIMIT = 30;
+
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
+  const [totalPosts, setTotalPosts] = useState(0);
+  const [activeTab, setActiveTab] = useState('grid');
 
   const openPostModal = (post: any) => {
     if (!post?.id) return;
     setSelectedPost(post);
     setPostModalVisible(true);
-  };
-  const loadUserPosts = useCallback(async (withLoading: boolean = true) => {
-    if (!profileUserId) {
-      return;
-    }
-
-    if (withLoading) {
-      setPostsLoading(true);
-    }
-
     try {
-      const response = await getUserPosts(profileUserId, 30, 0);
-      const payload = response.data;
-      const items = Array.isArray(payload)
-        ? payload
-        : (Array.isArray(payload?.items) ? payload.items : []);
-      setPosts(items);
-    } catch (error) {
-      console.warn('Failed to load user posts:', error);
-      setPosts([]);
-    } finally {
-      if (withLoading) {
-        setPostsLoading(false);
-      }
-    }
-  }, [profileUserId]);
-  const loadProfile = useCallback(async (withLoading: boolean = true) => {
-    if (!profileUserId) {
-      return;
-    }
+      viewPost(post.id);
+    } catch (e) {}
+  };
 
-    if (withLoading) {
-      setLoading(true);
-    }
-
+  const loadProfile = useCallback(async (showLoading = true) => {
+    if (!profileUserId) return;
+    if (showLoading) setLoading(true);
     try {
       const response = await getUserProfile(profileUserId);
       setProfile(response.data);
     } catch (error) {
       console.error('Failed to load user profile', error);
     } finally {
-      if (withLoading) {
-        setLoading(false);
-      }
+      if (showLoading) setLoading(false);
     }
   }, [profileUserId]);
 
+  const loadPosts = useCallback(async (reset = false) => {
+    if (!profileUserId || (postsLoading && !reset)) return;
+
+    const currentOffset = reset ? 0 : offset;
+    if (reset) {
+      setPostsLoading(true);
+      setHasMore(true);
+    }
+
+    try {
+      const response = await getUserPosts(profileUserId, LIMIT, currentOffset);
+      const payload = response.data;
+      const items = Array.isArray(payload) ? payload : (payload?.items || []);
+      
+      if (reset) {
+        setPosts(items);
+      } else {
+        setPosts(prev => [...prev, ...items]);
+      }
+
+      const totalCount = payload?.total_count || items.length;
+      setTotalPosts(totalCount);
+      setOffset(currentOffset + items.length);
+      setHasMore(payload?.has_more ?? (items.length === LIMIT));
+    } catch (error) {
+      console.warn('Failed to load user posts:', error);
+    } finally {
+      setPostsLoading(false);
+      setRefreshing(false);
+    }
+  }, [profileUserId, offset, postsLoading]);
+
   useEffect(() => {
     loadProfile(true);
-    loadUserPosts(true);
-  }, [loadProfile, loadUserPosts]);
+    loadPosts(true);
+  }, [profileUserId]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadProfile(false);
+    loadPosts(true);
+  }, [loadProfile, loadPosts]);
 
   const isFollowing = Boolean(profile?.followers?.includes(currentUserId));
 
   const toggleFollow = async () => {
-    if (!profile?.id) return;
+    if (!profile?.id || !currentUserId) return;
 
+    // Optimistic Update
     const currentFollowers = Array.isArray(profile.followers) ? profile.followers : [];
-    const nextFollowers = isFollowing
-      ? currentFollowers.filter((id: string) => id !== currentUserId)
-      : [...currentFollowers, currentUserId];
+    const isNowFollowing = !isFollowing;
+    
+    const nextFollowers = isNowFollowing
+      ? [...currentFollowers, currentUserId]
+      : currentFollowers.filter((id: string) => id !== currentUserId);
 
-    setProfile({
-      ...profile,
+    setProfile(prev => ({
+      ...prev,
       followers: nextFollowers,
-    });
+      followers_count: (prev.followers_count || 0) + (isNowFollowing ? 1 : -1)
+    }));
 
     try {
-      if (isFollowing) {
-        await unfollowUser(profile.id);
-      } else {
+      if (isNowFollowing) {
         await followUser(profile.id);
+      } else {
+        await unfollowUser(profile.id);
       }
-      await loadProfile(false);
     } catch (error) {
       console.warn('Failed to follow/unfollow user:', error);
-      await loadProfile(false);
+      // Revert on error
+      loadProfile(false);
     }
   };
 
@@ -115,10 +150,147 @@ const UserProfileScreen = () => {
     router.push(`/dm/new?userId=${profile.id}&userName=${userName}&userSL=${userSL}`);
   };
 
+  const renderPost = ({ item }: { item: any }) => {
+    const isVideo = (item.media_url || '').match(/\.(mp4|mov|avi)$/i) || (item.media_type === 'video');
+    const displayUrl = item.thumbnail_url || item.image_url || (!isVideo ? item.media_url : null);
+    const views = item.views_count || 0;
+
+    return (
+      <TouchableOpacity
+        style={styles.gridItem}
+        activeOpacity={0.9}
+        onPress={() => openPostModal(item)}
+      >
+        {displayUrl ? (
+          <Image source={{ uri: displayUrl }} style={styles.gridImage} />
+        ) : (
+          <View style={styles.gridPlaceholder}>
+            <Ionicons name={isVideo ? "videocam" : "image-outline"} size={24} color={COLORS.textLight} />
+          </View>
+        )}
+        
+        {/* View Count Overlay */}
+        <View style={styles.gridOverlay}>
+          <View style={styles.viewCountBadge}>
+            <Ionicons name="play" size={10} color="#FFF" />
+            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views/1000).toFixed(1)}K` : views}</Text>
+          </View>
+        </View>
+
+        {isVideo && (
+          <View style={styles.videoBadge}>
+            <Ionicons name="videocam" size={14} color="#FFF" />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const ListHeader = () => (
+    <View style={styles.headerContent}>
+      {/* Profile Header: Avatar and Stats */}
+      <View style={styles.profileHeaderRow}>
+        <TouchableOpacity 
+          onPress={() => profile?.photo && setAvatarModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.avatarContainer}>
+            {profile?.photo ? (
+              <Image source={{ uri: profile.photo }} style={styles.avatar} />
+            ) : (
+              <Avatar name={profile?.name || 'User'} size={86} />
+            )}
+            {profile?.id !== currentUserId && isFollowing && (
+              <View style={styles.followingIndicator}>
+                <Ionicons name="checkmark" size={12} color="#FFF" />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{totalPosts}</Text>
+            <Text style={styles.statLabel}>Posts</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.statItem}
+            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers', userId: profile?.id } })}
+          >
+            <Text style={styles.statValue}>{profile?.followers_count ?? (profile?.followers?.length || 0)}</Text>
+            <Text style={styles.statLabel}>Followers</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.statItem}
+            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following', userId: profile?.id } })}
+          >
+            <Text style={styles.statValue}>{profile?.following_count ?? (profile?.following?.length || 0)}</Text>
+            <Text style={styles.statLabel}>Following</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Bio Section */}
+      <View style={styles.bioSection}>
+        <View style={styles.nameRow}>
+          <Text style={styles.displayName}>{profile?.name || 'User'}</Text>
+          {profile?.is_verified && (
+            <Ionicons name="checkmark-circle" size={16} color="#0095f6" style={{ marginLeft: 4 }} />
+          )}
+        </View>
+        <Text style={styles.slId}>@{profile?.sl_id || ''}</Text>
+        {profile?.bio ? (
+          <Text style={styles.bioText}>{profile.bio}</Text>
+        ) : null}
+        
+        {profile?.home_location && (
+          <View style={styles.locationContainer}>
+            <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
+            <Text style={styles.locationText}>
+              {profile.home_location.city}, {profile.home_location.state}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.actionButtonsRow}>
+        {profile?.id === currentUserId ? (
+          <TouchableOpacity 
+            style={styles.editProfileButton}
+            onPress={() => router.push('/profile/edit')}
+          >
+            <Text style={styles.editProfileText}>Edit Profile</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity 
+              style={[styles.followButton, isFollowing && styles.followingButton]}
+              onPress={toggleFollow}
+            >
+              <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                {isFollowing ? 'Following' : 'Follow'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.messageButton}
+              onPress={openPrivateChat}
+            >
+              <Text style={styles.messageButtonText}>Message</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+
+      {/* Simple Grid Divider */}
+      <View style={styles.gridDivider} />
+    </View>
+  );
+
   if (!profileUserId) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingWrap}>
+        <View style={styles.centerWrap}>
           <Text style={styles.errorText}>Invalid profile selected.</Text>
         </View>
       </SafeAreaView>
@@ -127,458 +299,369 @@ const UserProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            onPress={() => {
-              try {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.navigate('/home');
-                }
-              } catch {
-                router.replace('/home');
-              }
-            }}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>User Profile</Text>
-        </View>
+      {/* Custom Header Bar */}
+      <View style={styles.navBar}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.navIcon}>
+          <Ionicons name="chevron-back" size={28} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.navTitle}>{profile?.sl_id || 'Profile'}</Text>
+        <TouchableOpacity style={styles.navIcon}>
+          <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+      </View>
 
-        {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
-        ) : (
-          <View style={styles.card}>
-            <View style={styles.avatarSection}>
-              {profile?.photo ? (
-                <TouchableOpacity onPress={() => setAvatarModalVisible(true)} activeOpacity={0.8}>
-                  <Image source={{ uri: profile.photo }} style={styles.avatar} />
-                </TouchableOpacity>
-              ) : (
-                <Avatar name={profile?.name || 'User'} size={96} />
-              )}
-              <View style={styles.infoSection}>
-                <Text style={styles.userName}>{profile?.name || 'User'}</Text>
-                <Text style={styles.userId}>{profile?.sl_id || ''}</Text>
-                <Text style={styles.followStateText}>{isFollowing ? 'You are following this user' : 'You are not following this user'}</Text>
-                {profile?.id === currentUserId && profile?.home_location && (
-                  <View style={styles.locationRow}>
-                    <Ionicons name="location" size={14} color={COLORS.textSecondary} />
-                    <Text style={styles.locationText}>
-                      {profile.home_location.area}, {profile.home_location.city}
-                    </Text>
-                  </View>
-                )}
-              </View>
+      <FlatList
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}
+        numColumns={3}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={
+          postsLoading ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={COLORS.textLight} />
             </View>
-
-            {profile?.id !== currentUserId && (
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.followButton, isFollowing && styles.followingButton]}
-                  onPress={toggleFollow}
-                >
-                  <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.messageButton} onPress={openPrivateChat}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={COLORS.background} />
-                  <Text style={styles.messageButtonText}>Message</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{posts.length}</Text>
-                <Text style={styles.statLabel}>Posts</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.statItem}
-                onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers', userId: profile?.id } })}
-              >
-                <Text style={styles.statValue}>{profile?.followers?.length || 0}</Text>
-                <Text style={styles.statLabel}>Followers</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.statItem}
-                onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following', userId: profile?.id } })}
-              >
-                <Text style={styles.statValue}>{profile?.following?.length || 0}</Text>
-                <Text style={styles.statLabel}>Following</Text>
-              </TouchableOpacity>
+          ) : !hasMore && posts.length > 0 ? (
+            <View style={styles.endOfFeed}>
+              <Text style={styles.endOfFeedText}>You've reached the end</Text>
             </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.contentSection}>
-              <Text style={styles.contentTitle}>Feed</Text>
-              {postsLoading ? (
-                <View style={styles.postsLoaderWrap}>
-                  <ActivityIndicator size="small" color={COLORS.primary} />
-                </View>
-              ) : posts.length > 0 ? (
-                <View style={styles.gridList}>
-                  {Array.from({ length: Math.ceil(posts.length / 3) }).map((_, rowIndex) => {
-                    const rowItems = posts.slice(rowIndex * 3, rowIndex * 3 + 3);
-                    return (
-                      <View key={`row-${rowIndex}`} style={styles.gridRow}>
-                        {rowItems.map((item, colIndex) => {
-                          const isVideo = (item.media_url || '').match(/\.(mp4|mov|avi)$/i) || (item.media_type === 'video');
-                          const displayUrl = item.thumbnail_url || item.image_url || (!isVideo ? item.media_url : null);
-                          
-                          return (
-                            <TouchableOpacity
-                              key={item.id || String(rowIndex * 3 + colIndex)}
-                              style={styles.gridItem}
-                              activeOpacity={0.8}
-                              onPress={() => openPostModal(item)}
-                            >
-                              {displayUrl ? (
-                                <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-                                  <Image
-                                    source={{ uri: displayUrl }}
-                                    style={styles.gridImage}
-                                    resizeMode="cover"
-                                  />
-                                  {isVideo && (
-                                    <View style={styles.videoIndicator}>
-                                      <Ionicons name="play-circle" size={24} color="#FFF" />
-                                    </View>
-                                  )}
-                                </View>
-                              ) : isVideo && item.media_url ? (
-                                <View style={styles.gridPlaceholder}>
-                                  <Ionicons name="videocam" size={32} color={COLORS.textSecondary} />
-                                  <View style={styles.videoIndicator}>
-                                    <Ionicons name="play-circle" size={24} color="#FFF" />
-                                  </View>
-                                </View>
-                              ) : isVideo ? (
-                                <View style={styles.gridPlaceholder}>
-                                  <Ionicons name="videocam" size={32} color={COLORS.textSecondary} />
-                                  <View style={styles.videoIndicator}>
-                                    <Ionicons name="play-circle" size={24} color="#FFF" />
-                                  </View>
-                                </View>
-                              ) : (
-                                <View style={styles.gridPlaceholder}>
-                                  <Ionicons name="image-outline" size={24} color={COLORS.textSecondary} />
-                                </View>
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })}
-                        {rowItems.length < 3 &&
-                          Array.from({ length: 3 - rowItems.length }).map((_, idx) => (
-                            <View key={`empty-${rowIndex}-${idx}`} style={[styles.gridItem, styles.gridEmpty]} />
-                          ))}
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : (
-                <Text style={styles.emptyText}>No posts yet.</Text>
-              )}
+          ) : null
+        }
+        ListEmptyComponent={
+          !loading && !postsLoading ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="camera-outline" size={40} color={COLORS.text} />
+              </View>
+              <Text style={styles.emptyTitle}>No Posts Yet</Text>
             </View>
-          </View>
-        )}
+          ) : null
+        }
+        onEndReached={() => {
+          if (hasMore && !postsLoading) {
+            loadPosts();
+          }
+        }}
+        onEndReachedThreshold={0.8}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.textLight} />
+        }
+        showsVerticalScrollIndicator={false}
+      />
 
-        <Modal
-          visible={avatarModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setAvatarModalVisible(false)}
+      {/* Avatar Modal */}
+      <Modal visible={avatarModalVisible} transparent animationType="fade">
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setAvatarModalVisible(false)}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.avatarModalOverlay}
-            onPress={() => setAvatarModalVisible(false)}
-          >
-            <View style={styles.avatarModalContent}>
-              <Image
-                source={{ uri: profile?.photo || '' }}
-                style={styles.avatarModalImage}
-                resizeMode="contain"
+          <Image source={{ uri: profile?.photo }} style={styles.fullImage} resizeMode="contain" />
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Post Detail Modal */}
+      <Modal visible={postModalVisible} animationType="slide">
+        <View style={styles.postDetailContainer}>
+          <View style={styles.postDetailHeader}>
+            <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.postDetailTitle}>Posts</Text>
+          </View>
+          <FlatList
+            data={[selectedPost]}
+            renderItem={({ item }) => (
+              <PostFeedCard
+                post={item}
+                isActive={postModalVisible}
+                onUserPress={() => setPostModalVisible(false)}
               />
-            </View>
-          </TouchableOpacity>
-        </Modal>
-
-        <Modal
-          visible={postModalVisible}
-          animationType="slide"
-          onRequestClose={() => setPostModalVisible(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-            <View style={{ 
-              flexDirection: 'row', 
-              alignItems: 'center', 
-              paddingTop: 50, 
-              paddingBottom: SPACING.md, 
-              paddingHorizontal: SPACING.md,
-              borderBottomWidth: 1, 
-              borderColor: COLORS.border,
-              backgroundColor: COLORS.surface
-            }}>
-              <TouchableOpacity onPress={() => setPostModalVisible(false)}>
-                <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginLeft: SPACING.md }}>
-                Post
-              </Text>
-            </View>
-            <ScrollView style={{ flex: 1 }}>
-              {selectedPost && (
-                <PostFeedCard
-                  post={selectedPost}
-                  isActive={postModalVisible}
-                  onLike={() => {}}
-                  onComment={() => {}}
-                  onShare={() => {}}
-                  onRepost={() => {}}
-                  onEdit={() => {}}
-                  onUserPress={(postUser) => {
-                    setPostModalVisible(false);
-                    const postUserId = postUser?.user_id || postUser?.user?.id || postUser?.id;
-                    if (postUserId && postUserId !== profileUserId) {
-                      router.push({ pathname: '/profile/[id]', params: { id: String(postUserId) } } as any);
-                    }
-                  }}
-                />
-              )}
-            </ScrollView>
-          </View>
-        </Modal>
-      </ScrollView>
+            )}
+            keyExtractor={(item) => item.id}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFF',
   },
-  scrollView: {
+  centerWrap: {
     flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.sm,
-  },
-  backButton: {
-    padding: SPACING.sm,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginLeft: SPACING.sm,
-  },
-  loadingWrap: {
-    flex: 1,
-    minHeight: 320,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  card: {
-    margin: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    shadowColor: COLORS.text,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  avatarSection: {
+  navBar: {
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#DBDBDB',
+  },
+  navIcon: {
+    padding: 8,
+  },
+  navTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  headerContent: {
+    paddingBottom: 4,
+  },
+  profileHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  avatarContainer: {
+    position: 'relative',
   },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-  },
-  avatarModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.md,
-  },
-  avatarModalContent: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarModalImage: {
-    width: '100%',
-    height: '100%',
-  },
-  infoSection: {
-    flex: 1,
-    marginLeft: SPACING.md,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  userId: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-  },
-  followStateText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 6,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.sm,
-  },
-  locationText: {
-    marginLeft: 4,
-    color: COLORS.textSecondary,
-    fontSize: 13,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
-  },
-  followButton: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.full,
-    backgroundColor: COLORS.primary,
-  },
-  followingButton: {
-    backgroundColor: COLORS.surface,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: '#DBDBDB',
   },
-  followButtonText: {
-    color: COLORS.background,
-    fontWeight: '700',
-  },
-  followingButtonText: {
-    color: COLORS.primary,
-  },
-  messageButton: {
-    flexDirection: 'row',
+  followingIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.success,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.full,
-    backgroundColor: COLORS.secondary,
   },
-  messageButtonText: {
-    color: COLORS.background,
-    fontWeight: '700',
-    marginLeft: SPACING.xs,
-  },
-  statsRow: {
+  statsContainer: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.md,
+    justifyContent: 'space-around',
+    marginLeft: 20,
   },
   statItem: {
     alignItems: 'center',
-    flex: 1,
   },
   statValue: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: COLORS.text,
   },
   statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 4,
+    fontSize: 13,
+    color: COLORS.text,
   },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.divider,
-    marginBottom: SPACING.md,
+  bioSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  contentSection: {
-    paddingBottom: SPACING.xl,
-  },
-  postsLoaderWrap: {
-    paddingVertical: SPACING.md,
+  nameRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  gridList: {
-    paddingBottom: SPACING.md,
+  displayName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: COLORS.text,
   },
-  gridRow: {
+  slId: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  bioText: {
+    fontSize: 14,
+    color: COLORS.text,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  locationContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  locationText: {
+    fontSize: 12,
+    color: '#00376b',
+    marginLeft: 4,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 8,
+  },
+  followButton: {
+    flex: 1,
+    height: 34,
+    backgroundColor: '#0095f6',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  followingButton: {
+    backgroundColor: '#efefef',
+  },
+  followButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  followingButtonText: {
+    color: COLORS.text,
+  },
+  messageButton: {
+    flex: 1,
+    height: 34,
+    backgroundColor: '#efefef',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageButtonText: {
+    color: COLORS.text,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  editProfileButton: {
+    flex: 1,
+    height: 34,
+    backgroundColor: '#efefef',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editProfileText: {
+    color: COLORS.text,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  gridDivider: {
+    height: 1,
+    backgroundColor: '#DBDBDB',
+    marginTop: 8,
   },
   gridItem: {
-    width: (Dimensions.get('window').width - SPACING.md * 2 - SPACING.sm * 2) / 3,
-    aspectRatio: 1,
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface,
+    width: COLUMN_WIDTH,
+    height: COLUMN_WIDTH * 1.2, // Slightly taller for more visual impact
+    padding: 1,
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'flex-end',
+    padding: 6,
+  },
+  viewCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  viewCountText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   gridImage: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#efefef',
   },
   gridPlaceholder: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#efefef',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  gridEmpty: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-  },
-  videoIndicator: {
+  videoBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 12,
+    top: 8,
+    right: 8,
   },
-  contentTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  footerLoader: {
+    paddingVertical: 20,
+  },
+  endOfFeed: {
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  endOfFeedText: {
+    color: COLORS.textLight,
+    fontSize: 13,
+  },
+  emptyContainer: {
+    paddingTop: 60,
+    alignItems: 'center',
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: COLORS.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: '800',
     color: COLORS.text,
-    marginBottom: SPACING.sm,
   },
-  emptyText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '100%',
+    height: '100%',
+  },
+  postDetailContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+  },
+  postDetailHeader: {
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#DBDBDB',
+    marginTop: Platform.OS === 'ios' ? 40 : 0,
+  },
+  postDetailTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 20,
   },
   errorText: {
     color: COLORS.error,
-    fontSize: 14,
+    fontSize: 16,
   },
+  backButton: {
+    padding: 4,
+  }
 });
+
 export default UserProfileScreen;

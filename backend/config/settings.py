@@ -61,6 +61,11 @@ class Settings:
     LIVEKIT_ROOM_PREFIX: str = os.environ.get('LIVEKIT_ROOM_PREFIX', 'jaap')
     LIVEKIT_TOKEN_TTL_SECONDS: int = int(os.environ.get('LIVEKIT_TOKEN_TTL_SECONDS', 3600))
     
+    # Agora Configuration
+    AGORA_APP_ID: str = os.environ.get('AGORA_APP_ID', '')
+    AGORA_APP_CERTIFICATE: str = os.environ.get('AGORA_APP_CERTIFICATE', '')
+    AGORA_TOKEN_TTL_SECONDS: int = int(os.environ.get('AGORA_TOKEN_TTL_SECONDS', 3600))
+    
     # Logging
     LOG_LEVEL: str = os.environ.get('LOG_LEVEL', 'INFO')
 

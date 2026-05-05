@@ -6,8 +6,11 @@ import {
 import { Platform } from 'react-native';
 import { getFirebaseAuth } from './config';
 
-// Initialize Firebase
 let auth: any;
+let webRecaptchaVerifier: any = null;
+let confirmationResult: ConfirmationResult | null = null;
+
+const RECAPTCHA_CONTAINER_ID = 'recaptcha-container-fixed';
 
 function getNativeAuthModule() {
   try {
@@ -18,97 +21,58 @@ function getNativeAuthModule() {
     } catch (innerError) {
       const errorMessage =
         (innerError as any)?.message ||
-        (typeof innerError === 'string' ? innerError : JSON.stringify(innerError));
+        typeof innerError === 'string' ? innerError : JSON.stringify(innerError);
       throw new Error(`@react-native-firebase/auth package is not available: ${errorMessage}`);
     }
   }
 }
 
-function ensureRecaptchaContainer() {
-  if (typeof window === 'undefined') {
-    return null;
+function getWebRecaptchaVerifier(authInstance: any): any {
+  if (webRecaptchaVerifier && typeof webRecaptchaVerifier.render === 'function') {
+    return webRecaptchaVerifier;
+  }
+  
+  let container = document.getElementById(RECAPTCHA_CONTAINER_ID);
+  if (!container) {
+    container = document.createElement('div');
+    container.id = RECAPTCHA_CONTAINER_ID;
+    container.style.position = 'absolute';
+    container.style.width = '1px';
+    container.style.height = '1px';
+    container.style.left = '-9999px';
+    container.style.top = '-9999px';
+    document.body.appendChild(container);
+  } else {
+    container.innerHTML = '';
   }
 
-  const existing = document.getElementById('recaptcha-container');
-  if (existing) {
-    return existing;
-  }
+  const verifier = new RecaptchaVerifier(authInstance, RECAPTCHA_CONTAINER_ID, {
+    size: 'invisible',
+  });
 
-  const newDiv = document.createElement('div');
-  newDiv.id = 'recaptcha-container';
-  document.body.appendChild(newDiv);
-  return newDiv;
-}
-
-let currentRecaptchaContainerId: string | null = null;
-
-function generateRecaptchaContainerId() {
-  return `recaptcha-container-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function createHiddenRecaptchaContainer(containerId: string) {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const existing = document.getElementById(containerId);
-  if (existing) {
-    return existing;
-  }
-
-  const element = document.createElement('div');
-  element.id = containerId;
-  element.style.position = 'absolute';
-  element.style.width = '1px';
-  element.style.height = '1px';
-  element.style.left = '-9999px';
-  element.style.top = '-9999px';
-  document.body.appendChild(element);
-  return element;
+  webRecaptchaVerifier = verifier;
+  (window as any).recaptchaVerifier = verifier;
+  return verifier;
 }
 
 export function cleanupRecaptchaVerifier() {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
+  if (typeof window === 'undefined') return;
+  
   const existingVerifier = (window as any).recaptchaVerifier;
   if (existingVerifier && typeof existingVerifier.clear === 'function') {
     try {
       existingVerifier.clear();
     } catch (err) {
-      console.warn('[Firebase] Failed to clear existing reCAPTCHA verifier', err);
+      console.warn('[Firebase] Failed to clear reCAPTCHA verifier', err);
     }
   }
-
   (window as any).recaptchaVerifier = null;
-
-  if (currentRecaptchaContainerId) {
-    const oldContainer = document.getElementById(currentRecaptchaContainerId);
-    if (oldContainer && oldContainer.parentNode) {
-      oldContainer.parentNode.removeChild(oldContainer);
-    }
-    currentRecaptchaContainerId = null;
+  webRecaptchaVerifier = null;
+  
+  const container = document.getElementById(RECAPTCHA_CONTAINER_ID);
+  if (container) {
+    container.innerHTML = '';
   }
-}
-
-function createWebRecaptchaVerifier(authInstance: any) {
-  const containerId = generateRecaptchaContainerId();
-  createHiddenRecaptchaContainer(containerId);
-
-  const verifier = new RecaptchaVerifier(authInstance, containerId, {
-    size: 'invisible',
-    callback: () => {
-      console.log('[Firebase] reCAPTCHA verified');
-    },
-    'expired-callback': () => {
-      console.log('[Firebase] reCAPTCHA expired');
-    },
-  });
-
-  currentRecaptchaContainerId = containerId;
-  (window as any).recaptchaVerifier = verifier;
-  return verifier;
 }
 
 export function initializeFirebaseAuth(): any {
@@ -120,97 +84,64 @@ export function initializeFirebaseAuth(): any {
   if (!auth) {
     const authModule = getNativeAuthModule();
     if (typeof authModule.getAuth === 'function') {
-      try {
-        auth = authModule.getAuth();
-      } catch (error) {
-        console.warn('[Firebase] authModule.getAuth() failed, trying fallback auth initializer:', error);
-      }
+      try { auth = authModule.getAuth(); } catch (e) {}
     }
-
     if (!auth && typeof authModule.default === 'function') {
-      try {
-        auth = authModule.default();
-      } catch (error) {
-        console.warn('[Firebase] authModule.default() failed, trying fallback auth initializer:', error);
-      }
+      try { auth = authModule.default(); } catch (e) {}
     }
-
     if (!auth && typeof authModule === 'function') {
-      try {
-        auth = authModule();
-      } catch (error) {
-        console.warn('[Firebase] authModule() failed, no auth initializer found:', error);
-      }
+      try { auth = authModule(); } catch (e) {}
     }
-
     if (!auth) {
-      throw new Error('@react-native-firebase/auth was loaded but no auth initializer was found');
+      throw new Error('@react-native-firebase/auth not found');
     }
   }
-
   return auth;
 }
 
-// Store confirmation result globally
-let confirmationResult: ConfirmationResult | null = null;
-
-/**
- * Send OTP using Firebase Phone Auth.
- * If `verifier` is provided it will be used (e.g. from FirebaseRecaptchaVerifierModal ref).
- * Returns the confirmationResult on success.
- */
 export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Promise<any> {
   try {
     const auth = initializeFirebaseAuth();
-    
-    // Format phone number with country code
     const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
     
     if (Platform.OS === 'web') {
-      // Web: Prefer an application-provided verifier. If none exists, create one.
-      cleanupRecaptchaVerifier();
-      let usedVerifier = verifier || (window as any).recaptchaVerifier || null;
-
-      if (!usedVerifier) {
-        usedVerifier = createWebRecaptchaVerifier(auth);
-      }
-
-      const attemptSendOtp = async () => {
-        try {
-          await usedVerifier.render();
-        } catch (renderError: any) {
-          const message = String(renderError?.message || '');
-          if (
-            message.includes('already rendered') ||
-            renderError?.code === 'auth/invalid-app-credential' ||
-            renderError?.code === 'auth/invalid-app-id'
-          ) {
-            console.warn('[Firebase] Recaptcha render failed, resetting verifier and retrying', renderError);
-            cleanupRecaptchaVerifier();
-            usedVerifier = createWebRecaptchaVerifier(auth);
-            await usedVerifier.render();
-          } else {
-            throw renderError;
-          }
-        }
-
-        return await signInWithPhoneNumber(auth, formattedPhone, usedVerifier);
-      };
+      let usedVerifier = verifier ? verifier : getWebRecaptchaVerifier(auth);
 
       try {
-        confirmationResult = await attemptSendOtp();
+        await usedVerifier.render();
+        confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, usedVerifier);
       } catch (firstError: any) {
-        if (
-          firstError?.code === 'auth/invalid-app-credential' ||
-          firstError?.code === 'auth/invalid-app-id' ||
-          String(firstError?.message || '').includes('already rendered')
-        ) {
-          console.warn('[Firebase] Invalid app credential or rendered verifier during OTP send, resetting and retrying', firstError);
+        const message = String(firstError?.message || '');
+        
+        // Only retry on actual captcha-specific errors
+        const isCaptchaRenderError = 
+          message.includes('already rendered') ||
+          message.includes('Failed to initialize reCAPTCHA');
+        
+        if (isCaptchaRenderError) {
+          console.warn('[Firebase] CAPTCHA render error, retrying', firstError);
           cleanupRecaptchaVerifier();
-          usedVerifier = createWebRecaptchaVerifier(auth);
-          confirmationResult = await attemptSendOtp();
+          usedVerifier = getWebRecaptchaVerifier(auth);
+          await usedVerifier.render();
+          try {
+            confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, usedVerifier);
+          } catch (retryError: any) {
+            cleanupRecaptchaVerifier();
+            throw retryError;
+          }
         } else {
-          throw firstError;
+          cleanupRecaptchaVerifier();
+          if (
+            firstError?.code === 'auth/too-many-requests' ||
+            firstError?.code === 'auth/invalid-app-credential' ||
+            firstError?.code === 'auth/invalid-app-id' ||
+            message.includes('quota') || 
+            message.includes('QUOTA')
+          ) {
+            throw new Error(`Phone login issue: ${firstError?.code || 'Quota'}. Contact support.`);
+          } else {
+            throw firstError;
+          }
         }
       }
 
@@ -219,11 +150,11 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
     } else {
       try {
         const authModule = getNativeAuthModule();
-        const getNativeAuth = authModule.getAuth;
+        const getNativeAuth = authModule.getAuth || authModule.default;
         const nativeSignInWithPhoneNumber = authModule.signInWithPhoneNumber;
 
         let confirmation: any = null;
-        if (typeof getNativeAuth === 'function' && typeof nativeSignInWithPhoneNumber === 'function') {
+        if (getNativeAuth && nativeSignInWithPhoneNumber) {
           confirmation = await nativeSignInWithPhoneNumber(getNativeAuth(), formattedPhone);
         } else {
           const nativeAuth = authModule.default();
@@ -236,7 +167,7 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
       } catch (nativeError: any) {
         console.error('[Firebase] Native OTP failed:', nativeError, 'code=', nativeError?.code);
 
-        if (nativeError?.code === 'auth/too-many-requests' || nativeError?.code === 'too-many-requests') {
+        if (nativeError?.code === 'auth/too-many-requests') {
           throw new Error('Too many OTP requests. Please wait a while and try again.');
         }
 
@@ -244,7 +175,7 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
           throw new Error('OTP quota exceeded. Please try again later.');
         }
 
-        throw new Error('Phone auth is not configured for this native build. Ensure @react-native-firebase/auth is installed and linked, the Android package has SHA-1/SHA-256 in Firebase (com.brahmand.app), and Play Integrity is enabled.');
+        throw new Error('Phone auth is not configured for this native build.');
       }
     }
   } catch (error: any) {
@@ -253,9 +184,6 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
   }
 }
 
-/**
- * Verify OTP and get Firebase ID token
- */
 async function getFirebaseIdToken(user: any): Promise<string> {
   if (!user) {
     throw new Error('Firebase user is not available');
@@ -277,9 +205,8 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
   try {
     const auth = initializeFirebaseAuth();
 
-    // If auto-verification already signed the user in (Play Services), just return the token.
     if (auth && auth.currentUser) {
-      console.log('[Firebase] User already signed in (auto-verification). Returning token.');
+      console.log('[Firebase] User already signed in (auto-verification).');
       return await getFirebaseIdToken(auth.currentUser);
     }
 
@@ -295,28 +222,17 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
     } catch (confirmError: any) {
       console.warn('[Firebase] confirmationResult.confirm failed:', confirmError);
 
-      if (confirmError?.code === 'auth/invalid-app-credential' || confirmError?.code === 'auth/invalid-app-id') {
-        cleanupRecaptchaVerifier();
-        confirmationResult = null;
-        throw new Error('Firebase phone authentication failed due to an invalid app credential. Please refresh and try again.');
-      }
-
-      // If the code was silently consumed by Play Services, check currentUser again and return token.
       if (confirmError?.code === 'auth/session-expired' || confirmError?.code === 'auth/code-expired') {
-        // If Firebase has already signed in the user in the background, return token.
         if (auth && auth.currentUser) {
-          console.log('[Firebase] confirmation expired but user is signed in; returning token.');
+          console.log('[Firebase] confirmation expired but user is signed in.');
           return await getFirebaseIdToken(auth.currentUser);
         }
 
-        // Poll briefly for the currentUser to appear (small race where Play Services finishes after confirm() fails)
         const start = Date.now();
-        const timeoutMs = 2000; // wait up to 2s
-        const intervalMs = 200;
+        const timeoutMs = 2000;
         while (Date.now() - start < timeoutMs) {
-          await new Promise((r) => setTimeout(r, intervalMs));
+          await new Promise((r) => setTimeout(r, 200));
           if (auth && auth.currentUser) {
-            console.log('[Firebase] currentUser appeared after confirm() failure; returning token.');
             return await getFirebaseIdToken(auth.currentUser);
           }
         }
@@ -342,11 +258,6 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
   }
 }
 
-/**
- * Start listening to auth state changes.
- * Clears any pending confirmationResult when a user becomes signed in (handles auto-verification).
- * Returns an unsubscribe function.
- */
 export function startAuthStateListener(onChange?: (user: any) => void): (() => void) {
   const auth = initializeFirebaseAuth();
   if (!auth || typeof auth.onAuthStateChanged !== 'function') {
@@ -355,47 +266,26 @@ export function startAuthStateListener(onChange?: (user: any) => void): (() => v
 
   const unsubscribe = auth.onAuthStateChanged((user: any) => {
     try {
-      // Clear pending confirmation result on both sign-in and sign-out to avoid stale confirmation state
       confirmationResult = null;
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
 
     if (typeof onChange === 'function') {
-      try {
-        onChange(user);
-      } catch (e) {
-        // ignore user callback errors
-      }
+      try { onChange(user); } catch (e) {}
     }
   });
 
-  return () => {
-    try {
-      unsubscribe();
-    } catch (e) {
-      // ignore
-    }
-  };
+  return () => { try { unsubscribe(); } catch (e) {} };
 }
 
-/**
- * Get current user's ID token
- */
 export async function getCurrentUserToken(): Promise<string | null> {
   const auth = initializeFirebaseAuth();
   const user = auth.currentUser;
-  
   if (user) {
     return await getFirebaseIdToken(user);
   }
-  
   return null;
 }
 
-/**
- * Sign out from Firebase
- */
 export async function signOutFirebase(): Promise<void> {
   const auth = initializeFirebaseAuth();
   await auth.signOut();

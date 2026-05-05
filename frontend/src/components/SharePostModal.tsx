@@ -5,7 +5,7 @@ import { COLORS, SPACING } from '../constants/theme';
 import { getConversations, sendDirectMessage } from '../services/api';
 import { Avatar } from './Avatar';
 
-export default function SharePostModal({ visible, onClose, post, onShareExternal, onCopyLink, onDownload }: any) {
+export default function SharePostModal({ visible, onClose, post, onShareExternal, onCopyLink }: any) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [sharingTo, setSharingTo] = useState<string | null>(null);
@@ -144,12 +144,6 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
               <Text style={styles.actionLabel}>Copy link</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionBtn} onPress={onDownload}>
-              <View style={styles.actionIconBg}>
-                <Ionicons name="download-outline" size={24} color={COLORS.text} />
-              </View>
-              <Text style={styles.actionLabel}>Download</Text>
-            </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionBtn} onPress={onShareExternal}>
               <View style={styles.actionIconBg}>

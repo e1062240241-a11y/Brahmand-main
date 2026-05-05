@@ -12,15 +12,15 @@ import {
   Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
+import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
-const geetaCover = require('../assets/images/Bhagvad-geeta.jpg');
-const ramcharitmanasCover = require('../assets/images/Ramcharitmanas.jpg');
-const atharvavedCover = require('../assets/images/Atharva veda .jpg');
-const mahabharataCover = require('../assets/images/mahabharata.jpg');
-const rigvedaCover = require('../assets/images/Rigveda.jpg');
-const ramayanCover = require('../assets/images/Ramayan-hardcover-front-scaled.jpg');
-const yajurvedaCover = require('../assets/images/Yajurveda.jpg');
+const geetaCover = require('../../assets/images/Bhagvad-geeta.jpg');
+const ramcharitmanasCover = require('../../assets/images/Ramcharitmanas.jpg');
+const atharvavedCover = require('../../assets/images/Atharva veda .jpg');
+const mahabharataCover = require('../../assets/images/mahabharata.jpg');
+const rigvedaCover = require('../../assets/images/Rigveda.jpg');
+const ramayanCover = require('../../assets/images/Ramayan-hardcover-front-scaled.jpg');
+const yajurvedaCover = require('../../assets/images/Yajurveda.jpg');
 
 const books = [
   {

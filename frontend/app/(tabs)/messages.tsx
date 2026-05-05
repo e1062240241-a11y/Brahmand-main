@@ -128,7 +128,7 @@ export default function MessagesScreen() {
   const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
-  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Blood');
+  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
   const [showCGModal, setShowCGModal] = useState(false);
   const [cgSearch, setCGSearch] = useState('');
   const [cgList, setCGList] = useState<string[]>([]);
@@ -633,7 +633,7 @@ export default function MessagesScreen() {
 
           {showRequestTypeMenu && activeTopTab === 'Community' && (
             <View style={styles.pillDropdown}>
-              {(['Blood', 'Medical', 'Petition'] as const)
+              {(['Blood', 'Medical'] as const)
                 .map((type) => (
                   <TouchableOpacity
                     key={type}

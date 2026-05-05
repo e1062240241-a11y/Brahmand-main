@@ -24,6 +24,16 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress }: FestivalDetailCa
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="chevron-back" size={24} color="#000000" />
         </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.notificationButton} 
+          onPress={() => (festival as any).onToggleReminder?.()}
+        >
+          <Ionicons 
+            name={(festival as any).reminderEnabled ? "notifications" : "notifications-outline"} 
+            size={22} 
+            color={(festival as any).reminderEnabled ? COLORS.primary : "#000000"} 
+          />
+        </TouchableOpacity>
       </View>
       <View style={styles.heroCard}>
         <Text style={styles.heroSubtitle}>Upcoming Festival</Text>
@@ -69,9 +79,12 @@ const styles = StyleSheet.create({
   },
   pageHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: SPACING.sm,
+  },
+  notificationButton: {
+    padding: SPACING.xs,
   },
   backButton: {
     padding: SPACING.xs,

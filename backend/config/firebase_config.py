@@ -78,10 +78,10 @@ def get_firebase_messaging(): return firebase_manager.get_messaging()
 def is_firebase_enabled(): return firebase_manager.is_firebase_available
 
 FIREBASE_WEB_CONFIG = {
-    "apiKey": os.getenv("FIREBASE_API_KEY", ""),
-    "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", ""),
-    "projectId": os.getenv("FIREBASE_PROJECT_ID", "sanatan-lok-2"),
-    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET", ""),
-    "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID", ""),
-    "appId": os.getenv("FIREBASE_APP_ID", "")
+    "apiKey": os.getenv("EXPO_PUBLIC_FIREBASE_API_KEY") or os.getenv("FIREBASE_API_KEY", ""),
+    "authDomain": os.getenv("EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN") or os.getenv("FIREBASE_AUTH_DOMAIN", "sanatan-lok.firebaseapp.com"),
+    "projectId": os.getenv("EXPO_PUBLIC_FIREBASE_PROJECT_ID") or os.getenv("FIREBASE_PROJECT_ID", "sanatan-lok"),
+    "storageBucket": os.getenv("EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET") or os.getenv("FIREBASE_STORAGE_BUCKET", "sanatan-lok.firebasestorage.app"),
+    "messagingSenderId": os.getenv("EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID") or os.getenv("FIREBASE_MESSAGING_SENDER_ID", "103222994071"),
+    "appId": os.getenv("EXPO_PUBLIC_FIREBASE_APP_ID") or os.getenv("FIREBASE_APP_ID", "")
 }

@@ -15,7 +15,8 @@ import {
   Easing,
   Keyboard,
   Linking,
-  Platform
+  Platform,
+  PanResponder
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
@@ -266,6 +267,57 @@ export const FloatingUtilityButton = () => {
   
   // Pulse animation for nearby SOS
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Draggable logic (AssistiveTouch style)
+  const pan = useRef(new Animated.ValueXY()).current;
+  const isDragging = useRef(false);
+
+  const handleMainButtonPress = () => {
+    resetSOSFlow();
+    setModalVisible(true);
+    loadInitialUtilityData();
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2;
+      },
+      onPanResponderGrant: () => {
+        isDragging.current = false;
+        pan.setOffset({
+          x: (pan.x as any)._value || 0,
+          y: (pan.y as any)._value || 0
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: (e, gestureState) => {
+        if (Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5) {
+          isDragging.current = true;
+        }
+        const currentX = (pan.x as any)._offset + gestureState.dx;
+        const currentY = (pan.y as any)._offset + gestureState.dy;
+        const screenWidth = Dimensions.get('window').width;
+        const screenHeight = Dimensions.get('window').height;
+        let nextX = gestureState.dx;
+        let nextY = gestureState.dy;
+        if (currentX > 10) nextX = 10 - (pan.x as any)._offset;
+        if (currentX < -(screenWidth - 72)) nextX = -(screenWidth - 72) - (pan.x as any)._offset;
+        if (currentY > 80) nextY = 80 - (pan.y as any)._offset;
+        if (currentY < -(screenHeight - 150)) nextY = -(screenHeight - 150) - (pan.y as any)._offset;
+        pan.x.setValue(nextX);
+        pan.y.setValue(nextY);
+      },
+      onPanResponderRelease: (e, gestureState) => {
+        pan.flattenOffset();
+        if (!isDragging.current) {
+          handleMainButtonPress();
+        }
+        isDragging.current = false;
+      }
+    })
+  ).current;
 
   useEffect(() => {
     if (nearbySOSCount > 0) {
@@ -895,23 +947,26 @@ export const FloatingUtilityButton = () => {
   return (
     <>
       {/* Floating Button */}
-      <Animated.View style={[
-        styles.floatingButtonContainer,
-        isChatPage && { bottom: 150 },
-        { transform: [{ scale: hasNearbyEmergency ? pulseAnim : 1 }] }
-      ]}>
-        <TouchableOpacity
+      <Animated.View 
+        {...panResponder.panHandlers}
+        style={[
+          styles.floatingButtonContainer,
+          isChatPage && { bottom: 150 },
+          { 
+            transform: [
+              { translateX: pan.x },
+              { translateY: pan.y },
+              { scale: hasNearbyEmergency ? pulseAnim : 1 }
+            ] 
+          }
+        ]}
+      >
+        <View
           style={[
             styles.floatingButton,
             hasNearbyEmergency && styles.floatingButtonEmergency,
             activeSOS && styles.floatingButtonActiveSOS
           ]}
-          onPress={() => {
-            resetSOSFlow();
-            setModalVisible(true);
-            loadInitialUtilityData();
-          }}
-          activeOpacity={0.9}
         >
           <View style={[
             styles.glassBackground,
@@ -934,7 +989,7 @@ export const FloatingUtilityButton = () => {
               <View style={styles.redDot} />
             )}
           </View>
-        </TouchableOpacity>
+        </View>
       </Animated.View>
 
       {/* Bottom Panel Modal */}
@@ -1260,6 +1315,21 @@ export const FloatingUtilityButton = () => {
                   </View>
                   <Text style={styles.utilityTitle}>Kundli</Text>
                   <Text style={styles.utilitySubtitle}>Planet view</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.utilityCard}
+                  onPress={() => {
+                    setModalVisible(false);
+                    router.push('/ekant-jaap');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.utilityIconBg, { backgroundColor: '#FFF3E0' }]}>
+                    <Ionicons name="repeat" size={20} color="#FF9800" />
+                  </View>
+                  <Text style={styles.utilityTitle}>Ekant Jaap</Text>
+                  <Text style={styles.utilitySubtitle}>Chanting</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1831,15 +1901,17 @@ const styles = StyleSheet.create({
   },
   utilityGrid: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
     marginBottom: SPACING.lg,
   },
   utilityCard: {
-    flex: 1,
+    width: '31%', // Fits 3 in a row
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: SPACING.md,
-    minHeight: 110,
+    padding: SPACING.sm,
+    minHeight: 100,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

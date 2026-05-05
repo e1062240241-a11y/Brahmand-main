@@ -1,8 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Dimensions, FlatList, Modal, TouchableOpacity, TouchableWithoutFeedback, Text, Platform, useWindowDimensions, Image } from 'react-native';
+import {
+  View,
+  ScrollView,
+  Dimensions,
+  FlatList,
+  Modal,
+  TouchableOpacity,
+  Pressable,
+  Text,
+  Platform,
+  Image,
+  ActivityIndicator,
+  StyleSheet,
+  Animated,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video as ExpoAvVideo, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
 import api from '../services/api';
@@ -11,39 +26,82 @@ let ExpoVideoModule: any = null;
 try {
   ExpoVideoModule = require('expo-video');
 } catch (error) {
-  console.warn('expo-video unavailable in ReelViewer, using expo-av fallback:', error);
+  console.warn('expo-video unavailable:', error);
 }
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const HEADER_HEIGHT = Platform.OS === 'ios' ? 78 : 64;
+
 const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
-  if (!ExpoVideoModule?.useVideoPlayer) {
-    return null;
-  }
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  if (!ExpoVideoModule?.useVideoPlayer) return null;
   return ExpoVideoModule.useVideoPlayer(source, setup);
 };
 
-const ReelVideoItem = React.memo(
-  ({ post, isActive, onClose, onLike, onComment, onShare, onNext, hasNext }: any) => {
-    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
-  const [isMuted, setIsMuted] = useState(false);
+const ReelVideoItem = React.memo(({
+  post,
+  isActive,
+  onClose,
+  onLike,
+  onComment,
+  onShare,
+  isMuted,
+  setIsMuted,
+}: any) => {
+  const [showPlayPause, setShowPlayPause] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+  const playPauseAnim = useRef(new Animated.Value(0)).current;
   const [localPost, setLocalPost] = useState(post);
-  const mediaUrl = String(localPost?.media_url || '');
-  const mediaType = String(localPost?.media_type || '').toLowerCase();
+  const videoRef = useRef<any>(null);
+  const isLongCaption = !!localPost?.caption && localPost.caption.length > 60;
+
+  useEffect(() => {
+    if (!isActive) setIsPaused(false);
+  }, [isActive]);
+
+  const mediaUrl = String(localPost?.media_url || localPost?.mediaUrl || '');
+  const mediaType = String(localPost?.media_type || localPost?.mediaType || '').toLowerCase();
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
   const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = true;
     p.muted = isMuted;
-    if (isActive) p.play();
   });
 
   useEffect(() => {
-    if (player) {
-      if (isActive) player.play();
-      else player.pause();
+    if (Platform.OS === 'web') {
+      if (videoRef.current) {
+        if (isActive && !isPaused) {
+          videoRef.current.play().catch(() => { });
+        } else {
+          videoRef.current.pause();
+        }
+      }
+    } else if (player) {
+      if (isActive && !isPaused) {
+        player.play();
+      } else {
+        player.pause();
+      }
     }
-  }, [isActive, player]);
+  }, [isActive, isPaused, player]);
+
+  useEffect(() => {
+    if (player) player.muted = isMuted;
+  }, [isMuted, player]);
+
+  // Keep pause/mute state global across the reel picker so the next video continues the same state.
+
+  const handleTapVideo = () => {
+    setIsPaused((prev: boolean) => !prev);
+    setShowPlayPause(true);
+    playPauseAnim.setValue(0.8);
+    Animated.sequence([
+      Animated.spring(playPauseAnim, { toValue: 1, useNativeDriver: true, friction: 4 }),
+      Animated.timing(playPauseAnim, { toValue: 0, duration: 600, delay: 200, useNativeDriver: true }),
+    ]).start(() => setShowPlayPause(false));
+  };
 
   const handleLike = () => {
     onLike?.(localPost);
@@ -55,10 +113,13 @@ const ReelVideoItem = React.memo(
   };
 
   const handleComment = () => {
+    onClose?.();
+    setTimeout(() => onComment?.(localPost), 150);
+  };
+
+  const handleShare = () => {
     onClose();
-    setTimeout(() => {
-      onComment?.(localPost);
-    }, 300);
+    setTimeout(() => onShare?.(localPost), 300);
   };
 
   const likedByMe = !!localPost?.liked_by_me;
@@ -67,237 +128,343 @@ const ReelVideoItem = React.memo(
 
   return (
     <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: '#000' }}>
-      <SafeAreaView style={{ position: 'absolute', top: Platform.OS === 'ios' ? 40 : 20, left: 0, right: 0, zIndex: 10, padding: 15, flexDirection: 'row' }}>
-        <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="chevron-back" size={32} color="#FFF" style={{ textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 10 }} />
+      {/* Full Screen Video/Photo - Tap to play/pause wrapper (taps excluded for top header) */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <View style={[StyleSheet.absoluteFill, { zIndex: 1 }]} pointerEvents="none">
+          {!isVideo ? (
+            <Image
+              source={{ uri: mediaUrl }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="contain"
+            />
+          ) : Platform.OS === 'web' ? (
+            <video
+              ref={videoRef}
+              src={mediaUrl}
+              loop
+              muted={isMuted}
+              playsInline
+              autoPlay={isActive && !isPaused}
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : ExpoVideoModule?.VideoView && player ? (
+            <ExpoVideoModule.VideoView
+              player={player}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="contain"
+              allowsPictureInPicture={false}
+              nativeControls={false}
+              playsInline={true}
+            />
+          ) : (
+            <ExpoAvVideo
+              ref={videoRef}
+              source={{ uri: mediaUrl }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay={isActive && !isPaused}
+              isMuted={isMuted}
+              isLooping
+              useNativeControls={false}
+            />
+          )}
+        </View>
+
+        {/* Pressable area starts below header so header buttons receive touches */}
+        <Pressable
+          onPress={handleTapVideo}
+          style={{ position: 'absolute', top: HEADER_HEIGHT, left: 0, right: 0, bottom: 0, zIndex: 1 }}
+        />
+      </View>
+
+      {/* Gradient overlay for readability */}
+      <View style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 250,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        pointerEvents: 'none'
+      }} />
+
+      {/* Play/Pause animation */}
+      {showPlayPause && isVideo && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            transform: [{ scale: playPauseAnim }],
+            opacity: playPauseAnim,
+            pointerEvents: 'none',
+          }}
+        >
+          <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+            <Ionicons name={isPaused ? 'play' : 'pause'} size={48} color="#FFF" />
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Top Header */}
+      <SafeAreaView style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }} pointerEvents="box-none">
+        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+          <Ionicons name="close" size={30} color="#FFF" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setIsMuted((prev: boolean) => !prev)} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+          <Ionicons name={isMuted ? 'volume-mute' : 'volume-medium'} size={26} color="#FFF" />
         </TouchableOpacity>
       </SafeAreaView>
 
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        {!isVideo ? (
-          <Image 
-            source={{ uri: mediaUrl }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
-          />
-        ) : Platform.OS === 'web' ? (
-          <video
-            src={mediaUrl}
-            loop
-            muted={isMuted}
-            playsInline
-            autoPlay={isActive}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            ref={(ref) => {
-              if (ref) {
-                if (isActive) ref.play().catch(() => {});
-                else ref.pause();
-              }
-            }}
-          />
-        ) : ExpoVideoModule?.VideoView && player ? (
-          <ExpoVideoModule.VideoView
-            player={player}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
-            allowsPictureInPicture={false}
-            nativeControls={false}
-            playsInline={true}
-          />
-        ) : (
-          <ExpoAvVideo
-            source={{ uri: mediaUrl }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode={ResizeMode.COVER}
-            shouldPlay={isActive}
-            isMuted={isMuted}
-            isLooping
-            useNativeControls={false}
-          />
-        )}
-      </View>
-
-      {/* Reel-like Overlays */}
-      <View pointerEvents="box-none" style={{ position: 'absolute', bottom: Platform.OS === 'ios' ? 100 : 80, left: 15, right: 70, zIndex: 2 }}>
+      {/* Bottom Left - User Info + Caption */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? 18 : 10,
+          left: 16,
+          right: 90,
+          zIndex: 20,
+        }}
+      >
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-          <Avatar photo={localPost?.user_photo} name={localPost?.username || 'User'} size={40} />
-          <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10, fontSize: 16, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 5 }}>{localPost?.username || 'User'}</Text>
+          <Avatar photo={localPost?.user_photo} name={localPost?.username || 'User'} size={36} />
+          <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10, fontSize: 14 }}>
+            {localPost?.username || 'User'}
+          </Text>
         </View>
-        <Text style={{ color: '#fff', fontSize: 14, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 5 }} numberOfLines={3}>{localPost?.caption || ''}</Text>
+        {localPost?.caption ? (
+          <View
+            style={{
+              borderRadius: 14,
+              padding: 0,
+              maxHeight: isCaptionExpanded ? 240 : 60,
+              overflow: 'hidden',
+              backgroundColor: 'rgba(0,0,0,0.1)',
+            }}
+          >
+            {isCaptionExpanded && (
+              <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+            )}
+            <View style={{ padding: 10 }}>
+              <ScrollView
+                nestedScrollEnabled
+                scrollEnabled={isCaptionExpanded}
+                showsVerticalScrollIndicator={isCaptionExpanded}
+                contentContainerStyle={{ flexGrow: 1 }}
+                onStartShouldSetResponder={() => isCaptionExpanded}
+                onMoveShouldSetResponder={() => isCaptionExpanded}
+              >
+                <Text style={{ color: '#fff', fontSize: 14, lineHeight: 20 }} numberOfLines={isCaptionExpanded ? undefined : 2}>
+                  {localPost.caption}
+                </Text>
+              </ScrollView>
+              {isLongCaption && (
+                <TouchableOpacity onPress={() => setIsCaptionExpanded((prev: boolean) => !prev)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Text style={{ color: '#ccc', marginTop: 6, fontSize: 13, fontWeight: '600' }}>
+                    {isCaptionExpanded ? 'Show less' : 'Read more'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ) : null}
       </View>
 
-      <View pointerEvents="box-none" style={{ position: 'absolute', bottom: Platform.OS === 'ios' ? 100 : 80, right: 10, alignItems: 'center', zIndex: 3 }}>
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 25 }} onPress={handleLike}>
-          <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={36} color={likedByMe ? COLORS.primary : '#FFF'} style={{ textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 10 }} />
-          <Text style={{ color: '#fff', marginTop: 5, fontSize: 13, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5 }}>{likesCount}</Text>
+      {/* Right Side - Action Buttons (Instagram style) */}
+      <View pointerEvents="box-none" style={{
+        position: 'absolute',
+        bottom: Platform.OS === 'ios' ? 28 : 18,
+        right: 12,
+        alignItems: 'center',
+        zIndex: 20,
+      }}>
+        {/* Like */}
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleLike}>
+          <Ionicons
+            name={likedByMe ? 'heart' : 'heart-outline'}
+            size={32}
+            color={likedByMe ? '#FF2D55' : '#FFF'}
+          />
+          <Text style={{ color: '#fff', marginTop: 4, fontSize: 12, fontWeight: '600' }}>
+            {likesCount > 0 ? likesCount : ''}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 25 }} onPress={handleComment}>
-          <Ionicons name="chatbubble-outline" size={34} color="#FFF" style={{ transform: [{ scaleX: -1 }], textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 10 }} />
-          <Text style={{ color: '#fff', marginTop: 5, fontSize: 13, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5 }}>{commentsCount}</Text>
+
+        {/* Comment */}
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleComment}>
+          <Ionicons name="chatbubble" size={30} color="#FFF" />
+          <Text style={{ color: '#fff', marginTop: 4, fontSize: 12, fontWeight: '600' }}>
+            {commentsCount > 0 ? commentsCount : ''}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 25 }} onPress={() => onShare?.(localPost)}>
-          <Ionicons name="paper-plane-outline" size={34} color="#FFF" style={{ textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 10 }} />
+
+        {/* Share */}
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleShare}>
+          <Ionicons name="paper-plane" size={30} color="#FFF" />
         </TouchableOpacity>
-        {hasNext && (
-          <TouchableOpacity style={{ alignItems: 'center', marginBottom: 25 }} onPress={onNext}>
-            <Ionicons name="chevron-down-circle-outline" size={36} color="#FFF" style={{ textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 10 }} />
-            <Text style={{ color: '#fff', marginTop: 5, fontSize: 13, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5 }}>Next</Text>
-          </TouchableOpacity>
-        )}
+
       </View>
     </View>
-  );
-}, (prev: any, next: any) => {
-  return (
-    prev.post?.id === next.post?.id &&
-    prev.isActive === next.isActive &&
-    prev.hasNext === next.hasNext &&
-    prev.onClose === next.onClose &&
-    prev.onLike === next.onLike &&
-    prev.onComment === next.onComment &&
-    prev.onShare === next.onShare &&
-    prev.onNext === next.onNext
   );
 });
 
 export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
-  const REEL_PAGE_SIZE = 20;
-  const [videos, setVideos] = useState([initialPost]);
+  const [videos, setVideos] = useState<any[]>([initialPost]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [reelOffset, setReelOffset] = useState(0);
-  const [reelHasMore, setReelHasMore] = useState(true);
-  const [reelLoading, setReelLoading] = useState(false);
-  const { height: SCREEN_HEIGHT } = useWindowDimensions();
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(1);
   const flatListRef = useRef<FlatList<any>>(null);
+  const loadingRef = useRef(false);
+  const hasMoreRef = useRef(true);
+  const offsetRef = useRef(1);
+  const videosRef = useRef<any[]>([]);
+  const activeIndexRef = useRef(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
+  const loadMoreRef = useRef<() => void>(() => {});
 
-  const handleNext = useCallback(() => {
-    if (activeIndex < videos.length - 1) {
-      flatListRef.current?.scrollToOffset({
-        offset: (activeIndex + 1) * SCREEN_HEIGHT,
-        animated: true,
-      });
-    }
-  }, [activeIndex, SCREEN_HEIGHT, videos.length]);
+  loadingRef.current = loading;
+  hasMoreRef.current = hasMore;
+  offsetRef.current = offset;
+  videosRef.current = videos;
+  activeIndexRef.current = activeIndex;
+  callbacksRef.current = { onClose, onLike, onComment, onShare };
 
-  const renderItem = useCallback(
-    ({ item, index }: { item: any; index: number }) => (
-      <ReelVideoItem
-        post={item}
-        isActive={index === activeIndex}
-        onClose={onClose}
-        onLike={onLike}
-        onComment={onComment}
-        onShare={onShare}
-        onNext={handleNext}
-        hasNext={index < videos.length - 1}
-      />
-    ),
-    [activeIndex, onClose, onLike, onComment, onShare, handleNext, videos.length]
-  );
+  const loadMoreReels = useCallback(async () => {
+    if (loadingRef.current || !hasMoreRef.current) return;
 
-  const loadReelPage = useCallback(async (offset: number, replace: boolean = false) => {
-    if (reelLoading || !reelHasMore) {
-      return;
-    }
-
-    setReelLoading(true);
+    setLoading(true);
     try {
-      const res = await api.get('/posts/feed', { params: { limit: REEL_PAGE_SIZE, offset } });
-      const payload = res.data;
-      const incomingItems = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
-      if (incomingItems.length === 0) {
-        setReelHasMore(false);
-        return;
-      }
-
-      setVideos((prev) => {
-        const existingIds = new Set(prev.map((item: any) => item?.id));
-        const deduped = incomingItems.filter((item: any) => item?.id && !existingIds.has(item.id));
-        if (deduped.length === 0) {
-          return prev;
-        }
-        return replace ? [initialPost, ...deduped] : [...prev, ...deduped];
+      const res = await api.get('/posts/feed', {
+        params: { limit: 10, offset: offsetRef.current }
       });
-      setReelOffset(offset + incomingItems.length);
-      setReelHasMore(incomingItems.length === REEL_PAGE_SIZE);
-    } catch (err) {
-      console.log('Reel fetch error', err);
+      const newPosts = res.data?.items || res.data || [];
+
+      if (newPosts.length === 0) {
+        setHasMore(false);
+      } else {
+        setVideos(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNew = newPosts.filter((p: any) => !existingIds.has(p.id));
+          return [...prev, ...uniqueNew];
+        });
+        setOffset(prev => prev + newPosts.length);
+      }
+    } catch (error) {
+      console.error('Load more reels error:', error);
     } finally {
-      setReelLoading(false);
+      setLoading(false);
     }
-  }, [initialPost, reelHasMore, reelLoading]);
+  }, []);
+
+  loadMoreRef.current = loadMoreReels;
 
   useEffect(() => {
     if (isVisible) {
       setVideos([initialPost]);
       setActiveIndex(0);
-      setReelOffset(0);
-      setReelHasMore(true);
-      loadReelPage(0, true);
-    } else {
-      setActiveIndex(0);
+      setOffset(1);
+      setHasMore(true);
+      setLoading(false);
+      loadingRef.current = false;
+      hasMoreRef.current = true;
+      offsetRef.current = 1;
+      setTimeout(() => loadMoreReels(), 300);
     }
-  }, [isVisible, initialPost, loadReelPage]);
+  }, [isVisible, initialPost, loadMoreReels]);
 
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
-  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
+  const viewabilityConfigRef = useRef({ itemVisiblePercentThreshold: 50 });
+
+  const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      const nextIndex = viewableItems[0].index;
-      if (typeof nextIndex === 'number') {
-        setActiveIndex(nextIndex);
-        if (nextIndex >= videos.length - 2 && reelHasMore && !reelLoading) {
-          loadReelPage(reelOffset);
-        }
+      const index = viewableItems[0].index;
+      setActiveIndex(index);
+      if (index >= videosRef.current.length - 2 && hasMoreRef.current && !loadingRef.current) {
+        loadMoreRef.current();
       }
     }
-  }, [videos.length, reelHasMore, reelLoading, reelOffset, loadReelPage]);
+  }).current;
+
+  const handleMomentumScrollEnd = useRef((event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const index = Math.round(offsetY / SCREEN_HEIGHT);
+    if (index !== activeIndexRef.current) {
+      setActiveIndex(index);
+    }
+    if (index >= videosRef.current.length - 2 && hasMoreRef.current && !loadingRef.current) {
+      loadMoreRef.current();
+    }
+  }).current;
+
+  const getItemLayout = (_: any, index: number) => ({
+    length: SCREEN_HEIGHT,
+    offset: SCREEN_HEIGHT * index,
+    index,
+  });
+
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => (
+    <ReelVideoItem
+      post={item}
+      isActive={index === activeIndex}
+      onClose={callbacksRef.current.onClose}
+      onLike={callbacksRef.current.onLike}
+      onComment={callbacksRef.current.onComment}
+      onShare={callbacksRef.current.onShare}
+      isMuted={isMuted}
+      setIsMuted={setIsMuted}
+    />
+  ), [activeIndex, isMuted]);
 
   return (
-    <Modal visible={isVisible} transparent={false} animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={isVisible}
+      transparent={false}
+      animationType="slide"
+      onRequestClose={callbacksRef.current.onClose}
+    >
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
           ref={flatListRef}
-          extraData={activeIndex}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1 }}
           data={videos}
-          keyExtractor={(item, index) => String(item.id || index)}
-          pagingEnabled
-          snapToInterval={SCREEN_HEIGHT}
+          renderItem={renderItem}
+          extraData={{ activeIndex, isMuted }}
+          keyExtractor={(item, index) => `${item.id || index}`}
+          pagingEnabled={true}
+          showsVerticalScrollIndicator={false}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          onViewableItemsChanged={handleViewableItemsChanged}
+          viewabilityConfig={viewabilityConfigRef.current}
+          getItemLayout={getItemLayout}
+          initialNumToRender={3}
+          maxToRenderPerBatch={5}
+          windowSize={7}
+          removeClippedSubviews={false}
           snapToAlignment="start"
           decelerationRate="fast"
-          showsVerticalScrollIndicator={false}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          onScrollEndDrag={({ nativeEvent }) => {
-            const offsetY = nativeEvent.contentOffset.y;
-            const nextIndex = Math.round(offsetY / SCREEN_HEIGHT);
-            const targetOffset = nextIndex * SCREEN_HEIGHT;
-            if (Math.abs(offsetY - targetOffset) > SCREEN_HEIGHT * 0.1) {
-              flatListRef.current?.scrollToOffset({ offset: targetOffset, animated: true });
-            }
-          }}
-          onMomentumScrollEnd={(event) => {
-            const offsetY = event.nativeEvent.contentOffset.y;
-            const nextIndex = Math.round(offsetY / SCREEN_HEIGHT);
-            if (nextIndex !== activeIndex) {
-              setActiveIndex(nextIndex);
-            }
-            if (nextIndex >= videos.length - 2 && reelHasMore && !reelLoading) {
-              loadReelPage(reelOffset);
-            }
-          }}
-          getItemLayout={(data, index) => ({
-            length: SCREEN_HEIGHT,
-            offset: SCREEN_HEIGHT * index,
-            index,
-          })}
-          initialNumToRender={2}
-          maxToRenderPerBatch={2}
-          windowSize={3}
-          updateCellsBatchingPeriod={50}
-          removeClippedSubviews={true}
-          renderItem={renderItem}
+          ListFooterComponent={
+            loading ? (
+              <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+              </View>
+            ) : null
+          }
         />
       </View>
     </Modal>

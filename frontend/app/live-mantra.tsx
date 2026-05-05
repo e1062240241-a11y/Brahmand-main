@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
@@ -10,6 +10,8 @@ import {
   getScheduleWindows,
   isWithinGayatriMantraWindow,
   formatTime,
+  getNextChantingTime,
+  getAllAvailableTimes,
 } from '../src/features/live-mantra/schedule';
 
 const LiveMantraPage = () => {
@@ -21,46 +23,53 @@ const LiveMantraPage = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const active = useMemo(() => isWithinGayatriMantraWindow(now), [now]);
+  const activeStatus = useMemo(() => isWithinGayatriMantraWindow(now), [now]);
+  const active = !!activeStatus;
   const currentEnd = useMemo(() => getCurrentGayatriEnd(now), [now]);
-  const nextStart = useMemo(() => getNextGayatriStart(now), [now]);
-  const schedule = useMemo(() => getScheduleWindows(), []);
+  const nextChanting = useMemo(() => getNextChantingTime(), []);
+  const schedule = useMemo(() => getAllAvailableTimes(), []);
 
-  const joinText = active ? 'Join Live Gayatri Mantra' : 'Live tonight will start at';
-  const statusText = active ? 'Gayatri Mantra is live now' : 'Gayatri Mantra is not active at this time';
+  const joinText = active ? 'Join Live Gayatri Mantra' : 'Next session starts at';
+  const statusText = active
+    ? `Live now: ${activeStatus.slot}`
+    : 'Gayatri Mantra is not active right now';
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Live Mantras</Text>
-            <Text style={styles.subtitle}>Gayatri Mantra</Text>
+            <Text style={styles.title}>Live Jaap</Text>
+            <Text style={styles.subtitle}>Group Chanting Room</Text>
           </View>
-          <Ionicons name="sunny" size={36} color={COLORS.primary} />
+          <Ionicons name="mic-circle" size={48} color={COLORS.primary} />
         </View>
 
         <View style={styles.statusCard}>
           <Text style={styles.statusLabel}>{statusText}</Text>
           {active && currentEnd ? (
-            <Text style={styles.statusValue}>Ends at {formatTime(currentEnd)}</Text>
+            <Text style={styles.statusValue}>Ends at {currentEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           ) : (
-            <Text style={styles.statusValue}>Next session begins at {formatTime(nextStart)}</Text>
+            <Text style={styles.statusValue}>
+              {nextChanting.slot}: {nextChanting.formattedTime}
+            </Text>
           )}
         </View>
 
         <View style={styles.scheduleCard}>
-          <Text style={styles.sectionTitle}>Daily Gayatri Mantra Timing</Text>
-          {schedule.map((item) => (
-            <View style={styles.scheduleRow} key={item.label}>
-              <Text style={styles.scheduleLabel}>{item.label}</Text>
-              <Text style={styles.scheduleNote}>Daily</Text>
-            </View>
-          ))}
+          <Text style={styles.sectionTitle}>Daily Chanting Windows</Text>
+          <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+            {schedule.slice(0, 8).map((item) => (
+              <View style={styles.scheduleRow} key={item.name}>
+                <Text style={styles.scheduleLabel}>{item.name}</Text>
+                <Text style={styles.scheduleNote}>{item.time} - {item.endTime}</Text>
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         <Text style={styles.description}>
-          Gayatri Mantra chanting begins daily at 8:00–10:00 AM and 4:00–5:00 PM. Join the live jaap during these windows for a shared experience.
+          Join the spiritual community for shared mantra jaap. Collective chanting creates powerful energy and focused meditation.
         </Text>
 
         <TouchableOpacity
@@ -74,13 +83,13 @@ const LiveMantraPage = () => {
           activeOpacity={active ? 0.8 : 1}
         >
           <Text style={[styles.joinButtonText, !active && styles.joinButtonTextDisabled]}>
-            {joinText}
+            {joinText} {!active && nextChanting.formattedTime}
           </Text>
         </TouchableOpacity>
 
         {!active && (
           <Text style={styles.noteText}>
-            You can only join during daily Gayatri Mantra hours.
+            Please wait for the next scheduled window to join the room.
           </Text>
         )}
       </View>

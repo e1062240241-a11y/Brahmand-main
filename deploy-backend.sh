@@ -7,6 +7,8 @@ gcloud run deploy brahmand-backend \
   --project gst-app-dev-2026 \
   --region us-central1 \
   --allow-unauthenticated \
+  --memory "4096Mi" \
+  --cpu "2" \
   --set-env-vars GOOGLE_APPLICATION_CREDENTIALS="firebase.json"
 
 echo "Deploy Complete!"

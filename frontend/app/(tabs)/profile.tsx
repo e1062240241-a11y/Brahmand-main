@@ -3,21 +3,28 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
   TouchableOpacity, 
-  Modal,
+  Image, 
+  ActivityIndicator, 
+  Modal, 
+  Dimensions, 
+  FlatList,
   RefreshControl,
-  Alert,
   Platform,
-  Animated,
+  Alert,
+  ScrollView
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserPosts, getUserProfile } from '../../src/services/api';
+import { getUserPosts, getUserProfile, viewPost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+
+const { width } = Dimensions.get('window');
+const COLUMN_WIDTH = width / 3;
 
 type SettingItem = {
   id: string;
@@ -64,22 +71,30 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, updateUser } = useAuthStore();
   const userId = user?.id;
-  const [refreshing, setRefreshing] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
-  const [myPosts, setMyPosts] = useState<any[]>([]);
-  const [showMyPostsModal, setShowMyPostsModal] = useState(false);
-  const [postsCount, setPostsCount] = useState(0);
-  const [followersCount, setFollowersCount] = useState(Array.isArray((user as any)?.followers) ? (user as any).followers.length : 0);
-  const [followingCount, setFollowingCount] = useState(Array.isArray((user as any)?.following) ? (user as any).following.length : 0);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
-  const fetchProfile = useCallback(async () => {
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [postsCount, setPostsCount] = useState(0);
+  const LIMIT = 30;
+
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [avatarModalVisible, setAvatarModalVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [postModalVisible, setPostModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState('grid');
+
+  const fetchProfile = useCallback(async (showLoading = true) => {
+    if (!userId) return;
+    if (showLoading) setLoading(true);
     try {
       const res = await getUserProfile();
       const nextProfile = res.data || {};
       setProfile(nextProfile);
-      setFollowersCount(Array.isArray(nextProfile.followers) ? nextProfile.followers.length : 0);
-      setFollowingCount(Array.isArray(nextProfile.following) ? nextProfile.following.length : 0);
       updateUser(nextProfile);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
@@ -88,39 +103,57 @@ export default function ProfileScreen() {
         router.replace('/');
       }
     } finally {
+      setLoading(false);
       setRefreshing(false);
     }
-  }, [logout, router, updateUser]);
+  }, [logout, router, updateUser, userId]);
 
-  useEffect(() => {
-    if (!userId) {
-      router.replace('/');
-      return;
+  const loadPosts = useCallback(async (reset = false) => {
+    if (!userId || (postsLoading && !reset)) return;
+
+    const currentOffset = reset ? 0 : offset;
+    if (reset) {
+      setPostsLoading(true);
+      setHasMore(true);
     }
-    fetchProfile();
-  }, [fetchProfile, router, userId]);
+
+    try {
+      const response = await getUserPosts(userId, LIMIT, currentOffset);
+      const payload = response.data;
+      const items = Array.isArray(payload) ? payload : (payload?.items || []);
+      
+      if (reset) {
+        setPosts(items);
+      } else {
+        setPosts(prev => [...prev, ...items]);
+      }
+
+      const totalCount = payload?.total_count || items.length;
+      setPostsCount(totalCount);
+      setOffset(currentOffset + items.length);
+      setHasMore(payload?.has_more ?? (items.length === LIMIT));
+    } catch (error) {
+      console.warn('Failed to load user posts:', error);
+    } finally {
+      setPostsLoading(false);
+      setRefreshing(false);
+    }
+  }, [userId, offset, postsLoading]);
 
   useEffect(() => {
-    const loadPostsCount = async () => {
-      if (!userId) return;
-      try {
-        const res = await getUserPosts(userId, 50, 0);
-        const payload = res.data;
-        const items = Array.isArray(payload) ? payload : (payload?.items || []);
-        setMyPosts(items);
-        setPostsCount(items.length);
-      } catch (error) {
-        console.warn('Failed to load settings posts count:', error);
-      }
-    };
-
-    loadPostsCount();
+    fetchProfile(true);
+    loadPosts(true);
   }, [userId]);
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchProfile(false);
+    loadPosts(true);
+  }, [fetchProfile, loadPosts]);
+
   const handleMenuPress = (item: SettingItem) => {
-    if (item.disabled) {
-      return;
-    }
+    setShowSettingsModal(false);
+    if (item.disabled) return;
     if (item.action === 'logout') {
       handleLogout();
       return;
@@ -146,707 +179,593 @@ export default function ProfileScreen() {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => {
-          performLogout();
-        } },
+        { text: 'Logout', style: 'destructive', onPress: performLogout },
       ]
     );
   };
 
-const displayUser = profile || user;
+  const openPostModal = (post: any) => {
+    if (!post?.id) return;
+    setSelectedPost(post);
+    setPostModalVisible(true);
+    try {
+      viewPost(post.id);
+    } catch (e) {}
+  };
 
-  const onScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false }
-  );
+  const renderPost = ({ item }: { item: any }) => {
+    const isVideo = (item.media_url || '').match(/\.(mp4|mov|avi)$/i) || (item.media_type === 'video');
+    const displayUrl = item.thumbnail_url || item.image_url || (!isVideo ? item.media_url : null);
+    const views = item.views_count || 0;
 
-return (
-    <ScrollView 
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      onScroll={onScroll}
-      scrollEventThrottle={1}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchProfile(); }} />
-      }
-    >
-      <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>Profile</Text>
-      </View>
+    return (
+      <TouchableOpacity
+        style={styles.gridItem}
+        activeOpacity={0.9}
+        onPress={() => openPostModal(item)}
+      >
+        {displayUrl ? (
+          <Image source={{ uri: displayUrl }} style={styles.gridImage} />
+        ) : (
+          <View style={styles.gridPlaceholder}>
+            <Ionicons name={isVideo ? "videocam" : "image-outline"} size={24} color={COLORS.textLight} />
+          </View>
+        )}
 
-      <Animated.View style={[
-          styles.profileCard,
-          {
-            transform: [
-              { scale: scrollY.interpolate({
-                inputRange: [-100, 0, 34],
-                outputRange: [1.04, 1, 0.92],
-                extrapolate: 'clamp',
-              })},
-            ],
-          },
-        ]}>
-        <Animated.View style={[
-          styles.profileAvatarWrap,
-          {
-            marginRight: scrollY.interpolate({
-              inputRange: [0, 34],
-              outputRange: [0, SPACING.sm],
-              extrapolate: 'clamp',
-            }),
-            marginBottom: scrollY.interpolate({
-              inputRange: [0, 34],
-              outputRange: [SPACING.md, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-          {displayUser?.photo ? (
-            <Animated.Image
-              source={{ uri: displayUser.photo }}
-              style={[
-                styles.profileAvatar,
-                {
-                  width: scrollY.interpolate({
-                    inputRange: [0, 34],
-                    outputRange: [96, 56],
-                    extrapolate: 'clamp',
-                  }),
-                  height: scrollY.interpolate({
-                    inputRange: [0, 34],
-                    outputRange: [96, 56],
-                    extrapolate: 'clamp',
-                  }),
-                  borderRadius: scrollY.interpolate({
-                    inputRange: [0, 34],
-                    outputRange: [48, 28],
-                    extrapolate: 'clamp',
-                  }),
-                },
-              ]}
-            />
-          ) : (
-            <Avatar 
-              name={displayUser?.name || 'User'} 
-              size={56} 
-            />
-          )}
-        </Animated.View>
-        <View style={styles.profileTextWrap}>
-          <View style={styles.profileNameRow}>
-            <Animated.Text style={[
-              styles.profileName,
-              {
-                fontSize: scrollY.interpolate({
-                  inputRange: [0, 34],
-                  outputRange: [24, 18],
-                  extrapolate: 'clamp',
-                }),
-              },
-            ]}>
-              {displayUser?.name || 'User'}
-            </Animated.Text>
-            {displayUser?.is_verified && (
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+        {/* View Count Overlay */}
+        <View style={styles.gridOverlay}>
+          <View style={styles.viewCountBadge}>
+            <Ionicons name="play" size={10} color="#FFF" />
+            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views/1000).toFixed(1)}K` : views}</Text>
+          </View>
+        </View>
+
+        {isVideo && (
+          <View style={styles.videoBadge}>
+            <Ionicons name="videocam" size={14} color="#FFF" />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const ListHeader = () => (
+    <View style={styles.headerContent}>
+      {/* Profile Header: Avatar and Stats */}
+      <View style={styles.profileHeaderRow}>
+        <TouchableOpacity 
+          onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.avatarContainer}>
+            {(profile?.photo || user?.photo) ? (
+              <Image source={{ uri: profile?.photo || user?.photo }} style={styles.avatar} />
+            ) : (
+              <Avatar name={profile?.name || user?.name || 'User'} size={86} />
             )}
           </View>
-          <Animated.Text style={[
-            styles.profileSubText,
-            {
-              fontSize: scrollY.interpolate({
-                inputRange: [0, 34],
-                outputRange: [15, 13],
-                extrapolate: 'clamp',
-              }),
-},
-            ]}>
-            <Text style={styles.slIdText}>
-              {displayUser?.sl_id || ''}
-            </Text>
-          </Animated.Text>
-        </View>
-      </Animated.View>
+        </TouchableOpacity>
 
-      <View style={styles.statsStrip}>
-        <TouchableOpacity style={styles.statItemCompact} activeOpacity={0.8} onPress={() => setShowMyPostsModal(true)}>
-          <Text style={styles.statValueCompact}>{postsCount}</Text>
-          <Text style={styles.statLabelCompact}>Posts</Text>
-        </TouchableOpacity>
-        <View style={styles.statsStripDivider} />
-        <TouchableOpacity
-          style={styles.statItemCompact}
-          activeOpacity={0.8}
-          onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{postsCount}</Text>
+            <Text style={styles.statLabel}>Posts</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.statItem}
+            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
+          >
+            <Text style={styles.statValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
+            <Text style={styles.statLabel}>Followers</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.statItem}
+            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
+          >
+            <Text style={styles.statValue}>{profile?.following_count ?? (Array.isArray(profile?.following) ? profile.following.length : 0)}</Text>
+            <Text style={styles.statLabel}>Following</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Bio Section */}
+      <View style={styles.bioSection}>
+        <View style={styles.nameRow}>
+          <Text style={styles.displayName}>{profile?.name || user?.name || 'User'}</Text>
+          {(profile?.is_verified || user?.is_verified) && (
+            <Ionicons name="checkmark-circle" size={16} color="#0095f6" style={{ marginLeft: 4 }} />
+          )}
+        </View>
+        <Text style={styles.slId}>@{profile?.sl_id || user?.sl_id || ''}</Text>
+        {(profile?.bio || user?.bio) ? (
+          <Text style={styles.bioText}>{profile?.bio || user?.bio}</Text>
+        ) : null}
+        
+        {(profile?.home_location || user?.home_location) && (
+          <View style={styles.locationContainer}>
+            <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
+            <Text style={styles.locationText}>
+              {(profile?.home_location || user?.home_location).city}, {(profile?.home_location || user?.home_location).state}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.actionButtonsRow}>
+        <TouchableOpacity 
+          style={styles.editProfileButton}
+          onPress={() => router.push('/profile/edit')}
         >
-          <Text style={styles.statValueCompact}>{followersCount}</Text>
-          <Text style={styles.statLabelCompact}>Followers</Text>
+          <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
-        <View style={styles.statsStripDivider} />
-        <TouchableOpacity
-          style={styles.statItemCompact}
-          activeOpacity={0.8}
-          onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
+        <TouchableOpacity 
+          style={styles.shareProfileButton}
+          onPress={() => Alert.alert('Coming Soon', 'Share profile functionality is coming soon!')}
         >
-          <Text style={styles.statValueCompact}>{followingCount}</Text>
-          <Text style={styles.statLabelCompact}>Following</Text>
+          <Text style={styles.shareProfileText}>Share Profile</Text>
         </TouchableOpacity>
       </View>
 
-      {SETTINGS_SECTIONS.map((section) => (
-        <View key={section.id} style={styles.settingsSection}>
-          <Text style={styles.sectionLabel}>{section.title}</Text>
-          <View style={styles.settingsCard}>
-            {section.items.map((item, index) => {
-              const isLast = index === section.items.length - 1;
-              const isLogout = item.action === 'logout';
+      {/* Simple Grid Divider */}
+      <View style={styles.gridDivider} />
+    </View>
+  );
 
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.settingsRow,
-                    !isLast && styles.settingsRowDivider,
-                    item.disabled && styles.settingsRowDisabled,
-                  ]}
-                  activeOpacity={item.disabled ? 1 : 0.7}
-                  onPress={() => handleMenuPress(item)}
-                >
-                  <View style={styles.settingsRowLeft}>
-                    <View style={styles.settingsIconWrap}>
-                      <Ionicons
-                        name={item.icon as any}
-                        size={19}
-                        color={isLogout ? COLORS.error : COLORS.textSecondary}
-                      />
-                    </View>
-                    <View style={styles.settingsLabelWrap}>
-                      <Text style={[styles.settingsLabel, isLogout && styles.settingsLabelLogout]}>{item.label}</Text>
-                      {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
-                    </View>
-                  </View>
-
-                  <View style={styles.settingsRowRight}>
-                    {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                    {!item.disabled && <Ionicons name="chevron-forward" size={16} color={COLORS.textLight} />}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Custom Header Bar */}
+      <View style={styles.navBar}>
+        <View style={styles.navLeft}>
+          <Ionicons name="lock-closed-outline" size={18} color={COLORS.text} />
+          <Text style={styles.navTitle}>{profile?.sl_id || user?.sl_id || 'Profile'}</Text>
+          <Ionicons name="chevron-down" size={16} color={COLORS.text} />
         </View>
-      ))}
+        <View style={styles.navRight}>
+          <TouchableOpacity style={styles.navIcon}>
+            <Ionicons name="add-circle-outline" size={28} color={COLORS.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navIcon} onPress={() => setShowSettingsModal(true)}>
+            <Ionicons name="menu-outline" size={30} color={COLORS.text} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      <Modal visible={showMyPostsModal} transparent animationType="slide" onRequestClose={() => setShowMyPostsModal(false)}>
-        <View style={styles.myPostsOverlay}>
-          <View style={styles.myPostsSheet}>
-            <View style={styles.myPostsHeader}>
-              <Text style={styles.myPostsTitle}>My Posts ({postsCount})</Text>
-              <TouchableOpacity onPress={() => setShowMyPostsModal(false)} style={styles.myPostsCloseBtn}>
-                <Ionicons name="close" size={20} color={COLORS.text} />
+      <FlatList
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}
+        numColumns={3}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={
+          postsLoading ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={COLORS.textLight} />
+            </View>
+          ) : !hasMore && posts.length > 0 ? (
+            <View style={styles.endOfFeed}>
+              <Text style={styles.endOfFeedText}>You've reached the end</Text>
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          !loading && !postsLoading ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="camera-outline" size={40} color={COLORS.text} />
+              </View>
+              <Text style={styles.emptyTitle}>No Posts Yet</Text>
+            </View>
+          ) : null
+        }
+        onEndReached={() => {
+          if (hasMore && !postsLoading) {
+            loadPosts();
+          }
+        }}
+        onEndReachedThreshold={0.8}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.textLight} />
+        }
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Settings Menu Modal */}
+      <Modal visible={showSettingsModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.settingsSheet}>
+            <View style={styles.settingsHeader}>
+              <View style={styles.settingsHeaderBar} />
+              <Text style={styles.settingsTitle}>Settings and privacy</Text>
+              <TouchableOpacity style={styles.settingsClose} onPress={() => setShowSettingsModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.myPostsContent}>
-              {myPosts.length > 0 ? (
-                myPosts.map((post) => (
-                  <PostFeedCard
-                    key={`settings-post-${post.id || post.media_url}`}
-                    post={post}
-                    onUserPress={() => {}}
-                    postMenuType="delete"
-                  />
-                ))
-              ) : (
-                <Text style={styles.myPostsEmptyText}>You have not uploaded posts yet.</Text>
-              )}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {SETTINGS_SECTIONS.map((section) => (
+                <View key={section.id} style={styles.settingsSection}>
+                  <Text style={styles.sectionLabel}>{section.title}</Text>
+                  {section.items.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.settingsRow, item.disabled && styles.settingsRowDisabled]}
+                      onPress={() => handleMenuPress(item)}
+                    >
+                      <Ionicons name={item.icon as any} size={22} color={item.action === 'logout' ? COLORS.error : COLORS.text} />
+                      <View style={styles.settingsLabelWrap}>
+                        <Text style={[styles.settingsLabel, item.action === 'logout' && { color: COLORS.error }]}>{item.label}</Text>
+                        {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+                      </View>
+                      <View style={styles.settingsRowRight}>
+                        {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                        {!item.disabled && <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+              <View style={styles.bottomSpacer} />
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      <View style={styles.bottomSpacer} />
-    </ScrollView>
+      {/* Avatar Modal */}
+      <Modal visible={avatarModalVisible} transparent animationType="fade">
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setAvatarModalVisible(false)}
+        >
+          <Image source={{ uri: profile?.photo || user?.photo }} style={styles.fullImage} resizeMode="contain" />
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Post Detail Modal */}
+      <Modal visible={postModalVisible} animationType="slide">
+        <View style={styles.postDetailContainer}>
+          <View style={styles.postDetailHeader}>
+            <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.postDetailTitle}>Posts</Text>
+          </View>
+          <FlatList
+            data={[selectedPost]}
+            renderItem={({ item }) => (
+              <PostFeedCard
+                post={item}
+                isActive={postModalVisible}
+                onUserPress={() => setPostModalVisible(false)}
+                postMenuType="delete"
+              />
+            )}
+            keyExtractor={(item) => item.id}
+          />
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: `${COLORS.primary}08`,
+    backgroundColor: '#FFF',
   },
-  contentContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-  },
-  pageHeader: {
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  profileCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 22,
-    paddingVertical: SPACING.xl,
-    paddingHorizontal: SPACING.md,
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: `${COLORS.primary}20`,
-  },
-  profileCardCollapsed: {
-    paddingVertical: SPACING.md,
-    flexDirection: 'row',
-    borderRadius: 16,
-  },
-  statsStrip: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    marginBottom: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    borderWidth: 1,
-    borderColor: `${COLORS.primary}20`,
-  },
-  statItemCompact: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.xs,
-  },
-  statValueCompact: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  statLabelCompact: {
-    marginTop: 2,
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  statsStripDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: `${COLORS.primary}25`,
-  },
-  profileAvatarWrap: {
-    marginRight: 0,
-    marginBottom: SPACING.md,
-  },
-  profileAvatarWrapCollapsed: {
-    marginRight: SPACING.sm,
-    marginBottom: 0,
-  },
-  profileAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  profileAvatarExpanded: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 3,
-    borderColor: COLORS.primary,
-  },
-  profileTextWrap: {
-    flex: 1,
-    alignItems: 'center',
-    width: '100%',
-  },
-  profileTextWrapCollapsed: {
-    flex: 1,
-    alignItems: 'flex-start',
-    width: 'auto',
-  },
-  profileNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileNameRowCollapsed: {
-    justifyContent: 'flex-start',
-  },
-  profileName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  profileNameCollapsed: {
-    fontSize: 18,
-    textAlign: 'left',
-  },
-  profileSubText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: SPACING.xs,
-  },
-  profileSubTextCollapsed: {
-    fontSize: 13,
-    textAlign: 'left',
-    marginTop: 2,
-  },
-  slIdText: {
-    fontSize: 15,
-    color: '#007AFF',
-    fontWeight: '500',
-    marginTop: SPACING.xs,
-  },
-  settingsSection: {
-    marginBottom: SPACING.md,
-  },
-  sectionLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginBottom: SPACING.xs,
-    paddingHorizontal: 4,
-  },
-  settingsCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: `${COLORS.primary}20`,
-  },
-  settingsRow: {
-    minHeight: 56,
-    paddingHorizontal: SPACING.md,
+  navBar: {
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  settingsRowDivider: {
+    paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: '#DBDBDB',
   },
-  settingsRowDisabled: {
-    opacity: 0.75,
-  },
-  settingsRowLeft: {
+  navLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    gap: 4,
   },
-  settingsIconWrap: {
-    width: 28,
-    alignItems: 'center',
-    marginRight: SPACING.sm,
-    backgroundColor: `${COLORS.primary}12`,
-    borderRadius: 14,
-    height: 28,
-    justifyContent: 'center',
-  },
-  settingsLabelWrap: {
-    flex: 1,
-  },
-  settingsLabel: {
-    fontSize: 16,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  settingsLabelLogout: {
-    color: COLORS.error,
-  },
-  settingsSubLabel: {
-    marginTop: 2,
-    fontSize: 11,
-    color: COLORS.textSecondary,
-  },
-  settingsRowRight: {
+  navRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
+    gap: 12,
   },
-  settingsValue: {
-    fontSize: 13,
-    color: COLORS.primary,
+  navIcon: {
+    padding: 4,
   },
-  bottomSpacer: {
-    height: 100,
-  },
-  myPostsOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-  myPostsSheet: {
-    height: '85%',
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingTop: SPACING.md,
-  },
-  myPostsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-  },
-  myPostsTitle: {
-    color: COLORS.text,
+  navTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: 'bold',
+    color: COLORS.text,
   },
-  myPostsCloseBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  headerContent: {
+    paddingBottom: 4,
+  },
+  profileHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.border,
-  },
-  myPostsContent: {
-    paddingBottom: SPACING.xl,
-  },
-  myPostsEmptyText: {
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: SPACING.xl,
-    fontSize: 14,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xl,
-    backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: SPACING.md,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: COLORS.primary,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    borderWidth: 1,
+    borderColor: '#DBDBDB',
   },
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  userId: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  locationRow: {
+  statsContainer: {
+    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginLeft: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.md,
-    borderRadius: 16,
-    padding: SPACING.md,
+    justifyContent: 'space-around',
+    marginLeft: 20,
   },
   statItem: {
-    flex: 1,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
   },
   statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: COLORS.divider,
-    marginVertical: 8,
-  },
-  astrologyCard: {
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.md,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
-  },
-  astrologyCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  astrologyIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#EAF3FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.sm,
-  },
-  astrologyCardContent: {
-    flex: 1,
-  },
-  astrologyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  astrologySubtitle: {
-    marginTop: 4,
-    color: COLORS.textSecondary,
     fontSize: 13,
-    lineHeight: 18,
-  },
-  astrologyBadge: {
-    alignSelf: 'flex-start',
-    marginTop: SPACING.sm,
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: 6,
-    borderRadius: BORDER_RADIUS.full,
-  },
-  astrologyBadgeReady: {
-    backgroundColor: `${COLORS.success}15`,
-  },
-  astrologyBadgePending: {
-    backgroundColor: `${COLORS.warning}18`,
-  },
-  astrologyBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  astrologyBadgeTextReady: {
-    color: COLORS.success,
-  },
-  astrologyBadgeTextPending: {
-    color: COLORS.warning,
-  },
-  menuSection: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.md,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: `${COLORS.primary}10`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  menuLabel: {
-    flex: 1,
-    fontSize: 16,
     color: COLORS.text,
   },
-  menuLabelContainer: {
-    flex: 1,
+  bioSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  menuSubLabel: {
-    fontSize: 12,
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  displayName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  slId: {
+    fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-  menuItemDisabled: {
-    backgroundColor: `${COLORS.divider}15`,
-  },
-  guidelinesLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: SPACING.lg,
-  },
-  guidelinesText: {
+  bioText: {
     fontSize: 14,
-    color: COLORS.info,
-    marginLeft: SPACING.xs,
+    color: COLORS.text,
+    marginTop: 4,
+    lineHeight: 18,
   },
-  logoutButton: {
+  locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 6,
+  },
+  locationText: {
+    fontSize: 12,
+    color: '#00376b',
+    marginLeft: 4,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 8,
+  },
+  editProfileButton: {
+    flex: 1,
+    height: 34,
+    backgroundColor: '#efefef',
+    borderRadius: 8,
     justifyContent: 'center',
-    marginTop: SPACING.lg,
-    paddingVertical: SPACING.md,
+    alignItems: 'center',
   },
-  logoutText: {
-    fontSize: 16,
-    color: COLORS.error,
+  editProfileText: {
+    color: COLORS.text,
     fontWeight: '600',
-    marginLeft: SPACING.sm,
+    fontSize: 14,
   },
-  // Lok Sangam Modal Styles
+  shareProfileButton: {
+    flex: 1,
+    height: 34,
+    backgroundColor: '#efefef',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareProfileText: {
+    color: COLORS.text,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  gridDivider: {
+    height: 1,
+    backgroundColor: '#DBDBDB',
+    marginTop: 8,
+  },
+  gridItem: {
+    width: COLUMN_WIDTH,
+    height: COLUMN_WIDTH * 1.2,
+    padding: 1,
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'flex-end',
+    padding: 6,
+  },
+  viewCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  viewCountText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#efefef',
+  },
+  gridPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#efefef',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+  },
+  endOfFeed: {
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  endOfFeedText: {
+    color: COLORS.textLight,
+    fontSize: 13,
+  },
+  emptyContainer: {
+    paddingTop: 60,
+    alignItems: 'center',
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: COLORS.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: SPACING.lg,
-    maxHeight: '80%',
+  settingsSheet: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '80%',
+    paddingTop: 12,
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  settingsHeader: {
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#DBDBDB',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  settingsHeaderBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#DBDBDB',
+    borderRadius: 2,
+    marginBottom: 12,
+  },
+  settingsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: COLORS.text,
   },
-  lockedBanner: {
+  settingsClose: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+  },
+  settingsSection: {
+    paddingTop: 16,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.textSecondary,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.error}15`,
-    padding: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.md,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  lockedText: {
-    fontSize: 13,
-    color: COLORS.error,
-    marginLeft: SPACING.xs,
+  settingsRowDisabled: {
+    opacity: 0.5,
   },
-  emptyText: {
-    textAlign: 'center',
+  settingsLabelWrap: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  settingsLabel: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  settingsSubLabel: {
+    fontSize: 12,
     color: COLORS.textSecondary,
-    marginTop: SPACING.xl,
+    marginTop: 2,
   },
+  settingsRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  settingsValue: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  bottomSpacer: {
+    height: 40,
+  },
+  fullImage: {
+    width: '100%',
+    height: '100%',
+  },
+  postDetailContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+  },
+  postDetailHeader: {
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#DBDBDB',
+    marginTop: Platform.OS === 'ios' ? 40 : 0,
+  },
+  postDetailTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 20,
+  },
+  backButton: {
+    padding: 4,
+  }
 });
+

@@ -15,7 +15,8 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { initializeFirebase, firebaseConfig, isAnonymousPhone } from '../../src/services/firebase/config';
-import { sendFirebaseOTP, cleanupRecaptchaVerifier } from '../../src/services/firebase/authService';
+import { sendFirebaseOTP } from '../../src/services/firebase/authService';
+import { sendOTP, verifyOTP, loginAnonymous } from '../../src/services/api';
 
 import { COLORS, SPACING } from '../../src/constants/theme';
 
@@ -45,14 +46,9 @@ export default function PhoneScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Ensure Firebase app is initialized before RecaptchaVerifier runs
+  // Initialize Firebase on mount
   React.useEffect(() => {
     initializeFirebase();
-    return () => {
-      if (Platform.OS === 'web') {
-        cleanupRecaptchaVerifier();
-      }
-    };
   }, []);
 
   React.useEffect(() => {
@@ -85,18 +81,37 @@ export default function PhoneScreen() {
 
     try {
       const fullPhone = `+91${phone}`;
+      
       if (isAnonymousPhone(fullPhone)) {
-        console.log('[Phone Auth] Detected anonymous predefined number, skipping OTP');
+        console.log('[Phone Auth] Detected anonymous predefined number');
         router.push({ pathname: '/auth/profile', params: { phone: fullPhone, anonymous: 'true' } });
         return;
       }
+      
+      // For regular users on web - use Firebase
+      if (Platform.OS === 'web') {
+        const confirmation = await sendFirebaseOTP(fullPhone);
+        console.log('[Phone Auth] OTP sent via Firebase');
+        router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
+        return;
+      }
+      
+      // Android/iOS - use Firebase
       const confirmation = await sendFirebaseOTP(fullPhone);
-      console.log('[Phone Auth] OTP sent successfully', confirmation ? 'confirmation ready' : '');
+      console.log('[Phone Auth] OTP sent via Firebase', confirmation ? 'confirmation ready' : '');
       router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
       return;
     } catch (err: any) {
       console.log('[Phone Auth] OTP send error:', err);
-      setError(err?.message || 'Failed to send OTP. Please try again.');
+      let message = err?.message || 'Failed to send OTP. Please try again.';
+      
+      if (message.includes('400') || message.includes(' quota ') || message.includes('QUOTA_EXCEEDED')) {
+        message = 'SMS quota exceeded. Please try again later or use test numbers.';
+      } else if (message.includes('not enabled') || message.includes('CONFIGURATION_NOT_FOUND')) {
+        message = 'Phone login is not configured. Contact support.';
+      }
+      
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -115,7 +130,7 @@ export default function PhoneScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        {Platform.OS === 'web' ? <div id="recaptcha-container"></div> : null}
+        {Platform.OS === 'web' ? <div id="recaptcha-container-fixed"></div> : null}
 
         {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>

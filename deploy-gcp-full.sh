@@ -56,7 +56,7 @@ gcloud run deploy "$BACKEND_SERVICE" \
   --region "$REGION" \
   --allow-unauthenticated \
   --env-vars-file "$ROOT_DIR/backend/.gcloud.env.yaml" \
-  --memory "2048Mi" \
+  --memory "4096Mi" \
   --cpu "2"
 
 BACKEND_URL="$(gcloud run services describe "$BACKEND_SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"

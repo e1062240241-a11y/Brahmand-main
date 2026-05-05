@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,31 +7,60 @@ import {
   ActivityIndicator,
   StyleSheet,
   Image,
+  Dimensions,
+  Platform,
+  ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
+import { useAuthStore } from '../src/store/authStore';
 
-const getFestivalImageUrl = (festivalName: string) => {
-  const cleanedName = festivalName.replace(/[\/\\]/g, ' ').replace(/\s+/g, ' ').trim();
-  const tags = [...cleanedName.split(' '), 'festival']
-    .map((tag) => encodeURIComponent(tag))
-    .join(',');
-  return `https://source.unsplash.com/200x200/?${tags}`;
+const CARD_COLORS = [
+  '#FFE082', // Yellow
+  '#B2EBF2', // Light Blue
+  '#F48FB1', // Pink
+  '#CE93D8', // Purple
+  '#A5D6A7', // Green
+  '#FFCC80', // Orange
+  '#CFD8DC', // Blue Grey
+];
+
+// Mapping for festival images in assets/images/festival image/
+const festivalImageMap: Record<string, any> = {
+  'Diwali': require('../assets/images/festival image/Diwali .jpeg'),
+  'Holi': require('../assets/images/festival image/Happy Holi.jpg.webp'),
+  'Janmashtami': require('../assets/images/festival image/Janmashtami.jpg'),
+  'Ganesh Chaturthi': require('../assets/images/festival image/Ganesh Chaturthi.jpeg'),
+  'Maha Shivaratri': require('../assets/images/festival image/Maha Shivaratri.jpeg'),
+  'Dussehra': require('../assets/images/festival image/Dussehra.jpg'),
+  'Raksha Bandhan': require('../assets/images/festival image/Raksha Bandhan.jpg'),
+  'Ram Navami': require('../assets/images/festival image/Ram Navami.jpg'),
+  'Karva Chauth': require('../assets/images/festival image/Karva Chauth.jpg.webp'),
+  'Dhanteras': require('../assets/images/festival image/Dhanteras.jpg.avif'),
+  'Bhai Dooj': require('../assets/images/festival image/Bhai Dooj.jpg'),
+  'Chhath Puja': require('../assets/images/festival image/Chhath Puja.jpg'),
+  'Guru Purnima': require('../assets/images/festival image/Guru Purnima.png.avif'),
+  'Onam': require('../assets/images/festival image/Onam.jpg'),
+  'Makar Sankranti': require('../assets/images/festival image/Makar Sankranti .jpg.webp.jpeg'),
+  'Akshaya Tritiya': require('../assets/images/festival image/Akshaya Tritiya.jpg.webp'),
 };
 
-const getFestivalInitials = (festivalName: string) => {
-  return festivalName
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? '')
-    .join('');
+const getFestivalImage = (name: string) => {
+  if (!name) return null;
+  // Try exact match
+  if (festivalImageMap[name]) return festivalImageMap[name];
+  
+  // Try partial match
+  const key = Object.keys(festivalImageMap).find(k => name.includes(k) || k.includes(name));
+  return key ? festivalImageMap[key] : null;
 };
 
 const FestivalPage = () => {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [festivals, setFestivals] = useState<any[]>([]);
-  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,70 +81,90 @@ const FestivalPage = () => {
     loadFestivals();
   }, []);
 
+  const userName = user?.name?.split(' ')[0] || 'Daniel';
+  const nextFestivalName = festivals[0]?.name || 'Upcoming';
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.page}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>Back</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
+          <Ionicons name="apps-outline" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Festivals</Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.sectionTitle}>Festival Names</Text>
-          <View style={styles.listContainer}>
-            {festivals.map((festival, index) => {
-              const festivalName = festival.name || festival.festival_name;
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* White Hero Card */}
+        <View style={styles.heroCard}>
+          <Text style={styles.statisticsLabel}>Discover</Text>
+          <Text style={styles.heroTitle}>
+            Hello {userName} 👋{'\n'}upcoming{'\n'}
+            <Text style={styles.heroTitleBold}>festivals</Text>
+          </Text>
 
-              return (
-                <TouchableOpacity
-                  key={festivalName}
-                  style={styles.listItem}
-                  activeOpacity={0.8}
-                  onPress={() => router.push(`/festival-detail?index=${index}`)}
-                >
-                  <View style={styles.listItemRow}>
-                    {failedImages[festivalName] ? (
-                      <View style={styles.festivalPlaceholder}>
-                        <Text style={styles.placeholderText}>
-                          {getFestivalInitials(festivalName)}
-                        </Text>
+          <View style={styles.pillsRow}>
+            <View style={styles.pill}>
+              <Ionicons name="calendar-outline" size={14} color="#D32F2F" />
+              <Text style={styles.pillText} numberOfLines={1}>{nextFestivalName}</Text>
+            </View>
+            <View style={styles.arrowIconContainer}>
+              <Ionicons name="arrow-up-outline" size={18} color="#000000" style={{ transform: [{ rotate: '45deg' }] }} />
+            </View>
+          </View>
+        </View>
+
+        {/* Festival Cards with Background Images and Glass Design */}
+        {festivals.map((festival, index) => {
+          const color = CARD_COLORS[index % CARD_COLORS.length];
+          const festivalImg = getFestivalImage(festival.name);
+          
+          return (
+            <TouchableOpacity 
+              key={festival.name || index}
+              style={[styles.festivalCardContainer, { marginBottom: 12 }]}
+              activeOpacity={0.9}
+              onPress={() => router.push(`/festival-detail?index=${index}`)}
+            >
+              <ImageBackground
+                source={festivalImg}
+                style={[styles.festivalCard, { backgroundColor: color }]}
+                imageStyle={{ borderRadius: 32, opacity: 0.8 }}
+                resizeMode="cover"
+              >
+                {/* White Glass Overlay */}
+                <View style={styles.glassOverlay}>
+                  <View style={styles.cardContent}>
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardLabel}>Festival</Text>
+                      <Text style={styles.cardName}>{festival.name}</Text>
+                      <Text style={styles.cardDate}>{festival.date}</Text>
+                    </View>
+                    <View style={styles.cardRight}>
+                      <View style={styles.festivalIconWrapper}>
+                        <Image source={festivalImg} style={styles.festivalIconImage} />
                       </View>
-                    ) : (
-                      <Image
-                        source={{ uri: getFestivalImageUrl(festivalName) }}
-                        style={styles.festivalImage}
-                        onError={() =>
-                          setFailedImages((prev) => ({
-                            ...prev,
-                            [festivalName]: true,
-                          }))
-                        }
-                        resizeMode="cover"
-                      />
-                    )}
-                    <View style={styles.listItemTextContainer}>
-                      <Text style={styles.listItemText}>
-                        {festivalName}
-                      </Text>
-                      <Text style={styles.listItemDate}>{festival.date}</Text>
+                      <Ionicons name="chevron-forward" size={20} color="#000000" style={styles.chevronIcon} />
                     </View>
                   </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </ScrollView>
-      )}
+                </View>
+              </ImageBackground>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 };
@@ -123,148 +172,150 @@ const FestivalPage = () => {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.sm,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
   },
-  backButton: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.sm,
-  },
-  backText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  loadingContainer: {
-    flex: 1,
+  headerIcon: {
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  errorContainer: {
-    padding: SPACING.md,
+  scrollView: {
+    flex: 1,
   },
-  errorText: {
-    color: '#B91C1C',
-    fontSize: 14,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  content: {
-    padding: SPACING.md,
-    paddingBottom: 80,
+  heroCard: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 36,
+    padding: 28,
+    marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: SPACING.sm,
-    color: '#111827',
-  },
-  listContainer: {
-    marginBottom: SPACING.md,
-  },
-  listItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  listItemActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#EFF6FF',
-  },
-  listItemText: {
-    color: '#111827',
+  statisticsLabel: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#666666',
+    marginBottom: 12,
   },
-  listItemTextActive: {
-    color: COLORS.primary,
+  heroTitle: {
+    fontSize: 40,
+    lineHeight: 48,
+    fontWeight: '500',
+    color: '#000000',
+    letterSpacing: -1,
   },
-  listItemDate: {
-    color: '#6B7280',
-    marginTop: 4,
+  heroTitleBold: {
+    fontWeight: '800',
+  },
+  pillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    maxWidth: '70%',
+  },
+  pillText: {
     fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 6,
+    color: '#000000',
   },
-  listItemRow: {
+  arrowIconContainer: {
+    marginLeft: 'auto',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  festivalCardContainer: {
+    borderRadius: 32,
+    overflow: 'hidden',
+  },
+  festivalCard: {
+    borderRadius: 32,
+    minHeight: 120,
+  },
+  glassOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    padding: 24,
+    justifyContent: 'center',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  cardLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#000000',
+    opacity: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  cardName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#000000',
+  },
+  cardDate: {
+    fontSize: 14,
+    color: '#000000',
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  cardRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  festivalImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    marginRight: SPACING.sm,
-    backgroundColor: '#F3F4F6',
-  },
-  festivalPlaceholder: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    marginRight: SPACING.sm,
-    backgroundColor: '#E0E7FF',
+  festivalIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.8)',
   },
-  placeholderText: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: '700',
+  festivalIconImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  listItemTextContainer: {
+  chevronIcon: {
+    marginLeft: 12,
+  },
+  loadingContainer: {
     flex: 1,
-  },
-  detailCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  detailTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: SPACING.xs,
-    color: '#111827',
-  },
-  detailMeta: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: SPACING.sm,
-  },
-  detailLabel: {
-    marginTop: SPACING.sm,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#374151',
-    marginTop: SPACING.xs,
-    lineHeight: 20,
-  },
-  emptyDetail: {
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: '#F3F4F6',
-  },
-  emptyDetailText: {
-    color: '#6B7280',
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

@@ -36,7 +36,12 @@ class PushNotificationService:
         db = await _get_db()
         user = await db.get_document('users', user_id)
         if user:
-            return user.get('fcm_token')
+            token = user.get('fcm_token')
+            if not token:
+                tokens = user.get('fcm_tokens', [])
+                if tokens:
+                    token = tokens[0]
+            return token
         return None
     
     @staticmethod
@@ -44,8 +49,16 @@ class PushNotificationService:
         """Save or update a user's FCM token in Firestore"""
         try:
             db = await _get_db()
-            await db.update_document('users', user_id, {'fcm_token': fcm_token})
-            logger.info(f"FCM token saved for user {user_id}")
+            from google.cloud import firestore
+            
+            # Update both singular (legacy/compatibility) and plural (current/multiple devices) fields
+            await db.client.collection('users').document(user_id).update({
+                'fcm_token': fcm_token,
+                'fcm_tokens': firestore.ArrayUnion([fcm_token]),
+                'last_fcm_update': firestore.SERVER_TIMESTAMP
+            })
+            
+            logger.info(f"FCM token saved and synced for user {user_id}")
             return True
         except Exception as e:
             logger.error(f"Error saving FCM token: {e}")

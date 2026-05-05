@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["video-upload"])
 
 MAX_VIDEO_UPLOAD_BYTES = int(os.getenv('MAX_VIDEO_UPLOAD_BYTES', 1 * 1024 * 1024 * 1024))
-MAX_VIDEO_DURATION_SECONDS = float(os.getenv('MAX_VIDEO_DURATION_SECONDS', 33.0))
+MAX_VIDEO_DURATION_SECONDS = float(os.getenv('MAX_VIDEO_DURATION_SECONDS', 60.0))
 READ_CHUNK_SIZE = 1024 * 1024
 
 
@@ -149,23 +149,28 @@ def _probe_video_metadata(input_path: str) -> dict:
     }
 
 
-def _pick_target_profile(video_height: Optional[int]) -> tuple[int, int, str]:
-    """Choose compression target - Instagram style: 4K+ compresses to 1080p"""
-    if isinstance(video_height, int) and video_height >= 2160:
-        # 4K or higher - compress to 1080p (Instagram style)
-        return 1920, 1080, "1080p"
-    if isinstance(video_height, int) and video_height >= 1080:
-        return 1920, 1080, "1080p"
-    return 1280, 720, "720p"
+def _pick_target_profile(width: Optional[int], height: Optional[int]) -> tuple[int, int, str]:
+    """Choose compression target - Instagram style"""
+    if not width or not height:
+        return 1280, 720, "720p"
+    
+    is_portrait = height > width
+    
+    if is_portrait:
+        if height >= 1920: return 1080, 1920, "1080p"
+        return 720, 1280, "720p"
+    else:
+        if width >= 1920: return 1920, 1080, "1080p"
+        return 1280, 720, "720p"
 
 
 def _compress_video(input_path: str, output_path: str, target_width: int, target_height: int) -> None:
     if not FFMPEG_BIN:
         raise HTTPException(status_code=500, detail="ffmpeg is missing")
-    scale_filter = (
-        f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,"
-        f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2"
-    )
+    
+    # Use a simpler scale filter that preserves aspect ratio and ensures even dimensions
+    # -2 in scale means "calculate this dimension to preserve aspect ratio, ensuring it's divisible by 2"
+    scale_filter = f"scale='if(gte(a,{target_width}/{target_height}),{target_width},-2)':'if(gte(a,{target_width}/{target_height}),-2,{target_height})'"
 
     command = [
         FFMPEG_BIN,
@@ -177,9 +182,15 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
         "-c:v",
         "libx264",
         "-preset",
-        "ultrafast",
+        "medium",  # Better quality than ultrafast
         "-crf",
-        "28",
+        "23",      # Standard high quality
+        "-profile:v",
+        "main",
+        "-level",
+        "4.1",     # Better for 1080p
+        "-pix_fmt",
+        "yuv420p",
         "-c:a",
         "aac",
         "-b:a",
@@ -193,6 +204,33 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
         subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as exc:
         raise HTTPException(status_code=500, detail=f"Video compression failed: {exc.stderr.strip()}")
+
+
+def _generate_video_thumbnail(video_path: str, thumbnail_path: str) -> None:
+    if not FFMPEG_BIN:
+        return
+    command = [
+        FFMPEG_BIN,
+        "-y",
+        "-i",
+        video_path,
+        "-ss",
+        "00:00:01.000", # Try to get frame at 1 second to avoid initial black frames
+        "-vframes",
+        "1",
+        "-vf",
+        "scale=640:-2", # High quality thumbnail
+        thumbnail_path,
+    ]
+    try:
+        subprocess.run(command, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError:
+        # If 1 second fails (short video), try 0 seconds
+        command[5] = "00:00:00.000"
+        try:
+            subprocess.run(command, capture_output=True, text=True, check=True)
+        except Exception:
+            logger.warning("Failed to generate video thumbnail")
 
 
 def _upload_to_firebase_storage(user_id: str, output_path: str) -> tuple[str, str]:
@@ -248,7 +286,7 @@ async def upload_and_compress_video(
                 detail=f"Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less",
             )
 
-        target_width, target_height, target_label = _pick_target_profile(metadata.get("height"))
+        target_width, target_height, target_label = _pick_target_profile(metadata.get("width"), metadata.get("height"))
 
         output_file = NamedTemporaryFile(delete=False, suffix=".mp4")
         output_file.close()

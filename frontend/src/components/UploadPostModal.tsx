@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -11,10 +11,13 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
+  Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { uploadUserPost } from '../services/api';
@@ -40,6 +43,7 @@ type UploadPostModalProps = {
   visible: boolean;
   onClose: () => void;
   onUploadSuccess: (post: any) => void;
+  onUploadStart?: (media: SelectedMedia, caption: string, filterName?: string) => void;
 };
 
 const ACCEPTED_MEDIA_TYPES = ['image/*', 'video/*'];
@@ -63,7 +67,7 @@ const detectMediaType = (mimeType?: string) => {
   return 'image' as const;
 };
 
-export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPostModalProps) => {
+export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadStart }: UploadPostModalProps) => {
   const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null);
   const [caption, setCaption] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Normal');
@@ -71,6 +75,28 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
 
+  // Animated opacity for modal fade‑in
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  // Animated progress bar width
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+  useEffect(() => {
+    Animated.timing(opacityAnim, {
+      toValue: visible ? 1 : 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, [visible]);
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: uploadProgress,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [uploadProgress]);
   // Dynamic preview height calculation
   const screenWidth = Dimensions.get('window').width;
   const availableWidth = screenWidth - SPACING.md * 2;
@@ -117,7 +143,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
       mediaTypes: ['images', 'videos'] as any,
       allowsEditing: true,
       quality: 0.9,
-      videoMaxDuration: 33,
+      videoMaxDuration: 60,
     });
 
     if (result.canceled || !result.assets?.length) {
@@ -159,7 +185,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
       mediaTypes: ['images', 'videos'] as any,
       allowsEditing: true,
       quality: 0.9,
-      videoMaxDuration: 33,
+      videoMaxDuration: 60,
     });
 
     if (result.canceled || !result.assets?.length) {
@@ -227,6 +253,12 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
       return;
     }
 
+    if (onUploadStart) {
+      onUploadStart(selectedMedia, caption, selectedFilter);
+      resetAndClose();
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
     setIsCompressing(false);
@@ -266,16 +298,27 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={resetAndClose}>
-      <View style={styles.overlay}>
+      <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
+        <BlurView intensity={Platform.OS === 'ios' ? 20 : 50} style={StyleSheet.absoluteFill} tint="dark" />
         <View style={styles.sheet}>
-          <View style={styles.header}>
+          <LinearGradient
+            colors={['#ff7e5f', '#feb47b']}
+            style={styles.header}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
             <Text style={styles.title}>Create Post</Text>
-            <TouchableOpacity onPress={resetAndClose} style={styles.iconBtn}>
-              <Ionicons name="close" size={22} color={COLORS.text} />
+            <TouchableOpacity
+              onPress={resetAndClose}
+              style={styles.iconBtn}
+              accessibilityLabel="Close upload modal"
+              accessibilityHint="Closes the modal without saving"
+            >
+              <Ionicons name="close" size={22} color={COLORS.background} />
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             <Text style={styles.sectionTitle}>1. Choose Source</Text>
             <View style={styles.sourceRow}>
               <TouchableOpacity style={styles.sourceBtn} onPress={captureFromCamera}>
@@ -295,38 +338,38 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={styles.sectionTitle}>2. Preview</Text>
               {selectedMedia && (
-                <TouchableOpacity 
-                  onPress={() => setIsFit(!isFit)} 
+                <TouchableOpacity
+                  onPress={() => setIsFit(!isFit)}
                   style={{ backgroundColor: COLORS.border, padding: 6, borderRadius: 8 }}
                 >
                   <Ionicons name={isFit ? "expand" : "contract"} size={14} color={COLORS.text} />
                 </TouchableOpacity>
               )}
             </View>
-            
+
             <View
               style={[
                 styles.previewBox,
-                selectedMedia ? { height: Math.min(previewHeight, availableWidth / (4/5)) } : {}, // Don't let preview exceed 4:5 even if isFit for extreme verticals
+                selectedMedia ? { height: Math.min(previewHeight, availableWidth / (4 / 5)) } : {}, // Don't let preview exceed 4:5 even if isFit for extreme verticals
               ]}
             >
               {!selectedMedia ? (
                 <Text style={styles.previewPlaceholder}>Select media to preview</Text>
               ) : selectedMedia.mediaType === 'image' ? (
-                <ScrollView 
-                  contentContainerStyle={{ flexGrow: 1 }} 
+                <ScrollView
+                  contentContainerStyle={{ flexGrow: 1 }}
                   style={{ width: '100%', height: '100%' }}
-                  maximumZoomScale={3} 
-                  minimumZoomScale={1} 
+                  maximumZoomScale={3}
+                  minimumZoomScale={1}
                   centerContent
                   showsHorizontalScrollIndicator={false}
                   showsVerticalScrollIndicator={false}
                   bouncesZoom={true}
                 >
-                  <Image 
-                    source={{ uri: selectedMedia.uri }} 
-                    style={styles.previewImage} 
-                    resizeMode={isFit ? "contain" : "cover"} 
+                  <Image
+                    source={{ uri: selectedMedia.uri }}
+                    style={styles.previewImage}
+                    resizeMode={isFit ? "contain" : "cover"}
                     onLoad={(e) => {
                       const source = e.nativeEvent.source;
                       const w = source?.width || (e.nativeEvent as any).width;
@@ -346,7 +389,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
                     const w = e.naturalSize?.width;
                     const h = e.naturalSize?.height;
                     const orientation = e.naturalSize?.orientation;
-                    
+
                     // Native mobile videos sometimes swap width/height based on orientation
                     if (w && h) {
                       const actualRatio = (orientation === 'portrait' || (h > w && orientation !== 'landscape')) ? Math.min(w, h) / Math.max(w, h) : w / h;
@@ -391,14 +434,19 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
             >
               {uploading ? (
                 <View style={styles.uploadingContainer}>
-                  <ActivityIndicator color={COLORS.background} size="small" />
-                  <Text style={styles.uploadingText}>
-                    {isCompressing
-                      ? 'Processing...'
-                      : uploadProgress > 0 && uploadProgress < 100 
-                      ? `Uploading ${uploadProgress}%...` 
-                      : 'Uploading...'}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: 8 }}>
+                    <ActivityIndicator color={COLORS.background} size="small" />
+                    <Text style={styles.uploadingText}>
+                      {isCompressing
+                        ? 'Processing...'
+                        : uploadProgress > 0 && uploadProgress < 100
+                          ? `Uploading ${uploadProgress}%...`
+                          : 'Uploading...'}
+                    </Text>
+                  </View>
+                  <View style={styles.progressBarBackground}>
+                    <Animated.View style={[styles.progressBarFill, { width: progressWidth }]} />
+                  </View>
                 </View>
               ) : (
                 <Text style={styles.uploadBtnText}>Upload</Text>
@@ -406,7 +454,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 };
@@ -414,36 +462,39 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess }: UploadPos
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
     maxHeight: '92%',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  scrollContent: {
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.xxl,
   },
   title: {
-    color: COLORS.text,
+    color: COLORS.background,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.border,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   sectionTitle: {
     color: COLORS.text,
@@ -541,10 +592,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   uploadingContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.sm,
+    width: '100%',
   },
   uploadingText: {
     color: COLORS.background,
@@ -556,6 +606,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  progressBarBackground: {
+    width: '80%',
+    height: 4,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginTop: 6,
+    alignSelf: 'center',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+  },
 });
-
 export default UploadPostModal;
