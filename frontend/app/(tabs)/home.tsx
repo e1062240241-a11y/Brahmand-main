@@ -919,18 +919,19 @@ export default function HomeScreen() {
         <View style={styles.infoRow}>
           <TouchableOpacity activeOpacity={0.9} style={styles.panchangCard} onPress={() => goTo('/panchang')}>
             <View style={styles.calendarIcon}>
-              <Ionicons name="sparkles" size={21} color="#FFFFFF" />
+              <Ionicons name="calendar-outline" size={21} color="#FFFFFF" />
             </View>
             <View>
               <Text style={styles.infoTitle}>Panchang</Text>
-              <Text style={styles.infoMain}>22 May 2025</Text>
-              <Text style={styles.infoSub}>Shukla Paksha</Text>
+              <Text style={styles.infoMain}>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
+              <Text style={styles.infoSub}>Vedic View</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity activeOpacity={0.9} style={styles.gitaCard} onPress={() => goTo('/library/bhagvad-geeta')}>
             <View style={styles.gitaText}>
-              <Text style={styles.shlok}>कर्मण्येवाधिकारस्ते मा फलेषु कदाचन ।</Text>
+              <Text style={styles.infoTitle}>Bhagavad Gita</Text>
+              <Text style={styles.shlok} numberOfLines={1}>कर्मण्येवाधिकारस्ते मा फलेषु कदाचन ।</Text>
             </View>
             <Text style={styles.bookEmoji}>📖</Text>
           </TouchableOpacity>

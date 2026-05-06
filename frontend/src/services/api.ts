@@ -751,49 +751,66 @@ export const discoverCommunities = () =>
 export const getTodaysWisdom = () => 
   api.get('/wisdom/today');
 
-export const getTodaysPanchang = () => 
-  api.get('/panchang/today');
+// =================== ASTROLOGY CACHE HELPER ===================
+const getWithCache = async (cacheKey: string, fetchFn: () => Promise<any>, expiryHours = 24) => {
+  try {
+    const cached = await AsyncStorage.getItem(cacheKey);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      const ageHours = (Date.now() - timestamp) / (1000 * 60 * 60);
+      if (ageHours < expiryHours) {
+        console.log(`[Cache] Hit for ${cacheKey}`);
+        return { data };
+      }
+    }
+    const response = await fetchFn();
+    await AsyncStorage.setItem(cacheKey, JSON.stringify({ data: response.data, timestamp: Date.now() }));
+    return response;
+  } catch (err) {
+    console.error(`[Cache] Error for ${cacheKey}:`, err);
+    return fetchFn();
+  }
+};
 
-export const getProkeralaPanchang = (params?: {
+export const getPanchang = (params?: {
   date_str?: string;
   lat?: number;
   lng?: number;
-  endpoints?: string;
   force_refresh?: boolean;
-}) => api.get('/panchang/prokerala', { params });
+}) => {
+  const date = params?.date_str || new Date().toISOString().split('T')[0];
+  const cacheKey = `panchang_${date}_${params?.lat?.toFixed(2)}_${params?.lng?.toFixed(2)}`;
+  if (params?.force_refresh) return api.get('/panchang/today', { params });
+  return getWithCache(cacheKey, () => api.get('/panchang/today', { params }));
+};
 
-export const getProkeralaPanchangSummary = (params?: {
+export const getDailyHoroscope = (zodiacName: string, timezone: number = 5.5) => {
+  const date = new Date().toISOString().split('T')[0];
+  const cacheKey = `horoscope_${zodiacName}_${date}`;
+  return getWithCache(cacheKey, () => api.get(`/horoscope/daily/${zodiacName}`, { params: { timezone } }));
+};
+
+export const getNakshatraReport = (params?: {
   date_str?: string;
   lat?: number;
   lng?: number;
-  force_refresh?: boolean;
-}) => api.get('/panchang/prokerala/summary', { params });
+}) => {
+  const date = params?.date_str || new Date().toISOString().split('T')[0];
+  const latStr = params?.lat !== undefined ? params.lat.toFixed(2) : 'default';
+  const lngStr = params?.lng !== undefined ? params.lng.toFixed(2) : 'default';
+  const cacheKey = `v2_nakshatra_${date}_${latStr}_${lngStr}`;
+  return getWithCache(cacheKey, () => api.get('/astrology/nakshatra', { params }));
+};
 
-export const getProkeralaAstrology = (params?: {
-  datetime_str?: string;
-  lat?: number;
-  lng?: number;
-  ayanamsa?: number;
-  la?: string;
-  endpoints?: string;
-  force_refresh?: boolean;
-}) => api.get('/astrology/prokerala', { params });
-
-export const getProkeralaAstrologySummary = (params?: {
-  datetime_str?: string;
-  lat?: number;
-  lng?: number;
-  ayanamsa?: number;
-  la?: string;
-  force_refresh?: boolean;
-}) => api.get('/astrology/prokerala/summary', { params });
-
-export const askProkeralaAstrology = (data: {
+export const askAstrologyAI = (data: {
   question: string;
-  astrology?: any;
-  ayanamsa?: number;
+  astrology: any;
   la?: string;
-}) => api.post('/astrology/prokerala/ask', data);
+}) => api.post('/astrology/ask', data);
+
+export const getUserHoroscope = () =>
+  api.get('/spiritual/horoscope');
+
 
 // Temple APIs
 export const getTemples = () => 
@@ -1414,8 +1431,6 @@ export const getGitaShloka = async (chapter: number, verse: number) => {
   }
 };
 
-export const getPanchang = () => 
-  api.get('/panchang/today');
 
 export const getNextFestival = () =>
   api.get('/spiritual/festival/next');

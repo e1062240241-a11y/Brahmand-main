@@ -20,7 +20,6 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
 import type * as ContactsType from 'expo-contacts';
@@ -82,6 +81,59 @@ const getDMContacts = async () => {
     dmContacts = await import('expo-contacts');
   }
   return dmContacts;
+};
+
+let ExpoVideoModule: any = null;
+try {
+  ExpoVideoModule = require('expo-video');
+} catch (error) {
+  console.warn('expo-video unavailable:', error);
+}
+
+const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
+  if (!ExpoVideoModule?.useVideoPlayer) return null;
+  return ExpoVideoModule.useVideoPlayer(source, setup);
+};
+
+const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contain', isLooping = false }: any) => {
+  const videoRef = useRef<any>(null);
+  const playerSource = Platform.OS === 'web' ? null : uri;
+  const player = useSafeVideoPlayer(playerSource, (p) => {
+    p.loop = isLooping;
+  });
+  const videoStyle = StyleSheet.flatten(style) as any || {};
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && videoRef.current) {
+      videoRef.current.loop = isLooping;
+    }
+  }, [isLooping]);
+
+  if (Platform.OS === 'web') {
+    return (
+      <video
+        ref={videoRef as any}
+        src={uri}
+        controls={useNativeControls}
+        style={{ width: '100%', height: '100%', objectFit: resizeMode === 'contain' ? 'contain' : 'cover', ...videoStyle }}
+      />
+    );
+  }
+
+  if (ExpoVideoModule?.VideoView && player) {
+    return (
+      <ExpoVideoModule.VideoView
+        player={player}
+        style={style}
+        contentFit={resizeMode}
+        allowsPictureInPicture={false}
+        nativeControls={useNativeControls}
+        playsInline
+      />
+    );
+  }
+
+  return <View style={[style, { backgroundColor: '#000' }]} />;
 };
 
 const MessageStatus = ({ status, isOwn }: { status?: string; isOwn: boolean }) => {
@@ -1137,11 +1189,11 @@ const DirectMessageScreen = () => {
     }
     if (message.message_type === 'video' && sourceUrl) {
       return (
-        <Video
-          source={{ uri: sourceUrl }}
+        <ChatVideo
+          uri={sourceUrl}
           style={styles.messageVideo}
           useNativeControls
-          resizeMode={ResizeMode.CONTAIN}
+          resizeMode="contain"
           isLooping={false}
         />
       );
@@ -1209,11 +1261,11 @@ const DirectMessageScreen = () => {
     }
     if (sourceUrl && isMediaUrl(sourceUrl, 'video')) {
       return (
-        <Video
-          source={{ uri: sourceUrl }}
+        <ChatVideo
+          uri={sourceUrl}
           style={styles.messageVideo}
           useNativeControls
-          resizeMode={ResizeMode.CONTAIN}
+          resizeMode="contain"
           isLooping={false}
         />
       );
@@ -1363,11 +1415,11 @@ const DirectMessageScreen = () => {
             <Image source={{ uri: fullScreenMedia.uri }} style={styles.fullScreenMediaImage} resizeMode="contain" />
           )}
           {fullScreenMedia?.type === 'video' && (
-            <Video
-              source={{ uri: fullScreenMedia.uri }}
+            <ChatVideo
+              uri={fullScreenMedia.uri}
               style={styles.fullScreenMediaVideo}
               useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
+              resizeMode="contain"
               isLooping={false}
             />
           )}
@@ -1439,11 +1491,11 @@ const DirectMessageScreen = () => {
           {selectedMedia.mediaType === 'image' ? (
             <Image source={{ uri: selectedMedia.uri }} style={styles.mediaPreviewImage} resizeMode="cover" />
           ) : (
-            <Video
-              source={{ uri: selectedMedia.uri }}
+            <ChatVideo
+              uri={selectedMedia.uri}
               style={styles.mediaPreviewVideo}
               useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
+              resizeMode="contain"
               isLooping={false}
             />
           )}

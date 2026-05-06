@@ -12,7 +12,6 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { Video as ExpoAvVideo, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS, SPACING } from '../constants/theme';
@@ -114,7 +113,7 @@ export const PostFeedCard = ({
   const shouldPlay = isActive && !isPausedByUser;
   const videoRef = useRef<any>(null);
 
-  const playerSource = Platform.OS === 'web' ? null : mediaUrl;
+  const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = true;
     p.muted = isMuted;
@@ -140,12 +139,6 @@ export const PostFeedCard = ({
         player.play();
       } else {
         player.pause();
-      }
-    } else if (videoRef.current) {
-      if (shouldPlay) {
-        videoRef.current.playAsync().catch(() => { });
-      } else {
-        videoRef.current.pauseAsync().catch(() => { });
       }
     }
   }, [shouldPlay, player]);
@@ -244,17 +237,7 @@ export const PostFeedCard = ({
               ) : ExpoVideoModule?.VideoView && player ? (
                 <ExpoVideoModule.VideoView player={player} style={styles.videoBackground} contentFit="cover" />
               ) : (
-                <ExpoAvVideo
-                  key={`${mediaUrl}-${isActive}`}
-                  ref={videoRef}
-                  source={{ uri: mediaUrl }}
-                  style={styles.videoBackground}
-                  resizeMode={ResizeMode.COVER}
-                  shouldPlay={shouldPlay}
-                  isMuted={isMuted}
-                  isLooping
-                  useNativeControls={false}
-                />
+                <View style={[styles.videoBackground, { backgroundColor: '#000' }]} />
               )}
               <Pressable style={styles.videoOverlay} onPress={handleVideoPress} />
             </View>

@@ -474,10 +474,13 @@ class FirebaseAuthService:
         """Update user's FCM token for push notifications"""
         db = await FirebaseAuthService.get_db()
         
-        from google.cloud import firestore
-        await db.client.collection('users').document(user_id).update({
-            'fcm_tokens': firestore.ArrayUnion([fcm_token])
-        })
+        def _update():
+            from google.cloud import firestore
+            db.client.collection('users').document(user_id).update({
+                'fcm_tokens': firestore.ArrayUnion([fcm_token])
+            })
+        
+        await db._run_sync(_update)
         
         return {"message": "FCM token updated"}
     
@@ -486,9 +489,12 @@ class FirebaseAuthService:
         """Remove FCM token (on logout)"""
         db = await FirebaseAuthService.get_db()
         
-        from google.cloud import firestore
-        await db.client.collection('users').document(user_id).update({
-            'fcm_tokens': firestore.ArrayRemove([fcm_token])
-        })
+        def _remove():
+            from google.cloud import firestore
+            db.client.collection('users').document(user_id).update({
+                'fcm_tokens': firestore.ArrayRemove([fcm_token])
+            })
+        
+        await db._run_sync(_remove)
         
         return {"message": "FCM token removed"}

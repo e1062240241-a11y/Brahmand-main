@@ -1291,7 +1291,7 @@ export const FloatingUtilityButton = () => {
                   style={styles.utilityCard}
                   onPress={() => {
                     setModalVisible(false);
-                    router.push('/astrology');
+                    router.push('/horoscope');
                   }}
                   activeOpacity={0.7}
                 >
@@ -1627,7 +1627,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: SPACING.lg,
     paddingBottom: SPACING.xl * 2,
-    maxHeight: SCREEN_HEIGHT * 0.75,
+    maxHeight: SCREEN_HEIGHT * 0.6,
     shadowColor: '#000',
     shadowOffset: { width: -4, height: -2 },
     shadowOpacity: 0.1,

@@ -8,7 +8,6 @@ import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
 import type * as ContactsType from 'expo-contacts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Video, ResizeMode } from 'expo-av';
 import { getCommunityMessages, sendCommunityMessage, getCircleMessages, sendCircleMessage, getVerificationStatus, getCommunity, getCircle, updateCircle, leaveCircle, removeCircleMember, getAllUsers, inviteToCircle, transferCircleAdmin, uploadChatMedia, uploadCompressedVideo } from '../../../src/services/api';
 import { socketService } from '../../../src/services/socket';
 import { useAuthStore } from '../../../src/store/authStore';
@@ -22,6 +21,59 @@ const getChatImageManipulator = async () => {
     chatImageManipulator = await import('expo-image-manipulator');
   }
   return chatImageManipulator;
+};
+
+let ExpoVideoModule: any = null;
+try {
+  ExpoVideoModule = require('expo-video');
+} catch (error) {
+  console.warn('expo-video unavailable:', error);
+}
+
+const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
+  if (!ExpoVideoModule?.useVideoPlayer) return null;
+  return ExpoVideoModule.useVideoPlayer(source, setup);
+};
+
+const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contain', isLooping = false }: any) => {
+  const videoRef = useRef<any>(null);
+  const playerSource = Platform.OS === 'web' ? null : uri;
+  const player = useSafeVideoPlayer(playerSource, (p) => {
+    p.loop = isLooping;
+  });
+  const videoStyle = StyleSheet.flatten(style) as any || {};
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && videoRef.current) {
+      videoRef.current.loop = isLooping;
+    }
+  }, [isLooping]);
+
+  if (Platform.OS === 'web') {
+    return (
+      <video
+        ref={videoRef as any}
+        src={uri}
+        controls={useNativeControls}
+        style={{ width: '100%', height: '100%', objectFit: resizeMode === 'contain' ? 'contain' : 'cover', ...videoStyle }}
+      />
+    );
+  }
+
+  if (ExpoVideoModule?.VideoView && player) {
+    return (
+      <ExpoVideoModule.VideoView
+        player={player}
+        style={style}
+        contentFit={resizeMode}
+        allowsPictureInPicture={false}
+        nativeControls={useNativeControls}
+        playsInline
+      />
+    );
+  }
+
+  return <View style={[style, { backgroundColor: '#000' }]} />;
 };
 
 type ChatMessageItemProps = {
@@ -781,11 +833,11 @@ const ChatScreen = () => {
     }
     if (message.message_type === 'video' && sourceUrl) {
       return (
-        <Video
-          source={{ uri: sourceUrl }}
+        <ChatVideo
+          uri={sourceUrl}
           style={styles.messageVideo}
           useNativeControls
-          resizeMode={ResizeMode.CONTAIN}
+          resizeMode="contain"
           isLooping={false}
         />
       );
@@ -811,11 +863,11 @@ const ChatScreen = () => {
     }
     if (sourceUrl && isMediaUrl(sourceUrl, 'video')) {
       return (
-        <Video
-          source={{ uri: sourceUrl }}
+        <ChatVideo
+          uri={sourceUrl}
           style={styles.messageVideo}
           useNativeControls
-          resizeMode={ResizeMode.CONTAIN}
+          resizeMode="contain"
           isLooping={false}
         />
       );
@@ -1071,11 +1123,11 @@ const ChatScreen = () => {
             <Image source={{ uri: fullScreenMedia.uri }} style={styles.fullScreenMediaImage} resizeMode="contain" />
           )}
           {fullScreenMedia?.type === 'video' && (
-            <Video
-              source={{ uri: fullScreenMedia.uri }}
+            <ChatVideo
+              uri={fullScreenMedia.uri}
               style={styles.fullScreenMediaVideo}
               useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
+              resizeMode="contain"
               isLooping={false}
             />
           )}
@@ -1194,11 +1246,11 @@ const ChatScreen = () => {
                 {selectedMedia.mediaType === 'image' ? (
                   <Image source={{ uri: selectedMedia.uri }} style={styles.mediaPreviewImage} resizeMode="cover" />
                 ) : (
-                  <Video
-                    source={{ uri: selectedMedia.uri }}
+                  <ChatVideo
+                    uri={selectedMedia.uri}
                     style={styles.mediaPreviewVideo}
                     useNativeControls
-                    resizeMode={ResizeMode.CONTAIN}
+                    resizeMode="contain"
                     isLooping={false}
                   />
                 )}

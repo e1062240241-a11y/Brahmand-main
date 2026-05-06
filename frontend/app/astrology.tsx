@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -6,85 +6,47 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import { askProkeralaAstrology, getProkeralaAstrology } from '../src/services/api';
+import { askAstrologyAI, getNakshatraReport } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
-// Astrology should use saved birth coordinates only; do not fetch device GPS here
 
-type InfoRowType = {
-  label: string;
-  value: string;
-};
-
-type DetailSection = {
-  key: string;
-  title: string;
-  rows: InfoRowType[];
-};
-
-const HOROSCOPE_ENDPOINTS = 'birth_details,mangal_dosha,kaal_sarp_dosha';
-const KUNDLI_ENDPOINTS = 'birth_details,kundli_advanced,planet_position';
-
-const AYANAMSA_OPTIONS = [
-  { value: 1, label: 'Lahiri' },
-  { value: 3, label: 'Raman' },
-  { value: 5, label: 'KP' },
-];
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function AstrologyScreen() {
   const router = useRouter();
-  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const { user } = useAuthStore();
-  const isKundliMode = mode === 'kundli';
-  const endpointSet = isKundliMode ? KUNDLI_ENDPOINTS : HOROSCOPE_ENDPOINTS;
-  const rawBirthLat = (user as any)?.place_of_birth_latitude;
-  const rawBirthLng = (user as any)?.place_of_birth_longitude;
-  const userBirthLat =
-    typeof rawBirthLat === 'number' ? rawBirthLat : rawBirthLat ? Number(rawBirthLat) : undefined;
-  const userBirthLng =
-    typeof rawBirthLng === 'number' ? rawBirthLng : rawBirthLng ? Number(rawBirthLng) : undefined;
-  const [ayanamsa, setAyanamsa] = useState(1);
-  const [payload, setPayload] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [question, setQuestion] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [chatError, setChatError] = useState('');
   const [chatMessages, setChatMessages] = useState<{ question: string; answer: string }[]>([]);
-  const isMountedRef = React.useRef(true);
-  const glowAnim = useRef(new Animated.Value(0.92)).current;
+  const isMountedRef = useRef(true);
 
-  const handleBack = useCallback(() => {
-    router.replace('/home');
-  }, [router]);
-
-  const fetchBaseAstrology = useCallback(async (forceRefresh = false) => {
+  const fetchKundli = useCallback(async (forceRefresh = false) => {
     try {
       if (!isMountedRef.current) return;
       setError('');
-      const response = await getProkeralaAstrology({
-        lat: typeof userBirthLat === 'number' ? userBirthLat : undefined,
-        lng: typeof userBirthLng === 'number' ? userBirthLng : undefined,
-        ayanamsa,
-        la: 'en',
-        endpoints: endpointSet,
-        force_refresh: forceRefresh,
-      });
+      setLoading(!forceRefresh);
+      
+      const response = await getNakshatraReport();
       if (isMountedRef.current) {
-        setPayload(response.data || null);
+        setData(response.data || null);
       }
     } catch (err: any) {
       if (isMountedRef.current) {
-        setError(err?.response?.data?.detail || err?.message || 'Failed to load astrology');
+        setError(err?.response?.data?.detail || err?.message || 'Failed to load Kundli report');
       }
     } finally {
       if (isMountedRef.current) {
@@ -92,557 +54,291 @@ export default function AstrologyScreen() {
         setRefreshing(false);
       }
     }
-  }, [ayanamsa, endpointSet, userBirthLat, userBirthLng]);
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchBaseAstrology(false);
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [fetchBaseAstrology]);
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1.08,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0.94,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [glowAnim]);
+    fetchKundli();
+    return () => { isMountedRef.current = false; };
+  }, [fetchKundli]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchBaseAstrology(true);
+    fetchKundli(true);
   };
 
-  const detailSections: DetailSection[] = useMemo(() => {
-    return Array.isArray(payload?.detail_sections) ? payload.detail_sections : [];
-  }, [payload?.detail_sections]);
-  const birthSection = detailSections.find((section) => section.key === 'birth_details');
-  const kundliSection = detailSections.find((section) => section.key === 'kundli_advanced');
-  const planetSection = detailSections.find((section) => section.key === 'planet_position');
-  const birthPlaceFromPayload = birthSection?.rows.find((row) =>
-    row.label.toLowerCase().includes('birth place')
-  )?.value;
-  const birthSnapshotRows: InfoRowType[] = [
-    { label: isKundliMode ? 'DOB' : 'Date of Birth', value: (user as any)?.date_of_birth || 'Birth date unavailable' },
-    { label: isKundliMode ? 'DOT' : 'Birth Time', value: (user as any)?.time_of_birth || 'Birth time unavailable' },
-    { label: isKundliMode ? 'DOP' : 'Birth Place', value: birthPlaceFromPayload || (user as any)?.place_of_birth || 'Birth place unavailable' },
-  ];
-  const missingBirthDetails = error.toLowerCase().includes('date of birth and time of birth are required');
-  const missingCoordinates = error.toLowerCase().includes('latitude/longitude missing');
-
   const submitQuestion = async () => {
-    const trimmed = question.trim();
-    if (!trimmed || chatLoading) return;
-
+    if (!question.trim() || chatLoading) return;
+    const q = question.trim();
     setChatLoading(true);
-    setChatError('');
     try {
-      const response = await askProkeralaAstrology({
-        question: trimmed,
-        astrology: payload,
-        ayanamsa,
-        la: 'en',
+      const response = await askAstrologyAI({
+        question: q,
+        astrology: { kind: 'kundli', payload: data },
       });
       if (isMountedRef.current) {
-        setChatMessages((current) => [{ question: trimmed, answer: response.data?.answer || 'No answer returned.' }, ...current]);
+        setChatMessages(prev => [{ question: q, answer: response.data?.answer || 'No guidance available.' }, ...prev]);
         setQuestion('');
       }
-    } catch (err: any) {
-      if (isMountedRef.current) {
-        setChatError(err?.response?.data?.detail || err?.message || 'Failed to ask AI');
-      }
+    } catch (err) {
+      console.error(err);
     } finally {
       if (isMountedRef.current) setChatLoading(false);
     }
   };
 
-  const InfoRow = ({ label, value, icon }: { label: string; value: string; icon: keyof typeof Ionicons.glyphMap }) => (
-    <View style={styles.infoRow}>
-      <View style={styles.infoIcon}>
-        <Ionicons name={icon} size={18} color={COLORS.primary} />
+  const InfoCard = ({ label, value, icon, color = COLORS.primary }: any) => (
+    <View style={styles.infoCard}>
+      <View style={[styles.infoIconBg, { backgroundColor: `${color}10` }]}>
+        <Ionicons name={icon} size={20} color={color} />
       </View>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <View style={styles.infoContent}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue}>{value || '-'}</Text>
+      </View>
     </View>
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading Horoscope...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loaderText}>Mapping your cosmic stars...</Text>
+      </View>
     );
   }
 
+  const details = data?.details || {};
+  const report = data?.report || {};
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isKundliMode ? 'Kundli' : 'Horoscope'}</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Janam Kundli</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
+      <ScrollView 
+        style={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
-        <View style={styles.heroCard}>
-          <Text style={styles.heroEyebrow}>Birth Snapshot</Text>
-          <Text style={styles.heroTitle}>
-            {isKundliMode ? 'Saved birth details used for your kundli' : 'Saved birth details used for astrology'}
-          </Text>
-          <Text style={styles.heroSubtext}>
-            {isKundliMode
-              ? 'Detailed kundli and planet positions are fetched using your saved birth location.'
-              : 'Horoscope calculations now follow your saved birth location instead of device location.'}
-          </Text>
-          <View style={styles.snapshotList}>
-            {birthSnapshotRows.map((row) => (
-              <InfoRow key={row.label} label={row.label} value={row.value} icon="sparkles" />
-            ))}
+        {/* User Summary Header */}
+        <LinearGradient colors={['#FFF9F2', '#FFFFFF']} style={styles.heroSection}>
+          <View style={styles.heroHeader}>
+            <View style={styles.zodiacCircle}>
+              <Text style={styles.zodiacOm}>ॐ</Text>
+            </View>
+            <View style={styles.heroText}>
+              <Text style={styles.userName}>{user?.name || 'Devotee'}</Text>
+              <Text style={styles.userSub}>{user?.date_of_birth} • {user?.time_of_birth}</Text>
+            </View>
           </View>
-        </View>
-
-        {error ? (
-          <View style={styles.section}>
-            <View style={styles.errorCard}>
-              <Ionicons name="warning" size={20} color={COLORS.primary} />
+          
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
               <Text style={styles.errorText}>{error}</Text>
             </View>
-            {missingBirthDetails ? (
-              <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/profile/edit')}>
-                <Ionicons name="create-outline" size={16} color={COLORS.surface} />
-                <Text style={styles.ctaButtonText}>Add Birth Details In Profile</Text>
-              </TouchableOpacity>
-            ) : null}
-            {missingCoordinates ? (
-              <TouchableOpacity style={styles.secondaryCtaButton} onPress={() => router.push('/profile/edit')}>
-                <Ionicons name="location-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.secondaryCtaButtonText}>Save Birth Place Again</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
+          ) : (
+            <View style={styles.mainInsights}>
+              <View style={styles.insightBox}>
+                <Text style={styles.insightLabel}>Nakshatra</Text>
+                <Text style={styles.insightValue}>{details.Naksahtra}</Text>
+              </View>
+              <View style={styles.insightDivider} />
+              <View style={styles.insightBox}>
+                <Text style={styles.insightLabel}>Rashi</Text>
+                <Text style={styles.insightValue}>{details.sign}</Text>
+              </View>
+            </View>
+          )}
+        </LinearGradient>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{isKundliMode ? 'Ask Groq About Your Kundli' : 'Ask Groq AI'}</Text>
-          <View style={styles.card}>
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.chatAura, { transform: [{ scale: glowAnim }] }]}
-            />
-            <View style={styles.chatOrbs}>
-              <Animated.View style={[styles.chatOrb, styles.chatOrbPrimary, { transform: [{ scale: glowAnim }] }]} />
-              <Animated.View style={[styles.chatOrb, styles.chatOrbSecondary, { transform: [{ scale: glowAnim }] }]} />
-              <Animated.View style={[styles.chatOrb, styles.chatOrbAccent, { transform: [{ scale: glowAnim }] }]} />
+        {/* Detailed Attributes Grid */}
+        {!error && details && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Spiritual Attributes (Ashtakoot)</Text>
+            <View style={styles.grid}>
+              <InfoCard label="Nakshatra Lord" value={details.NaksahtraLord} icon="sunny" color="#F59E0B" />
+              <InfoCard label="Rashi Lord" value={details.SignLord} icon="planet" color="#6366F1" />
+              <InfoCard label="Charan" value={details.Charan} icon="footsteps" color="#10B981" />
+              <InfoCard label="Gan" value={details.Gan} icon="people" color="#8B5CF6" />
+              <InfoCard label="Yoni" value={details.Yoni} icon="heart" color="#EC4899" />
+              <InfoCard label="Nadi" value={details.Nadi} icon="pulse" color="#EF4444" />
+              <InfoCard label="Varna" value={details.Varna} icon="ribbon" color="#3B82F6" />
+              <InfoCard label="Vashya" value={details.Vashya} icon="leaf" color="#14B8A6" />
             </View>
-            <Text style={styles.helperText}>
-              {isKundliMode
-                ? 'Birth details, detailed kundli, and planet positions are fetched in the background. Ask Groq to explain them clearly.'
-                : 'Birth details, Mangal Dosha, and Kaal Sarp Dosha are fetched in the background. Ask Groq to explain them in simple words.'}
-            </Text>
-            <View style={styles.chatFeed}>
-              {chatMessages.length ? (
-                chatMessages.map((message, index) => (
-                  <View key={`${message.question}-${index}`} style={styles.chatBubbleWrap}>
-                    <View style={styles.userBubble}>
-                      <Text style={styles.userBubbleText}>{message.question}</Text>
-                    </View>
-                    <View style={styles.aiBubble}>
-                      <Text style={styles.chatAnswer}>{message.answer}</Text>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.helperText}>
-                  {isKundliMode
-                    ? 'Ask things like "Explain my detailed kundli" or "What do my planet positions mean?"'
-                    : 'Ask things like "Do I have Mangal Dosha?" or "Explain my Kaal Sarp Dosha in simple language."'}
-                </Text>
-              )}
-            </View>
-            <View style={styles.askRow}>
+          </View>
+        )}
+
+        {/* Report Sections */}
+        {!error && report && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Cosmic Analysis</Text>
+            {Object.entries(report).map(([key, paragraphs]: any) => (
+              <View key={key} style={styles.reportCard}>
+                <Text style={styles.reportCategory}>{key.toUpperCase()}</Text>
+                {paragraphs.map((p: string, idx: number) => (
+                  <Text key={idx} style={styles.reportText}>{p}</Text>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* AI Consultation Section */}
+        <View style={styles.aiSection}>
+          <View style={styles.aiHeader}>
+            <Ionicons name="sparkles" size={20} color={COLORS.primary} />
+            <Text style={styles.aiTitle}>Consult Birth Chart AI</Text>
+          </View>
+        <View style={styles.aiInputRow}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="chatbubble-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
-                style={styles.questionInput}
-                placeholder={isKundliMode ? 'Ask Groq about your kundli' : 'Ask Groq AI about your horoscope'}
-                placeholderTextColor={COLORS.textLight}
+                style={styles.textInput}
+                placeholder="Ask about your destiny..."
+                placeholderTextColor="#9CA3AF"
                 value={question}
                 onChangeText={setQuestion}
                 multiline
               />
-              <TouchableOpacity style={styles.askButton} onPress={submitQuestion} disabled={chatLoading}>
-                {chatLoading ? (
-                  <ActivityIndicator size="small" color={COLORS.surface} />
-                ) : (
-                  <Ionicons name="send" size={18} color={COLORS.surface} />
-                )}
-              </TouchableOpacity>
             </View>
-            {chatError ? <Text style={styles.inlineErrorText}>{chatError}</Text> : null}
+            <TouchableOpacity 
+              style={[styles.sendBtn, chatLoading && { opacity: 0.7 }]} 
+              onPress={submitQuestion}
+              disabled={chatLoading}
+            >
+              {chatLoading ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="send" size={20} color="#FFF" />}
+            </TouchableOpacity>
           </View>
+
+          {/* Chat Messages */}
+          {chatMessages.map((msg, idx) => (
+            <View key={idx} style={styles.messageCard}>
+              <Text style={styles.msgQuestion}>Q: {msg.question}</Text>
+              <Text style={styles.msgAnswer}>{msg.answer}</Text>
+            </View>
+          ))}
         </View>
 
-        {isKundliMode && (kundliSection?.rows.length || planetSection?.rows.length) ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Fetched In Background</Text>
-            <View style={styles.card}>
-              {kundliSection?.rows.length ? (
-                <>
-                  <Text style={styles.backgroundBlockTitle}>Detailed Kundli</Text>
-                  {kundliSection.rows.map((row) => (
-                    <InfoRow key={`kundli-${row.label}`} label={row.label} value={row.value} icon="star" />
-                  ))}
-                </>
-              ) : null}
-              {planetSection?.rows.length ? (
-                <>
-                  <Text style={[styles.backgroundBlockTitle, kundliSection?.rows.length ? styles.backgroundBlockTitleSpaced : null]}>
-                    Planet Positions
-                  </Text>
-                  {planetSection.rows.map((row) => (
-                    <InfoRow key={`planet-${row.label}`} label={row.label} value={row.value} icon="planet" />
-                  ))}
-                </>
-              ) : null}
-            </View>
-          </View>
-        ) : null}
-
-        <View style={styles.bottomPadding} />
+        <View style={{ height: 120 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginHorizontal: SPACING.sm,
-  },
-  headerSpacer: {
-    width: 24,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  loadingWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.lg,
-  },
-  loadingText: {
-    marginTop: SPACING.sm,
-    color: COLORS.textSecondary,
-    fontSize: 14,
-  },
-  heroCard: {
-    margin: SPACING.md,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.xl,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: '#F6D4B8',
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: SPACING.sm,
-  },
-  heroEyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    color: COLORS.primary,
-  },
-  heroTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginTop: 6,
-    maxWidth: '80%',
-  },
-  heroSubtext: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-  },
-  snapshotList: {
-    marginTop: SPACING.md,
-  },
-  heroBadge: {
-    backgroundColor: `${COLORS.primary}15`,
-    borderRadius: BORDER_RADIUS.full,
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: 6,
-  },
-  heroBadgeText: {
-    color: COLORS.primary,
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  section: {
     paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.md,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    overflow: 'hidden',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: '#F3F4F6',
   },
-  infoIcon: {
-    width: 32,
-    height: 32,
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  content: { flex: 1 },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' },
+  loaderText: { marginTop: 12, color: '#6B7280', fontSize: 14 },
+  heroSection: {
+    padding: SPACING.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  heroHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  zodiacCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 2,
+    borderColor: '#FDE68A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  zodiacOm: { fontSize: 24, color: '#D97706' },
+  heroText: { flex: 1 },
+  userName: { fontSize: 20, fontWeight: '800', color: '#1F2937' },
+  userSub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  mainInsights: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    backgroundColor: `${COLORS.primary}14`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
+    padding: 15,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  infoLabel: {
+  insightBox: { flex: 1, alignItems: 'center' },
+  insightLabel: { fontSize: 12, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5 },
+  insightValue: { fontSize: 16, fontWeight: '700', color: '#111827', marginTop: 4 },
+  insightDivider: { width: 1, height: '100%', backgroundColor: '#F3F4F6', marginHorizontal: 10 },
+  section: { padding: SPACING.md },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#374151', marginBottom: 15 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  infoCard: {
+    width: (SCREEN_WIDTH - SPACING.md * 2 - 12) / 2,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  infoIconBg: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  infoContent: { flex: 1 },
+  infoLabel: { fontSize: 11, color: '#6B7280' },
+  infoValue: { fontSize: 14, fontWeight: '600', color: '#111827', marginTop: 1 },
+  reportCard: { backgroundColor: '#F9FAFB', borderRadius: 16, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: '#F3F4F6' },
+  reportCategory: { fontSize: 12, fontWeight: '800', color: COLORS.primary, marginBottom: 8, letterSpacing: 1 },
+  reportText: { fontSize: 14, color: '#4B5563', lineHeight: 22, marginBottom: 8 },
+  aiSection: { padding: SPACING.md, backgroundColor: '#FDF2F2' },
+  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 15 },
+  aiTitle: { fontSize: 16, fontWeight: '700', color: '#991B1B' },
+  aiInputRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  inputWrapper: {
     flex: 1,
-    color: COLORS.textSecondary,
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inputIcon: { marginTop: 4, marginRight: 8 },
+  textInput: {
+    flex: 1,
     fontSize: 14,
+    color: '#111827',
+    paddingTop: 0,
+    minHeight: 40,
   },
-  infoValue: {
-    flex: 1,
-    textAlign: 'right',
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  errorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: `${COLORS.primary}14`,
-  },
-  errorText: {
-    flex: 1,
-    marginLeft: SPACING.sm,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  ctaButton: {
-    marginTop: SPACING.sm,
-    minHeight: 44,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.primary,
+  sendBtn: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
+    elevation: 2,
   },
-  ctaButtonText: {
-    color: COLORS.surface,
-    fontWeight: '700',
-  },
-  secondaryCtaButton: {
-    marginTop: SPACING.sm,
-    minHeight: 44,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: COLORS.surface,
-  },
-  secondaryCtaButtonText: {
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  helperText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
-    zIndex: 1,
-  },
-  chatAura: {
-    position: 'absolute',
-    top: -34,
-    right: -18,
-    width: 124,
-    height: 124,
-    borderRadius: 62,
-    backgroundColor: 'rgba(255, 153, 51, 0.12)',
-  },
-  chatOrbs: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: SPACING.sm,
-    zIndex: 1,
-  },
-  chatOrb: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  chatOrbPrimary: {
-    backgroundColor: COLORS.primary,
-  },
-  chatOrbSecondary: {
-    backgroundColor: '#F59E0B',
-  },
-  chatOrbAccent: {
-    backgroundColor: '#FB923C',
-  },
-  questionInput: {
-    flex: 1,
-    minHeight: 52,
-    maxHeight: 120,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm + 2,
-    color: COLORS.text,
-    textAlignVertical: 'center',
-    backgroundColor: '#FFFDF9',
-  },
-  askRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: SPACING.sm,
-    marginTop: SPACING.sm,
-  },
-  askButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.md,
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  inlineErrorText: {
-    color: COLORS.error,
-    marginTop: SPACING.sm,
-    fontSize: 13,
-  },
-  chatFeed: {
-    marginTop: SPACING.sm,
-    gap: SPACING.sm,
-    zIndex: 1,
-  },
-  chatBubbleWrap: {
-    gap: SPACING.sm,
-  },
-  userBubble: {
-    alignSelf: 'flex-end',
-    maxWidth: '85%',
-    backgroundColor: `${COLORS.primary}15`,
-    borderRadius: BORDER_RADIUS.lg,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-  },
-  userBubbleText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  aiBubble: {
-    alignSelf: 'stretch',
-    backgroundColor: '#FFFDF9',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.lg,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-  },
-  backgroundBlockTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
-  backgroundBlockTitleSpaced: {
-    marginTop: SPACING.md,
-  },
-  chatQuestion: {
-    color: COLORS.primary,
-    fontWeight: '700',
-    marginBottom: SPACING.sm,
-  },
-  chatAnswer: {
-    color: COLORS.text,
-    lineHeight: 22,
-  },
-  endpointGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: SPACING.sm,
-  },
-  endpointChip: {
-    minHeight: 38,
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.full,
-    marginRight: SPACING.sm,
-    marginBottom: SPACING.sm,
-    backgroundColor: `${COLORS.primary}10`,
-    borderWidth: 1,
-    borderColor: `${COLORS.primary}35`,
-  },
-  endpointChipText: {
-    color: COLORS.primary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  bottomPadding: {
-    height: SPACING.xl,
-  },
+  messageCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginTop: 15, borderWidth: 1, borderColor: '#FEE2E2' },
+  msgQuestion: { fontSize: 13, fontWeight: '700', color: '#EF4444', marginBottom: 6 },
+  msgAnswer: { fontSize: 14, color: '#4B5563', lineHeight: 20 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', padding: 10, borderRadius: 8, gap: 8 },
+  errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '600' },
 });

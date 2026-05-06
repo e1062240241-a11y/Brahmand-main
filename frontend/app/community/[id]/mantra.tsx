@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 import { WebView } from 'react-native-webview';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { useAuthStore } from '../../../src/store/authStore';
@@ -47,7 +46,7 @@ export default function MantraJaapRoom() {
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [showYouTube, setShowYouTube] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef = useRef<any>(null);
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {

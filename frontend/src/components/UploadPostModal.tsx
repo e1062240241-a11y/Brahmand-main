@@ -14,13 +14,24 @@ import {
   Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { uploadUserPost } from '../services/api';
+
+let ExpoVideoModule: any = null;
+try {
+  ExpoVideoModule = require('expo-video');
+} catch (error) {
+  console.warn('expo-video unavailable:', error);
+}
+
+const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
+  if (!ExpoVideoModule?.useVideoPlayer) return null;
+  return ExpoVideoModule.useVideoPlayer(source, setup);
+};
 
 let UploadDocumentPicker: any = null;
 const getUploadDocumentPicker = async () => {
@@ -102,6 +113,21 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const availableWidth = screenWidth - SPACING.md * 2;
   const [dynamicRatio, setDynamicRatio] = useState<number>(4 / 5);
   const [isFit, setIsFit] = useState<boolean>(false); // Used for Insta-style original vs 4:5 toggle
+
+  const previewVideoSource = selectedMedia?.mediaType === 'video' ? selectedMedia.uri : null;
+  const previewPlayer = useSafeVideoPlayer(Platform.OS === 'web' ? null : previewVideoSource, (p) => {
+    p.loop = true;
+    p.muted = false;
+  });
+
+  useEffect(() => {
+    if (!previewPlayer) return;
+    if (visible && previewVideoSource) {
+      previewPlayer.play();
+    } else {
+      previewPlayer.pause();
+    }
+  }, [previewPlayer, previewVideoSource, visible]);
 
   useEffect(() => {
     if (selectedMedia?.width && selectedMedia?.height) {
@@ -378,25 +404,27 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                     }}
                   />
                 </ScrollView>
-              ) : (
-                <Video
-                  source={{ uri: selectedMedia.uri }}
-                  style={styles.previewVideo}
-                  useNativeControls
-                  resizeMode={isFit ? ResizeMode.CONTAIN : ResizeMode.COVER}
-                  isLooping
-                  onReadyForDisplay={(e) => {
-                    const w = e.naturalSize?.width;
-                    const h = e.naturalSize?.height;
-                    const orientation = e.naturalSize?.orientation;
-
-                    // Native mobile videos sometimes swap width/height based on orientation
-                    if (w && h) {
-                      const actualRatio = (orientation === 'portrait' || (h > w && orientation !== 'landscape')) ? Math.min(w, h) / Math.max(w, h) : w / h;
-                      setDynamicRatio(actualRatio);
-                    }
+              ) : Platform.OS === 'web' ? (
+                <video
+                  src={selectedMedia.uri}
+                  controls
+                  style={{ width: '100%', height: '100%', objectFit: isFit ? 'contain' : 'cover' }}
+                  onLoadedMetadata={(e) => {
+                    const target = e.currentTarget as HTMLVideoElement;
+                    const ratio = target.videoWidth && target.videoHeight ? target.videoWidth / target.videoHeight : null;
+                    if (ratio) setDynamicRatio(ratio);
                   }}
                 />
+              ) : ExpoVideoModule?.VideoView && previewPlayer ? (
+                <ExpoVideoModule.VideoView
+                  player={previewPlayer}
+                  style={styles.previewVideo}
+                  contentFit={isFit ? 'contain' : 'cover'}
+                  nativeControls
+                  playsInline
+                />
+              ) : (
+                <View style={[styles.previewVideo, { backgroundColor: '#000' }]} />
               )}
             </View>
 

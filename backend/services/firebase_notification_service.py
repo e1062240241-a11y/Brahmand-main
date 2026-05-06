@@ -103,10 +103,7 @@ class FirebaseNotificationService:
             
             # Remove failed tokens
             if failed_tokens:
-                from google.cloud import firestore
-                await db.client.collection('users').document(user_id).update({
-                    'fcm_tokens': firestore.ArrayRemove(failed_tokens)
-                })
+                await db.array_remove_update('users', user_id, 'fcm_tokens', failed_tokens)
             
             return {
                 "message": "Notifications sent",

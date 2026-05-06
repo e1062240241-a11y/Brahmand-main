@@ -69,15 +69,8 @@ class Settings:
     # Logging
     LOG_LEVEL: str = os.environ.get('LOG_LEVEL', 'INFO')
 
-    # Prokerala Astrology API
-    PROKERALA_BASE_URL: str = os.environ.get('PROKERALA_BASE_URL', 'https://api.prokerala.com')
-    PROKERALA_CLIENT_ID: str = os.environ.get('PROKERALA_CLIENT_ID', '')
-    PROKERALA_CLIENT_SECRET: str = os.environ.get('PROKERALA_CLIENT_SECRET', '')
-    PROKERALA_DEFAULT_TZ: str = os.environ.get('PROKERALA_DEFAULT_TZ', 'Asia/Kolkata')
-    PROKERALA_SANDBOX_MODE: bool = os.environ.get('PROKERALA_SANDBOX_MODE', 'False').lower() == 'true'
-    PROKERALA_MIN_REQUEST_GAP_SECONDS: float = float(os.environ.get('PROKERALA_MIN_REQUEST_GAP_SECONDS', 12))
-    PROKERALA_MAX_ENDPOINTS_PER_CALL: int = int(os.environ.get('PROKERALA_MAX_ENDPOINTS_PER_CALL', 2))
-    PROKERALA_PREFETCH_ENABLED: bool = os.environ.get('PROKERALA_PREFETCH_ENABLED', 'False').lower() == 'true'
+    # Astrology API (Access Token auth via x-astrologyapi-key header)
+    ASTROLOGY_API_TOKEN: str = os.environ.get('ASTROLOGY_API_TOKEN', 'ak-ad5c4b8cc4899325b7eab896f68694c33c6369b0')
     GROQ_API_KEY: str = os.environ.get('GROQ_API_KEY', '')
 
 @lru_cache()

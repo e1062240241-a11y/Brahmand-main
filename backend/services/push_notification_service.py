@@ -49,14 +49,16 @@ class PushNotificationService:
         """Save or update a user's FCM token in Firestore"""
         try:
             db = await _get_db()
-            from google.cloud import firestore
+            def _update_tokens():
+                from google.cloud import firestore
+                # Update both singular (legacy/compatibility) and plural (current/multiple devices) fields
+                db.client.collection('users').document(user_id).update({
+                    'fcm_token': fcm_token,
+                    'fcm_tokens': firestore.ArrayUnion([fcm_token]),
+                    'last_fcm_update': firestore.SERVER_TIMESTAMP
+                })
             
-            # Update both singular (legacy/compatibility) and plural (current/multiple devices) fields
-            await db.client.collection('users').document(user_id).update({
-                'fcm_token': fcm_token,
-                'fcm_tokens': firestore.ArrayUnion([fcm_token]),
-                'last_fcm_update': firestore.SERVER_TIMESTAMP
-            })
+            await db._run_sync(_update_tokens)
             
             logger.info(f"FCM token saved and synced for user {user_id}")
             return True

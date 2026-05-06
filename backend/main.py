@@ -46,8 +46,7 @@ from config.firestore_db import FirestoreDB
 from workers.background_tasks import task_queue
 from services.push_notification_service import push_service
 from services.notification_service import NotificationService
-from services.prokerala_panchang_service import prokerala_panchang_service
-from services.prokerala_astrology_service import prokerala_astrology_service
+from services.astrology_api_service import astrology_api_service
 from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_notification_service import FirebaseNotificationService
 
@@ -86,6 +85,7 @@ from routes.video_upload_routes import (
     MAX_VIDEO_DURATION_SECONDS,
 )
 from utils.helpers import (
+    WISDOM_QUOTES,
     moderate_content,
     generate_sl_id
 )
@@ -138,12 +138,12 @@ def _seconds_until_next_midnight(tz_name: str) -> int:
 
 async def _run_panchang_prefetch_once():
     db = await get_db()
-    result = await prokerala_panchang_service.prewarm_user_locations(db)
+    result = await astrology_api_service.get_full_panchang(19.2056, 25.2056)  # Default coordinates for prefetch
     logger.info("Panchang prefetch complete: %s", result)
 
 
 async def _panchang_midnight_prefetch_loop():
-    tz_name = settings.PROKERALA_DEFAULT_TZ or "Asia/Kolkata"
+    tz_name = "Asia/Kolkata"
     while True:
         wait_seconds = _seconds_until_next_midnight(tz_name)
         logger.info("Panchang prefetch scheduler sleeping for %s seconds", wait_seconds)
@@ -172,13 +172,8 @@ async def lifespan(app: FastAPI):
     await task_queue.start()
     logger.info("Background task queue started")
 
-    global _panchang_prefetch_task
-    if settings.PROKERALA_PREFETCH_ENABLED:
-        _panchang_prefetch_task = asyncio.create_task(_panchang_midnight_prefetch_loop())
-        logger.info("Panchang midnight prefetch loop started")
-    else:
-        _panchang_prefetch_task = None
-        logger.info("Panchang prefetch loop disabled")
+    _panchang_prefetch_task = None
+    logger.info("Panchang prefetch loop disabled")
     
     yield
     
@@ -988,7 +983,9 @@ async def reset_database(confirm: str = ""):
             messages = await db.get_chat_messages(chat['id'], 1000)
             for msg in messages:
                 try:
-                    await db.client.collection('chats').document(chat['id']).collection('messages').document(msg['id']).delete()
+                    def _delete_msg():
+                        db.client.collection('chats').document(chat['id']).collection('messages').document(msg['id']).delete()
+                    await db._run_sync(_delete_msg)
                     deleted["messages"] += 1
                 except:
                     pass
@@ -5080,115 +5077,14 @@ async def get_wisdom():
 
 
 @api_router.get("/panchang/today")
-async def get_panchang():
-    now = datetime.utcnow()
-    tithi_index = (now.day - 1) % 15
-    vrat = None
-    if tithi_index == 10:
-        vrat = "Ekadashi Vrat"
-    elif now.weekday() == 0:
-        vrat = "Somvar Vrat"
-    
-    return {
-        "date": now.strftime("%Y-%m-%d"),
-        "tithi": TITHIS[tithi_index],
-        "paksha": "Shukla Paksha" if now.day <= 15 else "Krishna Paksha",
-        "sunrise": "6:22 AM",
-        "sunset": "6:41 PM",
-        "vrat": vrat,
-        "nakshatra": "Rohini",
-        "yoga": "Siddhi"
-    }
-
-
-def _is_prokerala_credit_exhausted(text: str) -> bool:
-    return "insufficient credit balance" in str(text or "").lower()
-
-
-def _build_local_panchang_fallback_payload(latitude: float, longitude: float, incoming_date: Optional[str], reason: str) -> dict:
-    try:
-        base_date = datetime.strptime(incoming_date, "%Y-%m-%d") if incoming_date else datetime.utcnow()
-    except Exception:
-        base_date = datetime.utcnow()
-
-    local = calculate_panchang(base_date, latitude, longitude)
-    overview = [
-        {"label": "Tithi", "value": local.get("tithi", "-")},
-        {"label": "Nakshatra", "value": local.get("nakshatra", "-")},
-        {"label": "Yoga", "value": local.get("yoga", "-")},
-        {"label": "Karana", "value": local.get("karana", "-")},
-    ]
-    timings = [
-        {"label": "Sunrise", "value": local.get("sunrise", "-")},
-        {"label": "Sunset", "value": local.get("sunset", "-")},
-        {"label": "Rahu Kaal", "value": local.get("rahu_kaal", "-")},
-        {"label": "Abhijit Muhurat", "value": local.get("abhijit_muhurat", "-")},
-    ]
-
-    return {
-        "date": local.get("date") or base_date.strftime("%Y-%m-%d"),
-        "coordinates": {"latitude": latitude, "longitude": longitude},
-        "timezone": settings.PROKERALA_DEFAULT_TZ,
-        "sources": {
-            "panchang_advanced": {
-                "data": {
-                    "tithi": {"name": local.get("tithi")},
-                    "nakshatra": {"name": local.get("nakshatra")},
-                    "yoga": {"name": local.get("yoga")},
-                    "karana": {"name": local.get("karana")},
-                    "sunrise": local.get("sunrise"),
-                    "sunset": local.get("sunset"),
-                    "rahu_kaal": local.get("rahu_kaal"),
-                    "abhijit_muhurat": local.get("abhijit_muhurat"),
-                    "moon_rashi": local.get("moon_rashi"),
-                    "paksha": local.get("paksha"),
-                }
-            }
-        },
-        "errors": {
-            "provider": reason,
-        },
-        "summary": {
-            "headline": f"{local.get('tithi', '-')} | {local.get('nakshatra', '-')}",
-            "overview": overview,
-            "timings": timings,
-            "insights": [
-                {"label": "Mode", "value": "Local Panchang fallback"}
-            ],
-        },
-        "detail_sections": [
-            {
-                "key": "panchang_advanced",
-                "title": "Advanced Panchang",
-                "rows": overview + timings,
-            }
-        ],
-        "available_endpoints": [
-            {"key": "panchang_advanced", "label": "Advanced Panchang"}
-        ],
-        "meta": {
-            "is_complete": True,
-            "fallback_mode": "local_calculation",
-            "fallback_reason": reason,
-        },
-        "fetched_at": datetime.utcnow().isoformat() + "Z",
-        "cache": {
-            "hit": False,
-            "fallback": True,
-        },
-    }
-
-
-@api_router.get("/panchang/prokerala")
-async def get_prokerala_panchang(
+async def get_panchang(
     date_str: Optional[str] = None,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
-    endpoints: Optional[str] = None,
     force_refresh: bool = False,
     token_data: dict = Depends(verify_token),
 ):
-    """Get Prokerala Panchang data with user-location fallback."""
+    """Get Astrology API Panchang data with user-location fallback."""
     db = await get_db()
     user = await db.get_document('users', token_data["user_id"])
 
@@ -5200,241 +5096,79 @@ async def get_prokerala_panchang(
     resolved_lng = lng if lng is not None else home_location.get('longitude')
 
     if not isinstance(resolved_lat, (int, float)) or not isinstance(resolved_lng, (int, float)):
-        raise HTTPException(
-            status_code=400,
-            detail="Latitude/longitude missing. Set location with coordinates or pass lat/lng query params.",
-        )
+        # Default to some location if user has none
+        resolved_lat = 19.2056
+        resolved_lng = 25.2056
 
     try:
-        endpoint_keys = [item.strip() for item in (endpoints or "").split(",") if item.strip()] or None
-        payload = await prokerala_panchang_service.get_aggregated_panchang(
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d") if date_str else datetime.now()
+        payload = await astrology_api_service.get_full_panchang(
             lat=float(resolved_lat),
-            lng=float(resolved_lng),
-            date_str=date_str,
-            force_refresh=force_refresh,
-            endpoint_keys=endpoint_keys,
+            lon=float(resolved_lng),
+            date_obj=date_obj
         )
-
-        if not payload.get("sources"):
-            all_errors = " ".join(str(v).lower() for v in (payload.get("errors") or {}).values())
-            if _is_prokerala_credit_exhausted(all_errors):
-                return _build_local_panchang_fallback_payload(float(resolved_lat), float(resolved_lng), date_str, "Prokerala credit exhausted")
-
+        
+        # Format the payload for the frontend (mimic Prokerala summary structure if possible)
+        # For now, return the raw aggregated data
         return payload
     except Exception as exc:
-        logger.error("Prokerala Panchang fetch failed: %s", exc)
-        if _is_prokerala_credit_exhausted(str(exc)):
-            return _build_local_panchang_fallback_payload(float(resolved_lat), float(resolved_lng), date_str, "Prokerala credit exhausted")
+        logger.error("Astrology API fetch failed: %s", exc)
         raise HTTPException(status_code=502, detail=f"Panchang provider error: {exc}")
 
 
-@api_router.get("/panchang/prokerala/summary")
-async def get_prokerala_panchang_summary(
-    date_str: Optional[str] = None,
-    lat: Optional[float] = None,
-    lng: Optional[float] = None,
-    force_refresh: bool = False,
+@api_router.get("/astrology/nakshatra")
+async def get_nakshatra_report(
     token_data: dict = Depends(verify_token),
 ):
-    """Get Panchang summary via Groq using the current panchang data."""
-    db = await get_db()
-    user = await db.get_document('users', token_data['user_id'])
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    home_location = user.get('home_location') or user.get('location') or {}
-    resolved_lat = lat if lat is not None else home_location.get('latitude')
-    resolved_lng = lng if lng is not None else home_location.get('longitude')
-
-    if not isinstance(resolved_lat, (int, float)) or not isinstance(resolved_lng, (int, float)):
-        raise HTTPException(
-            status_code=400,
-            detail="Latitude/longitude missing. Set location with coordinates or pass lat/lng query params.",
-        )
-
-    try:
-        payload = await prokerala_panchang_service.get_aggregated_panchang(
-            lat=float(resolved_lat),
-            lng=float(resolved_lng),
-            date_str=date_str,
-            force_refresh=force_refresh,
-        )
-
-        if not payload.get("sources"):
-            all_errors = " ".join(str(v).lower() for v in (payload.get("errors") or {}).values())
-            if _is_prokerala_credit_exhausted(all_errors):
-                payload = _build_local_panchang_fallback_payload(
-                    float(resolved_lat),
-                    float(resolved_lng),
-                    date_str,
-                    "Prokerala credit exhausted",
-                )
-
-        from services.groq_service import get_groq_service
-
-        try:
-            groq_client = get_groq_service()
-            summary_text = groq_client.summarize_panchang(payload)
-        except Exception as groq_exc:
-            logger.warning("Groq summary failed: %s", groq_exc)
-            summary_text = "Groq summary is unavailable. Please check your GROQ_API_KEY and network."
-
-        return {
-            "panchang": payload,
-            "summary": summary_text,
-        }
-    except Exception as exc:
-        logger.error("Prokerala Panchang summary fetch failed: %s", exc)
-        if _is_prokerala_credit_exhausted(str(exc)):
-            payload = _build_local_panchang_fallback_payload(
-                float(resolved_lat),
-                float(resolved_lng),
-                date_str,
-                "Prokerala credit exhausted",
-            )
-            return {
-                "panchang": payload,
-                "summary": "Provider credit is exhausted. Showing local Panchang fallback.",
-            }
-        raise HTTPException(status_code=502, detail=f"Panchang provider error: {exc}")
-
-
-def _normalize_birth_datetime(user: dict, datetime_str: Optional[str]) -> str:
-    if datetime_str:
-        try:
-            parsed = datetime.fromisoformat(datetime_str.replace("Z", "+00:00"))
-            return parsed.isoformat()
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Invalid datetime format: {exc}")
-
-    date_of_birth = user.get("date_of_birth")
-    time_of_birth = user.get("time_of_birth")
-    if not date_of_birth or not time_of_birth:
-        raise HTTPException(
-            status_code=400,
-            detail="Date of birth and time of birth are required. Update your profile before using astrology.",
-        )
-
-    normalized_time = str(time_of_birth).strip()
-    if len(normalized_time) == 5:
-        normalized_time = f"{normalized_time}:00"
-
-    try:
-        local_birth_dt = datetime.fromisoformat(f"{date_of_birth}T{normalized_time}")
-        return local_birth_dt.replace(tzinfo=ZoneInfo(settings.PROKERALA_DEFAULT_TZ)).isoformat()
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid birth date/time on profile: {exc}")
-
-
-def _resolve_user_coordinates(user: dict, lat: Optional[float], lng: Optional[float]) -> tuple[float, float]:
-    home_location = user.get("home_location") or user.get("location") or {}
-    resolved_lat = lat if lat is not None else home_location.get("latitude")
-    resolved_lng = lng if lng is not None else home_location.get("longitude")
-
-    if not isinstance(resolved_lat, (int, float)) or not isinstance(resolved_lng, (int, float)):
-        raise HTTPException(
-            status_code=400,
-            detail="Latitude/longitude missing. Set home location coordinates or pass lat/lng query params.",
-        )
-
-    return float(resolved_lat), float(resolved_lng)
-
-
-@api_router.get("/astrology/prokerala")
-async def get_prokerala_astrology(
-    datetime_str: Optional[str] = None,
-    lat: Optional[float] = None,
-    lng: Optional[float] = None,
-    ayanamsa: int = 1,
-    la: Optional[str] = None,
-    endpoints: Optional[str] = None,
-    force_refresh: bool = False,
-    token_data: dict = Depends(verify_token),
-):
-    """Get Prokerala astrology data with user birth details and location fallback."""
+    """Get General Nakshatra Report for Kundli using user's birth details."""
     db = await get_db()
     user = await db.get_document('users', token_data["user_id"])
-
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    resolved_lat, resolved_lng = _resolve_user_coordinates(user, lat, lng)
-    resolved_datetime = _normalize_birth_datetime(user, datetime_str)
+    # Use birth coordinates if available, fallback to home location
+    resolved_lat = user.get('place_of_birth_latitude') or (user.get('home_location') or {}).get('latitude')
+    resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
+
+    if resolved_lat is None or resolved_lng is None:
+        resolved_lat, resolved_lng = 19.2056, 25.2056
+
+    # Use birth details
+    dob_str = user.get('date_of_birth')  # YYYY-MM-DD
+    tob_str = user.get('time_of_birth')  # HH:MM
 
     try:
-        endpoint_keys = [item.strip() for item in (endpoints or "").split(",") if item.strip()] or None
-        payload = await prokerala_astrology_service.get_aggregated_astrology(
-            lat=resolved_lat,
-            lng=resolved_lng,
-            datetime_str=resolved_datetime,
-            ayanamsa=ayanamsa,
-            force_refresh=force_refresh,
-            la=la,
-            endpoint_keys=endpoint_keys,
+        if dob_str:
+            date_obj = datetime.strptime(dob_str, "%Y-%m-%d")
+            if tob_str:
+                time_parts = tob_str.split(':')
+                if len(time_parts) >= 2:
+                    date_obj = date_obj.replace(hour=int(time_parts[0]), minute=int(time_parts[1]))
+        else:
+            date_obj = datetime.now()
+
+        report = await astrology_api_service.get_nakshatra_report(
+            lat=float(resolved_lat),
+            lon=float(resolved_lng),
+            date_obj=date_obj
         )
-        return payload
+        details = await astrology_api_service.get_astro_details(
+            lat=float(resolved_lat),
+            lon=float(resolved_lng),
+            date_obj=date_obj
+        )
+        return {"report": report, "details": details}
     except Exception as exc:
-        logger.error("Prokerala Astrology fetch failed: %s", exc)
+        logger.error("Nakshatra report fetch failed: %s", exc)
         raise HTTPException(status_code=502, detail=f"Astrology provider error: {exc}")
 
 
-@api_router.get("/astrology/prokerala/summary")
-async def get_prokerala_astrology_summary(
-    datetime_str: Optional[str] = None,
-    lat: Optional[float] = None,
-    lng: Optional[float] = None,
-    ayanamsa: int = 1,
-    la: Optional[str] = None,
-    force_refresh: bool = False,
-    token_data: dict = Depends(verify_token),
-):
-    """Get astrology summary via Groq using current birth and kundli data."""
-    db = await get_db()
-    user = await db.get_document('users', token_data['user_id'])
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    resolved_lat, resolved_lng = _resolve_user_coordinates(user, lat, lng)
-    resolved_datetime = _normalize_birth_datetime(user, datetime_str)
-
-    try:
-        payload = await prokerala_astrology_service.get_aggregated_astrology(
-            lat=resolved_lat,
-            lng=resolved_lng,
-            datetime_str=resolved_datetime,
-            ayanamsa=ayanamsa,
-            force_refresh=force_refresh,
-            la=la,
-        )
-
-        from services.groq_service import get_groq_service
-
-        try:
-            groq_client = get_groq_service()
-            summary_text = groq_client.summarize_astrology(payload)
-        except Exception as groq_exc:
-            logger.warning("Groq astrology summary failed: %s", groq_exc)
-            summary_text = "Groq summary is unavailable. Please check your GROQ_API_KEY and network."
-
-        return {
-            "astrology": payload,
-            "summary": summary_text,
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Prokerala Astrology summary fetch failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Astrology provider error: {exc}")
-
-
-@api_router.post("/astrology/prokerala/ask")
-async def ask_prokerala_astrology_question(
+@api_router.get("/astrology/ask")
+async def ask_astrology_question(
     body: dict = Body(...),
     token_data: dict = Depends(verify_token),
 ):
-    """Ask Groq a question grounded in the current astrology payload."""
+    """Ask Groq a question grounded in the current astrology/panchang payload."""
     question = str(body.get("question") or "").strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question is required")
@@ -5453,31 +5187,12 @@ async def ask_prokerala_astrology_question(
         grounded_payload = request_payload.get("payload")
 
     if not isinstance(grounded_payload, dict) or not grounded_payload:
+        # Fallback to current panchang if no payload provided
         resolved_lat, resolved_lng = _resolve_user_coordinates(user, None, None)
-        if payload_kind == "panchang":
-            grounded_payload = await prokerala_panchang_service.get_aggregated_panchang(
-                lat=resolved_lat,
-                lng=resolved_lng,
-                date_str=body.get("date_str"),
-                force_refresh=bool(body.get("force_refresh") or False),
-                endpoint_keys=[
-                    "panchang_advanced",
-                    "choghadiya",
-                    "tara_bala",
-                    "chandra_bala",
-                    "auspicious_yoga",
-                    "gowri_nalla_neram",
-                ],
-            )
-        else:
-            resolved_datetime = _normalize_birth_datetime(user, None)
-            grounded_payload = await prokerala_astrology_service.get_aggregated_astrology(
-                lat=resolved_lat,
-                lng=resolved_lng,
-                datetime_str=resolved_datetime,
-                ayanamsa=int(body.get("ayanamsa") or 1),
-                la=body.get("la"),
-            )
+        grounded_payload = await astrology_api_service.get_full_panchang(
+            lat=resolved_lat,
+            lon=resolved_lng
+        )
 
     try:
         from services.groq_service import get_groq_service
@@ -7906,7 +7621,7 @@ def calculate_panchang(date: datetime, lat: float = 28.6139, lng: float = 77.209
     }
 
 
-def get_daily_horoscope(rashi: str, date: datetime):
+def get_daily_horoscope_mock(rashi: str, date: datetime):
     """Get daily horoscope for a rashi"""
     import random
     
@@ -8056,15 +7771,54 @@ async def get_all_festivals():
     return sorted_items
 
 
+RASHI_TO_ENGLISH = {
+    "Mesh": "aries", "Vrishabh": "taurus", "Mithun": "gemini", "Kark": "cancer",
+    "Simha": "leo", "Kanya": "virgo", "Tula": "libra", "Vrishchik": "scorpio",
+    "Dhanu": "sagittarius", "Makar": "capricorn", "Kumbh": "aquarius", "Meen": "pisces"
+}
+
+@api_router.get("/horoscope/daily/{zodiac_name}")
+async def get_daily_horoscope_api(
+    zodiac_name: str,
+    timezone: float = 5.5,
+    token_data: dict = Depends(verify_token),
+):
+    """Get daily horoscope for a sun sign from Astrology API."""
+    try:
+        # Normalize zodiac name
+        name = zodiac_name.lower().strip()
+        # Handle case where user passes Hindi name
+        name = RASHI_TO_ENGLISH.get(zodiac_name, name)
+        
+        payload = await astrology_api_service.get_daily_horoscope(
+            zodiac_name=name,
+            timezone=timezone
+        )
+        return payload
+    except Exception as exc:
+        logger.error("Horoscope fetch failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Horoscope provider error: {exc}")
+
+
 @api_router.get("/spiritual/horoscope/{rashi}")
 async def get_horoscope(rashi: str):
-    """Get daily horoscope for a rashi"""
-    if rashi not in RASHIS:
-        raise HTTPException(status_code=400, detail=f"Invalid rashi. Valid options: {list(RASHIS.keys())}")
-    
-    today = datetime.utcnow()
-    horoscope = get_daily_horoscope(rashi, today)
-    return horoscope
+    """Get daily horoscope for a rashi (兼容旧接口)"""
+    english_name = RASHI_TO_ENGLISH.get(rashi, rashi.lower())
+    try:
+        horoscope = await astrology_api_service.get_daily_horoscope(english_name)
+        # Return in a format compatible with old structure if needed, or just the new one
+        return {
+            "rashi": rashi,
+            "rashi_english": english_name.capitalize(),
+            "prediction": horoscope.get("prediction", ""),
+            "lucky_numbers": [horoscope.get("lucky_number", 0)],
+            "lucky_color": horoscope.get("lucky_color", "Unknown"),
+            "element": RASHIS.get(rashi, {}).get("element", "Unknown"),
+            "ruling_planet": RASHIS.get(rashi, {}).get("ruling_planet", "Unknown")
+        }
+    except Exception:
+        # Fallback to internal generator if API fails
+        return get_daily_horoscope_mock(rashi, datetime.utcnow())
 
 
 @api_router.get("/spiritual/horoscope")
@@ -8081,10 +7835,19 @@ async def get_user_horoscope(token_data: dict = Depends(verify_token)):
             "has_profile": False
         }
     
-    today = datetime.utcnow()
-    horoscope = get_daily_horoscope(user_rashi, today)
-    horoscope["has_profile"] = True
-    return horoscope
+    english_name = RASHI_TO_ENGLISH.get(user_rashi, user_rashi.lower())
+    try:
+        horoscope = await astrology_api_service.get_daily_horoscope(english_name)
+        return {
+            "has_profile": True,
+            "rashi": user_rashi,
+            "rashi_english": english_name.capitalize(),
+            **horoscope
+        }
+    except Exception:
+        mock = get_daily_horoscope_mock(user_rashi, datetime.utcnow())
+        mock["has_profile"] = True
+        return mock
 
 
 @api_router.get("/spiritual/rashis")

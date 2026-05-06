@@ -15,7 +15,6 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video as ExpoAvVideo, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
@@ -157,16 +156,7 @@ const ReelVideoItem = React.memo(({
               playsInline={true}
             />
           ) : (
-            <ExpoAvVideo
-              ref={videoRef}
-              source={{ uri: mediaUrl }}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay={isActive && !isPaused}
-              isMuted={isMuted}
-              isLooping
-              useNativeControls={false}
-            />
+            <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />
           )}
         </View>
 
