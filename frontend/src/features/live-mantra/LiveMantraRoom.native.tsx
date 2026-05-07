@@ -94,52 +94,65 @@ export const LiveMantraRoom = () => {
 
       agoraUidRef.current = config.uid || 0;
       
-      engine.current.initialize({
+      await engine.current.initialize({
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
       });
 
       engine.current.registerEventHandler({
         onJoinChannelSuccess: (connection: RtcConnection, elapsed: number) => {
-          console.log('Agora: Joined channel', connection.channelId);
+          console.log('[Agora] Joined channel successfully:', connection.channelId, 'UID:', connection.localUid);
           agoraJoinedRef.current = true;
           setIsConnected(true);
-          setParticipantLabel('Mantra room connected');
-          setMicStatus('Live audio connected');
+          setParticipantLabel('Connected to Sangat');
+          setMicStatus('Audio room live');
         },
         onUserJoined: (connection: RtcConnection, remoteUid: number, elapsed: number) => {
-          console.log('Agora: User joined', remoteUid);
+          console.log('[Agora] Remote user joined:', remoteUid);
           addRemotePeer(String(remoteUid));
         },
         onUserOffline: (connection: RtcConnection, remoteUid: number, reason: number) => {
-          console.log('Agora: User offline', remoteUid);
+          console.log('[Agora] Remote user left:', remoteUid, 'Reason:', reason);
           removeRemotePeer(String(remoteUid));
         },
         onRemoteAudioStateChanged: (connection: RtcConnection, remoteUid: number, state: number) => {
-          if (state === 2) { // Decoding
+          if (state === 2) { // RemoteAudioStateDecoding
             addRemoteSpeaker(String(remoteUid));
           }
         },
         onError: (err: number, msg: string) => {
-          console.warn('Agora Error:', err, msg);
-          setMicStatus(`Audio error: ${err}`);
+          console.error('[Agora] Connection Error:', err, msg);
+          setMicStatus(`Connection error: ${err}`);
+          setIsConnected(false);
+        },
+        onConnectionStateChanged: (connection: RtcConnection, state: number, reason: number) => {
+          console.log('[Agora] Connection state changed:', state, 'Reason:', reason);
         }
       });
 
       await engine.current.enableAudio();
       await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
       
-      await engine.current.joinChannel(config.token, ROOM_NAME, agoraUidRef.current, {
+      console.log('[Agora] Attempting to join channel:', ROOM_NAME, 'with UID:', agoraUidRef.current);
+      const joinResult = await engine.current.joinChannel(config.token, ROOM_NAME, agoraUidRef.current, {
         clientRoleType: ClientRoleType.ClientRoleBroadcaster,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        publishMicrophoneTrack: true,
+        autoSubscribeAudio: true,
       });
 
-      // Default to muted
+      if (joinResult !== 0) {
+        console.error('[Agora] joinChannel failed with code:', joinResult);
+        setMicStatus('Join failed');
+        return false;
+      }
+
+      // Default to muted for privacy
       await engine.current.muteLocalAudioStream(true);
       return true;
     } catch (error) {
-      console.warn('Failed to connect to Agora', error);
-      setMicStatus('Voice room unavailable');
+      console.error('[Agora] Failed to setup Agora:', error);
+      setMicStatus('Audio room unavailable');
       return false;
     }
   };
@@ -373,6 +386,20 @@ export const LiveMantraRoom = () => {
         />
         <View style={styles.silhouetteOverlay} />
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerCloseButton}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/temple');
+              }
+            }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={24} color="#FFF" />
+          </TouchableOpacity>
           <View style={styles.statusBlock}>
             <Text style={styles.subTitle}>{participantLabel}</Text>
             <Text style={styles.statusText}>{micStatus}</Text>
@@ -465,25 +492,11 @@ export const LiveMantraRoom = () => {
           </View>
 
           <Text style={styles.micStatus} numberOfLines={1}>
-            {voiceTransport === 'sfu' ? 'SFU peers' : voiceTransport === 'webrtc' ? 'Live peers' : 'Relay peers'}: {remotePeers.length || 0}
+            {voiceTransport === 'sfu' ? 'Standard Room' : 'Agora Live Room'}: {remotePeers.length || 0}
             {remoteSpeakers.length ? ` · voices ${remoteSpeakers.length}` : ''}
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/temple');
-            }
-          }}
-          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="close" size={26} color="#FFF" />
-        </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>
   );
@@ -630,15 +643,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     maxWidth: '85%',
   },
-  closeButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  headerCloseButton: {
+    marginRight: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 10,
   },
 });

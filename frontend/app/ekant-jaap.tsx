@@ -149,7 +149,8 @@ const EkantJaapPage = () => {
     const [lastMinute, setLastMinute] = useState<number | null>(null);
     const [isAudioEnabled, setIsAudioEnabled] = useState(false);
     const [chosenMusic, setChosenMusic] = useState<typeof MUSIC_OPTIONS[0] | null>(null);
-    const player = useAudioPlayer(chosenMusic?.file);
+    const [audioSource, setAudioSource] = useState<any | null>(null);
+    const player = useAudioPlayer(audioSource, { downloadFirst: true });
 
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -191,9 +192,8 @@ const EkantJaapPage = () => {
     };
 
     useEffect(() => {
-        let interval: NodeJS.Timeout | null = null;
         if (isRunning) {
-            interval = setInterval(() => {
+            intervalRef.current = setInterval(() => {
                 setTimeLeft((prev) => {
                     if (prev <= 1) {
                         setIsRunning(false);
@@ -211,17 +211,23 @@ const EkantJaapPage = () => {
                 });
                 setTotalJaapCount((c) => c + 1);
             }, 1000);
-        } else {
-            if (interval) clearInterval(interval);
+        } else if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
         }
+
         return () => {
-            if (interval) clearInterval(interval);
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
         };
     }, [isRunning]);
 
     const beginJaap = async (music: typeof MUSIC_OPTIONS[0]) => {
         setShowMusicDialog(false);
         setChosenMusic(music);
+        setAudioSource(music.file || null);
         if (!selectedNaam || !selectedSlot) return;
 
         setIsRunning(true);
@@ -241,13 +247,18 @@ const EkantJaapPage = () => {
     const confirmStop = () => {
         setShowConfirmDialog(false);
         if (player) {
-            player.pause();
+            try {
+                player.pause();
+            } catch (error) {
+                console.warn('Ekant Jaap stop pause failed', error);
+            }
         }
         setIsRunning(false);
         setIsComplete(false);
         setIsAudioEnabled(false);
         setLastMinute(null);
         setChosenMusic(null);
+        setAudioSource(null);
         setShowMusicDialog(false);
         setSelectedNaam(null);
         setSelectedSlot(null);
@@ -258,7 +269,11 @@ const EkantJaapPage = () => {
             handleStop();
         } else {
             if (player) {
-                player.pause();
+                try {
+                    player.pause();
+                } catch (error) {
+                    console.warn('Ekant Jaap back pause failed', error);
+                }
             }
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
@@ -282,22 +297,39 @@ const EkantJaapPage = () => {
     };
 
     useEffect(() => {
-        if (player) {
+        if (!player) return;
+
+        try {
             player.loop = true;
             player.volume = 0.5;
-            if (isRunning && isAudioEnabled) {
+        } catch (error) {
+            console.warn('Ekant Jaap audio init failed', error);
+        }
+
+        if (isRunning && isAudioEnabled) {
+            try {
                 player.play();
-            } else {
+            } catch (error) {
+                console.warn('Ekant Jaap audio play failed', error);
+            }
+        } else {
+            try {
                 player.pause();
+            } catch (error) {
+                console.warn('Ekant Jaap audio pause failed', error);
             }
         }
-    }, [player, isRunning, isAudioEnabled, chosenMusic]);
+    }, [player, isRunning, isAudioEnabled]);
 
     useEffect(() => {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
             if (player) {
-                player.pause();
+                try {
+                    player.pause();
+                } catch (error) {
+                    console.warn('Ekant Jaap cleanup pause failed', error);
+                }
             }
         };
     }, [player]);
@@ -415,7 +447,7 @@ const EkantJaapPage = () => {
                         </Text>
                         <View style={styles.jaapTopChipIndicator} />
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity style={styles.jaapTopChip} onPress={handleGoBack}>
                         <Ionicons name="stopwatch-outline" size={14} color="#555" />
                         <Text style={styles.jaapTopChipText}>End Focus</Text>
@@ -441,9 +473,9 @@ const EkantJaapPage = () => {
                         <View style={styles.progressContainer}>
                             <LinearGradient
                                 colors={['#F59E0B', '#EF4444']}
-                                style={[styles.progressRingGradient, { 
+                                style={[styles.progressRingGradient, {
                                     transform: [{ rotate: '-90deg' }],
-                                    opacity: 0.8 
+                                    opacity: 0.8
                                 }]}
                             />
                             {/* Mask to create ring effect */}
@@ -454,8 +486,8 @@ const EkantJaapPage = () => {
                     <Text style={styles.focusTimerText}>{formatTime(timeLeft)}</Text>
 
                     <View style={styles.focusControlsRow}>
-                        <TouchableOpacity 
-                            style={styles.materialFab} 
+                        <TouchableOpacity
+                            style={styles.materialFab}
                             onPress={() => {
                                 if (!chosenMusic) {
                                     setShowMusicDialog(true);
@@ -1008,31 +1040,28 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
-    dialogOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+    musicOptionCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        marginBottom: 10,
+    },
+    musicOptionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 2000,
+        marginRight: 12,
     },
-    dialogBox: {
-        width: '85%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        padding: 24,
-        alignItems: 'center',
-        borderWidth: 1,
+    musicOptionName: {
+        fontSize: 15,
+        fontWeight: '600',
     },
-    dialogOm: { fontSize: 32, marginBottom: 10 },
-    dialogTitle: { fontSize: 20, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
-    dialogButtons: { flexDirection: 'row', gap: 12, width: '100%' },
-    dialogCancel: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
-    dialogCancelText: { fontWeight: '600' },
-    dialogConfirm: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-    dialogConfirmText: { color: '#FFF', fontWeight: '600' },
-    musicOptionCard: { flexDirection: 'row', alignItems: 'center', width: '100%', padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 10 },
-    musicOptionIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-    musicOptionName: { fontSize: 15, fontWeight: '600' },
 });
 
 export default EkantJaapPage;
+

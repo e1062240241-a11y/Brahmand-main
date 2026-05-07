@@ -600,9 +600,15 @@ const DirectMessageScreen = () => {
       const hasNewMessages = apiMessages.some(m => !existingIds.has(m.id));
       
       if (hasNewMessages || apiMessages.length !== messages.length) {
-        // Update cache only when needed
-        await setCachedMessages(conversationId, apiMessages);
-        setMessages(apiMessages);
+        // Merge with optimistic messages that are still sending to avoid flickering
+        setMessages(prev => {
+          const sending = prev.filter(m => m.status === 'sending');
+          // Avoid duplicates if API already has the message
+          const apiIds = new Set(apiMessages.map(m => m.id));
+          const stillSending = sending.filter(m => !apiIds.has(m.id));
+          return [...apiMessages, ...stillSending];
+        });
+        setCachedMessages(conversationId, apiMessages);
       }
       
       setLoading(false);
@@ -763,21 +769,28 @@ const DirectMessageScreen = () => {
       message_type: 'text',
       status: 'sending',
     };
+    
+    // Use functional update to ensure we have latest messages
     setMessages(prev => [...prev, optimisticMessage]);
     setSending(true);
     
     try {
-      await sendDirectMessage(conversation.user.sl_id, messageText);
-      // Update cache with new message
-      const updatedMessages = [...messages, { ...optimisticMessage, status: 'sent' }];
-      await setCachedMessages(conversationId, updatedMessages);
-      // Refresh messages in background
-      setTimeout(() => fetchMessagesViaAPI(false), 300);
+      const response = await sendDirectMessage(conversation.user.sl_id, messageText);
+      
+      // Replace optimistic message with actual message from server if possible, or just mark as sent
+      setMessages(prev => prev.map(m => 
+        m.id === tempId ? { ...m, id: response?.data?.id || m.id, status: 'sent' } : m
+      ));
+      
+      // Update cache
+      const cached = await getCachedMessages(conversationId);
+      await setCachedMessages(conversationId, [...cached, { ...optimisticMessage, status: 'sent' }]);
+      
     } catch (error: any) {
       // Remove optimistic message on failure
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setNewMessage(messageText);
-      alert(error.response?.data?.detail || 'Failed to send message');
+      Alert.alert('Send failed', error.response?.data?.detail || 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -1346,40 +1359,54 @@ const DirectMessageScreen = () => {
         <View style={[styles.chatPatternLine, { top: 330, right: 20, width: 140, opacity: 0.06, transform: [{ rotate: '-8deg' }] }]} />
       </View>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackNavigation}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 25 : 12) }]}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={handleBackNavigation}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         {conversation && (
-          <>
-            <TouchableOpacity
-              onPress={() => {
-                if (conversation.user?.id) {
-                  router.push(`/profile/${conversation.user.id}`);
-                }
-              }}
-            >
+          <TouchableOpacity
+            style={styles.headerInfo}
+            onPress={() => {
+              if (conversation.user?.id) {
+                router.push(`/profile/${conversation.user.id}`);
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.avatarWrapper}>
               <Avatar name={conversation.user.name} photo={conversation.user.photo} size={40} />
-            </TouchableOpacity>
-            <View style={styles.headerInfo}>
-              <Text style={styles.headerTitle}>{conversation.user.name}</Text>
+              {getPresenceSource()?.online_status && (
+                <View style={styles.onlineBadge} />
+              )}
+            </View>
+            <View style={styles.headerTextInfo}>
+              <Text style={styles.headerTitle} numberOfLines={1}>{conversation.user.name}</Text>
               <View style={styles.statusRow}>
-                <Text style={styles.headerSubtitle}>{conversation.user.sl_id}</Text>
-                {!!getPresenceLabel() && (
-                  <Text style={styles.statusInfoText}>{getPresenceLabel()}</Text>
-                )}
                 {isRealtime && (
                   <View style={styles.realtimeBadge}>
                     <View style={styles.realtimeDot} />
                     <Text style={styles.realtimeText}>Live</Text>
                   </View>
                 )}
+                {!!getPresenceLabel() && (
+                  <Text style={[styles.headerSubtitle, { color: getPresenceSource()?.online_status ? '#3DC07D' : COLORS.textSecondary }]}>
+                    {getPresenceLabel()}
+                  </Text>
+                )}
               </View>
             </View>
-          </>
+          </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.moreButton} onPress={openChatOptions}>
-          <Ionicons name="ellipsis-vertical" size={24} color={COLORS.text} />
+        <TouchableOpacity 
+          style={styles.moreButton} 
+          onPress={openChatOptions}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
         </TouchableOpacity>
       </View>
 
@@ -1390,7 +1417,7 @@ const DirectMessageScreen = () => {
         onRequestClose={closeChatOptions}
       >
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
             <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
               <Text style={[styles.modalItemText, styles.modalItemDestructive]}>Clear Chat</Text>
             </TouchableOpacity>
@@ -1476,41 +1503,67 @@ const DirectMessageScreen = () => {
           }
         />
       </View>
-
       {/* Input - anchored at bottom */}
-      {selectedMedia && (
-        <View style={styles.mediaPreviewContainer}>
-          <View style={styles.mediaPreviewHeader}>
-            <Text style={styles.mediaPreviewLabel}>
-              {selectedMedia.mediaType === 'image' ? 'Image ready to send' : 'Video ready to send'}
-            </Text>
-            <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewClose}>
-              <Ionicons name="close" size={18} color={COLORS.textWhite} />
-            </TouchableOpacity>
+      <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        {selectedMedia && (
+          <View style={styles.mediaPreviewContainer}>
+            <View style={styles.mediaPreviewHeader}>
+              <Text style={styles.mediaPreviewLabel}>
+                {selectedMedia.mediaType === 'image' ? 'Image ready' : 'Video ready'}
+              </Text>
+              <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewClose}>
+                <Ionicons name="close" size={18} color={COLORS.textWhite} />
+              </TouchableOpacity>
+            </View>
+            {selectedMedia.mediaType === 'image' ? (
+              <Image source={{ uri: selectedMedia.uri }} style={styles.mediaPreviewImage} resizeMode="cover" />
+            ) : (
+              <ChatVideo
+                uri={selectedMedia.uri}
+                style={styles.mediaPreviewVideo}
+                useNativeControls
+                resizeMode="contain"
+                isLooping={false}
+              />
+            )}
           </View>
-          {selectedMedia.mediaType === 'image' ? (
-            <Image source={{ uri: selectedMedia.uri }} style={styles.mediaPreviewImage} resizeMode="cover" />
-          ) : (
-            <ChatVideo
-              uri={selectedMedia.uri}
-              style={styles.mediaPreviewVideo}
-              useNativeControls
-              resizeMode="contain"
-              isLooping={false}
-            />
-          )}
-        </View>
-      )}
-      <View style={[styles.inputContainer, { paddingBottom: bottomPadding }]}>
-        <View style={styles.attachmentButtons}>
+        )}
+
+        <View style={styles.inputContainer}>
+        <View style={styles.inputFieldContainer}>
+          <TextInput
+            style={styles.input}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            placeholder="Type a message"
+            placeholderTextColor={COLORS.textSecondary}
+            multiline
+            maxHeight={100}
+            editable={!isInputLocked}
+          />
           <TouchableOpacity
-            style={styles.attachmentButton}
+            style={styles.attachButton}
             onPress={toggleAttachmentOptions}
             disabled={uploadingMedia || sending || isInputLocked}
           >
-            <Ionicons name="add" size={24} color={COLORS.primary} />
+            <Ionicons name="add-circle" size={28} color={isInputLocked ? COLORS.textLight : COLORS.primary} />
           </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          style={[
+            styles.sendButton,
+            (!newMessage.trim() && !selectedMedia) && styles.sendButtonDisabled
+          ]}
+          onPress={handleSend}
+          disabled={(!newMessage.trim() && !selectedMedia) || sending || uploadingMedia || isInputLocked}
+        >
+          <Ionicons 
+            name="send" 
+            size={20} 
+            color={(!newMessage.trim() && !selectedMedia) ? '#BDC3C7' : COLORS.surface} 
+          />
+        </TouchableOpacity>
+      </View>
         {showAttachmentOptions && (
           <Animated.View
             style={[
@@ -1652,36 +1705,6 @@ const DirectMessageScreen = () => {
             )}
           </View>
         </Modal>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={[styles.input, isInputLocked && styles.inputDisabled]}
-            placeholder={isInputLocked ? 'Messaging disabled' : 'Text message'}
-            value={newMessage}
-            onChangeText={setNewMessage}
-            multiline
-            maxLength={1000}
-            editable={!isInputLocked}
-            placeholderTextColor="#999999"
-            onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 300)}
-          />
-          <TouchableOpacity style={styles.iconButton} onPress={toggleAttachmentOptions} disabled={uploadingMedia || sending || isInputLocked}>
-            <Ionicons name="attach-outline" size={22} color={COLORS.primary} />
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          style={[
-            styles.sendButton, 
-            (!newMessage.trim() && !selectedMedia) || sending || uploadingMedia || isInputLocked ? styles.sendButtonDisabled : null
-          ]}
-          onPress={handleSend}
-          disabled={!newMessage.trim() && !selectedMedia || sending || uploadingMedia || isInputLocked}
-        >
-          {sending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Ionicons name="send" size={20} color="#FFFFFF" />
-          )}
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -1696,16 +1719,16 @@ const DirectMessageScreen = () => {
   }
 
   // For native, wrap the screen in SafeAreaView first and let KeyboardAvoidingView adjust content.
+  // For native, use full screen and let renderContent handle insets
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 44}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {renderContent()}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1765,10 +1788,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: '#F0F0F0',
+    zIndex: 10,
     flexShrink: 0,
   },
   backButton: {
@@ -1778,15 +1803,35 @@ const styles = StyleSheet.create({
   moreButton: {
     padding: 6,
     borderRadius: BORDER_RADIUS.full,
+    marginLeft: 8,
   },
   headerInfo: {
     flex: 1,
-    marginLeft: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTextInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  avatarWrapper: {
+    position: 'relative',
+  },
+  onlineBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#3DC07D',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontWeight: '700',
+    color: COLORS.text,
   },
   statusRow: {
     flexDirection: 'row',
@@ -1795,7 +1840,8 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#0088CC',
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   statusInfoText: {
     fontSize: 12,
@@ -1805,11 +1851,11 @@ const styles = StyleSheet.create({
   realtimeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: SPACING.sm,
+    marginRight: 6,
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 1,
     backgroundColor: '#E8F5E9',
-    borderRadius: 8,
+    borderRadius: 4,
   },
   realtimeDot: {
     width: 6,
@@ -1820,7 +1866,7 @@ const styles = StyleSheet.create({
   },
   realtimeText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#4CAF50',
   },
   modalOverlay: {
@@ -1935,33 +1981,21 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '75%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginLeft: SPACING.xs,
-    borderWidth: 1,
-    borderColor: '#ECECEA',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    backgroundColor: '#F2F3F5',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginLeft: 8,
+    borderWidth: 0,
   },
   ownMessageBubble: {
-    backgroundColor: '#E8E8E8',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: COLORS.primary,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginRight: 8,
     marginLeft: 0,
-    marginRight: SPACING.sm,
-    borderBottomRightRadius: 12,
-    borderBottomLeftRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 1,
+    borderBottomRightRadius: 4,
   },
   sharedPostMessageBubble: {
     backgroundColor: 'transparent',
@@ -2013,16 +2047,53 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
+  inputWrapperContainer: {
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
   inputContainer: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: COLORS.surface,
+  },
+  inputFieldContainer: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.sm,
-    paddingBottom: Platform.OS === 'android' ? SPACING.lg : SPACING.sm,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E8E0D8',
-    flexShrink: 0,
+    backgroundColor: '#F7F8FA',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E8ECF2',
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.text,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  attachButton: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+    marginBottom: 2,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#E8ECF2',
   },
   attachmentButtons: {
     flexDirection: 'row',
