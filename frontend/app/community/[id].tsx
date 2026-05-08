@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -17,7 +17,7 @@ import {
   Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ExpoLinking from 'expo-linking';
 import { getCommunity, getCommunityMessages, sendCommunityMessage, getCommunityRequests, resolveCommunityRequest, getAllUsers, getUserProfile } from '../../src/services/api';
@@ -86,6 +86,7 @@ export default function CommunityDetailScreen() {
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
   const resolvedCommunityId = communityId || id;
+  const insets = useSafeAreaInsets();
   
   const [community, setCommunity] = useState<Community | null>(null);
   const [showMembersPanel, setShowMembersPanel] = useState(false);
@@ -101,6 +102,99 @@ export default function CommunityDetailScreen() {
   const [sending, setSending] = useState(false);
   const [blinkOn, setBlinkOn] = useState(true);
   const [now, setNow] = useState(Date.now());
+
+  const isRestrictedGroup = useMemo(() => {
+    const name = community?.name?.toLowerCase() || '';
+    const level = (community as any)?.community_level?.toLowerCase?.() || '';
+    return [
+      name.includes('state'),
+      name.includes('national'),
+      level === 'state',
+      level === 'country',
+      level === 'national',
+    ].some(Boolean);
+  }, [community]);
+
+  const renderRestrictedGroupNotice = () => (
+    <View style={styles.restrictedScreenContainer}>
+      <View style={styles.restrictedIconWrapper}>
+        <Ionicons name="ribbon" size={64} color="#F1C40F" />
+        <View style={styles.restrictedLockBadge}>
+          <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
+        </View>
+      </View>
+      <Text style={styles.restrictedScreenTitle}>Access Restricted</Text>
+      <Text style={styles.restrictedScreenBody}>
+        You are not eligible to use this group.
+      </Text>
+    </View>
+  );
+
+  const renderChatContent = () => {
+    if (isRestrictedGroup) {
+      return renderRestrictedGroupNotice();
+    }
+
+    return (
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        renderItem={renderMessage}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={[styles.chatMessagesList, { paddingBottom: SPACING.lg + insets.bottom }]}
+        inverted={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="chatbubbles-outline" size={48} color={COLORS.textLight} />
+            <Text style={styles.emptyText}>No messages yet. Start the conversation!</Text>
+          </View>
+        }
+        onContentSizeChange={() => {
+          if (messages.length > 0) {
+            flatListRef.current?.scrollToEnd({ animated: false });
+          }
+        }}
+        ListHeaderComponent={
+          <View style={styles.quickActionsContainer}>
+            {renderSOSBanner()}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickActionsPillsRow}
+            >
+              <TouchableOpacity
+                style={styles.quickActionPill}
+                onPress={() => setActiveTab('Blood')}
+              >
+                <Text style={styles.quickActionPillText}>Blood</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickActionPill}
+                onPress={() => setActiveTab('Medical')}
+              >
+                <Text style={styles.quickActionPillText}>Medical</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickActionPill}
+                onPress={() => setActiveTab('General')}
+              >
+                <Text style={styles.quickActionPillText}>General</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickActionPill}
+                onPress={() => setActiveTab('Petition')}
+              >
+                <Text style={styles.quickActionPillText}>Petition</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        }
+      />
+    );
+  };
 
   // Navigate back to Chat tab (the Messages tab)
   const goBackToChat = useCallback(() => {
@@ -605,18 +699,18 @@ export default function CommunityDetailScreen() {
 
   if (!community) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Community not found</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      {/* Dynamic Header with Notch support */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, SPACING.md) }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
@@ -631,9 +725,11 @@ export default function CommunityDetailScreen() {
           <Text style={styles.codeLabel}>Code</Text>
           <View style={styles.codeRow}>
             <Text style={styles.codeText}>{community.code}</Text>
-            <TouchableOpacity style={styles.codeShareButton} onPress={handleShareCommunityInvite}>
-              <Ionicons name="share-social-outline" size={14} color={COLORS.primary} />
-            </TouchableOpacity>
+            {!isRestrictedGroup && (
+              <TouchableOpacity style={styles.codeShareButton} onPress={handleShareCommunityInvite}>
+                <Ionicons name="share-social-outline" size={14} color={COLORS.primary} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -676,69 +772,10 @@ export default function CommunityDetailScreen() {
       {/* Content */}
       <KeyboardAvoidingView 
         style={styles.chatContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : insets.bottom + 24}
       >
-        {activeTab === 'Chat' ? (
-          // Quick Actions + Chat Messages
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.chatMessagesList}
-            inverted={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Ionicons name="chatbubbles-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>No messages yet. Start the conversation!</Text>
-              </View>
-            }
-            onContentSizeChange={() => {
-              if (messages.length > 0) {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }
-            }}
-            ListHeaderComponent={
-              <View style={styles.quickActionsContainer}>
-                {renderSOSBanner()}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.quickActionsPillsRow}
-                >
-                  <TouchableOpacity
-                    style={styles.quickActionPill}
-                    onPress={() => setActiveTab('Blood')}
-                  >
-                    <Text style={styles.quickActionPillText}>Blood</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.quickActionPill}
-                    onPress={() => setActiveTab('Medical')}
-                  >
-                    <Text style={styles.quickActionPillText}>Medical</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.quickActionPill}
-                    onPress={() => setActiveTab('General')}
-                  >
-                    <Text style={styles.quickActionPillText}>General</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.quickActionPill}
-                    onPress={() => setActiveTab('Petition')}
-                  >
-                    <Text style={styles.quickActionPillText}>Petition</Text>
-                  </TouchableOpacity>
-                </ScrollView>
-              </View>
-            }
-          />
-        ) : (
+        {activeTab === 'Chat' ? renderChatContent() : (
           // Request list for General/Blood/Medical/Petition tabs
           <FlatList
             data={requests}
@@ -764,7 +801,7 @@ export default function CommunityDetailScreen() {
         )}
 
         {/* Input Area - Only show for Chat tab */}
-        {activeTab === 'Chat' && (
+        {activeTab === 'Chat' && !isRestrictedGroup && (
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.textInput}
@@ -790,7 +827,7 @@ export default function CommunityDetailScreen() {
         )}
       </KeyboardAvoidingView>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -798,6 +835,52 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  restrictedInputContainer: {
+    padding: SPACING.md,
+    backgroundColor: '#F0F0F0',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+    alignItems: 'center',
+  },
+  restrictedInputText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  restrictedScreenContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+    backgroundColor: COLORS.background,
+  },
+  restrictedIconWrapper: {
+    position: 'relative',
+    marginBottom: SPACING.lg,
+  },
+  restrictedLockBadge: {
+    position: 'absolute',
+    bottom: -5,
+    right: -5,
+    backgroundColor: COLORS.error,
+    borderRadius: 15,
+    padding: 4,
+    borderWidth: 2,
+    borderColor: COLORS.background,
+  },
+  restrictedScreenTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.sm,
+  },
+  restrictedScreenBody: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   loadingContainer: {
     flex: 1,
@@ -818,7 +901,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
+    paddingBottom: SPACING.md,
+    paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
@@ -1011,6 +1095,7 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   messagesList: {
     padding: SPACING.md,

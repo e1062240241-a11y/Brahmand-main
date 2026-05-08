@@ -34,11 +34,22 @@ const LiveMantraPage = () => {
     ? `Live now: ${activeStatus.slot}`
     : 'Gayatri Mantra is not active right now';
 
+  const handleClose = () => {
+    if (router.canGoBack?.()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <View>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose} activeOpacity={0.8}>
+            <Ionicons name="close" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+          <View style={styles.headerTextBlock}>
             <Text style={styles.title}>Live Jaap</Text>
             <Text style={styles.subtitle}>Group Chanting Room</Text>
           </View>
@@ -139,6 +150,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
+  },
+  closeButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  headerTextBlock: {
+    flex: 1,
   },
   scheduleCard: {
     backgroundColor: COLORS.surface,

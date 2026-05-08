@@ -18,7 +18,7 @@ import {
   Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -100,6 +100,7 @@ export default function MessagesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
   
   // Top tab state (Community vs Private Chat)
   const defaultTopTab = params.tab && params.tab.toLowerCase().includes('private') ? 'Private Chat' : 'Community';
@@ -115,12 +116,6 @@ export default function MessagesScreen() {
   const [conversations, setConversations] = useState<DMConversation[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
   
-  const [showLokSangmaModal, setShowLokSangmaModal] = useState(false);
-  const [lokSangmaSearch, setLokSangmaSearch] = useState('');
-  const [lokSangmaList, setLokSangmaList] = useState<string[]>([]);
-  const [lokSangmaLoading, setLokSangmaLoading] = useState(false);
-  const [userLokSangma, setUserLokSangma] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generalExpanded, setGeneralExpanded] = useState(false);
@@ -129,11 +124,16 @@ export default function MessagesScreen() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
-  const [showCGModal, setShowCGModal] = useState(false);
-  const [cgSearch, setCGSearch] = useState('');
-  const [cgList, setCGList] = useState<string[]>([]);
-  const [cgLoading, setCGLoading] = useState(false);
-  const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => {
+      setToastVisible(false);
+    }, 3000);
+  }, []);
 
   const fetchData = useCallback(async () => {
     // Show cached data first for instant load
@@ -180,60 +180,10 @@ export default function MessagesScreen() {
     }
   }, [activeTopTab, activeCommunityTab]);
 
-  const fetchUserCG = useCallback(async () => {
-    try {
-      const res = await getUserCulturalCommunity();
-      setUserCG(res.data);
-    } catch (error) {
-      console.error('Error fetching My Culture Group:', error);
-    }
-  }, []);
-
-  const loadCulturalCommunities = useCallback(async (search?: string) => {
-    setCGLoading(true);
-    try {
-      const res = await getCulturalCommunities(search);
-      setCGList(res.data || []);
-    } catch (error) {
-      console.error('Error loading cultural communities:', error);
-    } finally {
-      setCGLoading(false);
-    }
-  }, []);
-
-  const handleOpenCGModal = () => {
-    loadCulturalCommunities();
-    fetchUserCG();
-    setShowCGModal(true);
-  };
-
-  const handleSelectCG = async (community: string) => {
-    const changeMessage = userCG?.cultural_community
-      ? `Change from "${userCG.cultural_community}" to "${community}"?`
-      : `Set your My Culture Group to "${community}"?`;
-
-    Alert.alert('Confirm', changeMessage, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Confirm',
-        onPress: async () => {
-          try {
-            await updateUserCulturalCommunity(community);
-            await fetchUserCG();
-            setShowCGModal(false);
-            Alert.alert('Success', 'My Culture Group updated!');
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
-          }
-        }
-      }
-    ]);
-  };
 
   // Only fetch when screen is focused (not on every tab switch)
   useFocusEffect(
     useCallback(() => {
-      fetchUserCG();
       if (activeTopTab === 'Private Chat') {
         fetchConversations();
       }
@@ -243,7 +193,6 @@ export default function MessagesScreen() {
   // Only fetch when screen is focused (not on every tab switch)
   useFocusEffect(
     useCallback(() => {
-      fetchUserCG();
       if (activeTopTab === 'Private Chat') {
         fetchConversations();
       }
@@ -426,28 +375,57 @@ export default function MessagesScreen() {
     return `${hours}:${minutes}`;
   };
 
-  const renderCommunity = ({ item }: { item: Community }) => (
-    <View key={item.id}>
-      {item.label && (
-        <Text style={[styles.communityLabel, { color: getCommunityColor(item.type) }]}>
-          {item.label}
-        </Text>
-      )}
-      <TouchableOpacity
-        style={styles.communityCard}
-        onPress={() => router.push(`/community/${item.id}`)}
-      >
-        <View style={[styles.communityIcon, { backgroundColor: `${getCommunityColor(item.type)}15` }]}>
-          <Ionicons name={getCommunityIcon(item.type)} size={24} color={getCommunityColor(item.type)} />
-        </View>
-        <View style={styles.communityInfo}>
-          <Text style={styles.communityName}>{item.name}</Text>
-          <Text style={styles.communityStats}>{item.member_count} members</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-      </TouchableOpacity>
-    </View>
-  );
+  const renderCommunity = ({ item }: { item: Community }) => {
+    const isRestricted = item.type === 'state' || item.type === 'country' || 
+                        item.name?.toLowerCase().includes('state') || 
+                        item.name?.toLowerCase().includes('national');
+    
+    const handlePress = () => {
+      if (isRestricted) {
+        showToast('You are not eligible to use this group');
+      } else {
+        router.push(`/community/${item.id}`);
+      }
+    };
+
+    return (
+      <View key={item.id}>
+        {item.label && (
+          <Text style={[styles.communityLabel, { color: getCommunityColor(item.type) }]}>
+            {item.label}
+          </Text>
+        )}
+        <TouchableOpacity
+          style={[
+            styles.communityCard, 
+            isRestricted && styles.restrictedCommunityCard
+          ]}
+          onPress={handlePress}
+          activeOpacity={isRestricted ? 0.9 : 0.7}
+        >
+          <View style={[
+            styles.communityIcon, 
+            { backgroundColor: isRestricted ? '#F1C40F20' : `${getCommunityColor(item.type)}15` }
+          ]}>
+            <Ionicons 
+              name={isRestricted ? 'ribbon' : getCommunityIcon(item.type)} 
+              size={24} 
+              color={isRestricted ? '#F1C40F' : getCommunityColor(item.type)} 
+            />
+          </View>
+          <View style={styles.communityInfo}>
+            <Text style={styles.communityName}>{item.name}</Text>
+            <Text style={styles.communityStats}>{item.member_count} members</Text>
+          </View>
+          <Ionicons 
+            name={isRestricted ? "lock-closed-outline" : "chevron-forward"} 
+            size={20} 
+            color={isRestricted ? '#F1C40F' : COLORS.textLight} 
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderCircle = ({ item }: { item: Circle }) => (
     <TouchableOpacity
@@ -575,8 +553,8 @@ export default function MessagesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.topTabsContainer}>
+    <View style={styles.container}>
+      <View style={[styles.topTabsContainer, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 25 : 12) }]}>
         <View style={styles.topTabsInner}>
           {TOP_TABS.map((tab, index) => (
             <TouchableOpacity
@@ -688,17 +666,6 @@ export default function MessagesScreen() {
             )}
           </View>
 
-          <View style={styles.culturalCommunityCard}>
-            <Text style={styles.culturalCommunityTitle}>My Culture Group</Text>
-            <Text style={styles.culturalCommunitySubtitle}>
-              {userCG?.cultural_community || 'Tap to set'}
-            </Text>
-            <TouchableOpacity style={styles.culturalCommunityAction} onPress={handleOpenCGModal}>
-              <Text style={styles.culturalCommunityActionText}>
-                {userCG?.cultural_community ? 'Change' : 'Set'}
-              </Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
       )}
 
@@ -757,215 +724,18 @@ export default function MessagesScreen() {
         </View>
       )}
 
-      {/* Lok Sangam selection modal */}
-      <Modal
-        visible={showLokSangmaModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowLokSangmaModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Lok Sangam</Text>
-              <TouchableOpacity onPress={() => setShowLokSangmaModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
 
-            {userLokSangma?.is_locked && (
-              <View style={styles.lockedBanner}>
-                <Ionicons name="lock-closed" size={16} color={COLORS.error} />
-                <Text style={styles.lockedText}>Locked - Maximum changes reached</Text>
-              </View>
-            )}
-
-            {userLokSangma?.cultural_community && !userLokSangma?.is_locked && (
-              <View style={styles.currentCGBanner}>
-                <Text style={styles.currentCGText}>
-                  Current Lok Sangam: {userLokSangma.cultural_community} ({2 - (userLokSangma.change_count || 0)} changes left)
-                </Text>
-              </View>
-            )}
-
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search Lok Sangam..."
-              placeholderTextColor={COLORS.textLight}
-              value={lokSangmaSearch}
-              onChangeText={(text) => {
-                setLokSangmaSearch(text);
-                loadLokSangmaOptions(text);
-              }}
-            />
-
-            {lokSangmaLoading ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
-            ) : (
-              <FlatList
-                data={lokSangmaList}
-                keyExtractor={(item, index) => `${item}-${index}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.lokSangmaItem,
-                      userLokSangma?.cultural_community === item && styles.lokSangmaItemSelected,
-                    ]}
-                    onPress={() => handleSelectLokSangma(item)}
-                    disabled={userLokSangma?.is_locked}
-                  >
-                    <Text style={[
-                      styles.lokSangmaItemText,
-                      userLokSangma?.cultural_community === item && styles.lokSangmaItemTextSelected,
-                    ]}>
-                      {item}
-                    </Text>
-                    {userLokSangma?.cultural_community === item && (
-                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                    )}
-                  </TouchableOpacity>
-                )}
-                style={styles.lokSangmaList}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>No Lok Sangam found</Text>
-                }
-              />
-            )}
+      {/* Toast Notice */}
+      {toastVisible && (
+        <View style={styles.toastContainer}>
+          <View style={styles.toastContent}>
+            <Ionicons name="information-circle" size={20} color="#FFF" />
+            <Text style={styles.toastText}>{toastMessage}</Text>
           </View>
         </View>
-      </Modal>
+      )}
 
-      <RequestFormModal
-        visible={showRequestModal}
-        onClose={() => {
-          setShowRequestModal(false);
-          setSelectedOfferingType(null);
-        }}
-        requestType={requestType}
-        selectedOfferingType={selectedOfferingType}
-        communities={communities}
-        user={user ?? undefined}
-        onSubmit={async (data: any) => {
-          console.log('Full request data being sent:', JSON.stringify(data, null, 2));
-          try {
-            const response = await createCommunityRequest({
-              community_id: data.community_id,
-              request_type: data.request_type,
-              visibility_level: data.visibility_level || 'area',
-              title: data.title || `${data.request_type} Request`,
-              description: data.description || 'Request created from community tab',
-              contact_number: data.contact_number,
-              urgency_level: data.urgency_level || 'low',
-              blood_group: data.blood_group,
-              hospital_name: data.hospital_name,
-              location: data.location,
-              amount: data.amount,
-              support_needed: data.support_needed,
-              contact_person_name: data.contact_person_name,
-            });
-            console.log('Request created successfully:', response);
-            Alert.alert('Success', 'Your request has been posted!');
-            fetchData();
-          } catch (error: any) {
-            console.error('Error submitting request full:', error);
-            const responseData = error.response?.data;
-            console.error('Response data:', JSON.stringify(responseData, null, 2));
-            let errorMessage = 'Failed to submit request';
-            if (responseData) {
-              if (Array.isArray(responseData.detail)) {
-                errorMessage = responseData.detail.map((e: any) => e.msg || e.message || JSON.stringify(e)).join(', ');
-              } else if (typeof responseData.detail === 'string') {
-                errorMessage = responseData.detail;
-              } else if (typeof responseData === 'object') {
-                errorMessage = JSON.stringify(responseData);
-              }
-            }
-            Alert.alert('Error', errorMessage);
-            throw error;
-          }
-        }}
-      />
-
-      <Modal
-        visible={showCGModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCGModal(false)}
-      >
-        <View style={styles.cgModalOverlay}>
-          <View style={styles.cgModalContent}>
-            <View style={styles.cgModalHeader}>
-              <Text style={styles.cgModalTitle}>Select My Culture Group</Text>
-              <TouchableOpacity onPress={() => setShowCGModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-            {userCG?.cultural_community && (
-              <View style={styles.cgCurrentBanner}>
-                <Text style={styles.cgCurrentText}>
-                  Current: {userCG.cultural_community}
-                </Text>
-              </View>
-            )}
-            <TextInput
-              style={styles.cgSearchInput}
-              placeholder="Search communities..."
-              placeholderTextColor={COLORS.textLight}
-              value={cgSearch}
-              onChangeText={(text) => {
-                setCGSearch(text);
-                loadCulturalCommunities(text);
-              }}
-            />
-            {cgLoading ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
-            ) : (
-              <>
-                {cgSearch.trim().length > 0 && !cgList.some((item) => item.toLowerCase() === cgSearch.trim().toLowerCase()) && (
-                  <TouchableOpacity
-                    style={styles.cgCreateButton}
-                    onPress={() => handleSelectCG(cgSearch.trim())}
-                    disabled={userCG?.is_locked}
-                  >
-                    <Text style={styles.cgCreateButtonText}>
-                      Use "{cgSearch.trim()}" as my culture group
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                <FlatList
-                  data={cgList}
-                  keyExtractor={(item, index) => `${item}-${index}`}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.cgItem,
-                        userCG?.cultural_community === item && styles.cgItemSelected,
-                      ]}
-                      onPress={() => handleSelectCG(item)}
-                    >
-                      <Text style={[
-                        styles.cgItemText,
-                        userCG?.cultural_community === item && styles.cgItemTextSelected,
-                      ]}>
-                        {item}
-                      </Text>
-                      {userCG?.cultural_community === item && (
-                        <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                      )}
-                    </TouchableOpacity>
-                  )}
-                  style={styles.cgList}
-                  ListEmptyComponent={
-                    <Text style={styles.emptyText}>No communities found</Text>
-                  }
-                />
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1037,9 +807,10 @@ const styles = StyleSheet.create({
   },
   topTabsContainer: {
     paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.sm,
-    paddingTop: SPACING.sm,
+    paddingBottom: 12,
     backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   communityScroll: {
     padding: SPACING.md,
@@ -1928,5 +1699,58 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: SPACING.sm,
+  },
+  communityNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  restrictedCommunityCard: {
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    elevation: 0,
+    shadowOpacity: 0,
+    borderWidth: 0,
+  },
+  restrictedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1C40F',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 2,
+  },
+  restrictedBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  toastContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

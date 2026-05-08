@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ExpoLinking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
@@ -149,15 +149,18 @@ const getChatContacts = async () => {
 };
 
 const ChatScreen = () => {
-  const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
+  const { type, id, subgroup, name: rawName } = useLocalSearchParams<{ 
+    type: string; 
+    id: string; 
+    subgroup?: string; 
+    name?: string 
+  }>();
+  const name = rawName ? decodeURIComponent(rawName) : '';
   const router = useRouter();
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
-  
-  // Parse query params
-  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const subgroup = params.get('subgroup') || '';
-  const name = decodeURIComponent(params.get('name') || '');
+  const insets = useSafeAreaInsets();
+
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -721,6 +724,15 @@ const ChatScreen = () => {
     ? (circleMembersLabel || 'No members yet')
     : (type === 'community' ? (subgroup || 'Community') : 'Circle');
 
+  const isRestrictedGroup = (
+    subgroup?.toLowerCase() === 'state' || 
+    subgroup?.toLowerCase() === 'national' ||
+    name?.toLowerCase().includes('state') || 
+    name?.toLowerCase().includes('national') ||
+    headerTitle?.toLowerCase().includes('state') ||
+    headerTitle?.toLowerCase().includes('national')
+  ) && (type === 'community' || type === 'circle');
+
   const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
     return [mediaType === 'image' ? 'images' : 'videos'] as any;
   };
@@ -1108,7 +1120,7 @@ const ChatScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Modal
         visible={!!fullScreenMedia}
         transparent
@@ -1133,32 +1145,48 @@ const ChatScreen = () => {
           )}
         </View>
       </Modal>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+      {/* Dynamic Header with Notch support */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 25 : 12) }]}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={handleGoBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <View style={styles.headerInfo}>
+        <TouchableOpacity 
+          style={styles.headerInfo} 
+          onPress={type === 'circle' ? handleOpenCircleOptions : (type === 'community' ? () => setShowMembersPanel(true) : undefined)}
+          activeOpacity={0.7}
+        >
           <Text style={styles.headerTitle} numberOfLines={1}>{headerTitle}</Text>
           <View style={styles.headerSubtitleRow}>
             <Text style={styles.headerSubtitle} numberOfLines={1}>{headerSubTitleLabel}</Text>
-            {type === 'community' && (
-              <TouchableOpacity style={styles.headerShareButton} onPress={handleShareCommunityInvite}>
-                <Ionicons name="share-social-outline" size={15} color={COLORS.primary} />
+            {type === 'community' && !isRestrictedGroup && (
+              <TouchableOpacity 
+                style={styles.headerShareButton} 
+                onPress={handleShareCommunityInvite}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="share-social-outline" size={18} color={COLORS.primary} />
               </TouchableOpacity>
             )}
           </View>
           {type === 'community' && (
-            <TouchableOpacity style={styles.memberCountRow} onPress={() => setShowMembersPanel(true)}>
+            <View style={styles.memberCountRow}>
               <Ionicons name="people" size={14} color={COLORS.primary} />
               <Text style={styles.memberCountText} numberOfLines={1}>
                 {communityInfo?.member_count ?? communityInfo?.members?.length ?? 0} members
               </Text>
-            </TouchableOpacity>
+            </View>
           )}
-        </View>
+        </TouchableOpacity>
         {type === 'circle' && (
-          <TouchableOpacity style={styles.menuButton} onPress={handleOpenCircleOptions}>
+          <TouchableOpacity 
+            style={styles.menuButton} 
+            onPress={handleOpenCircleOptions}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="ellipsis-vertical" size={20} color={COLORS.text} />
           </TouchableOpacity>
         )}
@@ -1202,7 +1230,7 @@ const ChatScreen = () => {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.chatContainer}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 44}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? (insets.top + 60) : 0}
       >
         <FlatList
           ref={flatListRef}
@@ -1219,8 +1247,29 @@ const ChatScreen = () => {
           }
         />
 
+        {isRestrictedGroup && (
+          <View style={styles.restrictedOverlay}>
+            <View style={styles.restrictedMessageCard}>
+              <View style={styles.restrictedIconContainer}>
+                <Ionicons name="lock-closed" size={40} color={COLORS.primary} />
+              </View>
+              <Text style={styles.restrictedMessageTitle}>Access Restricted</Text>
+              <Text style={styles.restrictedMessageText}>
+                You are not eligible to access this level group.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Input */}
-        {type === 'community' && !isVerified ? (
+        {isRestrictedGroup ? (
+          <View style={[styles.restrictedInputContainer, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+            <View style={styles.restrictedInputInner}>
+              <Ionicons name="alert-circle-outline" size={18} color={COLORS.textSecondary} />
+              <Text style={styles.restrictedInputText}>You are not eligible to access this level group</Text>
+            </View>
+          </View>
+        ) : type === 'community' && !isVerified ? (
           <TouchableOpacity 
             style={styles.verificationBanner}
             onPress={() => router.push('/verification')}
@@ -1232,12 +1281,12 @@ const ChatScreen = () => {
             <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.inputWrapperContainer}>
+          <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
             {selectedMedia && (
               <View style={styles.mediaPreviewContainer}>
                 <View style={styles.mediaPreviewHeader}>
                   <Text style={styles.mediaPreviewLabel}>
-                    {selectedMedia.mediaType === 'image' ? 'Image ready to send' : 'Video ready to send'}
+                    {selectedMedia.mediaType === 'image' ? 'Image ready' : 'Video ready'}
                   </Text>
                   <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewClose}>
                     <Ionicons name="close" size={18} color={COLORS.textWhite} />
@@ -1256,7 +1305,6 @@ const ChatScreen = () => {
                 )}
               </View>
             )}
-
             <View style={styles.inputContainer}>
               <View style={styles.inputFieldContainer}>
                 <TextInput
@@ -1265,17 +1313,32 @@ const ChatScreen = () => {
                   onChangeText={setNewMessage}
                   placeholder="Type a message"
                   placeholderTextColor={COLORS.textSecondary}
-                  returnKeyType="send"
-                  onSubmitEditing={handleSend}
+                  multiline
+                  maxHeight={100}
                 />
+                <TouchableOpacity
+                  style={styles.attachButton}
+                  onPress={toggleAttachmentOptions}
+                  disabled={uploadingMedia || sending}
+                >
+                  <Ionicons name="add-circle" size={28} color={COLORS.primary} />
+                </TouchableOpacity>
               </View>
               <TouchableOpacity
-                style={styles.attachButton}
-                onPress={toggleAttachmentOptions}
-                disabled={uploadingMedia || sending}
+                style={[
+                  styles.sendButton,
+                  (!newMessage.trim() && !selectedMedia) && styles.sendButtonDisabled
+                ]}
+                onPress={handleSend}
+                disabled={(!newMessage.trim() && !selectedMedia) || sending || uploadingMedia}
               >
-                <Ionicons name="attach-outline" size={22} color={COLORS.primary} />
+                {sending || uploadingMedia ? (
+                  <ActivityIndicator size="small" color={COLORS.surface} />
+                ) : (
+                  <Ionicons name="send" size={20} color={COLORS.surface} />
+                )}
               </TouchableOpacity>
+            </View>
               {showAttachmentOptions && (
               <Animated.View
                 style={[
@@ -1417,28 +1480,6 @@ const ChatScreen = () => {
                 )}
               </View>
             </Modal>
-              <TextInput
-                style={styles.input}
-                placeholder="Type a message..."
-                value={newMessage}
-                onChangeText={setNewMessage}
-                maxLength={1000}
-                placeholderTextColor={COLORS.textLight}
-                returnKeyType="send"
-                onSubmitEditing={handleSend}
-              />
-              <TouchableOpacity
-                style={[styles.sendButton, (!newMessage.trim() && !selectedMedia) || sending || uploadingMedia ? styles.sendButtonDisabled : null]}
-                onPress={handleSend}
-                disabled={!newMessage.trim() && !selectedMedia || sending || uploadingMedia}
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color={COLORS.textWhite} />
-                ) : (
-                  <Ionicons name="send" size={20} color={COLORS.textWhite} />
-                )}
-              </TouchableOpacity>
-            </View>
           </View>
         )}
       </KeyboardAvoidingView>
@@ -1723,7 +1764,7 @@ const ChatScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1731,6 +1772,74 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  restrictedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  restrictedMessageCard: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.xl * 1.5,
+    borderRadius: BORDER_RADIUS.xl,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 20,
+    elevation: 8,
+    marginHorizontal: SPACING.xl,
+    borderWidth: 1,
+    borderColor: `${COLORS.warning}30`,
+  },
+  restrictedMessageText: {
+    marginTop: SPACING.sm,
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  restrictedMessageTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginTop: SPACING.md,
+    textAlign: 'center',
+  },
+  restrictedIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${COLORS.primary}10`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  restrictedInputContainer: {
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: '#F0F0F0',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+    alignItems: 'center',
+  },
+  restrictedInputText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: SPACING.xs,
+  },
+  restrictedInputInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
   },
   loadingContainer: {
     flex: 1,
@@ -1741,10 +1850,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
+    paddingBottom: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    backgroundColor: '#F7F5EA',
-    borderBottomWidth: 0,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    zIndex: 10,
   },
   backButton: {
     marginRight: SPACING.md,
@@ -1872,34 +1983,26 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   messageBubble: {
-    maxWidth: '75%',
-    backgroundColor: '#FFFFFF',
+    maxWidth: '80%',
+    backgroundColor: COLORS.surface,
     borderRadius: 20,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     marginLeft: SPACING.sm,
     borderWidth: 1,
-    borderColor: '#ECECEA',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 2,
+    borderColor: COLORS.divider,
+    borderBottomLeftRadius: 4,
   },
   ownMessageBubble: {
-    backgroundColor: '#E6E8D4',
+    backgroundColor: `${COLORS.primary}15`,
     borderRadius: 20,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     marginLeft: 0,
     marginRight: SPACING.sm,
-    borderBottomRightRadius: BORDER_RADIUS.sm,
-    borderBottomLeftRadius: BORDER_RADIUS.lg,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 2,
+    borderBottomRightRadius: 4,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}30`,
   },
   senderName: {
     fontSize: 12,
@@ -1937,96 +2040,52 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   inputWrapperContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
   },
-  mediaPreviewContainer: {
-    marginBottom: SPACING.xs,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    overflow: 'hidden',
-  },
-  mediaPreviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    backgroundColor: COLORS.primary,
-  },
-  mediaPreviewLabel: {
-    color: COLORS.textWhite,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  mediaPreviewClose: {
-    padding: SPACING.xs,
-  },
-  mediaPreviewImage: {
-    width: '100%',
-    height: 120,
-  },
-  mediaPreviewVideo: {
-    width: '100%',
-    height: 120,
-  },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    paddingBottom: Platform.OS === 'android' ? 24 : 12,
-    backgroundColor: '#F4F1E4',
-    borderTopWidth: 1,
-    borderTopColor: '#E8E0D0',
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: COLORS.surface,
   },
   inputFieldContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F8FA',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E8E3D0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderColor: '#E8ECF2',
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
   },
   input: {
     flex: 1,
-    backgroundColor: 'transparent',
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    fontSize: 15,
+    fontSize: 16,
     color: COLORS.text,
-    minHeight: 40,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   attachButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8E3D0',
-    marginLeft: SPACING.sm,
+    padding: 4,
+    marginLeft: 4,
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#67D238',
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: SPACING.xs,
+    marginLeft: 8,
+    marginBottom: 2,
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#E8ECF2',
   },
   attachmentButtons: {
     flexDirection: 'row',

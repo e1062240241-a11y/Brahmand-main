@@ -110,9 +110,12 @@ async def get_current_user(
     
     # Fetch from database
     db = await get_database()
-    user = await db.users.find_one({"_id": ObjectId(user_id)})
-    if not user:
+    user_doc = db.collection('users').document(user_id).get()
+    if not user_doc.exists:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    user = user_doc.to_dict()
+    user['id'] = user_doc.id
     
     # Serialize and cache
     user_data = serialize_user(user)

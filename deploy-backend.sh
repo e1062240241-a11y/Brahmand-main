@@ -4,7 +4,7 @@ cd backend
 echo "Deploying Backend to Google Cloud Run..."
 gcloud run deploy brahmand-backend \
   --source . \
-  --project gst-app-dev-2026 \
+  --project brahmand-260327-19251 \
   --region us-central1 \
   --allow-unauthenticated \
   --memory "4096Mi" \

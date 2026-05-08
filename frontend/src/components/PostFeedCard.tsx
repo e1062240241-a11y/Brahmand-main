@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import {
   Image,
   Pressable,
@@ -62,7 +62,7 @@ const parseCaption = (caption: string): { text: string; isHashtag: boolean }[] =
   }));
 };
 
-export const PostFeedCard = ({
+export const PostFeedCard = memo(({ 
   post,
   onLike,
   onComment,
@@ -183,7 +183,6 @@ export const PostFeedCard = ({
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
           <View style={styles.userMeta}>
             <Text style={styles.username}>{post?.username || 'User'}</Text>
-            <Text style={styles.timeText}>{formatTime(post?.created_at)}</Text>
           </View>
         </TouchableOpacity>
 
@@ -235,7 +234,12 @@ export const PostFeedCard = ({
                   style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
                 />
               ) : ExpoVideoModule?.VideoView && player ? (
-                <ExpoVideoModule.VideoView player={player} style={styles.videoBackground} contentFit="cover" />
+                <ExpoVideoModule.VideoView 
+                  player={player} 
+                  style={styles.videoBackground} 
+                  contentFit="cover" 
+                  nativeControls={false}
+                />
               ) : (
                 <View style={[styles.videoBackground, { backgroundColor: '#000' }]} />
               )}
@@ -337,7 +341,7 @@ export const PostFeedCard = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

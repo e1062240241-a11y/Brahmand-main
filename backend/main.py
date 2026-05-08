@@ -49,6 +49,7 @@ from services.notification_service import NotificationService
 from services.astrology_api_service import astrology_api_service
 from services.prokerala_panchang_service import prokerala_panchang_service
 from services.firebase_auth_service import FirebaseAuthService
+from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
 
 try:
@@ -91,6 +92,7 @@ from utils.helpers import (
     generate_sl_id
 )
 from utils.cache import cache_manager
+from utils.helpers import generate_community_code, SUBGROUPS
 from offensive_detector import is_offensive, is_text_safe
 
 # Configure logging
@@ -657,7 +659,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     response = JSONResponse(
         status_code=500,
-        content={"detail": str(exc) if settings.DEBUG else "Internal server error"}
+        content={"detail": f"Global Error: {str(exc)}"}
     )
     origin = request.headers.get("origin") or ""
     if _is_origin_allowed(origin):
@@ -2122,7 +2124,12 @@ async def get_posts_feed(
 
     # Fetch enough posts to handle filtering/sorting
     fetch_count = 1000 if tab in ['trending', 'following'] else min(500, max(200, safe_offset + safe_limit + 20))
-    posts = await db.query_documents('posts', limit=fetch_count)
+    
+    try:
+        posts = await db.query_documents('posts', limit=fetch_count)
+    except Exception as e:
+        logger.error("Firestore query error in get_posts_feed: %s", e)
+        posts = []
 
     visible_posts = posts
 
@@ -2212,9 +2219,14 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
     user_id = token_data['user_id']
     safe_limit = max(1, min(limit, 100))
     safe_offset = max(0, offset)
-    fetch_count = min(500, max(200, safe_offset + safe_limit + 20))
-
-    posts = await db.query_documents('posts', limit=fetch_count)
+    
+    try:
+        fetch_count = min(500, max(200, safe_offset + safe_limit + 20))
+        posts = await db.query_documents('posts', limit=fetch_count)
+    except Exception as e:
+        logger.error("Firestore query error in get_posts_by_hashtag: %s", e)
+        posts = []
+        
     normalized_hashtag = hashtag.strip().lower()
 
     def _matches_hashtag(post: dict) -> bool:
@@ -3612,14 +3624,18 @@ async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_toke
 
     # Delete all messages in messages subcollection
     from google.cloud import firestore
-    message_docs = db.client.collection('chats').document(chat_id).collection('messages').stream()
-    deleted = 0
-    for msg in message_docs:
-        try:
-            msg.reference.delete()
-            deleted += 1
-        except Exception:
-            pass
+    try:
+        message_docs = db.client.collection('chats').document(chat_id).collection('messages').stream()
+        deleted = 0
+        for msg in message_docs:
+            try:
+                msg.reference.delete()
+                deleted += 1
+            except Exception:
+                pass
+    except Exception as e:
+        logger.error("Error clearing DM messages: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to clear messages")
 
     # Reset chat preview
     await db.update_document('chats', chat_id, {
@@ -4023,6 +4039,15 @@ async def approve_circle_request(circle_id: str, request_user_id: str, token_dat
     await db.update_document('circle_requests', request['id'], {'status': 'approved'})
     
     logger.info(f"User {request_user_id} approved to join circle {circle_id}")
+    
+    # Notify user
+    await FirebaseNotificationService.send_push_notification(
+        request_user_id,
+        'Circle Joined!',
+        f"Your request to join the circle '{circle.get('name', 'New Circle')}' has been approved.",
+        {'type': 'circle_approved', 'circle_id': circle_id}
+    )
+    
     return {"message": f"User {request.get('user_name', request_user_id)} approved"}
 
 
@@ -4117,6 +4142,15 @@ async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict 
     await db.array_union_update('users', target_user_id, 'circles', [circle_id])
     
     logger.info(f"User {target_user_id} invited to circle {circle_id}")
+    
+    # Notify user
+    await FirebaseNotificationService.send_push_notification(
+        target_user_id,
+        'New Circle Invite',
+        f"You have been added to the circle '{circle.get('name', 'New Circle')}' by an admin.",
+        {'type': 'circle_invite', 'circle_id': circle_id}
+    )
+    
     return {"message": f"Invited {target_user['name']} to circle"}
 
 
@@ -4883,9 +4917,9 @@ async def get_reports(
             order_direction='DESCENDING',
             limit=max(1, min(limit, 300)),
         )
-    except FailedPrecondition as exc:
+    except Exception as exc:
         logger.warning(
-            "Missing Firestore index for /admin/reports, falling back to in-memory sort. error=%s",
+            "Firestore query failed in /admin/reports, likely due to index constraints. error=%s",
             exc,
         )
         reports = await db.query_documents('reports', filters=filters if filters else None)
@@ -6528,9 +6562,9 @@ async def get_vendor_review_queue(
             order_direction='DESCENDING',
             limit=limit,
         )
-    except FailedPrecondition as exc:
+    except Exception as exc:
         logger.warning(
-            "Missing Firestore composite index for admin review queue query; falling back to in-memory sort. error=%s",
+            "Firestore query failed in /admin/vendors/review-queue, likely due to index constraints. error=%s",
             exc,
         )
         records = await db.query_documents(
@@ -6674,88 +6708,108 @@ async def get_user_cultural_community(token_data: dict = Depends(verify_token)):
     }
 
 
+def _community_group_key(value: str) -> str:
+    if not value: return ""
+    return ''.join(ch.lower() if ch.isalnum() else '-' for ch in value).strip('-')
+
 @api_router.put("/user/cultural-community")
 async def update_cultural_community(data: CulturalCommunityUpdate, token_data: dict = Depends(verify_token)):
     """Update user's cultural community and auto-join/create matching culture group."""
-    db = await get_db()
-    user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
+    try:
+        from google.cloud import firestore
+        db = await get_db()
+        
+        user_id = token_data["user_id"]
+        user = await db.get_document('users', user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        current_community = user.get('cultural_community')
+        current_count = user.get('cultural_change_count', 0)
+        
+        # 1. Cleanup legacy circles and old cultural communities
+        if current_community:
+            prev_key = _community_group_key(current_community)
+            if prev_key:
+                # Cleanup legacy circle
+                try:
+                    old_circles = await db.query_documents('circles', filters=[('cultural_group_key', '==', prev_key)], limit=1)
+                    for circle in old_circles:
+                        await db.array_remove_update('circles', circle['id'], 'members', [user_id])
+                        await db.array_remove_update('users', user_id, 'circles', [circle['id']])
+                except Exception as ce:
+                    logger.warning(f"Circle cleanup failed: {ce}")
+                
+                # Cleanup old cultural community
+                try:
+                    old_comms = await db.query_documents('communities', filters=[('cultural_group_key', '==', prev_key)], limit=1)
+                    for comm in old_comms:
+                        await db.array_remove_update('users', user_id, 'communities', [comm['id']])
+                        await db.array_remove_update('communities', comm['id'], 'members', [user_id])
+                except Exception as ce:
+                    logger.warning(f"Community cleanup failed: {ce}")
 
-    def _community_group_key(value: str) -> str:
-        return ''.join(ch.lower() if ch.isalnum() else '-' for ch in value).strip('-')
-    
-    current_count = user.get('cultural_change_count', 0)
-    current_community = user.get('cultural_community')
-    
-    # If same community, no change needed
-    if current_community == data.cultural_community:
+        selected_key = _community_group_key(data.cultural_community)
+        logger.info(f"Updating culture group for user {user_id} to {data.cultural_community} (key: {selected_key})")
+        if not selected_key:
+            raise HTTPException(status_code=400, detail="Invalid community name")
+
+        # 2. Find or create the NEW cultural community
+        comm_query = await db.query_documents('communities', filters=[('cultural_group_key', '==', selected_key)], limit=1)
+        
+        target_comm_id = None
+        if not comm_query:
+            # Create new cultural community
+            target_comm_data = {
+                "name": f"My Culture Group • {data.cultural_community}",
+                "type": "cultural",
+                "cultural_group_key": selected_key,
+                "cultural_group_name": data.cultural_community,
+                "members": [user_id],
+                "member_count": 1,
+                "code": generate_community_code(data.cultural_community),
+                "subgroups": [s.copy() for s in SUBGROUPS],
+                "location": {"type": "cultural"},
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            target_comm_id = await db.create_document('communities', target_comm_data)
+        else:
+            selected_comm = comm_query[0]
+            target_comm_id = selected_comm['id']
+            # Join the community
+            await db.array_union_update('communities', target_comm_id, 'members', [user_id])
+            # Increment member count
+            await db.update_document('communities', target_comm_id, {
+                'member_count': selected_comm.get('member_count', 0) + 1
+            })
+
+        # 3. Update user profile
+        new_count = current_count + 1
+        await db.update_document('users', user_id, {
+            'cultural_community': data.cultural_community,
+            'cultural_change_count': new_count,
+            'communities': firestore.ArrayUnion([target_comm_id]),
+            'updated_at': datetime.utcnow()
+        })
+        
+        await cache_manager.invalidate_user_communities(user_id)
         return {
-            "message": "Cultural community unchanged",
-            "cultural_community": current_community,
-            "change_count": current_count,
-            "is_locked": False
+            "message": "Cultural community updated",
+            "cultural_community": data.cultural_community,
+            "community_id": target_comm_id,
+            "change_count": new_count
         }
-    
-    # Update community (no change limit)
-    new_count = current_count
-
-    previous_group_id = None
-    if current_community:
-        previous_key = _community_group_key(current_community)
-        previous_group = await db.find_one('circles', [('cultural_group_key', '==', previous_key)])
-        previous_group_id = previous_group.get('id') if previous_group else None
-
-    selected_key = _community_group_key(data.cultural_community)
-    selected_group = await db.find_one('circles', [('cultural_group_key', '==', selected_key)])
-
-    target_group_id = None
-    if not selected_group:
-        target_group_data = {
-            "name": f"My Culture Group • {data.cultural_community}",
-            "description": f"Members who selected {data.cultural_community} in My Culture Group.",
-            "photo": None,
-            "code": generate_circle_code(data.cultural_community),
-            "privacy": "invite_code",
-            "creator_id": user_id,
-            "admin_id": user_id,
-            "admin_ids": [user_id],
-            "members": [user_id],
-            "cultural_group_key": selected_key,
-            "cultural_group_name": data.cultural_community,
-        }
-        target_group_id = await db.create_document('circles', target_group_data)
-        await db.array_union_update('users', user_id, 'circles', [target_group_id])
-    else:
-        target_group_id = selected_group['id']
-        selected_members = selected_group.get('members', [])
-        if user_id not in selected_members:
-            await db.array_union_update('circles', target_group_id, 'members', [user_id])
-            await db.array_union_update('users', user_id, 'circles', [target_group_id])
-
-    if previous_group_id and previous_group_id != target_group_id:
-        try:
-            await db.array_remove_update('circles', previous_group_id, 'members', [user_id])
-            await db.array_remove_update('users', user_id, 'circles', [previous_group_id])
-        except Exception as exc:
-            logger.warning(f"Failed to remove user {user_id} from previous cultural group {previous_group_id}: {exc}")
-    
-    await db.update_document('users', user_id, {
-        'cultural_community': data.cultural_community,
-        'cultural_change_count': new_count
-    })
-    
-    logger.info(f"User {user_id} updated cultural community to {data.cultural_community}")
-    
-    return {
-        "message": "Cultural community updated",
-        "cultural_community": data.cultural_community,
-        "group_id": target_group_id,
-        "change_count": new_count,
-        "is_locked": False
-    }
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in update_cultural_community: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
 
 
-# =================== COMMUNITY REQUESTS ===================
+@api_router.get("/debug-info")
+async def get_debug_info():
+    return {"status": "ok", "version": "2.2.1-debug", "debug_mode": True}
 
 @api_router.post("/community-requests")
 async def create_community_request(data: CommunityRequestCreate, token_data: dict = Depends(verify_token)):

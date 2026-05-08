@@ -12,9 +12,10 @@ import {
   RefreshControl,
   Platform,
   Alert,
-  ScrollView
+  ScrollView,
+  TextInput
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
@@ -22,6 +23,11 @@ import { getUserPosts, getUserProfile, viewPost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { 
+  getCulturalCommunities, 
+  getUserCulturalCommunity, 
+  updateUserCulturalCommunity 
+} from '../../src/services/api';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
@@ -37,40 +43,42 @@ type SettingItem = {
   action?: 'logout';
 };
 
-const SETTINGS_SECTIONS: { id: string; title: string; items: SettingItem[] }[] = [
-  {
-    id: 'account',
-    title: 'Account',
-    items: [
-      { id: 'edit', icon: 'person-circle-outline', label: 'Manage Profile', route: '/profile/edit' },
-      { id: 'kyc', icon: 'id-card-outline', label: 'KYC Verification', route: '/kyc' },
-      { id: 'notifications', icon: 'notifications-outline', label: 'Notifications', route: '/settings/notifications' },
-      { id: 'privacy', icon: 'lock-closed-outline', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon' },
-    ],
-  },
-  {
-    id: 'preferences',
-    title: 'Preferences',
-    items: [
-      { id: 'about', icon: 'information-circle-outline', label: 'About Us', route: '/settings/guidelines' },
-      { id: 'location', icon: 'location-outline', label: 'Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon' },
-      { id: 'language', icon: 'language-outline', label: 'Language', value: 'English', disabled: true },
-    ],
-  },
-  {
-    id: 'support',
-    title: 'Support',
-    items: [
-      { id: 'guidelines', icon: 'document-text-outline', label: 'Community Guidelines', route: '/settings/guidelines' },
-      { id: 'logout', icon: 'log-out-outline', label: 'Logout', action: 'logout' },
-    ],
-  },
-];
-
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout, updateUser } = useAuthStore();
   const userId = user?.id;
+
+  const SETTINGS_SECTIONS: { id: string; title: string; items: SettingItem[] }[] = [
+    {
+      id: 'account',
+      title: 'Account',
+      items: [
+        { id: 'edit', icon: 'person-circle-outline', label: 'Manage Profile', route: '/profile/edit' },
+        { id: 'kyc', icon: 'id-card-outline', label: 'KYC Verification', route: '/kyc' },
+        { id: 'notifications', icon: 'notifications-outline', label: 'Notifications', route: '/settings/notifications' },
+        { id: 'privacy', icon: 'lock-closed-outline', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon' },
+      ],
+    },
+    {
+      id: 'preferences',
+      title: 'Preferences',
+      items: [
+        { id: 'about', icon: 'information-circle-outline', label: 'About Us', route: '/settings/guidelines' },
+        { id: 'location', icon: 'location-outline', label: 'Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon' },
+        { id: 'language', icon: 'language-outline', label: 'Language', value: 'English', disabled: true },
+      ],
+    },
+    {
+      id: 'support',
+      title: 'Support',
+      items: [
+        { id: 'guidelines', icon: 'document-text-outline', label: 'Community Guidelines', route: '/settings/guidelines' },
+        { id: 'culture', icon: 'people-outline', label: 'My Culture Group', value: user?.cultural_community || 'Not set' },
+        { id: 'logout', icon: 'log-out-outline', label: 'Logout', action: 'logout' },
+      ],
+    },
+  ];
 
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -87,6 +95,25 @@ export default function ProfileScreen() {
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('grid');
+  
+  // Cultural Group states
+  const [showCGModal, setShowCGModal] = useState(false);
+  const [cgSearch, setCGSearch] = useState('');
+  const [cgList, setCGList] = useState<string[]>([]);
+  const [cgLoading, setCGLoading] = useState(false);
+  const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
+
+  // Toast states
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => {
+      setToastVisible(false);
+    }, 3000);
+  }, []);
 
   const fetchProfile = useCallback(async (showLoading = true) => {
     if (!userId) return;
@@ -152,6 +179,11 @@ export default function ProfileScreen() {
   }, [fetchProfile, loadPosts]);
 
   const handleMenuPress = (item: SettingItem) => {
+    if (item.id === 'culture') {
+      handleOpenCGModal();
+      return;
+    }
+    
     setShowSettingsModal(false);
     if (item.disabled) return;
     if (item.action === 'logout') {
@@ -160,6 +192,55 @@ export default function ProfileScreen() {
     }
     if (item.route) {
       router.push(item.route as any);
+    }
+  };
+
+  const fetchUserCG = async () => {
+    try {
+      const res = await getUserCulturalCommunity();
+      setUserCG(res.data);
+    } catch (error) {
+      console.warn('Failed to fetch user CG:', error);
+    }
+  };
+
+  const fetchCGList = async (search = '') => {
+    setCGLoading(true);
+    try {
+      const res = await getCulturalCommunities(search);
+      // Filter out any duplicates to avoid key collisions
+      const uniqueList = Array.from(new Set(res.data || []));
+      setCGList(uniqueList as string[]);
+    } catch (error) {
+      console.warn('Failed to fetch culture groups:', error);
+    } finally {
+      setCGLoading(false);
+    }
+  };
+
+  const handleOpenCGModal = () => {
+    fetchCGList();
+    fetchUserCG();
+    setShowCGModal(true);
+  };
+
+  const handleSelectCG = async (community: string) => {
+    try {
+      await updateUserCulturalCommunity(community);
+      await fetchUserCG();
+      // Update local auth store so the UI updates immediately
+      if (user) {
+        updateUser({ ...user, cultural_community: community });
+      }
+      setShowCGModal(false);
+      showToast('Culture group updated!');
+    } catch (error: any) {
+      console.error('Error updating culture group:', error);
+      if (error.response?.data) {
+        console.log('Error data:', error.response.data);
+      }
+      const msg = error.response?.data?.detail || error.message || 'Failed to update';
+      showToast(msg);
     }
   };
 
@@ -312,19 +393,18 @@ export default function ProfileScreen() {
     </View>
   );
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { paddingTop: insets.top || 10 }]}>
         <View style={styles.navLeft}>
           <Ionicons name="lock-closed-outline" size={18} color={COLORS.text} />
           <Text style={styles.navTitle}>{profile?.sl_id || user?.sl_id || 'Profile'}</Text>
           <Ionicons name="chevron-down" size={16} color={COLORS.text} />
         </View>
         <View style={styles.navRight}>
-          <TouchableOpacity style={styles.navIcon}>
-            <Ionicons name="add-circle-outline" size={28} color={COLORS.text} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.navIcon} onPress={() => setShowSettingsModal(true)}>
             <Ionicons name="menu-outline" size={30} color={COLORS.text} />
           </TouchableOpacity>
@@ -444,7 +524,77 @@ export default function ProfileScreen() {
           />
         </View>
       </Modal>
-    </SafeAreaView>
+
+      {/* Culture Group Modal */}
+      <Modal visible={showCGModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.cgModalContent}>
+            <View style={styles.cgModalHeader}>
+              <Text style={styles.cgModalTitle}>Select Culture Group</Text>
+              <TouchableOpacity onPress={() => setShowCGModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.cgSearchContainer}>
+              <Ionicons name="search" size={20} color={COLORS.textLight} />
+              <TextInput
+                style={styles.cgSearchInput}
+                placeholder="Search culture groups..."
+                placeholderTextColor={COLORS.textLight}
+                value={cgSearch}
+                onChangeText={(text) => {
+                  setCGSearch(text);
+                  fetchCGList(text);
+                }}
+              />
+            </View>
+
+            {cgLoading ? (
+              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
+            ) : (
+              <FlatList
+                data={cgList}
+                keyExtractor={(item, index) => `${item}-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={[
+                      styles.cgItem,
+                      userCG?.cultural_community === item && styles.cgItemSelected,
+                    ]}
+                    onPress={() => handleSelectCG(item)}
+                  >
+                    <Text style={[
+                      styles.cgItemText,
+                      userCG?.cultural_community === item && styles.cgItemTextSelected,
+                    ]}>
+                      {item}
+                    </Text>
+                    {userCG?.cultural_community === item && (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.cgList}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>No communities found</Text>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Toast Notice */}
+      {toastVisible && (
+        <View style={styles.toastContainer}>
+          <View style={styles.toastContent}>
+            <Ionicons name="information-circle" size={20} color="#FFF" />
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -454,7 +604,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
   },
   navBar: {
-    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -487,8 +636,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   avatarContainer: {
     position: 'relative',
@@ -766,6 +915,90 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
-  }
+  },
+  // CG Modal Styles
+  cgModalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '80%',
+    padding: SPACING.lg,
+  },
+  cgModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  cgModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  cgSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  cgSearchInput: {
+    flex: 1,
+    height: 44,
+    marginLeft: SPACING.sm,
+    color: COLORS.text,
+    fontSize: 16,
+  },
+  cgList: {
+    flex: 1,
+  },
+  cgItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  cgItemSelected: {
+    backgroundColor: `${COLORS.primary}05`,
+  },
+  cgItemText: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  cgItemTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: COLORS.textLight,
+    marginTop: SPACING.xl,
+    fontSize: 14,
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  toastContent: {
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 10,
+  },
+  toastText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
 
