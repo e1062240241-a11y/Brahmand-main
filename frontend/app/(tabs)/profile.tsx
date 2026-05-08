@@ -116,7 +116,10 @@ export default function ProfileScreen() {
   }, []);
 
   const fetchProfile = useCallback(async (showLoading = true) => {
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     if (showLoading) setLoading(true);
     try {
       const res = await getUserProfile();
@@ -393,8 +396,6 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const insets = useSafeAreaInsets();
-
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
@@ -594,7 +595,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

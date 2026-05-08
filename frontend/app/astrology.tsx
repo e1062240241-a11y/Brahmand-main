@@ -183,9 +183,11 @@ export default function AstrologyScreen() {
             {Object.entries(report).map(([key, paragraphs]: any) => (
               <View key={key} style={styles.reportCard}>
                 <Text style={styles.reportCategory}>{key.toUpperCase()}</Text>
-                {paragraphs.map((p: string, idx: number) => (
+                {Array.isArray(paragraphs) ? paragraphs.map((p: string, idx: number) => (
                   <Text key={idx} style={styles.reportText}>{p}</Text>
-                ))}
+                )) : (
+                  <Text style={styles.reportText}>{String(paragraphs)}</Text>
+                )}
               </View>
             ))}
           </View>

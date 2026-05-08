@@ -264,6 +264,25 @@ class FirestoreDB:
         
         await self._run_sync(_update)
     
+    async def get_documents_batch(self, collection: str, doc_ids: List[str]) -> List[Dict[str, Any]]:
+        """Get multiple documents by ID in one batch call"""
+        if not doc_ids:
+            return []
+            
+        def _get():
+            refs = [self.client.collection(collection).document(uid) for uid in doc_ids]
+            # get_all returns a generator of DocumentSnapshots
+            docs = self.client.get_all(refs)
+            result = []
+            for doc in docs:
+                if doc and doc.exists:
+                    data = doc.to_dict()
+                    data['id'] = doc.id
+                    result.append(data)
+            return result
+        
+        return await self._run_sync(_get)
+
     async def array_remove_update(self, collection: str, doc_id: str, field: str, values: list) -> None:
         """Remove values from an array field"""
         def _update():

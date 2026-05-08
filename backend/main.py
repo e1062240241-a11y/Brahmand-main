@@ -47,7 +47,6 @@ from workers.background_tasks import task_queue
 from services.push_notification_service import push_service
 from services.notification_service import NotificationService
 from services.astrology_api_service import astrology_api_service
-from services.prokerala_panchang_service import prokerala_panchang_service
 from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
@@ -567,9 +566,16 @@ default_allowed_origins = [
 ]
 allowed_origins = []
 allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)(:\d+)?$"
-if cors_origins != '*':
+if cors_origins == '*':
+    # When using wildcard, we must be careful with allow_credentials=True.
+    # We use a broad regex instead of "*" in allow_origins.
+    allowed_origins = []
+    allow_origin_regex = r"^https?://.*$"
+elif cors_origins:
     configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
     allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
+    # Still keep the regex for localhost/loca.lt/run.app support
+    allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)(:\d+)?$"
 else:
     allowed_origins = default_allowed_origins.copy()
 
@@ -1281,6 +1287,11 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     user = await db.get_document('users', token_data["user_id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Add counts and ensure structure matches get_user_by_id
+    user['followers_count'] = len(user.get('followers', []))
+    user['following_count'] = len(user.get('following', []))
+    
     return user
 
 
@@ -1603,6 +1614,32 @@ async def list_users(
             "photo": user.get('photo')
         })
 
+
+    return result
+
+
+@api_router.post("/users/batch")
+async def get_users_batch(
+    payload: Dict[str, List[str]] = Body(...),
+    token_data: dict = Depends(verify_token)
+):
+    """Fetch multiple user profiles by their IDs efficiently."""
+    db = await get_db()
+    user_ids = payload.get("user_ids", [])
+    # Limit to 100 users per batch
+    safe_ids = user_ids[:100]
+    
+    result = []
+    # Fetching in one batch call is much more efficient than parallel individual calls
+    users = await db.get_documents_batch('users', safe_ids)
+    
+    for user in users:
+        result.append({
+            "id": user.get('id'),
+            "name": user.get('name'),
+            "sl_id": user.get('sl_id'),
+            "photo": user.get('photo')
+        })
     return result
 
 
@@ -1677,26 +1714,35 @@ async def get_user_posts(
     total_count = len(candidate_posts)
 
     paged_posts = candidate_posts[safe_offset:safe_offset + safe_limit]
-    normalized = []
+    
+    # Optimize: Parallelize comment fetching
+    semaphore = asyncio.Semaphore(10)
+    async def fetch_post_details(post):
+        async with semaphore:
+            post['user_photo'] = user.get('photo')
+            post['username'] = user.get('name') or user.get('sl_id') or post.get('username')
 
-    for post in paged_posts:
-        post['user_photo'] = user.get('photo')
-        post['username'] = user.get('name') or user.get('sl_id') or post.get('username')
+            liked_by = post.get('liked_by', []) or []
+            post['likes_count'] = post.get('likes_count', len(liked_by))
+            post['comments_count'] = post.get('comments_count', 0)
+            post['views_count'] = post.get('views_count', 0)
+            post['liked_by_me'] = viewer_user_id in liked_by
 
-        liked_by = post.get('liked_by', []) or []
-        post['likes_count'] = post.get('likes_count', len(liked_by))
-        post['comments_count'] = post.get('comments_count', 0)
-        post['views_count'] = post.get('views_count', 0)
-        post['liked_by_me'] = viewer_user_id in liked_by
+            try:
+                top_comments = await db.query_documents(
+                    'post_comments',
+                    filters=[('post_id', '==', post.get('id'))],
+                    limit=200,
+                )
+                top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+                post['top_comments'] = top_comments[:5]
+            except Exception:
+                post['top_comments'] = []
+            
+            return post
 
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=200,
-        )
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
-        normalized.append(post)
+    tasks = [fetch_post_details(p) for p in paged_posts]
+    normalized = await asyncio.gather(*tasks)
 
     has_more = (safe_offset + safe_limit) < total_count
     return {
@@ -2179,27 +2225,36 @@ async def get_posts_feed(
 
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
 
-    normalized = []
-    for post in paged_posts:
-        latest_author = authors_by_id.get(post.get('user_id'))
-        if latest_author:
-            post['user_photo'] = latest_author.get('photo')
-            post['username'] = latest_author.get('name') or latest_author.get('sl_id') or post.get('username')
+    # 3. Fetch details (likes, comments, author info) in parallel
+    semaphore = asyncio.Semaphore(15)
+    async def fetch_post_details(post):
+        async with semaphore:
+            latest_author = authors_by_id.get(post.get('user_id'))
+            if latest_author:
+                post['user_photo'] = latest_author.get('photo')
+                post['username'] = latest_author.get('name') or latest_author.get('sl_id') or post.get('username')
 
-        liked_by = post.get('liked_by', []) or []
-        post['likes_count'] = post.get('likes_count', len(liked_by))
-        post['comments_count'] = post.get('comments_count', 0)
-        post['views_count'] = post.get('views_count', 0)
-        post['liked_by_me'] = current_user_id in liked_by
+            liked_by = post.get('liked_by', []) or []
+            post['likes_count'] = post.get('likes_count', len(liked_by))
+            post['comments_count'] = post.get('comments_count', 0)
+            post['views_count'] = post.get('views_count', 0)
+            post['liked_by_me'] = current_user_id in liked_by
 
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=200,
-        )
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
-        normalized.append(post)
+            try:
+                top_comments = await db.query_documents(
+                    'post_comments',
+                    filters=[('post_id', '==', post.get('id'))],
+                    limit=200,
+                )
+                top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+                post['top_comments'] = top_comments[:5]
+            except Exception:
+                post['top_comments'] = []
+            
+            return post
+
+    tasks = [fetch_post_details(post) for post in paged_posts]
+    normalized = await asyncio.gather(*tasks)
 
     has_more = (safe_offset + safe_limit) < len(visible_posts)
     return {
@@ -3454,51 +3509,84 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
     chats = await db.query_documents('chats', filters=[('chat_type', '==', 'private')])
     
     result = []
-    for chat in chats:
+    # Check if user is a member of this chat
+    user_chats = [chat for chat in chats if user_id in chat.get('members', [])]
+    
+    # 1. Collect all other user IDs to fetch in batch
+    other_user_ids = []
+    chat_to_other_id = {}
+    for chat in user_chats:
         members = chat.get('members', [])
-        
-        # Check if user is a member of this chat
-        if user_id in members:
-            # Get the other user
-            other_id = [m for m in members if m != user_id][0]
-            other = await db.get_document('users', other_id)
+        others = [m for m in members if m != user_id]
+        if others:
+            other_user_ids.append(others[0])
+            chat_to_other_id[chat['id']] = others[0]
             
-            if other:
-                # Get the last message to determine status and sender
+    # 2. Batch fetch user profiles
+    users_list = await db.get_documents_batch('users', list(set(other_user_ids)))
+    users_map = {u['id']: u for u in users_list}
+    
+    # 3. Fetch last messages for each chat (limited concurrency to prevent exhaustion)
+    semaphore = asyncio.Semaphore(10)
+    
+    async def get_conv_details(chat):
+        async with semaphore:
+            other_id = chat_to_other_id.get(chat['id'])
+            if not other_id or other_id not in users_map:
+                return None
+            
+            other = users_map[other_id]
+            
+            # We still need last message for status/sender
+            try:
                 last_messages = await db.get_chat_messages(chat['id'], 1)
                 last_msg = last_messages[0] if last_messages else None
-                
-                # Determine status to show (only for messages sent by current user)
-                last_message_status = None
-                last_message_sender_id = None
-                
-                if last_msg:
-                    last_message_sender_id = last_msg.get('sender_id')
-                    # Only show status indicator if the current user sent the message
-                    if last_message_sender_id == user_id:
-                        last_message_status = last_msg.get('status', 'delivered')
-                
-                result.append({
-                    "conversation_id": chat['id'],
-                    "chat_id": chat['id'],
-                    "user": {
-                        "id": other_id,
-                        "name": other.get('name', 'Unknown'),
-                        "sl_id": other.get('sl_id', ''),
-                        "photo": other.get('photo')
-                    },
-                    "last_message": chat.get('last_message', ''),
-                    "last_message_at": chat.get('updated_at', chat.get('created_at')),
-                    "last_message_status": last_message_status,
-                    "last_message_sender_id": last_message_sender_id,
-                    "created_at": chat.get('created_at'),
-                    "request_status": chat.get('request_status', 'approved'),
-                    "request_by": chat.get('request_by'),
-                    "request_retry_after": chat.get('request_retry_after'),
-                })
+            except Exception:
+                last_msg = None
+            
+            last_message_status = None
+            last_message_sender_id = None
+            if last_msg:
+                last_message_sender_id = last_msg.get('sender_id')
+                if last_message_sender_id == user_id:
+                    last_message_status = last_msg.get('status', 'delivered')
+                    
+            return {
+                "conversation_id": chat['id'],
+                "chat_id": chat['id'],
+                "user": {
+                    "id": other_id,
+                    "name": other.get('name', 'Unknown'),
+                    "sl_id": other.get('sl_id', ''),
+                    "photo": other.get('photo')
+                },
+                "last_message": chat.get('last_message', ''),
+                "last_message_at": chat.get('updated_at', chat.get('created_at')),
+                "last_message_status": last_message_status,
+                "last_message_sender_id": last_message_sender_id,
+                "created_at": chat.get('created_at'),
+                "request_status": chat.get('request_status', 'approved'),
+                "request_by": chat.get('request_by'),
+                "request_retry_after": chat.get('request_retry_after'),
+            }
+
+    tasks = [get_conv_details(chat) for chat in user_chats]
+    conversations = await asyncio.gather(*tasks)
+    result = [c for c in conversations if c is not None]
     
-    # Sort by last_message_at (most recent first)
-    result.sort(key=lambda x: x.get('last_message_at') or datetime.min, reverse=True)
+    # Robust sort by last_message_at (most recent first)
+    def sort_key(x):
+        val = x.get('last_message_at') or x.get('created_at')
+        if not val:
+            return datetime.min
+        if isinstance(val, str):
+            try:
+                return datetime.fromisoformat(val.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return val
+
+    result.sort(key=sort_key, reverse=True)
     
     return result
 
@@ -5119,7 +5207,7 @@ async def get_panchang(
     force_refresh: bool = False,
     token_data: dict = Depends(verify_token),
 ):
-    """Get Prokerala Panchang data with user-location fallback."""
+    """Get Panchang data using AstrologyAPI (switched from Prokerala)."""
     try:
         date_obj = None
         if date_str:
@@ -5132,30 +5220,30 @@ async def get_panchang(
         resolved_lat = lat if lat is not None else 19.2056
         resolved_lng = lng if lng is not None else 25.2056
         
-        # Fetch using the Prokerala service (as requested for 'proper data')
-        payload = await prokerala_panchang_service.get_aggregated_panchang(
+        # Fetch using the AstrologyAPI service (Primary provider now)
+        payload = await astrology_api_service.get_full_panchang(
             lat=resolved_lat,
-            lng=resolved_lng,
-            date_str=date_str,
-            force_refresh=force_refresh
+            lon=resolved_lng,
+            date_obj=date_obj
         )
         
         # Format the payload for the frontend
-        # The Prokerala service already returns a 'summary' with 'overview', 'timings', etc.
         response_data = {**payload}
         if "summary" in payload:
             response_data.update(payload["summary"])
         
-        # Map specific keys for the tabs (if needed)
+        # Map specific keys for the tabs compatibility
         sources = payload.get("sources", {})
-        if "choghadiya" in sources:
-            response_data["chaughadiya"] = sources["choghadiya"]
-        if "hora" in sources:
-            response_data["hora"] = sources["hora"]
+        if "chaughadiya_muhurta" in sources:
+            response_data["chaughadiya"] = sources["chaughadiya_muhurta"]
+        if "hora_muhurta" in sources:
+            response_data["hora"] = sources["hora_muhurta"]
+        if "planet_panchang" in sources:
+            response_data["planets"] = sources["planet_panchang"]
             
         return response_data
     except Exception as exc:
-        logger.error("Prokerala Panchang fetch failed: %s", exc)
+        logger.error("Panchang fetch failed: %s", exc)
         raise HTTPException(status_code=502, detail=f"Panchang provider error: {exc}")
 
 

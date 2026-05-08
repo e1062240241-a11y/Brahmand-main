@@ -164,6 +164,12 @@ export default function HoroscopeScreen() {
               
               {typeof payload?.prediction === 'string' ? (
                 <Text style={styles.predictionText}>{payload.prediction}</Text>
+              ) : Array.isArray(payload?.prediction) ? (
+                <View style={{ gap: 12 }}>
+                  {payload.prediction.map((p: any, i: number) => (
+                    <Text key={i} style={styles.predictionText}>{String(p)}</Text>
+                  ))}
+                </View>
               ) : typeof payload?.prediction === 'object' && payload.prediction !== null ? (
                 <View style={styles.categoriesContainer}>
                   {Object.entries(payload.prediction).map(([key, value]) => {

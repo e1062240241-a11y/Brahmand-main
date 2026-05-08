@@ -16,7 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '../src/store/authStore';
 import { Avatar } from '../src/components/Avatar';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
-import { followUser, getUserProfile, unfollowUser } from '../src/services/api';
+import { followUser, getUserProfile, unfollowUser, getUsersBatch } from '../src/services/api';
 
 type ConnectionTab = 'followers' | 'following';
 
@@ -28,15 +28,28 @@ interface ConnectionUser {
 }
 
 const loadUsersByIds = async (ids: string[]): Promise<ConnectionUser[]> => {
-  if (!ids.length) {
+  if (!ids || !ids.length) {
     return [];
   }
 
-  const responses = await Promise.allSettled(ids.map((id) => getUserProfile(id)));
-
-  return responses
-    .map((result) => (result.status === 'fulfilled' ? result.value.data : null))
-    .filter((item): item is ConnectionUser => Boolean(item?.id));
+  try {
+    // Firestore batch limit is typically 100, we'll follow that
+    const BATCH_SIZE = 100;
+    const allUsers: ConnectionUser[] = [];
+    
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const chunk = ids.slice(i, i + BATCH_SIZE);
+      const res = await getUsersBatch(chunk);
+      if (Array.isArray(res.data)) {
+        allUsers.push(...res.data);
+      }
+    }
+    
+    return allUsers;
+  } catch (error) {
+    console.warn('[Connections] Failed to batch load users:', error);
+    return [];
+  }
 };
 
 export default function FollowConnectionsScreen() {
