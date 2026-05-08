@@ -9,8 +9,9 @@ interface AvatarProps {
 }
 
 export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48 }) => {
-  const initials = name
+  const initials = (name || 'U')
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .toUpperCase()

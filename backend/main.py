@@ -2524,6 +2524,38 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     }
 
 
+@api_router.put('/posts/{post_id}')
+async def update_post(post_id: str, data: Dict[str, Any] = Body(...), token_data: dict = Depends(verify_token)):
+    """Update post details (currently only caption supported)"""
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    if post.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail='You can only edit your own posts')
+
+    # Update data
+    update_data = {}
+    if 'caption' in data:
+        update_data['caption'] = data['caption']
+    
+    if not update_data:
+        return {"message": "No changes requested", "post": post}
+        
+    update_data['updated_at'] = datetime.utcnow()
+    
+    await db.update_document('posts', post_id, update_data)
+    updated_post = await db.get_document('posts', post_id)
+    
+    return {
+        "message": "Post updated successfully",
+        "post": updated_post
+    }
+
+
 @api_router.delete('/posts/{post_id}')
 async def delete_post(post_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3824,10 +3856,31 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
     
+    # Auto-cleanup: Ensure user only sees the current cultural group in their list
+    current_cultural_community = user.get('cultural_community')
+    current_cultural_key = _community_group_key(current_cultural_community) if current_cultural_community else None
+    
     circles = []
-    for cid in user.get('circles', []):
+    user_circle_ids = list(user.get('circles', []))
+    
+    for cid in user_circle_ids:
         circle = await db.get_document('circles', cid)
         if circle:
+            # Check if this is a cultural group
+            is_cultural = (
+                circle.get('type') == 'cultural' or 
+                'Culture Group' in circle.get('name', '') or 
+                circle.get('cultural_group_key') is not None
+            )
+            
+            if is_cultural:
+                # If it doesn't match the current key, remove it silently
+                if not current_cultural_key or circle.get('cultural_group_key') != current_cultural_key:
+                    logger.info(f"Auto-removing user {user_id} from legacy cultural circle {cid}")
+                    await db.array_remove_update('users', user_id, 'circles', [cid])
+                    await db.array_remove_update('circles', cid, 'members', [user_id])
+                    continue
+
             member_names = []
             for member_id in circle.get('members', []):
                 if member_id == user_id:
@@ -6827,23 +6880,36 @@ async def update_cultural_community(data: CulturalCommunityUpdate, token_data: d
         current_community = user.get('cultural_community')
         
         # 1. CLEANUP: Leave all existing cultural communities and circles
-        # We find them by querying joined communities/circles with type 'cultural'
-        user_communities = user.get('communities', [])
-        user_circles = user.get('circles', [])
+        # We find them by querying joined communities/circles with type 'cultural' or name pattern
+        user_communities = list(user.get('communities', []))
+        user_circles = list(user.get('circles', []))
         
         for comm_id in user_communities:
             comm = await db.get_document('communities', comm_id)
-            if comm and comm.get('type') == 'cultural':
-                await db.array_remove_update('communities', comm_id, 'members', [user_id])
-                await db.array_remove_update('users', user_id, 'communities', [comm_id])
-                # Decrement count
-                await db.update_document('communities', comm_id, {'member_count': max(0, comm.get('member_count', 1) - 1)})
+            if comm:
+                # Be aggressive: check type, name pattern, and existence of cultural_group_key
+                is_cultural = (
+                    comm.get('type') == 'cultural' or 
+                    'Culture Group' in comm.get('name', '') or 
+                    comm.get('cultural_group_key') is not None
+                )
+                if is_cultural:
+                    await db.array_remove_update('communities', comm_id, 'members', [user_id])
+                    await db.array_remove_update('users', user_id, 'communities', [comm_id])
+                    # Decrement count
+                    await db.update_document('communities', comm_id, {'member_count': max(0, comm.get('member_count', 1) - 1)})
 
         for circle_id in user_circles:
             circle = await db.get_document('circles', circle_id)
-            if circle and circle.get('type') == 'cultural':
-                await db.array_remove_update('circles', circle_id, 'members', [user_id])
-                await db.array_remove_update('users', user_id, 'circles', [circle_id])
+            if circle:
+                is_cultural = (
+                    circle.get('type') == 'cultural' or 
+                    'Culture Group' in circle.get('name', '') or 
+                    circle.get('cultural_group_key') is not None
+                )
+                if is_cultural:
+                    await db.array_remove_update('circles', circle_id, 'members', [user_id])
+                    await db.array_remove_update('users', user_id, 'circles', [circle_id])
 
         selected_key = _community_group_key(data.cultural_community)
         if not selected_key:

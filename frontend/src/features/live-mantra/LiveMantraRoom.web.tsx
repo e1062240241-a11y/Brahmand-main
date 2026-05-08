@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useAudioPlayer } from 'expo-audio';
 import { useRouter } from 'expo-router';
 import {
   Animated,
@@ -15,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
 const WORDS = MANTRA.split(' ');
+const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
 
 export const LiveMantraRoom = () => {
   const router = useRouter();
@@ -23,6 +25,16 @@ export const LiveMantraRoom = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [roomMuted, setRoomMuted] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(false);
+
+  const bgPlayer = useAudioPlayer(BG_MUSIC);
+
+  useEffect(() => {
+    if (bgPlayer) {
+      bgPlayer.loop = true;
+      bgPlayer.volume = isMuted ? 0 : 0.4;
+      bgPlayer.play();
+    }
+  }, [bgPlayer, isMuted]);
 
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
   const bgPulse = useRef(new Animated.Value(0)).current;
@@ -199,13 +211,6 @@ export const LiveMantraRoom = () => {
             >
               <Ionicons name={isMicEnabled ? 'mic' : 'mic-off'} size={22} color="#FFF" />
               <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic On' : 'Mic Off'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.controlButton, roomMuted && styles.controlButtonMuted]}
-              onPress={() => setRoomMuted(!roomMuted)}
-            >
-              <Ionicons name={roomMuted ? 'volume-mute' : 'volume-medium'} size={22} color="#FFF" />
-              <Text style={styles.controlLabel}>{roomMuted ? 'Room Muted' : 'Room Live'}</Text>
             </TouchableOpacity>
           </View>
         </View>

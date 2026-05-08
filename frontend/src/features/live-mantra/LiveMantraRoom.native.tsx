@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { requestRecordingPermissionsAsync } from 'expo-audio';
+import { requestRecordingPermissionsAsync, useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -33,6 +33,7 @@ declare const require: any;
 const ROOM_NAME = 'mantra-jaap-live-room';
 const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
 const WORDS = MANTRA.split(' ');
+const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
 
 type VoiceTransport = 'sfu' | 'agora';
 
@@ -64,6 +65,16 @@ export const LiveMantraRoom = () => {
   const isMicEnabledRef = useRef(isMicEnabled);
   const micPermissionGrantedRef = useRef(micPermissionGranted);
   const roomMutedRef = useRef(roomMuted);
+
+  const bgPlayer = useAudioPlayer(BG_MUSIC);
+
+  useEffect(() => {
+    if (bgPlayer) {
+      bgPlayer.loop = true;
+      bgPlayer.volume = isMuted ? 0 : 0.4;
+      bgPlayer.play();
+    }
+  }, [bgPlayer, isMuted]);
 
 
   const addRemoteSpeaker = (peerId: string) => {
@@ -482,21 +493,6 @@ export const LiveMantraRoom = () => {
                 color="#FFF"
               />
               <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic On' : 'Mic Off'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.controlButton,
-                roomMuted ? styles.controlButtonMuted : null,
-              ]}
-              onPress={handleRoomMute}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={roomMuted ? 'volume-mute' : 'volume-medium'}
-                size={22}
-                color="#FFF"
-              />
-              <Text style={styles.controlLabel}>{roomMuted ? 'Room Muted' : 'Room Live'}</Text>
             </TouchableOpacity>
           </View>
 
