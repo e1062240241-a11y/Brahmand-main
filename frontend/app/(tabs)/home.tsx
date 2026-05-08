@@ -785,7 +785,8 @@ export default function HomeScreen() {
           <TouchableOpacity
             activeOpacity={0.86}
             style={styles.profileButton}
-            onPress={() => setShowProfileActions(true)}
+            onPress={() => setShowUploadPostModal(true)}
+            onLongPress={() => setShowProfileActions(true)}
           >
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.avatar} />

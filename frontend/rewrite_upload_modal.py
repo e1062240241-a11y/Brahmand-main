@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import re
+
+with open('src/components/UploadPostModal.tsx', 'r') as f:
+    orig = f.read()
+
+# We will create a new full-screen material 3 component.
+new_content = """import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -17,6 +23,8 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { uploadUserPost } from '../services/api';
@@ -30,7 +38,6 @@ try {
 
 const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
   if (!ExpoVideoModule?.useVideoPlayer) return null;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   return ExpoVideoModule.useVideoPlayer(source, setup);
 };
 
@@ -61,6 +68,7 @@ type UploadPostModalProps = {
 const ACCEPTED_MEDIA_TYPES = ['image/*', 'video/*'];
 const ACCEPTED_VIDEO_MIME_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska'];
 const FILTERS = ['Normal', 'Vivid', 'Warm', 'Cool'];
+const BRANDS = ['Nike', 'Adidas', 'Puma', 'Zara', 'H&M', 'Other'];
 
 const buildFileName = (uri: string, mediaType: 'image' | 'video') => {
   const fromUri = uri.split('/').pop();
@@ -110,6 +118,11 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null);
   const [caption, setCaption] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Normal');
+  const [brand, setBrand] = useState('Nike');
+  const [productName, setProductName] = useState('');
+  const [description, setDescription] = useState('');
+  const [shopName, setShopName] = useState('');
+  const [schedule, setSchedule] = useState('');
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -130,7 +143,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   }, [uploadProgress]);
 
   const screenWidth = Dimensions.get('window').width;
-  const availableWidth = screenWidth - SPACING.lg * 2;
+  const availableWidth = screenWidth - SPACING.lg * 2; // more margin
   const [dynamicRatio, setDynamicRatio] = useState<number>(4 / 5);
   const [isFit, setIsFit] = useState<boolean>(false); 
 
@@ -165,6 +178,10 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const resetAndClose = () => {
     setSelectedMedia(null);
     setCaption('');
+    setProductName('');
+    setDescription('');
+    setShopName('');
+    setSchedule('');
     setSelectedFilter('Normal');
     setUploading(false);
     setUploadProgress(0);
@@ -257,7 +274,11 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     setIsCompressing(false);
 
     try {
-      const fullCaption = caption;
+      // In reality, uploadUserPost probably needs to be updated to take more fields.
+      // But for now, we pass them into caption as JSON or just keep old behavior
+      // to not break the backend, or assume backend ignores unknown fields if we pass them.
+      // Since API might just take caption, we'll prefix details into caption.
+      const fullCaption = `${productName ? '**' + productName + '**\\n' : ''}${caption}\\n${description}\\nShop: ${shopName}\\nBrand: ${brand}`;
 
       const response = await uploadUserPost(
         { uri: selectedMedia.uri, type: selectedMedia.mimeType, name: selectedMedia.name },
@@ -288,6 +309,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           
+          {/* Material 3 App Bar */}
           <View style={styles.appBar}>
             <TouchableOpacity onPress={resetAndClose} style={styles.iconBtn}>
               <MaterialIcons name="close" size={28} color={COLORS.text} />
@@ -298,6 +320,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             
+            {/* Visual Media Section */}
             <View style={styles.mediaContainer}>
               <View
                 style={[
@@ -343,6 +366,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
               </View>
             </View>
 
+            {/* Filter Section */}
             {selectedMedia && (
               <View style={styles.sectionContainer}>
                 <Text style={styles.sectionTitle}>Apply Filter</Text>
@@ -362,15 +386,45 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
               </View>
             )}
 
+            {/* Details Section */}
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>Post Details</Text>
               
-              <M3OutlinedInput label="Caption / Description" value={caption} onChangeText={setCaption} multiline />
+              <Text style={styles.subLabel}>Brand / Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.brandRow}>
+                {BRANDS.map((b) => (
+                  <TouchableOpacity
+                    key={b}
+                    style={[styles.brandChip, brand === b && styles.brandChipActive]}
+                    onPress={() => setBrand(b)}
+                  >
+                    <Text style={[styles.brandChipText, brand === b && styles.brandChipTextActive]}>{b}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <M3OutlinedInput label="Product Name" value={productName} onChangeText={setProductName} />
+              <M3OutlinedInput label="Description" value={description} onChangeText={setDescription} multiline focus />
+              <M3OutlinedInput label="Caption / Tagline" value={caption} onChangeText={setCaption} multiline />
+              <M3OutlinedInput label="Shop / Store Location (Optional)" value={shopName} onChangeText={setShopName} />
+              
+              <View style={styles.inputContainer}>
+                 <Text style={[styles.inputLabelFloating, { color: COLORS.textSecondary }]}>Schedule Date & Time</Text>
+                 <TextInput
+                  style={styles.input}
+                  value={schedule}
+                  onChangeText={setSchedule}
+                  placeholder="e.g. 2026-05-08 10:00 AM"
+                  placeholderTextColor={COLORS.textSecondary}
+                 />
+                 <MaterialIcons name="schedule" size={20} color={COLORS.textSecondary} style={{position: 'absolute', right: 16, top: Platform.OS==='android'? 18 : 16}} />
+              </View>
             </View>
 
             <View style={{height: 100}} /> 
           </ScrollView>
 
+          {/* Bottom Action Bar */}
           <View style={styles.bottomBar}>
              {uploading ? (
                <View style={styles.uploadingContainer}>
@@ -404,7 +458,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF9F6',
+    backgroundColor: '#FAF9F6', // Material 3 Surface color approx
   },
   appBar: {
     flexDirection: 'row',
@@ -417,7 +471,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   title: {
-    color: '#1C1B1F',
+    color: '#1C1B1F', // M3 On-Surface
     fontSize: 20,
     fontWeight: '600',
   },
@@ -439,9 +493,9 @@ const styles = StyleSheet.create({
   previewBox: {
     width: '100%',
     minHeight: 280,
-    borderRadius: 24,
+    borderRadius: 24, // M3 Large radius
     overflow: 'hidden',
-    backgroundColor: '#EADDFF',
+    backgroundColor: '#EADDFF', // M3 Surface Variant / Primary Container
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
@@ -456,7 +510,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   previewPlaceholder: {
-    color: '#49454F',
+    color: '#49454F', // M3 On-Surface Variant
     fontSize: 16,
     marginTop: 8,
     fontWeight: '500',
@@ -507,7 +561,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
   sectionTitle: {
-    color: '#1C1B1F',
+    color: '#1C1B1F', // M3 On Surface
     fontSize: 18,
     fontWeight: '700',
     marginBottom: SPACING.md,
@@ -524,14 +578,14 @@ const styles = StyleSheet.create({
   filterChip: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#79747E',
-    borderRadius: 8,
+    borderColor: '#79747E', // M3 Outline
+    borderRadius: 8, // Rounded M3 Chip
     paddingVertical: 8,
     paddingHorizontal: 16,
     marginRight: 10,
   },
   filterChipActive: {
-    backgroundColor: '#E8DEF8',
+    backgroundColor: '#E8DEF8', // M3 Secondary Container
     borderColor: 'transparent',
   },
   filterChipText: {
@@ -540,7 +594,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   filterChipTextActive: {
-    color: '#1D192B',
+    color: '#1D192B', // M3 On Secondary Container
   },
   brandRow: {
     marginBottom: SPACING.md,
@@ -549,7 +603,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#79747E',
-    borderRadius: 20,
+    borderRadius: 20, // Circular Chip
     paddingVertical: 8,
     paddingHorizontal: 16,
     marginRight: 10,
@@ -584,7 +638,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#79747E',
-    borderRadius: 8,
+    borderRadius: 8, // M3 Extra Small Container format
     color: '#1C1B1F',
     fontSize: 16,
     paddingHorizontal: 16,
@@ -621,8 +675,8 @@ const styles = StyleSheet.create({
   draftBtn: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#79747E',
-    borderRadius: 100,
+    borderColor: '#79747E', // M3 Outline
+    borderRadius: 100, // M3 fully rounded Button
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
@@ -668,4 +722,7 @@ const styles = StyleSheet.create({
   },
 });
 export default UploadPostModal;
+"""
 
+with open('src/components/UploadPostModal.tsx', 'w') as f:
+    f.write(new_content)

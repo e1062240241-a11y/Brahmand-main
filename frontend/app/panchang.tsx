@@ -110,59 +110,208 @@ export default function PanchangScreen() {
     }
   };
 
+  const getAdvancedPanchang = () => {
+    return payload?.sources?.advanced_panchang || payload?.sources?.panchang_advanced;
+  };
+
+  const getChaughadiyaSource = () => {
+    return payload?.chaughadiya || payload?.sources?.chaughadiya_muhurta?.chaughadiya;
+  };
+
+  const getHoraSource = () => {
+    return payload?.hora || payload?.sources?.hora_muhurta?.hora;
+  };
+
+  const getPlanetsSource = () => {
+    return payload?.planets || payload?.sources?.planet_panchang;
+  };
+
+  const formatTimeValue = (value: any) => {
+    if (value == null || value === '') return '';
+
+    if (typeof value === 'string') {
+      const normalized = value.trim();
+      if (!normalized) return '';
+      const parts = normalized.split(':').map((part) => part.trim());
+      return parts.map((part) => part.padStart(2, '0')).join(':');
+    }
+
+    if (typeof value === 'object') {
+      const hour = value.hour ?? value.Hours ?? value.h ?? 0;
+      const minute = value.minute ?? value.Minutes ?? value.m ?? 0;
+      const second = value.second ?? value.Seconds ?? value.s ?? null;
+      const h = String(hour).padStart(2, '0');
+      const m = String(minute).padStart(2, '0');
+      if (second !== null && second !== undefined) {
+        return `${h}:${m}:${String(second).padStart(2, '0')}`;
+      }
+      return `${h}:${m}`;
+    }
+
+    return String(value);
+  };
+
+  const renderDetailSections = () => {
+    if (!payload?.detail_sections?.length) return null;
+    return payload.detail_sections.map((section: any) => (
+      <View key={section.key} style={styles.detailSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+        </View>
+        <View style={styles.card}>
+          {section.rows.map((row: any, idx: number) => (
+            <View key={idx} style={[styles.infoRow, idx === section.rows.length - 1 && { borderBottomWidth: 0 }]}> 
+              <Text style={styles.infoLabel}>{row.label}</Text>
+              <Text style={styles.infoValue}>{row.value}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    ));
+  };
+
+  const buildPanchangOverview = () => {
+    if (payload?.overview?.length) return payload.overview;
+    const advanced = getAdvancedPanchang();
+    if (!advanced) return [];
+
+    const rows: any[] = [];
+    if (advanced.tithi?.details?.tithi_name) {
+      rows.push({ label: 'Tithi', value: advanced.tithi.details.tithi_name });
+    }
+    if (advanced.nakshatra?.details?.nak_name) {
+      rows.push({ label: 'Nakshatra', value: advanced.nakshatra.details.nak_name });
+    }
+    if (advanced.yog?.details?.yog_name) {
+      rows.push({ label: 'Yoga', value: advanced.yog.details.yog_name });
+    }
+    if (advanced.karan?.details?.karan_name) {
+      rows.push({ label: 'Karana', value: advanced.karan.details.karan_name });
+    }
+    return rows;
+  };
+
+  const buildPanchangTimings = () => {
+    if (payload?.timings?.length) {
+      return payload.timings.map((item: any) => ({
+        ...item,
+        value: formatTimeValue(item.value),
+      }));
+    }
+    const advanced = getAdvancedPanchang();
+    if (!advanced) return [];
+
+    return [
+      ...(advanced.sunrise ? [{ label: 'Sunrise', value: formatTimeValue(advanced.sunrise) }] : []),
+      ...(advanced.sunset ? [{ label: 'Sunset', value: formatTimeValue(advanced.sunset) }] : []),
+      ...(advanced.moonrise ? [{ label: 'Moonrise', value: formatTimeValue(advanced.moonrise) }] : []),
+      ...(advanced.moonset ? [{ label: 'Moonset', value: formatTimeValue(advanced.moonset) }] : []),
+    ];
+  };
+
+  const buildPanchangInsights = () => {
+    if (payload?.insights?.length) return payload.insights;
+    const advanced = getAdvancedPanchang();
+    if (!advanced) return [];
+
+    const rows: any[] = [];
+    if (advanced.ritu) rows.push({ label: 'Season', value: advanced.ritu });
+    if (advanced.disha_shool) rows.push({ label: 'Disha Shool', value: advanced.disha_shool });
+    if (advanced.abhijit_muhurta?.start && advanced.abhijit_muhurta?.end) {
+      rows.push({ label: 'Abhijit Muhurta', value: `${advanced.abhijit_muhurta.start} - ${advanced.abhijit_muhurta.end}` });
+    }
+    return rows;
+  };
+
   const renderPanchangTab = () => {
-    if (!payload?.overview) return null;
+    const overview = buildPanchangOverview();
+    const timings = buildPanchangTimings();
+    const insights = buildPanchangInsights();
+    const hasDetailSections = payload?.detail_sections?.length > 0;
+    const hasOverview = overview.length > 0;
+    const hasTimings = timings.length > 0;
+    const hasInsights = insights.length > 0;
+
+    if (!hasOverview && !hasTimings && !hasInsights && !hasDetailSections) return null;
     return (
       <View style={styles.tabContent}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="sunny" size={20} color={COLORS.primary} />
-          <Text style={styles.sectionTitle}>Daily Overview</Text>
-        </View>
-        <View style={styles.card}>
-          {payload.overview.map((item: any, idx: number) => (
-            <View key={idx} style={[styles.infoRow, idx === payload.overview.length - 1 && { borderBottomWidth: 0 }]}>
-              <View style={[styles.infoIcon, { backgroundColor: `${COLORS.primary}10` }]}>
-                <Ionicons 
-                  name={item.label === 'Tithi' ? 'moon' : item.label === 'Nakshatra' ? 'star' : 'planet'} 
-                  size={16} color={COLORS.primary} 
-                />
-              </View>
-              <Text style={styles.infoLabel}>{item.label}</Text>
-              <Text style={styles.infoValue}>{item.value}</Text>
+        {hasOverview && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="sunny" size={20} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>Daily Overview</Text>
             </View>
-          ))}
-        </View>
+            <View style={styles.card}>
+              {overview.map((item: any, idx: number) => (
+                <View key={idx} style={[styles.infoRow, idx === overview.length - 1 && { borderBottomWidth: 0 }]}> 
+                  <View style={[styles.infoIcon, { backgroundColor: `${COLORS.primary}10` }]}> 
+                    <Ionicons 
+                      name={item.label === 'Tithi' ? 'moon' : item.label === 'Nakshatra' ? 'star' : 'planet'} 
+                      size={16} color={COLORS.primary} 
+                    /> 
+                  </View>
+                  <Text style={styles.infoLabel}>{item.label}</Text>
+                  <Text style={styles.infoValue}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
 
-        <View style={styles.sectionHeader}>
-          <Ionicons name="time" size={20} color={COLORS.primary} />
-          <Text style={styles.sectionTitle}>Sun & Moon Timings</Text>
-        </View>
-        <View style={styles.card}>
-          {(payload.timings || []).map((item: any, idx: number) => (
-            <View key={idx} style={[styles.infoRow, idx === payload.timings.length - 1 && { borderBottomWidth: 0 }]}>
-              <Text style={styles.infoLabel}>{item.label}</Text>
-              <Text style={styles.infoValue}>{item.value}</Text>
+        {hasTimings && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="time" size={20} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>Sun & Moon Timings</Text>
             </View>
-          ))}
-        </View>
+            <View style={styles.card}>
+              {timings.map((item: any, idx: number) => (
+                <View key={idx} style={[styles.infoRow, idx === timings.length - 1 && { borderBottomWidth: 0 }]}> 
+                  <Text style={styles.infoLabel}>{item.label}</Text>
+                  <Text style={styles.infoValue}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {hasInsights && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="sparkles" size={20} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>Extra Insights</Text>
+            </View>
+            <View style={styles.card}>
+              {insights.map((item: any, idx: number) => (
+                <View key={idx} style={[styles.infoRow, idx === insights.length - 1 && { borderBottomWidth: 0 }]}> 
+                  <Text style={styles.infoLabel}>{item.label}</Text>
+                  <Text style={styles.infoValue}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {hasDetailSections && renderDetailSections()}
       </View>
     );
   };
 
   const renderChaughadiyaTab = () => {
-    if (!payload?.chaughadiya) return null;
+    const chaughadiyaSource = getChaughadiyaSource();
+    if (!chaughadiyaSource) return null;
     return (
       <View style={styles.tabContent}>
         <View style={styles.sectionHeader}>
           <Ionicons name="calendar" size={20} color={COLORS.primary} />
           <Text style={styles.sectionTitle}>Chaughadiya Muhurta</Text>
         </View>
-        
+
         {['Day', 'Night'].map((type) => (
           <View key={type}>
             <Text style={styles.subSectionTitle}>{type} Muhurtas</Text>
             <View style={styles.card}>
-              {payload.chaughadiya[type.toLowerCase()]?.map((m: any, idx: number) => (
+              {chaughadiyaSource[type.toLowerCase()]?.map((m: any, idx: number) => (
                 <View key={idx} style={styles.muhurtaRow}>
                   <View style={styles.muhurtaTimeContainer}>
                     <Text style={styles.muhurtaTime}>{m.time}</Text>
@@ -185,7 +334,8 @@ export default function PanchangScreen() {
   };
 
   const renderHoraTab = () => {
-    if (!payload?.hora) return null;
+    const horaSource = getHoraSource();
+    if (!horaSource) return null;
     return (
       <View style={styles.tabContent}>
         <View style={styles.sectionHeader}>
@@ -196,7 +346,7 @@ export default function PanchangScreen() {
           <View key={type}>
             <Text style={styles.subSectionTitle}>{type} Horas</Text>
             <View style={styles.card}>
-              {payload.hora[type.toLowerCase()]?.map((h: any, idx: number) => (
+              {horaSource[type.toLowerCase()]?.map((h: any, idx: number) => (
                 <View key={idx} style={styles.muhurtaRow}>
                   <View style={styles.muhurtaTimeContainer}>
                     <Text style={styles.muhurtaTime}>{h.time}</Text>
@@ -212,7 +362,8 @@ export default function PanchangScreen() {
   };
 
   const renderPlanetsTab = () => {
-    if (!payload?.planets) return null;
+    const planetsSource = getPlanetsSource();
+    if (!planetsSource?.length) return null;
     return (
       <View style={styles.tabContent}>
         <View style={styles.sectionHeader}>
@@ -220,15 +371,15 @@ export default function PanchangScreen() {
           <Text style={styles.sectionTitle}>Planetary Positions</Text>
         </View>
         <View style={styles.card}>
-          {payload.planets.map((p: any, idx: number) => (
+          {planetsSource.map((p: any, idx: number) => (
             <View key={idx} style={styles.planetRow}>
               <View style={styles.planetInfo}>
                 <Text style={styles.planetName}>{p.name}</Text>
-                {p.is_retro === 'true' && <Text style={styles.retroTag}>RETROGRADE</Text>}
+                {(p.is_retro === 'true' || p.isRetro === 'true' || p.isRetro === true) && <Text style={styles.retroTag}>RETROGRADE</Text>}
               </View>
               <View style={styles.planetDetails}>
-                <Text style={styles.planetSign}>{p.sign} ({p.sign_lord})</Text>
-                <Text style={styles.planetDegree}>{p.full_degree.toFixed(2)}°</Text>
+                <Text style={styles.planetSign}>{p.sign || p.signName} ({p.sign_lord || p.signLord || ''})</Text>
+                <Text style={styles.planetDegree}>{(p.full_degree ?? p.fullDegree ?? 0).toFixed(2)}°</Text>
               </View>
             </View>
           ))}
@@ -347,6 +498,7 @@ const styles = StyleSheet.create({
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' },
   loaderText: { marginTop: 12, color: '#6B7280', fontSize: 14 },
   tabContent: { padding: SPACING.md },
+  detailSection: { marginBottom: 16 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 15, marginTop: 10 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#374151' },
   subSectionTitle: { fontSize: 14, fontWeight: '700', color: '#6B7280', marginBottom: 10, marginLeft: 4 },

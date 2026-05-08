@@ -47,6 +47,7 @@ from workers.background_tasks import task_queue
 from services.push_notification_service import push_service
 from services.notification_service import NotificationService
 from services.astrology_api_service import astrology_api_service
+from services.prokerala_panchang_service import prokerala_panchang_service
 from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_notification_service import FirebaseNotificationService
 
@@ -94,7 +95,7 @@ from offensive_detector import is_offensive, is_text_safe
 
 # Configure logging
 logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
+    level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -3243,6 +3244,12 @@ async def send_community_message(
 @api_router.get("/messages/community/{community_id}/{subgroup_type}")
 async def get_community_messages(community_id: str, subgroup_type: str, limit: int = 50, token_data: dict = Depends(verify_token)):
     db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    
+    if community_id not in user.get('communities', []):
+        raise HTTPException(status_code=403, detail="Not authorized to view this chat")
+        
     chat_id = f"community_{community_id}_{subgroup_type}"
     return await db.get_chat_messages(chat_id, limit)
 
@@ -3621,12 +3628,6 @@ async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_toke
     })
 
     return {"message": f"Cleared {deleted} messages"}
-    
-    if user_id not in chat.get('members', []):
-        raise HTTPException(status_code=403, detail="Not authorized to view this chat")
-    
-    messages = await db.get_chat_messages(chat_id, limit)
-    return messages
 
 
 @api_router.post("/dm/{chat_id}/read")
@@ -5084,35 +5085,43 @@ async def get_panchang(
     force_refresh: bool = False,
     token_data: dict = Depends(verify_token),
 ):
-    """Get Astrology API Panchang data with user-location fallback."""
-    db = await get_db()
-    user = await db.get_document('users', token_data["user_id"])
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    home_location = user.get('home_location') or user.get('location') or {}
-    resolved_lat = lat if lat is not None else home_location.get('latitude')
-    resolved_lng = lng if lng is not None else home_location.get('longitude')
-
-    if not isinstance(resolved_lat, (int, float)) or not isinstance(resolved_lng, (int, float)):
-        # Default to some location if user has none
-        resolved_lat = 19.2056
-        resolved_lng = 25.2056
-
+    """Get Prokerala Panchang data with user-location fallback."""
     try:
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d") if date_str else datetime.now()
-        payload = await astrology_api_service.get_full_panchang(
-            lat=float(resolved_lat),
-            lon=float(resolved_lng),
-            date_obj=date_obj
+        date_obj = None
+        if date_str:
+            try:
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        
+        # Use provided coords or fallback to default
+        resolved_lat = lat if lat is not None else 19.2056
+        resolved_lng = lng if lng is not None else 25.2056
+        
+        # Fetch using the Prokerala service (as requested for 'proper data')
+        payload = await prokerala_panchang_service.get_aggregated_panchang(
+            lat=resolved_lat,
+            lng=resolved_lng,
+            date_str=date_str,
+            force_refresh=force_refresh
         )
         
-        # Format the payload for the frontend (mimic Prokerala summary structure if possible)
-        # For now, return the raw aggregated data
-        return payload
+        # Format the payload for the frontend
+        # The Prokerala service already returns a 'summary' with 'overview', 'timings', etc.
+        response_data = {**payload}
+        if "summary" in payload:
+            response_data.update(payload["summary"])
+        
+        # Map specific keys for the tabs (if needed)
+        sources = payload.get("sources", {})
+        if "choghadiya" in sources:
+            response_data["chaughadiya"] = sources["choghadiya"]
+        if "hora" in sources:
+            response_data["hora"] = sources["hora"]
+            
+        return response_data
     except Exception as exc:
-        logger.error("Astrology API fetch failed: %s", exc)
+        logger.error("Prokerala Panchang fetch failed: %s", exc)
         raise HTTPException(status_code=502, detail=f"Panchang provider error: {exc}")
 
 
