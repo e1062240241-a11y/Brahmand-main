@@ -14,7 +14,6 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
@@ -29,7 +28,20 @@ try {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const HEADER_HEIGHT = Platform.OS === 'ios' ? 90 : 70;
+
+const timeAgo = (date: any): string => {
+  if (!date) return '';
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  if (isNaN(then)) return '';
+  const diff = Math.floor((now - then) / 1000);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 31536000) return `${Math.floor(diff / 2592000)}w ago`;
+  return `${Math.floor(diff / 31536000)}y ago`;
+};
 
 const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
   if (!ExpoVideoModule?.useVideoPlayer) return null;
@@ -76,11 +88,11 @@ const ReelVideoItem = React.memo(({
     p.muted = isMuted;
     if (Platform.OS !== 'web') {
       p.bufferOptions = {
-        preferredForwardBufferDuration: 0,
-        waitsToMinimizeStalling: false,
-        minBufferForPlayback: 0,
-        maxBufferBytes: 0,
-        prioritizeTimeOverSizeThreshold: true,
+        preferredForwardBufferDuration: 5,
+        waitsToMinimizeStalling: true,
+        minBufferForPlayback: 3,
+        maxBufferBytes: 5 * 1024 * 1024,
+        prioritizeTimeOverSizeThreshold: false,
       };
     }
   });
@@ -148,7 +160,7 @@ const ReelVideoItem = React.memo(({
 
   return (
     <View style={{ width: screenSize.width, height: screenSize.height, backgroundColor: '#000', overflow: 'hidden' }}>
-      {/* Full Screen Video/Photo - Tap to play/pause wrapper (taps excluded for top header) */}
+      {/* Full Screen Video/Photo */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <View style={[StyleSheet.absoluteFill, { zIndex: 1 }]} pointerEvents="none">
           {!isVideo ? (
@@ -186,20 +198,15 @@ const ReelVideoItem = React.memo(({
           )}
         </View>
 
-        {/* Pressable area starts below header so header buttons receive touches */}
         <Pressable
           onPress={handleTapVideo}
-          style={{ position: 'absolute', top: HEADER_HEIGHT, left: 0, right: 0, bottom: 0, zIndex: 1 }}
+          style={StyleSheet.absoluteFill}
         />
       </View>
 
       {isVideo && isVideoLoading && (
         <View style={{
-          position: 'absolute',
-          top: HEADER_HEIGHT,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          ...StyleSheet.absoluteFillObject,
           zIndex: 15,
           justifyContent: 'center',
           alignItems: 'center',
@@ -232,31 +239,30 @@ const ReelVideoItem = React.memo(({
         </Animated.View>
       )}
 
-      {/* Top Header */}
-      <SafeAreaView style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 20,
-        paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'ios' ? 32 : 14,
-        paddingBottom: 10,
-        flexDirection: 'row',
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-      }} pointerEvents="box-none">
-        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+      {/* Top Left - Close button */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          paddingTop: Platform.OS === 'ios' ? 54 : 24,
+          paddingLeft: 16,
+        }}
+      >
+        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
           <Ionicons name="close" size={30} color="#FFF" />
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
 
       {/* Bottom Left - User Info + Caption */}
       <View
         pointerEvents="box-none"
         style={{
           position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 18 : 10,
+          bottom: Platform.OS === 'ios' ? 90 : 70,
           left: 16,
           right: 90,
           zIndex: 20,
@@ -266,6 +272,9 @@ const ReelVideoItem = React.memo(({
           <Avatar photo={localPost?.user_photo} name={localPost?.username || 'User'} size={36} />
           <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10, fontSize: 14 }}>
             {localPost?.username || 'User'}
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', marginLeft: 8, fontSize: 12 }}>
+            {timeAgo(localPost?.created_at || localPost?.timestamp || localPost?.createdAt)}
           </Text>
         </View>
         {localPost?.caption ? (
@@ -314,7 +323,7 @@ const ReelVideoItem = React.memo(({
       {/* Right Side - Action Buttons (Instagram style) */}
       <View pointerEvents="box-none" style={{
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 18 : 10,
+        bottom: Platform.OS === 'ios' ? 90 : 70,
         right: 12,
         alignItems: 'center',
         zIndex: 20,
@@ -409,7 +418,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     setLoading(true);
     try {
       const res = await api.get('/posts/feed', {
-        params: { limit: 10, offset: offsetRef.current }
+        params: { limit: 10, offset: offsetRef.current },
+        timeout: 60000,
       });
       const newPosts = res.data?.items || res.data || [];
 
@@ -423,8 +433,13 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         });
         setOffset(prev => prev + newPosts.length);
       }
-    } catch (error) {
-      console.error('Load more reels error:', error);
+    } catch (error: any) {
+      if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+        console.warn('Load more reels timed out — retrying later');
+        setHasMore(false);
+      } else {
+        console.error('Load more reels error:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -460,7 +475,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   const handleMomentumScrollEnd = useRef((event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
-    const index = Math.round(offsetY / SCREEN_HEIGHT);
+    const index = Math.round(offsetY / Dimensions.get('window').height);
     if (index !== activeIndexRef.current) {
       setActiveIndex(index);
     }
@@ -521,9 +536,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           getItemLayout={getItemLayout}
           contentContainerStyle={{ backgroundColor: '#000' }}
           style={{ backgroundColor: '#000' }}
-          initialNumToRender={3}
-          maxToRenderPerBatch={5}
-          windowSize={7}
+          initialNumToRender={2}
+          maxToRenderPerBatch={3}
+          windowSize={3}
           removeClippedSubviews={true}
           snapToInterval={screenSize.height}
           snapToAlignment="start"
