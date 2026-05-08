@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator, Image, Alert, Share, Platform } from 'react-native';
+import * as Linking from 'expo-linking';
+import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../constants/theme';
 import { getConversations, sendDirectMessage } from '../services/api';
@@ -71,6 +73,53 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
     return value;
   };
 
+  const getPostLink = () => {
+    const postId = post?.id || post?.post_id || post?._id;
+    return postId ? `https://brahmand.app/post/${postId}` : 'https://brahmand.app';
+  };
+
+  const getShareText = () => {
+    const caption = post?.caption || post?.description || '';
+    const username = post?.username || post?.user?.name || 'Someone';
+    const text = caption ? `${caption}` : 'Check this post on Brahmand!';
+    return `${text}\n\n${getPostLink()}`;
+  };
+
+  const handleShareWhatsApp = async () => {
+    const message = getShareText();
+    const mediaUrl = post?.media_url || post?.mediaUrl || '';
+
+    try {
+      if (mediaUrl) {
+        const ext = String(mediaUrl).match(/\.(mp4|mov|jpg|png|jpeg|webm)/i)?.[1] || 'mp4';
+        const localUri = `${FileSystem.cacheDirectory}whatsapp_share_${Date.now()}.${ext}`;
+        const download = await FileSystem.downloadAsync(mediaUrl, localUri);
+        if (download?.uri) {
+          await Share.share({
+            message,
+            url: Platform.OS === 'ios' ? download.uri : download.uri,
+            title: 'Share on Brahmand',
+          });
+          onClose();
+          return;
+        }
+      }
+      const encoded = encodeURIComponent(message);
+      const url = `whatsapp://send?text=${encoded}`;
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        await Linking.openURL(`https://wa.me/?text=${encoded}`);
+      }
+      onClose();
+    } catch (e) {
+      const msg = String(e?.message || e || '').toLowerCase();
+      if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
+      Alert.alert('Error', 'Could not open WhatsApp. Make sure WhatsApp is installed.');
+    }
+  };
+
   const handleSendToUser = async (conversation: any, index: number) => {
     if (!post || !conversation?.user?.sl_id) return;
     const conversationKey = getConversationKey(conversation, index);
@@ -137,13 +186,19 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
 
           {/* Action Buttons */}
           <View style={styles.actionsSection}>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleShareWhatsApp}>
+              <View style={[styles.actionIconBg, { backgroundColor: '#25D366' }]}>
+                <Ionicons name="logo-whatsapp" size={26} color="#FFF" />
+              </View>
+              <Text style={styles.actionLabel}>WhatsApp</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.actionBtn} onPress={onCopyLink}>
               <View style={styles.actionIconBg}>
                 <Ionicons name="link-outline" size={24} color={COLORS.text} />
               </View>
               <Text style={styles.actionLabel}>Copy link</Text>
             </TouchableOpacity>
-            
 
             <TouchableOpacity style={styles.actionBtn} onPress={onShareExternal}>
               <View style={styles.actionIconBg}>
