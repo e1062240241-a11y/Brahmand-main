@@ -10,13 +10,14 @@ import {
   Dimensions, 
   FlatList,
   RefreshControl,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost } from '../../src/services/api';
+import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -141,6 +142,31 @@ const UserProfileScreen = () => {
       // Revert on error
       loadProfile(false);
     }
+  };
+
+  const handleDeletePost = (post: any) => {
+    if (!post?.id) return;
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePost(post.id);
+              setPosts(prev => prev.filter(p => p.id !== post.id));
+              setTotalPosts(prev => Math.max(0, prev - 1));
+              setPostModalVisible(false);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete post. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const openPrivateChat = () => {
@@ -365,7 +391,7 @@ const UserProfileScreen = () => {
         <View style={styles.postDetailContainer}>
           <View style={styles.postDetailHeader}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.postDetailTitle}>Posts</Text>
           </View>
@@ -376,6 +402,8 @@ const UserProfileScreen = () => {
                 post={item}
                 isActive={postModalVisible}
                 onUserPress={() => setPostModalVisible(false)}
+                postMenuType={profile?.id === currentUserId ? 'delete' : undefined}
+                onPostMenuPress={handleDeletePost}
               />
             )}
             keyExtractor={(item) => item.id}
@@ -639,7 +667,7 @@ const styles = StyleSheet.create({
   },
   postDetailContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#000',
   },
   postDetailHeader: {
     height: 50,
@@ -647,13 +675,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#DBDBDB',
+    borderBottomColor: '#333',
     marginTop: Platform.OS === 'ios' ? 40 : 0,
   },
   postDetailTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 20,
+    color: '#FFFFFF',
   },
   errorText: {
     color: COLORS.error,
