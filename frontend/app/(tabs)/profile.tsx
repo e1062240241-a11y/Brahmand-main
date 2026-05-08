@@ -19,7 +19,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserPosts, getUserProfile, viewPost } from '../../src/services/api';
+import { getUserPosts, getUserProfile, viewPost, deletePost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -94,6 +94,8 @@ export default function ProfileScreen() {
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editedCaption, setEditedCaption] = useState('');
   const [activeTab, setActiveTab] = useState('grid');
   
   // Cultural Group states
@@ -268,13 +270,78 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleDeletePost = async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+
+    const removedPost = post;
+    setPosts((prev) => prev.filter((item) => item.id !== postId));
+    setPostsCount((prev) => Math.max(0, prev - 1));
+    if (selectedPost?.id === postId) {
+      setSelectedPost(null);
+      setPostModalVisible(false);
+    }
+
+    try {
+      await deletePost(postId);
+      showToast('Post deleted successfully');
+    } catch (error) {
+      console.warn('Failed to delete post:', error);
+      setPosts((prev) => (prev.some((item) => item.id === postId) ? prev : [removedPost, ...prev]));
+      setPostsCount((prev) => prev + 1);
+      Alert.alert('Unable to delete post', 'Please try again later.');
+    }
+  };
+
+  const confirmDeletePost = (post: any) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Delete this post?')) {
+        handleDeletePost(post);
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete post',
+      'Are you sure you want to delete this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => handleDeletePost(post) },
+      ]
+    );
+  };
+
   const openPostModal = (post: any) => {
     if (!post?.id) return;
     setSelectedPost(post);
     setPostModalVisible(true);
+    setEditedCaption(post?.caption || '');
     try {
       viewPost(post.id);
     } catch (e) {}
+  };
+
+  const handleEditPost = (post: any) => {
+    setSelectedPost(post);
+    setEditedCaption(post?.caption || '');
+    setEditModalVisible(true);
+  };
+
+  const savePostEdit = async () => {
+    if (!selectedPost?.id) return;
+    const postId = selectedPost.id;
+
+    try {
+      const response = await updatePost(postId, { caption: editedCaption });
+      const updatedPost = response.data?.post ? response.data.post : { ...selectedPost, caption: editedCaption };
+      setSelectedPost(updatedPost);
+      setPosts((prev) => prev.map((item) => item.id === postId ? updatedPost : item));
+      showToast('Post updated successfully');
+      setEditModalVisible(false);
+    } catch (error) {
+      console.warn('Failed to update post:', error);
+      Alert.alert('Unable to save changes', 'Please try again later.');
+    }
   };
 
   const renderPost = ({ item }: { item: any }) => {
@@ -284,10 +351,16 @@ export default function ProfileScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.gridItem}
+        style={[styles.gridItem, { position: 'relative' }]}
         activeOpacity={0.9}
         onPress={() => openPostModal(item)}
       >
+        <TouchableOpacity
+          style={styles.gridMenuButton}
+          onPress={() => confirmDeletePost(item)}
+        >
+          <Ionicons name="ellipsis-horizontal" size={18} color="#FFFFFF" />
+        </TouchableOpacity>
         {displayUrl ? (
           <Image source={{ uri: displayUrl }} style={styles.gridImage} />
         ) : (
@@ -507,7 +580,7 @@ export default function ProfileScreen() {
         <View style={styles.postDetailContainer}>
           <View style={styles.postDetailHeader}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.postDetailTitle}>Posts</Text>
           </View>
@@ -519,10 +592,36 @@ export default function ProfileScreen() {
                 isActive={postModalVisible}
                 onUserPress={() => setPostModalVisible(false)}
                 postMenuType="delete"
+                onEdit={handleEditPost}
+                onPostMenuPress={confirmDeletePost}
               />
             )}
             keyExtractor={(item) => item.id}
           />
+        </View>
+      </Modal>
+
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.editPostModal}>
+            <View style={styles.editPostHeader}>
+              <Text style={styles.editPostTitle}>Edit post caption</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              value={editedCaption}
+              onChangeText={setEditedCaption}
+              style={styles.editCaptionInput}
+              multiline
+              placeholder="Write a new caption"
+              placeholderTextColor={COLORS.textLight}
+            />
+            <TouchableOpacity style={styles.saveEditButton} onPress={savePostEdit}>
+              <Text style={styles.saveEditButtonText}>Save changes</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
@@ -750,6 +849,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     padding: 6,
   },
+  gridMenuButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    zIndex: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   viewCountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -898,7 +1009,7 @@ const styles = StyleSheet.create({
   },
   postDetailContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#000',
   },
   postDetailHeader: {
     height: 50,
@@ -906,16 +1017,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#DBDBDB',
+    borderBottomColor: '#333',
     marginTop: Platform.OS === 'ios' ? 40 : 0,
   },
   postDetailTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 20,
+    color: '#FFFFFF',
   },
   backButton: {
     padding: 4,
+  },
+  editPostModal: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '50%',
+    padding: SPACING.lg,
+  },
+  editPostHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  editPostTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  editCaptionInput: {
+    flex: 1,
+    minHeight: 120,
+    maxHeight: 260,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: SPACING.md,
+    color: COLORS.text,
+    textAlignVertical: 'top',
+    marginBottom: SPACING.lg,
+  },
+  saveEditButton: {
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveEditButtonText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 16,
   },
   // CG Modal Styles
   cgModalContent: {

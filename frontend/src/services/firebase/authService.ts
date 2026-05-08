@@ -28,23 +28,35 @@ function getNativeAuthModule() {
 }
 
 function getWebRecaptchaVerifier(authInstance: any): any {
-  if (webRecaptchaVerifier && typeof webRecaptchaVerifier.render === 'function') {
-    return webRecaptchaVerifier;
+  if (typeof window === 'undefined') {
+    throw new Error('Web reCAPTCHA verifier can only be created in a browser');
   }
-  
-  let container = document.getElementById(RECAPTCHA_CONTAINER_ID);
-  if (!container) {
-    container = document.createElement('div');
-    container.id = RECAPTCHA_CONTAINER_ID;
-    container.style.position = 'absolute';
-    container.style.width = '1px';
-    container.style.height = '1px';
-    container.style.left = '-9999px';
-    container.style.top = '-9999px';
-    document.body.appendChild(container);
-  } else {
-    container.innerHTML = '';
+
+  const existingVerifier = (window as any).recaptchaVerifier;
+  if (existingVerifier && typeof existingVerifier.clear === 'function') {
+    try {
+      existingVerifier.clear();
+    } catch (err) {
+      console.warn('[Firebase] Failed to clear existing reCAPTCHA verifier', err);
+    }
   }
+
+  webRecaptchaVerifier = null;
+  (window as any).recaptchaVerifier = null;
+
+  const existingContainer = document.getElementById(RECAPTCHA_CONTAINER_ID);
+  if (existingContainer) {
+    existingContainer.remove();
+  }
+
+  const container = document.createElement('div');
+  container.id = RECAPTCHA_CONTAINER_ID;
+  container.style.position = 'absolute';
+  container.style.width = '1px';
+  container.style.height = '1px';
+  container.style.left = '-9999px';
+  container.style.top = '-9999px';
+  document.body.appendChild(container);
 
   const verifier = new RecaptchaVerifier(authInstance, RECAPTCHA_CONTAINER_ID, {
     size: 'invisible',
@@ -71,7 +83,7 @@ export function cleanupRecaptchaVerifier() {
   
   const container = document.getElementById(RECAPTCHA_CONTAINER_ID);
   if (container) {
-    container.innerHTML = '';
+    container.remove();
   }
 }
 
