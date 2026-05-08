@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   Animated,
@@ -96,6 +96,14 @@ export const LiveMantraRoom = () => {
     }).start();
   }, [activeIndexAnim, currentIndex]);
 
+  const handleClose = useCallback(() => {
+    if (router.canGoBack?.()) {
+      router.back();
+    } else {
+      router.replace('/live-mantra');
+    }
+  }, [router]);
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (isHolding) {
@@ -127,8 +135,9 @@ export const LiveMantraRoom = () => {
         <LinearGradient
           colors={['#050505', '#120800', '#2f1200']}
           style={StyleSheet.absoluteFill}
+          pointerEvents="none"
         />
-        <View style={styles.silhouetteOverlay} />
+        <View style={styles.silhouetteOverlay} pointerEvents="none" />
         <View style={styles.header}>
           <View style={styles.statusBlock}>
             <Text style={styles.subTitle}>Live Mantra Room (Web)</Text>
@@ -201,20 +210,21 @@ export const LiveMantraRoom = () => {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="close" size={26} color="#FFF" />
-        </TouchableOpacity>
       </Animated.View>
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={handleClose}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="close" size={26} color="#FFF" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#050505' },
-  background: { flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 96, overflow: 'hidden' },
+  background: { flex: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 96, overflow: 'hidden' },
   silhouetteOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 160, 35, 0.08)', opacity: 0.4 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, zIndex: 2 },
   statusBlock: { flex: 1 },
@@ -234,5 +244,5 @@ const styles = StyleSheet.create({
   controlButtonActive: { backgroundColor: 'rgba(255,215,121,0.18)', borderColor: 'rgba(255,215,121,0.35)' },
   controlButtonMuted: { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.18)' },
   controlLabel: { color: '#FFF', fontSize: 13, fontWeight: '600' },
-  closeButton: { position: 'absolute', top: 20, left: 20, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' },
+  closeButton: { position: 'absolute', top: 30, left: 20, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', zIndex: 3 },
 });

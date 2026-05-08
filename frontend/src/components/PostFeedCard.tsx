@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import {
   Image,
   Pressable,
@@ -62,7 +62,7 @@ const parseCaption = (caption: string): { text: string; isHashtag: boolean }[] =
   }));
 };
 
-export const PostFeedCard = ({
+export const PostFeedCard = memo(({ 
   post,
   onLike,
   onComment,
@@ -341,7 +341,7 @@ export const PostFeedCard = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -349,6 +349,14 @@ export const LiveMantraRoom = () => {
     }).start();
   }, [activeIndexAnim, currentIndex]);
 
+  const handleClose = useCallback(() => {
+    if (router.canGoBack?.()) {
+      router.back();
+    } else {
+      router.replace('/live-mantra');
+    }
+  }, [router]);
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
@@ -383,8 +391,9 @@ export const LiveMantraRoom = () => {
         <LinearGradient
           colors={['#050505', '#120800', '#2f1200']}
           style={StyleSheet.absoluteFill}
+          pointerEvents="none"
         />
-        <View style={styles.silhouetteOverlay} />
+        <View style={styles.silhouetteOverlay} pointerEvents="none" />
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.headerCloseButton}
@@ -498,6 +507,14 @@ export const LiveMantraRoom = () => {
         </View>
 
       </Animated.View>
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={handleClose}
+        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="close" size={26} color="#FFF" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -652,5 +669,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 30,
+    left: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
   },
 });

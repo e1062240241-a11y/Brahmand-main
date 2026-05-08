@@ -388,6 +388,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     return () => subscription?.remove?.();
   }, []);
 
+  useEffect(() => {
+    const handler = ({ window }: { window: { width: number; height: number } }) => {
+      setScreenSize({ width: window.width, height: window.height });
+    };
+    const subscription = Dimensions.addEventListener?.('change', handler);
+    return () => subscription?.remove?.();
+  }, []);
+
   loadingRef.current = loading;
   hasMoreRef.current = hasMore;
   offsetRef.current = offset;

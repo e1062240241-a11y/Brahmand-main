@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
+ SafeAreaView,
  View, 
  Text, 
  StyleSheet, 
@@ -358,7 +359,7 @@ export default function TempleScreen() {
  };
 
  return (
- <View style={styles.container}>
+ <SafeAreaView style={styles.container} edges={['top']}>
  <View style={styles.headerBar}>
  <View style={styles.headerActions}>
  {isSearchOpen ? (
@@ -429,7 +430,7 @@ export default function TempleScreen() {
  </View>
  <ScrollView
  style={styles.contentScroll}
- contentContainerStyle={styles.listContent}
+ contentContainerStyle={[styles.listContent, styles.contentTop]}
  refreshControl={
  <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
  }
@@ -547,7 +548,7 @@ export default function TempleScreen() {
    </View>
   </TouchableOpacity>
  </Modal>
- </View>
+ </SafeAreaView>
  );
 }
 
@@ -571,7 +572,7 @@ const styles = StyleSheet.create({
  backgroundColor: COLORS.surface,
  borderBottomWidth: 1,
  borderBottomColor: COLORS.divider,
- paddingVertical: SPACING.sm,
+ paddingVertical: SPACING.xs,
  paddingHorizontal: SPACING.md,
  },
  tab: {

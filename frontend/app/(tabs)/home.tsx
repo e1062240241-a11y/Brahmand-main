@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   Image,
   ImageBackground,
@@ -340,17 +341,14 @@ export default function HomeScreen() {
     () => feedPosts.map((post, index) => String(post.id || post.media_url || index)),
     [feedPosts],
   );
-  const postSnapOffsets = useMemo(() => {
-    if (!postSnapEnabled) return undefined;
-    const offsets = feedPostKeys
-      .map((key) => postOffsets[key])
-      .filter((offset): offset is number => typeof offset === 'number')
-      .map((offset) => Math.max(feedTabsY, offset - HOME_FEED_TABS_HEIGHT));
-
-    return Array.from(new Set([feedTabsY, ...offsets])).sort((a, b) => a - b);
-  }, [feedPostKeys, feedTabsY, postOffsets, postSnapEnabled]);
+  const lastScrollTimeRef = useRef(0);
 
   const handleHomeScroll = useCallback((event: any) => {
+    const now = Date.now();
+    if (now - lastScrollTimeRef.current < 50) {
+      return;
+    }
+    lastScrollTimeRef.current = now;
     const y = event.nativeEvent.contentOffset.y;
     const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
     setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
@@ -767,6 +765,30 @@ export default function HomeScreen() {
     }
   };
 
+  const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
+    const postKey = String(item.id || item.media_url || index);
+    return (
+      <View
+        onLayout={(event) => {
+          const y = event.nativeEvent.layout.y + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
+          setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
+        }}
+      >
+        <PostFeedCard
+          post={item}
+          onLike={handleLikePost}
+          onComment={handleOpenComment}
+          onShare={handleSharePost}
+          onRepost={handleRepost}
+          onUserPress={handleOpenPostUserProfile}
+          onPostMenuPress={handlePostMenuPress}
+          postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
+          isActive={activePostKey === postKey}
+        />
+      </View>
+    );
+  }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
+
   return (
     <LinearGradient colors={['#170B35', '#27103D', '#4A2534']} style={styles.screen}>
       <ScrollView
@@ -775,9 +797,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         stickyHeaderIndices={[1]}
         onScroll={handleHomeScroll}
-        scrollEventThrottle={16}
-        snapToOffsets={postSnapOffsets}
-        snapToEnd={false}
+        scrollEventThrottle={32}
         decelerationRate="fast"
       >
         <View style={styles.upperContentWrapper}>

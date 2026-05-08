@@ -15,7 +15,7 @@ import {
   ScrollView,
   TextInput
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
@@ -44,6 +44,7 @@ type SettingItem = {
 };
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout, updateUser } = useAuthStore();
   const userId = user?.id;
@@ -395,9 +396,9 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 10 : 0) }]}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { paddingTop: insets.top || 10 }]}>
         <View style={styles.navLeft}>
           <Ionicons name="lock-closed-outline" size={18} color={COLORS.text} />
           <Text style={styles.navTitle}>{profile?.sl_id || user?.sl_id || 'Profile'}</Text>
@@ -603,7 +604,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
   },
   navBar: {
-    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -636,8 +636,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   avatarContainer: {
     position: 'relative',
