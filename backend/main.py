@@ -91,7 +91,7 @@ from utils.helpers import (
     generate_sl_id
 )
 from utils.cache import cache_manager
-from utils.helpers import generate_community_code, SUBGROUPS
+from utils.helpers import generate_community_code, generate_circle_code, SUBGROUPS
 from offensive_detector import is_offensive, is_text_safe
 
 # Configure logging
@@ -6802,7 +6802,14 @@ def _community_group_key(value: str) -> str:
 
 @api_router.put("/user/cultural-community")
 async def update_cultural_community(data: CulturalCommunityUpdate, token_data: dict = Depends(verify_token)):
-    """Update user's cultural community and auto-join/create matching culture group."""
+    """
+    Update user's cultural community.
+    Rules:
+    1. A user can only belong to ONE cultural community/circle at a time.
+    2. Changing is allowed only once (Total 2 sets including initial).
+    3. Auto-leaves previous cultural community and its chat circle.
+    4. Auto-joins/Creates matching cultural community AND a corresponding Circle for chat.
+    """
     try:
         from google.cloud import firestore
         db = await get_db()
@@ -6812,33 +6819,33 @@ async def update_cultural_community(data: CulturalCommunityUpdate, token_data: d
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        current_community = user.get('cultural_community')
+        # Enforce change limit (Allowed only once after initial set)
         current_count = user.get('cultural_change_count', 0)
+        if current_count >= 2:
+            raise HTTPException(status_code=400, detail="Culture group can only be changed once. You have already reached the limit.")
+
+        current_community = user.get('cultural_community')
         
-        # 1. Cleanup legacy circles and old cultural communities
-        if current_community:
-            prev_key = _community_group_key(current_community)
-            if prev_key:
-                # Cleanup legacy circle
-                try:
-                    old_circles = await db.query_documents('circles', filters=[('cultural_group_key', '==', prev_key)], limit=1)
-                    for circle in old_circles:
-                        await db.array_remove_update('circles', circle['id'], 'members', [user_id])
-                        await db.array_remove_update('users', user_id, 'circles', [circle['id']])
-                except Exception as ce:
-                    logger.warning(f"Circle cleanup failed: {ce}")
-                
-                # Cleanup old cultural community
-                try:
-                    old_comms = await db.query_documents('communities', filters=[('cultural_group_key', '==', prev_key)], limit=1)
-                    for comm in old_comms:
-                        await db.array_remove_update('users', user_id, 'communities', [comm['id']])
-                        await db.array_remove_update('communities', comm['id'], 'members', [user_id])
-                except Exception as ce:
-                    logger.warning(f"Community cleanup failed: {ce}")
+        # 1. CLEANUP: Leave all existing cultural communities and circles
+        # We find them by querying joined communities/circles with type 'cultural'
+        user_communities = user.get('communities', [])
+        user_circles = user.get('circles', [])
+        
+        for comm_id in user_communities:
+            comm = await db.get_document('communities', comm_id)
+            if comm and comm.get('type') == 'cultural':
+                await db.array_remove_update('communities', comm_id, 'members', [user_id])
+                await db.array_remove_update('users', user_id, 'communities', [comm_id])
+                # Decrement count
+                await db.update_document('communities', comm_id, {'member_count': max(0, comm.get('member_count', 1) - 1)})
+
+        for circle_id in user_circles:
+            circle = await db.get_document('circles', circle_id)
+            if circle and circle.get('type') == 'cultural':
+                await db.array_remove_update('circles', circle_id, 'members', [user_id])
+                await db.array_remove_update('users', user_id, 'circles', [circle_id])
 
         selected_key = _community_group_key(data.cultural_community)
-        logger.info(f"Updating culture group for user {user_id} to {data.cultural_community} (key: {selected_key})")
         if not selected_key:
             raise HTTPException(status_code=400, detail="Invalid community name")
 
@@ -6847,51 +6854,66 @@ async def update_cultural_community(data: CulturalCommunityUpdate, token_data: d
         
         target_comm_id = None
         if not comm_query:
-            # Create new cultural community
             target_comm_data = {
                 "name": f"My Culture Group • {data.cultural_community}",
                 "type": "cultural",
                 "cultural_group_key": selected_key,
-                "cultural_group_name": data.cultural_community,
                 "members": [user_id],
                 "member_count": 1,
                 "code": generate_community_code(data.cultural_community),
-                "subgroups": [s.copy() for s in SUBGROUPS],
-                "location": {"type": "cultural"},
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
             target_comm_id = await db.create_document('communities', target_comm_data)
         else:
-            selected_comm = comm_query[0]
-            target_comm_id = selected_comm['id']
-            # Join the community
+            target_comm_id = comm_query[0]['id']
             await db.array_union_update('communities', target_comm_id, 'members', [user_id])
-            # Increment member count
-            await db.update_document('communities', target_comm_id, {
-                'member_count': selected_comm.get('member_count', 0) + 1
-            })
+            await db.update_document('communities', target_comm_id, {'member_count': comm_query[0].get('member_count', 0) + 1})
 
-        # 3. Update user profile
+        # 3. Find or create the corresponding CIRCLE (for Chat visibility)
+        circle_query = await db.query_documents('circles', filters=[('cultural_group_key', '==', selected_key)], limit=1)
+        
+        target_circle_id = None
+        if not circle_query:
+            circle_data = {
+                "name": f"Culture Group • {data.cultural_community}",
+                "description": f"Private chat circle for members of {data.cultural_community}",
+                "type": "cultural",
+                "cultural_group_key": selected_key,
+                "code": generate_circle_code(data.cultural_community),
+                "privacy": "invite_code",
+                "members": [user_id],
+                "admin_ids": [user_id],
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            target_circle_id = await db.create_document('circles', circle_data)
+        else:
+            target_circle_id = circle_query[0]['id']
+            await db.array_union_update('circles', target_circle_id, 'members', [user_id])
+
+        # 4. Update user profile
         new_count = current_count + 1
         await db.update_document('users', user_id, {
             'cultural_community': data.cultural_community,
             'cultural_change_count': new_count,
             'communities': firestore.ArrayUnion([target_comm_id]),
+            'circles': firestore.ArrayUnion([target_circle_id]),
             'updated_at': datetime.utcnow()
         })
         
         await cache_manager.invalidate_user_communities(user_id)
         return {
-            "message": "Cultural community updated",
+            "message": "Cultural community and chat group joined",
             "cultural_community": data.cultural_community,
             "community_id": target_comm_id,
+            "circle_id": target_circle_id,
             "change_count": new_count
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        import traceback
         logger.error(f"Error in update_cultural_community: {str(e)}")
-        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
 
 
