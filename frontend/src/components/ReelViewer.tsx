@@ -20,6 +20,7 @@ import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
 import api from '../services/api';
+import { useGlobalMute } from '../contexts/MuteContext';
 
 let ExpoVideoModule: any = null;
 try {
@@ -68,7 +69,7 @@ const ReelVideoItem = React.memo(({
   onComment,
   onShare,
   isMuted,
-  setIsMuted,
+  toggleMute,
   screenSize,
 }: any) => {
   const [showPlayPause, setShowPlayPause] = useState(false);
@@ -551,7 +552,7 @@ const ReelVideoItem = React.memo(({
             borderRadius: 30,
             backgroundColor: 'rgba(0,0,0,0.4)',
           }}
-          onPress={() => setIsMuted((prev: boolean) => !prev)}
+          onPress={toggleMute}
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
           <Ionicons name={isMuted ? 'volume-mute' : 'volume-medium'} size={28} color="#FFF" />
@@ -599,7 +600,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike
   const offsetRef = useRef(1);
   const videosRef = useRef<any[]>([]);
   const activeIndexRef = useRef(0);
-  const [isMuted, setIsMuted] = useState(false);
+  const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const callbacksRef = useRef({ onClose, onMinimize, onLike, onComment, onShare });
   const loadMoreRef = useRef<() => void>(() => { });
 
@@ -724,7 +725,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike
       onComment={callbacksRef.current.onComment}
       onShare={callbacksRef.current.onShare}
       isMuted={isMuted}
-      setIsMuted={setIsMuted}
+      toggleMute={toggleMute}
       screenSize={screenSize}
     />
   ), [activeIndex, isMuted, screenSize]);

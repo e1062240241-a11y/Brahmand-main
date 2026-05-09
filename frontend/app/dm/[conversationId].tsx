@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   Keyboard,
   Dimensions,
-  KeyboardAvoidingView,
   BackHandler,
   Alert,
   Animated,
@@ -1359,7 +1358,7 @@ const DirectMessageScreen = () => {
         <View style={[styles.chatPatternLine, { top: 330, right: 20, width: 140, opacity: 0.06, transform: [{ rotate: '-8deg' }] }]} />
       </View>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 25 : 12) }]}>
+      <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={handleBackNavigation}
@@ -1718,17 +1717,10 @@ const DirectMessageScreen = () => {
     );
   }
 
-  // For native, wrap the screen in SafeAreaView first and let KeyboardAvoidingView adjust content.
-  // For native, use full screen and let renderContent handle insets
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {renderContent()}
-      </KeyboardAvoidingView>
-    </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {renderContent()}
+    </SafeAreaView>
   );
 }
 

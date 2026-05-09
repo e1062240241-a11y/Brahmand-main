@@ -19,6 +19,7 @@ import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
 import { useMiniPlayer } from './MiniPlayer';
 import { formatTimeAgo } from '../utils/dateUtils';
+import { useGlobalMute } from '../contexts/MuteContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -81,7 +82,7 @@ export const PostFeedCard = memo(({
   theme = 'dark',
 }: PostFeedCardProps) => {
   const [isPausedByUser, setIsPausedByUser] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
   const miniPlayer = useMiniPlayer();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -252,6 +253,17 @@ export const PostFeedCard = memo(({
                 <View style={[styles.videoBackground, { backgroundColor: '#000' }]} />
               )}
               <Pressable style={styles.videoOverlay} onPress={handleVideoPress} />
+              <TouchableOpacity
+                style={styles.muteToggle}
+                onPress={toggleMute}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={isMuted ? 'volume-mute' : 'volume-medium'}
+                  size={20}
+                  color="#FFF"
+                />
+              </TouchableOpacity>
             </View>
           ) : (
             <Image
@@ -378,31 +390,34 @@ const styles = StyleSheet.create({
   },
   userPressWrap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   userMeta: { marginLeft: SPACING.sm },
-   usernameLight: { color: '#000' },
-   timeTextLight: { color: '#666', fontSize: 11, marginTop: 2, fontWeight: '600' },
-   actionTextLight: { color: '#333' },
-   captionTextLight: { color: '#333' },
-   topCommentUserLight: { color: '#000' },
-   menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-   menuWrap: { position: 'relative', zIndex: 1000, elevation: 12 },
-   dropdownMenu: { position: 'absolute', right: 0, top: 36, minWidth: 140, backgroundColor: '#FFF', borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 20, zIndex: 1001, overflow: 'hidden' },
-   dropdownItem: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
-   dropdownText: { color: '#000000', fontSize: 13, fontWeight: '700' },
-   dropdownDangerText: { color: COLORS.error },
-   mediaWrap: { width: SCREEN_WIDTH, backgroundColor: '#F0F0F0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-   videoContainer: { width: '100%', height: '100%', position: 'relative' },
-   videoBackground: { width: '100%', height: '100%' },
-   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },
-   media: { width: '100%', height: '100%' },
-   captionText: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, fontWeight: '700' },
-   topCommentsWrap: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.lg },
-   topCommentText: { marginBottom: 4 },
-   topCommentUser: { color: '#FFFFFF', fontWeight: '900', fontSize: 13 },
-   actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
-   actionBtn: { flexDirection: 'row', alignItems: 'center', marginRight: SPACING.lg },
-   actionText: { color: '#FFFFFF', marginLeft: 6, fontSize: 12, fontWeight: '800' },
-   actionTextActive: { color: COLORS.primary },
-   viewsText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '700' },
+  username: { color: '#FFFFFF', fontWeight: '900', fontSize: 14 },
+  usernameLight: { color: '#000' },
+  timeText: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, marginTop: 2, fontWeight: '600' },
+  timeTextLight: { color: '#666', fontSize: 11, marginTop: 2, fontWeight: '600' },
+  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  menuWrap: { position: 'relative', zIndex: 1000, elevation: 12 },
+  dropdownMenu: { position: 'absolute', right: 0, top: 36, minWidth: 140, backgroundColor: '#FFF', borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 20, zIndex: 1001, overflow: 'hidden' },
+  dropdownItem: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
+  dropdownText: { color: '#000000', fontSize: 13, fontWeight: '700' },
+  dropdownDangerText: { color: COLORS.error },
+  mediaWrap: { width: SCREEN_WIDTH, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  videoContainer: { width: '100%', height: '100%', position: 'relative' },
+  videoBackground: { width: '100%', height: '100%' },
+  videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },
+  muteToggle: { position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  media: { width: '100%', height: '100%' },
+  captionText: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  captionTextLight: { color: '#333' },
+  topCommentsWrap: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.lg },
+  topCommentText: { marginBottom: 4 },
+  topCommentUser: { color: '#FFFFFF', fontWeight: '900', fontSize: 13 },
+  topCommentUserLight: { color: '#000' },
+  actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', marginRight: SPACING.lg },
+  actionText: { color: '#FFFFFF', marginLeft: 6, fontSize: 12, fontWeight: '800' },
+  actionTextLight: { color: '#333' },
+  actionTextActive: { color: COLORS.primary },
+  viewsText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '700' },
 });
 
 export default PostFeedCard;

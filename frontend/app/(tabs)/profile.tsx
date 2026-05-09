@@ -116,7 +116,7 @@ export default function ProfileScreen() {
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editedCaption, setEditedCaption] = useState('');
   const [activeTab, setActiveTab] = useState('grid');
 
@@ -368,7 +368,12 @@ export default function ProfileScreen() {
   const handleEditPost = (post: any) => {
     setSelectedPost(post);
     setEditedCaption(post?.caption || '');
-    setEditModalVisible(true);
+    setEditingPostId(post?.id);
+  };
+
+  const cancelEdit = () => {
+    setEditingPostId(null);
+    setEditedCaption('');
   };
 
   const savePostEdit = async () => {
@@ -381,7 +386,7 @@ export default function ProfileScreen() {
       setSelectedPost(updatedPost);
       setPosts((prev) => prev.map((item) => item.id === postId ? updatedPost : item));
       showToast('Post updated successfully');
-      setEditModalVisible(false);
+      setEditingPostId(null);
     } catch (error) {
       console.warn('Failed to update post:', error);
       Alert.alert('Unable to save changes', 'Please try again later.');
@@ -797,36 +802,34 @@ export default function ProfileScreen() {
                 />
               )}
               keyExtractor={(item) => item.id}
+              ListFooterComponent={
+                editingPostId === selectedPost?.id ? (
+                  <View style={styles.editPostInline}>
+                    <TextInput
+                      value={editedCaption}
+                      onChangeText={setEditedCaption}
+                      style={styles.editCaptionInput}
+                      multiline
+                      placeholder="Edit caption..."
+                      placeholderTextColor="rgba(255,255,255,0.4)"
+                    />
+                    <View style={styles.editPostActions}>
+                      <TouchableOpacity style={styles.cancelEditBtn} onPress={cancelEdit}>
+                        <Text style={styles.cancelEditText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.saveEditBtn} onPress={savePostEdit}>
+                        <Text style={styles.saveEditBtnText}>Save</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : null
+              }
             />
           ) : (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           )}
-        </View>
-      </Modal>
-
-      <Modal visible={editModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.editPostModal}>
-            <View style={styles.editPostHeader}>
-              <Text style={styles.editPostTitle}>Edit post caption</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-            <TextInput
-              value={editedCaption}
-              onChangeText={setEditedCaption}
-              style={styles.editCaptionInput}
-              multiline
-              placeholder="Write a new caption"
-              placeholderTextColor={COLORS.textLight}
-            />
-            <TouchableOpacity style={styles.saveEditButton} onPress={savePostEdit}>
-              <Text style={styles.saveEditButtonText}>Save changes</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </Modal>
 
@@ -1351,47 +1354,50 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
-  editPostModal: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '50%',
-    padding: SPACING.lg,
-  },
-  editPostHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-  },
-  editPostTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  editPostInline: {
+    padding: SPACING.md,
+    backgroundColor: '#1a1a1a',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
   editCaptionInput: {
-    flex: 1,
-    minHeight: 120,
-    maxHeight: 260,
-    borderColor: COLORS.border,
+    minHeight: 100,
+    maxHeight: 180,
+    borderColor: 'rgba(255,255,255,0.2)',
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: SPACING.md,
-    color: COLORS.text,
+    color: '#FFFFFF',
     textAlignVertical: 'top',
-    marginBottom: SPACING.lg,
+    fontSize: 14,
   },
-  saveEditButton: {
-    height: 48,
-    borderRadius: 14,
+  editPostActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: SPACING.md,
+  },
+  cancelEditBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  cancelEditText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  saveEditBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
     backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  saveEditButtonText: {
+  saveEditBtnText: {
     color: '#FFF',
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 14,
   },
   // CG Modal Styles
   cgModalContent: {

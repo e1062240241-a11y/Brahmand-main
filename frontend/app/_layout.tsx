@@ -11,6 +11,7 @@ import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { useAdminStore } from '../src/store/adminStore';
 import { MiniPlayerProvider } from '../src/components/MiniPlayer';
+import { MuteProvider } from '../src/contexts/MuteContext';
 
 function useAndroidBackHandler() {
   const router = useRouter();
@@ -307,10 +308,12 @@ export default function RootLayout() {
     <>
       <StatusBar style="dark" />
       <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
-        <MiniPlayerProvider>
-          <Slot />
-          {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
-        </MiniPlayerProvider>
+        <MuteProvider>
+          <MiniPlayerProvider>
+            <Slot />
+            {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
+          </MiniPlayerProvider>
+        </MuteProvider>
       </SafeAreaView>
     </>
   );
