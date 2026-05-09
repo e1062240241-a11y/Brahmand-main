@@ -1,13 +1,13 @@
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
   ImageBackground,
-  ActivityIndicator, 
-  Modal, 
-  Dimensions, 
+  ActivityIndicator,
+  Modal,
+  Dimensions,
   FlatList,
   RefreshControl,
   Platform,
@@ -540,7 +540,7 @@ export default function ProfileScreen() {
 
       <View style={styles.profileBottomSection}>
         <View style={styles.avatarWrapper}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
             activeOpacity={0.8}
             style={styles.avatarContainerImage}
@@ -563,11 +563,11 @@ export default function ProfileScreen() {
               <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
             )}
           </View>
-          
+
           {(profile?.bio || user?.bio) ? (
             <Text style={styles.bioTextCenter}>{profile?.bio || user?.bio}</Text>
           ) : null}
-          
+
           {(profile?.home_location || user?.home_location) && (
             <View style={styles.locationContainerCenter}>
               <Ionicons name="location-outline" size={14} color="#FFF" />
@@ -582,7 +582,7 @@ export default function ProfileScreen() {
       {/* Stats Box */}
       <View style={styles.statsCardWrapper}>
         <View style={styles.statsCard}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statBoxItem}
             onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
           >
@@ -590,10 +590,10 @@ export default function ProfileScreen() {
             <Text style={styles.statBoxValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
             <Text style={styles.statBoxLabel}>Followers</Text>
           </TouchableOpacity>
-          
+
           <View style={styles.statDivider} />
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.statBoxItem}
             onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
           >
@@ -603,7 +603,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <View style={styles.statDivider} />
-          
+
           <View style={styles.statBoxItem}>
             <Ionicons name="share-outline" size={20} color="#FFF" style={styles.statIcon} />
             <Text style={styles.statBoxValue}>{postsCount}</Text>
@@ -611,7 +611,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.statDivider} />
-          
+
           <View style={styles.statBoxItem}>
             <Ionicons name="bookmark-outline" size={20} color="#FFF" style={styles.statIcon} />
             <Text style={styles.statBoxValue}>143</Text>
@@ -622,15 +622,15 @@ export default function ProfileScreen() {
 
       {/* Add Post & Share Buttons */}
       <View style={styles.actionButtonsBox}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addPostButton}
           onPress={() => router.push('/post/create' as any)}
         >
           <Ionicons name="add" size={20} color="#FFF" />
           <Text style={styles.addPostText}>Add Post</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.shareIconButton}
           onPress={() => Alert.alert('Coming Soon', 'Share profile functionality is coming soon!')}
         >
