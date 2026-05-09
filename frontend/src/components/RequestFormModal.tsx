@@ -504,26 +504,26 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       )}
 
       {/* Community selector (for outside-community created request to be placed in a group) */}
-      {communities.length > 0 && requestType !== 'Blood' && (
+      {Array.isArray(communities) && communities.length > 0 && requestType !== 'Blood' && (
         <>
           <Text style={styles.label}>Community *</Text>
           <View style={styles.communityDropdown}>
             {communities.map((community) => (
               <TouchableOpacity
-                key={community.id}
+                key={community?.id}
                 style={[
                   styles.communityOption,
-                  selectedCommunityId === community.id && styles.communityOptionActive,
+                  selectedCommunityId === community?.id && styles.communityOptionActive,
                 ]}
-                onPress={() => setSelectedCommunityId(community.id)}
+                onPress={() => setSelectedCommunityId(community?.id)}
               >
                 <Text
                   style={[
                     styles.communityText,
-                    selectedCommunityId === community.id && styles.communityTextActive,
+                    selectedCommunityId === community?.id && styles.communityTextActive,
                   ]}
                 >
-                  {community.name}
+                  {community?.name}
                 </Text>
               </TouchableOpacity>
             ))}

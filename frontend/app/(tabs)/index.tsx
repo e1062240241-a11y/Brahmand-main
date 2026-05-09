@@ -228,12 +228,12 @@ export default function CommunityScreen() {
 
   const handleSelectCG = async (community: string) => {
     if (userCG?.is_locked) {
-      Alert.alert('Locked', 'You have already changed your Lok Sangam 2 times. It is now locked.');
+      Alert.alert('Locked', 'You can only change your Lok Sangam once. It is now locked.');
       return;
     }
     
     const changeMessage = userCG?.cultural_community 
-      ? `Change from "${userCG.cultural_community}" to "${community}"? You have ${2 - (userCG?.change_count || 0)} changes remaining.`
+      ? `Change from "${userCG.cultural_community}" to "${community}"? You have ${1 - (userCG?.change_count || 0)} change remaining.`
       : `Set your Lok Sangam to "${community}"?`;
     
     Alert.alert('Confirm', changeMessage, [
@@ -475,7 +475,7 @@ export default function CommunityScreen() {
             {userCG?.cultural_community && !userCG?.is_locked && (
               <View style={styles.currentCGBanner}>
                 <Text style={styles.currentCGText}>
-                  Current: {userCG.cultural_community} ({2 - (userCG.change_count || 0)} changes left)
+                  Current: {userCG.cultural_community} ({1 - (userCG.change_count || 0)} change left)
                 </Text>
               </View>
             )}

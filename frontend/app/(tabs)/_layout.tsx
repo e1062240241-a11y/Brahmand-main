@@ -55,12 +55,25 @@ export default function TabLayout() {
           tabBarLabel: 'Home',
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="home" color={color} focused={focused} />
+            <TabIcon name={focused ? "home" : "home-outline"} color={color} focused={focused} />
           ),
         }}
       />
 
-      {/* 2. Vendor (hidden from bottom tab bar, still accessible via route) */}
+      {/* 2. Discover */}
+      <Tabs.Screen
+        name="discover"
+        options={{
+          title: '',
+          tabBarLabel: 'Discover',
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name={focused ? "compass" : "compass-outline"} color={color} focused={focused} />
+          ),
+        }}
+      />
+
+      {/* 3. Vendor (hidden) */}
       <Tabs.Screen
         name="vendor"
         options={{
@@ -70,7 +83,7 @@ export default function TabLayout() {
         }}
       />
       
-      {/* 3. Chat (contains Community & Private Chat tabs) */}
+      {/* 4. Chat */}
       <Tabs.Screen
         name="messages"
         options={{
@@ -78,12 +91,23 @@ export default function TabLayout() {
           tabBarLabel: 'Chat',
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="chatbubbles" color={color} focused={focused} />
+            <TabIcon name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} color={color} focused={focused} />
           ),
         }}
       />
+
+      {/* 5. Jaap (Hidden) */}
+      <Tabs.Screen
+        name="jaap"
+        options={{
+          href: null,
+          title: '',
+          tabBarLabel: 'Jaap',
+          headerShown: false,
+        }}
+      />
       
-      {/* 4. Temple */}
+      {/* 6. Temple */}
       <Tabs.Screen
         name="temple"
         options={{
@@ -91,12 +115,12 @@ export default function TabLayout() {
           tabBarLabel: 'Temple',
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="business" color={color} focused={focused} />
+            <TabIcon name={focused ? "home" : "home-outline"} color={color} focused={focused} />
           ),
         }}
       />
       
-      {/* 5. Profile */}
+      {/* 7. Profile */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -112,7 +136,6 @@ export default function TabLayout() {
       {/* Hide these screens from tab bar */}
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="circles" options={{ href: null }} />
-      <Tabs.Screen name="discover" options={{ href: null }} />
       <Tabs.Screen name="jobs" options={{ href: null }} />
     </Tabs>
   );

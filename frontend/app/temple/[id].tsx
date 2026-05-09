@@ -319,16 +319,31 @@ const getMapSearchUrl = (coords: { latitude: number; longitude: number }) =>
 
 const getMapHtml = (coords: { latitude: number; longitude: number }) => `
 <html>
- <body style="margin: 0; padding: 0;">
- <iframe
- width="100%"
- height="100%"
- frameborder="0"
- style="border:0;"
- src="${getMapEmbedUrl(coords)}"
- allowfullscreen
- />
- </body>
+  <body style="margin: 0; padding: 0;">
+  <iframe
+  width="100%"
+  height="100%"
+  frameborder="0"
+  style="border:0;"
+  src="${getMapEmbedUrl(coords)}"
+  allowfullscreen
+  />
+  </body>
+</html>`;
+
+const getYoutubeHtml = (embedUrl: string) => `
+<html>
+  <body style="margin: 0; padding: 0; background: #000;">
+  <iframe
+  width="100%"
+  height="100%"
+  frameborder="0"
+  style="border:0;"
+  src="${embedUrl}"
+  allow="autoplay; encrypted-media"
+  allowfullscreen
+  />
+  </body>
 </html>`;
 
 const STATIC_TEMPLE_DETAILS: Record<string, any> = {
@@ -522,16 +537,26 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
  contact: '',
  is_following: false,
  },
- 'other-iskcon-temple-bangalore-karnataka': {
- name: 'ISKCON Temple Bangalore – Karnataka',
- deity: 'Sri Radha Krishna',
- description: 'ISKCON Temple Bangalore is a major devotional center offering darshan, kirtan, spiritual classes, and festive celebrations.',
- location: 'Rajajinagar, Bengaluru',
- aarti_timings: {},
- timings: {},
- contact: '',
- is_following: false,
- },
+  'other-iskcon-temple-bangalore-karnataka': {
+  name: 'ISKCON Temple Bangalore – Karnataka',
+  deity: 'Sri Radha Krishna',
+  description: 'ISKCON Temple Bangalore is a major devotional center offering darshan, kirtan, spiritual classes, and festive celebrations.',
+  location: 'Rajajinagar, Bengaluru',
+  aarti_timings: {},
+  timings: {},
+  contact: '',
+  is_following: false,
+  },
+  'other-iskcon-mira-road-thane': {
+  name: 'ISKCON Mira Road – Thane',
+  deity: 'Radha Giridhari',
+  description: 'Shri Radhagiridhari Mandir, ISKCON Mira Road is a vibrant spiritual temple dedicated to Radha and Giridhari.',
+  location: 'Mira Road, Thane',
+  aarti_timings: {},
+  timings: {},
+  contact: '',
+  is_following: false,
+  },
 };
 
 const getSpecialTempleKey = (name: string) => {
@@ -575,9 +600,10 @@ export default function TempleDetailScreen() {
  const [posts, setPosts] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
  const [isFollowing, setIsFollowing] = useState(false);
- const [isMapModalVisible, setIsMapModalVisible] = useState(false);
+  const [isMapModalVisible, setIsMapModalVisible] = useState(false);
+  const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
- useEffect(() => {
+  useEffect(() => {
  fetchTempleData();
  }, [id]);
 
@@ -629,21 +655,21 @@ export default function TempleDetailScreen() {
  );
  }
 
- if (!temple) {
- return (
- <SafeAreaView style={styles.container}>
- <View style={styles.header}>
- <TouchableOpacity onPress={handleGoBack}>
- <Ionicons name="arrow-back" size={24} color={COLORS.text} />
- </TouchableOpacity>
- </View>
- <View style={styles.errorContainer}>
- <Ionicons name="alert-circle" size={48} color={COLORS.textLight} />
- <Text style={styles.errorText}>Temple not found</Text>
- </View>
- </SafeAreaView>
- );
- }
+if (!temple) {
+    return (
+      <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+      <TouchableOpacity onPress={handleGoBack}>
+      <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+      </TouchableOpacity>
+      </View>
+      <View style={styles.errorContainer}>
+      <Ionicons name="alert-circle" size={48} color={COLORS.textLight} />
+      <Text style={styles.errorText}>Temple not found</Text>
+      </View>
+      </SafeAreaView>
+    );
+    }
 
  const getTempleAartiSessions = (timings: Record<string, string>, templeName: string) => {
  const order = ['morning', 'afternoon', 'evening'];
@@ -664,37 +690,47 @@ export default function TempleDetailScreen() {
  };
 
 
- const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
- const templeKey = getSpecialTempleKey(temple.name);
- const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
- const templeImageSource = getTempleImageById(resolvedTempleId);
- const isMiraRoadTemple = templeKey === 'ISKCON Mira Road';
- const hasSpecialDetails = Boolean(specialTempleData);
- const hasSpecialMap = Boolean(specialTempleData?.coords);
- const displayName = templeKey || temple.name || 'Temple';
+  const getYoutubeEmbedUrl = (url: string) => {
+    const match = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]+)/);
+    if (match) return `https://www.youtube.com/embed/${match[1]}?autoplay=1`;
+    const match2 = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
+    if (match2) return `https://www.youtube.com/embed/${match2[1]}?autoplay=1`;
+    return url;
+  };
 
- const openTempleLocation = () => {
- const url = specialTempleData?.coords
- ? getMapSearchUrl(specialTempleData.coords)
- : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${temple.name} ${formatTempleLocation(temple)}`)}`;
- Linking.openURL(url).catch((error) => {
- console.warn('Unable to open map URL', error);
- });
- };
+  const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
+  const templeKey = getSpecialTempleKey(temple.name);
+  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
+  const templeImageSource = getTempleImageById(resolvedTempleId);
+  const isMiraRoadTemple = templeKey === 'ISKCON Mira Road';
+  const hasSpecialDetails = Boolean(specialTempleData);
+  const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
+  const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
+  const hasSpecialMap = Boolean(resolvedCoords);
+  const displayName = templeKey || temple.name || 'Temple';
 
- const getTempleDescription = () => {
- if (specialTempleData?.description) {
- return specialTempleData.description;
- }
- return temple.description;
- };
+  const openTempleLocation = () => {
+    const url = resolvedCoords
+      ? getMapSearchUrl(resolvedCoords)
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${temple.name} ${formatTempleLocation(temple)}`)}`;
+    Linking.openURL(url).catch((error) => {
+      console.warn('Unable to open map URL', error);
+    });
+  };
 
- const getTempleGuidance = () => {
- if (specialTempleData?.guidance) {
- return specialTempleData.guidance;
- }
- return '';
- };
+  const getTempleDescription = () => {
+    if (temple.description) {
+      return temple.description;
+    }
+    return specialTempleData?.description || '';
+  };
+
+  const getTempleGuidance = () => {
+    if (temple.guidance) {
+      return temple.guidance;
+    }
+    return specialTempleData?.guidance || '';
+  };
 
  const templeDescription = getTempleDescription();
  const templeGuidance = getTempleGuidance();
@@ -761,15 +797,15 @@ export default function TempleDetailScreen() {
  </View>
  ))}
  </View>
- {specialTempleData?.youtubeUrl ? (
- <TouchableOpacity
- style={styles.youtubeLinkButton}
- onPress={() => Linking.openURL(specialTempleData.youtubeUrl ?? '').catch((error) => console.warn('Unable to open YouTube URL', error))}
- activeOpacity={0.75}
- >
- <Text style={styles.youtubeLinkText}>Watch live aarti on YouTube</Text>
- </TouchableOpacity>
- ) : null}
+  {resolvedYoutubeUrl ? (
+  <TouchableOpacity
+  style={styles.youtubeLinkButton}
+  onPress={() => setIsYoutubeModalVisible(true)}
+  activeOpacity={0.75}
+  >
+  <Text style={styles.youtubeLinkText}>Watch live aarti on YouTube</Text>
+  </TouchableOpacity>
+  ) : null}
  {isMiraRoadTemple && (
  <>
  <Text style={styles.afternoonAartiText}>Afternoon Aarti</Text>
@@ -822,14 +858,14 @@ export default function TempleDetailScreen() {
  {isWeb ? (
  <iframe
  title={displayName}
- src={getMapEmbedUrl(specialTempleData!.coords)}
+          src={getMapEmbedUrl(resolvedCoords!)}
  style={styles.mapBox}
  frameBorder="0"
  allowFullScreen
  />
  ) : (
  <WebView
- source={{ html: getMapHtml(specialTempleData!.coords) }}
+          source={{ html: getMapHtml(resolvedCoords!) }}
  style={styles.mapBox}
  scrollEnabled={false}
  originWhitelist={["*"]}
@@ -854,34 +890,73 @@ export default function TempleDetailScreen() {
 
  </ScrollView>
 
- <Modal
- visible={isMapModalVisible}
- transparent
- animationType="fade"
- onRequestClose={() => setIsMapModalVisible(false)}
- >
- <View style={styles.modalBackdrop}>
- <View style={styles.modalCard}>
- <View style={styles.modalHeader}>
- <Text style={styles.modalTitle}>{displayName} Location</Text>
- <TouchableOpacity onPress={() => setIsMapModalVisible(false)} style={styles.modalClose}>
- <Ionicons name="close" size={20} color={COLORS.text} />
- </TouchableOpacity>
- </View>
- <TouchableOpacity style={styles.modalMapWrapper} onPress={openTempleLocation} activeOpacity={0.9}>
- {isWeb ? (
- <iframe
- title={`${displayName} map`}
- src={specialTempleData?.coords ? getMapEmbedUrl(specialTempleData.coords) : ''}
- style={styles.modalMap}
- frameBorder="0"
- allowFullScreen
- />
- ) : (
- <WebView
- source={{ html: getMapHtml(specialTempleData?.coords || { latitude: 0, longitude: 0 }) }}
- style={styles.modalMap}
- scrollEnabled={false}
+  <Modal
+  visible={isYoutubeModalVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setIsYoutubeModalVisible(false)}
+  >
+  <View style={styles.modalBackdrop}>
+  <View style={styles.modalCard}>
+  <View style={styles.modalHeader}>
+  <Text style={styles.modalTitle}>Live Aarti</Text>
+  <TouchableOpacity onPress={() => setIsYoutubeModalVisible(false)} style={styles.modalClose}>
+  <Ionicons name="close" size={20} color={COLORS.text} />
+  </TouchableOpacity>
+  </View>
+  <View style={styles.youtubeModalBody}>
+  {isWeb ? (
+  <iframe
+  title="Live Aarti"
+  src={resolvedYoutubeUrl ? getYoutubeEmbedUrl(resolvedYoutubeUrl) : ''}
+  style={styles.youtubeFrame}
+  frameBorder="0"
+  allow="autoplay; encrypted-media"
+  allowFullScreen
+  />
+  ) : (
+  <WebView
+  source={{ html: getYoutubeHtml(resolvedYoutubeUrl ? getYoutubeEmbedUrl(resolvedYoutubeUrl) : '') }}
+  style={styles.youtubeFrame}
+  javaScriptEnabled
+  domStorageEnabled
+  allowsFullscreenVideo
+  allowsInlineMediaPlayback
+  mediaPlaybackRequiresUserAction={false}
+  />
+  )}
+  </View>
+  </View>
+  </View>
+  </Modal>
+  <Modal
+  visible={isMapModalVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setIsMapModalVisible(false)}
+  >
+  <View style={styles.modalBackdrop}>
+  <View style={styles.modalCard}>
+  <View style={styles.modalHeader}>
+  <Text style={styles.modalTitle}>{displayName} Location</Text>
+  <TouchableOpacity onPress={() => setIsMapModalVisible(false)} style={styles.modalClose}>
+  <Ionicons name="close" size={20} color={COLORS.text} />
+  </TouchableOpacity>
+  </View>
+  <TouchableOpacity style={styles.modalMapWrapper} onPress={openTempleLocation} activeOpacity={0.9}>
+  {isWeb ? (
+  <iframe
+  title={`${displayName} map`}
+           src={resolvedCoords ? getMapEmbedUrl(resolvedCoords) : ''}
+           style={styles.modalMap}
+           frameBorder="0"
+           allowFullScreen
+           />
+           ) : (
+           <WebView
+           source={{ html: getMapHtml(resolvedCoords || { latitude: 0, longitude: 0 }) }}
+  style={styles.modalMap}
+  scrollEnabled={false}
  originWhitelist={["*"]}
  pointerEvents="none"
  />
@@ -1174,9 +1249,18 @@ const styles = StyleSheet.create({
  height: '100%',
  backgroundColor: COLORS.background,
  },
- modalActions: {
- padding: SPACING.md,
- },
+  youtubeModalBody: {
+    width: '100%',
+    height: 300,
+  },
+  youtubeFrame: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000',
+  },
+  modalActions: {
+    padding: SPACING.md,
+  },
  primaryButton: {
  backgroundColor: COLORS.primary,
  borderRadius: BORDER_RADIUS.md,

@@ -21,6 +21,7 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'other-golden-temple-amritsar': require('../../assets/images/image temple/GoldenTemple.jpg'),
   'other-meenakshi-temple-madurai': require('../../assets/images/image temple/MeenakshiTemple.jpg'),
   'other-iskcon-temple-bangalore-karnataka': require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
+  'other-iskcon-mira-road-thane': require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
 };
 
 const DEFAULT_TEMPLE_IMAGE: ImageSourcePropType = require('../../assets/images/image temple/SomnathTemple.jpg');

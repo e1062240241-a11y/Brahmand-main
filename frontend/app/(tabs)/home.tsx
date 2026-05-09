@@ -308,6 +308,9 @@ export default function HomeScreen() {
       setHasMoreFeed(nextHasMore);
     } catch (error) {
       console.warn('Failed to load posts feed on home:', error);
+      if (!append && !hasCachedData) {
+        setFeedPosts([]);
+      }
     } finally {
       setLoadingFeed(false);
       setLoadingMoreFeed(false);
@@ -394,8 +397,14 @@ export default function HomeScreen() {
         getCommunityRequests({ status: 'active', limit: 30 }),
         getCommunities(),
       ]);
-      setCommunityRequests(requestsRes.data || []);
-      setCommunities(communitiesRes.data || []);
+      const requestsData = Array.isArray(requestsRes.data)
+        ? requestsRes.data
+        : (requestsRes.data?.items || requestsRes.data || []);
+      const communitiesData = Array.isArray(communitiesRes.data)
+        ? communitiesRes.data
+        : (communitiesRes.data?.items || communitiesRes.data || []);
+      setCommunityRequests(requestsData);
+      setCommunities(communitiesData);
     } catch (error) {
       console.warn('Failed to load active home requests:', error);
       setCommunityRequests([]);
@@ -443,12 +452,13 @@ export default function HomeScreen() {
     };
   };
 
-  const bloodRequest = communityRequests.find((item) => item?.request_type === 'blood');
-  const cowRequest = communityRequests.find((item) => {
+  const safeCommunityRequests = Array.isArray(communityRequests) ? communityRequests : [];
+  const bloodRequest = safeCommunityRequests.find((item) => item?.request_type === 'blood');
+  const cowRequest = safeCommunityRequests.find((item) => {
     const text = normalizeRequestText(item);
     return item?.request_type === 'help' && (text.includes('cow') || text.includes('gau') || text.includes('गौ'));
   });
-  const dogRequest = communityRequests.find((item) => {
+  const dogRequest = safeCommunityRequests.find((item) => {
     const text = normalizeRequestText(item);
     return item?.request_type === 'help' && (text.includes('dog') || text.includes('animal') || text.includes('pet'));
   });
