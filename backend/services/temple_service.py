@@ -20,23 +20,39 @@ class TempleService:
         location: Dict[str, str],
         description: Optional[str] = None,
         deity: Optional[str] = None,
-        aarti_timings: Optional[Dict[str, str]] = None
+        aarti_timings: Optional[Dict[str, str]] = None,
+        guidance: Optional[str] = None,
+        youtube_url: Optional[str] = None,
+        coords: Optional[Dict[str, float]] = None,
+        timings: Optional[Dict[str, str]] = None,
+        contact: Optional[str] = None,
+        is_verified: Optional[bool] = False,
+        temple_id: Optional[str] = None,
+        images: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Create a new temple"""
         db = await get_database()
         
-        # Generate unique temple ID
-        temple_id = generate_temple_id()
-        while await db.temples.find_one({"temple_id": temple_id}):
+        # Use provided temple_id or generate one
+        if not temple_id:
             temple_id = generate_temple_id()
+            while await db.temples.find_one({"temple_id": temple_id}):
+                temple_id = generate_temple_id()
         
         temple = {
             "temple_id": temple_id,
             "name": name,
             "location": location,
-            "description": description,
-            "deity": deity,
+            "description": description or "",
+            "deity": deity or "",
             "aarti_timings": aarti_timings or {},
+            "guidance": guidance or "",
+            "youtube_url": youtube_url or "",
+            "coords": coords or {},
+            "timings": timings or {},
+            "contact": contact or "",
+            "is_verified": is_verified,
+            "images": images or [],
             "admin_id": admin_id,
             "admins": [admin_id],
             "followers": [],

@@ -4543,7 +4543,7 @@ async def create_temple(data: dict, token_data: dict = Depends(verify_token)):
     if user.get('kyc_status') != 'verified' or user.get('kyc_role') != 'temple':
         raise HTTPException(status_code=403, detail="Only verified temple admins can create temple pages")
     
-    temple_id = f"temple_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{token_data['user_id'][:8]}"
+    temple_id = data.get('temple_id') or f"temple_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{token_data['user_id'][:8]}"
     
     temple_data = {
         'temple_id': temple_id,
@@ -4552,11 +4552,17 @@ async def create_temple(data: dict, token_data: dict = Depends(verify_token)):
         'description': data.get('description', ''),
         'deity': data.get('deity', ''),
         'aarti_timings': data.get('aarti_timings', {}),
+        'guidance': data.get('guidance', ''),
+        'youtube_url': data.get('youtube_url', ''),
+        'coords': data.get('coords', {}),
+        'timings': data.get('timings', {}),
+        'contact': data.get('contact', ''),
+        'images': data.get('images', []),
         'admin_id': token_data['user_id'],
         'admin_name': user['name'],
         'followers': [],
-        'is_verified': True,  # Created by verified temple admin
-        'community_type': 'temple_channel',  # Temple announcement channel
+        'is_verified': True,
+        'community_type': 'temple_channel',
         'created_at': datetime.utcnow()
     }
     
@@ -5138,81 +5144,24 @@ async def resolve_report(report_id: str, data: dict = Body(default={}), token_da
 
 @api_router.post("/admin/init-sample-temples")
 async def init_sample_temples(token_data: dict = Depends(verify_token)):
-    """Initialize sample temple data for beta testing"""
+    """Initialize all 21 temples with full data (Sanatan Lok)"""
+    from data.temple_seed_data import TEMPLE_SEED_DATA
+
     db = await get_db()
     
-    sample_temples = [
-        {
-            'temple_id': 'siddhivinayak_mumbai',
-            'name': 'Shree Siddhivinayak Temple',
-            'location': {'city': 'Mumbai', 'area': 'Prabhadevi', 'state': 'Maharashtra', 'country': 'India'},
-            'description': 'One of the most famous Ganpati temples in Mumbai, known for wish fulfillment.',
-            'deity': 'Lord Ganesha',
-            'aarti_timings': {'morning': '5:30 AM', 'afternoon': '12:00 PM', 'evening': '8:00 PM'},
-            'is_verified': True,
-            'community_type': 'temple_channel',
-            'followers': [],
-            'created_at': datetime.utcnow()
-        },
-        {
-            'temple_id': 'iskcon_mumbai',
-            'name': 'ISKCON Temple Mumbai',
-            'location': {'city': 'Mumbai', 'area': 'Juhu', 'state': 'Maharashtra', 'country': 'India'},
-            'description': 'Beautiful temple dedicated to Lord Krishna with daily bhajans and prasadam.',
-            'deity': 'Lord Krishna',
-            'aarti_timings': {'morning': '4:30 AM', 'afternoon': '1:00 PM', 'evening': '7:00 PM'},
-            'is_verified': True,
-            'community_type': 'temple_channel',
-            'followers': [],
-            'created_at': datetime.utcnow()
-        },
-        {
-            'temple_id': 'mahalaxmi_mumbai',
-            'name': 'Mahalaxmi Temple',
-            'location': {'city': 'Mumbai', 'area': 'Mahalaxmi', 'state': 'Maharashtra', 'country': 'India'},
-            'description': 'Ancient temple dedicated to Goddess Mahalaxmi, Mahakali and Mahasaraswati.',
-            'deity': 'Goddess Mahalaxmi',
-            'aarti_timings': {'morning': '6:00 AM', 'evening': '8:30 PM'},
-            'is_verified': True,
-            'community_type': 'temple_channel',
-            'followers': [],
-            'created_at': datetime.utcnow()
-        },
-        {
-            'temple_id': 'shirdi_sai',
-            'name': 'Shirdi Sai Baba Temple',
-            'location': {'city': 'Shirdi', 'area': 'Shirdi', 'state': 'Maharashtra', 'country': 'India'},
-            'description': 'The holy shrine of Sai Baba, visited by millions of devotees annually.',
-            'deity': 'Sai Baba',
-            'aarti_timings': {'kakad': '4:30 AM', 'madhyan': '12:00 PM', 'dhoop': '6:00 PM', 'shej': '10:30 PM'},
-            'is_verified': True,
-            'community_type': 'temple_channel',
-            'followers': [],
-            'created_at': datetime.utcnow()
-        },
-        {
-            'temple_id': 'tirupati',
-            'name': 'Tirumala Venkateswara Temple',
-            'location': {'city': 'Tirupati', 'area': 'Tirumala', 'state': 'Andhra Pradesh', 'country': 'India'},
-            'description': 'The richest and most visited temple in the world, dedicated to Lord Venkateswara.',
-            'deity': 'Lord Venkateswara',
-            'aarti_timings': {'suprabhatam': '3:00 AM', 'thomala': '2:00 PM', 'ekantha': '1:00 AM'},
-            'is_verified': True,
-            'community_type': 'temple_channel',
-            'followers': [],
-            'created_at': datetime.utcnow()
-        }
-    ]
-    
     created = 0
-    for temple in sample_temples:
+    for temple in TEMPLE_SEED_DATA:
         existing = await db.find_one('temples', [('temple_id', '==', temple['temple_id'])])
         if not existing:
-            await db.create_document('temples', temple)
+            doc = dict(temple)
+            doc['followers'] = []
+            doc['community_type'] = 'temple_channel'
+            doc['created_at'] = datetime.utcnow()
+            await db.create_document('temples', doc)
             created += 1
     
-    logger.info(f"Initialized {created} sample temples")
-    return {"message": f"Created {created} sample temples", "total": len(sample_temples)}
+    logger.info(f"Initialized {created}/21 temples with full data")
+    return {"message": f"Created {created} temples with full data", "total": 21}
 
 
 # =================== EVENTS ===================
@@ -6842,10 +6791,18 @@ async def get_user_cultural_community(token_data: dict = Depends(verify_token)):
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
     
+    change_count = user.get('cultural_change_count', 0)
+    community_id = None
+    if user.get('cultural_community'):
+        comm = await db.find_one('communities', [('cultural_group_key', '==', _community_group_key(user['cultural_community']))])
+        if comm:
+            community_id = comm.get('id')
+
     return {
         "cultural_community": user.get('cultural_community'),
-        "change_count": user.get('cultural_change_count', 0),
-        "is_locked": False
+        "community_id": community_id,
+        "change_count": change_count,
+        "is_locked": change_count >= 1
     }
 
 
@@ -6915,9 +6872,20 @@ async def update_cultural_community(data: CulturalCommunityUpdate, token_data: d
         if not selected_key:
             raise HTTPException(status_code=400, detail="Invalid community name")
 
-        # 2. Find or create the NEW cultural community
-        comm_query = await db.query_documents('communities', filters=[('cultural_group_key', '==', selected_key)], limit=1)
-        
+        # Cleanup any old cultural communities for this user, but keep the selected target.
+        old_cultural_comm_ids = []
+        try:
+            existing_cultural_comms = await db.query_documents('communities', filters=[('members', 'array_contains', user_id), ('type', '==', 'cultural')])
+            for comm in existing_cultural_comms:
+                if comm.get('cultural_group_key') != selected_key:
+                    old_cultural_comm_ids.append(comm['id'])
+                    await db.array_remove_update('communities', comm['id'], 'members', [user_id])
+                    await db.array_remove_update('users', user_id, 'communities', [comm['id']])
+        except Exception as ce:
+            logger.warning(f"Cultural community cleanup failed: {ce}")
+
+        # 2. Find or create the NEW cultural community and remove duplicate communities with same key.
+        same_key_comms = await db.query_documents('communities', filters=[('cultural_group_key', '==', selected_key)])
         target_comm_id = None
         if not comm_query:
             target_comm_data = {

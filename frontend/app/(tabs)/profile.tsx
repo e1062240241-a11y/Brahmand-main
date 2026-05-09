@@ -16,6 +16,7 @@ import {
   TextInput
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -159,6 +160,8 @@ export default function ProfileScreen() {
       updateUser(nextProfile);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
+      setProfile(user || null);
+      showToast('Failed to load profile. Check backend at localhost:8000.');
       if (error?.response?.status === 401 || error?.response?.status === 502) {
         await logout();
         router.replace('/');
@@ -259,6 +262,17 @@ export default function ProfileScreen() {
   };
 
   const handleSelectCG = async (community: string) => {
+    if (userCG?.is_locked) {
+      Alert.alert('Locked', 'You can only change your culture group once. It is now locked.');
+      return;
+    }
+
+    if (userCG?.cultural_community === community) {
+      showToast('You are already in this culture group.');
+      setShowCGModal(false);
+      return;
+    }
+
     try {
       await updateUserCulturalCommunity(community);
       await fetchUserCG();
@@ -562,6 +576,7 @@ export default function ProfileScreen() {
             {(profile?.is_verified || user?.is_verified) && (
               <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
             )}
+            <View style={styles.onlineDot} />
           </View>
 
           {(profile?.bio || user?.bio) ? (
@@ -668,7 +683,7 @@ export default function ProfileScreen() {
             </View>
           ) : !hasMore && posts.length > 0 ? (
             <View style={styles.endOfFeed}>
-              <Text style={styles.endOfFeedText}>You've reached the end</Text>
+              <Text style={styles.endOfFeedText}>You&apos;ve reached the end</Text>
             </View>
           ) : null
         }
@@ -1174,12 +1189,12 @@ const styles = StyleSheet.create({
   gridImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#efefef',
+    backgroundColor: '#1A1A1A',
   },
   gridPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#efefef',
+    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1216,7 +1231,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: COLORS.text,
+    color: '#FFF',
   },
   modalOverlay: {
     flex: 1,

@@ -115,6 +115,25 @@ export default function MessagesScreen() {
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [conversations, setConversations] = useState<DMConversation[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
+  const [userLokSangma, setUserLokSangma] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
+  const [showLokSangmaModal, setShowLokSangmaModal] = useState(false);
+  const [lokSangmaSearch, setLokSangmaSearch] = useState('');
+  const [lokSangmaList, setLokSangmaList] = useState<string[]>([]);
+  const [lokSangmaLoading, setLokSangmaLoading] = useState(false);
+
+  const dedupeCommunities = (items: Community[]) => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      if (item.type === 'cultural') {
+        const key = item.name?.trim().toLowerCase() || item.id;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+      }
+      return true;
+    });
+  };
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -142,13 +161,13 @@ export default function MessagesScreen() {
     if (cached?.data) {
       if (activeTopTab === 'Community') {
         if (activeCommunityTab === 'Chat') {
-          setCommunities((cached.data as Community[]).filter((item) => item.type !== 'home_area' && item.type !== 'area'));
+          setCommunities(dedupeCommunities((cached.data as Community[]).filter((item) => item.type !== 'home_area' && item.type !== 'area')));
         }
       } else {
         setCircles(cached.data);
       }
     }
-    
+
     try {
       if (activeTopTab === 'Community') {
         if (activeCommunityTab === 'Chat') {
@@ -156,7 +175,7 @@ export default function MessagesScreen() {
             getCommunities(),
             getCommunityRequests({ status: 'active', limit: 10 }),
           ]);
-          const filtered = (communityRes.data || []).filter((item: Community) => item.type !== 'home_area' && item.type !== 'area');
+          const filtered = dedupeCommunities((communityRes.data || []).filter((item: Community) => item.type !== 'home_area' && item.type !== 'area'));
           setCommunities(filtered);
           setRequests(requestRes.data || []);
           // Cache
@@ -202,6 +221,7 @@ export default function MessagesScreen() {
   // Use regular useEffect only for initial load
   useEffect(() => {
     fetchData();
+    fetchUserLokSangma();
   }, []);
 
   const fetchConversations = async () => {
@@ -246,6 +266,7 @@ export default function MessagesScreen() {
   // Request submission disabled inside community sub-tabs.
 
   const loadLokSangmaOptions = async (search?: string) => {
+    setLokSangmaSearch(search || '');
     setLokSangmaLoading(true);
     try {
       const res = await getCulturalCommunities(search);
@@ -258,7 +279,8 @@ export default function MessagesScreen() {
   };
 
   const handleOpenLokSangmaModal = () => {
-    loadLokSangmaOptions();
+    setLokSangmaSearch('');
+    loadLokSangmaOptions('');
     setShowLokSangmaModal(true);
   };
 
@@ -273,12 +295,12 @@ export default function MessagesScreen() {
 
   const handleSelectLokSangma = async (community: string) => {
     if (userLokSangma?.is_locked) {
-      Alert.alert('Locked', 'You have already changed your Lok Sangam 2 times. It is now locked.');
+      Alert.alert('Locked', 'You can only change your Lok Sangam once. It is now locked.');
       return;
     }
 
     const changeMessage = userLokSangma?.cultural_community
-      ? `Change from "${userLokSangma.cultural_community}" to "${community}"? You have ${2 - (userLokSangma?.change_count || 0)} changes remaining.`
+      ? `Change from "${userLokSangma.cultural_community}" to "${community}"? You have ${1 - (userLokSangma?.change_count || 0)} change remaining.`
       : `Set your Lok Sangam to "${community}"?`;
 
     Alert.alert('Confirm', changeMessage, [
@@ -725,6 +747,56 @@ export default function MessagesScreen() {
       )}
 
 
+      <Modal visible={showLokSangmaModal} transparent animationType="slide" onRequestClose={() => setShowLokSangmaModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Your Culture Group</Text>
+              <TouchableOpacity onPress={() => setShowLokSangmaModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search culture groups..."
+              placeholderTextColor={COLORS.textSecondary}
+              value={lokSangmaSearch}
+              onChangeText={(text) => loadLokSangmaOptions(text)}
+            />
+
+            {lokSangmaLoading ? (
+              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.lg }} />
+            ) : (
+              <ScrollView style={styles.lokSangmaList}>
+                {lokSangmaList && lokSangmaList.length > 0 ? (
+                  lokSangmaList.map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      style={[
+                        styles.lokSangmaItem,
+                        userLokSangma?.cultural_community === item && styles.lokSangmaItemSelected,
+                      ]}
+                      onPress={() => handleSelectLokSangma(item)}
+                      disabled={userLokSangma?.is_locked}
+                    >
+                      <Text style={[
+                        styles.lokSangmaItemText,
+                        userLokSangma?.cultural_community === item && styles.lokSangmaItemTextSelected,
+                      ]}>
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={styles.emptyText}>No matching culture groups found.</Text>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Toast Notice */}
       {toastVisible && (
         <View style={styles.toastContainer}>
@@ -872,6 +944,44 @@ const styles = StyleSheet.create({
     color: COLORS.surface,
     fontWeight: '700',
     marginLeft: SPACING.xs,
+  },
+  culturalCommunityCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    padding: SPACING.md,
+    marginTop: SPACING.md,
+  },
+  culturalCommunityHeader: {
+    marginBottom: SPACING.xs,
+  },
+  culturalCommunityTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  culturalCommunitySubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+  },
+  culturalCommunityInfo: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+    lineHeight: 20,
+  },
+  culturalCommunityAction: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.xl,
+  },
+  culturalCommunityActionLocked: {
+    backgroundColor: `${COLORS.textSecondary}30`,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
