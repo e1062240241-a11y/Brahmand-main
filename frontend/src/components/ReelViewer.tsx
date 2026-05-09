@@ -100,7 +100,7 @@ const ReelVideoItem = React.memo(({
   const mediaWidth = Number(localPost?.media_width || localPost?.mediaWidth || 0);
   const mediaHeight = Number(localPost?.media_height || localPost?.mediaHeight || 0);
   const isPortrait = mediaHeight > mediaWidth;
-  const contentFitMode = isVideo ? (isPortrait ? 'contain' : 'cover') : 'contain';
+  const contentFitMode = isVideo ? (isPortrait ? 'cover' : 'contain') : 'contain';
 
   const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {

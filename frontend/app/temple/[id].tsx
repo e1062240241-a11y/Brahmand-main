@@ -604,9 +604,13 @@ export default function TempleDetailScreen() {
  }
  };
 
- const handleGoBack = () => {
- router.replace('/temple');
- };
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/temple');
+    }
+  };
 
  const handleFollowToggle = async () => {
  try {

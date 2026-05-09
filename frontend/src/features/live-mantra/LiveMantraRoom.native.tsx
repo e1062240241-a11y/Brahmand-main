@@ -478,14 +478,6 @@ export const LiveMantraRoom = () => {
         </View>
 
       </View>
-      <TouchableOpacity
-        style={styles.closeButton}
-        onPress={handleClose}
-        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="close" size={26} color="#FFF" />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -640,17 +632,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 30,
-    left: 20,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 3,
   },
 });

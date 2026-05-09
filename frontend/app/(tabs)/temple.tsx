@@ -358,10 +358,13 @@ export default function TempleScreen() {
  );
  };
 
- return (
- <SafeAreaView style={styles.container} edges={['top']}>
- <View style={styles.headerBar}>
- <View style={styles.headerActions}>
+  return (
+  <SafeAreaView style={styles.container} edges={['top']}>
+  <View style={styles.headerBar}>
+  <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+   <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+  </TouchableOpacity>
+  <View style={styles.headerActions}>
  {isSearchOpen ? (
  <Animated.View
   style={[
@@ -593,13 +596,17 @@ const styles = StyleSheet.create({
  color: COLORS.primary,
  fontWeight: '600',
  },
- headerActions: {
- flexDirection: 'row',
- alignItems: 'center',
- flex: 1,
- justifyContent: 'flex-end',
- paddingRight: SPACING.md,
- },
+  backButton: {
+  padding: SPACING.xs,
+  marginRight: SPACING.sm,
+  },
+  headerActions: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  flex: 1,
+  justifyContent: 'flex-end',
+  paddingRight: SPACING.md,
+  },
  headerIcon: {
  padding: SPACING.xs,
  marginLeft: SPACING.sm,
