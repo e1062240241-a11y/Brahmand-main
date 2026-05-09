@@ -18,9 +18,10 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48 }) => {
     .slice(0, 2);
 
   if (photo) {
+    const isUrl = photo.startsWith('http') || photo.startsWith('https://');
     return (
       <Image
-        source={{ uri: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}` }}
+        source={{ uri: (isUrl || photo.startsWith('data:')) ? photo : `data:image/jpeg;base64,${photo}` }}
         style={[styles.image, { width: size, height: size, borderRadius: size / 2 }]}
       />
     );

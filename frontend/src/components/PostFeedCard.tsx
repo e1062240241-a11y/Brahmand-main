@@ -18,6 +18,7 @@ import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
 import { useMiniPlayer } from './MiniPlayer';
+import { formatTimeAgo } from '../utils/dateUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

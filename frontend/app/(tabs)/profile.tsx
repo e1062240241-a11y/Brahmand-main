@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,7 +20,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/store/authStore';
 import {
   getUserPosts,
@@ -41,6 +41,7 @@ import { KeyboardAvoidingView, Share } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { formatTimeAgo } from '../../src/utils/dateUtils';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
@@ -559,13 +560,11 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
             style={styles.avatarContainerImage}
           >
-            {(profile?.photo || user?.photo) ? (
-              <Image source={{ uri: profile?.photo || user?.photo }} style={styles.avatarMain} />
-            ) : (
-              <View style={[styles.avatarMain, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
-                <Ionicons name="person" size={40} color="#FFF" />
-              </View>
-            )}
+            <Avatar 
+              name={profile?.name || user?.name || 'User'} 
+              photo={profile?.photo || user?.photo} 
+              size={100} 
+            />
             <View style={styles.onlineDot} />
           </TouchableOpacity>
         </View>
@@ -576,7 +575,6 @@ export default function ProfileScreen() {
             {(profile?.is_verified || user?.is_verified) && (
               <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
             )}
-            <View style={styles.onlineDot} />
           </View>
 
           {(profile?.bio || user?.bio) ? (
@@ -775,7 +773,7 @@ export default function ProfileScreen() {
       {/* Post Detail Modal */}
       <Modal visible={postModalVisible} animationType="slide">
         <View style={styles.postDetailContainer}>
-          <View style={styles.postDetailHeader}>
+          <View style={[styles.postDetailHeader, { marginTop: insets.top }]}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -953,7 +951,7 @@ export default function ProfileScreen() {
           )}
 
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={styles.commentInputContainer}>
+            <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
               <TextInput
                 style={styles.commentInput}
@@ -1044,13 +1042,10 @@ const styles = StyleSheet.create({
   },
   avatarContainerImage: {
     position: 'relative',
-  },
-  avatarMain: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    padding: 3,
+    borderRadius: 55,
     borderWidth: 3,
-    borderColor: '#EFEFEF',
+    borderColor: '#FFFFFF',
   },
   onlineDot: {
     position: 'absolute',
@@ -1061,7 +1056,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#00FF00',
     borderWidth: 2,
-    borderColor: '#000',
+    borderColor: '#000000',
   },
   bioCenterSection: {
     alignItems: 'center',
@@ -1289,10 +1284,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   settingsGroupCard: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#1C1C1E', // Darker gray for Samsung One UI style cards
     borderRadius: 24,
     paddingVertical: 4,
     overflow: 'hidden',
+    marginHorizontal: 16,
+    marginBottom: 8,
   },
   settingsIconCircle: {
     width: 36,
@@ -1344,7 +1341,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#333',
-    marginTop: Platform.OS === 'ios' ? 40 : 0,
   },
   postDetailTitle: {
     fontSize: 16,
@@ -1542,7 +1538,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.background,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 12,
   },
   commentInput: {
     flex: 1,

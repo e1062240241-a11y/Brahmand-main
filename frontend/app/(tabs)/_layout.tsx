@@ -60,16 +60,13 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 2. Discover */}
+      {/* 2. Discover (hidden) */}
       <Tabs.Screen
         name="discover"
         options={{
+          href: null,
           title: '',
-          tabBarLabel: 'Discover',
           headerShown: false,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "compass" : "compass-outline"} color={color} focused={focused} />
-          ),
         }}
       />
 
@@ -115,7 +112,7 @@ export default function TabLayout() {
           tabBarLabel: 'Temple',
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "home" : "home-outline"} color={color} focused={focused} />
+            <TabIcon name={focused ? "business" : "business-outline"} color={color} focused={focused} />
           ),
         }}
       />

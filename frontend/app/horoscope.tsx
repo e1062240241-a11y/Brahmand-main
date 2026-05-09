@@ -120,142 +120,126 @@ export default function HoroscopeScreen() {
               </Text>
             </View>
           </View>
-        ) : (
-          <View style={styles.content}>
-            <LinearGradient
-              colors={['#FFFFFF', '#FFF9F2']}
-              style={styles.predictionCard}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.dateBadge}>
-                  <Text style={styles.dateText}>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchHoroscope(selectedZodiac.id)}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              {/* Sign Header */}
+              <View style={styles.signHeaderRow}>
+                <View style={styles.signTitleCol}>
+                  <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
+                  <Text style={styles.signDatesText}>{selectedZodiac.dates}</Text>
                 </View>
-                <Text style={styles.cardEyebrow}>Daily Prediction</Text>
-              </View>
-              
-              {typeof payload?.prediction === 'string' ? (
-                <Text style={styles.predictionText}>{payload.prediction}</Text>
-              ) : Array.isArray(payload?.prediction) ? (
-                <View style={{ gap: 12 }}>
-                  {payload.prediction.map((p: any, i: number) => (
-                    <Text key={i} style={styles.predictionText}>{String(p)}</Text>
-                  ))}
+                <View style={styles.signIllustrationContainer}>
+                  <View style={[styles.illustrationBg, { backgroundColor: selectedZodiac.color + '20', borderWidth: 0 }]}>
+                    {(selectedZodiac as any).image ? (
+                      <ExpoImage source={(selectedZodiac as any).image} style={styles.zodiacImage} contentFit="contain" />
+                    ) : (
+                      <Text style={styles.largeZodiacEmoji}>{selectedZodiac.icon}</Text>
+                    )}
+                  </View>
                 </View>
-              ) : typeof payload?.prediction === 'object' && payload.prediction !== null ? (
-                <View style={styles.categoriesContainer}>
-                  {Object.entries(payload.prediction).map(([key, value]) => {
-                    if (!value) return null;
-                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    let iconName: any = 'star-outline';
-                    if (key.includes('personal')) iconName = 'heart-outline';
-                    if (key.includes('profession')) iconName = 'briefcase-outline';
-                    if (key.includes('health')) iconName = 'fitness-outline';
-                    if (key.includes('emotion')) iconName = 'happy-outline';
-                    if (key.includes('travel')) iconName = 'airplane-outline';
-                    if (key.includes('luck')) iconName = 'sparkles-outline';
+              </View>
 
-          {/* Sign Header */}
-          <View style={styles.signHeaderRow}>
-            <View style={styles.signTitleCol}>
-              <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
-              <Text style={styles.signDatesText}>{selectedZodiac.dates}</Text>
-            </View>
-            <View style={styles.signIllustrationContainer}>
-              <View style={[styles.illustrationBg, { backgroundColor: selectedZodiac.color + '20', borderWidth: 0 }]}>
-                {(selectedZodiac as any).image ? (
-                  <ExpoImage source={(selectedZodiac as any).image} style={styles.zodiacImage} contentFit="contain" />
-                ) : (
-                  <Text style={styles.largeZodiacEmoji}>{selectedZodiac.icon}</Text>
-                )}
-              </View>
-            </View>
-          </View>
+              {/* Metrics Section */}
+              <View style={styles.metricsContainer}>
+                <View style={styles.leftMetrics}>
+                  <MetricBar label="Finance" value={scores.finance} />
+                  <MetricBar label="Love" value={scores.love} />
+                  <MetricBar label="Health" value={scores.health} />
+                </View>
+                
+                <View style={styles.centerMetric}>
+                  <View style={styles.verticalBarContainer}>
+                    <LinearGradient
+                      colors={['#E65C00', '#FF8C42']}
+                      start={{ x: 0, y: 1 }}
+                      end={{ x: 0, y: 0 }}
+                      style={[styles.verticalBarFill, { height: `${scores.overall}%` }]}
+                    >
+                      <Text style={styles.verticalBarText}>{scores.overall}%</Text>
+                    </LinearGradient>
+                  </View>
+                  <Text style={styles.metricLabel}>Overall</Text>
+                </View>
 
-          {/* Metrics Section */}
-          <View style={styles.metricsContainer}>
-            <View style={styles.leftMetrics}>
-              <MetricBar label="Finance" value={scores.finance} />
-              <MetricBar label="Love" value={scores.love} />
-              <MetricBar label="Health" value={scores.health} />
-            </View>
-            
-            <View style={styles.centerMetric}>
-              <View style={styles.verticalBarContainer}>
-                <LinearGradient
-                  colors={['#E65C00', '#FF8C42']}
-                  start={{ x: 0, y: 1 }}
-                  end={{ x: 0, y: 0 }}
-                  style={[styles.verticalBarFill, { height: `${scores.overall}%` }]}
-                >
-                  <Text style={styles.verticalBarText}>{scores.overall}%</Text>
-                </LinearGradient>
+                <View style={styles.rightMetrics}>
+                  <View style={styles.luckyBox}>
+                    <Text style={styles.luckyValue}>{lucky.number}</Text>
+                    <Text style={styles.luckyLabel}>Lucky Number</Text>
+                  </View>
+                  <View style={[styles.luckyBox, { backgroundColor: lucky.colorHex || '#FF0000' }]}>
+                    <Text style={[styles.luckyValue, { color: '#FFF' }]}>{lucky.color}</Text>
+                    <Text style={[styles.luckyLabel, { color: '#FFF' }]}>Lucky Colour</Text>
+                  </View>
+                </View>
               </View>
-              <Text style={styles.metricLabel}>Overall</Text>
-            </View>
 
-            <View style={styles.rightMetrics}>
-              <View style={styles.luckyBox}>
-                <Text style={styles.luckyValue}>{lucky.number}</Text>
-                <Text style={styles.luckyLabel}>Lucky Number</Text>
-              </View>
-              <View style={[styles.luckyBox, { backgroundColor: lucky.colorHex || '#FF0000' }]}>
-                <Text style={[styles.luckyValue, { color: '#FFF' }]}>{lucky.color}</Text>
-                <Text style={[styles.luckyLabel, { color: '#FFF' }]}>Lucky Colour</Text>
-              </View>
-            </View>
-          </View>
+              <View style={styles.predictionContent}>
+                {Object.entries(predictionData).map(([key, value], index) => {
+                  if (!value) return null;
+                  const label = key.replace(/_/g, ' ').toUpperCase();
+                  let iconName: any = 'star';
+                  if (key.includes('personal')) iconName = 'person';
+                  if (key.includes('profession')) iconName = 'briefcase';
+                  if (key.includes('health')) iconName = 'heart';
+                  if (key.includes('emotion')) iconName = 'happy';
+                  if (key.includes('travel')) iconName = 'airplane';
+                  if (key.includes('luck')) iconName = 'leaf';
 
-          {/* Detailed Content */}
-          {showDropdown && (
-            <View style={styles.dropdownOverlay}>
-              <View style={styles.dropdownContent}>
-                {ZODIAC_SIGNS.map((z) => (
-                  <TouchableOpacity key={z.id} style={styles.dropdownOption} onPress={() => selectZodiac(z)}>
-                    <Text style={styles.dropdownOptionIcon}>{z.icon}</Text>
-                    <Text style={styles.dropdownOptionName}>{z.name}</Text>
-                  </TouchableOpacity>
-                ))}
+                  return (
+                    <View key={key}>
+                      <View style={styles.sectionDivider}>
+                        <View style={styles.dividerLine} />
+                        <Ionicons name="bonfire" size={12} color="#FF6B00" style={styles.dividerIcon} />
+                        <View style={styles.dividerLine} />
+                      </View>
+                      
+                      <View style={styles.sectionRow}>
+                        <View style={styles.sectionIconCol}>
+                          <Ionicons name={iconName} size={32} color="#111" />
+                        </View>
+                        <View style={styles.sectionTextCol}>
+                          <Text style={styles.sectionLabel}>{label}</Text>
+                          <Text style={styles.sectionDescription}>{String(value)}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
-            </View>
+            </>
           )}
-
-          <View style={styles.predictionContent}>
-            {Object.entries(predictionData).map(([key, value], index) => {
-              if (!value) return null;
-              const label = key.replace(/_/g, ' ').toUpperCase();
-              let iconName: any = 'star';
-              if (key.includes('personal')) iconName = 'person';
-              if (key.includes('profession')) iconName = 'briefcase';
-              if (key.includes('health')) iconName = 'heart';
-              if (key.includes('emotion')) iconName = 'happy';
-              if (key.includes('travel')) iconName = 'briefcase'; // Suitcase icon in image looks like briefcase or luggage
-              if (key.includes('luck')) iconName = 'leaf'; // Clover icon
-
-              return (
-                <View key={key}>
-                  <View style={styles.sectionDivider}>
-                    <View style={styles.dividerLine} />
-                    <Ionicons name="bonfire" size={12} color="#FF6B00" style={styles.dividerIcon} />
-                    <View style={styles.dividerLine} />
-                  </View>
-                  
-                  <View style={styles.sectionRow}>
-                    <View style={styles.sectionIconCol}>
-                      <Ionicons name={iconName} size={32} color="#111" />
-                    </View>
-                    <View style={styles.sectionTextCol}>
-                      <Text style={styles.sectionLabel}>{label}</Text>
-                      <Text style={styles.sectionDescription}>{String(value)}</Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
 
           <View style={{ height: 100 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Detailed Content Dropdown Overlay moved here */}
+      {showDropdown && (
+        <TouchableOpacity 
+          style={styles.dropdownOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowDropdown(false)}
+        >
+          <View style={styles.dropdownContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {ZODIAC_SIGNS.map((z) => (
+                <TouchableOpacity key={z.id} style={styles.dropdownOption} onPress={() => selectZodiac(z)}>
+                  <Text style={styles.dropdownOptionIcon}>{z.icon}</Text>
+                  <Text style={styles.dropdownOptionName}>{z.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

@@ -65,31 +65,11 @@ try {
   console.warn('expo-file-system unavailable for media sharing:', error);
 }
 
-
-type HomeRequestCard = {
-  id: string;
-  tone: 'urgent' | 'warm' | 'cool';
-  icon?: string;
-  emoji?: string;
-  title: string;
-  location: string;
-  subtitle: string;
-  footer: string;
-  button: string;
-  request?: any;
-};
-
 const quickAccess = [
   { label: 'My Krishna', icon: null, subtitle: 'AI Dharma\nGuidance', color: '#FFF8F0' },
   { label: 'SOS', icon: 'alert', subtitle: 'By Your\nCommunity', color: '#FFF8F0', urgent: true },
   { label: 'Panchang', icon: 'calendar', subtitle: 'Vedic View\nVedic View', color: '#FFF8F0', calendarIcon: true },
 ];
-
-const getHelpCardStyle = (tone: string) => {
-  if (tone === 'urgent') return styles.urgentHelpCard;
-  if (tone === 'warm') return styles.warmHelpCard;
-  return styles.coolHelpCard;
-};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -448,38 +428,7 @@ export default function HomeScreen() {
     return item?.request_type === 'help' && (text.includes('dog') || text.includes('animal') || text.includes('pet'));
   });
 
-  const requestCards: HomeRequestCard[] = [
-    makeRequestCard('blood', bloodRequest, {
-      id: 'blood',
-      tone: 'urgent',
-      icon: 'flame',
-      title: requestsLoading ? 'Checking Blood Requests' : 'No Blood Request',
-      location: 'Your community',
-      subtitle: requestsLoading ? 'Loading active requests' : 'All clear right now',
-      footer: requestsLoading ? 'Please wait' : 'No active request',
-      button: 'View',
-    }),
-    makeRequestCard('cow', cowRequest, {
-      id: 'cow',
-      tone: 'warm',
-      emoji: '🐄',
-      title: requestsLoading ? 'Checking Cow Seva' : 'No Cow Seva Request',
-      location: 'Your community',
-      subtitle: requestsLoading ? 'Loading active requests' : 'No active request',
-      footer: requestsLoading ? 'Please wait' : 'All clear',
-      button: 'View',
-    }),
-    makeRequestCard('dog', dogRequest, {
-      id: 'dog',
-      tone: 'cool',
-      emoji: '🐕',
-      title: requestsLoading ? 'Checking Dog Seva' : 'No Dog Seva Request',
-      location: 'Your community',
-      subtitle: requestsLoading ? 'Loading active requests' : 'No active request',
-      footer: requestsLoading ? 'Please wait' : 'All clear',
-      button: 'View',
-    }),
-  ];
+
 
   const handleSaveBio = async () => {
     setIsEditingBio(false);
@@ -798,40 +747,42 @@ export default function HomeScreen() {
         <View style={styles.upperContentWrapper}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity
-                activeOpacity={0.86}
-                style={styles.profileButton}
-                onPress={() => setShowUploadPostModal(true)}
-                onLongPress={() => setShowProfileActions(true)}
-              >
-                {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatar} />
-                ) : (
-                  <LinearGradient colors={['#FFE3A7', '#FF7A30']} style={styles.avatarFallback}>
-                    <Text style={styles.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
-                  </LinearGradient>
-                )}
-                <View style={styles.headerOnlineDot} />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.86}
+                  style={styles.profileButton}
+                  onPress={() => router.push('/(tabs)/profile')}
+                  onLongPress={() => setShowProfileActions(true)}
+                >
+                  <Avatar name={firstName} photo={avatarUri} size={58} />
+                  <View style={styles.headerOnlineDot} />
+                </TouchableOpacity>
 
               <View style={styles.greetingBlock}>
-                <Text style={styles.greeting}>Namaste User 🙏</Text>
+                <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   style={styles.bioRow}
                   onPress={() => setIsEditingBio(true)}
                 >
-                  <Text style={styles.subGreeting}>Hari Om</Text>
+                  <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
                   <Ionicons name="pencil" size={12} color="#4A2B20" style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.headerRight}>
-              <TouchableOpacity activeOpacity={0.7} style={styles.headerIconButton}>
-                <Ionicons name="search-outline" size={26} color="#333" />
+              <TouchableOpacity 
+                activeOpacity={0.7} 
+                style={styles.headerIconButton}
+                onPress={() => setSearchActive(!searchActive)}
+              >
+                <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={26} color="#333" />
               </TouchableOpacity>
-              <TouchableOpacity activeOpacity={0.7} style={styles.headerIconButton}>
+              <TouchableOpacity 
+                activeOpacity={0.7} 
+                style={styles.headerIconButton}
+                onPress={() => router.push('/notifications')}
+              >
                 <Ionicons name="notifications-outline" size={26} color="#333" />
               </TouchableOpacity>
             </View>
@@ -915,7 +866,19 @@ export default function HomeScreen() {
 
         <View style={styles.topFeatureRow}>
           {quickAccess.map((item, idx) => (
-            <TouchableOpacity key={idx} style={styles.featureCard} activeOpacity={0.9}>
+            <TouchableOpacity 
+              key={idx} 
+              style={styles.featureCard} 
+              activeOpacity={0.9}
+              onPress={() => {
+                if (item.label === 'Panchang') router.push('/panchang');
+                else if (item.label === 'My Krishna') router.push('/astrology');
+                else if (item.label === 'SOS') {
+                   setRequestType('Help');
+                   setShowRequestModal(true);
+                }
+              }}
+            >
               {item.urgent && (
                 <View style={styles.urgentCircle}>
                   <Text style={styles.urgentExclamation}>!</Text>
@@ -924,7 +887,7 @@ export default function HomeScreen() {
               {item.calendarIcon && (
                 <View style={styles.calendarIconContainer}>
                   <Ionicons name="calendar-outline" size={24} color="#000" />
-                  <Text style={styles.calendarIconText}>12</Text>
+                  <Text style={styles.calendarIconText}>{new Date().getDate()}</Text>
                 </View>
               )}
               <View style={[styles.featureTextContainer, !item.icon && { width: '100%' }]}>
@@ -966,22 +929,39 @@ export default function HomeScreen() {
           contentContainerStyle={styles.actionCardsScroll}
           style={{ marginBottom: 20 }}
         >
+          {communityRequests.length === 0 && !requestsLoading && (
+            <View style={[styles.actionCard, { backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)' }]}>
+              <Ionicons name="notifications-off-outline" size={32} color="#666" />
+              <Text style={{ color: '#666', fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 8 }}>No current request</Text>
+            </View>
+          )}
+
           {/* Urgent Blood Request */}
-          <LinearGradient colors={['#D90429', '#8D0801']} style={styles.actionCard}>
+          <LinearGradient colors={bloodRequest ? ['#D90429', '#8D0801'] : ['#4A4A4A', '#2D2D2D']} style={styles.actionCard}>
             <View style={styles.cardHeaderBadge}>
                <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-               <Text style={styles.cardBadgeText}>Your Community</Text>
+               <Text style={styles.cardBadgeText}>{bloodRequest ? 'Your Community' : 'Health Status'}</Text>
             </View>
             <View style={styles.cardMainContent}>
               <View style={styles.cardIconRow}>
-                <Ionicons name="water" size={20} color="#FF4D4D" />
-                <Text style={styles.cardTypeLabel}>Urgent</Text>
+                <Ionicons name="water" size={20} color={bloodRequest ? "#FF4D4D" : "#888"} />
+                <Text style={[styles.cardTypeLabel, !bloodRequest && { color: '#888' }]}>{bloodRequest ? 'Urgent' : 'Normal'}</Text>
               </View>
-              <Text style={styles.cardTitleLarge}>O+ Blood Request</Text>
-              <Text style={styles.cardSubtitleSmall}>XYZ , Hospital</Text>
+              <Text style={styles.cardTitleLarge}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
+              <Text style={styles.cardSubtitleSmall}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'All clear right now'}</Text>
             </View>
-            <TouchableOpacity style={styles.cardButtonWhite}>
-              <Text style={styles.cardButtonWhiteText}>View</Text>
+            <TouchableOpacity 
+              style={styles.cardButtonWhite}
+              onPress={() => {
+                if (bloodRequest) {
+                   router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
+                } else {
+                   setRequestType('Blood');
+                   setShowRequestModal(true);
+                }
+              }}
+            >
+              <Text style={styles.cardButtonWhiteText}>{bloodRequest ? 'View' : 'Donate'}</Text>
             </TouchableOpacity>
           </LinearGradient>
 
@@ -995,7 +975,10 @@ export default function HomeScreen() {
               <Text style={styles.cardTitleLargeDark}>Register Your Business</Text>
               <Text style={styles.cardSubtitleSmallDark}>Become a verified sanatan vendor</Text>
             </View>
-            <TouchableOpacity style={styles.cardButtonOutline}>
+            <TouchableOpacity 
+              style={styles.cardButtonOutline}
+              onPress={() => router.push('/vendor/business-details')}
+            >
               <Text style={styles.cardButtonTextDark}>Register Now</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -1029,7 +1012,10 @@ export default function HomeScreen() {
                 <Text style={styles.cardNotifyText}>Notify me for the upcoming events</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.cardButtonOutlinePurple}>
+            <TouchableOpacity 
+              style={styles.cardButtonOutlinePurple}
+              onPress={() => router.push('/live-mantra')}
+            >
               <Text style={styles.cardButtonTextDark}>Watch now</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -1472,23 +1458,10 @@ const styles = StyleSheet.create({
   },
   featureTextContainer: {
     flexShrink: 1,
-  },
-  featureTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#111',
-  },
-  featureSubtitle: {
-    fontSize: 11,
-    color: '#444',
-    marginTop: 2,
-    lineHeight: 14,
-  },
-  featureTextContainer: {
     alignItems: 'center',
   },
   featureTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
     color: '#000',
     textAlign: 'center',
@@ -1499,6 +1472,7 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 2,
+    lineHeight: 14,
   },
   featuredLiveCard: {
     height: 280,
@@ -1528,6 +1502,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFF',
   },
   liveBadgeText: {
     color: '#FFF',
@@ -2215,5 +2195,94 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
   },
-
+  // Search Styles
+  searchPanel: {
+    backgroundColor: '#FFF',
+    marginHorizontal: PAGE_PADDING,
+    marginTop: -10,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
+  },
+  searchResultsSection: {
+    marginTop: 15,
+  },
+  userResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  userResultContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  userResultText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  userResultName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111',
+  },
+  userResultMeta: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  followButton: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  followingButton: {
+    backgroundColor: '#F0F0F0',
+  },
+  followButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  followingButtonText: {
+    color: '#666',
+  },
+  searchStatusText: {
+    textAlign: 'center',
+    color: '#666',
+    fontSize: 14,
+    marginVertical: 10,
+  },
+  hashtagIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#F3E5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

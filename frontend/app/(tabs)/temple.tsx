@@ -405,37 +405,47 @@ export default function TempleScreen() {
    <Ionicons name="arrow-back" size={22} color={COLORS.text} />
   </TouchableOpacity>
   <View style={styles.headerActions}>
- {isSearchOpen ? (
- <Animated.View
-  style={[
-   styles.searchInputContainer,
-   {
-    width: searchBarAnim.interpolate({
-     inputRange: [0, 1],
-     outputRange: [0, 240],
-    }),
-    opacity: searchBarAnim,
-   },
-  ]}
- >
-  <Ionicons name="search" size={16} color={COLORS.textSecondary} />
-  <TextInput
-    style={[
-     styles.searchInput,
-     Platform.OS === 'web' ? ({ outlineWidth: 0, outlineStyle: 'none' } as any) : null,
-    ]}
-   placeholder=""
-   placeholderTextColor={COLORS.textLight}
-   value={searchQuery}
-   onChangeText={setSearchQuery}
-   returnKeyType="search"
-   underlineColorAndroid="transparent"
-   />
-   {searchQuery ? (
-   <TouchableOpacity onPress={() => setSearchQuery('')}>
-    <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
-   </TouchableOpacity>
-   ) : null}
+    {isSearchOpen ? (
+      <Animated.View
+        style={[
+          styles.searchInputContainer,
+          {
+            width: searchBarAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 240],
+            }),
+            opacity: searchBarAnim,
+          },
+        ]}
+      >
+        <Ionicons name="search" size={16} color={COLORS.textSecondary} />
+        <TextInput
+          style={[
+            styles.searchInput,
+            Platform.OS === 'web' ? ({ outlineWidth: 0, outlineStyle: 'none' } as any) : null,
+          ]}
+          placeholder=""
+          placeholderTextColor={COLORS.textLight}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          returnKeyType="search"
+          underlineColorAndroid="transparent"
+        />
+        {searchQuery ? (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={closeSearch}>
+            <Ionicons name="close" size={18} color={COLORS.textLight} />
+          </TouchableOpacity>
+        )}
+      </Animated.View>
+    ) : (
+      <TouchableOpacity style={styles.headerIcon} onPress={openSearch}>
+        <Ionicons name="search-outline" size={24} color={COLORS.text} />
+      </TouchableOpacity>
+    )}
   </View>
   </View>
 
@@ -576,8 +586,7 @@ export default function TempleScreen() {
    </View>
   </TouchableOpacity>
   </Modal>
- </SafeAreaView>
- </View>
+  </SafeAreaView>
  );
 }
 
