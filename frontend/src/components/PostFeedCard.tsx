@@ -47,6 +47,7 @@ type PostFeedCardProps = {
   postMenuType?: 'delete' | 'report';
   isActive?: boolean;
   onLayout?: (event: any) => void;
+  theme?: 'light' | 'dark';
 };
 
 const formatTime = (raw: any) => {
@@ -77,6 +78,7 @@ export const PostFeedCard = memo(({
   postMenuType,
   isActive = false,
   onLayout,
+  theme = 'dark',
 }: PostFeedCardProps) => {
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
@@ -184,16 +186,19 @@ export const PostFeedCard = memo(({
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
-          <View style={styles.userMeta}>
-            <Text style={styles.username}>{post?.username || 'User'}</Text>
-          </View>
+           <View style={styles.userMeta}>
+             <Text style={[styles.username, theme === 'light' && styles.usernameLight]}>{post?.username || 'User'}</Text>
+             {theme === 'light' && (
+               <Text style={styles.timeTextLight}>{formatTimeAgo(post?.created_at)}, {post?.location?.city || 'Chennai'}</Text>
+             )}
+           </View>
         </TouchableOpacity>
 
         {onPostMenuPress && postMenuType && (
           <View style={styles.menuWrap}>
-            <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(!menuVisible)}>
-              <Ionicons name="ellipsis-horizontal" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
+             <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(!menuVisible)}>
+               <Ionicons name="ellipsis-horizontal" size={18} color={theme === 'light' ? '#333' : '#FFFFFF'} />
+             </TouchableOpacity>
             {menuVisible && (
               <View style={styles.dropdownMenu}>
                 {postMenuType === 'delete' && onEdit && (
@@ -279,20 +284,20 @@ export const PostFeedCard = memo(({
 
       {/* Actions */}
       <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onLike?.(post)}>
-          <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={24} color={likedByMe ? COLORS.primary : '#FFFFFF'} />
-          {likesCount > 0 && <Text style={[styles.actionText, likedByMe && styles.actionTextActive]}>{likesCount}</Text>}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
-          <Ionicons name="chatbubble-outline" size={22} color="#FFFFFF" />
-          {commentsCount > 0 && <Text style={styles.actionText}>{commentsCount}</Text>}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
-          <Ionicons name="paper-plane-outline" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost?.(post)}>
-          <Ionicons name="repeat-outline" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+         <TouchableOpacity style={styles.actionBtn} onPress={() => onLike?.(post)}>
+           <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={24} color={likedByMe ? COLORS.primary : (theme === 'light' ? '#333' : '#FFFFFF')} />
+           {likesCount > 0 && <Text style={[styles.actionText, likedByMe && styles.actionTextActive, theme === 'light' && styles.actionTextLight]}>{likesCount}</Text>}
+         </TouchableOpacity>
+         <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
+           <Ionicons name="chatbubble-outline" size={22} color={theme === 'light' ? '#333' : '#FFFFFF'} />
+           {commentsCount > 0 && <Text style={[styles.actionText, theme === 'light' && styles.actionTextLight]}>{commentsCount}</Text>}
+         </TouchableOpacity>
+         <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
+           <Ionicons name="paper-plane-outline" size={22} color={theme === 'light' ? '#333' : '#FFFFFF'} />
+         </TouchableOpacity>
+         <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost?.(post)}>
+           <Ionicons name="repeat-outline" size={24} color={theme === 'light' ? '#333' : '#FFFFFF'} />
+         </TouchableOpacity>
       </View>
 
       {/* Caption */}
@@ -304,17 +309,17 @@ export const PostFeedCard = memo(({
             nestedScrollEnabled={true}
           >
             <Pressable onPress={() => !isCaptionExpanded && setIsCaptionExpanded(true)}>
-              <Text style={styles.captionText}>
-                <Text style={{ fontWeight: '900', color: '#FFFFFF' }}>{post?.username || 'User'} </Text>
-                {captionSegments.map((seg, idx) =>
-                  seg.isHashtag ? (
-                    <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
-                      {seg.text}
-                    </Text>
-                  ) : (
-                    <Text key={idx} style={{ color: '#FFFFFF', fontWeight: '700' }}>{seg.text}</Text>
-                  )
-                )}
+                 <Text style={[styles.captionText, theme === 'light' && styles.captionTextLight]}>
+                 <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>{post?.username || 'User'} </Text>
+                 {captionSegments.map((seg, idx) =>
+                   seg.isHashtag ? (
+                     <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
+                       {seg.text}
+                     </Text>
+                   ) : (
+                     <Text key={idx} style={{ color: theme === 'light' ? '#333' : '#FFFFFF', fontWeight: '700' }}>{seg.text}</Text>
+                   )
+                 )}
                 {!isCaptionExpanded && post?.caption?.length > 80 && (
                   <Text style={{ fontWeight: '900', color: 'rgba(255,255,255,0.7)' }}> ...more</Text>
                 )}
@@ -335,10 +340,10 @@ export const PostFeedCard = memo(({
       {topComments.length > 0 && (
         <View style={styles.topCommentsWrap}>
           {topComments.map((comment: any, index: number) => (
-            <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
-              <Text style={styles.topCommentUser}>{comment?.username || 'User'} </Text>
-              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
-            </Text>
+             <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
+               <Text style={[styles.topCommentUser, theme === 'light' && styles.topCommentUserLight]}>{comment?.username || 'User'} </Text>
+               <Text style={{ color: theme === 'light' ? '#444' : '#FFFFFF', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
+             </Text>
           ))}
         </View>
       )}
@@ -385,7 +390,9 @@ const styles = StyleSheet.create({
   userPressWrap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   userMeta: { marginLeft: SPACING.sm },
   username: { color: '#FFFFFF', fontWeight: '900', fontSize: 14 },
+  usernameLight: { color: '#000' },
   timeText: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, marginTop: 2, fontWeight: '600' },
+  timeTextLight: { color: '#666', fontSize: 11, marginTop: 2, fontWeight: '600' },
   menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   menuWrap: { position: 'relative', zIndex: 1000, elevation: 12 },
   dropdownMenu: { position: 'absolute', right: 0, top: 36, minWidth: 140, backgroundColor: '#FFF', borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 20, zIndex: 1001, overflow: 'hidden' },
@@ -399,12 +406,15 @@ const styles = StyleSheet.create({
   muteToggle: { position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   media: { width: '100%', height: '100%' },
   captionText: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  captionTextLight: { color: '#333' },
   topCommentsWrap: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.lg },
   topCommentText: { marginBottom: 4 },
   topCommentUser: { color: '#FFFFFF', fontWeight: '900', fontSize: 13 },
+  topCommentUserLight: { color: '#000' },
   actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
   actionBtn: { flexDirection: 'row', alignItems: 'center', marginRight: SPACING.lg },
   actionText: { color: '#FFFFFF', marginLeft: 6, fontSize: 12, fontWeight: '800' },
+  actionTextLight: { color: '#333' },
   actionTextActive: { color: COLORS.primary },
   viewsText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '700' },
 });

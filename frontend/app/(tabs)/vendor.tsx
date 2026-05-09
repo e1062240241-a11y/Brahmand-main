@@ -30,7 +30,7 @@ import { createOrUpdateJobProfile, getJobProfiles, getMyJobProfile, getKYCStatus
 import * as Location from 'expo-location';
 
 const TABS = ['Nearby'];
-const MAIN_SECTIONS = ['Vendors', 'Jobs'];
+const MAIN_SECTIONS = ['Services', 'Jobs'];
 const TOP_SKILL_SUGGESTIONS = ['Carpenter', 'Housemaid', 'Plumber', 'Electrician', 'Cook', 'Teacher', 'Painter', 'Beautician'];
 
 interface JobProfile {
@@ -69,7 +69,7 @@ export default function VendorScreen() {
   const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
   
   const [activeTab, setActiveTab] = useState('Nearby');
-  const [activeSection, setActiveSection] = useState('Vendors');
+  const [activeSection, setActiveSection] = useState('Services');
   const [refreshing, setRefreshing] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [showJobProfileModal, setShowJobProfileModal] = useState(false);
@@ -907,7 +907,7 @@ export default function VendorScreen() {
       )}
 
       {/* My Business Section (if vendor owner) */}
-      {activeSection === 'Vendors' && myVendor && (
+      {activeSection === 'Services' && myVendor && (
         <TouchableOpacity 
           style={styles.myBusinessCard}
           onPress={() => {
@@ -927,7 +927,7 @@ export default function VendorScreen() {
             <Ionicons name="storefront" size={24} color={COLORS.primary} />
           </View>
           <View style={styles.myBusinessInfo}>
-            <Text style={styles.myBusinessLabel}>Manage My Business</Text>
+            <Text style={styles.myBusinessLabel}>Manage My Service</Text>
             <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
             {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
               <View style={styles.kycStatusBadge}>
@@ -955,13 +955,13 @@ export default function VendorScreen() {
       )}
 
       {/* Create button */}
-      {activeSection === 'Vendors' && !myVendor && (
+      {activeSection === 'Services' && !myVendor && (
         <TouchableOpacity 
           style={styles.registerButton}
           onPress={() => setShowRegistrationModal(true)}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.registerText}>Register Your Business</Text>
+          <Text style={styles.registerText}>Register Your Service</Text>
         </TouchableOpacity>
       )}
 
@@ -976,7 +976,7 @@ export default function VendorScreen() {
       )}
 
       {/* Loading State */}
-      {((activeSection === 'Vendors' && loading && vendors.length === 0) || (activeSection === 'Jobs' && jobsLoading && jobProfiles.length === 0)) && (
+      {((activeSection === 'Services' && loading && vendors.length === 0) || (activeSection === 'Jobs' && jobsLoading && jobProfiles.length === 0)) && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
@@ -997,13 +997,13 @@ export default function VendorScreen() {
           />
         }
         ListEmptyComponent={
-          !((activeSection === 'Vendors' && loading) || (activeSection === 'Jobs' && jobsLoading)) ? (
+          !((activeSection === 'Services' && loading) || (activeSection === 'Jobs' && jobsLoading)) ? (
             <View style={styles.emptyState}>
               <Ionicons name={activeSection === 'Jobs' ? 'briefcase-outline' : 'storefront-outline'} size={48} color={COLORS.textLight} />
               <Text style={styles.emptyText}>
                 {searchTerm
                   ? `No '${searchTerm}' in your area.`
-                  : (activeSection === 'Jobs' ? 'No jobs found' : 'No vendors found')}
+                  : (activeSection === 'Jobs' ? 'No jobs found' : 'No services found')}
               </Text>
               {!searchTerm && (
                 <Text style={styles.emptySubtext}>

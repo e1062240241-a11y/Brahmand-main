@@ -1,13 +1,13 @@
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
   ImageBackground,
-  ActivityIndicator, 
-  Modal, 
-  Dimensions, 
+  ActivityIndicator,
+  Modal,
+  Dimensions,
   FlatList,
   RefreshControl,
   Platform,
@@ -16,6 +16,7 @@ import {
   TextInput
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -159,6 +160,8 @@ export default function ProfileScreen() {
       updateUser(nextProfile);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
+      setProfile(user || null);
+      showToast('Failed to load profile. Check backend at localhost:8000.');
       if (error?.response?.status === 401 || error?.response?.status === 502) {
         await logout();
         router.replace('/');
@@ -259,6 +262,17 @@ export default function ProfileScreen() {
   };
 
   const handleSelectCG = async (community: string) => {
+    if (userCG?.is_locked) {
+      Alert.alert('Locked', 'You can only change your culture group once. It is now locked.');
+      return;
+    }
+
+    if (userCG?.cultural_community === community) {
+      showToast('You are already in this culture group.');
+      setShowCGModal(false);
+      return;
+    }
+
     try {
       await updateUserCulturalCommunity(community);
       await fetchUserCG();
@@ -545,7 +559,7 @@ export default function ProfileScreen() {
 
       <View style={styles.profileBottomSection}>
         <View style={styles.avatarWrapper}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
             activeOpacity={0.8}
             style={styles.avatarContainerImage}
@@ -567,12 +581,13 @@ export default function ProfileScreen() {
             {(profile?.is_verified || user?.is_verified) && (
               <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
             )}
+            <View style={styles.onlineDot} />
           </View>
-          
+
           {(profile?.bio || user?.bio) ? (
             <Text style={styles.bioTextCenter}>{profile?.bio || user?.bio}</Text>
           ) : null}
-          
+
           {(profile?.home_location || user?.home_location) && (
             <View style={styles.locationContainerCenter}>
               <Ionicons name="location-outline" size={14} color="#FFF" />
@@ -587,7 +602,7 @@ export default function ProfileScreen() {
       {/* Stats Box */}
       <View style={styles.statsCardWrapper}>
         <View style={styles.statsCard}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statBoxItem}
             onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
           >
@@ -595,10 +610,10 @@ export default function ProfileScreen() {
             <Text style={styles.statBoxValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
             <Text style={styles.statBoxLabel}>Followers</Text>
           </TouchableOpacity>
-          
+
           <View style={styles.statDivider} />
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.statBoxItem}
             onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
           >
@@ -608,7 +623,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <View style={styles.statDivider} />
-          
+
           <View style={styles.statBoxItem}>
             <Ionicons name="share-outline" size={20} color="#FFF" style={styles.statIcon} />
             <Text style={styles.statBoxValue}>{postsCount}</Text>
@@ -616,7 +631,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.statDivider} />
-          
+
           <View style={styles.statBoxItem}>
             <Ionicons name="bookmark-outline" size={20} color="#FFF" style={styles.statIcon} />
             <Text style={styles.statBoxValue}>143</Text>
@@ -627,15 +642,15 @@ export default function ProfileScreen() {
 
       {/* Add Post & Share Buttons */}
       <View style={styles.actionButtonsBox}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addPostButton}
           onPress={() => router.push('/post/create' as any)}
         >
           <Ionicons name="add" size={20} color="#FFF" />
           <Text style={styles.addPostText}>Add Post</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.shareIconButton}
           onPress={() => Alert.alert('Coming Soon', 'Share profile functionality is coming soon!')}
         >
@@ -673,7 +688,7 @@ export default function ProfileScreen() {
             </View>
           ) : !hasMore && posts.length > 0 ? (
             <View style={styles.endOfFeed}>
-              <Text style={styles.endOfFeedText}>You've reached the end</Text>
+              <Text style={styles.endOfFeedText}>You&apos;ve reached the end</Text>
             </View>
           ) : null
         }
@@ -1177,12 +1192,12 @@ const styles = StyleSheet.create({
   gridImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#efefef',
+    backgroundColor: '#1A1A1A',
   },
   gridPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#efefef',
+    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1219,7 +1234,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: COLORS.text,
+    color: '#FFF',
   },
   modalOverlay: {
     flex: 1,

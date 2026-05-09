@@ -283,6 +283,14 @@ class TempleCreate(BaseModel):
     description: Optional[str] = None
     deity: Optional[str] = None
     aarti_timings: Optional[Dict[str, str]] = None
+    guidance: Optional[str] = None
+    youtube_url: Optional[str] = None
+    coords: Optional[Dict[str, float]] = None
+    timings: Optional[Dict[str, str]] = None
+    contact: Optional[str] = None
+    is_verified: Optional[bool] = False
+    temple_id: Optional[str] = None
+    images: Optional[List[str]] = None
 
 
 class TemplePost(BaseModel):
@@ -297,6 +305,14 @@ class TempleResponse(BaseModel):
     name: str
     location: Dict[str, str]
     deity: Optional[str] = None
+    description: Optional[str] = None
+    guidance: Optional[str] = None
+    aarti_timings: Optional[Dict[str, str]] = None
+    timings: Optional[Dict[str, str]] = None
+    contact: Optional[str] = None
+    youtube_url: Optional[str] = None
+    coords: Optional[Dict[str, float]] = None
+    is_verified: Optional[bool] = False
     follower_count: int = 0
     is_following: bool = False
 
