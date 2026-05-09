@@ -20,20 +20,20 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/store/authStore';
-import { 
-  getUserPosts, 
-  getUserProfile, 
-  viewPost, 
-  deletePost, 
+import {
+  getUserPosts,
+  getUserProfile,
+  viewPost,
+  deletePost,
   updatePost,
   togglePostLike,
   getPostComments,
   addPostComment,
   repostPost,
   reportPost,
-  getCulturalCommunities, 
-  getUserCulturalCommunity, 
-  updateUserCulturalCommunity 
+  getCulturalCommunities,
+  getUserCulturalCommunity,
+  updateUserCulturalCommunity
 } from '../../src/services/api';
 import SharePostModal from '../../src/components/SharePostModal';
 import { KeyboardAvoidingView, Share } from 'react-native';
@@ -117,7 +117,7 @@ export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedCaption, setEditedCaption] = useState('');
   const [activeTab, setActiveTab] = useState('grid');
-  
+
   // Cultural Group states
   const [showCGModal, setShowCGModal] = useState(false);
   const [cgSearch, setCGSearch] = useState('');
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
       const response = await getUserPosts(userId, LIMIT, currentOffset);
       const payload = response.data;
       const items = Array.isArray(payload) ? payload : (payload?.items || []);
-      
+
       if (reset) {
         setPosts(items);
       } else {
@@ -217,7 +217,7 @@ export default function ProfileScreen() {
       handleOpenCGModal();
       return;
     }
-    
+
     setShowSettingsModal(false);
     if (item.disabled) return;
     if (item.action === 'logout') {
@@ -347,7 +347,7 @@ export default function ProfileScreen() {
     setEditedCaption(post?.caption || '');
     try {
       viewPost(post.id);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleEditPost = (post: any) => {
@@ -513,7 +513,7 @@ export default function ProfileScreen() {
         <View style={styles.gridOverlay}>
           <View style={styles.viewCountBadge}>
             <Ionicons name="play" size={10} color="#FFF" />
-            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views/1000).toFixed(1)}K` : views}</Text>
+            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views / 1000).toFixed(1)}K` : views}</Text>
           </View>
         </View>
 
@@ -748,9 +748,9 @@ export default function ProfileScreen() {
 
       {/* Avatar Modal */}
       <Modal visible={avatarModalVisible} transparent animationType="fade">
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setAvatarModalVisible(false)}
         >
           <Image source={{ uri: profile?.photo || user?.photo }} style={styles.fullImage} resizeMode="contain" />
@@ -827,14 +827,14 @@ export default function ProfileScreen() {
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
-            
+
             {(userCG?.change_count ?? 0) >= 2 && (
               <View style={styles.limitReachedContainer}>
                 <Ionicons name="alert-circle" size={20} color="#991B1B" />
                 <Text style={styles.limitReachedText}>Change limit reached. You cannot change your culture group again.</Text>
               </View>
             )}
-            
+
             <View style={styles.cgSearchContainer}>
               <Ionicons name="search" size={20} color={COLORS.textLight} />
               <TextInput
@@ -856,7 +856,7 @@ export default function ProfileScreen() {
                 data={cgList}
                 keyExtractor={(item, index) => `${item}-${index}`}
                 renderItem={({ item }) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
                       styles.cgItem,
                       userCG?.cultural_community === item && styles.cgItemSelected,
@@ -947,7 +947,7 @@ export default function ProfileScreen() {
                 onChangeText={setCommentText}
                 multiline
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleSubmitComment}
                 disabled={!commentText.trim() || commentSubmitting}
               >
