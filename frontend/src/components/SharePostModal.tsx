@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator, Image, Alert, Share, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../constants/theme';
 import { getConversations, sendDirectMessage } from '../services/api';
@@ -94,16 +96,31 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
         const ext = String(mediaUrl).match(/\.(mp4|mov|jpg|png|jpeg|webm)/i)?.[1] || 'mp4';
         const localUri = `${FileSystem.cacheDirectory}whatsapp_share_${Date.now()}.${ext}`;
         const download = await FileSystem.downloadAsync(mediaUrl, localUri);
+        
         if (download?.uri) {
-          await Share.share({
-            message,
-            url: Platform.OS === 'ios' ? download.uri : download.uri,
-            title: 'Share on Brahmand',
-          });
+          if (Platform.OS === 'ios') {
+            await Share.share({
+              message,
+              url: download.uri,
+              title: 'Share on Brahmand',
+            });
+          } else {
+            // On Android, explicitly copy the caption since we can't reliably pass both video and text to WhatsApp directly without custom native code.
+            await Clipboard.setStringAsync(message);
+            Alert.alert("Link Copied!", "The link has been copied to your clipboard. You can paste it into your WhatsApp Status!");
+            
+            const UTI = ext === 'mp4' ? 'public.mpeg-4' : 'public.jpeg';
+            await Sharing.shareAsync(download.uri, {
+              mimeType: ext === 'mp4' ? 'video/mp4' : 'image/jpeg',
+              dialogTitle: 'Share to WhatsApp',
+              UTI: UTI,
+            });
+          }
           onClose();
           return;
         }
       }
+      
       const encoded = encodeURIComponent(message);
       const url = `whatsapp://send?text=${encoded}`;
       const supported = await Linking.canOpenURL(url);

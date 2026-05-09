@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   Image, 
+  ImageBackground,
   ActivityIndicator, 
   Modal, 
   Dimensions, 
@@ -528,99 +528,129 @@ export default function ProfileScreen() {
 
   const ListHeader = () => (
     <View style={styles.headerContent}>
-      {/* Profile Header: Avatar and Stats */}
-      <View style={styles.profileHeaderRow}>
-        <TouchableOpacity 
-          onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.avatarContainer}>
+      <ImageBackground
+        source={{ uri: profile?.cover_photo || user?.cover_photo || 'https://images.unsplash.com/photo-1604537466158-719b1972fb17?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }}
+        style={styles.coverPhoto}
+      >
+        <LinearGradient
+          colors={['transparent', 'transparent', 'rgba(0,0,0,0.8)', '#000000']}
+          style={styles.coverGradient}
+        />
+      </ImageBackground>
+
+      <View style={styles.profileBottomSection}>
+        <View style={styles.avatarWrapper}>
+          <TouchableOpacity 
+            onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
+            activeOpacity={0.8}
+            style={styles.avatarContainerImage}
+          >
             {(profile?.photo || user?.photo) ? (
-              <Image source={{ uri: profile?.photo || user?.photo }} style={styles.avatar} />
+              <Image source={{ uri: profile?.photo || user?.photo }} style={styles.avatarMain} />
             ) : (
-              <Avatar name={profile?.name || user?.name || 'User'} size={86} />
+              <View style={[styles.avatarMain, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="person" size={40} color="#FFF" />
+              </View>
+            )}
+            <View style={styles.onlineDot} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.bioCenterSection}>
+          <View style={styles.nameRowCenter}>
+            <Text style={styles.displayNameCenter}>{profile?.name || user?.name || 'User'}</Text>
+            {(profile?.is_verified || user?.is_verified) && (
+              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
             )}
           </View>
-        </TouchableOpacity>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{postsCount}</Text>
-            <Text style={styles.statLabel}>Posts</Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.statItem}
-            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
-          >
-            <Text style={styles.statValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
-            <Text style={styles.statLabel}>Followers</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.statItem}
-            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
-          >
-            <Text style={styles.statValue}>{profile?.following_count ?? (Array.isArray(profile?.following) ? profile.following.length : 0)}</Text>
-            <Text style={styles.statLabel}>Following</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Bio Section */}
-      <View style={styles.bioSection}>
-        <View style={styles.nameRow}>
-          <Text style={styles.displayName}>{profile?.name || user?.name || 'User'}</Text>
-          {(profile?.is_verified || user?.is_verified) && (
-            <Ionicons name="checkmark-circle" size={16} color="#0095f6" style={{ marginLeft: 4 }} />
+          
+          {(profile?.bio || user?.bio) ? (
+            <Text style={styles.bioTextCenter}>{profile?.bio || user?.bio}</Text>
+          ) : null}
+          
+          {(profile?.home_location || user?.home_location) && (
+            <View style={styles.locationContainerCenter}>
+              <Ionicons name="location-outline" size={14} color="#FFF" />
+              <Text style={styles.locationTextCenter}>
+                {(profile?.home_location || user?.home_location).city}, {(profile?.home_location || user?.home_location).state}
+              </Text>
+            </View>
           )}
         </View>
-        <Text style={styles.slId}>@{profile?.sl_id || user?.sl_id || ''}</Text>
-        {(profile?.bio || user?.bio) ? (
-          <Text style={styles.bioText}>{profile?.bio || user?.bio}</Text>
-        ) : null}
-        
-        {(profile?.home_location || user?.home_location) && (
-          <View style={styles.locationContainer}>
-            <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.locationText}>
-              {(profile?.home_location || user?.home_location).city}, {(profile?.home_location || user?.home_location).state}
-            </Text>
-          </View>
-        )}
       </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtonsRow}>
+      {/* Stats Box */}
+      <View style={styles.statsCardWrapper}>
+        <View style={styles.statsCard}>
+          <TouchableOpacity 
+            style={styles.statBoxItem}
+            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
+          >
+            <Ionicons name="trending-up-outline" size={20} color="#FFF" style={styles.statIcon} />
+            <Text style={styles.statBoxValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
+            <Text style={styles.statBoxLabel}>Followers</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.statDivider} />
+          
+          <TouchableOpacity 
+            style={styles.statBoxItem}
+            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
+          >
+            <Ionicons name="people-outline" size={20} color="#FFF" style={styles.statIcon} />
+            <Text style={styles.statBoxValue}>{profile?.following_count ?? (Array.isArray(profile?.following) ? profile.following.length : 0)}</Text>
+            <Text style={styles.statBoxLabel}>Following</Text>
+          </TouchableOpacity>
+
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statBoxItem}>
+            <Ionicons name="share-outline" size={20} color="#FFF" style={styles.statIcon} />
+            <Text style={styles.statBoxValue}>{postsCount}</Text>
+            <Text style={styles.statBoxLabel}>Posts</Text>
+          </View>
+
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statBoxItem}>
+            <Ionicons name="bookmark-outline" size={20} color="#FFF" style={styles.statIcon} />
+            <Text style={styles.statBoxValue}>143</Text>
+            <Text style={styles.statBoxLabel}>Saved</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Add Post & Share Buttons */}
+      <View style={styles.actionButtonsBox}>
         <TouchableOpacity 
-          style={styles.editProfileButton}
-          onPress={() => router.push('/profile/edit')}
+          style={styles.addPostButton}
+          onPress={() => router.push('/post/create' as any)}
         >
-          <Text style={styles.editProfileText}>Edit Profile</Text>
+          <Ionicons name="add" size={20} color="#FFF" />
+          <Text style={styles.addPostText}>Add Post</Text>
         </TouchableOpacity>
+        
         <TouchableOpacity 
-          style={styles.shareProfileButton}
+          style={styles.shareIconButton}
           onPress={() => Alert.alert('Coming Soon', 'Share profile functionality is coming soon!')}
         >
-          <Text style={styles.shareProfileText}>Share Profile</Text>
+          <Ionicons name="arrow-redo-outline" size={20} color="#FFF" />
         </TouchableOpacity>
       </View>
-
-      {/* Simple Grid Divider */}
-      <View style={styles.gridDivider} />
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
-      <View style={[styles.navBar, { paddingTop: insets.top || 10 }]}>
-        <View style={styles.navLeft}>
-          <Ionicons name="lock-closed-outline" size={18} color={COLORS.text} />
-          <Text style={styles.navTitle}>{profile?.sl_id || user?.sl_id || 'Profile'}</Text>
-          <Ionicons name="chevron-down" size={16} color={COLORS.text} />
-        </View>
+      <View style={[styles.navBarAbsolute, { paddingTop: insets.top || 10 }]}>
+        <TouchableOpacity style={styles.navLeft} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#FFF" />
+          <Text style={styles.navTitleWhite}>{profile?.sl_id || user?.sl_id || 'Profile'}</Text>
+        </TouchableOpacity>
         <View style={styles.navRight}>
           <TouchableOpacity style={styles.navIcon} onPress={() => setShowSettingsModal(true)}>
-            <Ionicons name="menu-outline" size={30} color={COLORS.text} />
+            <Ionicons name="menu-outline" size={30} color="#FFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -646,9 +676,9 @@ export default function ProfileScreen() {
           !loading && !postsLoading ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="camera-outline" size={40} color={COLORS.text} />
+                <Ionicons name="camera-outline" size={40} color="#FFFFFF" />
               </View>
-              <Text style={styles.emptyTitle}>No Posts Yet</Text>
+              <Text style={[styles.emptyTitle, { color: '#FFFFFF' }]}>No Posts Yet</Text>
             </View>
           ) : null
         }
@@ -945,15 +975,19 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#000000',
   },
-  navBar: {
+  navBarAbsolute: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#DBDBDB',
+    paddingBottom: 10,
   },
   navLeft: {
     flexDirection: 'row',
@@ -968,119 +1002,148 @@ const styles = StyleSheet.create({
   navIcon: {
     padding: 4,
   },
-  navTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  navTitleWhite: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   headerContent: {
-    paddingBottom: 4,
+    paddingBottom: 16,
   },
-  profileHeaderRow: {
-    flexDirection: 'row',
+  coverPhoto: {
+    width: '100%',
+    height: 300,
+  },
+  coverGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  profileBottomSection: {
+    backgroundColor: '#000000',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingBottom: 24,
   },
-  avatarContainer: {
+  avatarWrapper: {
+    marginTop: -50,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarContainerImage: {
     position: 'relative',
   },
-  avatar: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    borderWidth: 1,
-    borderColor: '#DBDBDB',
+  avatarMain: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#EFEFEF',
   },
-  statsContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginLeft: 20,
+  onlineDot: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#00FF00',
+    borderWidth: 2,
+    borderColor: '#000',
   },
-  statItem: {
+  bioCenterSection: {
     alignItems: 'center',
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  nameRowCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  statLabel: {
+  displayNameCenter: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  bioTextCenter: {
+    fontSize: 14,
+    color: '#E0E0E0',
+    marginBottom: 4,
+  },
+  locationContainerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationTextCenter: {
     fontSize: 13,
-    color: COLORS.text,
-  },
-  bioSection: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  displayName: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  slId: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  bioText: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#00376b',
+    color: '#BBBBBB',
     marginLeft: 4,
   },
-  actionButtonsRow: {
+  statsCardWrapper: {
+    paddingHorizontal: 16,
+    marginTop: 10,
+  },
+  statsCard: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    gap: 8,
+    justifyContent: 'space-between',
+    backgroundColor: '#0C0C0C',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
   },
-  editProfileButton: {
+  statBoxItem: {
+    alignItems: 'center',
     flex: 1,
-    height: 34,
-    backgroundColor: '#efefef',
-    borderRadius: 8,
+  },
+  statIcon: {
+    marginBottom: 4,
+  },
+  statBoxValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  statBoxLabel: {
+    fontSize: 12,
+    color: '#888888',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#222222',
+    height: '80%',
+    alignSelf: 'center',
+  },
+  actionButtonsBox: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginTop: 16,
+    gap: 12,
+  },
+  addPostButton: {
+    flex: 1,
+    flexDirection: 'row',
+    height: 44,
+    backgroundColor: '#0C0C0C',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    gap: 6,
   },
-  editProfileText: {
-    color: COLORS.text,
+  addPostText: {
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
   },
-  shareProfileButton: {
-    flex: 1,
-    height: 34,
-    backgroundColor: '#efefef',
-    borderRadius: 8,
+  shareIconButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#0C0C0C',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  shareProfileText: {
-    color: COLORS.text,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  gridDivider: {
-    height: 1,
-    backgroundColor: '#DBDBDB',
-    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
   },
   gridItem: {
     width: COLUMN_WIDTH,
@@ -1145,7 +1208,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: COLORS.text,
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,

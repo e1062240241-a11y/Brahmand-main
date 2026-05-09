@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "eas-cli": "^18.7.0",
+    "expo-sharing": "^55.0.18",
     "npm": "^11.12.1"
   }
 }

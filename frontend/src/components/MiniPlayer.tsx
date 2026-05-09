@@ -84,10 +84,17 @@ const MiniPlayerUI = () => {
   const isVideo = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
   const playerSource = (Platform.OS === 'web' || !isVideo || !post) ? null : mediaUrl;
+  const [isMuted, setIsMuted] = useState(false);
+
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = true;
     p.muted = false;
+    p.staysActiveInBackground = true;
   });
+
+  useEffect(() => {
+    if (player) player.muted = isMuted;
+  }, [isMuted, player]);
 
   useEffect(() => {
     if (player && post) {
@@ -158,9 +165,14 @@ const MiniPlayerUI = () => {
           <Text style={styles.username} numberOfLines={1}>{post?.username || 'Video'}</Text>
         </View>
       </TouchableOpacity>
-      <TouchableOpacity onPress={hide} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Ionicons name="close" size={18} color="#FFF" />
-      </TouchableOpacity>
+      <View style={styles.actions}>
+        <TouchableOpacity onPress={() => setIsMuted(v => !v)} style={styles.muteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name={isMuted ? 'volume-mute' : 'volume-medium'} size={18} color="#FFF" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={hide} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="close" size={18} color="#FFF" />
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 };
@@ -214,6 +226,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  actions: {
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 6,
+  },
+  muteBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   closeBtn: {
     width: 28,
     height: 28,
@@ -221,7 +246,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 6,
   },
 });
 

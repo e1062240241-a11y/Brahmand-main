@@ -106,6 +106,7 @@ const ReelVideoItem = React.memo(({
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = true;
     p.muted = isMuted;
+    p.staysActiveInBackground = true;
     if (Platform.OS !== 'web') {
       p.bufferOptions = {
         preferredForwardBufferDuration: 5,

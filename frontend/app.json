@@ -108,7 +108,12 @@
       "@react-native-firebase/auth",
       "expo-font",
       "expo-image",
-      "expo-video",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true
+        }
+      ],
       "expo-web-browser",
       "expo-audio"
     ],
