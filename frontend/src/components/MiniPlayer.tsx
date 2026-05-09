@@ -10,6 +10,7 @@ import {
   Dimensions,
   PanResponder,
 } from 'react-native';
+import { usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 let ExpoVideoModule: any = null;
@@ -76,6 +77,7 @@ export const MiniPlayerProvider = ({ children }: { children: React.ReactNode }) 
 
 const MiniPlayerUI = () => {
   const { post, hide, onReopen } = useMiniPlayer();
+  const pathname = usePathname();
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(100)).current;
   const [pos, setPos] = useState({ x: SCREEN_WIDTH - PLAYER_SIZE - MARGIN, y: 100 });
@@ -134,7 +136,17 @@ const MiniPlayerUI = () => {
     }
   };
 
-  if (!post) return null;
+  const isHomeScreen = pathname === '/' || pathname === '/home' || pathname === '/(tabs)/home';
+
+  useEffect(() => {
+    if (player && isHomeScreen) {
+      player.pause();
+    } else if (player && post && !isHomeScreen) {
+      player.play();
+    }
+  }, [isHomeScreen, player, post]);
+
+  if (!post || isHomeScreen) return null;
 
   return (
     <Animated.View

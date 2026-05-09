@@ -18,6 +18,7 @@ import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
 import { useMiniPlayer } from './MiniPlayer';
+import { useGlobalMute } from '../contexts/MuteContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -78,7 +79,7 @@ export const PostFeedCard = memo(({
   onLayout,
 }: PostFeedCardProps) => {
   const [isPausedByUser, setIsPausedByUser] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
   const miniPlayer = useMiniPlayer();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -246,6 +247,17 @@ export const PostFeedCard = memo(({
                 <View style={[styles.videoBackground, { backgroundColor: '#000' }]} />
               )}
               <Pressable style={styles.videoOverlay} onPress={handleVideoPress} />
+              <TouchableOpacity
+                style={styles.muteToggle}
+                onPress={toggleMute}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={isMuted ? 'volume-mute' : 'volume-medium'}
+                  size={20}
+                  color="#FFF"
+                />
+              </TouchableOpacity>
             </View>
           ) : (
             <Image
@@ -384,6 +396,7 @@ const styles = StyleSheet.create({
   videoContainer: { width: '100%', height: '100%', position: 'relative' },
   videoBackground: { width: '100%', height: '100%' },
   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },
+  muteToggle: { position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   media: { width: '100%', height: '100%' },
   captionText: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, fontWeight: '700' },
   topCommentsWrap: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.lg },

@@ -151,6 +151,7 @@ export default function HomeScreen() {
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
   const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
+  const [postHeights, setPostHeights] = useState<Record<string, number>>({});
   const [postSnapEnabled, setPostSnapEnabled] = useState(false);
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const [backgroundUpload, setBackgroundUpload] = useState<{
@@ -341,6 +342,12 @@ export default function HomeScreen() {
     () => feedPosts.map((post, index) => String(post.id || post.media_url || index)),
     [feedPosts],
   );
+
+  useEffect(() => {
+    if (feedPostKeys.length > 0 && !activePostKey) {
+      setActivePostKey(feedPostKeys[0]);
+    }
+  }, [feedPostKeys, activePostKey]);
   const lastScrollTimeRef = useRef(0);
 
   const handleHomeScroll = useCallback((event: any) => {
@@ -353,29 +360,28 @@ export default function HomeScreen() {
     const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
     setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
 
-    // Visibility tracking for video autoplay - focus on screen center
+    // Visibility tracking for video autoplay - find post with most area in viewport
     let closestKey = null;
-    let minDiff = 9999; 
-    const viewportCenter = y + (SCREEN_HEIGHT / 2);
+    let maxVisible = 0;
+    const viewportTop = y;
+    const viewportBottom = y + SCREEN_HEIGHT;
 
     for (const key of feedPostKeys) {
       const offset = postOffsets[key];
-      if (typeof offset === 'number') {
-        // Assume post center is offset + 300 (approximate average height)
-        const postCenter = offset + 250; 
-        const diff = Math.abs(postCenter - viewportCenter); 
-        if (diff < minDiff) {
-          minDiff = diff;
+      const height = postHeights[key];
+      if (typeof offset === 'number' && typeof height === 'number') {
+        const postTop = offset;
+        const postBottom = offset + height;
+        const visibleTop = Math.max(viewportTop, postTop);
+        const visibleBottom = Math.min(viewportBottom, postBottom);
+        const visibleAmount = Math.max(0, visibleBottom - visibleTop);
+        if (visibleAmount > maxVisible) {
+          maxVisible = visibleAmount;
           closestKey = key;
         }
       }
     }
-    // Only set active if the closest post is reasonably centered
-    if (minDiff < 400) {
-      setActivePostKey(closestKey);
-    } else {
-      setActivePostKey(null);
-    }
+    setActivePostKey(closestKey);
 
     // Infinite Scroll Logic
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed) {
@@ -385,7 +391,7 @@ export default function HomeScreen() {
         loadFeedPosts(feedOffset, true);
       }
     }
-  }, [feedPostKeys, postOffsets]);
+  }, [feedPostKeys, postOffsets, postHeights]);
 
   const loadHomeRequests = useCallback(async () => {
     setRequestsLoading(true);
@@ -771,7 +777,9 @@ export default function HomeScreen() {
       <View
         onLayout={(event) => {
           const y = event.nativeEvent.layout.y + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
+          const h = event.nativeEvent.layout.height;
           setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
+          setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
         }}
       >
         <PostFeedCard
@@ -1130,7 +1138,9 @@ export default function HomeScreen() {
                     key={postKey}
                     onLayout={(event) => {
                       const y = event.nativeEvent.layout.y + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
+                      const h = event.nativeEvent.layout.height;
                       setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
+                      setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
                     }}
                   >
                     <PostFeedCard

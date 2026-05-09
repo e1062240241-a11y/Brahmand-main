@@ -1120,7 +1120,7 @@ const ChatScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Modal
         visible={!!fullScreenMedia}
         transparent
@@ -1146,7 +1146,7 @@ const ChatScreen = () => {
         </View>
       </Modal>
       {/* Dynamic Header with Notch support */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 25 : 12) }]}>
+      <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={handleGoBack}
@@ -1764,7 +1764,7 @@ const ChatScreen = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
