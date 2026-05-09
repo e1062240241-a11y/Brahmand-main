@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { requestRecordingPermissionsAsync } from 'expo-audio';
+import { requestRecordingPermissionsAsync, useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -33,6 +33,7 @@ declare const require: any;
 const ROOM_NAME = 'mantra-jaap-live-room';
 const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
 const WORDS = MANTRA.split(' ');
+const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
 
 type VoiceTransport = 'sfu' | 'agora';
 
@@ -56,7 +57,6 @@ export const LiveMantraRoom = () => {
   const agoraUidRef = useRef(0);
 
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
-  const bgPulse = useRef(new Animated.Value(0)).current;
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const upcomingFade = useRef(new Animated.Value(0)).current;
 
@@ -64,6 +64,16 @@ export const LiveMantraRoom = () => {
   const isMicEnabledRef = useRef(isMicEnabled);
   const micPermissionGrantedRef = useRef(micPermissionGranted);
   const roomMutedRef = useRef(roomMuted);
+
+  const bgPlayer = useAudioPlayer(BG_MUSIC);
+
+  useEffect(() => {
+    if (bgPlayer) {
+      bgPlayer.loop = true;
+      bgPlayer.volume = isMuted ? 0 : 0.4;
+      bgPlayer.play();
+    }
+  }, [bgPlayer, isMuted]);
 
 
   const addRemoteSpeaker = (peerId: string) => {
@@ -285,25 +295,6 @@ export const LiveMantraRoom = () => {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(bgPulse, {
-          toValue: 1,
-          duration: 8000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(bgPulse, {
-          toValue: 0,
-          duration: 8000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [bgPulse]);
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
         Animated.timing(glowOpacity, {
           toValue: 0.9,
           duration: 4000,
@@ -379,15 +370,10 @@ export const LiveMantraRoom = () => {
     return () => clearTimeout(timer);
   }, [currentIndex, isHolding]);
 
-  const backgroundScale = bgPulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.05],
-  });
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
-      <Animated.View style={[styles.background, { transform: [{ scale: backgroundScale }] }]}> 
+      <View style={styles.background}> 
         <LinearGradient
           colors={['#050505', '#120800', '#2f1200']}
           style={StyleSheet.absoluteFill}
@@ -483,21 +469,6 @@ export const LiveMantraRoom = () => {
               />
               <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic On' : 'Mic Off'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.controlButton,
-                roomMuted ? styles.controlButtonMuted : null,
-              ]}
-              onPress={handleRoomMute}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={roomMuted ? 'volume-mute' : 'volume-medium'}
-                size={22}
-                color="#FFF"
-              />
-              <Text style={styles.controlLabel}>{roomMuted ? 'Room Muted' : 'Room Live'}</Text>
-            </TouchableOpacity>
           </View>
 
           <Text style={styles.micStatus} numberOfLines={1}>
@@ -506,15 +477,7 @@ export const LiveMantraRoom = () => {
           </Text>
         </View>
 
-      </Animated.View>
-      <TouchableOpacity
-        style={styles.closeButton}
-        onPress={handleClose}
-        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="close" size={26} color="#FFF" />
-      </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -669,17 +632,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 30,
-    left: 20,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 3,
   },
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, ImageBackground } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -630,9 +630,13 @@ export default function TempleDetailScreen() {
  }
  };
 
- const handleGoBack = () => {
- router.replace('/temple');
- };
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/temple');
+    }
+  };
 
  const handleFollowToggle = async () => {
  try {
@@ -751,7 +755,12 @@ if (!temple) {
  </TouchableOpacity>
  </View>
 
- <ScrollView showsVerticalScrollIndicator={false}>
+ <ImageBackground 
+    source={require('../../assets/images/temple_detail_bg.png')} 
+    style={StyleSheet.absoluteFill}
+    resizeMode="cover"
+  >
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
  {/* Temple Info Card */}
  <View style={styles.infoCard}>
  <View style={styles.templeIconLarge}>
@@ -888,7 +897,8 @@ if (!temple) {
  )
  )}
 
- </ScrollView>
+    </ScrollView>
+  </ImageBackground>
 
   <Modal
   visible={isYoutubeModalVisible}
@@ -975,10 +985,13 @@ if (!temple) {
 }
 
 const styles = StyleSheet.create({
- container: {
- flex: 1,
- backgroundColor: COLORS.background,
- },
+  container: {
+    flex: 1,
+    backgroundColor: '#F0F9FF', // Light sky blue fallback
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
  loadingContainer: {
  flex: 1,
  justifyContent: 'center',
@@ -1012,13 +1025,20 @@ const styles = StyleSheet.create({
  marginHorizontal: SPACING.md,
  textAlign: 'center',
  },
- infoCard: {
- backgroundColor: COLORS.surface,
- margin: SPACING.md,
- padding: SPACING.lg,
- borderRadius: BORDER_RADIUS.lg,
- alignItems: 'center',
- },
+  infoCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    margin: 16,
+    padding: 20,
+    borderRadius: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
  templeIconLarge: {
  width: 80,
  height: 80,
@@ -1076,13 +1096,15 @@ const styles = StyleSheet.create({
  fontWeight: '600',
  marginLeft: SPACING.xs,
  },
- section: {
- backgroundColor: COLORS.surface,
- marginHorizontal: SPACING.md,
- marginBottom: SPACING.md,
- padding: SPACING.md,
- borderRadius: BORDER_RADIUS.lg,
- },
+  section: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    margin: 16,
+    marginTop: 0,
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+  },
  sectionTitle: {
  fontSize: 16,
  fontWeight: '600',
@@ -1222,14 +1244,14 @@ const styles = StyleSheet.create({
  overflow: 'hidden',
  },
  modalHeader: {
- flexDirection: 'row',
- alignItems: 'center',
- justifyContent: 'space-between',
- paddingHorizontal: SPACING.md,
- paddingVertical: SPACING.sm,
- borderBottomWidth: 1,
- borderBottomColor: COLORS.border,
- },
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
  modalTitle: {
  fontSize: 16,
  fontWeight: '600',

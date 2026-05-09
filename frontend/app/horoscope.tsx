@@ -120,6 +120,39 @@ export default function HoroscopeScreen() {
               </Text>
             </View>
           </View>
+        ) : (
+          <View style={styles.content}>
+            <LinearGradient
+              colors={['#FFFFFF', '#FFF9F2']}
+              style={styles.predictionCard}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.dateBadge}>
+                  <Text style={styles.dateText}>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
+                </View>
+                <Text style={styles.cardEyebrow}>Daily Prediction</Text>
+              </View>
+              
+              {typeof payload?.prediction === 'string' ? (
+                <Text style={styles.predictionText}>{payload.prediction}</Text>
+              ) : Array.isArray(payload?.prediction) ? (
+                <View style={{ gap: 12 }}>
+                  {payload.prediction.map((p: any, i: number) => (
+                    <Text key={i} style={styles.predictionText}>{String(p)}</Text>
+                  ))}
+                </View>
+              ) : typeof payload?.prediction === 'object' && payload.prediction !== null ? (
+                <View style={styles.categoriesContainer}>
+                  {Object.entries(payload.prediction).map(([key, value]) => {
+                    if (!value) return null;
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    let iconName: any = 'star-outline';
+                    if (key.includes('personal')) iconName = 'heart-outline';
+                    if (key.includes('profession')) iconName = 'briefcase-outline';
+                    if (key.includes('health')) iconName = 'fitness-outline';
+                    if (key.includes('emotion')) iconName = 'happy-outline';
+                    if (key.includes('travel')) iconName = 'airplane-outline';
+                    if (key.includes('luck')) iconName = 'sparkles-outline';
 
           {/* Sign Header */}
           <View style={styles.signHeaderRow}>

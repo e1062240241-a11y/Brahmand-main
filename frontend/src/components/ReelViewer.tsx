@@ -13,8 +13,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Animated,
+  PanResponder,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
@@ -29,17 +29,41 @@ try {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const HEADER_HEIGHT = Platform.OS === 'ios' ? 90 : 70;
+
+const timeAgo = (date: any): string => {
+  if (!date) return '';
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  if (isNaN(then)) return '';
+  const diff = Math.floor((now - then) / 1000);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 31536000) return `${Math.floor(diff / 2592000)}w ago`;
+  return `${Math.floor(diff / 31536000)}y ago`;
+};
 
 const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
   if (!ExpoVideoModule?.useVideoPlayer) return null;
   return ExpoVideoModule.useVideoPlayer(source, setup);
 };
 
+const SPEEDS = [1, 1.5, 2, 0.5];
+const SEEK_STEP = 10;
+
+const formatTime = (seconds: number): string => {
+  if (!seconds || !isFinite(seconds)) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
 const ReelVideoItem = React.memo(({
   post,
   isActive,
   onClose,
+  onMinimize,
   onLike,
   onComment,
   onShare,
@@ -57,6 +81,14 @@ const ReelVideoItem = React.memo(({
   const captionText = String(localPost?.caption || '');
   const captionWords = captionText.trim().split(/\s+/).filter(Boolean);
   const isLongCaption = captionWords.length > 4 || captionText.length > 45;
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showSpeedBadge, setShowSpeedBadge] = useState(false);
+  const seekingRef = useRef<'left' | 'right' | null>(null);
+  const seekIntervalRef = useRef<any>(null);
+  const timeIntervalRef = useRef<any>(null);
+  const durationRef = useRef(0);
 
   useEffect(() => {
     if (!isActive) setIsPaused(false);
@@ -68,19 +100,20 @@ const ReelVideoItem = React.memo(({
   const mediaWidth = Number(localPost?.media_width || localPost?.mediaWidth || 0);
   const mediaHeight = Number(localPost?.media_height || localPost?.mediaHeight || 0);
   const isPortrait = mediaHeight > mediaWidth;
-  const contentFitMode = isVideo ? (isPortrait ? 'contain' : 'cover') : 'contain';
+  const contentFitMode = isVideo ? (isPortrait ? 'cover' : 'contain') : 'contain';
 
   const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = true;
     p.muted = isMuted;
+    p.staysActiveInBackground = true;
     if (Platform.OS !== 'web') {
       p.bufferOptions = {
-        preferredForwardBufferDuration: 0,
-        waitsToMinimizeStalling: false,
-        minBufferForPlayback: 0,
-        maxBufferBytes: 0,
-        prioritizeTimeOverSizeThreshold: true,
+        preferredForwardBufferDuration: 5,
+        waitsToMinimizeStalling: true,
+        minBufferForPlayback: 3,
+        maxBufferBytes: 5 * 1024 * 1024,
+        prioritizeTimeOverSizeThreshold: false,
       };
     }
   });
@@ -93,25 +126,102 @@ const ReelVideoItem = React.memo(({
     if (Platform.OS === 'web') {
       if (videoRef.current) {
         if (isActive && !isPaused) {
+          videoRef.current.playbackRate = playbackSpeed;
           videoRef.current.play().catch(() => { });
         } else {
           videoRef.current.pause();
         }
       }
     } else if (player) {
+      player.playbackRate = playbackSpeed;
       if (isActive && !isPaused) {
         player.play();
       } else {
         player.pause();
       }
     }
-  }, [isActive, isPaused, player]);
+  }, [isActive, isPaused, player, playbackSpeed]);
 
   useEffect(() => {
     if (player) player.muted = isMuted;
   }, [isMuted, player]);
 
-  // Keep pause/mute state global across the reel picker so the next video continues the same state.
+  useEffect(() => {
+    if (!player || !isActive || !isVideo) return;
+    const dur = player.duration || player.currentTime || 120;
+    if (dur > 0) {
+      setDuration(dur);
+      durationRef.current = dur;
+    }
+    timeIntervalRef.current = setInterval(() => {
+      if (player && !seekingRef.current) {
+        const ct = player.currentTime || 0;
+        setCurrentTime(ct);
+        const pd = player.duration || durationRef.current;
+        if (pd > 0 && pd !== durationRef.current) {
+          durationRef.current = pd;
+          setDuration(pd);
+        }
+      }
+    }, 200);
+    return () => {
+      if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
+    };
+  }, [player, isActive, isVideo]);
+
+  const cycleSpeed = () => {
+    const idx = SPEEDS.indexOf(playbackSpeed);
+    const next = SPEEDS[(idx + 1) % SPEEDS.length];
+    setPlaybackSpeed(next);
+    setShowSpeedBadge(true);
+    setTimeout(() => setShowSpeedBadge(false), 1200);
+  };
+
+  const startSeek = (direction: 'left' | 'right') => {
+    if (!player) return;
+    seekingRef.current = direction;
+    setIsPaused(true);
+    const step = direction === 'left' ? -SEEK_STEP : SEEK_STEP;
+    player.currentTime = Math.max(0, Math.min((player.currentTime || 0) + step, player.duration || Infinity));
+    setCurrentTime(player.currentTime || 0);
+    seekIntervalRef.current = setInterval(() => {
+      if (player && seekingRef.current) {
+        player.currentTime = Math.max(0, Math.min((player.currentTime || 0) + step, player.duration || Infinity));
+        setCurrentTime(player.currentTime || 0);
+      }
+    }, 300);
+  };
+
+  const stopSeek = () => {
+    seekingRef.current = null;
+    if (seekIntervalRef.current) {
+      clearInterval(seekIntervalRef.current);
+      seekIntervalRef.current = null;
+    }
+    setIsPaused(false);
+  };
+
+  const seekBarRef = useRef<any>(null);
+
+  const seekPlayerRef = useRef<(pageX: number) => void>(() => {});
+
+  seekPlayerRef.current = (pageX: number) => {
+    if (!player) return;
+    const dur = duration || durationRef.current || player.duration || 0;
+    if (!dur) return;
+    const barWidth = screenSize.width - 32;
+    const x = Math.max(0, Math.min(pageX - 16, barWidth));
+    const ratio = x / barWidth;
+    player.currentTime = ratio * dur;
+    setCurrentTime(player.currentTime || 0);
+  };
+
+  const seekBarPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt) => seekPlayerRef.current(evt.nativeEvent.pageX),
+    onPanResponderMove: (evt) => seekPlayerRef.current(evt.nativeEvent.pageX),
+  })).current;
 
   const handleTapVideo = () => {
     setIsPaused((prev: boolean) => !prev);
@@ -148,7 +258,7 @@ const ReelVideoItem = React.memo(({
 
   return (
     <View style={{ width: screenSize.width, height: screenSize.height, backgroundColor: '#000', overflow: 'hidden' }}>
-      {/* Full Screen Video/Photo - Tap to play/pause wrapper (taps excluded for top header) */}
+      {/* Full Screen Video/Photo */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <View style={[StyleSheet.absoluteFill, { zIndex: 1 }]} pointerEvents="none">
           {!isVideo ? (
@@ -186,20 +296,36 @@ const ReelVideoItem = React.memo(({
           )}
         </View>
 
-        {/* Pressable area starts below header so header buttons receive touches */}
-        <Pressable
-          onPress={handleTapVideo}
-          style={{ position: 'absolute', top: HEADER_HEIGHT, left: 0, right: 0, bottom: 0, zIndex: 1 }}
-        />
+        {/* Left side - hold to rewind */}
+        {isVideo && (
+          <Pressable
+            onPress={handleTapVideo}
+            onLongPress={() => startSeek('left')}
+            onPressOut={stopSeek}
+            style={{ position: 'absolute', top: 0, left: 0, width: '35%', bottom: 0, zIndex: 2 }}
+          />
+        )}
+        {/* Right side - hold to fast forward */}
+        {isVideo && (
+          <Pressable
+            onPress={handleTapVideo}
+            onLongPress={() => startSeek('right')}
+            onPressOut={stopSeek}
+            style={{ position: 'absolute', top: 0, right: 0, width: '35%', bottom: 0, zIndex: 2 }}
+          />
+        )}
+        {/* Center tap area for pause/play */}
+        {isVideo && (
+          <Pressable
+            onPress={handleTapVideo}
+            style={{ position: 'absolute', top: 0, left: '35%', width: '30%', bottom: 0, zIndex: 2 }}
+          />
+        )}
       </View>
 
       {isVideo && isVideoLoading && (
         <View style={{
-          position: 'absolute',
-          top: HEADER_HEIGHT,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          ...StyleSheet.absoluteFillObject,
           zIndex: 15,
           justifyContent: 'center',
           alignItems: 'center',
@@ -232,31 +358,107 @@ const ReelVideoItem = React.memo(({
         </Animated.View>
       )}
 
-      {/* Top Header */}
-      <SafeAreaView style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 20,
-        paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'ios' ? 32 : 14,
-        paddingBottom: 10,
-        flexDirection: 'row',
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-      }} pointerEvents="box-none">
-        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+      {/* Speed badge */}
+      {showSpeedBadge && isVideo && (
+        <View style={{
+          position: 'absolute',
+          top: '30%',
+          alignSelf: 'center',
+          zIndex: 25,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 20,
+        }}>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>{playbackSpeed}x</Text>
+        </View>
+      )}
+
+      {/* Seek badge - shows when holding left/right */}
+      {seekingRef.current && isVideo && (
+        <View style={{
+          position: 'absolute',
+          top: '45%',
+          alignSelf: 'center',
+          zIndex: 25,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          paddingHorizontal: 20,
+          paddingVertical: 10,
+          borderRadius: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <Ionicons name={seekingRef.current === 'left' ? 'play-back' : 'play-forward'} size={22} color="#FFF" />
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </Text>
+        </View>
+      )}
+
+      {/* Top Left - Close button */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          paddingTop: Platform.OS === 'ios' ? 54 : 24,
+          paddingLeft: 16,
+        }}
+      >
+        <TouchableOpacity onPress={() => { onMinimize?.(post || localPost); onClose?.(); }} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
           <Ionicons name="close" size={30} color="#FFF" />
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
+
+      {/* Seek bar at bottom */}
+      {isVideo && (
+        <View
+          {...seekBarPan.panHandlers}
+          style={{
+            position: 'absolute',
+            bottom: Platform.OS === 'ios' ? 60 : 50,
+            left: 16,
+            right: 16,
+            height: 40,
+            zIndex: 20,
+            justifyContent: 'center',
+          }}
+        >
+          <View style={{
+            width: '100%',
+            height: 6,
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            borderRadius: 3,
+            overflow: 'visible',
+          }}>
+            <View style={{
+              width: `${duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0}%`,
+              height: '100%',
+              backgroundColor: '#FFF',
+              borderRadius: 3,
+            }} />
+          </View>
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 4,
+          }}>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>{formatTime(currentTime)}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>{duration > 0 ? formatTime(duration) : '--:--'}</Text>
+          </View>
+        </View>
+      )}
 
       {/* Bottom Left - User Info + Caption */}
       <View
         pointerEvents="box-none"
         style={{
           position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 18 : 10,
+          bottom: Platform.OS === 'ios' ? 120 : 100,
           left: 16,
           right: 90,
           zIndex: 20,
@@ -266,6 +468,9 @@ const ReelVideoItem = React.memo(({
           <Avatar photo={localPost?.user_photo} name={localPost?.username || 'User'} size={36} />
           <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10, fontSize: 14 }}>
             {localPost?.username || 'User'}
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', marginLeft: 8, fontSize: 12 }}>
+            {timeAgo(localPost?.created_at || localPost?.timestamp || localPost?.createdAt)}
           </Text>
         </View>
         {localPost?.caption ? (
@@ -311,15 +516,33 @@ const ReelVideoItem = React.memo(({
         ) : null}
       </View>
 
-      {/* Right Side - Action Buttons (Instagram style) */}
+      {/* Right Side - Action Buttons + Speed */}
       <View pointerEvents="box-none" style={{
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 18 : 10,
+        bottom: Platform.OS === 'ios' ? 120 : 100,
         right: 12,
         alignItems: 'center',
         zIndex: 20,
       }}>
-        {/* Volume toggle moved to bottom for easier thumb reach */}
+        {/* Speed control */}
+        {isVideo && (
+          <TouchableOpacity
+            style={{
+              alignItems: 'center',
+              marginBottom: 18,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 12,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+            }}
+            onPress={cycleSpeed}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          >
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>{playbackSpeed}x</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Volume toggle */}
         <TouchableOpacity
           style={{
             alignItems: 'center',
@@ -363,7 +586,7 @@ const ReelVideoItem = React.memo(({
   );
 });
 
-export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
+export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike, onComment, onShare }: any) => {
   const [videos, setVideos] = useState<any[]>([initialPost]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -377,7 +600,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const videosRef = useRef<any[]>([]);
   const activeIndexRef = useRef(0);
   const [isMuted, setIsMuted] = useState(false);
-  const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
+  const callbacksRef = useRef({ onClose, onMinimize, onLike, onComment, onShare });
   const loadMoreRef = useRef<() => void>(() => { });
 
   useEffect(() => {
@@ -401,7 +624,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   offsetRef.current = offset;
   videosRef.current = videos;
   activeIndexRef.current = activeIndex;
-  callbacksRef.current = { onClose, onLike, onComment, onShare };
+  callbacksRef.current = { onClose, onMinimize, onLike, onComment, onShare };
 
   const loadMoreReels = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -409,7 +632,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     setLoading(true);
     try {
       const res = await api.get('/posts/feed', {
-        params: { limit: 10, offset: offsetRef.current }
+        params: { limit: 10, offset: offsetRef.current },
+        timeout: 60000,
       });
       const newPosts = res.data?.items || res.data || [];
 
@@ -423,8 +647,13 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         });
         setOffset(prev => prev + newPosts.length);
       }
-    } catch (error) {
-      console.error('Load more reels error:', error);
+    } catch (error: any) {
+      if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+        console.warn('Load more reels timed out — retrying later');
+        setHasMore(false);
+      } else {
+        console.error('Load more reels error:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -460,7 +689,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   const handleMomentumScrollEnd = useRef((event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
-    const index = Math.round(offsetY / SCREEN_HEIGHT);
+    const index = Math.round(offsetY / Dimensions.get('window').height);
     if (index !== activeIndexRef.current) {
       setActiveIndex(index);
     }
@@ -490,6 +719,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       post={item}
       isActive={index === activeIndex}
       onClose={callbacksRef.current.onClose}
+      onMinimize={callbacksRef.current.onMinimize}
       onLike={callbacksRef.current.onLike}
       onComment={callbacksRef.current.onComment}
       onShare={callbacksRef.current.onShare}
@@ -504,7 +734,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       visible={isVisible}
       transparent={false}
       animationType="slide"
-      onRequestClose={callbacksRef.current.onClose}
+      onRequestClose={() => { callbacksRef.current.onMinimize?.(); callbacksRef.current.onClose?.(); }}
     >
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <FlatList
@@ -521,9 +751,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           getItemLayout={getItemLayout}
           contentContainerStyle={{ backgroundColor: '#000' }}
           style={{ backgroundColor: '#000' }}
-          initialNumToRender={3}
-          maxToRenderPerBatch={5}
-          windowSize={7}
+          initialNumToRender={2}
+          maxToRenderPerBatch={3}
+          windowSize={3}
           removeClippedSubviews={true}
           snapToInterval={screenSize.height}
           snapToAlignment="start"

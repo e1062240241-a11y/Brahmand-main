@@ -26,6 +26,15 @@ const getRuntimeWebApiUrl = (): string | undefined => {
     }
 
     const storedApiUrl = window.localStorage.getItem('BRAHMAND_RUNTIME_API_URL')?.trim();
+    
+    // Auto-clear stale IP-based overrides when running on localhost
+    const isWebLocal = /localhost|127\.0\.0\.1/.test(window.location.hostname);
+    if (isWebLocal && storedApiUrl && !/localhost|127\.0\.0\.1/.test(storedApiUrl)) {
+      console.info('[API] Clearing stale remote API URL override from localStorage');
+      window.localStorage.removeItem('BRAHMAND_RUNTIME_API_URL');
+      return undefined;
+    }
+    
     return storedApiUrl || undefined;
   } catch {
     return undefined;
@@ -408,6 +417,9 @@ export const getUserProfile = (userId?: string) =>
 
 export const getUserPosts = (userId: string, limit: number = 20, offset: number = 0) =>
   api.get(`/users/${userId}/posts`, { params: { limit, offset } });
+
+export const getUsersBatch = (userIds: string[]) =>
+  api.post('/users/batch', { user_ids: userIds });
 
 export const updateProfile = (data: { name?: string; photo?: string; language?: string; bio?: string }) =>
   api.put('/user/profile', data);

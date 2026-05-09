@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useAudioPlayer } from 'expo-audio';
 import { useRouter } from 'expo-router';
 import {
   Animated,
@@ -15,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
 const WORDS = MANTRA.split(' ');
+const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
 
 export const LiveMantraRoom = () => {
   const router = useRouter();
@@ -24,29 +26,19 @@ export const LiveMantraRoom = () => {
   const [roomMuted, setRoomMuted] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(false);
 
-  const activeIndexAnim = useRef(new Animated.Value(0)).current;
-  const bgPulse = useRef(new Animated.Value(0)).current;
-  const glowOpacity = useRef(new Animated.Value(0.3)).current;
-  const upcomingFade = useRef(new Animated.Value(0)).current;
+  const bgPlayer = useAudioPlayer(BG_MUSIC);
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(bgPulse, {
-          toValue: 1,
-          duration: 8000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(bgPulse, {
-          toValue: 0,
-          duration: 8000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [bgPulse]);
+    if (bgPlayer) {
+      bgPlayer.loop = true;
+      bgPlayer.volume = isMuted ? 0 : 0.4;
+      bgPlayer.play();
+    }
+  }, [bgPlayer, isMuted]);
+
+  const activeIndexAnim = useRef(new Animated.Value(0)).current;
+  const glowOpacity = useRef(new Animated.Value(0.3)).current;
+  const upcomingFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -123,15 +115,10 @@ export const LiveMantraRoom = () => {
     return () => clearTimeout(timer);
   }, [currentIndex, isHolding]);
 
-  const backgroundScale = bgPulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.05],
-  });
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
-      <Animated.View style={[styles.background, { transform: [{ scale: backgroundScale }] }]}> 
+      <View style={styles.background}> 
         <LinearGradient
           colors={['#050505', '#120800', '#2f1200']}
           style={StyleSheet.absoluteFill}
@@ -200,17 +187,10 @@ export const LiveMantraRoom = () => {
               <Ionicons name={isMicEnabled ? 'mic' : 'mic-off'} size={22} color="#FFF" />
               <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic On' : 'Mic Off'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.controlButton, roomMuted && styles.controlButtonMuted]}
-              onPress={() => setRoomMuted(!roomMuted)}
-            >
-              <Ionicons name={roomMuted ? 'volume-mute' : 'volume-medium'} size={22} color="#FFF" />
-              <Text style={styles.controlLabel}>{roomMuted ? 'Room Muted' : 'Room Live'}</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
-      </Animated.View>
+      </View>
       <TouchableOpacity
         style={styles.closeButton}
         onPress={handleClose}

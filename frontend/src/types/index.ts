@@ -36,6 +36,8 @@ export interface User {
   reputation: number;
   communities: string[];
   circles: string[];
+  cultural_community?: string;
+  is_verified?: boolean;
   created_at: string;
 }
 

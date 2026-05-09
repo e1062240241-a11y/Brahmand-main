@@ -296,7 +296,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             <View style={styles.iconBtn} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             
             <View style={styles.mediaContainer}>
               <View
@@ -364,37 +364,34 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
 
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>Post Details</Text>
-              
               <M3OutlinedInput label="Caption / Description" value={caption} onChangeText={setCaption} multiline />
             </View>
 
-            <View style={{height: 100}} /> 
+            <View style={styles.bottomBar}>
+              {uploading ? (
+                <View style={styles.uploadingContainer}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: 8 }}>
+                    <ActivityIndicator color={COLORS.primary} size="small" />
+                    <Text style={{color: COLORS.primary, fontWeight: '600'}}>
+                      {isCompressing ? 'Processing...' : uploadProgress > 0 && uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : 'Uploading...'}
+                    </Text>
+                  </View>
+                  <View style={styles.progressBarBackground}>
+                    <Animated.View style={[styles.progressBarFill, { width: progressWidth }]} />
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
+                    <Text style={styles.draftBtnText}>Save Draft</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.submitBtn, !canUpload && styles.uploadBtnDisabled]} onPress={handleUpload} disabled={!canUpload}>
+                    <Text style={styles.submitBtnText}>Create Post</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </ScrollView>
-
-          <View style={styles.bottomBar}>
-             {uploading ? (
-               <View style={styles.uploadingContainer}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: 8 }}>
-                   <ActivityIndicator color={COLORS.primary} size="small" />
-                   <Text style={{color: COLORS.primary, fontWeight: '600'}}>
-                     {isCompressing ? 'Processing...' : uploadProgress > 0 && uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : 'Uploading...'}
-                   </Text>
-                 </View>
-                 <View style={styles.progressBarBackground}>
-                   <Animated.View style={[styles.progressBarFill, { width: progressWidth }]} />
-                 </View>
-               </View>
-             ) : (
-               <View style={styles.actionButtons}>
-                 <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
-                   <Text style={styles.draftBtnText}>Save Draft</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity style={[styles.submitBtn, !canUpload && styles.uploadBtnDisabled]} onPress={handleUpload} disabled={!canUpload}>
-                   <Text style={styles.submitBtnText}>Create Post</Text>
-                 </TouchableOpacity>
-               </View>
-             )}
-          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
@@ -431,7 +428,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
-    paddingBottom: SPACING.xxl,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   mediaContainer: {
     marginBottom: SPACING.xl,
@@ -599,14 +596,11 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     padding: SPACING.md,
     backgroundColor: '#FAF9F6',
     borderTopWidth: 1,
     borderTopColor: '#E8E8E8',
+    marginTop: SPACING.sm,
     elevation: 8,
     shadowColor: '#000',
     shadowOpacity: 0.1,

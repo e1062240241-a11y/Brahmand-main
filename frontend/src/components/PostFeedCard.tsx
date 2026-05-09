@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
-import { formatTimeAgo } from '../utils/dateUtils';
+import { useMiniPlayer } from './MiniPlayer';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -82,6 +82,7 @@ export const PostFeedCard = memo(({
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
+  const miniPlayer = useMiniPlayer();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dynamicRatio, setDynamicRatio] = useState(4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -110,7 +111,7 @@ export const PostFeedCard = memo(({
   const h = Number(post?.media_height);
   const initialRawRatio = (w && h) ? (w / h) : null;
 
-  const displayRatio = Math.max(4 / 5, dynamicRatio);
+  const displayRatio = dynamicRatio < 1 ? dynamicRatio : Math.max(4 / 5, dynamicRatio);
   const feedHeight = SCREEN_WIDTH / displayRatio;
 
   const shouldPlay = isActive && !isPausedByUser;
@@ -340,6 +341,16 @@ export const PostFeedCard = memo(({
           isVisible={isFullscreen}
           initialPost={post}
           onClose={() => { setIsFullscreen(false); setIsPausedByUser(false); }}
+          onMinimize={() => {
+            setIsFullscreen(false);
+            setIsPausedByUser(false);
+            miniPlayer.setOnReopen((p: any) => {
+              if (p?.id === post?.id) {
+                setIsFullscreen(true);
+              }
+            });
+            miniPlayer.show(post);
+          }}
           onLike={onLike}
           onComment={onComment}
           onShare={onShare}

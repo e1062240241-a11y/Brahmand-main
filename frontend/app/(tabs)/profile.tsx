@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   Image, 
+  ImageBackground,
   ActivityIndicator, 
   Modal, 
   Dimensions, 
@@ -19,21 +19,38 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/store/authStore';
-import { 
-  getUserPosts, 
-  getUserProfile, 
+import {
+  getUserPosts,
+  getUserProfile,
   viewPost,
-  getCulturalCommunities, 
-  getUserCulturalCommunity, 
-  updateUserCulturalCommunity 
+  deletePost,
+  updatePost,
+  togglePostLike,
+  getPostComments,
+  addPostComment,
+  repostPost,
+  reportPost,
+  getCulturalCommunities,
+  getUserCulturalCommunity,
+  updateUserCulturalCommunity
 } from '../../src/services/api';
+import SharePostModal from '../../src/components/SharePostModal';
+import { KeyboardAvoidingView, Share } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
+
+let FileSystemModule: any = null;
+try {
+  FileSystemModule = require('expo-file-system');
+} catch (error) {
+  console.warn('expo-file-system unavailable for media sharing:', error);
+}
 
 type SettingItem = {
   id: string;
@@ -44,6 +61,7 @@ type SettingItem = {
   subLabel?: string;
   value?: string;
   action?: 'logout';
+  color?: string;
 };
 
 export default function ProfileScreen() {
@@ -57,28 +75,28 @@ export default function ProfileScreen() {
       id: 'account',
       title: 'Account',
       items: [
-        { id: 'edit', icon: 'person-circle-outline', label: 'Manage Profile', route: '/profile/edit' },
-        { id: 'kyc', icon: 'id-card-outline', label: 'KYC Verification', route: '/kyc' },
-        { id: 'notifications', icon: 'notifications-outline', label: 'Notifications', route: '/settings/notifications' },
-        { id: 'privacy', icon: 'lock-closed-outline', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon' },
+        { id: 'edit', icon: 'person-circle', label: 'Manage Profile', route: '/profile/edit', color: '#4F46E5' },
+        { id: 'kyc', icon: 'shield-checkmark', label: 'KYC Verification', route: '/kyc', color: '#F59E0B' },
+        { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications', color: '#10B981' },
+        { id: 'privacy', icon: 'lock-closed', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#6366F1' },
       ],
     },
     {
       id: 'preferences',
       title: 'Preferences',
       items: [
-        { id: 'about', icon: 'information-circle-outline', label: 'About Us', route: '/settings/guidelines' },
-        { id: 'location', icon: 'location-outline', label: 'Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon' },
-        { id: 'language', icon: 'language-outline', label: 'Language', value: 'English', disabled: true },
+        { id: 'about', icon: 'information-circle', label: 'About Us', route: '/settings/guidelines', color: '#8B5CF6' },
+        { id: 'location', icon: 'location', label: 'Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon', color: '#EC4899' },
+        { id: 'language', icon: 'language', label: 'Language', value: 'English', disabled: true, color: '#06B6D4' },
       ],
     },
     {
       id: 'support',
       title: 'Support',
       items: [
-        { id: 'guidelines', icon: 'document-text-outline', label: 'Community Guidelines', route: '/settings/guidelines' },
-        { id: 'culture', icon: 'people-outline', label: 'My Culture Group', value: user?.cultural_community || 'Not set' },
-        { id: 'logout', icon: 'log-out-outline', label: 'Logout', action: 'logout' },
+        { id: 'guidelines', icon: 'document-text', label: 'Community Guidelines', route: '/settings/guidelines', color: '#F97316' },
+        { id: 'culture', icon: 'people', label: 'My Culture Group', value: user?.cultural_community || 'Not set', color: '#D946EF' },
+        { id: 'logout', icon: 'log-out', label: 'Logout', action: 'logout', color: '#EF4444' },
       ],
     },
   ];
@@ -97,14 +115,25 @@ export default function ProfileScreen() {
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editedCaption, setEditedCaption] = useState('');
   const [activeTab, setActiveTab] = useState('grid');
-  
+
   // Cultural Group states
   const [showCGModal, setShowCGModal] = useState(false);
   const [cgSearch, setCGSearch] = useState('');
   const [cgList, setCGList] = useState<string[]>([]);
   const [cgLoading, setCGLoading] = useState(false);
   const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
+
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [postComments, setPostComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
+  const [selectedCommentPost, setSelectedCommentPost] = useState<any | null>(null);
 
   // Toast states
   const [toastVisible, setToastVisible] = useState(false);
@@ -119,7 +148,10 @@ export default function ProfileScreen() {
   }, []);
 
   const fetchProfile = useCallback(async (showLoading = true) => {
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     if (showLoading) setLoading(true);
     try {
       const res = await getUserProfile();
@@ -153,7 +185,7 @@ export default function ProfileScreen() {
       const response = await getUserPosts(userId, LIMIT, currentOffset);
       const payload = response.data;
       const items = Array.isArray(payload) ? payload : (payload?.items || []);
-      
+
       if (reset) {
         setPosts(items);
       } else {
@@ -188,7 +220,7 @@ export default function ProfileScreen() {
       handleOpenCGModal();
       return;
     }
-    
+
     setShowSettingsModal(false);
     if (item.disabled) return;
     if (item.action === 'logout') {
@@ -281,13 +313,195 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleDeletePost = async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+
+    const removedPost = post;
+    setPosts((prev) => prev.filter((item) => item.id !== postId));
+    setPostsCount((prev) => Math.max(0, prev - 1));
+    if (selectedPost?.id === postId) {
+      setSelectedPost(null);
+      setPostModalVisible(false);
+    }
+
+    try {
+      await deletePost(postId);
+      showToast('Post deleted successfully');
+    } catch (error) {
+      console.warn('Failed to delete post:', error);
+      setPosts((prev) => (prev.some((item) => item.id === postId) ? prev : [removedPost, ...prev]));
+      setPostsCount((prev) => prev + 1);
+      Alert.alert('Unable to delete post', 'Please try again later.');
+    }
+  };
+
+  const confirmDeletePost = (post: any) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Delete this post?')) {
+        handleDeletePost(post);
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete post',
+      'Are you sure you want to delete this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => handleDeletePost(post) },
+      ]
+    );
+  };
+
   const openPostModal = (post: any) => {
     if (!post?.id) return;
     setSelectedPost(post);
     setPostModalVisible(true);
+    setEditedCaption(post?.caption || '');
     try {
       viewPost(post.id);
-    } catch (e) {}
+    } catch (e) { }
+  };
+
+  const handleEditPost = (post: any) => {
+    setSelectedPost(post);
+    setEditedCaption(post?.caption || '');
+    setEditModalVisible(true);
+  };
+
+  const savePostEdit = async () => {
+    if (!selectedPost?.id) return;
+    const postId = selectedPost.id;
+
+    try {
+      const response = await updatePost(postId, { caption: editedCaption });
+      const updatedPost = response.data?.post ? response.data.post : { ...selectedPost, caption: editedCaption };
+      setSelectedPost(updatedPost);
+      setPosts((prev) => prev.map((item) => item.id === postId ? updatedPost : item));
+      showToast('Post updated successfully');
+      setEditModalVisible(false);
+    } catch (error) {
+      console.warn('Failed to update post:', error);
+      Alert.alert('Unable to save changes', 'Please try again later.');
+    }
+  };
+
+  const handleLikePost = useCallback(async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+    const liked = !!post?.liked_by_me;
+    const currentLikes = Number(post?.likes_count || 0);
+    const optimisticPost = {
+      ...post,
+      liked_by_me: !liked,
+      likes_count: liked ? Math.max(0, currentLikes - 1) : currentLikes + 1,
+    };
+
+    if (selectedPost?.id === postId) setSelectedPost(optimisticPost);
+    setPosts((prev) => prev.map((item) => (item.id === postId ? optimisticPost : item)));
+
+    try {
+      const response = await togglePostLike(postId);
+      const updatedPost = response.data?.post;
+      if (updatedPost) {
+        if (selectedPost?.id === postId) setSelectedPost((prev: any) => ({ ...prev, ...updatedPost }));
+        setPosts((prev) => prev.map((item) => (item.id === postId ? { ...item, ...updatedPost } : item)));
+      }
+    } catch (error) {
+      console.warn('Failed to like post:', error);
+      if (selectedPost?.id === postId) setSelectedPost(post);
+      setPosts((prev) => prev.map((item) => (item.id === postId ? post : item)));
+    }
+  }, [selectedPost]);
+
+  const handleOpenComment = useCallback(async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+
+    setSelectedCommentPost(post);
+    setCommentText('');
+    setCommentModalVisible(true);
+    setCommentsLoading(true);
+
+    try {
+      const response = await getPostComments(postId, 300);
+      setPostComments(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.warn('Failed to load comments:', error);
+      setPostComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, []);
+
+  const handleSubmitComment = async () => {
+    if (!selectedCommentPost?.id || !commentText.trim() || commentSubmitting) return;
+
+    setCommentSubmitting(true);
+    try {
+      const response = await addPostComment(selectedCommentPost.id, commentText.trim());
+      const updatedPost = response.data?.post;
+      if (updatedPost) {
+        if (selectedPost?.id === selectedCommentPost.id) setSelectedPost((prev: any) => ({ ...prev, ...updatedPost }));
+        setPosts((prev) =>
+          prev.map((item) => (item.id === selectedCommentPost.id ? { ...item, ...updatedPost } : item))
+        );
+        setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPost.id ? { ...prev, ...updatedPost } : prev));
+      }
+
+      const commentsResponse = await getPostComments(selectedCommentPost.id, 300);
+      setPostComments(Array.isArray(commentsResponse.data) ? commentsResponse.data : []);
+      setCommentText('');
+    } catch (error) {
+      console.warn('Failed to add comment:', error);
+      Alert.alert('Error', 'Could not post comment.');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
+
+  const handleSharePost = useCallback((post: any) => {
+    setSelectedSharePost(post);
+    setShareModalVisible(true);
+  }, []);
+
+  const handleRepost = useCallback(async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+
+    try {
+      const response = await repostPost(postId);
+      showToast('Reposted to your feed');
+      loadPosts(true); // Refresh grid
+    } catch (error) {
+      console.warn('Failed to repost:', error);
+      Alert.alert('Error', 'Could not repost.');
+    }
+  }, [loadPosts, showToast]);
+
+  const handleShareExternal = async (post: any) => {
+    const appLink = 'https://brahmand.app';
+    const mediaUrl = post?.media_url || '';
+    const caption = post?.caption ? `\nCaption: ${post.caption}` : '';
+    const message = `Check this post on Brahmand!${caption}\nApp: brahmand.app\n${appLink}`;
+
+    try {
+      if (FileSystemModule?.cacheDirectory && FileSystemModule?.downloadAsync && mediaUrl) {
+        const inferredExt = post?.media_type === 'video' ? 'mp4' : 'jpg';
+        const localPath = `${FileSystemModule.cacheDirectory}share-${Date.now()}.${inferredExt}`;
+        const downloadRes = await FileSystemModule.downloadAsync(mediaUrl, localPath);
+        if (downloadRes?.uri) {
+          await Share.share({ message, url: downloadRes.uri, title: 'Share via Brahmand' });
+          return;
+        }
+      }
+      await Share.share({ message: `${message}\n${mediaUrl}`, url: mediaUrl || appLink, title: 'Share via Brahmand' });
+    } catch (error: any) {
+      const msg = String(error?.message || error || '').toLowerCase();
+      if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
+      console.warn('Failed to open share sheet:', error);
+    }
   };
 
   const renderPost = ({ item }: { item: any }) => {
@@ -297,7 +511,7 @@ export default function ProfileScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.gridItem}
+        style={[styles.gridItem, { position: 'relative' }]}
         activeOpacity={0.9}
         onPress={() => openPostModal(item)}
       >
@@ -313,7 +527,7 @@ export default function ProfileScreen() {
         <View style={styles.gridOverlay}>
           <View style={styles.viewCountBadge}>
             <Ionicons name="play" size={10} color="#FFF" />
-            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views/1000).toFixed(1)}K` : views}</Text>
+            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views / 1000).toFixed(1)}K` : views}</Text>
           </View>
         </View>
 
@@ -328,91 +542,104 @@ export default function ProfileScreen() {
 
   const ListHeader = () => (
     <View style={styles.headerContent}>
-      {/* Background Cover */}
-      <Image 
-        source={{ uri: profile?.photo || user?.photo || 'https://images.unsplash.com/photo-1544365558-35aa4afcf11f?q=80&w=1000&auto=format&fit=crop' }} 
-        style={styles.coverImage} 
-      />
-      <LinearGradient
-        colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)', '#000']}
-        locations={[0, 0.5, 1]}
-        style={styles.coverGradient}
-      />
+      <ImageBackground
+        source={{ uri: profile?.cover_photo || user?.cover_photo || 'https://images.unsplash.com/photo-1604537466158-719b1972fb17?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }}
+        style={styles.coverPhoto}
+      >
+        <LinearGradient
+          colors={['transparent', 'transparent', 'rgba(0,0,0,0.8)', '#000000']}
+          style={styles.coverGradient}
+        />
+      </ImageBackground>
 
-      <View style={[styles.profileTopSpacing, { paddingTop: (insets.top || 40) + 40 }]} />
-
-      {/* Avatar Centered */}
-      <View style={styles.centeredProfile}>
-        <TouchableOpacity 
-          onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.avatarContainerCenter}>
+      <View style={styles.profileBottomSection}>
+        <View style={styles.avatarWrapper}>
+          <TouchableOpacity 
+            onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
+            activeOpacity={0.8}
+            style={styles.avatarContainerImage}
+          >
             {(profile?.photo || user?.photo) ? (
-              <Image source={{ uri: profile?.photo || user?.photo }} style={styles.avatarLarge} />
+              <Image source={{ uri: profile?.photo || user?.photo }} style={styles.avatarMain} />
             ) : (
-              <Avatar name={profile?.name || user?.name || 'User'} size={100} />
+              <View style={[styles.avatarMain, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="person" size={40} color="#FFF" />
+              </View>
+            )}
+            <View style={styles.onlineDot} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.bioCenterSection}>
+          <View style={styles.nameRowCenter}>
+            <Text style={styles.displayNameCenter}>{profile?.name || user?.name || 'User'}</Text>
+            {(profile?.is_verified || user?.is_verified) && (
+              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
             )}
             <View style={styles.onlineDot} />
           </View>
-        </TouchableOpacity>
-
-        <View style={styles.nameRowCenter}>
-          <Text style={styles.displayNameCenter}>{profile?.name || user?.name || 'Virral Patel'}</Text>
-          <Ionicons name="checkmark-circle" size={16} color="#FFF" style={{ marginLeft: 6 }} />
-        </View>
-
-        <View style={styles.bioRow}>
-          <Text style={styles.bioTextCenter}>{profile?.bio || user?.bio || 'Har Har Mahadev'}</Text>
-          <Text style={styles.omIcon}> 🕉️</Text>
-        </View>
-
-        <View style={styles.locationContainerCenter}>
-          <Ionicons name="location-outline" size={14} color="#FFF" />
-          <Text style={styles.locationTextCenter}>
-            {(profile?.home_location || user?.home_location)?.city || 'Mumbai'}, {(profile?.home_location || user?.home_location)?.state || 'Maharashtra'}
-          </Text>
+          
+          {(profile?.bio || user?.bio) ? (
+            <Text style={styles.bioTextCenter}>{profile?.bio || user?.bio}</Text>
+          ) : null}
+          
+          {(profile?.home_location || user?.home_location) && (
+            <View style={styles.locationContainerCenter}>
+              <Ionicons name="location-outline" size={14} color="#FFF" />
+              <Text style={styles.locationTextCenter}>
+                {(profile?.home_location || user?.home_location).city}, {(profile?.home_location || user?.home_location).state}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
-      {/* Stats Container */}
-      <View style={styles.statsDarkCard}>
-        <TouchableOpacity style={styles.statDarkItem} onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}>
-          <Ionicons name="trending-up" size={22} color="#FFF" />
-          <Text style={styles.statDarkValue}>{profile?.followers_count ?? 808}</Text>
-          <Text style={styles.statDarkLabel}>Followers</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.statDivider} />
+      {/* Stats Box */}
+      <View style={styles.statsCardWrapper}>
+        <View style={styles.statsCard}>
+          <TouchableOpacity 
+            style={styles.statBoxItem}
+            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
+          >
+            <Ionicons name="trending-up-outline" size={20} color="#FFF" style={styles.statIcon} />
+            <Text style={styles.statBoxValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
+            <Text style={styles.statBoxLabel}>Followers</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.statDivider} />
+          
+          <TouchableOpacity 
+            style={styles.statBoxItem}
+            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
+          >
+            <Ionicons name="people-outline" size={20} color="#FFF" style={styles.statIcon} />
+            <Text style={styles.statBoxValue}>{profile?.following_count ?? (Array.isArray(profile?.following) ? profile.following.length : 0)}</Text>
+            <Text style={styles.statBoxLabel}>Following</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.statDarkItem} onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}>
-          <Ionicons name="people-outline" size={22} color="#FFF" />
-          <Text style={styles.statDarkValue}>{profile?.following_count ?? 376}</Text>
-          <Text style={styles.statDarkLabel}>Following</Text>
-        </TouchableOpacity>
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statBoxItem}>
+            <Ionicons name="share-outline" size={20} color="#FFF" style={styles.statIcon} />
+            <Text style={styles.statBoxValue}>{postsCount}</Text>
+            <Text style={styles.statBoxLabel}>Posts</Text>
+          </View>
 
-        <View style={styles.statDivider} />
-
-        <View style={styles.statDarkItem}>
-          <Ionicons name="open-outline" size={22} color="#FFF" />
-          <Text style={styles.statDarkValue}>{postsCount || 696}</Text>
-          <Text style={styles.statDarkLabel}>Posts</Text>
-        </View>
-
-        <View style={styles.statDivider} />
-
-        <View style={styles.statDarkItem}>
-          <Ionicons name="bookmark-outline" size={22} color="#FFF" />
-          <Text style={styles.statDarkValue}>143</Text>
-          <Text style={styles.statDarkLabel}>Saved</Text>
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statBoxItem}>
+            <Ionicons name="bookmark-outline" size={20} color="#FFF" style={styles.statIcon} />
+            <Text style={styles.statBoxValue}>143</Text>
+            <Text style={styles.statBoxLabel}>Saved</Text>
+          </View>
         </View>
       </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtonsDarkRow}>
+      {/* Add Post & Share Buttons */}
+      <View style={styles.actionButtonsBox}>
         <TouchableOpacity 
           style={styles.addPostButton}
-          onPress={() => router.push('/post/create')}
+          onPress={() => router.push('/post/create' as any)}
         >
           <Ionicons name="add" size={20} color="#FFF" />
           <Text style={styles.addPostText}>Add Post</Text>
@@ -430,15 +657,17 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Custom Header Bar - Absolute Positioned */}
+      {/* Custom Header Bar */}
       <View style={[styles.navBarAbsolute, { paddingTop: insets.top || 10 }]}>
-        <TouchableOpacity style={styles.navLeftAbsolute} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.navLeft} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#FFF" />
-          <Text style={styles.navTitleAbsolute}>{profile?.sl_id || user?.sl_id || 'virrallpatel'}</Text>
+          <Text style={styles.navTitleWhite}>{profile?.sl_id || user?.sl_id || 'Profile'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navRightAbsolute} onPress={() => setShowSettingsModal(true)}>
-          <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
-        </TouchableOpacity>
+        <View style={styles.navRight}>
+          <TouchableOpacity style={styles.navIcon} onPress={() => setShowSettingsModal(true)}>
+            <Ionicons name="menu-outline" size={30} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -462,9 +691,9 @@ export default function ProfileScreen() {
           !loading && !postsLoading ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="camera-outline" size={40} color="#FFF" />
+                <Ionicons name="camera-outline" size={40} color="#FFFFFF" />
               </View>
-              <Text style={styles.emptyTitle}>No Posts Yet</Text>
+              <Text style={[styles.emptyTitle, { color: '#FFFFFF' }]}>No Posts Yet</Text>
             </View>
           ) : null
         }
@@ -484,6 +713,10 @@ export default function ProfileScreen() {
       <Modal visible={showSettingsModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.settingsSheet}>
+            <LinearGradient
+              colors={['#E0F2F1', '#E3F2FD', '#FFFFFF']}
+              style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 20, borderTopRightRadius: 20 }]}
+            />
             <View style={styles.settingsHeader}>
               <View style={styles.settingsHeaderBar} />
               <Text style={styles.settingsTitle}>Settings and privacy</Text>
@@ -495,23 +728,31 @@ export default function ProfileScreen() {
               {SETTINGS_SECTIONS.map((section) => (
                 <View key={section.id} style={styles.settingsSection}>
                   <Text style={styles.sectionLabel}>{section.title}</Text>
-                  {section.items.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[styles.settingsRow, item.disabled && styles.settingsRowDisabled]}
-                      onPress={() => handleMenuPress(item)}
-                    >
-                      <Ionicons name={item.icon as any} size={22} color={item.action === 'logout' ? COLORS.error : COLORS.text} />
-                      <View style={styles.settingsLabelWrap}>
-                        <Text style={[styles.settingsLabel, item.action === 'logout' && { color: COLORS.error }]}>{item.label}</Text>
-                        {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
-                      </View>
-                      <View style={styles.settingsRowRight}>
-                        {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                        {!item.disabled && <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />}
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                  <View style={styles.settingsGroupCard}>
+                    {section.items.map((item, index) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[
+                          styles.settingsRow,
+                          item.disabled && styles.settingsRowDisabled,
+                          index === section.items.length - 1 && { borderBottomWidth: 0 }
+                        ]}
+                        onPress={() => handleMenuPress(item)}
+                      >
+                        <View style={[styles.settingsIconCircle, { backgroundColor: item.color || COLORS.primary }]}>
+                          <Ionicons name={item.icon as any} size={20} color="#FFF" />
+                        </View>
+                        <View style={styles.settingsLabelWrap}>
+                          <Text style={[styles.settingsLabel, item.action === 'logout' && { color: COLORS.error }]}>{item.label}</Text>
+                          {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+                        </View>
+                        <View style={styles.settingsRowRight}>
+                          {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                          {!item.disabled && <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               ))}
               <View style={styles.bottomSpacer} />
@@ -522,9 +763,9 @@ export default function ProfileScreen() {
 
       {/* Avatar Modal */}
       <Modal visible={avatarModalVisible} transparent animationType="fade">
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setAvatarModalVisible(false)}
         >
           <Image source={{ uri: profile?.photo || user?.photo }} style={styles.fullImage} resizeMode="contain" />
@@ -536,23 +777,58 @@ export default function ProfileScreen() {
         <View style={styles.postDetailContainer}>
           <View style={styles.postDetailHeader}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.postDetailTitle}>Posts</Text>
           </View>
-          <FlatList
-            data={[selectedPost]}
-            renderItem={({ item }) => (
-              <PostFeedCard
-                post={item}
-                isActive={postModalVisible}
-                onUserPress={() => setPostModalVisible(false)}
-                postMenuType="delete"
-                theme="dark"
-              />
-            )}
-            keyExtractor={(item) => item.id}
-          />
+          {selectedPost ? (
+            <FlatList
+              data={[selectedPost]}
+              renderItem={({ item }) => (
+                <PostFeedCard
+                  post={item}
+                  onLike={handleLikePost}
+                  onComment={handleOpenComment}
+                  onShare={handleSharePost}
+                  onRepost={handleRepost}
+                  isActive={postModalVisible}
+                  onUserPress={() => setPostModalVisible(false)}
+                  postMenuType="delete"
+                  onEdit={handleEditPost}
+                  onPostMenuPress={confirmDeletePost}
+                />
+              )}
+              keyExtractor={(item) => item.id}
+            />
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
+          )}
+        </View>
+      </Modal>
+
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.editPostModal}>
+            <View style={styles.editPostHeader}>
+              <Text style={styles.editPostTitle}>Edit post caption</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              value={editedCaption}
+              onChangeText={setEditedCaption}
+              style={styles.editCaptionInput}
+              multiline
+              placeholder="Write a new caption"
+              placeholderTextColor={COLORS.textLight}
+            />
+            <TouchableOpacity style={styles.saveEditButton} onPress={savePostEdit}>
+              <Text style={styles.saveEditButtonText}>Save changes</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
@@ -566,7 +842,14 @@ export default function ProfileScreen() {
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
-            
+
+            {(userCG?.change_count ?? 0) >= 2 && (
+              <View style={styles.limitReachedContainer}>
+                <Ionicons name="alert-circle" size={20} color="#991B1B" />
+                <Text style={styles.limitReachedText}>Change limit reached. You cannot change your culture group again.</Text>
+              </View>
+            )}
+
             <View style={styles.cgSearchContainer}>
               <Ionicons name="search" size={20} color={COLORS.textLight} />
               <TextInput
@@ -588,12 +871,19 @@ export default function ProfileScreen() {
                 data={cgList}
                 keyExtractor={(item, index) => `${item}-${index}`}
                 renderItem={({ item }) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
                       styles.cgItem,
                       userCG?.cultural_community === item && styles.cgItemSelected,
+                      ((userCG?.change_count ?? 0) >= 2 && userCG?.cultural_community !== item) && { opacity: 0.5 }
                     ]}
-                    onPress={() => handleSelectCG(item)}
+                    onPress={() => {
+                      if ((userCG?.change_count ?? 0) >= 2 && userCG?.cultural_community !== item) {
+                        Alert.alert("Limit Reached", "You have already reached the limit for changing your culture group.");
+                        return;
+                      }
+                      handleSelectCG(item);
+                    }}
                   >
                     <Text style={[
                       styles.cgItemText,
@@ -625,6 +915,74 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
+
+      {/* Comment Modal */}
+      <Modal visible={commentModalVisible} animationType="slide">
+        <SafeAreaView style={styles.commentModalContainer}>
+          <View style={styles.commentHeader}>
+            <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
+              <Ionicons name="close" size={28} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.commentTitle}>Comments</Text>
+            <View style={{ width: 28 }} />
+          </View>
+
+          {commentsLoading ? (
+            <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+          ) : (
+            <FlatList
+              data={postComments}
+              keyExtractor={(item, index) => item.id || String(index)}
+              renderItem={({ item }) => (
+                <View style={styles.commentItem}>
+                  <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
+                  <View style={styles.commentContent}>
+                    <Text style={styles.commentUser}>{item.username || 'User'}</Text>
+                    <Text style={styles.commentText}>{item.text}</Text>
+                  </View>
+                </View>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyComments}>
+                  <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
+                  <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
+                </View>
+              }
+              contentContainerStyle={{ paddingBottom: 100 }}
+            />
+          )}
+
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={styles.commentInputContainer}>
+              <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Add a comment..."
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+              />
+              <TouchableOpacity
+                onPress={handleSubmitComment}
+                disabled={!commentText.trim() || commentSubmitting}
+              >
+                <Text style={[
+                  styles.commentPostButton,
+                  (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
+                ]}>Post</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Share Modal */}
+      <SharePostModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        post={selectedSharePost}
+        onShareExternal={handleShareExternal}
+      />
     </SafeAreaView>
   );
 }
@@ -632,177 +990,175 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#070707',
-  },
-  headerContent: {
-    paddingBottom: 20,
-    position: 'relative',
-  },
-  coverImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 400,
-    resizeMode: 'cover',
-  },
-  coverGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 400,
-  },
-  profileTopSpacing: {
-    width: '100%',
-  },
-  centeredProfile: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  avatarContainerCenter: {
-    position: 'relative',
-    marginBottom: 12,
-  },
-  avatarLarge: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#22C55E',
-    borderWidth: 2,
-    borderColor: '#000',
-  },
-  nameRowCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  displayNameCenter: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  bioRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  bioTextCenter: {
-    fontSize: 15,
-    color: '#E5E5E5',
-    fontWeight: '500',
-  },
-  omIcon: {
-    fontSize: 14,
-  },
-  locationContainerCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  locationTextCenter: {
-    fontSize: 13,
-    color: '#D4D4D4',
-    marginLeft: 4,
-  },
-  statsDarkCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(20,20,20,0.6)',
-    borderRadius: 16,
-    paddingVertical: 16,
-    marginHorizontal: 16,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  statDarkItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statDarkValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginTop: 2,
-  },
-  statDarkLabel: {
-    fontSize: 11,
-    color: '#A3A3A3',
-    fontWeight: '500',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  actionButtonsDarkRow: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    gap: 12,
-  },
-  addPostButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 12,
-    gap: 6,
-  },
-  addPostText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  shareIconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#000000',
   },
   navBarAbsolute: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    zIndex: 10,
+    paddingBottom: 10,
   },
-  navLeftAbsolute: {
+  navLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  navTitleAbsolute: {
+  navRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  navIcon: {
+    padding: 4,
+  },
+  navTitleWhite: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  headerContent: {
+    paddingBottom: 16,
+  },
+  coverPhoto: {
+    width: '100%',
+    height: 300,
+  },
+  coverGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  profileBottomSection: {
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    paddingBottom: 24,
+  },
+  avatarWrapper: {
+    marginTop: -50,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarContainerImage: {
+    position: 'relative',
+  },
+  avatarMain: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#EFEFEF',
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#00FF00',
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  bioCenterSection: {
+    alignItems: 'center',
+  },
+  nameRowCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  displayNameCenter: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  bioTextCenter: {
+    fontSize: 14,
+    color: '#E0E0E0',
+    marginBottom: 4,
+  },
+  locationContainerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationTextCenter: {
+    fontSize: 13,
+    color: '#BBBBBB',
+    marginLeft: 4,
+  },
+  statsCardWrapper: {
+    paddingHorizontal: 16,
+    marginTop: 10,
+  },
+  statsCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#0C0C0C',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+  },
+  statBoxItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statIcon: {
+    marginBottom: 4,
+  },
+  statBoxValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    color: '#FFFFFF',
   },
-  navRightAbsolute: {
-    padding: 4,
+  statBoxLabel: {
+    fontSize: 12,
+    color: '#888888',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#222222',
+    height: '80%',
+    alignSelf: 'center',
+  },
+  actionButtonsBox: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginTop: 16,
+    gap: 12,
+  },
+  addPostButton: {
+    flex: 1,
+    flexDirection: 'row',
+    height: 44,
+    backgroundColor: '#0C0C0C',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    gap: 6,
+  },
+  addPostText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  shareIconButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#0C0C0C',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
   },
   gridItem: {
     width: COLUMN_WIDTH,
@@ -867,7 +1223,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: '#666',
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -883,7 +1239,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   settingsSheet: {
-    backgroundColor: '#FFF',
+    backgroundColor: 'transparent',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '80%',
@@ -930,19 +1286,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   settingsRowDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
+  },
+  settingsGroupCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 24,
+    paddingVertical: 4,
+    overflow: 'hidden',
+  },
+  settingsIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   settingsLabelWrap: {
     flex: 1,
-    marginLeft: 12,
   },
   settingsLabel: {
     fontSize: 16,
     color: COLORS.text,
+    fontWeight: '500',
   },
   settingsSubLabel: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: COLORS.textLight,
     marginTop: 2,
   },
   settingsRowRight: {
@@ -953,6 +1323,8 @@ const styles = StyleSheet.create({
   settingsValue: {
     fontSize: 14,
     color: COLORS.textSecondary,
+    maxWidth: 100,
+    textAlign: 'right',
   },
   bottomSpacer: {
     height: 40,
@@ -963,7 +1335,7 @@ const styles = StyleSheet.create({
   },
   postDetailContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#000',
   },
   postDetailHeader: {
     height: 50,
@@ -971,16 +1343,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#DBDBDB',
+    borderBottomColor: '#333',
     marginTop: Platform.OS === 'ios' ? 40 : 0,
   },
   postDetailTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 20,
+    color: '#FFFFFF',
   },
   backButton: {
     padding: 4,
+  },
+  editPostModal: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '50%',
+    padding: SPACING.lg,
+  },
+  editPostHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  editPostTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  editCaptionInput: {
+    flex: 1,
+    minHeight: 120,
+    maxHeight: 260,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: SPACING.md,
+    color: COLORS.text,
+    textAlignVertical: 'top',
+    marginBottom: SPACING.lg,
+  },
+  saveEditButton: {
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveEditButtonText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 16,
   },
   // CG Modal Styles
   cgModalContent: {
@@ -1039,10 +1454,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   emptyText: {
-    textAlign: 'center',
-    color: COLORS.textLight,
-    marginTop: SPACING.xl,
     fontSize: 14,
+  },
+  limitReachedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  limitReachedText: {
+    flex: 1,
+    color: '#991B1B',
+    fontSize: 13,
+    fontWeight: '600',
   },
   toastContainer: {
     position: 'absolute',
@@ -1057,7 +1486,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 25,
     gap: 10,
   },
@@ -1065,6 +1494,83 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 10,
+  },
+  commentModalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.background,
+  },
+  commentTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  commentContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  commentUser: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  commentText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.background,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+  },
+  commentInput: {
+    flex: 1,
+    marginHorizontal: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    maxHeight: 100,
+    color: COLORS.text,
+  },
+  commentPostButton: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 16,
+    paddingHorizontal: 8,
+  },
+  emptyComments: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyCommentsText: {
+    marginTop: 12,
+    color: COLORS.textLight,
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
 });
-

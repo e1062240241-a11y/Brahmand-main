@@ -398,32 +398,33 @@ export default function TempleScreen() {
  );
  };
 
- return (
- <View style={styles.container}>
- <LinearGradient
-  colors={['#FFF0F5', '#F0E6FF', '#E8D8F0']}
-  start={{ x: 0, y: 0 }}
-  end={{ x: 0, y: 1 }}
-  style={StyleSheet.absoluteFill}
- />
- <SafeAreaView style={styles.safeArea} edges={['top']}>
+  return (
+  <SafeAreaView style={styles.container} edges={['top']}>
   <View style={styles.headerBar}>
-  <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-   <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+  <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+   <Ionicons name="arrow-back" size={22} color={COLORS.text} />
   </TouchableOpacity>
-  <Text style={styles.headerTitle}>Mandir</Text>
-  <View style={{ width: 40 }} />
-  </View>
-
-  <View style={styles.searchBarContainer}>
-  <View style={styles.searchBar}>
-   <Ionicons name="search" size={18} color={COLORS.textLight} />
-   <TextInput
-   style={[
-    styles.searchInput,
-    Platform.OS === 'web' ? ({ outlineWidth: 0, outlineStyle: 'none' } as any) : null,
-   ]}
-   placeholder="Search Mandir"
+  <View style={styles.headerActions}>
+ {isSearchOpen ? (
+ <Animated.View
+  style={[
+   styles.searchInputContainer,
+   {
+    width: searchBarAnim.interpolate({
+     inputRange: [0, 1],
+     outputRange: [0, 240],
+    }),
+    opacity: searchBarAnim,
+   },
+  ]}
+ >
+  <Ionicons name="search" size={16} color={COLORS.textSecondary} />
+  <TextInput
+    style={[
+     styles.searchInput,
+     Platform.OS === 'web' ? ({ outlineWidth: 0, outlineStyle: 'none' } as any) : null,
+    ]}
+   placeholder=""
    placeholderTextColor={COLORS.textLight}
    value={searchQuery}
    onChangeText={setSearchQuery}
@@ -610,10 +611,25 @@ const styles = StyleSheet.create({
  paddingHorizontal: SPACING.md,
  marginBottom: SPACING.sm,
  },
- searchBar: {
+  backButton: {
+  padding: SPACING.xs,
+  marginRight: SPACING.sm,
+  },
+  headerActions: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  flex: 1,
+  justifyContent: 'flex-end',
+  paddingRight: SPACING.md,
+  },
+ headerIcon: {
+ padding: SPACING.xs,
+ marginLeft: SPACING.sm,
+ },
+ searchInputContainer: {
  flexDirection: 'row',
  alignItems: 'center',
- backgroundColor: COLORS.surface,
+ backgroundColor: COLORS.background,
  borderRadius: BORDER_RADIUS.full,
  paddingHorizontal: SPACING.md,
  paddingVertical: 10,
