@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
-  ActivityIndicator, 
-  Modal, 
-  Dimensions, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
   FlatList,
   RefreshControl,
   Platform,
@@ -20,20 +20,20 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/store/authStore';
-import { 
-  getUserPosts, 
-  getUserProfile, 
-  viewPost, 
-  deletePost, 
+import {
+  getUserPosts,
+  getUserProfile,
+  viewPost,
+  deletePost,
   updatePost,
   togglePostLike,
   getPostComments,
   addPostComment,
   repostPost,
   reportPost,
-  getCulturalCommunities, 
-  getUserCulturalCommunity, 
-  updateUserCulturalCommunity 
+  getCulturalCommunities,
+  getUserCulturalCommunity,
+  updateUserCulturalCommunity
 } from '../../src/services/api';
 import SharePostModal from '../../src/components/SharePostModal';
 import { KeyboardAvoidingView, Share } from 'react-native';
@@ -117,7 +117,7 @@ export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedCaption, setEditedCaption] = useState('');
   const [activeTab, setActiveTab] = useState('grid');
-  
+
   // Cultural Group states
   const [showCGModal, setShowCGModal] = useState(false);
   const [cgSearch, setCGSearch] = useState('');
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
       const response = await getUserPosts(userId, LIMIT, currentOffset);
       const payload = response.data;
       const items = Array.isArray(payload) ? payload : (payload?.items || []);
-      
+
       if (reset) {
         setPosts(items);
       } else {
@@ -217,7 +217,7 @@ export default function ProfileScreen() {
       handleOpenCGModal();
       return;
     }
-    
+
     setShowSettingsModal(false);
     if (item.disabled) return;
     if (item.action === 'logout') {
@@ -347,7 +347,7 @@ export default function ProfileScreen() {
     setEditedCaption(post?.caption || '');
     try {
       viewPost(post.id);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleEditPost = (post: any) => {
@@ -513,7 +513,7 @@ export default function ProfileScreen() {
         <View style={styles.gridOverlay}>
           <View style={styles.viewCountBadge}>
             <Ionicons name="play" size={10} color="#FFF" />
-            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views/1000).toFixed(1)}K` : views}</Text>
+            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views / 1000).toFixed(1)}K` : views}</Text>
           </View>
         </View>
 
@@ -530,7 +530,7 @@ export default function ProfileScreen() {
     <View style={styles.headerContent}>
       {/* Profile Header: Avatar and Stats */}
       <View style={styles.profileHeaderRow}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
           activeOpacity={0.8}
         >
@@ -548,14 +548,14 @@ export default function ProfileScreen() {
             <Text style={styles.statValue}>{postsCount}</Text>
             <Text style={styles.statLabel}>Posts</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statItem}
             onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
           >
             <Text style={styles.statValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statItem}
             onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
           >
@@ -577,7 +577,7 @@ export default function ProfileScreen() {
         {(profile?.bio || user?.bio) ? (
           <Text style={styles.bioText}>{profile?.bio || user?.bio}</Text>
         ) : null}
-        
+
         {(profile?.home_location || user?.home_location) && (
           <View style={styles.locationContainer}>
             <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
@@ -590,13 +590,13 @@ export default function ProfileScreen() {
 
       {/* Action Buttons */}
       <View style={styles.actionButtonsRow}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.editProfileButton}
           onPress={() => router.push('/profile/edit')}
         >
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.shareProfileButton}
           onPress={() => Alert.alert('Coming Soon', 'Share profile functionality is coming soon!')}
         >
@@ -718,9 +718,9 @@ export default function ProfileScreen() {
 
       {/* Avatar Modal */}
       <Modal visible={avatarModalVisible} transparent animationType="fade">
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setAvatarModalVisible(false)}
         >
           <Image source={{ uri: profile?.photo || user?.photo }} style={styles.fullImage} resizeMode="contain" />
@@ -797,14 +797,14 @@ export default function ProfileScreen() {
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
-            
+
             {(userCG?.change_count ?? 0) >= 2 && (
               <View style={styles.limitReachedContainer}>
                 <Ionicons name="alert-circle" size={20} color="#991B1B" />
                 <Text style={styles.limitReachedText}>Change limit reached. You cannot change your culture group again.</Text>
               </View>
             )}
-            
+
             <View style={styles.cgSearchContainer}>
               <Ionicons name="search" size={20} color={COLORS.textLight} />
               <TextInput
@@ -826,7 +826,7 @@ export default function ProfileScreen() {
                 data={cgList}
                 keyExtractor={(item, index) => `${item}-${index}`}
                 renderItem={({ item }) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
                       styles.cgItem,
                       userCG?.cultural_community === item && styles.cgItemSelected,
@@ -917,7 +917,7 @@ export default function ProfileScreen() {
                 onChangeText={setCommentText}
                 multiline
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleSubmitComment}
                 disabled={!commentText.trim() || commentSubmitting}
               >
