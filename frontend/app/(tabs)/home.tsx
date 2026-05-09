@@ -394,28 +394,7 @@ export default function HomeScreen() {
     'Nearby community'
   );
 
-  const makeRequestCard = (
-    id: string,
-    request: any | undefined,
-    fallback: Omit<HomeRequestCard, 'request'>
-  ): HomeRequestCard => {
-    if (!request) {
-      return fallback;
-    }
-    const responseCount = Number(request?.response_count || request?.responses_count || request?.responded_count || 0);
-    return {
-      ...fallback,
-      id,
-      title: request.title || fallback.title,
-      location: formatRequestLocation(request),
-      subtitle: request.blood_group
-        ? `${request.blood_group} blood required`
-        : (request.description || request.support_needed || fallback.subtitle),
-      footer: responseCount > 0 ? `${responseCount} responded` : 'Active request',
-      button: fallback.button,
-      request,
-    };
-  };
+
 
   const safeCommunityRequests = Array.isArray(communityRequests) ? communityRequests : [];
   const bloodRequest = safeCommunityRequests.find((item) => item?.request_type === 'blood');
