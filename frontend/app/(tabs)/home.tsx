@@ -49,6 +49,7 @@ import {
   uploadUserPost,
 } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
+import { formatTimeAgo } from '../../src/utils/dateUtils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
@@ -64,21 +65,6 @@ try {
   console.warn('expo-file-system unavailable for media sharing:', error);
 }
 
-const formatTimeAgo = (dateString: string | null | undefined) => {
-  if (!dateString) return 'now';
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return 'now';
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  if (days > 0) return `${days}d`;
-  if (hours > 0) return `${hours}h`;
-  if (minutes > 0) return `${minutes}m`;
-  return 'now';
-};
 
 type HomeRequestCard = {
   id: string;
@@ -94,10 +80,9 @@ type HomeRequestCard = {
 };
 
 const quickAccess = [
-  { label: 'Jaap', icon: 'ellipse-outline', route: '/mantra-jaap' },
-  { label: 'Temple', icon: 'business-outline', route: '/temple' },
-  { label: 'Community', icon: 'people-outline', route: '/messages' },
-  { label: 'Services', icon: 'bag-handle-outline', route: '/vendor' },
+  { label: 'My Krishna', icon: null, subtitle: 'AI Dharma\nGuidance', color: '#FFF8F0' },
+  { label: 'SOS', icon: 'alert', subtitle: 'By Your\nCommunity', color: '#FFF8F0', urgent: true },
+  { label: 'Panchang', icon: 'calendar', subtitle: 'Vedic View\nVedic View', color: '#FFF8F0', calendarIcon: true },
 ];
 
 const getHelpCardStyle = (tone: string) => {
@@ -800,7 +785,7 @@ export default function HomeScreen() {
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   return (
-    <LinearGradient colors={['#170B35', '#27103D', '#4A2534']} style={styles.screen}>
+    <LinearGradient colors={['#FA925D', '#FCD7C1', '#FFFFFF']} locations={[0, 0.4, 0.8]} style={styles.screen}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -812,64 +797,45 @@ export default function HomeScreen() {
       >
         <View style={styles.upperContentWrapper}>
           <View style={styles.header}>
-          <TouchableOpacity
-            activeOpacity={0.86}
-            style={styles.profileButton}
-            onPress={() => setShowUploadPostModal(true)}
-            onLongPress={() => setShowProfileActions(true)}
-          >
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatar} />
-            ) : (
-              <LinearGradient colors={['#FFE3A7', '#FF7A30']} style={styles.avatarFallback}>
-                <Text style={styles.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
-              </LinearGradient>
-            )}
-            {uploadingPhoto && (
-              <View style={styles.photoUploadOverlay}>
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.greetingBlock}>
-            <Text style={styles.greeting}>Namaste, {firstName} 🙏</Text>
-            <View style={styles.bioRow}>
-              <Text style={styles.subGreeting} numberOfLines={2}>{bioText}</Text>
+            <View style={styles.headerLeft}>
               <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.bioEditButton}
-                onPress={() => setIsEditingBio(true)}
+                activeOpacity={0.86}
+                style={styles.profileButton}
+                onPress={() => setShowUploadPostModal(true)}
+                onLongPress={() => setShowProfileActions(true)}
               >
-                <Ionicons name="pencil" size={13} color="#F5D8AE" />
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                ) : (
+                  <LinearGradient colors={['#FFE3A7', '#FF7A30']} style={styles.avatarFallback}>
+                    <Text style={styles.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
+                  </LinearGradient>
+                )}
+                <View style={styles.headerOnlineDot} />
+              </TouchableOpacity>
+
+              <View style={styles.greetingBlock}>
+                <Text style={styles.greeting}>Namaste User 🙏</Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.bioRow}
+                  onPress={() => setIsEditingBio(true)}
+                >
+                  <Text style={styles.subGreeting}>Hari Om</Text>
+                  <Ionicons name="pencil" size={12} color="#4A2B20" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.headerRight}>
+              <TouchableOpacity activeOpacity={0.7} style={styles.headerIconButton}>
+                <Ionicons name="search-outline" size={26} color="#333" />
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7} style={styles.headerIconButton}>
+                <Ionicons name="notifications-outline" size={26} color="#333" />
               </TouchableOpacity>
             </View>
           </View>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.bellButton, searchActive && styles.searchButtonActive]}
-            onPress={() => {
-              setSearchActive((prev) => !prev);
-              if (searchActive) {
-                setSearchTerm('');
-              }
-            }}
-          >
-            <Ionicons name={searchActive ? 'close' : 'search'} size={24} color="#FFF7DD" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.bellButton}
-            onPress={() => router.push('/notifications')}
-          >
-            <Ionicons name="notifications-outline" size={25} color="#FFF7DD" />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
 
         {searchActive ? (
           <View style={styles.searchPanel}>
@@ -947,137 +913,133 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        <View style={styles.infoRow}>
-          <TouchableOpacity activeOpacity={0.9} style={styles.panchangCard} onPress={() => goTo('/panchang')}>
-            <View style={styles.calendarIcon}>
-              <Ionicons name="calendar-outline" size={21} color="#FFFFFF" />
-            </View>
-            <View>
-              <Text style={styles.infoTitle}>Panchang</Text>
-              <Text style={styles.infoMain}>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
-              <Text style={styles.infoSub}>Vedic View</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity activeOpacity={0.9} style={styles.gitaCard} onPress={() => goTo('/library/bhagvad-geeta')}>
-            <View style={styles.gitaText}>
-              <Text style={styles.infoTitle}>Bhagavad Gita</Text>
-              <Text style={styles.shlok} numberOfLines={1}>कर्मण्येवाधिकारस्ते मा फलेषु कदाचन ।</Text>
-            </View>
-            <Text style={styles.bookEmoji}>📖</Text>
-          </TouchableOpacity>
-        </View>
-
-        {liveActive ? (
-          <TouchableOpacity activeOpacity={0.92} onPress={() => goTo('/live-mantra')}>
-            <ImageBackground source={shivaImage} imageStyle={styles.liveImage} style={styles.liveCard}>
-              <LinearGradient colors={['rgba(9,8,26,0.98)', 'rgba(14,13,38,0.7)', 'rgba(14,13,38,0.25)']} style={styles.liveOverlay}>
-                <View style={styles.liveNowRow}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveNowText}>LIVE NOW</Text>
+        <View style={styles.topFeatureRow}>
+          {quickAccess.map((item, idx) => (
+            <TouchableOpacity key={idx} style={styles.featureCard} activeOpacity={0.9}>
+              {item.urgent && (
+                <View style={styles.urgentCircle}>
+                  <Text style={styles.urgentExclamation}>!</Text>
                 </View>
-                <Text style={styles.liveTitle}>Gayatri Mantra Jaap</Text>
-                <Text style={styles.liveSub}>{liveEnd ? `Live until ${formatTime(liveEnd)}` : 'Collective Energy'}</Text>
-                <View style={styles.joinButton}>
-                  <View style={styles.playCircle}>
-                    <Ionicons name="play" size={18} color="#7E35D8" />
-                  </View>
-                  <Text style={styles.joinText}>Join Live Jaap</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+              )}
+              {item.calendarIcon && (
+                <View style={styles.calendarIconContainer}>
+                  <Ionicons name="calendar-outline" size={24} color="#000" />
+                  <Text style={styles.calendarIconText}>12</Text>
                 </View>
-              </LinearGradient>
-              <View style={styles.livePill}>
-                <Text style={styles.livePillText}>LIVE</Text>
+              )}
+              <View style={[styles.featureTextContainer, !item.icon && { width: '100%' }]}>
+                <Text style={[styles.featureTitle, !item.icon && { textAlign: 'center' }]}>{item.label}</Text>
+                <Text style={[styles.featureSubtitle, !item.icon && { textAlign: 'center' }]}>{item.subtitle}</Text>
               </View>
-            </ImageBackground>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity activeOpacity={0.88} style={styles.liveOptionCard} onPress={() => goTo('/live-mantra')}>
-            <View style={styles.liveOptionIcon}>
-              <Ionicons name="radio-outline" size={22} color="#FFD26C" />
-            </View>
-            <View style={styles.liveOptionText}>
-              <Text style={styles.liveOptionTitle}>Live Mantras</Text>
-              <Text style={styles.liveOptionSub}>See timings and join when jaap starts</Text>
-            </View>
-            <Ionicons name="arrow-forward" size={20} color="#FFF0D4" />
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Help Your Community</Text>
-          <TouchableOpacity style={styles.viewAllButton} onPress={() => goTo('/messages')}>
-            <Text style={styles.viewAllText}>View All</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FFF0D4" />
-          </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
         </View>
+
+        <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
+          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 20 }}>
+            <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.7)']} style={styles.featuredLiveOverlay}>
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveBadgeText}>LIVE</Text>
+              </View>
+              
+              <View style={styles.featuredLiveContent}>
+                <Text style={styles.featuredLiveTitle}>Mahamrityunjaya Mantra</Text>
+                <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
+                <Text style={styles.featuredTime}>Live until 5:00 PM</Text>
+
+                <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
+                  <View style={styles.playIconContainer}>
+                    <Ionicons name="play" size={16} color="#FF6B00" />
+                  </View>
+                  <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
+        </TouchableOpacity>
 
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.helpList}
+          contentContainerStyle={styles.actionCardsScroll}
+          style={{ marginBottom: 20 }}
         >
-          {requestCards.map((card) => (
-            <TouchableOpacity
-              key={card.id}
-              activeOpacity={0.88}
-              style={[styles.helpCard, getHelpCardStyle(card.tone)]}
-              onPress={() => goTo('/messages')}
-            >
-              <View style={styles.helpTop}>
-                {card.icon ? (
-                  <Ionicons name={card.icon as any} size={22} color="#FFD26C" />
-                ) : (
-                  <Text style={styles.helpEmoji}>{card.emoji}</Text>
-                )}
-                {card.id === 'blood' && <Text style={styles.urgentLabel}>URGENT</Text>}
-              </View>
-              <Text style={styles.helpTitle}>{card.title}</Text>
-              <Text style={styles.helpLocation}>{card.location}</Text>
-              <Text style={styles.helpSubtitle}>{card.subtitle}</Text>
-              <View style={styles.respondedRow}>
-                <Ionicons name="people" size={15} color={card.id === 'blood' ? '#FFD1AF' : '#7A3F18'} />
-                <Text style={styles.respondedText}>{card.footer}</Text>
-              </View>
-              <View style={[styles.helpButton, card.id === 'blood' && styles.urgentButton]}>
-                <Text style={[styles.helpButtonText, card.id === 'blood' && styles.urgentButtonText]}>{card.button}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-
-          <TouchableOpacity
-            activeOpacity={0.88}
-            style={styles.createCard}
-            onPress={() => {
-              setRequestType('Help');
-              setShowRequestModal(true);
-            }}
-          >
-            <View style={styles.createIcon}>
-              <Ionicons name="add" size={34} color="#3B214E" />
+          {/* Urgent Blood Request */}
+          <LinearGradient colors={['#D90429', '#8D0801']} style={styles.actionCard}>
+            <View style={styles.cardHeaderBadge}>
+               <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+               <Text style={styles.cardBadgeText}>Your Community</Text>
             </View>
-            <Text style={styles.createTitle}>Create{'\n'}Request</Text>
-            <Text style={styles.createSub}>Help your community</Text>
-          </TouchableOpacity>
+            <View style={styles.cardMainContent}>
+              <View style={styles.cardIconRow}>
+                <Ionicons name="water" size={20} color="#FF4D4D" />
+                <Text style={styles.cardTypeLabel}>Urgent</Text>
+              </View>
+              <Text style={styles.cardTitleLarge}>O+ Blood Request</Text>
+              <Text style={styles.cardSubtitleSmall}>XYZ , Hospital</Text>
+            </View>
+            <TouchableOpacity style={styles.cardButtonWhite}>
+              <Text style={styles.cardButtonWhiteText}>View</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+
+          {/* Register Business */}
+          <LinearGradient colors={['#FFEBB7', '#FFD6A5']} style={styles.actionCard}>
+            <View style={styles.cardHeaderBadgeYellow}>
+               <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+               <Text style={styles.cardBadgeTextDark}>Free</Text>
+            </View>
+            <View style={styles.cardMainContent}>
+              <Text style={styles.cardTitleLargeDark}>Register Your Business</Text>
+              <Text style={styles.cardSubtitleSmallDark}>Become a verified sanatan vendor</Text>
+            </View>
+            <TouchableOpacity style={styles.cardButtonOutline}>
+              <Text style={styles.cardButtonTextDark}>Register Now</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+
+          {/* Verified Vendor */}
+          <LinearGradient colors={['#D8F3DC', '#B7E4C7']} style={styles.actionCard}>
+            <View style={styles.cardHeaderBadgeTeal}>
+               <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+               <Text style={styles.cardBadgeTextDark}>Verified sanatan vendor</Text>
+            </View>
+            <View style={styles.cardMainContent}>
+              <Text style={styles.cardTitleLargeDark}>Sai Flower Decorator</Text>
+              <Text style={styles.cardSubtitleSmallDark}>Specialised in festival flower decor</Text>
+              <Text style={styles.cardLocationText}>Andheri, W</Text>
+            </View>
+            <TouchableOpacity style={styles.cardButtonOutlineTeal}>
+              <Text style={styles.cardButtonTextDark}>View</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+
+          {/* Live Aarti */}
+          <LinearGradient colors={['#F3E5F5', '#E0C3FC']} style={styles.actionCard}>
+            <View style={styles.cardHeaderBadgePurple}>
+               <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
+               <Text style={styles.cardBadgeTextDark}>Temple</Text>
+            </View>
+            <View style={styles.cardMainContent}>
+              <Text style={styles.cardTitleLargeDark}>Live Kedarnath Aarti</Text>
+              <View style={styles.cardNotifyRow}>
+                <Ionicons name="notifications-outline" size={14} color="#333" />
+                <Text style={styles.cardNotifyText}>Notify me for the upcoming events</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.cardButtonOutlinePurple}>
+              <Text style={styles.cardButtonTextDark}>Watch now</Text>
+            </TouchableOpacity>
+          </LinearGradient>
         </ScrollView>
 
         <View style={styles.dots}>
+          <View style={styles.dot} />
           <View style={styles.activeDot} />
           <View style={styles.dot} />
-          <View style={styles.dot} />
         </View>
-
-        <Text style={styles.sectionTitle}>Quick Access</Text>
-          <View style={styles.quickRow}>
-            {quickAccess.map((item) => (
-              <TouchableOpacity key={item.label} activeOpacity={0.86} style={styles.quickItem} onPress={() => goTo(item.route)}>
-                <LinearGradient colors={['rgba(255,211,106,0.18)', 'rgba(255,255,255,0.02)']} style={styles.quickCircle}>
-                  <Ionicons name={item.icon as any} size={30} color="#FFD577" />
-                </LinearGradient>
-                <Text style={styles.quickLabel}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
         <View
@@ -1153,6 +1115,7 @@ export default function HomeScreen() {
                       onPostMenuPress={handlePostMenuPress}
                       postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
                       isActive={activePostKey === postKey}
+                      theme="light"
                     />
                   </View>
                 );
@@ -1403,598 +1366,415 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profileButton: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     borderWidth: 2,
-    borderColor: '#FFEBC1',
-    overflow: 'hidden',
-    backgroundColor: '#FFB35E',
+    borderColor: '#FFF',
+    position: 'relative',
   },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  photoUploadOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarFallback: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInitial: {
-    color: '#3B1735',
-    fontSize: 28,
-    fontWeight: '800',
+  headerOnlineDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#FFF',
   },
   greetingBlock: {
-    flex: 1,
-    marginLeft: 13,
+    marginLeft: 12,
   },
   greeting: {
-    color: '#FFFFFF',
+    color: '#FFF',
     fontSize: 22,
     fontWeight: '800',
   },
   subGreeting: {
-    marginTop: 3,
-    color: '#F5D8AE',
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1,
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+    opacity: 0.9,
   },
   bioRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 3,
-  },
-  bioEditButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginLeft: 6,
-  },
-  bellButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    marginLeft: 8,
-  },
-  searchButtonActive: {
-    backgroundColor: 'rgba(255,210,108,0.18)',
-    borderColor: 'rgba(255,210,108,0.32)',
-  },
-  badge: {
-    position: 'absolute',
-    top: 3,
-    right: 4,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#FF3B2F',
-    borderWidth: 2,
-    borderColor: '#37163D',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  searchPanel: {
-    borderRadius: 16,
-    backgroundColor: '#FFF7ED',
-    padding: 12,
-    marginBottom: 14,
-  },
-  searchBar: {
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E9D6C8',
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchInput: {
-    flex: 1,
-    height: '100%',
-    marginLeft: 8,
-    color: '#2F1725',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  searchResultsSection: {
-    marginTop: 8,
-  },
-  userResultItem: {
-    minHeight: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFE2DA',
-    paddingVertical: 8,
-  },
-  userResultContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userResultText: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  userResultName: {
-    color: '#2F1725',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  userResultMeta: {
-    color: '#6F5C70',
-    fontSize: 12,
-    fontWeight: '600',
     marginTop: 2,
   },
-  hashtagIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(140,54,219,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  followButton: {
-    minWidth: 82,
-    paddingHorizontal: 12,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#8C36DB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  followingButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#8C36DB',
-  },
-  followButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  followingButtonText: {
-    color: '#8C36DB',
-  },
-  searchStatusText: {
-    color: '#6F5C70',
-    paddingVertical: 10,
-    textAlign: 'center',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  infoRow: {
+  topFeatureRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    gap: 8,
   },
-  panchangCard: {
-    width: SCREEN_WIDTH * 0.36,
-    minHeight: 88,
-    borderRadius: CARD_RADIUS,
-    padding: 14,
-    backgroundColor: '#FFF2DF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  calendarIcon: {
-    width: 37,
-    height: 37,
-    borderRadius: 8,
-    backgroundColor: '#8D3CE6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gitaCard: {
+  featureCard: {
     flex: 1,
-    minHeight: 88,
-    borderRadius: CARD_RADIUS,
-    padding: 14,
-    backgroundColor: '#FFF2DF',
+    backgroundColor: '#FFF8E1',
+    borderRadius: 16,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    overflow: 'hidden',
+    justifyContent: 'center',
+    minHeight: 70,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+    gap: 8,
   },
-  gitaText: {
-    flex: 1,
-  },
-  infoTitle: {
-    color: '#2F1A22',
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 5,
-  },
-  infoMain: {
-    color: '#251428',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 5,
-  },
-  infoSub: {
-    color: '#4E3842',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  shlok: {
-    color: '#4A2B20',
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 5,
-  },
-  bookEmoji: {
-    fontSize: 42,
-    marginLeft: 8,
-  },
-  liveCard: {
-    height: 256,
-    borderRadius: 22,
-    overflow: 'hidden',
-    marginBottom: 16,
-    backgroundColor: '#10101D',
-  },
-  liveImage: {
-    borderRadius: 22,
-  },
-  liveOverlay: {
-    flex: 1,
-    padding: 18,
+  urgentCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FF4D4D',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  liveNowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  liveDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FF2C2A',
-    marginRight: 8,
-  },
-  liveNowText: {
-    color: '#FF413A',
+  urgentExclamation: {
+    color: '#FFF',
     fontSize: 16,
     fontWeight: '900',
   },
-  liveTitle: {
-    maxWidth: '70%',
-    color: '#FFE08A',
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: '900',
-  },
-  liveSub: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    marginTop: 8,
-  },
-  peopleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  miniAvatar: {
-    width: 27,
-    height: 27,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#171029',
-    backgroundColor: '#FFD1A2',
+  calendarIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
-  miniAvatarText: {
-    color: '#32142E',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  peopleCount: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
-    marginLeft: 8,
-  },
-  peopleText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: 6,
-  },
-  joinButton: {
-    marginTop: 18,
-    width: 178,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#8C36DB',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  playCircle: {
-    width: 29,
-    height: 29,
-    borderRadius: 15,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  joinText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  livePill: {
+  calendarIconText: {
     position: 'absolute',
-    right: 15,
-    top: 14,
-    backgroundColor: '#FF351F',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 7,
+    top: 8,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#000',
   },
-  livePillText: {
-    color: '#FFFFFF',
+  featureTextContainer: {
+    flexShrink: 1,
+  },
+  featureTitle: {
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
+    color: '#111',
   },
-  liveOptionCard: {
-    minHeight: 74,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,213,119,0.22)',
+  featureSubtitle: {
+    fontSize: 11,
+    color: '#444',
+    marginTop: 2,
+    lineHeight: 14,
+  },
+  featureTextContainer: {
+    alignItems: 'center',
+  },
+  featureTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#000',
+    textAlign: 'center',
+  },
+  featureSubtitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  featuredLiveCard: {
+    height: 280,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  featuredLiveImage: {
+    width: '100%',
+    height: '100%',
+  },
+  featuredLiveOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    padding: 20,
+    justifyContent: 'space-between',
+  },
+  liveBadge: {
+    alignSelf: 'flex-end',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    backgroundColor: '#FF0000',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  liveOptionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,210,108,0.13)',
+  liveBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '900',
+    marginLeft: 4,
+  },
+  featuredLiveContent: {
+    marginBottom: 10,
+  },
+  featuredLiveTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFD700',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  featuredDevotees: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFF',
+    marginTop: 5,
+  },
+  featuredTime: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFF',
+    marginTop: 4,
+    marginBottom: 15,
+  },
+  joinJaapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 25,
+    alignSelf: 'flex-start',
+    gap: 8,
+  },
+  playIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  liveOptionText: {
-    flex: 1,
-  },
-  liveOptionTitle: {
-    color: '#FFF2DD',
-    fontSize: 17,
+  joinJaapText: {
+    color: '#FFF',
+    fontSize: 15,
     fontWeight: '900',
   },
-  liveOptionSub: {
-    color: '#F3D5C6',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 3,
+  actionCardsScroll: {
+    paddingRight: 20,
+    gap: 15,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  actionCard: {
+    width: 140,
+    height: 240,
+    borderRadius: 20,
+    padding: 15,
     justifyContent: 'space-between',
-    marginBottom: 13,
   },
-  sectionTitle: {
-    color: '#FFF2DD',
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  viewAllButton: {
+  cardHeaderBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
     gap: 4,
   },
-  viewAllText: {
-    color: '#FFF0D4',
-    fontSize: 14,
+  cardHeaderBadgeYellow: {
+    backgroundColor: '#FFF5E0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#FFD6A5',
+  },
+  cardHeaderBadgeTeal: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#A5D6A7',
+  },
+  cardHeaderBadgePurple: {
+    backgroundColor: '#F3E5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#CE93D8',
+  },
+  cardBadgeText: {
+    color: '#FFF',
+    fontSize: 8,
     fontWeight: '800',
   },
-  helpList: {
-    gap: 12,
-    paddingRight: 16,
+  cardBadgeTextDark: {
+    color: '#333',
+    fontSize: 8,
+    fontWeight: '900',
   },
-  helpCard: {
-    width: 128,
-    minHeight: 218,
-    borderRadius: 17,
-    padding: 13,
-    justifyContent: 'space-between',
+  cardMainContent: {
+    flex: 1,
+    justifyContent: 'center',
+    marginTop: 10,
   },
-  urgentHelpCard: {
-    backgroundColor: '#9F1629',
-    borderWidth: 1,
-    borderColor: '#FF563E',
-  },
-  warmHelpCard: {
-    backgroundColor: '#FFE1AE',
-  },
-  coolHelpCard: {
-    backgroundColor: '#DFF3EE',
-  },
-  helpTop: {
-    minHeight: 27,
+  cardIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    marginBottom: 5,
   },
-  helpEmoji: {
-    fontSize: 31,
+  cardBadgeIcon: {
+    marginRight: 4,
   },
-  urgentLabel: {
-    color: '#FFFFFF',
-    fontSize: 13,
+  cardTypeLabel: {
+    color: '#FFF',
+    fontSize: 12,
     fontWeight: '900',
   },
-  helpTitle: {
-    color: '#2F1725',
+  cardTitleLarge: {
+    color: '#FFF',
     fontSize: 16,
-    lineHeight: 20,
     fontWeight: '900',
+    lineHeight: 20,
   },
-  helpLocation: {
-    color: '#2F1725',
+  cardTitleLargeDark: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '900',
+    lineHeight: 20,
+  },
+  cardSubtitleSmall: {
+    color: '#FFF',
     fontSize: 11,
     fontWeight: '700',
+    marginTop: 4,
+    opacity: 0.9,
   },
-  helpSubtitle: {
-    color: '#2F1725',
-    fontSize: 12,
+  cardSubtitleSmallDark: {
+    color: '#444',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  cardLocationText: {
+    color: '#666',
+    fontSize: 10,
     fontWeight: '800',
+    marginTop: 4,
   },
-  respondedRow: {
+  cardNotifyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginTop: 10,
   },
-  respondedText: {
-    color: '#7E3E26',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  helpButton: {
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.38)',
-    borderWidth: 1,
-    borderColor: 'rgba(95,51,20,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  helpButtonText: {
-    color: '#6A321C',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  urgentButton: {
-    backgroundColor: 'transparent',
-    borderColor: '#FF8E6A',
-  },
-  urgentButtonText: {
-    color: '#FFE6C9',
-  },
-  createCard: {
-    width: 108,
-    minHeight: 218,
-    borderRadius: 17,
-    padding: 13,
-    backgroundColor: '#F1DFF1',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-  },
-  createTitle: {
-    color: '#2D1737',
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  createSub: {
-    marginTop: 16,
-    color: '#4D3154',
-    fontSize: 12,
+  cardNotifyText: {
+    color: '#333',
+    fontSize: 9,
     fontWeight: '700',
-    textAlign: 'center',
+    flex: 1,
+  },
+  cardButtonWhite: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardButtonWhiteText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  cardButtonOutline: {
+    backgroundColor: '#FFE082',
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardButtonOutlineTeal: {
+    backgroundColor: '#A5D6A7',
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardButtonOutlinePurple: {
+    backgroundColor: '#E1BEE7',
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardButtonTextDark: {
+    color: '#333',
+    fontSize: 12,
+    fontWeight: '900',
   },
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 5,
-    marginTop: 14,
-    marginBottom: 8,
-  },
-  activeDot: {
-    width: 18,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#E6A03C',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
   },
   dot: {
-    width: 5,
-    height: 5,
+    width: 6,
+    height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: '#CCC',
   },
-  quickRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-    marginBottom: 16,
-  },
-  quickItem: {
-    width: `${100 / 4}%`,
-    alignItems: 'center',
-  },
-  quickCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: 'rgba(255,213,119,0.46)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickLabel: {
-    color: '#FFE2A0',
-    fontSize: 12,
-    fontWeight: '900',
-    marginTop: 7,
+  activeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B00',
   },
   stickyFeedTabsShell: {
-    backgroundColor: '#241039',
-    zIndex: 30,
-    elevation: 12,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 10,
   },
   stickyFeedTabs: {
-    borderTopLeftRadius: 19,
-    borderTopRightRadius: 19,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderBottomWidth: 0,
-    backgroundColor: '#241039',
-    overflow: 'hidden',
-    zIndex: 20,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingHorizontal: 10,
   },
   feedPanel: {
     backgroundColor: 'transparent',

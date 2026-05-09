@@ -34,7 +34,9 @@ const HomeFeedTabs = ({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProp
     </TouchableOpacity>
 
     <TouchableOpacity activeOpacity={0.8} style={styles.newPostButton} onPress={onCreatePost}>
-      <Ionicons name="add-circle" size={26} color="#FFD26C" />
+      <View style={styles.plusIconBg}>
+        <Ionicons name="add" size={20} color="#FF6B00" />
+      </View>
     </TouchableOpacity>
   </View>
 );
@@ -44,9 +46,9 @@ const styles = StyleSheet.create({
     height: HOME_FEED_TABS_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(23, 11, 53, 0.95)',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: '#F0F0F0',
   },
   tabBtn: {
     flex: 1,
@@ -56,22 +58,28 @@ const styles = StyleSheet.create({
   },
   activeTabBtn: {
     borderBottomWidth: 3,
-    borderBottomColor: '#B56DFF',
+    borderBottomColor: '#000',
   },
   tabText: {
-    color: '#F3D5C6',
-    fontSize: 14,
+    color: '#666',
+    fontSize: 15,
     fontWeight: '700',
-    opacity: 0.7,
   },
   activeTabText: {
-    color: '#FFFFFF',
+    color: '#000',
     fontWeight: '900',
-    opacity: 1,
   },
   newPostButton: {
     width: 60,
     height: HOME_FEED_TABS_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  plusIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#FFF0E6',
     alignItems: 'center',
     justifyContent: 'center',
   },

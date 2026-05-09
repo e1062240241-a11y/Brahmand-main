@@ -20,15 +20,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserPosts, getUserProfile, viewPost } from '../../src/services/api';
-import { Avatar } from '../../src/components/Avatar';
-import PostFeedCard from '../../src/components/PostFeedCard';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { 
+  getUserPosts, 
+  getUserProfile, 
+  viewPost,
   getCulturalCommunities, 
   getUserCulturalCommunity, 
   updateUserCulturalCommunity 
 } from '../../src/services/api';
+import { Avatar } from '../../src/components/Avatar';
+import PostFeedCard from '../../src/components/PostFeedCard';
+import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
@@ -127,7 +129,7 @@ export default function ProfileScreen() {
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       setProfile(user || null);
-      showToast('Failed to load profile. Check backend at localhost:8081.');
+      showToast('Failed to load profile. Check backend at localhost:8000.');
       if (error?.response?.status === 401 || error?.response?.status === 502) {
         await logout();
         router.replace('/');
@@ -452,7 +454,7 @@ export default function ProfileScreen() {
             </View>
           ) : !hasMore && posts.length > 0 ? (
             <View style={styles.endOfFeed}>
-              <Text style={styles.endOfFeedText}>You've reached the end</Text>
+              <Text style={styles.endOfFeedText}>You&apos;ve reached the end</Text>
             </View>
           ) : null
         }
@@ -546,6 +548,7 @@ export default function ProfileScreen() {
                 isActive={postModalVisible}
                 onUserPress={() => setPostModalVisible(false)}
                 postMenuType="delete"
+                theme="dark"
               />
             )}
             keyExtractor={(item) => item.id}
