@@ -20,6 +20,7 @@ import { ReelViewer } from './ReelViewer';
 import { useMiniPlayer } from './MiniPlayer';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
+import { formatTimeAgo } from '../utils/dateUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
