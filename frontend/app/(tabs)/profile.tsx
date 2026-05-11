@@ -247,11 +247,11 @@ export default function ProfileScreen() {
   }, [userId, offset, postsLoading]);
 
   const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
-    setBackgroundUpload({ 
-      uploading: true, 
-      progress: 0, 
-      isCompressing: false, 
-      mediaUri: media.uri 
+    setBackgroundUpload({
+      uploading: true,
+      progress: 0,
+      isCompressing: false,
+      mediaUri: media.uri
     });
 
     try {
@@ -273,7 +273,7 @@ export default function ProfileScreen() {
           }
         }
       );
-      
+
       showToast('Post uploaded successfully!');
       loadPosts(true); // Refresh profile grid
     } catch (error: any) {
@@ -651,10 +651,10 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
             style={styles.avatarContainerImage}
           >
-            <Avatar 
-              name={profile?.name || user?.name || 'User'} 
-              photo={profile?.photo || user?.photo} 
-              size={100} 
+            <Avatar
+              name={profile?.name || user?.name || 'User'}
+              photo={profile?.photo || user?.photo}
+              size={100}
             />
             <View style={styles.onlineDot} />
           </TouchableOpacity>
