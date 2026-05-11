@@ -11,11 +11,10 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { initializeFirebase, firebaseConfig, isAnonymousPhone } from '../../src/services/firebase/config';
-import { sendFirebaseOTP } from '../../src/services/firebase/authService';
 import { sendOTP, verifyOTP, loginAnonymous } from '../../src/services/api';
 
 import { COLORS, SPACING } from '../../src/constants/theme';
@@ -42,7 +41,8 @@ const MandalaPattern = () => (
 
 export default function PhoneScreen() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const params = useLocalSearchParams<{ phone?: string }>();
+  const [phone, setPhone] = useState<string>((params.phone?.toString() || '').replace(/[^0-9]/g, '').replace(/^91/, ''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -88,29 +88,13 @@ export default function PhoneScreen() {
         return;
       }
       
-      // For regular users on web - use Firebase
-      if (Platform.OS === 'web') {
-        const confirmation = await sendFirebaseOTP(fullPhone);
-        console.log('[Phone Auth] OTP sent via Firebase');
-        router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
-        return;
-      }
-      
-      // Android/iOS - use Firebase
-      const confirmation = await sendFirebaseOTP(fullPhone);
-      console.log('[Phone Auth] OTP sent via Firebase', confirmation ? 'confirmation ready' : '');
+      await sendOTP(fullPhone);
+      console.log('[Phone Auth] OTP sent via backend API');
       router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
       return;
     } catch (err: any) {
       console.log('[Phone Auth] OTP send error:', err);
-      let message = err?.message || 'Failed to send OTP. Please try again.';
-      
-      if (message.includes('400') || message.includes(' quota ') || message.includes('QUOTA_EXCEEDED')) {
-        message = 'SMS quota exceeded. Please try again later or use test numbers.';
-      } else if (message.includes('not enabled') || message.includes('CONFIGURATION_NOT_FOUND')) {
-        message = 'Phone login is not configured. Contact support.';
-      }
-      
+      let message = err?.response?.data?.detail || err?.message || 'Failed to send OTP. Please try again.';
       setError(message);
     } finally {
       setLoading(false);

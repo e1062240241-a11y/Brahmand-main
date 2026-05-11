@@ -24,7 +24,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
-import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { Avatar } from '../../src/components/Avatar';
 
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
@@ -139,10 +138,6 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [generalExpanded, setGeneralExpanded] = useState(false);
   const [offeringsExpanded, setOfferingsExpanded] = useState(false);
-  const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
-  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -624,32 +619,13 @@ export default function MessagesScreen() {
 
             <TouchableOpacity
               style={styles.heroActionButton}
-              onPress={() => setShowRequestTypeMenu(!showRequestTypeMenu)}
+              onPress={() => router.push('/community-request')}
             >
               <Ionicons name="add" size={16} color={COLORS.surface} />
               <Text style={styles.heroActionText}>Create Request</Text>
             </TouchableOpacity>
           </View>
 
-          {showRequestTypeMenu && activeTopTab === 'Community' && (
-            <View style={styles.pillDropdown}>
-              {(['Blood', 'Medical'] as const)
-                .map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={styles.pillDropdownItem}
-                    onPress={() => {
-                      setShowRequestTypeMenu(false);
-                      setRequestType(type as any);
-                      setSelectedOfferingType(null);
-                      setShowRequestModal(true);
-                    }}
-                  >
-                    <Text style={styles.pillDropdownText}>{type}</Text>
-                  </TouchableOpacity>
-                ))}
-            </View>
-          )}
 
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionHeading}>Active Requests</Text>
@@ -1277,6 +1253,74 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
     fontSize: 12,
+  },
+  requestTypeMenu: {
+    marginTop: SPACING.md,
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  requestTypeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  requestTypeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  requestTypeSubtitle: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    maxWidth: '75%',
+  },
+  requestMenuCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.background}DD`,
+  },
+  requestGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  requestCard: {
+    width: '48%',
+    minHeight: 110,
+    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: `${COLORS.primary}08`,
+    padding: SPACING.md,
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  requestCardFull: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  requestCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  requestCardText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   subTab: {
     paddingHorizontal: SPACING.md,
