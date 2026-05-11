@@ -616,7 +616,7 @@ export default function TempleScreen() {
   </TouchableOpacity>
   </Modal>
   </SafeAreaView>
- );
+  );
 }
 
 const styles = StyleSheet.create({
@@ -649,10 +649,6 @@ const styles = StyleSheet.create({
  paddingHorizontal: SPACING.md,
  marginBottom: SPACING.sm,
  },
-  backButton: {
-  padding: SPACING.xs,
-  marginRight: SPACING.sm,
-  },
   headerActions: {
   flexDirection: 'row',
   alignItems: 'center',

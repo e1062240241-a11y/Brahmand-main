@@ -190,7 +190,7 @@ export const PostFeedCard = memo(({
            <View style={styles.userMeta}>
              <Text style={[styles.username, theme === 'light' && styles.usernameLight]}>{post?.username || 'User'}</Text>
              {theme === 'light' && (
-               <Text style={styles.timeTextLight}>{formatTimeAgo(post?.created_at)}, {post?.location?.city || 'Chennai'}</Text>
+               <Text style={styles.timeTextLight}>{formatTime(post?.created_at)}, {post?.location?.city || 'Chennai'}</Text>
              )}
            </View>
         </TouchableOpacity>
