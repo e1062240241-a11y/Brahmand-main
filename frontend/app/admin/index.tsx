@@ -27,6 +27,9 @@ import {
   getAdminVendorReviewQueue,
   getAdminAnonymousUsers,
   disableAdminAnonymousUser,
+  adminListPersonalityVerifications,
+  adminActionPersonalityVerification,
+  AdminPersonalityVerification,
 } from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
 
@@ -41,6 +44,7 @@ export default function AdminPanelScreen() {
   const [userKycRequests, setUserKycRequests] = useState<AdminUserKycRequest[]>([]);
   const [reportedPosts, setReportedPosts] = useState<AdminPostReport[]>([]);
   const [anonymousUsers, setAnonymousUsers] = useState<AdminAnonymousUser[]>([]);
+  const [personalityRequests, setPersonalityRequests] = useState<AdminPersonalityVerification[]>([]);
 
   const isKycCompleted = (record: AdminVendorReview) => {
     const hasOtpVerified = !!record.aadhaar_otp_verified_at;
@@ -73,20 +77,33 @@ export default function AdminPanelScreen() {
     [anonymousUsers]
   );
 
+  const pendingPersonalityRequests = useMemo(
+    () => (personalityRequests || []).filter((req) => req.status === 'pending'),
+    [personalityRequests]
+  );
+
   const loadRequests = async () => {
     if (!adminToken) return;
     try {
-      const [vendorResponse, userKycResponse, reportsResponse, anonymousResponse] = await Promise.all([
+      const [vendorResponse, userKycResponse, reportsResponse, anonymousResponse, personalityResponse] = await Promise.all([
         getAdminVendorReviewQueue(adminToken, 'pending'),
         getAdminPendingKyc(adminToken),
         getAdminReports(adminToken, 'pending', 'post', 150),
         getAdminAnonymousUsers(adminToken),
+        adminListPersonalityVerifications(adminToken, 'pending'),
       ]);
+      console.log('[Admin] Loaded requests:', {
+        vendors: vendorResponse.data?.length,
+        kyc: userKycResponse.data?.length,
+        personality: personalityResponse.data?.length
+      });
       setVendorRequests(Array.isArray(vendorResponse.data) ? vendorResponse.data : []);
       setUserKycRequests(Array.isArray(userKycResponse.data) ? userKycResponse.data : []);
       setReportedPosts(Array.isArray(reportsResponse.data) ? reportsResponse.data : []);
       setAnonymousUsers(Array.isArray(anonymousResponse.data?.users) ? anonymousResponse.data.users : []);
+      setPersonalityRequests(Array.isArray(personalityResponse.data) ? personalityResponse.data : []);
     } catch (error: any) {
+      console.error('[Admin] Load failed:', error);
       const detail = error?.response?.data?.detail || 'Failed to load review queue';
       Alert.alert('Error', detail);
     }
@@ -201,6 +218,21 @@ export default function AdminPanelScreen() {
       Alert.alert('Success', 'Anonymous user disabled. They can no longer login.');
     } catch (error: any) {
       const detail = error?.response?.data?.detail || 'Disable failed';
+      Alert.alert('Error', detail);
+    } finally {
+      setProcessingKey(null);
+    }
+  };
+
+  const handlePersonalityAction = async (requestId: string, action: 'approve' | 'reject') => {
+    if (!adminToken) return;
+    setProcessingKey(`personality:${requestId}`);
+    try {
+      await adminActionPersonalityVerification(adminToken, requestId, action);
+      await loadRequests();
+      Alert.alert('Success', `Personality verification ${action}ed.`);
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || `${action} failed`;
       Alert.alert('Error', detail);
     } finally {
       setProcessingKey(null);
@@ -356,6 +388,60 @@ export default function AdminPanelScreen() {
     );
   };
 
+  const renderPersonalityRequestItem = ({ item }: { item: AdminPersonalityVerification }) => {
+    const busy = processingKey === `personality:${item.id}`;
+    const level = item.level || 'unknown';
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.badgeContainer}>
+          <Text style={[styles.levelBadge, level === 'national' ? styles.nationalBadge : styles.stateBadge]}>
+            {level.toUpperCase()}
+          </Text>
+        </View>
+        <Text style={styles.businessName}>{item.full_name || 'Anonymous'}</Text>
+        <Text style={styles.meta}>Profession: {item.profession}</Text>
+        <Text style={styles.meta}>Org: {item.organization || 'N/A'}</Text>
+        <Text style={styles.meta}>City: {item.city || 'N/A'}</Text>
+        <Text style={styles.meta}>Areas: {Array.isArray(item.areas) ? item.areas.join(', ') : 'None'}</Text>
+        <Text style={styles.meta}>Experience: {item.experience || 'N/A'}</Text>
+        <Text style={styles.bioMeta}>Bio: {item.bio || 'No bio provided'}</Text>
+
+        <Text style={styles.sectionSub}>Documents ({item.doc_type})</Text>
+        <View style={styles.docRow}>
+          <TouchableOpacity onPress={() => Alert.alert('View Document', item.front_url)}>
+             <Image source={{ uri: item.front_url }} style={styles.docThumbnail} />
+             <Text style={styles.docLabel}>Front</Text>
+          </TouchableOpacity>
+          {item.back_url && (
+            <TouchableOpacity onPress={() => Alert.alert('View Document', item.back_url)}>
+              <Image source={{ uri: item.back_url }} style={styles.docThumbnail} />
+              <Text style={styles.docLabel}>Back</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.approveButton, busy && styles.buttonDisabled]}
+            disabled={busy}
+            onPress={() => handlePersonalityAction(item.id, 'approve')}
+          >
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Approve</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
+            disabled={busy}
+            onPress={() => handlePersonalityAction(item.id, 'reject')}
+          >
+            <Text style={styles.buttonText}>Reject</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -377,6 +463,23 @@ export default function AdminPanelScreen() {
         ListEmptyComponent={
           <View style={styles.centered}>
             <Text style={styles.emptyText}>No pending KYC approval requests.</Text>
+          </View>
+        }
+        ListHeaderComponent={
+          <View style={{ marginBottom: 20 }}>
+             <Text style={styles.subtitle}>Pending Personality Verifications ({pendingPersonalityRequests.length})</Text>
+            {pendingPersonalityRequests.length === 0 ? (
+              <View style={styles.centeredCompact}>
+                <Text style={styles.emptyText}>No pending requests found.</Text>
+              </View>
+            ) : (
+              pendingPersonalityRequests.map((item) => (
+                <View key={item.id} style={{ marginVertical: 8 }}>
+                  {renderPersonalityRequestItem({ item })}
+                </View>
+              ))
+            )}
+            <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 15 }} />
           </View>
         }
         ListFooterComponent={
@@ -500,6 +603,56 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 13,
     color: COLORS.textSecondary,
+  },
+  bioMeta: {
+    fontSize: 13,
+    color: COLORS.text,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  sectionSub: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  docRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 10,
+  },
+  docThumbnail: {
+    width: 100,
+    height: 70,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+  },
+  docLabel: {
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 2,
+    color: COLORS.textSecondary,
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+  },
+  levelBadge: {
+    fontSize: 10,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    color: '#fff',
+    overflow: 'hidden',
+  },
+  nationalBadge: {
+    backgroundColor: '#D4AF37',
+  },
+  stateBadge: {
+    backgroundColor: '#4169E1',
   },
   actionRow: {
     marginTop: SPACING.sm,

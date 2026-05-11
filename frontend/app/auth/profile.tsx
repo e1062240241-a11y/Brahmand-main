@@ -378,8 +378,17 @@ export default function ProfileScreen() {
   };
 
   const performLogout = async () => {
-    await logout();
-    router.replace('/');
+    try {
+      await logout();
+      if (Platform.OS === 'web') {
+        window.location.href = '/';
+      } else {
+        router.replace('/');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      router.replace('/');
+    }
   };
 
   const handleLogout = () => {

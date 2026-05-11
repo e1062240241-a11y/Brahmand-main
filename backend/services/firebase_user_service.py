@@ -334,3 +334,37 @@ class FirebaseUserService:
             "lucky_number": (day_of_year % 9) + 1,
             "auspicious_time": "10:30 AM - 12:00 PM"
         }
+
+    @staticmethod
+    async def submit_personality_verification(user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Submit personality verification details and documents"""
+        db = await FirebaseUserService.get_db()
+        
+        # Save verification request to a separate collection
+        verification_request = {
+            "user_id": user_id,
+            "doc_type": data.get("doc_type"),
+            "front_url": data.get("front_url"),
+            "back_url": data.get("back_url"),
+            "additional_urls": data.get("additional_urls", []),
+            "status": "pending",
+            "submitted_at": datetime.utcnow()
+        }
+        
+        # Create verification record
+        await db.create_document('personality_verifications', verification_request)
+        
+        # Update user status to indicate pending verification
+        await db.client.collection('users').document(user_id).update({
+            'personality_verification_status': 'pending',
+            'updated_at': datetime.utcnow()
+        })
+        
+        # Invalidate cache
+        await cache_manager.invalidate_user(user_id)
+        
+        return {
+            "status": "success",
+            "message": "Personality verification submitted successfully",
+            "request_id": user_id # Using user_id as simple identifier for now
+        }

@@ -1823,6 +1823,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: 'Inter_600SemiBold',
     color: COLORS.text,
   },
   statusRow: {
@@ -1832,11 +1833,13 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.textSecondary,
     fontWeight: '500',
   },
   statusInfoText: {
     fontSize: 12,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.textSecondary,
     marginLeft: SPACING.sm,
   },
@@ -1959,6 +1962,7 @@ const styles = StyleSheet.create({
   },
   dateSeparatorText: {
     fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
     color: COLORS.textSecondary,
     fontWeight: '600',
   },
@@ -2004,6 +2008,7 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 15,
+    fontFamily: 'Inter_400Regular',
     color: '#1A1A1A',
     lineHeight: 21,
   },
@@ -2012,6 +2017,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 10,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.textLight,
   },
   ownTimeText: {
@@ -2066,6 +2072,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.text,
     paddingTop: 8,
     paddingBottom: 8,
@@ -2313,6 +2320,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 10,
     fontSize: 15,
+    fontFamily: 'Inter_400Regular',
     color: '#1A1A1A',
     maxHeight: 120,
   },

@@ -412,6 +412,46 @@ export const adminReviewReport = (
     { headers: { Authorization: `Bearer ${adminToken}` } }
   );
 
+export interface AdminPersonalityVerification {
+  id: string;
+  user_id: string;
+  level: 'state' | 'national';
+  full_name: string;
+  dob: string;
+  gender: string;
+  mobile: string;
+  email: string;
+  city: string;
+  profession: string;
+  organization: string;
+  areas: string[];
+  experience: string;
+  bio: string;
+  doc_type: string;
+  front_url: string;
+  back_url: string;
+  additional_urls: string[];
+  status: 'pending' | 'approved' | 'rejected';
+  submitted_at: string;
+}
+
+export const adminListPersonalityVerifications = (adminToken: string, status: string = 'pending') =>
+  adminApi.get(`/admin/personality-verifications`, {
+    params: { status },
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+
+export const adminActionPersonalityVerification = (
+  adminToken: string,
+  requestId: string,
+  action: 'approve' | 'reject'
+) =>
+  adminApi.post(
+    `/admin/personality-verifications/${requestId}/action`,
+    { action },
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
 export const verifyFirebaseToken = (id_token: string) =>
   api.post('/auth/verify-firebase-token', { id_token });
 

@@ -142,3 +142,18 @@ async def get_horoscope(token_data: dict = Depends(verify_token)):
         return await UserService.get_horoscope(token_data["user_id"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/personality-verification")
+async def submit_personality_verification(
+    data: Dict[str, Any],
+    token_data: dict = Depends(verify_token)
+):
+    """Submit personality verification documents and details"""
+    try:
+        return await UserService.submit_personality_verification(
+            token_data["user_id"],
+            data
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

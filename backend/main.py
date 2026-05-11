@@ -2825,6 +2825,195 @@ async def request_verification(data: dict, token_data: dict = Depends(verify_tok
     await db.array_union_update('users', token_data["user_id"], 'badges', ['Verified Member'])
     
     return {"message": "Verification completed", "status": "approved"}
+    
+
+async def verify_admin(token_data: dict = Depends(verify_token)):
+    """Dependency to check if user is an admin"""
+    user_id = token_data["user_id"]
+    if user_id == 'admin':
+        return token_data
+        
+    db = await get_db()
+    user = await db.get_document('users', user_id)
+    if not user or (not user.get("is_admin") and user.get("role") != "admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return token_data
+
+
+@api_router.get("/admin/personality-verifications")
+async def list_personality_verifications(status: str = "pending", token_data: dict = Depends(verify_admin)):
+    """List all personality verification requests by status"""
+    db = await get_db()
+    return await db.query_documents(
+        'personality_verifications', 
+        [('status', '==', status)]
+    )
+
+
+@api_router.post("/admin/personality-verifications/{request_id}/action")
+async def action_personality_verification(request_id: str, action: str = Body(..., embed=True), token_data: dict = Depends(verify_admin)):
+    """Approve or Reject a personality verification request"""
+    db = await get_db()
+    
+    # 1. Get the verification request
+    verif = await db.get_document('personality_verifications', request_id)
+    if not verif:
+        raise HTTPException(status_code=404, detail="Verification request not found")
+    
+    target_user_id = verif['user_id']
+    
+    if action == "approve":
+        # Update verification record
+        await db.update_document('personality_verifications', request_id, {
+            'status': 'approved',
+            'reviewed_at': datetime.utcnow(),
+            'reviewed_by': token_data['user_id']
+        })
+        
+        # Update user profile
+        level = verif.get('level') or 'state' # Fallback to state if missing
+        level_display = level.title() if level else 'Verified'
+        
+        user_updates = {
+            'is_verified': True,
+            'personality_verification_status': 'approved',
+            'verification_level': level,
+            'verified_at': datetime.utcnow()
+        }
+        await db.update_user(target_user_id, user_updates)
+        await db.array_union_update('users', target_user_id, 'badges', [f'Verified {level_display} Personality'])
+        
+        # Grant Community Access
+        user = await db.get_document('users', target_user_id)
+        if not user:
+             return {"status": "error", "message": "User document not found"}
+             
+        loc = user.get('location') or user.get('home_location')
+        
+        # Grant Community Access
+        user = await db.get_document('users', target_user_id)
+        if not user:
+             return {"status": "error", "message": "User document not found"}
+             
+        loc = user.get('location') or user.get('home_location')
+        
+        community_to_join = None
+        if level == 'national':
+            community_to_join = "Bharat Group"
+        elif level == 'state' and loc and loc.get('state'):
+            state_name = str(loc.get('state', '')).title()
+            if state_name:
+                community_to_join = f"{state_name} Group"
+            
+        if community_to_join:
+            comm = await db.get_community_by_name(community_to_join)
+            if comm:
+                await db.add_member_to_community(comm['id'], target_user_id)
+                await db.array_union_update('users', target_user_id, 'communities', [comm['id']])
+        
+        # Invalidate cache
+        await cache_manager.invalidate_user(target_user_id)
+        
+        # Send Notification
+        try:
+            await FirebaseNotificationService.create_notification(
+                target_user_id,
+                "Personality Verified!",
+                f"Congratulations! Your {level} verification has been approved. You now have access to the {community_to_join if community_to_join else 'verified groups'}.",
+                "verification_approved"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to create notification: {e}")
+        
+        return {"status": "success", "message": "Verification approved successfully"}
+        
+    elif action == "reject":
+        await db.update_document('personality_verifications', request_id, {
+            'status': 'rejected',
+            'reviewed_at': datetime.utcnow(),
+            'reviewed_by': token_data['user_id']
+        })
+        
+        await db.update_user(target_user_id, {
+            'personality_verification_status': 'rejected'
+        })
+        
+        # Invalidate cache
+        await cache_manager.invalidate_user(target_user_id)
+        
+        try:
+            await FirebaseNotificationService.create_notification(
+                target_user_id,
+                "Verification Rejected",
+                "Your personality verification request was not approved at this time. Please ensure your documents are clear and valid.",
+                "verification_rejected"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to create notification: {e}")
+        
+        return {"status": "success", "message": "Verification rejected"}
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'.")
+
+
+@api_router.post("/user/personality-verification")
+async def submit_personality_verification(data: dict, token_data: dict = Depends(verify_token)):
+    """Submit personality verification documents and details"""
+    try:
+        db = await get_db()
+        user_id = token_data["user_id"]
+        
+        # Comprehensive verification request data
+        verification_request = {
+            "user_id": user_id,
+            "level": data.get("level"),
+            "full_name": data.get("full_name"),
+            "dob": data.get("dob"),
+            "gender": data.get("gender"),
+            "mobile": data.get("mobile"),
+            "email": data.get("email"),
+            "city": data.get("city"),
+            "profession": data.get("profession"),
+            "organization": data.get("organization"),
+            "areas": data.get("areas", []),
+            "experience": data.get("experience"),
+            "bio": data.get("bio"),
+            "doc_type": data.get("doc_type"),
+            "front_url": data.get("front_url"),
+            "back_url": data.get("back_url"),
+            "additional_urls": data.get("additional_urls", []),
+            "status": "pending",
+            "submitted_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        # Create verification record
+        await db.create_document('personality_verifications', verification_request)
+        
+        # Update user's profile
+        user_updates = {
+            'personality_verification_status': 'pending',
+            'personality_profile': {
+                'level': data.get("level"),
+                'profession': data.get("profession"),
+                'areas': data.get("areas", []),
+                'bio': data.get("bio")
+            },
+            'updated_at': datetime.utcnow()
+        }
+        
+        await db.update_document('users', user_id, user_updates)
+        await cache_manager.invalidate_user(user_id)
+        
+        return {
+            "status": "success",
+            "message": "Personality verification submitted successfully",
+            "request_id": user_id
+        }
+    except Exception as e:
+        logger.error(f"Failed to submit personality verification: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/user/profile-completion")
