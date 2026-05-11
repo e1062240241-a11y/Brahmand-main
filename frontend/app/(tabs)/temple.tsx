@@ -243,9 +243,11 @@ export default function TempleScreen() {
  });
  };
 
-  const openServicesSection = () => {
-    router.push('/vendor');
-  };
+ const openVendorSection = () => {
+   router.push('/vendor');
+ };
+
+ const openServicesSection = openVendorSection;
 
  useEffect(() => {
  if (!isSearchOpen || searchQuery.trim()) {

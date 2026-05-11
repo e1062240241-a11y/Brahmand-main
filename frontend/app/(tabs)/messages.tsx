@@ -1543,32 +1543,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.md,
   },
-  culturalCommunityCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    marginTop: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  culturalCommunityTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: SPACING.xs,
-    color: COLORS.text,
-  },
-  culturalCommunitySubtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  culturalCommunityAction: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.sm,
-  },
   culturalCommunityActionText: {
     color: COLORS.surface,
     fontWeight: '600',

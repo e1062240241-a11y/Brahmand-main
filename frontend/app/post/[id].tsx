@@ -204,6 +204,7 @@ const PostScreen = () => {
             isActive={true}
             onLike={() => {}}
             onComment={handleOpenComment}
+            openCommentsOnCaptionPress
             onShare={handleSharePost}
             onRepost={handleRepost}
             onEdit={() => {}}

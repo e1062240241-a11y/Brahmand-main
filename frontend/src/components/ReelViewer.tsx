@@ -21,6 +21,7 @@ import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
 import api from '../services/api';
 import { useGlobalMute } from '../contexts/MuteContext';
+import { useRouter } from 'expo-router';
 
 let ExpoVideoModule: any = null;
 try {
@@ -64,7 +65,6 @@ const ReelVideoItem = React.memo(({
   post,
   isActive,
   onClose,
-  onMinimize,
   onLike,
   onComment,
   onShare,
@@ -86,6 +86,7 @@ const ReelVideoItem = React.memo(({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showSpeedBadge, setShowSpeedBadge] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const seekingRef = useRef<'left' | 'right' | null>(null);
   const seekIntervalRef = useRef<any>(null);
   const timeIntervalRef = useRef<any>(null);
@@ -220,8 +221,16 @@ const ReelVideoItem = React.memo(({
   const seekBarPan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (evt) => seekPlayerRef.current(evt.nativeEvent.pageX),
-    onPanResponderMove: (evt) => seekPlayerRef.current(evt.nativeEvent.pageX),
+    onPanResponderGrant: (evt) => {
+      setIsScrubbing(true);
+      seekPlayerRef.current(evt.nativeEvent.pageX);
+    },
+    onPanResponderMove: (evt) => {
+      setIsScrubbing(true);
+      seekPlayerRef.current(evt.nativeEvent.pageX);
+    },
+    onPanResponderRelease: () => setIsScrubbing(false),
+    onPanResponderTerminate: () => setIsScrubbing(false),
   })).current;
 
   const handleTapVideo = () => {
@@ -410,7 +419,7 @@ const ReelVideoItem = React.memo(({
           paddingLeft: 16,
         }}
       >
-        <TouchableOpacity onPress={() => { onMinimize?.(post || localPost); onClose?.(); }} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
+        <TouchableOpacity onPress={() => onClose?.()} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
           <Ionicons name="close" size={30} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -424,15 +433,16 @@ const ReelVideoItem = React.memo(({
             bottom: Platform.OS === 'ios' ? 60 : 50,
             left: 16,
             right: 16,
-            height: 40,
+            height: isScrubbing ? 40 : 20,
             zIndex: 20,
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
+            paddingBottom: 4,
           }}
         >
           <View style={{
             width: '100%',
-            height: 6,
-            backgroundColor: 'rgba(255,255,255,0.2)',
+            height: isScrubbing ? 6 : 2,
+            backgroundColor: 'rgba(255,255,255,0.3)',
             borderRadius: 3,
             overflow: 'visible',
           }}>
@@ -443,14 +453,16 @@ const ReelVideoItem = React.memo(({
               borderRadius: 3,
             }} />
           </View>
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginTop: 4,
-          }}>
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>{formatTime(currentTime)}</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>{duration > 0 ? formatTime(duration) : '--:--'}</Text>
-          </View>
+          {isScrubbing && (
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              marginTop: 4,
+            }}>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 'bold' }}>{formatTime(currentTime)}</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 'bold' }}>{duration > 0 ? formatTime(duration) : '--:--'}</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -587,7 +599,8 @@ const ReelVideoItem = React.memo(({
   );
 });
 
-export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike, onComment, onShare }: any) => {
+export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
+  const router = useRouter();
   const [videos, setVideos] = useState<any[]>([initialPost]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -601,8 +614,55 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike
   const videosRef = useRef<any[]>([]);
   const activeIndexRef = useRef(0);
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
-  const callbacksRef = useRef({ onClose, onMinimize, onLike, onComment, onShare });
+  const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
   const loadMoreRef = useRef<() => void>(() => { });
+  const swipeTranslateX = useRef(new Animated.Value(0)).current;
+  const swipeStartX = useRef(0);
+
+  const swipePan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => {
+        if (Math.abs(g.dx) > Math.abs(g.dy) * 2) return true;
+        return false;
+      },
+      onPanResponderGrant: () => {
+        swipeStartX.current = 0;
+        swipeTranslateX.setOffset(0);
+        swipeTranslateX.setValue(0);
+      },
+      onPanResponderMove: (_, g) => {
+        swipeTranslateX.setValue(g.dx);
+      },
+      onPanResponderRelease: (_, g) => {
+        swipeTranslateX.flattenOffset();
+        if (g.dx > SCREEN_WIDTH * 0.3) {
+          Animated.timing(swipeTranslateX, {
+            toValue: SCREEN_WIDTH,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            callbacksRef.current.onClose?.();
+          });
+        } else if (g.dx < -SCREEN_WIDTH * 0.3) {
+          Animated.timing(swipeTranslateX, {
+            toValue: -SCREEN_WIDTH,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            swipeTranslateX.setValue(0);
+            if (callbacksRef.current.onClose) callbacksRef.current.onClose();
+            router.push('/(tabs)/messages');
+          });
+        } else {
+          Animated.spring(swipeTranslateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            friction: 7,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   useEffect(() => {
     const handler = ({ window }: { window: { width: number; height: number } }) => {
@@ -625,7 +685,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike
   offsetRef.current = offset;
   videosRef.current = videos;
   activeIndexRef.current = activeIndex;
-  callbacksRef.current = { onClose, onMinimize, onLike, onComment, onShare };
+  callbacksRef.current = { onClose, onLike, onComment, onShare };
 
   const loadMoreReels = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -720,7 +780,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike
       post={item}
       isActive={index === activeIndex}
       onClose={callbacksRef.current.onClose}
-      onMinimize={callbacksRef.current.onMinimize}
       onLike={callbacksRef.current.onLike}
       onComment={callbacksRef.current.onComment}
       onShare={callbacksRef.current.onShare}
@@ -735,9 +794,13 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike
       visible={isVisible}
       transparent={false}
       animationType="slide"
-      onRequestClose={() => { callbacksRef.current.onMinimize?.(); callbacksRef.current.onClose?.(); }}
+      onRequestClose={() => { callbacksRef.current.onClose?.(); }}
     >
       <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <Animated.View
+          style={{ flex: 1, transform: [{ translateX: swipeTranslateX }] }}
+          {...swipePan.panHandlers}
+        >
         <FlatList
           ref={flatListRef}
           data={videos}
@@ -767,6 +830,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onMinimize, onLike
             ) : null
           }
         />
+        </Animated.View>
       </View>
     </Modal>
   );
