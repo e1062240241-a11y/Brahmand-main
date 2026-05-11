@@ -11,13 +11,14 @@ import {
   FlatList,
   RefreshControl,
   Platform,
-  Alert
+  Alert,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost } from '../../src/services/api';
+import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -44,6 +45,12 @@ const UserProfileScreen = () => {
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
+  const [selectedCommentPost, setSelectedCommentPost] = useState<any>(null);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [postComments, setPostComments] = useState<any[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [totalPosts, setTotalPosts] = useState(0);
   const [activeTab, setActiveTab] = useState('grid');
 
@@ -54,6 +61,43 @@ const UserProfileScreen = () => {
     try {
       viewPost(post.id);
     } catch (e) {}
+  };
+
+  const loadComments = async (postId: string) => {
+    setCommentsLoading(true);
+    try {
+      const response = await getPostComments(postId, 200);
+      setPostComments(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.warn('Failed to load comments:', error);
+      setPostComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleOpenComment = async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+    setSelectedCommentPost(post);
+    setCommentText('');
+    setCommentModalVisible(true);
+    await loadComments(postId);
+  };
+
+  const handleSubmitComment = async () => {
+    if (!selectedCommentPost?.id || !commentText.trim() || commentSubmitting) return;
+    setCommentSubmitting(true);
+    try {
+      await addPostComment(selectedCommentPost.id, commentText.trim());
+      setCommentText('');
+      await loadComments(selectedCommentPost.id);
+    } catch (error) {
+      console.warn('Failed to submit comment:', error);
+      alert('Unable to submit comment. Please try again.');
+    } finally {
+      setCommentSubmitting(false);
+    }
   };
 
   const loadProfile = useCallback(async (showLoading = true) => {
@@ -401,6 +445,8 @@ const UserProfileScreen = () => {
               <PostFeedCard
                 post={item}
                 isActive={postModalVisible}
+                onComment={handleOpenComment}
+                openCommentsOnCaptionPress
                 onUserPress={() => setPostModalVisible(false)}
                 postMenuType={profile?.id === currentUserId ? 'delete' : undefined}
                 onPostMenuPress={handleDeletePost}
@@ -408,6 +454,53 @@ const UserProfileScreen = () => {
             )}
             keyExtractor={(item) => item.id}
           />
+        </View>
+      </Modal>
+
+      <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
+        <View style={styles.commentModalOverlay}>
+          <View style={styles.commentModalSheet}>
+            <View style={styles.commentModalHeader}>
+              <Text style={styles.commentModalTitle}>Comments</Text>
+              <TouchableOpacity onPress={() => setCommentModalVisible(false)} style={styles.commentCloseBtn}>
+                <Ionicons name="close" size={20} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.commentList}>
+              {commentsLoading ? (
+                <View style={styles.commentLoadingContainer}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                </View>
+              ) : postComments.length === 0 ? (
+                <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment.</Text>
+              ) : (
+                <FlatList
+                  data={postComments}
+                  keyExtractor={(item, index) => item.id ? `comment-${item.id}` : `comment-${index}`}
+                  renderItem={({ item }) => (
+                    <View style={styles.commentItem}>
+                      <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                      <Text style={styles.commentItemText}>{item?.text || ''}</Text>
+                    </View>
+                  )}
+                  showsVerticalScrollIndicator={false}
+                />
+              )}
+            </View>
+            <View style={styles.commentInputRow}>
+              <TextInput
+                value={commentText}
+                onChangeText={setCommentText}
+                placeholder="Add a comment..."
+                placeholderTextColor={COLORS.textSecondary}
+                style={styles.commentTextInput}
+                multiline
+              />
+              <TouchableOpacity onPress={handleSubmitComment} style={styles.commentSubmitBtn} disabled={commentSubmitting}>
+                <Text style={[styles.commentSubmitText, commentSubmitting && { opacity: 0.6 }]}>{commentSubmitting ? 'Posting...' : 'Post'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -684,9 +777,89 @@ const styles = StyleSheet.create({
     marginLeft: 20,
     color: '#FFFFFF',
   },
-  errorText: {
-    color: COLORS.error,
+  commentModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  commentModalSheet: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: '80%',
+  },
+  commentModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  commentModalTitle: {
     fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  commentCloseBtn: {
+    padding: 8,
+  },
+  commentList: {
+    flex: 1,
+    marginBottom: 12,
+  },
+  commentLoadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 28,
+  },
+  commentEmptyText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  commentItem: {
+    marginBottom: 12,
+  },
+  commentItemUser: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  commentItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+    marginTop: 2,
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  commentTextInput: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: COLORS.text,
+    backgroundColor: '#F9F9F9',
+  },
+  commentSubmitBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentSubmitText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
   backButton: {
     padding: 4,

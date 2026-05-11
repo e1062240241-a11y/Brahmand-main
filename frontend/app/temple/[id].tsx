@@ -631,11 +631,8 @@ export default function TempleDetailScreen() {
  };
 
   const handleGoBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)/temple');
-    }
+    // Always return to the temple tab root from inside temple details
+    router.replace('/(tabs)/temple');
   };
 
  const handleFollowToggle = async () => {
@@ -662,10 +659,7 @@ export default function TempleDetailScreen() {
 if (!temple) {
     return (
       <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-      <TouchableOpacity onPress={handleGoBack}>
-      <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-      </TouchableOpacity>
+      <View style={styles.backButtonOverlay}>
       </View>
       <View style={styles.errorContainer}>
       <Ionicons name="alert-circle" size={48} color={COLORS.textLight} />
@@ -740,11 +734,13 @@ if (!temple) {
  const templeGuidance = getTempleGuidance();
  return (
  <SafeAreaView style={styles.container}>
- {/* Header */}
- <View style={styles.header}>
- <TouchableOpacity onPress={handleGoBack}>
+ <View style={styles.backButtonOverlay}>
+ <TouchableOpacity onPress={handleGoBack} style={styles.backButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
  <Ionicons name="arrow-back" size={24} color={COLORS.text} />
  </TouchableOpacity>
+ </View>
+ {/* Header */}
+ <View style={styles.header}>
  <Text style={styles.headerTitle} numberOfLines={1}>{displayName}</Text>
  <TouchableOpacity onPress={handleFollowToggle}>
  <Ionicons 
@@ -1013,6 +1009,7 @@ const styles = StyleSheet.create({
  alignItems: 'center',
  justifyContent: 'space-between',
  padding: SPACING.md,
+ paddingLeft: SPACING.md + 60,
  backgroundColor: COLORS.surface,
  borderBottomWidth: 1,
  borderBottomColor: COLORS.divider,
@@ -1024,6 +1021,26 @@ const styles = StyleSheet.create({
  color: COLORS.text,
  marginHorizontal: SPACING.md,
  textAlign: 'center',
+ },
+ backButtonOverlay: {
+   position: 'absolute',
+   top: Platform.OS === 'ios' ? SPACING.lg : SPACING.md,
+   left: SPACING.md,
+   zIndex: 20,
+   elevation: 20,
+ },
+ backButton: {
+   width: 44,
+   height: 44,
+   borderRadius: 22,
+   backgroundColor: 'transparent',
+   justifyContent: 'center',
+   alignItems: 'center',
+   shadowColor: 'transparent',
+   shadowOffset: { width: 0, height: 0 },
+   shadowOpacity: 0,
+   shadowRadius: 0,
+   elevation: 0,
  },
   infoCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',

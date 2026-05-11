@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { useNotificationStore } from '../src/store/notificationStore';
-import { getUserNotifications, getUnreadNotificationCount } from '../src/services/api';
+import { getUserNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -27,7 +27,7 @@ export default function NotificationsScreen() {
   const { dismissBadge } = useNotificationStore();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount, setUnreadCount } = useNotificationStore();
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -54,13 +54,35 @@ export default function NotificationsScreen() {
     if (user?.id) loadNotifications();
   }, [user?.id]);
 
-  const handleNotificationPress = (item: any) => {
-    if (item?.link) router.push(item.link);
+  const handleNotificationPress = async (item: any) => {
+    const notificationId = item?.id || item?._id;
+    if (notificationId) {
+      setNotifications((prev) => prev.map((notif) => (
+        notif.id === notificationId || notif._id === notificationId
+          ? { ...notif, is_read: true, unread: false }
+          : notif
+      )));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      try {
+        await markNotificationRead(notificationId);
+      } catch (err) {
+        console.warn('Failed to mark notification as read:', err);
+      }
+    }
+
+    if (item?.link) {
+      router.push(item.link);
+    }
   };
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((item) => ({ ...item, unread: false })));
-    setUnreadCount(0);
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true, unread: false })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.warn('Failed to mark all notifications read:', err);
+    }
   };
 
   const getNotificationStyle = (type: string) => {
@@ -108,7 +130,7 @@ export default function NotificationsScreen() {
               return (
                 <TouchableOpacity
                   key={item.id || item._id || Math.random().toString()}
-                  style={[styles.notificationItem, item.unread && styles.notificationItemUnread]}
+                  style={[styles.notificationItem, (!item.is_read || item.unread) && styles.notificationItemUnread]}
                   activeOpacity={0.7}
                   onPress={() => handleNotificationPress(item)}
                 >
@@ -122,7 +144,7 @@ export default function NotificationsScreen() {
                     </Text>
                     <Text style={styles.notificationTime}>{item.time || item.created_at || 'Recently'}</Text>
                   </View>
-                  {item.unread && <View style={styles.unreadPulse} />}
+                  {(!item.is_read || item.unread) && <View style={styles.unreadPulse} />}
                 </TouchableOpacity>
               );
             })

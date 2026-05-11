@@ -535,6 +535,9 @@ export const getUnreadNotificationCount = () =>
 export const markAllNotificationsRead = () =>
   api.post('/notifications/mark-all-read');
 
+export const markNotificationRead = (notificationId: string) =>
+  api.post(`/notifications/${notificationId}/mark-read`);
+
 export const aiChat = (messages: any[]) => 
   api.post('/ai/chat', { messages });
 

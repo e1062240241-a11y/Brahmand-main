@@ -20,6 +20,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { uploadUserPost } from '../services/api';
+import { MentionInput } from './MentionInput';
 
 let ExpoVideoModule: any = null;
 try {
@@ -81,6 +82,39 @@ const detectMediaType = (mimeType?: string) => {
 // Material 3 Styled Input Component
 const M3OutlinedInput = ({ label, value, onChangeText, multiline = false, placeholder = '' }: any) => {
   const [isFocused, setIsFocused] = useState(false);
+  const [mentionResults, setMentionResults] = useState<any[]>([]);
+  const [showMentions, setShowMentions] = useState(false);
+  const searchTimeout = useRef<any>(null);
+
+  const handleChangeText = (text: string) => {
+    onChangeText(text);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    const cursorPos = text.length;
+    const atIndex = text.lastIndexOf('@', cursorPos);
+    if (atIndex === -1) { setShowMentions(false); return; }
+    const query = text.slice(atIndex + 1, cursorPos);
+    if (!query || /\s/.test(query)) { setShowMentions(false); return; }
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const { getAllUsers } = await import('../services/api');
+        const res = await getAllUsers(query, 10);
+        const users = Array.isArray(res.data) ? res.data : res.data?.items || [];
+        setMentionResults(users.slice(0, 10));
+        setShowMentions(users.length > 0);
+      } catch { setShowMentions(false); }
+    }, 300);
+  };
+
+  const handleSelectMention = (user: any) => {
+    const cursorPos = value.length;
+    const atIndex = value.lastIndexOf('@', cursorPos);
+    if (atIndex === -1) return;
+    const mentionText = user.sl_id || user.phone || user.name || 'user';
+    const newText = value.slice(0, atIndex) + `@${mentionText} ` + value.slice(cursorPos);
+    onChangeText(newText);
+    setShowMentions(false);
+  };
+
   return (
     <View style={styles.inputContainer}>
       {isFocused || value ? (
@@ -88,6 +122,16 @@ const M3OutlinedInput = ({ label, value, onChangeText, multiline = false, placeh
           {label}
         </Text>
       ) : null}
+      {showMentions && mentionResults.length > 0 && (
+        <View style={styles.mentionDropdown}>
+          {mentionResults.map((user: any) => (
+            <TouchableOpacity key={user.id} style={styles.mentionItem} onPress={() => handleSelectMention(user)}>
+              <Text style={styles.mentionName}>{user.name || 'Unknown'}</Text>
+              <Text style={styles.mentionSL}>@{user.sl_id || user.phone || ''}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       <TextInput
         style={[
           styles.input,
@@ -95,7 +139,7 @@ const M3OutlinedInput = ({ label, value, onChangeText, multiline = false, placeh
           isFocused && styles.inputFocused,
         ]}
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={handleChangeText}
         placeholder={isFocused ? placeholder : label}
         placeholderTextColor={COLORS.textSecondary}
         multiline={multiline}
@@ -659,6 +703,46 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     backgroundColor: COLORS.primary,
+  },
+  mentionDropdown: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    right: 0,
+    maxHeight: 180,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 10,
+    overflow: 'hidden',
+    zIndex: 100,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: -2 },
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  mentionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F0F0F0',
+  },
+  mentionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111',
+    flex: 1,
+  },
+  mentionSL: {
+    fontSize: 12,
+    color: '#888',
   },
 });
 export default UploadPostModal;

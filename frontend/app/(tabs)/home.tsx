@@ -23,12 +23,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../src/store/authStore';
+import { useNotificationStore } from '../../src/store/notificationStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
+import { MentionInput } from '../../src/components/MentionInput';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
 import {
   addPostComment,
@@ -47,6 +49,8 @@ import {
   unfollowUser,
   updateProfile,
   uploadUserPost,
+  getUnreadNotificationCount,
+  markAllNotificationsRead,
 } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
@@ -99,7 +103,10 @@ export default function HomeScreen() {
   const [showProfileActions, setShowProfileActions] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [hashtagResults, setHashtagResults] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -116,20 +123,18 @@ export default function HomeScreen() {
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
     return () => clearInterval(interval);
-  }, []);
+  }, [setUnreadCount]);
 
   const handleNotificationPress = async () => {
     try {
-      setUnreadCount(0);
-      router.push('/notifications');
       await markAllNotificationsRead();
+      setUnreadCount(0);
     } catch (err) {
       console.log('Failed to mark notifications as read:', err);
     }
+    router.push('/notifications');
   };
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [hashtagResults, setHashtagResults] = useState<any[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+
   const [loadingHashtags, setLoadingHashtags] = useState(false);
   const [followingIds, setFollowingIds] = useState<string[]>(
     Array.isArray((user as any)?.following) ? (user as any).following : []
@@ -347,11 +352,6 @@ export default function HomeScreen() {
   const lastScrollTimeRef = useRef(0);
 
   const handleHomeScroll = useCallback((event: any) => {
-    const now = Date.now();
-    if (now - lastScrollTimeRef.current < 50) {
-      return;
-    }
-    lastScrollTimeRef.current = now;
     const y = event.nativeEvent.contentOffset.y;
     const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
     setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
@@ -366,9 +366,9 @@ export default function HomeScreen() {
       const offset = postOffsets[key];
       const height = postHeights[key];
       if (typeof offset === 'number' && typeof height === 'number') {
-        const postTop = offset;
-        const postBottom = offset + height;
-        const visibleTop = Math.max(viewportTop, postTop);
+        const postAbsoluteTop = offset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
+        const postBottom = postAbsoluteTop + height;
+        const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
         if (visibleAmount > maxVisible) {
@@ -727,7 +727,7 @@ export default function HomeScreen() {
     return (
       <View
         onLayout={(event) => {
-          const y = event.nativeEvent.layout.y + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
+          const y = event.nativeEvent.layout.y;
           const h = event.nativeEvent.layout.height;
           setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
           setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
@@ -756,7 +756,9 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         stickyHeaderIndices={[1]}
         onScroll={handleHomeScroll}
-        scrollEventThrottle={32}
+        onMomentumScrollEnd={handleHomeScroll}
+        onScrollEndDrag={handleHomeScroll}
+        scrollEventThrottle={16}
         decelerationRate="fast"
       >
         <View style={styles.upperContentWrapper}>
@@ -1139,7 +1141,7 @@ export default function HomeScreen() {
                   <View
                     key={postKey}
                     onLayout={(event) => {
-                      const y = event.nativeEvent.layout.y + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
+                      const y = event.nativeEvent.layout.y;
                       const h = event.nativeEvent.layout.height;
                       setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
                       setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
@@ -1365,13 +1367,13 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.commentInputWrap}>
-              <TextInput
-                style={styles.commentInput}
+              <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
                 placeholder="Add a comment..."
                 placeholderTextColor="#8A7B89"
                 multiline
+                inputStyle={styles.commentInput}
               />
               <TouchableOpacity
                 style={[styles.commentSubmitBtn, !commentText.trim() && styles.commentSubmitDisabled]}

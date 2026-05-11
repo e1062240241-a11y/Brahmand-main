@@ -243,9 +243,11 @@ export default function TempleScreen() {
  });
  };
 
-  const openServicesSection = () => {
-    router.push('/vendor');
-  };
+ const openVendorSection = () => {
+   router.push('/vendor');
+ };
+
+ const openServicesSection = openVendorSection;
 
  useEffect(() => {
  if (!isSearchOpen || searchQuery.trim()) {
@@ -470,6 +472,13 @@ export default function TempleScreen() {
         <Ionicons name="search-outline" size={24} color={COLORS.text} />
       </TouchableOpacity>
     )}
+    <TouchableOpacity style={styles.headerIcon} onPress={() => setShowFilterModal(true)}>
+      <Ionicons name="filter" size={22} color={COLORS.text} />
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.vendorButton} onPress={openVendorSection}>
+      <Ionicons name="storefront" size={18} color={COLORS.text} />
+      <Text style={styles.vendorButtonText}>Vendor</Text>
+    </TouchableOpacity>
   </View>
   </Animated.View>
 

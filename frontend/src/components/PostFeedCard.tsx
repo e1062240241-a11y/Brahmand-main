@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
-import { useMiniPlayer } from './MiniPlayer';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 
@@ -49,6 +48,7 @@ type PostFeedCardProps = {
   isActive?: boolean;
   onLayout?: (event: any) => void;
   theme?: 'light' | 'dark';
+  openCommentsOnCaptionPress?: boolean;
 };
 
 const formatTime = (raw: any) => {
@@ -80,11 +80,11 @@ export const PostFeedCard = memo(({
   isActive = false,
   onLayout,
   theme = 'dark',
+  openCommentsOnCaptionPress = false,
 }: PostFeedCardProps) => {
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
-  const miniPlayer = useMiniPlayer();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dynamicRatio, setDynamicRatio] = useState(4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -128,6 +128,9 @@ export const PostFeedCard = memo(({
   useEffect(() => {
     if (player) {
       player.muted = isMuted;
+    }
+    if (Platform.OS === 'web' && videoRef.current) {
+      videoRef.current.muted = isMuted;
     }
   }, [isMuted, player]);
 
@@ -179,7 +182,11 @@ export const PostFeedCard = memo(({
   const commentsCount = Number(post?.comments_count || 0);
   const viewsCount = Number(post?.views_count || 0);
   const topComments = Array.isArray(post?.top_comments) ? post.top_comments.slice(0, 5) : [];
-  const captionSegments = post?.caption ? parseCaption(post.caption) : [];
+  const captionText = String(post?.caption || '').trim();
+  const captionWords = captionText.split(/\s+/).filter(Boolean);
+  const collapsedCaption = captionWords.slice(0, 4).join(' ') + (captionWords.length > 4 ? '...' : '');
+  const isLongCaption = captionWords.length > 4;
+  const captionSegments = captionText ? parseCaption(captionText) : [];
 
   return (
     <View style={styles.card} onLayout={onLayout}>
@@ -231,7 +238,8 @@ export const PostFeedCard = memo(({
                   ref={videoRef as any}
                   src={mediaUrl}
                   loop
-                  muted={isMuted}
+                  muted
+                  autoPlay
                   playsInline
                   onLoadedMetadata={(e) => {
                     if (!initialRawRatio) {
@@ -303,30 +311,35 @@ export const PostFeedCard = memo(({
 
       {/* Caption */}
       {captionSegments.length > 0 && (
-        <View style={{ maxHeight: isCaptionExpanded ? 120 : 60, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm }}>
-          <ScrollView
-            scrollEnabled={isCaptionExpanded}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-          >
-            <Pressable onPress={() => !isCaptionExpanded && setIsCaptionExpanded(true)}>
-                 <Text style={[styles.captionText, theme === 'light' && styles.captionTextLight]}>
-                 <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#222' }}>{post?.username || 'User'} </Text>
-                 {captionSegments.map((seg, idx) =>
-                   seg.isHashtag ? (
-                     <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
-                       {seg.text}
-                     </Text>
-                   ) : (
-                     <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#333', fontWeight: '700' }}>{seg.text}</Text>
-                   )
-                 )}
-                {!isCaptionExpanded && post?.caption?.length > 80 && (
-                  <Text style={{ fontWeight: '900', color: 'rgba(0,0,0,0.5)' }}> ...more</Text>
-                )}
+        <View style={{ paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm }}>
+          <Pressable
+        onPress={() => {
+          if (!isLongCaption) return;
+          const nextExpanded = !isCaptionExpanded;
+          setIsCaptionExpanded(nextExpanded);
+          if (nextExpanded && onComment && openCommentsOnCaptionPress) {
+            setTimeout(() => onComment(post), 150);
+          }
+        }}
+      >
+            <Text style={[styles.captionText, theme === 'light' && styles.captionTextLight]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
+              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#222' }}>{post?.username || 'User'} </Text>
+              {isCaptionExpanded ? captionSegments.map((seg, idx) =>
+                seg.isHashtag ? (
+                  <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
+                    {seg.text}
+                  </Text>
+                ) : (
+                  <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#333', fontWeight: '700' }}>{seg.text}</Text>
+                )
+              ) : collapsedCaption}
+            </Text>
+            {isLongCaption && (
+              <Text style={{ color: COLORS.primary, marginTop: 4, fontWeight: '900' }}>
+                {isCaptionExpanded ? 'Show less' : 'More'}
               </Text>
-            </Pressable>
-          </ScrollView>
+            )}
+          </Pressable>
         </View>
       )}
 
@@ -354,16 +367,7 @@ export const PostFeedCard = memo(({
           isVisible={isFullscreen}
           initialPost={post}
           onClose={() => { setIsFullscreen(false); setIsPausedByUser(false); }}
-          onMinimize={() => {
-            setIsFullscreen(false);
-            setIsPausedByUser(false);
-            miniPlayer.setOnReopen((p: any) => {
-              if (p?.id === post?.id) {
-                setIsFullscreen(true);
-              }
-            });
-            miniPlayer.show(post);
-          }}
+          onMinimize={() => { setIsFullscreen(false); setIsPausedByUser(false); }}
           onLike={onLike}
           onComment={onComment}
           onShare={onShare}

@@ -11,7 +11,7 @@ import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { useAdminStore } from '../src/store/adminStore';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { MiniPlayerProvider } from '../src/components/MiniPlayer';
+import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { MuteProvider } from '../src/contexts/MuteContext';
 
 function useAndroidBackHandler() {
@@ -263,6 +263,10 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
   });
   
   useDeepLinkHandler();
@@ -317,10 +321,8 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
         <MuteProvider>
-          <MiniPlayerProvider>
-            <Slot />
-            {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
-          </MiniPlayerProvider>
+          <Slot />
+          {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
         </MuteProvider>
       </SafeAreaView>
     </>

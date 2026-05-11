@@ -96,6 +96,49 @@ export default function HoroscopeScreen() {
   const scores = payload?.scores || { finance: 84, love: 59, health: 57, overall: 66 };
   const lucky = payload?.lucky || { number: '1, 8', color: 'Red', colorHex: '#FF0000' };
 
+  const renderPrediction = () => {
+    if (typeof payload?.prediction === 'string') {
+      return <Text style={styles.predictionText}>{payload.prediction}</Text>;
+    }
+
+    if (Array.isArray(payload?.prediction)) {
+      return (
+        <View style={{ gap: 12 }}>
+          {payload.prediction.map((p: any, i: number) => (
+            <Text key={i} style={styles.predictionText}>{String(p)}</Text>
+          ))}
+        </View>
+      );
+    }
+
+    if (typeof payload?.prediction === 'object' && payload.prediction !== null) {
+      return (
+        <View style={styles.categoriesContainer}>
+          {Object.entries(payload.prediction).map(([key, value]) => {
+            if (!value) return null;
+            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            let iconName: any = 'star-outline';
+            if (key.includes('personal')) iconName = 'heart-outline';
+            if (key.includes('profession')) iconName = 'briefcase-outline';
+            if (key.includes('health')) iconName = 'fitness-outline';
+            if (key.includes('emotion')) iconName = 'happy-outline';
+            if (key.includes('travel')) iconName = 'airplane-outline';
+            if (key.includes('luck')) iconName = 'sparkles-outline';
+            return (
+              <View key={key} style={styles.categoryItem}>
+                <Ionicons name={iconName} size={20} color="#E65C00" />
+                <Text style={styles.categoryLabel}>{label}</Text>
+                <Text style={styles.categoryValue}>{String(value)}</Text>
+              </View>
+            );
+          })}
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#FF8A4C', '#FFB894', '#FFF0E6']} style={StyleSheet.absoluteFill} />
@@ -129,23 +172,38 @@ export default function HoroscopeScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <>
-              {/* Sign Header */}
-              <View style={styles.signHeaderRow}>
-                <View style={styles.signTitleCol}>
-                  <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
-                  <Text style={styles.signDatesText}>{selectedZodiac.dates}</Text>
+            <View style={{ flex: 1 }}>
+              <View style={styles.content}>
+                <LinearGradient
+                  colors={['#FFFFFF', '#FFF9F2']}
+                  style={styles.predictionCard}
+                >
+                  <View style={styles.cardHeader}>
+                    <View style={styles.dateBadge}>
+                      <Text style={styles.dateText}>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
+                    </View>
+                    <Text style={styles.cardEyebrow}>Daily Prediction</Text>
+                  </View>
+                  {renderPrediction()}
+                </LinearGradient>
                 </View>
-                <View style={styles.signIllustrationContainer}>
-                  <View style={[styles.illustrationBg, { backgroundColor: selectedZodiac.color + '20', borderWidth: 0 }]}>
-                    {(selectedZodiac as any).image ? (
-                      <ExpoImage source={(selectedZodiac as any).image} style={styles.zodiacImage} contentFit="contain" />
-                    ) : (
-                      <Text style={styles.largeZodiacEmoji}>{selectedZodiac.icon}</Text>
-                    )}
+
+                {/* Sign Header */}
+                <View style={styles.signHeaderRow}>
+                  <View style={styles.signTitleCol}>
+                    <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
+                    <Text style={styles.signDatesText}>{selectedZodiac.dates}</Text>
+                  </View>
+                  <View style={styles.signIllustrationContainer}>
+                    <View style={[styles.illustrationBg, { backgroundColor: selectedZodiac.color + '20', borderWidth: 0 }]}>
+                      {(selectedZodiac as any).image ? (
+                        <ExpoImage source={(selectedZodiac as any).image} style={styles.zodiacImage} contentFit="contain" />
+                      ) : (
+                        <Text style={styles.largeZodiacEmoji}>{selectedZodiac.icon}</Text>
+                      )}
+                    </View>
                   </View>
                 </View>
-              </View>
 
               {/* Metrics Section */}
               <View style={styles.metricsContainer}>
@@ -214,7 +272,7 @@ export default function HoroscopeScreen() {
                   );
                 })}
               </View>
-            </>
+            </View>
           )}
 
           <View style={{ height: 100 }} />

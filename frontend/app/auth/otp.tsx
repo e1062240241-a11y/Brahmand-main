@@ -13,8 +13,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { verifyOTP, verifyFirebaseToken } from '../../src/services/api';
-import { verifyFirebaseOTP, sendFirebaseOTP, confirmationResult, getCurrentUserToken } from '../../src/services/firebase/authService';
+import { verifyOTP, sendOTP as apiSendOTP } from '../../src/services/api';
+import { getCurrentUserToken } from '../../src/services/firebase/authService';
 import { isAnonymousPhone } from '../../src/services/firebase/config';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING } from '../../src/constants/theme';
@@ -88,81 +88,32 @@ export default function OTPScreen() {
     setError('');
 
     try {
-      let idToken: string | null = null;
-      let firebaseError: any = null;
+      // Bypass firebase - exclusively use backend verifyOTP
+      const response = await verifyOTP(phone as string || '', code);
+      const data = response.data;
 
-      // Bail out early: if Firebase already has a signed-in user (auto-verification), use its token.
-      try {
-        const existingToken = await getCurrentUserToken();
-        if (existingToken) {
-          idToken = existingToken;
-        }
-      } catch (e) {
-        // ignore and continue to confirmation flow
+      const requiresProfile =
+        data.is_new_user ||
+        !data.user ||
+        !data.user.name ||
+        data.user.name.trim().length === 0;
+
+      if (requiresProfile) {
+        router.push({ pathname: '/auth/profile', params: { phone } });
+        return;
       }
 
-      if (confirmationResult) {
-        try {
-          idToken = await verifyFirebaseOTP(code);
-        } catch (error: any) {
-          firebaseError = error;
-        }
-      }
-
-      if (idToken) {
-        const resp = await verifyFirebaseToken(idToken);
-        const data = resp.data;
-
-        const requiresProfile =
-          data.is_new_user ||
-          !data.user ||
-          !data.user.name ||
-          data.user.name.trim().length === 0;
-
-        if (requiresProfile) {
-          router.push({ pathname: '/auth/profile', params: { phone } });
-          return;
-        }
-
-        await login(data.user, data.token);
-        if (data.user.home_location || data.user.location) {
-          router.replace('/home');
-        } else {
-          router.replace('/auth/location');
-        }
-      } else if (firebaseError && firebaseError.message !== 'No OTP request found. Please request OTP first.') {
-        throw firebaseError;
+      await login(data.user, data.token);
+      if (data.user.home_location || data.user.location) {
+        router.replace('/home');
       } else {
-        const response = await verifyOTP(phone || '', code);
-        const data = response.data;
-
-        if (data.is_new_user) {
-          router.push({ pathname: '/auth/profile', params: { phone } });
-        } else if (data.user) {
-          await login(data.user, data.token);
-          if (data.user.home_location || data.user.location) {
-            router.replace('/home');
-          } else {
-            router.replace('/auth/location');
-          }
-        } else {
-          router.push({ pathname: '/auth/profile', params: { phone } });
-        }
+        router.replace('/auth/location');
       }
     } catch (err: any) {
-      console.log('Firebase Verification Error:', err);
+      console.log('Verification Error:', err);
       let message = 'Invalid OTP. Please try again.';
 
-      const code = err?.code || err?.response?.data?.code;
-      if (code === 'auth/invalid-verification-code') {
-        message = 'OTP is wrong. Enter the correct code from SMS.';
-      } else if (code === 'auth/code-expired') {
-        message = 'OTP expired. Please resend OTP and try again.';
-      } else if (code === 'auth/too-many-requests') {
-        message = 'Too many attempts. Please wait 10-15 minutes and try again.';
-      } else if (code === 'auth/quota-exceeded') {
-        message = 'SMS quota exceeded for this project. Use Firebase test number or wait.';
-      } else if (err?.response?.data?.detail) {
+      if (err?.response?.data?.detail) {
         message = err.response.data.detail;
       } else if (err?.message) {
         message = err.message;
@@ -183,7 +134,9 @@ export default function OTPScreen() {
         setError('Phone number missing. Please go back and request OTP again.');
         return;
       }
-      await sendFirebaseOTP(phone as string);
+      
+      await apiSendOTP(phone as string);
+      
       setResendTimer(30);
       setError('OTP resent. Enter the new code.');
       setOtp(['', '', '', '', '', '']);

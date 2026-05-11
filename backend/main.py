@@ -5415,6 +5415,12 @@ async def mark_all_notifications_read(token_data: dict = Depends(verify_token)):
     return {"message": "All notifications marked as read"}
 
 
+@api_router.post("/notifications/{notification_id}/mark-read")
+async def mark_notification_read(notification_id: str, token_data: dict = Depends(verify_token)):
+    await FirebaseNotificationService.mark_as_read(token_data["user_id"], notification_id)
+    return {"message": "Notification marked as read"}
+
+
 @api_router.post("/ai/chat")
 async def ai_chat(
     data: dict,

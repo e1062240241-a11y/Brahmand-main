@@ -440,6 +440,14 @@ var getUnreadNotificationCount = function () {
     return api.get('/notifications/unread-count');
 };
 exports.getUnreadNotificationCount = getUnreadNotificationCount;
+var markAllNotificationsRead = function () {
+    return api.post('/notifications/mark-all-read');
+};
+exports.markAllNotificationsRead = markAllNotificationsRead;
+var markNotificationRead = function (notificationId) {
+    return api.post("/notifications/".concat(notificationId, "/mark-read"));
+};
+exports.markNotificationRead = markNotificationRead;
 var nativeMultipartPost = function (endpoint, formData) { return __awaiter(void 0, void 0, void 0, function () {
     var token, headers, response, text, data;
     return __generator(this, function (_a) {
