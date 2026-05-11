@@ -53,7 +53,9 @@ const isWebRunningOnLocalhost =
 
 const normalizeMimeType = (type?: string, name?: string) => {
   const normalized = (type || '').toLowerCase();
-  if (normalized === 'image/png' || normalized === 'image/jpeg' || normalized === 'image/jpg' || normalized === 'image/webp') {
+  const allowedImageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/gif', 'image/bmp'];
+  
+  if (allowedImageTypes.includes(normalized)) {
     return normalized === 'image/jpg' ? 'image/jpeg' : normalized;
   }
 
@@ -65,6 +67,9 @@ const normalizeMimeType = (type?: string, name?: string) => {
     const lowerName = name.toLowerCase();
     if (lowerName.endsWith('.png')) return 'image/png';
     if (lowerName.endsWith('.webp')) return 'image/webp';
+    if (lowerName.endsWith('.heic')) return 'image/heic';
+    if (lowerName.endsWith('.gif')) return 'image/gif';
+    if (lowerName.endsWith('.bmp')) return 'image/bmp';
     if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
   }
 
@@ -129,7 +134,7 @@ if (Platform.OS === 'web') {
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
-  timeout: 30000,
+  timeout: 120000,
   headers: defaultHeaders,
 });
 
@@ -197,6 +202,14 @@ api.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Handle FormData Content-Type override
+  if (config.data instanceof FormData) {
+    // For FormData, we must let the browser/native layer set the boundary
+    // Deleting Content-Type allows Axios/Fetch to detect it correctly and add the boundary
+    delete config.headers['Content-Type'];
+  }
+
   return config;
 });
 
@@ -479,6 +492,12 @@ export const getUserNotifications = () =>
 export const getUnreadNotificationCount = () => 
   api.get('/notifications/unread-count');
 
+export const markAllNotificationsRead = () =>
+  api.post('/notifications/mark-all-read');
+
+export const aiChat = (messages: any[]) => 
+  api.post('/ai/chat', { messages });
+
 const nativeMultipartPost = async (endpoint: string, formData: FormData) => {
   const token = await AsyncStorage.getItem('auth_token');
   const headers: Record<string, string> = {};
@@ -523,7 +542,6 @@ export const uploadUserPost = (
         }
 
         return api.post('/posts/upload-from-storage', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 30 * 60 * 1000,
         });
       }
@@ -538,7 +556,6 @@ export const uploadUserPost = (
 
     try {
       return await api.post('/posts/upload', formData, {
-        headers: Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
         timeout: 10 * 60 * 1000,
         onUploadProgress: onProgress,
       });
@@ -576,13 +593,34 @@ export const uploadChatMedia = (file: { uri: string; name: string; type: string 
     await appendMultipartFile(formData, 'file', file);
 
     if (Platform.OS !== 'web') {
-      return nativeMultipartPost('/media/upload', formData);
+      try {
+        const token = await AsyncStorage.getItem('auth_token');
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${API_URL}/api/media/upload`, {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          // If it's a validation error, we want to know why
+          throw new Error(`Upload failed: ${response.status} ${text}`);
+        }
+
+        const data = await response.json();
+        return { data };
+      } catch (error) {
+        console.warn('[API] Native chat media upload failed, retrying via axios:', error);
+        return api.post('/media/upload', formData);
+      }
     }
 
-    return api.post('/media/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 10 * 60 * 1000,
-    });
+    return api.post('/media/upload', formData);
   })();
 };
 
@@ -598,7 +636,6 @@ export const uploadCompressedVideo = (
     }
 
     return api.post('/videos/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 10 * 60 * 1000,
     });
   })();
@@ -1194,9 +1231,7 @@ export const uploadVendorBusinessImage = (
       }
     }
 
-    return api.post(`/vendors/${vendorId}/business/images/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return api.post(`/vendors/${vendorId}/business/images/upload`, formData);
   })();
 };
 

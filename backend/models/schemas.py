@@ -106,6 +106,7 @@ class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     bio: Optional[str] = Field(None, max_length=500)
     photo: Optional[str] = None
+    cover_photo: Optional[str] = None
     language: Optional[str] = None
 
 
@@ -113,6 +114,7 @@ class ProfileUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     bio: Optional[str] = Field(None, max_length=500)
     photo: Optional[str] = None
+    cover_photo: Optional[str] = None
     language: Optional[str] = None
     kuldevi: Optional[str] = None
     kuldevi_temple_area: Optional[str] = None
@@ -129,6 +131,7 @@ class UserResponse(BaseModel):
     sl_id: str
     name: str
     photo: Optional[str] = None
+    cover_photo: Optional[str] = None
     language: str
     location: Optional[Dict[str, str]] = None
     badges: List[str] = []

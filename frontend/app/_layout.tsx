@@ -2,7 +2,7 @@ import React, { useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
 import { startAuthStateListener } from '../src/services/firebase/authService';
 import { addNotificationResponseReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
@@ -10,6 +10,8 @@ import { sendDirectMessage } from '../src/services/api';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { useAdminStore } from '../src/store/adminStore';
+import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
+import { Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
 import { MiniPlayerProvider } from '../src/components/MiniPlayer';
 import { MuteProvider } from '../src/contexts/MuteContext';
 
@@ -257,6 +259,15 @@ export default function RootLayout() {
   const { loadStoredAdminAuth } = useAdminStore();
   const pushInitStartedRef = useRef(false);
   
+  const [fontsLoaded] = useFonts({
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+  });
+  
   useDeepLinkHandler();
   useAndroidBackHandler();
   useNotificationResponseHandler();
@@ -296,7 +307,7 @@ export default function RootLayout() {
     });
   }, [isLoading, token, isAuthenticated, initPushNotifications]);
 
-  if (isLoading) {
+  if (isLoading || !fontsLoaded) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />

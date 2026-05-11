@@ -46,9 +46,7 @@ const styles = StyleSheet.create({
     height: HOME_FEED_TABS_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    backgroundColor: 'transparent',
   },
   tabBtn: {
     flex: 1,
@@ -57,17 +55,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeTabBtn: {
-    borderBottomWidth: 3,
-    borderBottomColor: '#000',
   },
   tabText: {
-    color: '#666',
+    color: '#111111',
     fontSize: 15,
     fontWeight: '700',
   },
   activeTabText: {
-    color: '#000',
-    fontWeight: '900',
+    color: '#FF6A00',
+    fontWeight: '800',
   },
   newPostButton: {
     width: 60,
@@ -78,8 +74,10 @@ const styles = StyleSheet.create({
   plusIconBg: {
     width: 28,
     height: 28,
-    borderRadius: 8,
-    backgroundColor: '#FFF0E6',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FF6A00',
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
   },

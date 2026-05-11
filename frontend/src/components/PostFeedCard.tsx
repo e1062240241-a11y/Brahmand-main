@@ -311,18 +311,18 @@ export const PostFeedCard = memo(({
           >
             <Pressable onPress={() => !isCaptionExpanded && setIsCaptionExpanded(true)}>
                  <Text style={[styles.captionText, theme === 'light' && styles.captionTextLight]}>
-                 <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>{post?.username || 'User'} </Text>
+                 <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#222' }}>{post?.username || 'User'} </Text>
                  {captionSegments.map((seg, idx) =>
                    seg.isHashtag ? (
                      <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
                        {seg.text}
                      </Text>
                    ) : (
-                     <Text key={idx} style={{ color: theme === 'light' ? '#333' : '#FFFFFF', fontWeight: '700' }}>{seg.text}</Text>
+                     <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#333', fontWeight: '700' }}>{seg.text}</Text>
                    )
                  )}
                 {!isCaptionExpanded && post?.caption?.length > 80 && (
-                  <Text style={{ fontWeight: '900', color: 'rgba(255,255,255,0.7)' }}> ...more</Text>
+                  <Text style={{ fontWeight: '900', color: 'rgba(0,0,0,0.5)' }}> ...more</Text>
                 )}
               </Text>
             </Pressable>
@@ -330,10 +330,10 @@ export const PostFeedCard = memo(({
         </View>
       )}
 
-      {viewsCount > 0 && <Text style={styles.viewsText}>{viewsCount} views</Text>}
+      {viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} views</Text>}
 
       <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
-        <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700' }}>
+        <Text style={{ color: theme === 'light' ? '#666' : 'rgba(0,0,0,0.6)', fontSize: 13, fontWeight: '700' }}>
           {commentsCount > 0 ? `View all ${commentsCount} comments` : 'Add a comment...'}
         </Text>
       </TouchableOpacity>
@@ -342,8 +342,8 @@ export const PostFeedCard = memo(({
         <View style={styles.topCommentsWrap}>
           {topComments.map((comment: any, index: number) => (
              <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
-               <Text style={[styles.topCommentUser, theme === 'light' && styles.topCommentUserLight]}>{comment?.username || 'User'} </Text>
-               <Text style={{ color: theme === 'light' ? '#444' : '#FFFFFF', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
+               <Text style={[styles.topCommentUser, theme === 'light' && styles.topCommentUserLight, { color: '#000' }]}>{comment?.username || 'User'} </Text>
+               <Text style={{ color: theme === 'light' ? '#444' : '#222', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
              </Text>
           ))}
         </View>
@@ -406,15 +406,15 @@ const styles = StyleSheet.create({
   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },
   muteToggle: { position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   media: { width: '100%', height: '100%' },
-  captionText: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  captionText: { color: '#111111', fontSize: 13, lineHeight: 18, fontWeight: '700' },
   captionTextLight: { color: '#333' },
   topCommentsWrap: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.lg },
   topCommentText: { marginBottom: 4 },
-  topCommentUser: { color: '#FFFFFF', fontWeight: '900', fontSize: 13 },
+  topCommentUser: { color: '#000000', fontWeight: '900', fontSize: 13 },
   topCommentUserLight: { color: '#000' },
   actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
   actionBtn: { flexDirection: 'row', alignItems: 'center', marginRight: SPACING.lg },
-  actionText: { color: '#FFFFFF', marginLeft: 6, fontSize: 12, fontWeight: '800' },
+  actionText: { color: '#333333', marginLeft: 6, fontSize: 12, fontWeight: '800' },
   actionTextLight: { color: '#333' },
   actionTextActive: { color: COLORS.primary },
   viewsText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '700' },

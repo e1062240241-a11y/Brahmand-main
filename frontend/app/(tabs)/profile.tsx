@@ -20,6 +20,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
 import {
   getUserPosts,
@@ -34,9 +35,13 @@ import {
   reportPost,
   getCulturalCommunities,
   getUserCulturalCommunity,
-  updateUserCulturalCommunity
+  updateUserCulturalCommunity,
+  uploadUserPost,
+  updateProfile,
+  uploadChatMedia
 } from '../../src/services/api';
 import SharePostModal from '../../src/components/SharePostModal';
+import UploadPostModal from '../../src/components/UploadPostModal';
 import { KeyboardAvoidingView, Share } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
@@ -76,28 +81,28 @@ export default function ProfileScreen() {
       id: 'account',
       title: 'Account',
       items: [
-        { id: 'edit', icon: 'person-circle', label: 'Manage Profile', route: '/profile/edit', color: '#4F46E5' },
-        { id: 'kyc', icon: 'shield-checkmark', label: 'KYC Verification', route: '/kyc', color: '#F59E0B' },
-        { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications', color: '#10B981' },
-        { id: 'privacy', icon: 'lock-closed', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#6366F1' },
+        { id: 'edit', icon: 'person-circle', label: 'Manage Profile', route: '/profile/edit', color: '#F97316' },
+        { id: 'kyc', icon: 'shield-checkmark', label: 'KYC Verification', route: '/kyc', color: '#FB923C' },
+        { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications', color: '#F59E0B' },
+        { id: 'privacy', icon: 'lock-closed', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#D97706' },
       ],
     },
     {
       id: 'preferences',
       title: 'Preferences',
       items: [
-        { id: 'about', icon: 'information-circle', label: 'About Us', route: '/settings/guidelines', color: '#8B5CF6' },
-        { id: 'location', icon: 'location', label: 'Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon', color: '#EC4899' },
-        { id: 'language', icon: 'language', label: 'Language', value: 'English', disabled: true, color: '#06B6D4' },
+        { id: 'about', icon: 'information-circle', label: 'About Us', route: '/settings/guidelines', color: '#C2410C' },
+        { id: 'location', icon: 'location', label: 'Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon', color: '#EA580C' },
+        { id: 'language', icon: 'language', label: 'Language', value: 'English', disabled: true, color: '#B45309' },
       ],
     },
     {
       id: 'support',
       title: 'Support',
       items: [
-        { id: 'guidelines', icon: 'document-text', label: 'Community Guidelines', route: '/settings/guidelines', color: '#F97316' },
-        { id: 'culture', icon: 'people', label: 'My Culture Group', value: user?.cultural_community || 'Not set', color: '#D946EF' },
-        { id: 'logout', icon: 'log-out', label: 'Logout', action: 'logout', color: '#EF4444' },
+        { id: 'guidelines', icon: 'document-text', label: 'Community Guidelines', route: '/settings/guidelines', color: '#92400E' },
+        { id: 'culture', icon: 'people', label: 'My Culture Group', value: user?.cultural_community || 'Not set', color: '#854D0E' },
+        { id: 'logout', icon: 'log-out', label: 'Logout', action: 'logout', color: '#B91C1C' },
       ],
     },
   ];
@@ -139,6 +144,13 @@ export default function ProfileScreen() {
   // Toast states
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [backgroundUpload, setBackgroundUpload] = useState<{
+    uploading: boolean;
+    progress: number;
+    isCompressing: boolean;
+    mediaUri?: string;
+  }>({ uploading: false, progress: 0, isCompressing: false });
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
@@ -173,6 +185,35 @@ export default function ProfileScreen() {
     }
   }, [logout, router, updateUser, userId]);
 
+  const handleUploadCoverPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        showToast('Uploading cover photo...');
+        const file = {
+          uri: result.assets[0].uri,
+          name: result.assets[0].fileName || 'cover.jpg',
+          type: result.assets[0].mimeType || 'image/jpeg'
+        };
+        const uploadRes = await uploadChatMedia(file);
+        const url = uploadRes.data.url || uploadRes.data.mediaUrl;
+        if (url) {
+          await updateProfile({ cover_photo: url } as any);
+          await fetchProfile(false);
+          showToast('Cover photo updated!');
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('Failed to upload cover photo');
+    }
+  };
+
   const loadPosts = useCallback(async (reset = false) => {
     if (!userId || (postsLoading && !reset)) return;
 
@@ -204,6 +245,49 @@ export default function ProfileScreen() {
       setRefreshing(false);
     }
   }, [userId, offset, postsLoading]);
+
+  const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
+    setBackgroundUpload({ 
+      uploading: true, 
+      progress: 0, 
+      isCompressing: false, 
+      mediaUri: media.uri 
+    });
+
+    try {
+      const response = await uploadUserPost(
+        {
+          uri: media.uri,
+          type: media.mimeType,
+          name: media.name,
+        },
+        caption,
+        filterName,
+        (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setBackgroundUpload(prev => ({ ...prev, progress: percent }));
+            if (percent >= 100 && media.mediaType === 'video') {
+              setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
+            }
+          }
+        }
+      );
+      
+      showToast('Post uploaded successfully!');
+      loadPosts(true); // Refresh profile grid
+    } catch (error: any) {
+      console.warn('Upload failed:', error);
+      const detail = error.response?.data?.detail;
+      Alert.alert('Upload Failed', typeof detail === 'string' ? detail : 'Could not upload your post. Please try again.');
+    } finally {
+      setBackgroundUpload({ uploading: false, progress: 0, isCompressing: false });
+    }
+  };
+
+  const handleUploadPostSuccess = () => {
+    setShowUploadModal(false);
+  };
 
   useEffect(() => {
     fetchProfile(true);
@@ -548,15 +632,17 @@ export default function ProfileScreen() {
 
   const ListHeader = () => (
     <View style={styles.headerContent}>
-      <ImageBackground
-        source={{ uri: profile?.cover_photo || user?.cover_photo || 'https://images.unsplash.com/photo-1604537466158-719b1972fb17?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }}
-        style={styles.coverPhoto}
-      >
-        <LinearGradient
-          colors={['transparent', 'transparent', 'rgba(0,0,0,0.8)', '#000000']}
-          style={styles.coverGradient}
-        />
-      </ImageBackground>
+      <TouchableOpacity activeOpacity={0.9} onPress={handleUploadCoverPhoto}>
+        <ImageBackground
+          source={{ uri: profile?.cover_photo || user?.cover_photo || 'https://images.unsplash.com/photo-1604537466158-719b1972fb17?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }}
+          style={styles.coverPhoto}
+        >
+          <LinearGradient
+            colors={['transparent', 'transparent', 'rgba(0,0,0,0.8)', '#000000']}
+            style={styles.coverGradient}
+          />
+        </ImageBackground>
+      </TouchableOpacity>
 
       <View style={styles.profileBottomSection}>
         <View style={styles.avatarWrapper}>
@@ -642,7 +728,7 @@ export default function ProfileScreen() {
       <View style={styles.actionButtonsBox}>
         <TouchableOpacity
           style={styles.addPostButton}
-          onPress={() => router.push('/post/create' as any)}
+          onPress={() => setShowUploadModal(true)}
         >
           <Ionicons name="add" size={20} color="#FFF" />
           <Text style={styles.addPostText}>Add Post</Text>
@@ -660,6 +746,29 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {/* Background Upload Status */}
+      {backgroundUpload.uploading && (
+        <View style={styles.uploadingStatusBar}>
+          <View style={styles.uploadingStatusContent}>
+            {backgroundUpload.mediaUri && (
+              <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
+            )}
+            <View style={styles.uploadingTextContainer}>
+              <Text style={styles.uploadingTitle}>
+                {backgroundUpload.isCompressing ? 'Finalizing post...' : `Uploading... ${backgroundUpload.progress}%`}
+              </Text>
+              <View style={styles.progressBarBg}>
+                <LinearGradient
+                  colors={['#FF6B00', '#FF9E00']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.progressBarFill, { width: `${backgroundUpload.progress}%` }]}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
       {/* Custom Header Bar */}
       <View style={[styles.navBarAbsolute, { paddingTop: insets.top || 10 }]}>
         <TouchableOpacity style={styles.navLeft} onPress={() => router.back()}>
@@ -717,14 +826,14 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.settingsSheet}>
             <LinearGradient
-              colors={['#E0F2F1', '#E3F2FD', '#FFFFFF']}
+              colors={['#121212', '#1C1C1E', '#1C1C1E']}
               style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 20, borderTopRightRadius: 20 }]}
             />
             <View style={styles.settingsHeader}>
               <View style={styles.settingsHeaderBar} />
               <Text style={styles.settingsTitle}>Settings and privacy</Text>
               <TouchableOpacity style={styles.settingsClose} onPress={() => setShowSettingsModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+                <Ionicons name="close" size={24} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -751,7 +860,7 @@ export default function ProfileScreen() {
                         </View>
                         <View style={styles.settingsRowRight}>
                           {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                          {!item.disabled && <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />}
+                          {!item.disabled && <Ionicons name="chevron-forward" size={18} color="rgba(255, 255, 255, 0.3)" />}
                         </View>
                       </TouchableOpacity>
                     ))}
@@ -977,12 +1086,18 @@ export default function ProfileScreen() {
         </SafeAreaView>
       </Modal>
 
-      {/* Share Modal */}
       <SharePostModal
         visible={shareModalVisible}
         onClose={() => setShareModalVisible(false)}
         post={selectedSharePost}
         onShareExternal={handleShareExternal}
+      />
+
+      <UploadPostModal
+        visible={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUploadStart={handleUploadStart}
+        onSuccess={handleUploadPostSuccess}
       />
     </SafeAreaView>
   );
@@ -1259,7 +1374,7 @@ const styles = StyleSheet.create({
   settingsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: '#FFFFFF',
   },
   settingsClose: {
     position: 'absolute',
@@ -1272,7 +1387,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: COLORS.textSecondary,
+    color: 'rgba(255, 255, 255, 0.6)',
     paddingHorizontal: 16,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -1287,7 +1402,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   settingsGroupCard: {
-    backgroundColor: '#1C1C1E', // Darker gray for Samsung One UI style cards
+    backgroundColor: '#2C2C2E', // Slightly lighter gray for cards on dark background
     borderRadius: 24,
     paddingVertical: 4,
     overflow: 'hidden',
@@ -1307,12 +1422,12 @@ const styles = StyleSheet.create({
   },
   settingsLabel: {
     fontSize: 16,
-    color: COLORS.text,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   settingsSubLabel: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: 'rgba(255, 255, 255, 0.5)',
     marginTop: 2,
   },
   settingsRowRight: {
@@ -1322,7 +1437,7 @@ const styles = StyleSheet.create({
   },
   settingsValue: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: 'rgba(255, 255, 255, 0.6)',
     maxWidth: 100,
     textAlign: 'right',
   },
@@ -1573,5 +1688,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     paddingHorizontal: 40,
+  },
+  uploadingStatusBar: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    padding: 12,
+  },
+  uploadingStatusContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  uploadingThumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    marginRight: 12,
+    backgroundColor: '#333',
+  },
+  uploadingTextContainer: {
+    flex: 1,
+  },
+  uploadingTitle: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  progressBarBg: {
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
   },
 });

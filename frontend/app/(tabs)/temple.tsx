@@ -19,7 +19,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTemples } from '../../src/services/api';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -398,9 +398,33 @@ export default function TempleScreen() {
  );
  };
 
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const headerBg = scrollY.interpolate({
+    inputRange: [0, 60],
+    outputRange: ['rgba(255, 248, 240, 0)', 'rgba(255, 248, 240, 1)'],
+    extrapolate: 'clamp',
+  });
+
+  const headerBorder = scrollY.interpolate({
+    inputRange: [0, 60],
+    outputRange: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.05)'],
+    extrapolate: 'clamp',
+  });
+
   return (
   <SafeAreaView style={styles.container} edges={['top']}>
-  <View style={styles.headerBar}>
+  <Animated.View style={[styles.headerBar, { 
+    backgroundColor: headerBg, 
+    borderBottomColor: headerBorder, 
+    borderBottomWidth: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingTop: Platform.OS === 'ios' ? 0 : 40,
+  }]}>
   <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
    <Ionicons name="arrow-back" size={22} color={COLORS.text} />
   </TouchableOpacity>
@@ -447,12 +471,17 @@ export default function TempleScreen() {
       </TouchableOpacity>
     )}
   </View>
-  </View>
+  </Animated.View>
 
-  <ScrollView
+  <Animated.ScrollView
   style={styles.contentScroll}
-  contentContainerStyle={styles.listContent}
+  contentContainerStyle={[styles.listContent, { paddingTop: 60 }]}
   showsVerticalScrollIndicator={false}
+  onScroll={Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: false }
+  )}
+  scrollEventThrottle={16}
   refreshControl={
    <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
   }
@@ -475,10 +504,10 @@ export default function TempleScreen() {
     <View style={styles.heroBannerContent}>
      <View style={styles.heroBadge}>
       <Ionicons name="sparkles" size={14} color="#FFD700" />
-      <Text style={styles.heroBadgeText}>Jyotirling of the Day</Text>
+      <Text style={styles.heroBadgeText}>Most Popular Now</Text>
      </View>
-     <Text style={styles.heroBannerTitle}>Somnath Temple</Text>
-     <Text style={styles.heroBannerLocation}>Prabhas Patan, Gujarat</Text>
+     <Text style={styles.heroBannerTitle}>Live Mantra Jaap</Text>
+     <Text style={styles.heroBannerLocation}>Join Thousands in Spiritual Chanting</Text>
     </View>
     <TouchableOpacity
     style={styles.watchNowButton}
@@ -527,7 +556,7 @@ export default function TempleScreen() {
    </View>
    ) : null}
   </View>
-  </ScrollView>
+  </Animated.ScrollView>
 
   <Modal
   visible={showFilterModal}
@@ -699,16 +728,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 4,
   },
-  heroBadgeText: {
+   heroBadgeText: {
     color: '#FFD700',
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: FONTS.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   heroBannerTitle: {
     fontSize: 22,
-    fontWeight: '800',
+    fontFamily: FONTS.bold,
     color: '#FFFFFF',
     marginBottom: 2,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
@@ -718,7 +747,7 @@ const styles = StyleSheet.create({
   heroBannerLocation: {
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
+    fontFamily: FONTS.medium,
   },
   watchNowButton: {
     backgroundColor: '#FF9500',

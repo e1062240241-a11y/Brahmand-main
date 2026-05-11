@@ -1654,6 +1654,7 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
         'id': user.get('id'),
         'name': user.get('name'),
         'photo': user.get('photo'),
+        'cover_photo': user.get('cover_photo'),
         'sl_id': user.get('sl_id'),
         'online_status': user.get('online_status'),
         'last_seen_at': user.get('last_seen_at'),
@@ -1686,7 +1687,11 @@ async def get_user_posts(
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
 
-    candidate_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)], limit=2000)
+    candidate_posts = await db.query_documents(
+        'posts', 
+        filters=[('user_id', '==', user_id)], 
+        limit=2000
+    )
 
     def _created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -1870,7 +1875,7 @@ async def upload_post(
         raise HTTPException(status_code=404, detail='User not found')
 
     content_type = (file.content_type or '').lower()
-    if not content_type and file.filename:
+    if (not content_type or content_type == 'application/octet-stream') and file.filename:
         filename_lower = file.filename.lower()
         if filename_lower.endswith(('.mp4', '.mov', '.webm', '.mkv')):
             content_type = 'video/mp4'
@@ -2023,16 +2028,22 @@ async def upload_chat_media(
 ):
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
-    if not content_type and file.filename:
+    if (not content_type or content_type == 'application/octet-stream') and file.filename:
         filename_lower = file.filename.lower()
         if filename_lower.endswith(('.jpg', '.jpeg')):
             content_type = 'image/jpeg'
         elif filename_lower.endswith('.png'):
             content_type = 'image/png'
+        elif filename_lower.endswith('.webp'):
+            content_type = 'image/webp'
+        elif filename_lower.endswith('.heic'):
+            content_type = 'image/heic'
+        elif filename_lower.endswith('.gif'):
+            content_type = 'image/gif'
 
-    allowed_content_types = {'image/jpeg', 'image/jpg', 'image/png'}
-    if content_type not in allowed_content_types:
-        raise HTTPException(status_code=400, detail='Unsupported media type for chat upload. Use jpg, jpeg, or png')
+    # Broaden allowed types to support all common images
+    if not content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail='Unsupported media type. Please upload an image (jpg, png, webp, heic, gif).')
 
     file_bytes = await file.read()
     if not file_bytes:
@@ -2172,7 +2183,12 @@ async def get_posts_feed(
     fetch_count = 1000 if tab in ['trending', 'following'] else min(500, max(200, safe_offset + safe_limit + 20))
     
     try:
-        posts = await db.query_documents('posts', limit=fetch_count)
+        posts = await db.query_documents(
+            'posts', 
+            limit=fetch_count, 
+            order_by='created_at', 
+            order_direction='DESCENDING'
+        )
     except Exception as e:
         logger.error("Firestore query error in get_posts_feed: %s", e)
         posts = []
@@ -2277,7 +2293,12 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
     
     try:
         fetch_count = min(500, max(200, safe_offset + safe_limit + 20))
-        posts = await db.query_documents('posts', limit=fetch_count)
+        posts = await db.query_documents(
+            'posts', 
+            limit=fetch_count, 
+            order_by='created_at', 
+            order_direction='DESCENDING'
+        )
     except Exception as e:
         logger.error("Firestore query error in get_posts_by_hashtag: %s", e)
         posts = []
@@ -5191,6 +5212,64 @@ async def get_unread_count(token_data: dict = Depends(verify_token)):
     db = await get_db()
     count = await db.count_documents('notifications', filters=[('user_id', '==', token_data["user_id"]), ('is_read', '==', False)])
     return {"unread_count": count}
+
+
+@api_router.post("/notifications/mark-all-read")
+async def mark_all_notifications_read(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data["user_id"]
+    # Get all unread notifications
+    notifications = await db.query_documents('notifications', filters=[('user_id', '==', user_id), ('is_read', '==', False)])
+    # Mark each as read
+    for notif in notifications:
+        await db.update_document('notifications', notif['id'], {'is_read': True})
+    return {"message": "All notifications marked as read"}
+
+
+@api_router.post("/ai/chat")
+async def ai_chat(
+    data: dict,
+    token_data: dict = Depends(verify_token)
+):
+    """Handle AI chat via OpenRouter with reasoning support."""
+    messages = data.get("messages", [])
+    system_prompt = {
+        "role": "system",
+        "content": "You are 'My Krishna', a spiritual guide and embodiment of the wisdom found in the Bhagavad Gita. Your purpose is to guide users through their life challenges using the eternal teachings of Lord Krishna. Always respond with compassion, wisdom, and clarity. Whenever relevant, cite specific shlokas from the Bhagavad Gita. These shlokas MUST be written in their original Sanskrit (Devanagari script) or Hindi. Do NOT use any markdown formatting like asterisks (*), hashtags (#), or bolding in your response. Provide the response in clean, plain text format. Maintain a serene and divine tone. Always address the user as 'Parth' or 'Arjun' in your replies, ensuring these names appear frequently in your guidance."
+    }
+    # Ensure system prompt is at the beginning
+    if not messages or messages[0].get("role") != "system":
+        messages.insert(0, system_prompt)
+    
+    model = data.get("model", "google/gemma-4-26b-a4b-it:free")
+    enable_reasoning = data.get("reasoning", {}).get("enabled", True)
+    
+    # Use API key from environment variable
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    
+    import httpx
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "reasoning": {"enabled": enable_reasoning}
+                },
+                timeout=120.0
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+                
+            return response.json()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 # =================== WISDOM & PANCHANG ===================

@@ -50,6 +50,7 @@ import {
 } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
+import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
@@ -66,9 +67,9 @@ try {
 }
 
 const quickAccess = [
-  { label: 'My Krishna', icon: null, subtitle: 'AI Dharma\nGuidance', color: '#FFF8F0' },
-  { label: 'SOS', icon: 'alert', subtitle: 'By Your\nCommunity', color: '#FFF8F0', urgent: true },
-  { label: 'Panchang', icon: 'calendar', subtitle: 'Vedic View\nVedic View', color: '#FFF8F0', calendarIcon: true },
+  { label: 'My Krishna', subtitle: 'AI Dharma\nGuidance', color: '#FFF8F0' },
+  { label: 'SOS', subtitle: 'Sanatan People\nAround You', color: '#FFF8F0', urgent: true },
+  { label: 'Panchang', subtitle: 'Vedic View\nVedic View', color: '#FFF8F0', calendarIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -98,7 +99,34 @@ export default function HomeScreen() {
   const [showProfileActions, setShowProfileActions] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await getUnreadNotificationCount();
+        setUnreadCount(res.data.unread_count || 0);
+      } catch (err) {
+        console.log('Failed to fetch unread count:', err);
+      }
+    };
+    
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleNotificationPress = async () => {
+    try {
+      setUnreadCount(0);
+      router.push('/notifications');
+      await markAllNotificationsRead();
+    } catch (err) {
+      console.log('Failed to mark notifications as read:', err);
+    }
+  };
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [hashtagResults, setHashtagResults] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -721,7 +749,7 @@ export default function HomeScreen() {
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   return (
-    <LinearGradient colors={['#FA925D', '#FCD7C1', '#FFFFFF']} locations={[0, 0.4, 0.8]} style={styles.screen}>
+    <LinearGradient colors={['#FA925D', '#FCD7C1', '#FFF7F0', '#FFFFFF']} locations={[0, 0.2, 0.5, 0.8]} style={styles.screen}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -741,7 +769,6 @@ export default function HomeScreen() {
                   onLongPress={() => setShowProfileActions(true)}
                 >
                   <Avatar name={firstName} photo={avatarUri} size={58} />
-                  <View style={styles.headerOnlineDot} />
                 </TouchableOpacity>
 
               <View style={styles.greetingBlock}>
@@ -752,7 +779,7 @@ export default function HomeScreen() {
                   onPress={() => setIsEditingBio(true)}
                 >
                   <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
-                  <Ionicons name="pencil" size={12} color="#4A2B20" style={{ marginLeft: 4 }} />
+                  <Ionicons name="pencil" size={14} color="#111111" style={{ marginLeft: 6 }} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -763,14 +790,17 @@ export default function HomeScreen() {
                 style={styles.headerIconButton}
                 onPress={() => setSearchActive(!searchActive)}
               >
-                <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={26} color="#333" />
+                <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={26} color="#111111" />
               </TouchableOpacity>
               <TouchableOpacity 
                 activeOpacity={0.7} 
                 style={styles.headerIconButton}
-                onPress={() => router.push('/notifications')}
+                onPress={handleNotificationPress}
               >
-                <Ionicons name="notifications-outline" size={26} color="#333" />
+                <View>
+                  <Ionicons name="notifications-outline" size={26} color="#111111" />
+                  {unreadCount > 0 && <View style={styles.notificationDot} />}
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -852,59 +882,93 @@ export default function HomeScreen() {
         ) : null}
 
         <View style={styles.topFeatureRow}>
-          {quickAccess.map((item, idx) => (
-            <TouchableOpacity 
-              key={idx} 
-              style={styles.featureCard} 
-              activeOpacity={0.9}
-              onPress={() => {
-                if (item.label === 'Panchang') router.push('/panchang');
-                else if (item.label === 'My Krishna') router.push('/astrology');
-                else if (item.label === 'SOS') {
-                   setRequestType('Help');
-                   setShowRequestModal(true);
-                }
-              }}
-            >
-              {item.urgent && (
-                <View style={styles.urgentCircle}>
-                  <Text style={styles.urgentExclamation}>!</Text>
-                </View>
-              )}
-              {item.calendarIcon && (
-                <View style={styles.calendarIconContainer}>
-                  <Ionicons name="calendar-outline" size={24} color="#000" />
-                  <Text style={styles.calendarIconText}>{new Date().getDate()}</Text>
-                </View>
-              )}
-              <View style={[styles.featureTextContainer, !item.icon && { width: '100%' }]}>
-                <Text style={[styles.featureTitle, !item.icon && { textAlign: 'center' }]}>{item.label}</Text>
-                <Text style={[styles.featureSubtitle, !item.icon && { textAlign: 'center' }]}>{item.subtitle}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            {quickAccess.map((item, idx) => {
+              let cardBg = '#FFFFFF';
+              let iconBg = '#FF8A3D';
+              if (item.label === 'Panchang') {
+                cardBg = '#FFF9F0';
+                iconBg = '#FF9800';
+              } else if (item.label === 'My Krishna') {
+                cardBg = '#FFF8EB';
+                iconBg = '#FF6B00';
+              } else if (item.label === 'SOS') {
+                cardBg = '#FFF5F5';
+                iconBg = '#FF3B30';
+              }
+
+              return (
+                <TouchableOpacity 
+                  key={idx} 
+                  style={[styles.featureCard, { backgroundColor: cardBg }]} 
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    if (item.label === 'Panchang') router.push('/panchang');
+                    else if (item.label === 'My Krishna') router.push('/my-krishna');
+                    else if (item.label === 'SOS') {
+                       // disabled for now
+                    }
+                  }}
+                >
+                  <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                    {item.label === 'My Krishna' && (
+                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 16}}>ॐ</Text>
+                    )}
+                    {item.label === 'SOS' && (
+                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 12}}>SOS</Text>
+                    )}
+                    {item.label === 'Panchang' && (
+                      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="calendar" size={18} color="#FFF" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.featureTextContainer}>
+                    <Text style={styles.featureTitle}>{item.label}</Text>
+                    <Text style={styles.featureSubtitle}>{item.subtitle.replace('\n', ' ')}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#5A5A5A" />
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
         <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
-          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 20 }}>
-            <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.7)']} style={styles.featuredLiveOverlay}>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveBadgeText}>LIVE</Text>
+          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 30 }}>
+            <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                  <Text style={[styles.featuredLiveTitle, { color: '#FFF' }]}>Mahamrityunjaya Mantra</Text>
+                </View>
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                </View>
               </View>
               
               <View style={styles.featuredLiveContent}>
-                <Text style={styles.featuredLiveTitle}>Mahamrityunjaya Mantra</Text>
                 <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
-                <Text style={styles.featuredTime}>Live until 5:00 PM</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                  <Ionicons name="time-outline" size={14} color="#FFF" />
+                  <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 4 }]}>Live until 5:00 PM</Text>
+                </View>
 
-                <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
-                  <View style={styles.playIconContainer}>
-                    <Ionicons name="play" size={16} color="#FF6B00" />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }}>
+                  <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
+                    <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
+                    <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                  </TouchableOpacity>
+                  
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <View style={[styles.liveDot, { backgroundColor: '#FF6A00' }]} />
+                    <View style={styles.liveDot} />
+                    <View style={styles.liveDot} />
+                    <View style={styles.liveDot} />
                   </View>
-                  <Text style={styles.joinJaapText}>Join Live Jaap</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFF" />
-                </TouchableOpacity>
+                </View>
               </View>
             </LinearGradient>
           </ImageBackground>
@@ -916,29 +980,21 @@ export default function HomeScreen() {
           contentContainerStyle={styles.actionCardsScroll}
           style={{ marginBottom: 20 }}
         >
-          {communityRequests.length === 0 && !requestsLoading && (
-            <View style={[styles.actionCard, { backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)' }]}>
-              <Ionicons name="notifications-off-outline" size={32} color="#666" />
-              <Text style={{ color: '#666', fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 8 }}>No current request</Text>
-            </View>
-          )}
 
           {/* Urgent Blood Request */}
-          <LinearGradient colors={bloodRequest ? ['#D90429', '#8D0801'] : ['#4A4A4A', '#2D2D2D']} style={styles.actionCard}>
-            <View style={styles.cardHeaderBadge}>
-               <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-               <Text style={styles.cardBadgeText}>{bloodRequest ? 'Your Community' : 'Health Status'}</Text>
+          <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
+            <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+               <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
             </View>
-            <View style={styles.cardMainContent}>
+            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
               <View style={styles.cardIconRow}>
-                <Ionicons name="water" size={20} color={bloodRequest ? "#FF4D4D" : "#888"} />
-                <Text style={[styles.cardTypeLabel, !bloodRequest && { color: '#888' }]}>{bloodRequest ? 'Urgent' : 'Normal'}</Text>
+                <Ionicons name="water" size={32} color="#E53935" />
               </View>
-              <Text style={styles.cardTitleLarge}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
-              <Text style={styles.cardSubtitleSmall}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'All clear right now'}</Text>
+              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
+              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
             </View>
             <TouchableOpacity 
-              style={styles.cardButtonWhite}
+              style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
               onPress={() => {
                 if (bloodRequest) {
                    router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
@@ -948,62 +1004,71 @@ export default function HomeScreen() {
                 }
               }}
             >
-              <Text style={styles.cardButtonWhiteText}>{bloodRequest ? 'View' : 'Donate'}</Text>
+              <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>{bloodRequest ? 'View' : 'View'}</Text>
+              <Ionicons name="chevron-forward" size={12} color="#E53935" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </LinearGradient>
 
           {/* Register Business */}
-          <LinearGradient colors={['#FFEBB7', '#FFD6A5']} style={styles.actionCard}>
-            <View style={styles.cardHeaderBadgeYellow}>
-               <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-               <Text style={styles.cardBadgeTextDark}>Free</Text>
+          <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
+            <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+               <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
             </View>
-            <View style={styles.cardMainContent}>
-              <Text style={styles.cardTitleLargeDark}>Register Your Business</Text>
-              <Text style={styles.cardSubtitleSmallDark}>Become a verified sanatan vendor</Text>
+            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+              <View style={styles.cardIconRow}>
+                <Ionicons name="storefront-outline" size={32} color="#FF9500" />
+              </View>
+              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Register Your Business</Text>
+              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Become a verified sanatan vendor</Text>
             </View>
             <TouchableOpacity 
-              style={styles.cardButtonOutline}
+              style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
               onPress={() => router.push('/vendor/business-details')}
             >
-              <Text style={styles.cardButtonTextDark}>Register Now</Text>
+              <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register Now</Text>
+              <Ionicons name="chevron-forward" size={12} color="#FF9500" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </LinearGradient>
 
           {/* Verified Vendor */}
-          <LinearGradient colors={['#D8F3DC', '#B7E4C7']} style={styles.actionCard}>
-            <View style={styles.cardHeaderBadgeTeal}>
-               <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-               <Text style={styles.cardBadgeTextDark}>Verified sanatan vendor</Text>
+          <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
+            <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+               <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
             </View>
-            <View style={styles.cardMainContent}>
-              <Text style={styles.cardTitleLargeDark}>Sai Flower Decorator</Text>
-              <Text style={styles.cardSubtitleSmallDark}>Specialised in festival flower decor</Text>
-              <Text style={styles.cardLocationText}>Andheri, W</Text>
+            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+              <View style={styles.cardIconRow}>
+                <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+              </View>
+              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Sai Flower Decorator</Text>
+              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor Andheri, Mumbai</Text>
             </View>
-            <TouchableOpacity style={styles.cardButtonOutlineTeal}>
-              <Text style={styles.cardButtonTextDark}>View</Text>
+            <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
+              <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
+              <Ionicons name="chevron-forward" size={12} color="#00C781" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </LinearGradient>
 
           {/* Live Aarti */}
-          <LinearGradient colors={['#F3E5F5', '#E0C3FC']} style={styles.actionCard}>
-            <View style={styles.cardHeaderBadgePurple}>
-               <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 14, height: 14, marginRight: 4 }} resizeMode="contain" />
-               <Text style={styles.cardBadgeTextDark}>Temple</Text>
+          <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
+            <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+               <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
             </View>
-            <View style={styles.cardMainContent}>
-              <Text style={styles.cardTitleLargeDark}>Live Kedarnath Aarti</Text>
-              <View style={styles.cardNotifyRow}>
+            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+              <View style={styles.cardIconRow}>
+                <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+              </View>
+              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Live Kedarnath Aarti</Text>
+              <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
                 <Ionicons name="notifications-outline" size={14} color="#333" />
-                <Text style={styles.cardNotifyText}>Notify me for the upcoming events</Text>
+                <Text style={[styles.cardNotifyText, { textAlign: 'center' }]}>Notify me for the upcoming events</Text>
               </View>
             </View>
             <TouchableOpacity 
-              style={styles.cardButtonOutlinePurple}
+              style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
               onPress={() => router.push('/live-mantra')}
             >
-              <Text style={styles.cardButtonTextDark}>Watch now</Text>
+              <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch now</Text>
+              <Ionicons name="chevron-forward" size={12} color="#8C36DB" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </LinearGradient>
         </ScrollView>
@@ -1328,6 +1393,17 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  notificationDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6A00',
+    borderWidth: 1,
+    borderColor: '#FFF',
+  },
   screen: {
     flex: 1,
   },
@@ -1383,14 +1459,14 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   greeting: {
-    color: '#FFF',
-    fontSize: 22,
+    color: '#111111',
+    fontSize: 24,
     fontWeight: '800',
   },
   subGreeting: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#5A5A5A',
+    fontSize: 14,
+    fontWeight: '600',
     opacity: 0.9,
   },
   bioRow: {
@@ -1400,25 +1476,32 @@ const styles = StyleSheet.create({
   },
   topFeatureRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     marginBottom: 20,
-    gap: 8,
+    gap: 12,
   },
   featureCard: {
-    flex: 1,
-    backgroundColor: '#FFF8E1',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 70,
+    justifyContent: 'space-between',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
-    shadowRadius: 5,
+    shadowRadius: 10,
     elevation: 2,
-    gap: 8,
+    marginRight: 10,
+    paddingRight: 16,
+    minWidth: 160,
+  },
+  featureIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
   urgentCircle: {
     width: 28,
@@ -1447,25 +1530,24 @@ const styles = StyleSheet.create({
   },
   featureTextContainer: {
     flexShrink: 1,
-    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
   featureTitle: {
     fontSize: 14,
-    fontWeight: '900',
-    color: '#000',
-    textAlign: 'center',
+    fontWeight: '700',
+    color: '#111111',
   },
   featureSubtitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#666',
-    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#5A5A5A',
     marginTop: 2,
     lineHeight: 14,
   },
   featuredLiveCard: {
     height: 280,
-    borderRadius: 20,
+    borderRadius: 30,
     overflow: 'hidden',
     marginBottom: 20,
     elevation: 5,
@@ -1525,16 +1607,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#FFF',
-    marginTop: 4,
-    marginBottom: 15,
   },
   joinJaapButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FF6B00',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 25,
+    backgroundColor: '#FF6A00',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 999,
     alignSelf: 'flex-start',
     gap: 8,
   },
@@ -1553,14 +1633,16 @@ const styles = StyleSheet.create({
   },
   actionCardsScroll: {
     paddingRight: 20,
+    paddingTop: 15,
     gap: 15,
   },
   actionCard: {
-    width: 140,
-    height: 240,
-    borderRadius: 20,
+    width: 150,
+    height: 260,
+    borderRadius: 24,
     padding: 15,
     justifyContent: 'space-between',
+    position: 'relative',
   },
   cardHeaderBadge: {
     flexDirection: 'row',
@@ -1635,23 +1717,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   cardTitleLargeDark: {
-    color: '#333',
+    color: '#111111',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
     lineHeight: 20,
-  },
-  cardSubtitleSmall: {
-    color: '#FFF',
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 4,
-    opacity: 0.9,
+    marginBottom: 6,
   },
   cardSubtitleSmallDark: {
-    color: '#444',
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 6,
+    color: '#5A5A5A',
+    fontSize: 12,
+    fontWeight: '600',
   },
   cardLocationText: {
     color: '#666',
@@ -1662,13 +1737,13 @@ const styles = StyleSheet.create({
   cardNotifyRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 6,
     gap: 4,
-    marginTop: 10,
   },
   cardNotifyText: {
-    color: '#333',
-    fontSize: 9,
-    fontWeight: '700',
+    color: '#5A5A5A',
+    fontSize: 11,
+    fontWeight: '600',
     flex: 1,
   },
   cardButtonWhite: {
@@ -1684,30 +1759,32 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   cardButtonOutline: {
-    backgroundColor: '#FFE082',
-    height: 32,
-    borderRadius: 16,
+    height: 36,
+    borderRadius: 18,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   cardButtonOutlineTeal: {
-    backgroundColor: '#A5D6A7',
-    height: 32,
-    borderRadius: 16,
+    height: 36,
+    borderRadius: 18,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   cardButtonOutlinePurple: {
-    backgroundColor: '#E1BEE7',
-    height: 32,
-    borderRadius: 16,
+    height: 36,
+    borderRadius: 18,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   cardButtonTextDark: {
-    color: '#333',
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 13,
+    fontWeight: '800',
   },
   dots: {
     flexDirection: 'row',
@@ -1730,14 +1807,13 @@ const styles = StyleSheet.create({
   },
   stickyFeedTabsShell: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    marginTop: 10,
+    marginTop: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowRadius: 3,
     elevation: 10,
+    zIndex: 100,
   },
   stickyFeedTabs: {
     backgroundColor: '#FFF',

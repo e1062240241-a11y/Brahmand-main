@@ -1,0 +1,313 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ImageBackground,
+  ActivityIndicator,
+  Animated,
+} from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { aiChat } from '../src/services/api';
+import { COLORS, FONTS, SPACING } from '../src/constants/theme';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  reasoning_details?: string;
+  timestamp: Date;
+}
+
+export default function MyKrishnaChat() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'assistant',
+      content: 'Radhe Radhe! I am your spiritual guide, My Krishna.Plzz reply in Hinglish On the battlefield of life, I am here to guide you with the wisdom of the Bhagavad Gita. What troubles your mind today, Partha?',
+      timestamp: new Date(),
+    },
+  ]);
+  const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handleSend = async () => {
+    if (!inputText.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: inputText.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputText('');
+    setIsLoading(true);
+
+    try {
+      // Prepare messages for API
+      // User requested NO context, so we only send the current user message
+      const apiMessages = [
+        { role: userMessage.role, content: userMessage.content }
+      ];
+
+      const response = await aiChat(apiMessages);
+      
+      if (response.data?.choices?.[0]?.message) {
+        const assistantMsg = response.data.choices[0].message;
+        const newAssistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: assistantMsg.content || '',
+          reasoning_details: assistantMsg.reasoning_details,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, newAssistantMessage]);
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I apologize, but I'm having trouble connecting right now. Please try again in a moment. Radhe Radhe!",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isUser = item.role === 'user';
+    return (
+      <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
+        {!isUser && (
+          <View style={styles.assistantAvatar}>
+             <Text style={{fontSize: 20}}>🪈</Text>
+          </View>
+        )}
+        <View style={[
+          styles.messageBubble,
+          isUser ? styles.userBubble : styles.assistantBubble
+        ]}>
+          <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
+            {item.content}
+          </Text>
+          <Text style={styles.timestamp}>
+            {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <ImageBackground 
+      source={require('../assets/images/image temple/MahakalTemple.webp')} // Using existing image for background with heavy blur/overlay
+      style={styles.container}
+    >
+      <LinearGradient 
+        colors={['rgba(26, 35, 126, 0.9)', 'rgba(0, 0, 0, 0.85)']} 
+        style={StyleSheet.absoluteFill} 
+      />
+      
+      <Stack.Screen 
+        options={{
+          headerShown: true,
+          headerTitle: 'My Krishna',
+          headerTransparent: true,
+          headerTintColor: '#FFF',
+          headerTitleStyle: { fontFamily: FONTS.bold, fontSize: 20 },
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="chevron-back" size={28} color="#FFF" />
+            </TouchableOpacity>
+          ),
+        }} 
+      />
+
+      <SafeAreaView style={styles.chatContainer} edges={['bottom']}>
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 60 }]}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        />
+
+        {isLoading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color="#FFD700" size="small" />
+            <Text style={styles.loadingText}>Krishna is thinking...</Text>
+          </View>
+        )}
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Ask Krishna anything..."
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+              />
+              <TouchableOpacity 
+                style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]} 
+                onPress={handleSend}
+                disabled={!inputText.trim() || isLoading}
+              >
+                <Ionicons name="send" size={20} color={inputText.trim() ? "#FFF" : "rgba(255,255,255,0.3)"} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ImageBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  chatContainer: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    maxWidth: '85%',
+  },
+  userRow: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row-reverse',
+  },
+  assistantRow: {
+    alignSelf: 'flex-start',
+  },
+  assistantAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  messageBubble: {
+    padding: 12,
+    borderRadius: 20,
+  },
+  userBubble: {
+    backgroundColor: '#FF6A00',
+    borderTopRightRadius: 4,
+  },
+  assistantBubble: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderTopLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  messageText: {
+    fontSize: 15,
+    fontFamily: FONTS.medium,
+    lineHeight: 20,
+  },
+  userText: {
+    color: '#FFF',
+  },
+  assistantText: {
+    color: '#FFF',
+  },
+  timestamp: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  loadingText: {
+    color: '#FFD700',
+    fontSize: 12,
+    marginLeft: 8,
+    fontFamily: FONTS.medium,
+  },
+  inputWrapper: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  input: {
+    flex: 1,
+    color: '#FFF',
+    fontFamily: FONTS.medium,
+    fontSize: 15,
+    maxHeight: 100,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  sendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FF6A00',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  sendBtnDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  backBtn: {
+    marginLeft: 10,
+  },
+});
