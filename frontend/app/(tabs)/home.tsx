@@ -30,6 +30,7 @@ import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
+import { MentionInput } from '../../src/components/MentionInput';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
 import {
   addPostComment,
@@ -1366,13 +1367,13 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.commentInputWrap}>
-              <TextInput
-                style={styles.commentInput}
+              <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
                 placeholder="Add a comment..."
                 placeholderTextColor="#8A7B89"
                 multiline
+                inputStyle={styles.commentInput}
               />
               <TouchableOpacity
                 style={[styles.commentSubmitBtn, !commentText.trim() && styles.commentSubmitDisabled]}

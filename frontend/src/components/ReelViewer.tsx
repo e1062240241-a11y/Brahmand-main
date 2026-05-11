@@ -792,13 +792,13 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   return (
     <Modal
       visible={isVisible}
-      transparent={false}
+      transparent={true}
       animationType="slide"
       onRequestClose={() => { callbacksRef.current.onClose?.(); }}
     >
-      <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <View style={{ flex: 1 }}>
         <Animated.View
-          style={{ flex: 1, transform: [{ translateX: swipeTranslateX }] }}
+          style={{ flex: 1, backgroundColor: '#000', transform: [{ translateX: swipeTranslateX }] }}
           {...swipePan.panHandlers}
         >
         <FlatList
@@ -813,8 +813,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           onViewableItemsChanged={handleViewableItemsChanged}
           viewabilityConfig={viewabilityConfigRef.current}
           getItemLayout={getItemLayout}
-          contentContainerStyle={{ backgroundColor: '#000' }}
-          style={{ backgroundColor: '#000' }}
           initialNumToRender={2}
           maxToRenderPerBatch={3}
           windowSize={3}
