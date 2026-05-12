@@ -11,10 +11,17 @@ config.resolver.extraNodeModules = {
   'zustand/middleware': path.resolve(__dirname, 'node_modules/zustand/middleware.js'),
   'zustand/vanilla': path.resolve(__dirname, 'node_modules/zustand/vanilla.js'),
   'zustand/react': path.resolve(__dirname, 'node_modules/zustand/react.js'),
+  util: require.resolve('util/'),
+  crypto: require.resolve('crypto-browserify'),
+  stream: require.resolve('stream-browserify'),
+  vm: require.resolve('vm-browserify'),
 };
 
-// Prioritize CJS over ESM to avoid import.meta issues
-config.resolver.resolverMainFields = ['main', 'browser', 'module'];
+// Prioritize fields to avoid ESM issues. 
+// We prioritize 'react-native' for mobile and 'browser'/'main' for web to avoid 'import.meta' errors from ESM 'module' fields.
+config.resolver.resolverMainFields = ['react-native', 'browser', 'main', 'module'];
+
+// Disable package exports as they often lead to ESM/CommonJS mixups in Metro/Web
 config.resolver.unstable_enablePackageExports = false;
 
 // Use a stable on-disk store (shared across web/android)

@@ -76,7 +76,7 @@ export default function PersonalityVerificationScreen() {
           {/* Hero Illustration */}
           <View style={styles.illustrationContainer}>
             <Image 
-              source={require('../../assets/images/verification_hero.png')} 
+              source={require('../../assets/images/verification_hero.jpg')} 
               style={styles.illustration}
               resizeMode="contain"
             />

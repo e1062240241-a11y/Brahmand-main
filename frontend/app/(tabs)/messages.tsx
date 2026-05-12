@@ -164,6 +164,9 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [generalExpanded, setGeneralExpanded] = useState(false);
   const [offeringsExpanded, setOfferingsExpanded] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
+  const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -691,7 +694,7 @@ export default function MessagesScreen() {
           }
         >
           <ImageBackground
-            source={require('../../assets/images/community_hero_bg.png')}
+            source={require('../../assets/images/community_hero_bg.jpg')}
             style={styles.newHeroCard}
             imageStyle={{ borderRadius: 24 }}
           >
@@ -702,14 +705,14 @@ export default function MessagesScreen() {
 
                 <TouchableOpacity
                   style={styles.newHeroButton}
-                  onPress={() => setShowRequestTypeMenu(!showRequestTypeMenu)}
+                  onPress={() => router.push('/community-request')}
                 >
                   <Ionicons name="add" size={20} color="#FFF" />
                   <Text style={styles.newHeroButtonText}>Create Request</Text>
                 </TouchableOpacity>
               </View>
               <Image
-                source={require('../../assets/images/community_hero_heart.png')}
+                source={require('../../assets/images/community_hero_heart.jpg')}
                 style={styles.heroHeartImg}
                 resizeMode="contain"
               />
@@ -1129,11 +1132,8 @@ const styles = StyleSheet.create({
   groupsContainer: {
     marginBottom: SPACING.md,
   },
-<<<<<<< HEAD
   groupCardWrapper: {
-=======
-  groupCard: {
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   topTabsInner: {
     flexDirection: 'row',
@@ -1466,382 +1466,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: SPACING.md,
     borderRadius: 20,
->>>>>>> ef2bbd274d8085775a73be040797f1e8a768c082
     marginBottom: 12,
   },
   newCommunityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-<<<<<<< HEAD
-    backgroundColor: '#FFF',
-    padding: 16,
-=======
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  circleAvatar: {
-    marginRight: SPACING.md,
-  },
-  circleInfo: {
-    flex: 1,
-  },
-  circleName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  circleLastMessage: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  circleRight: {
-    alignItems: 'flex-end',
-  },
-  circleTime: {
-    fontSize: 11,
-    color: COLORS.textLight,
-  },
-  circleMemberCount: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  // Request Card
-  requestCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  urgencyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  urgencyDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
-  },
-  urgencyText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  requestDate: {
-    fontSize: 11,
-    color: COLORS.textLight,
-  },
-  requestTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  requestDescription: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    lineHeight: 18,
-    marginBottom: SPACING.sm,
-  },
-  requestFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-  },
-  contactButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.primary}10`,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  contactButtonText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginLeft: 4,
-    fontSize: 12,
-  },
-  fulfillButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.success}15`,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  fulfillButtonText: {
-    color: COLORS.success,
-    fontWeight: '600',
-    marginLeft: 4,
-    fontSize: 12,
-  },
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xl * 2,
-  },
-  generalContainer: {
-    padding: SPACING.md,
-  },
-  generalBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  generalBarText: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  generalOptions: {
-    marginTop: SPACING.sm,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    overflow: 'hidden',
-  },
-  generalOptionItem: {
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-    backgroundColor: COLORS.surface,
-  },
-  generalOptionText: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: `${COLORS.primary}10`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  culturalCommunityActionText: {
-    color: COLORS.surface,
-    fontWeight: '600',
-  },
-  cgModalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    padding: SPACING.md,
-  },
-  cgModalContent: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    maxHeight: '80%',
-  },
-  cgModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  cgModalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  cgLockedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.sm,
-    backgroundColor: `${COLORS.error}10`,
-    borderRadius: BORDER_RADIUS.sm,
-    marginBottom: SPACING.sm,
-  },
-  cgLockedText: {
-    color: COLORS.error,
-    marginLeft: SPACING.xs,
-  },
-  cgCurrentBanner: {
-    padding: SPACING.sm,
-    backgroundColor: `${COLORS.primary}10`,
-    borderRadius: BORDER_RADIUS.sm,
-    marginBottom: SPACING.sm,
-  },
-  cgCurrentText: {
-    color: COLORS.text,
-    fontSize: 14,
-  },
-  cgSearchInput: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    padding: SPACING.sm,
-    marginBottom: SPACING.sm,
-    color: COLORS.text,
-  },
-  cgCreateButton: {
-    padding: SPACING.sm,
-    backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.sm,
-    alignItems: 'center',
-  },
-  cgCreateButtonText: {
-    color: COLORS.background,
-    fontWeight: '700',
-  },
-  cgList: {
-    maxHeight: 300,
-  },
-  cgItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  cgItemSelected: {
-    backgroundColor: `${COLORS.primary}10`,
-  },
-  cgItemText: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  cgItemTextSelected: {
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginTop: SPACING.md,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
-    textAlign: 'center',
-    paddingHorizontal: SPACING.xl,
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-    marginTop: SPACING.lg,
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  // Private Chat User List Styles
-  privateChatContainer: {
-    flex: 1,
-  },
-  privateTopBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-    backgroundColor: COLORS.surface,
-  },
-  privateTopTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  newChatPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.primary}15`,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: 16,
-    gap: 4,
-  },
-  newChatPillText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  userSearchContainer: {
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  userSearchInput: {
-    flex: 1,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.sm,
-    color: COLORS.text,
-    fontSize: 14,
-  },
-  loadingUsers: {
-    marginTop: SPACING.xl,
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.xl,
-    backgroundColor: COLORS.surface,
-    marginBottom: SPACING.sm,
   },
   userAvatar: {
     width: 48,
     height: 48,
->>>>>>> ef2bbd274d8085775a73be040797f1e8a768c082
     borderRadius: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    overflow: 'hidden',
+    marginRight: SPACING.md,
   },
   activeGroupCard: {
     borderWidth: 1.5,

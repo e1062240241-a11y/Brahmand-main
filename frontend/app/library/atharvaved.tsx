@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import BookLayout, { BookVerse, PageItem, SpreadItem, useBookLayout } from '../../src/components/BookLayout';
 import { loadAtharvavedChapter } from '../../src/services/atharvaved-service';
 
-const atharvavedCover = require('../../assets/images/Atharva veda .jpg');
+const atharvavedCover = require('../../assets/images/atharva_veda.jpg');
 
 type VerseItem = BookVerse;
 type PendingOpenChapter = { chapter: number; edge: 'start' | 'end' };

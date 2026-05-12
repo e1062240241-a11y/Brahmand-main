@@ -71,7 +71,7 @@ export default function PersonalityApplicationScreen() {
               <View style={styles.optionHeader}>
                 <View style={styles.iconCircle}>
                   <Image 
-                    source={require('../../assets/images/state_personality_icon.png')} 
+                    source={require('../../assets/images/state_personality_icon.jpg')} 
                     style={styles.levelIcon}
                     resizeMode="contain"
                   />
