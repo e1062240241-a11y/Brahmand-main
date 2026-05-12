@@ -15,7 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { initializeFirebase, firebaseConfig, isAnonymousPhone } from '../../src/services/firebase/config';
-import { sendOTP, verifyOTP, loginAnonymous } from '../../src/services/api';
+import { loginAnonymous } from '../../src/services/api';
 
 import { COLORS, SPACING } from '../../src/constants/theme';
 
@@ -88,13 +88,21 @@ export default function PhoneScreen() {
         return;
       }
       
-      await sendOTP(fullPhone);
-      console.log('[Phone Auth] OTP sent via backend API');
+      // Use Firebase Phone Auth instead of backend API
+      const { sendFirebaseOTP } = require('../../src/services/firebase/authService');
+      await sendFirebaseOTP(fullPhone);
+      
+      console.log('[Phone Auth] OTP sent via Firebase');
       router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
       return;
     } catch (err: any) {
       console.log('[Phone Auth] OTP send error:', err);
-      let message = err?.response?.data?.detail || err?.message || 'Failed to send OTP. Please try again.';
+      let message = err?.message || 'Failed to send OTP. Please try again.';
+      if (err?.code === 'auth/captcha-check-failed') {
+        message = 'CAPTCHA verification failed. Please try again.';
+      } else if (err?.code === 'auth/invalid-phone-number') {
+        message = 'Invalid phone number format.';
+      }
       setError(message);
     } finally {
       setLoading(false);

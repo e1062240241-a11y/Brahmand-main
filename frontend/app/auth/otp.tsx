@@ -13,8 +13,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { verifyOTP, sendOTP as apiSendOTP } from '../../src/services/api';
-import { getCurrentUserToken } from '../../src/services/firebase/authService';
+import { verifyFirebaseToken } from '../../src/services/api';
+import { getCurrentUserToken, verifyFirebaseOTP, sendFirebaseOTP } from '../../src/services/firebase/authService';
 import { isAnonymousPhone } from '../../src/services/firebase/config';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING } from '../../src/constants/theme';
@@ -88,8 +88,13 @@ export default function OTPScreen() {
     setError('');
 
     try {
-      // Bypass firebase - exclusively use backend verifyOTP
-      const response = await verifyOTP(phone as string || '', code);
+      // 1. Verify OTP via Firebase client SDK
+      console.log('[OTP] Verifying with Firebase...');
+      const idToken = await verifyFirebaseOTP(code);
+      
+      // 2. Exchange Firebase ID Token for backend session JWT
+      console.log('[OTP] Firebase verified, exchanging for backend token...');
+      const response = await verifyFirebaseToken(idToken);
       const data = response.data;
 
       const requiresProfile =
@@ -113,7 +118,11 @@ export default function OTPScreen() {
       console.log('Verification Error:', err);
       let message = 'Invalid OTP. Please try again.';
 
-      if (err?.response?.data?.detail) {
+      if (err?.code === 'auth/invalid-verification-code') {
+        message = 'Invalid code. Please check and try again.';
+      } else if (err?.code === 'auth/code-expired') {
+        message = 'OTP has expired. Please request a new one.';
+      } else if (err?.response?.data?.detail) {
         message = err.response.data.detail;
       } else if (err?.message) {
         message = err.message;
@@ -135,7 +144,8 @@ export default function OTPScreen() {
         return;
       }
       
-      await apiSendOTP(phone as string);
+      // Resend via Firebase
+      await sendFirebaseOTP(phone as string);
       
       setResendTimer(30);
       setError('OTP resent. Enter the new code.');
