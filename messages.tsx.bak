@@ -164,9 +164,6 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [generalExpanded, setGeneralExpanded] = useState(false);
   const [offeringsExpanded, setOfferingsExpanded] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
-  const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -694,7 +691,7 @@ export default function MessagesScreen() {
           }
         >
           <ImageBackground
-            source={require('../../assets/images/community_hero_bg.jpg')}
+            source={require('../../assets/images/community_hero_bg.png')}
             style={styles.newHeroCard}
             imageStyle={{ borderRadius: 24 }}
           >
@@ -705,14 +702,14 @@ export default function MessagesScreen() {
 
                 <TouchableOpacity
                   style={styles.newHeroButton}
-                  onPress={() => router.push('/community-request')}
+                  onPress={() => setShowRequestTypeMenu(!showRequestTypeMenu)}
                 >
                   <Ionicons name="add" size={20} color="#FFF" />
                   <Text style={styles.newHeroButtonText}>Create Request</Text>
                 </TouchableOpacity>
               </View>
               <Image
-                source={require('../../assets/images/community_hero_heart.jpg')}
+                source={require('../../assets/images/community_hero_heart.png')}
                 style={styles.heroHeartImg}
                 resizeMode="contain"
               />
@@ -1132,18 +1129,719 @@ const styles = StyleSheet.create({
   groupsContainer: {
     marginBottom: SPACING.md,
   },
+<<<<<<< HEAD
   groupCardWrapper: {
+=======
+  groupCard: {
+    marginBottom: SPACING.sm,
+  },
+  topTabsInner: {
+    flexDirection: 'row',
+  },
+  topTab: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: COLORS.surface,
+  },
+  topTabSpacing: {
+    marginRight: SPACING.sm,
+  },
+  topTabActive: {
+    backgroundColor: COLORS.primary,
+  },
+  topTabText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  topTabTextActive: {
+    color: COLORS.background,
+    fontWeight: '600',
+  },
+  headerAction: {
+    padding: SPACING.sm,
+  },
+  headerActionContainer: {
+    position: 'relative',
+  },
+  requestTypeMenu: {
+    position: 'absolute',
+    top: 44,
+    right: 0,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.divider,
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.sm,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    zIndex: 10,
+  },
+  requestTypeMenuItem: {
+    padding: SPACING.sm,
+    minWidth: 120,
+  },
+  requestTypeMenuText: {
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingBottom: SPACING.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  lockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.error}15`,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  lockedText: {
+    color: COLORS.error,
+    marginLeft: SPACING.xs,
+    fontSize: 13,
+  },
+  currentCGBanner: {
+    backgroundColor: `${COLORS.primary}10`,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  currentCGText: {
+    color: COLORS.text,
+    fontSize: 13,
+  },
+  lokSangamGroupBanner: {
+    marginHorizontal: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: `${COLORS.primary}10`,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}20`,
+    marginBottom: SPACING.sm,
+  },
+  lokSangamGroupText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginBottom: SPACING.xs,
+  },
+  lokSangamGroupSubtext: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  searchInput: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    backgroundColor: COLORS.background,
+    color: COLORS.text,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  lokSangmaList: {
+    marginHorizontal: SPACING.md,
+  },
+  lokSangmaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  lokSangmaItemSelected: {
+    backgroundColor: `${COLORS.primary}15`,
+  },
+  lokSangmaItemText: {
+    color: COLORS.text,
+    fontSize: 15,
+  },
+  lokSangmaItemTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  offeringsList: {
+    marginTop: SPACING.xs,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+  },
+  offeringsItem: {
+    padding: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
+  },
+  offeringsText: {
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  // Sub Tabs (Chat | Help | Blood...)
+  subTabsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    paddingVertical: SPACING.sm,
+  },
+  subTabsSpacer: {
+    flex: 1,
+  },
+  subTabsScroll: {
+    flex: 1,
+  },
+  createRequestPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 20,
+    marginRight: SPACING.md,
+    gap: 4,
+  },
+  createRequestPillText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  requestTypeMenu: {
+    marginTop: SPACING.md,
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  requestTypeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  requestTypeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  requestTypeSubtitle: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    maxWidth: '75%',
+  },
+  requestMenuCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.background}DD`,
+  },
+  requestGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  requestCard: {
+    width: '48%',
+    minHeight: 110,
+    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: `${COLORS.primary}08`,
+    padding: SPACING.md,
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  requestCardFull: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  requestCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  requestCardText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  subTab: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginLeft: SPACING.sm,
+    borderRadius: 20,
+  },
+  subTabActive: {
+    backgroundColor: `${COLORS.primary}15`,
+  },
+  subTabText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  subTabTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  pillDropdown: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  pillDropdownItem: {
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 16,
+  },
+  pillDropdownText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  addButton: {
+    padding: SPACING.sm,
+    marginRight: SPACING.sm,
+  },
+  listContent: {
+    padding: SPACING.md,
+    paddingBottom: 100,
+  },
+  // Community Card
+  communityLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    marginLeft: 4,
+  },
+  communityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: 20,
+>>>>>>> ef2bbd274d8085775a73be040797f1e8a768c082
     marginBottom: 12,
   },
   newCommunityCard: {
     flexDirection: 'row',
+    alignItems: 'center',
+<<<<<<< HEAD
+    backgroundColor: '#FFF',
     padding: 16,
-    borderRadius: 24,
+=======
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  circleAvatar: {
+    marginRight: SPACING.md,
+  },
+  circleInfo: {
+    flex: 1,
+  },
+  circleName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  circleLastMessage: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  circleRight: {
+    alignItems: 'flex-end',
+  },
+  circleTime: {
+    fontSize: 11,
+    color: COLORS.textLight,
+  },
+  circleMemberCount: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  // Request Card
+  requestCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  urgencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  urgencyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  urgencyText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  requestDate: {
+    fontSize: 11,
+    color: COLORS.textLight,
+  },
+  requestTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  requestDescription: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    marginBottom: SPACING.sm,
+  },
+  requestFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+  },
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}10`,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  contactButtonText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginLeft: 4,
+    fontSize: 12,
+  },
+  fulfillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.success}15`,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  fulfillButtonText: {
+    color: COLORS.success,
+    fontWeight: '600',
+    marginLeft: 4,
+    fontSize: 12,
+  },
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xl * 2,
+  },
+  generalContainer: {
+    padding: SPACING.md,
+  },
+  generalBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  generalBarText: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  generalOptions: {
+    marginTop: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+  },
+  generalOptionItem: {
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
+  },
+  generalOptionText: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${COLORS.primary}10`,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  culturalCommunityActionText: {
+    color: COLORS.surface,
+    fontWeight: '600',
+  },
+  cgModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    padding: SPACING.md,
+  },
+  cgModalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    maxHeight: '80%',
+  },
+  cgModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  cgModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  cgLockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.sm,
+    backgroundColor: `${COLORS.error}10`,
+    borderRadius: BORDER_RADIUS.sm,
+    marginBottom: SPACING.sm,
+  },
+  cgLockedText: {
+    color: COLORS.error,
+    marginLeft: SPACING.xs,
+  },
+  cgCurrentBanner: {
+    padding: SPACING.sm,
+    backgroundColor: `${COLORS.primary}10`,
+    borderRadius: BORDER_RADIUS.sm,
+    marginBottom: SPACING.sm,
+  },
+  cgCurrentText: {
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  cgSearchInput: {
     backgroundColor: COLORS.background,
-    overflow: 'hidden',
-    marginRight: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    padding: SPACING.sm,
+    marginBottom: SPACING.sm,
+    color: COLORS.text,
+  },
+  cgCreateButton: {
+    padding: SPACING.sm,
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.sm,
+    alignItems: 'center',
+  },
+  cgCreateButtonText: {
+    color: COLORS.background,
+    fontWeight: '700',
+  },
+  cgList: {
+    maxHeight: 300,
+  },
+  cgItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  cgItemSelected: {
+    backgroundColor: `${COLORS.primary}10`,
+  },
+  cgItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  cgItemTextSelected: {
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginTop: SPACING.md,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: 20,
+    marginTop: SPACING.lg,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginLeft: SPACING.xs,
+  },
+  // Private Chat User List Styles
+  privateChatContainer: {
+    flex: 1,
+  },
+  privateTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
+  },
+  privateTopTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  newChatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 16,
+    gap: 4,
+  },
+  newChatPillText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  userSearchContainer: {
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+  },
+  userSearchInput: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  loadingUsers: {
+    marginTop: SPACING.xl,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: COLORS.surface,
+    marginBottom: SPACING.sm,
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+>>>>>>> ef2bbd274d8085775a73be040797f1e8a768c082
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
   },
   activeGroupCard: {
     borderWidth: 1.5,

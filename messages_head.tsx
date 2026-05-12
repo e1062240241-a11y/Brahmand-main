@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
+import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { Avatar } from '../../src/components/Avatar';
 
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
@@ -164,9 +165,10 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [generalExpanded, setGeneralExpanded] = useState(false);
   const [offeringsExpanded, setOfferingsExpanded] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
   const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
+  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -694,7 +696,7 @@ export default function MessagesScreen() {
           }
         >
           <ImageBackground
-            source={require('../../assets/images/community_hero_bg.jpg')}
+            source={require('../../assets/images/community_hero_bg.png')}
             style={styles.newHeroCard}
             imageStyle={{ borderRadius: 24 }}
           >
@@ -705,20 +707,39 @@ export default function MessagesScreen() {
 
                 <TouchableOpacity
                   style={styles.newHeroButton}
-                  onPress={() => router.push('/community-request')}
+                  onPress={() => setShowRequestTypeMenu(!showRequestTypeMenu)}
                 >
                   <Ionicons name="add" size={20} color="#FFF" />
                   <Text style={styles.newHeroButtonText}>Create Request</Text>
                 </TouchableOpacity>
               </View>
               <Image
-                source={require('../../assets/images/community_hero_heart.jpg')}
+                source={require('../../assets/images/community_hero_heart.png')}
                 style={styles.heroHeartImg}
                 resizeMode="contain"
               />
             </View>
           </ImageBackground>
 
+          {showRequestTypeMenu && activeTopTab === 'Community' && (
+            <View style={styles.pillDropdown}>
+              {(['Blood', 'Medical'] as const)
+                .map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={styles.pillDropdownItem}
+                    onPress={() => {
+                      setShowRequestTypeMenu(false);
+                      setRequestType(type as any);
+                      setSelectedOfferingType(null);
+                      setShowRequestModal(true);
+                    }}
+                  >
+                    <Text style={styles.pillDropdownText}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          )}
 
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionHeading}>Active Requests</Text>
@@ -1137,13 +1158,17 @@ const styles = StyleSheet.create({
   },
   newCommunityCard: {
     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
     padding: 16,
     borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    overflow: 'hidden',
-    marginRight: SPACING.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
   },
   activeGroupCard: {
     borderWidth: 1.5,

@@ -378,7 +378,7 @@ export default function HomeScreen() {
         }
       }
     }
-    setActivePostKey(closestKey);
+    setActivePostKey(prev => closestKey ?? prev);
 
     // Infinite Scroll Logic
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed) {
@@ -909,7 +909,7 @@ export default function HomeScreen() {
                     if (item.label === 'Panchang') router.push('/panchang');
                     else if (item.label === 'My Krishna') router.push('/my-krishna');
                     else if (item.label === 'SOS') {
-                       // disabled for now
+                       router.push('/sos');
                     }
                   }}
                 >

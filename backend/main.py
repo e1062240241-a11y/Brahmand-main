@@ -7461,20 +7461,45 @@ async def _get_nearest_users(
 ):
     users = await db.query_documents('users')
     candidates = []
+    
+    # Calculate 10 minutes ago
+    from datetime import datetime, timedelta
+    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
+    
     for user in users:
         if user.get('id') == user_id:
             continue
-        location = user.get('current_location') or user.get('home_location') or user.get('location') or {}
-        user_lat = location.get('latitude')
-        user_lng = location.get('longitude')
-        if user_lat is None or user_lng is None:
+            
+        # Only use current_location to ensure it's their real-time location
+        current_loc = user.get('current_location')
+        if not current_loc:
             continue
+            
+        user_lat = current_loc.get('latitude')
+        user_lng = current_loc.get('longitude')
+        updated_at_str = current_loc.get('updated_at')
+        
+        if user_lat is None or user_lng is None or not updated_at_str:
+            continue
+            
+        try:
+            # Parse ISO format datetime (handles Z or no Z)
+            if updated_at_str.endswith('Z'):
+                updated_at_str = updated_at_str[:-1]
+            updated_at = datetime.fromisoformat(updated_at_str)
+            
+            # Check if location was active within 10 minutes
+            if updated_at < ten_minutes_ago:
+                continue
+        except (ValueError, TypeError):
+            continue
+            
         distance = await _haversine_distance(latitude, longitude, user_lat, user_lng)
         if distance <= max_distance_km:
             candidates.append((distance, user.get('id')))
 
     candidates.sort(key=lambda item: item[0])
-    logger.info(f"_get_nearby_users: found {len(candidates)} users within {max_distance_km}km")
+    logger.info(f"_get_nearby_users: found {len(candidates)} users within {max_distance_km}km active in last 10 mins")
     return [uid for _, uid in candidates[:max_users]]
 
 
@@ -7618,7 +7643,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     sos_id = await db.create_document('sos_alerts', sos_data)
     sos_data['id'] = sos_id
 
-    # First try to get nearest users by location
+    # Only try to get nearest users by location (max 1km, within 10 min)
     nearest_user_ids = await _get_nearest_users(
         db,
         user_id,
@@ -7628,12 +7653,8 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         max_distance_km=1.0
     )
     
-    # Fallback to community members if no nearby users found
     all_target_user_ids = nearest_user_ids
-    if len(nearest_user_ids) < 10:
-        community_users = await _get_community_users(db, user_id, 100)
-        all_target_user_ids = list(set(nearest_user_ids + community_users))
-        logger.info(f"SOS: using {len(all_target_user_ids)} total targets (nearby: {len(nearest_user_ids)}, community: {len(community_users)})")
+    logger.info(f"SOS: using {len(all_target_user_ids)} total targets (nearby within 1km and 10min)")
     
     # Send simple SOS notification to all target users
     if all_target_user_ids:
