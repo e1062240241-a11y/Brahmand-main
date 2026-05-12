@@ -67,8 +67,8 @@ export default function PersonalitySuccessScreen() {
           <View style={styles.illustrationContainer}>
             <Image 
               source={isApproved 
-                ? require('../../assets/images/verification_success_shield_clean.png')
-                : require('../../assets/images/verification_thank_you_illustration.png')
+                ? require('../../assets/images/verification_success_shield_clean.jpg')
+                : require('../../assets/images/verification_thank_you_illustration.jpg')
               } 
               style={styles.illustration}
               resizeMode="contain"

@@ -85,11 +85,15 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~19.2.10",
+    "crypto-browserify": "^3.12.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~55.0.0",
     "fb-dotslash": "^0.5.8",
     "patch-package": "^6.5.1",
-    "typescript": "~5.9.3"
+    "stream-browserify": "^3.0.0",
+    "typescript": "~5.9.3",
+    "util": "^0.12.5",
+    "vm-browserify": "^1.1.2"
   },
   "private": true,
   "overrides": {

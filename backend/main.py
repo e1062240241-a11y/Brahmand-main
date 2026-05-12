@@ -1024,16 +1024,7 @@ async def reset_database(confirm: str = ""):
         raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 
-@api_router.post("/auth/send-otp")
-async def send_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
-    """Send OTP via Twilio SMS provider."""
-    try:
-        return await FirebaseAuthService.send_otp(request.phone)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.exception(f"/auth/send-otp failed for phone={request.phone}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to send OTP")
+
 
 
 @api_router.post("/auth/verify-firebase-token")
@@ -1091,16 +1082,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
         raise HTTPException(status_code=500, detail="Token verification failed")
 
 
-@api_router.post("/auth/verify-otp")
-async def verify_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
-    """Verify OTP previously sent by Twilio."""
-    try:
-        return await FirebaseAuthService.verify_otp(request.phone, request.otp)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.exception(f"/auth/verify-otp failed for phone={request.phone}: {e}")
-        raise HTTPException(status_code=500, detail="OTP verification failed")
+
 
 
 @api_router.post("/auth/login-anonymous")

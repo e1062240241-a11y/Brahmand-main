@@ -7,7 +7,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
-from twilio.rest import Client as TwilioClient
+
 
 from config.firebase_config import get_firestore, get_firebase_auth, firebase_manager
 from config.firestore_db import FirestoreDB
@@ -80,186 +80,21 @@ class FirebaseAuthService:
     
     @staticmethod
     async def send_otp(phone: str) -> Dict[str, Any]:
-        """Send OTP to phone number. Uses Twilio Verify when `USE_MOCK_OTP` is not truthy.
-
-        Required env vars for real OTP:
-            TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID
         """
-        normalized_phone = FirebaseAuthService.normalize_phone(phone)
+        Send OTP to phone number.
+        DEPRECATED: Use client-side Firebase SDK to send OTP.
+        """
+        logger.warning(f"send_otp called for phone: {phone}. This endpoint is deprecated. Use client-side Firebase Auth.")
+        raise ValueError("Backend OTP sending is disabled. Please use the Firebase SDK on the client.")
 
-        if FirebaseAuthService.is_anonymous_phone(normalized_phone):
-            raise ValueError(
-                "Anonymous login numbers bypass OTP. Use /auth/login-anonymous instead."
-            )
-
-        logger.info(f"send_otp called for phone: {phone} normalized={normalized_phone}")
-
-        db = await FirebaseAuthService.get_db()
-        logger.info(f"Firestore client obtained for send_otp")
-
-        # Ensure env is loaded (fallback if not already loaded)
-        from dotenv import load_dotenv
-        from pathlib import Path
-        load_dotenv(Path(__file__).parent.parent / '.env', override=True)
-
-        # Determine whether to use mock OTP (development) or send real SMS
-        use_mock_value = os.getenv("USE_MOCK_OTP", "true").lower()
-        use_mock = use_mock_value in ("1", "true", "yes", "on")
-        
-        logger.info(f"OTP Service: use_mock={use_mock} (value from env: '{use_mock_value}')")
-
-        if use_mock:
-            otp = FirebaseAuthService.MOCK_OTP
-            otp_data = {
-                "phone": normalized_phone,
-                "otp": otp,
-                "expires_at": datetime.utcnow() + timedelta(minutes=FirebaseAuthService.OTP_EXPIRY_MINUTES),
-                "attempts": 0
-            }
-
-            try:
-                existing = await db.find_one('otps', [('phone', '==', normalized_phone)])
-                if existing:
-                    await db.update_document('otps', existing['id'], otp_data)
-                    logger.info(f"Updated existing OTP doc for {normalized_phone} (id={existing['id']})")
-                else:
-                    created = await db.create_document('otps', otp_data)
-                    logger.info(f"Created new OTP doc for {normalized_phone} (id={created.get('id') if isinstance(created, dict) else 'unknown'})")
-            except Exception as e:
-                logger.exception(f"Firestore error while storing OTP for {phone}")
-                raise
-
-            logger.info(f"OTP stored for {normalized_phone} (mock): {otp}")
-        else:
-            # Sanitize credentials (strip whitespace/quotes)
-            sid = (os.getenv('TWILIO_ACCOUNT_SID') or '').strip().strip('"').strip("'")
-            token = (os.getenv('TWILIO_AUTH_TOKEN') or '').strip().strip('"').strip("'")
-            service_sid = (os.getenv('TWILIO_VERIFY_SERVICE_SID') or '').strip().strip('"').strip("'")
-
-            if not (sid and token and service_sid):
-                logger.error(f'Twilio Verify credentials missing. SID: {"set" if sid else "MISSING"}, Token: {"set" if token else "MISSING"}, Service SID: {"set" if service_sid else "MISSING"}')
-                raise ValueError('Twilio SMS provider not configured. Please check your .env file.')
-
-            try:
-                client = TwilioClient(sid, token)
-                # Using v2 explicitly to ensure compatibility
-                await asyncio.to_thread(
-                    client.verify.v2.services(service_sid).verifications.create,
-                    to=normalized_phone,
-                    channel='sms'
-                )
-                logger.info(f"OTP verification request sent to {normalized_phone} via Twilio Verify service {service_sid}")
-            except Exception as e:
-                error_msg = str(e)
-                logger.error(f"Failed to send SMS via Twilio Verify: {error_msg}")
-                # Provide a more descriptive error back to the user
-                raise ValueError(f"Twilio Error: {error_msg}")
-
-            otp_data = {
-                "phone": normalized_phone,
-                "requested_at": datetime.utcnow().isoformat(),
-                "sent_via": "twilio_verify",
-                "verified": False
-            }
-
-            try:
-                existing = await db.find_one('otps', [('phone', '==', normalized_phone)])
-                if existing:
-                    await db.update_document('otps', existing['id'], otp_data)
-                    logger.info(f"Updated existing OTP request for {normalized_phone} (id={existing['id']})")
-                else:
-                    created = await db.create_document('otps', otp_data)
-                    logger.info(f"Created new OTP request for {normalized_phone} (id={created.get('id') if isinstance(created, dict) else 'unknown'})")
-            except Exception as e:
-                logger.exception(f"Firestore error while storing OTP request for {phone}")
-                raise
-
-        return {"message": "OTP sent successfully", "phone": phone}
-    
     @staticmethod
     async def verify_otp(phone: str, otp: str) -> Dict[str, Any]:
-        """Verify OTP and check if user exists"""
-        normalized_phone = FirebaseAuthService.normalize_phone(phone)
-        db = await FirebaseAuthService.get_db()
-
-        # Ensure env is loaded
-        from dotenv import load_dotenv
-        from pathlib import Path
-        load_dotenv(Path(__file__).parent.parent / '.env', override=True)
-
-        use_mock_value = os.getenv("USE_MOCK_OTP", "true").lower()
-        use_mock = use_mock_value in ("1", "true", "yes", "on")
-        if FirebaseAuthService.is_anonymous_phone(normalized_phone):
-            raise ValueError(
-                "Anonymous login numbers bypass OTP. Use /auth/login-anonymous instead."
-            )
-
-        if use_mock:
-            otp_record = await db.find_one('otps', [('phone', '==', normalized_phone)])
-            if not otp_record:
-                raise ValueError("OTP not found. Please request a new OTP.")
-            if otp_record.get("attempts", 0) >= 5:
-                raise ValueError("Too many attempts. Please request a new OTP.")
-            await db.update_document('otps', otp_record['id'], {
-                'attempts': otp_record.get('attempts', 0) + 1
-            })
-            if otp_record["otp"] != otp:
-                raise ValueError("Invalid OTP")
-            if datetime.utcnow() > otp_record["expires_at"]:
-                raise ValueError("OTP expired")
-            await db.delete_document('otps', otp_record['id'])
-        else:
-            # Sanitize credentials
-            sid = (os.getenv('TWILIO_ACCOUNT_SID') or '').strip().strip('"').strip("'")
-            token = (os.getenv('TWILIO_AUTH_TOKEN') or '').strip().strip('"').strip("'")
-            service_sid = (os.getenv('TWILIO_VERIFY_SERVICE_SID') or '').strip().strip('"').strip("'")
-
-            if not (sid and token and service_sid):
-                logger.error('Twilio Verify credentials missing. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID')
-                raise ValueError('SMS provider not configured. Please check your .env file.')
-
-            try:
-                client = TwilioClient(sid, token)
-                verification_check = await asyncio.to_thread(
-                    client.verify.v2.services(service_sid).verification_checks.create,
-                    to=normalized_phone,
-                    code=otp
-                )
-                if verification_check.status != 'approved':
-                    raise ValueError('Invalid OTP')
-            except ValueError:
-                raise
-            except Exception as e:
-                error_msg = str(e)
-                logger.error(f"Failed to verify OTP via Twilio Verify: {error_msg}")
-                raise ValueError(f"Twilio Verification Error: {error_msg}")
-
-            # Update tracking record if present
-            otp_record = await db.find_one('otps', [('phone', '==', normalized_phone)])
-            if otp_record:
-                await db.update_document('otps', otp_record['id'], {
-                    'verified': True,
-                    'verified_at': datetime.utcnow().isoformat()
-                })
-
-        # Check if user exists
-        user = await db.get_user_by_phone(normalized_phone)
-        if user:
-            # User exists, return token
-            token = create_jwt_token(user['id'], user['sl_id'])
-            return {
-                "message": "Login successful",
-                "token": token,
-                "user": user,
-                "is_new_user": False
-            }
-        
-        # New user
-        return {
-            "message": "OTP verified",
-            "is_new_user": True,
-            "phone": phone
-        }
+        """
+        Verify OTP.
+        DEPRECATED: Use client-side Firebase SDK to verify OTP and call /auth/verify-firebase-token.
+        """
+        logger.warning(f"verify_otp called for phone: {phone}. This endpoint is deprecated. Use client-side Firebase Auth.")
+        raise ValueError("Backend OTP verification is disabled. Please use the Firebase SDK on the client.")
     
     @staticmethod
     async def register_user(

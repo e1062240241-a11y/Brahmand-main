@@ -16,7 +16,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 const geetaCover = require('../../assets/images/Bhagvad-geeta.jpg');
 const ramcharitmanasCover = require('../../assets/images/Ramcharitmanas.jpg');
-const atharvavedCover = require('../../assets/images/Atharva veda .jpg');
+const atharvavedCover = require('../../assets/images/atharva_veda.jpg');
 const mahabharataCover = require('../../assets/images/mahabharata.jpg');
 const rigvedaCover = require('../../assets/images/Rigveda.jpg');
 const ramayanCover = require('../../assets/images/Ramayan-hardcover-front-scaled.jpg');
