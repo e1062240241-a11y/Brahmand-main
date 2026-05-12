@@ -13,6 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
@@ -58,11 +59,12 @@ const formatTime = (raw: any) => {
   return date.toLocaleString();
 };
 
-const parseCaption = (caption: string): { text: string; isHashtag: boolean }[] => {
-  const parts = caption.split(/(#\w+)/g);
+const parseCaption = (caption: string): { text: string; isHashtag: boolean; isMention: boolean }[] => {
+  const parts = caption.split(/(#\w+|@\w+)/g);
   return parts.map((part) => ({
     text: part,
     isHashtag: part.startsWith('#'),
+    isMention: part.startsWith('@'),
   }));
 };
 
@@ -187,6 +189,15 @@ export const PostFeedCard = memo(({
   const collapsedCaption = captionWords.slice(0, 4).join(' ') + (captionWords.length > 4 ? '...' : '');
   const isLongCaption = captionWords.length > 4;
   const captionSegments = captionText ? parseCaption(captionText) : [];
+  const router = useRouter();
+  const handleMentionPress = useCallback(async (username: string) => {
+    try {
+      const { searchUserBySLId } = await import('../services/api');
+      const res = await searchUserBySLId(username);
+      const user = res.data;
+      if (user?.id) router.push(`/profile/${user.id}`);
+    } catch {}
+  }, [router]);
 
   return (
     <View style={styles.card} onLayout={onLayout}>
@@ -327,6 +338,10 @@ export const PostFeedCard = memo(({
               {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                 seg.isHashtag ? (
                   <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
+                    {seg.text}
+                  </Text>
+                ) : seg.isMention ? (
+                  <Text key={idx} style={{ color: '#8C36DB', fontWeight: '800' }} onPress={() => handleMentionPress(seg.text.slice(1))}>
                     {seg.text}
                   </Text>
                 ) : (

@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import { COLORS, SPACING } from '../constants/theme';
-import { uploadUserPost } from '../services/api';
+import { uploadUserPost, getAllUsers } from '../services/api';
 import { MentionInput } from './MentionInput';
 
 let ExpoVideoModule: any = null;
@@ -96,7 +96,6 @@ const M3OutlinedInput = ({ label, value, onChangeText, multiline = false, placeh
     if (!query || /\s/.test(query)) { setShowMentions(false); return; }
     searchTimeout.current = setTimeout(async () => {
       try {
-        const { getAllUsers } = await import('../services/api');
         const res = await getAllUsers(query, 10);
         const users = Array.isArray(res.data) ? res.data : res.data?.items || [];
         setMentionResults(users.slice(0, 10));

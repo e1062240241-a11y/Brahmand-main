@@ -31,6 +31,7 @@ import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { MentionInput } from '../../src/components/MentionInput';
+import { MentionText } from '../../src/components/MentionText';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
 import {
   addPostComment,
@@ -1336,7 +1337,7 @@ export default function HomeScreen() {
                 <Avatar name={selectedCommentPost?.username || 'User'} photo={selectedCommentPost?.user_photo} size={32} />
                 <View style={styles.commentPreviewTextWrap}>
                   <Text style={styles.commentPreviewUser}>{selectedCommentPost?.username}</Text>
-                  <Text style={styles.commentPreviewCaption} numberOfLines={2}>{selectedCommentPost.caption}</Text>
+                  <MentionText style={styles.commentPreviewCaption} numberOfLines={2} text={selectedCommentPost?.caption || ''} />
                 </View>
               </View>
             ) : null}
@@ -1351,7 +1352,7 @@ export default function HomeScreen() {
                       <Avatar name={comment?.username || 'User'} photo={comment?.user_photo} size={32} />
                       <View style={styles.commentBubble}>
                         <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
-                        <Text style={styles.commentItemText}>{comment?.text || ''}</Text>
+                        <MentionText style={styles.commentItemText} text={comment?.text || ''} />
                         <Text style={styles.commentTime}>{formatTimeAgo(comment?.created_at)}</Text>
                       </View>
                     </View>

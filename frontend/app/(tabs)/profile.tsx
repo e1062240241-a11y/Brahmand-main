@@ -45,6 +45,8 @@ import UploadPostModal from '../../src/components/UploadPostModal';
 import { KeyboardAvoidingView, Share } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
+import { MentionInput } from '../../src/components/MentionInput';
+import { MentionText } from '../../src/components/MentionText';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 
@@ -1079,7 +1081,7 @@ export default function ProfileScreen() {
                   <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
                   <View style={styles.commentContent}>
                     <Text style={styles.commentUser}>{item.username || 'User'}</Text>
-                    <Text style={styles.commentText}>{item.text}</Text>
+                    <MentionText style={styles.commentText} text={item.text || ''} />
                   </View>
                 </View>
               )}
@@ -1096,12 +1098,12 @@ export default function ProfileScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
-              <TextInput
-                style={styles.commentInput}
-                placeholder="Add a comment..."
+              <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
+                placeholder="Add a comment..."
                 multiline
+                inputStyle={styles.commentInput}
               />
               <TouchableOpacity
                 onPress={handleSubmitComment}
