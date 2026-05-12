@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../../src/constants/theme';
 import { getPostById, getPostComments, addPostComment, repostPost } from '../../src/services/api';
+import { MentionInput } from '../../src/components/MentionInput';
+import { MentionText } from '../../src/components/MentionText';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 
@@ -244,7 +246,7 @@ const PostScreen = () => {
                   {postComments.map((comment, index) => (
                     <View key={comment.id ?? `comment-${index}`} style={styles.commentItem}>
                       <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
-                      <Text style={styles.commentItemText}>{comment?.text || ''}</Text>
+                      <MentionText style={styles.commentItemText} text={comment?.text || ''} />
                     </View>
                   ))}
                 </ScrollView>
@@ -374,6 +376,7 @@ const styles = StyleSheet.create({
   commentInputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
+    zIndex: 100,
   },
   commentTextInput: {
     flex: 1,

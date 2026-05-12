@@ -1202,11 +1202,13 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     color: COLORS.primary,
     marginBottom: 4,
   },
   messageText: {
     fontSize: 15,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.text,
     lineHeight: 20,
   },
@@ -1215,6 +1217,7 @@ const styles = StyleSheet.create({
   },
   messageTime: {
     fontSize: 10,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.textLight,
     marginTop: 4,
     alignSelf: 'flex-end',
@@ -1229,6 +1232,7 @@ const styles = StyleSheet.create({
   },
   sosMessageText: {
     color: '#B71C1C',
+    fontFamily: 'Inter_600SemiBold',
     fontWeight: '700',
   },
   sosMessageBlink: {
@@ -1242,6 +1246,7 @@ const styles = StyleSheet.create({
   sosContactText: {
     marginTop: SPACING.xs,
     fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
     fontWeight: '700',
     color: COLORS.primary,
   },
@@ -1258,6 +1263,7 @@ const styles = StyleSheet.create({
   sosLinkButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
     fontWeight: '700',
     marginLeft: SPACING.xs,
   },
@@ -1270,6 +1276,7 @@ const styles = StyleSheet.create({
   },
   sosBannerText: {
     color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold',
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -1810,6 +1817,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.divider,
     color: COLORS.text,
     fontSize: 16,
+    fontFamily: 'Inter_400Regular',
   },
   mantraButton: {
     flexDirection: 'row',

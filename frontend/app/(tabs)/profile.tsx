@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
@@ -45,6 +45,8 @@ import UploadPostModal from '../../src/components/UploadPostModal';
 import { KeyboardAvoidingView, Share } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
+import { MentionInput } from '../../src/components/MentionInput';
+import { MentionText } from '../../src/components/MentionText';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 
@@ -74,7 +76,14 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout, updateUser } = useAuthStore();
+  const { section } = useLocalSearchParams<{ section?: string }>();
   const userId = user?.id;
+
+  useEffect(() => {
+    if (section === 'personality_verification') {
+      router.push('/profile/personality-verification');
+    }
+  }, [section]);
 
   const SETTINGS_SECTIONS: { id: string; title: string; items: SettingItem[] }[] = [
     {
@@ -83,6 +92,7 @@ export default function ProfileScreen() {
       items: [
         { id: 'edit', icon: 'person-circle', label: 'Manage Profile', route: '/profile/edit', color: '#F97316' },
         { id: 'kyc', icon: 'shield-checkmark', label: 'KYC Verification', route: '/kyc', color: '#FB923C' },
+        { id: 'personality_verification', icon: 'ribbon', label: 'Personality Verification', route: '/profile/personality-verification', color: '#D4AF37' },
         { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications', color: '#F59E0B' },
         { id: 'privacy', icon: 'lock-closed', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#D97706' },
       ],
@@ -138,6 +148,7 @@ export default function ProfileScreen() {
   const [commentText, setCommentText] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
+
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
   const [selectedCommentPost, setSelectedCommentPost] = useState<any | null>(null);
 
@@ -312,8 +323,19 @@ export default function ProfileScreen() {
       handleLogout();
       return;
     }
+    if (item.id === 'personality_verification') {
+      setShowSettingsModal(false);
+      const status = user?.personality_verification_status;
+      if (status === 'pending' || status === 'approved') {
+        router.push('/profile/personality-verification-success');
+      } else {
+        router.push('/profile/personality-verification');
+      }
+      return;
+    }
     if (item.route) {
-      router.push(item.route as any);
+      setShowSettingsModal(false);
+      router.push(item.route);
     }
   };
 
@@ -378,8 +400,19 @@ export default function ProfileScreen() {
   };
 
   const performLogout = async () => {
-    await logout();
-    router.replace('/');
+    try {
+      await logout();
+      if (Platform.OS === 'web') {
+        // Hard reset for web to clear any cached state
+        window.location.href = '/';
+      } else {
+        router.replace('/');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback redirect
+      router.replace('/');
+    }
   };
 
   const handleLogout = () => {
@@ -1048,7 +1081,7 @@ export default function ProfileScreen() {
                   <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
                   <View style={styles.commentContent}>
                     <Text style={styles.commentUser}>{item.username || 'User'}</Text>
-                    <Text style={styles.commentText}>{item.text}</Text>
+                    <MentionText style={styles.commentText} text={item.text || ''} />
                   </View>
                 </View>
               )}
@@ -1065,12 +1098,12 @@ export default function ProfileScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
-              <TextInput
-                style={styles.commentInput}
-                placeholder="Add a comment..."
+              <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
+                placeholder="Add a comment..."
                 multiline
+                inputStyle={styles.commentInput}
               />
               <TouchableOpacity
                 onPress={handleSubmitComment}
@@ -1096,8 +1129,10 @@ export default function ProfileScreen() {
       <UploadPostModal
         visible={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        onUploadStart={handleUploadStart}
-        onSuccess={handleUploadPostSuccess}
+        onSuccess={() => {
+          setOffset(0);
+          fetchPosts(0, true);
+        }}
       />
     </SafeAreaView>
   );

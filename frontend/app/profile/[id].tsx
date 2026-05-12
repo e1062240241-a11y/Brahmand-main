@@ -23,6 +23,9 @@ import { Avatar } from '../../src/components/Avatar';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
+import { MentionInput } from '../../src/components/MentionInput';
+import { MentionText } from '../../src/components/MentionText';
+
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
 
@@ -480,7 +483,7 @@ const UserProfileScreen = () => {
                   renderItem={({ item }) => (
                     <View style={styles.commentItem}>
                       <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                      <Text style={styles.commentItemText}>{item?.text || ''}</Text>
+                        <MentionText style={styles.commentItemText} text={item?.text || ''} />
                     </View>
                   )}
                   showsVerticalScrollIndicator={false}
@@ -488,12 +491,12 @@ const UserProfileScreen = () => {
               )}
             </View>
             <View style={styles.commentInputRow}>
-              <TextInput
+              <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
                 placeholder="Add a comment..."
                 placeholderTextColor={COLORS.textSecondary}
-                style={styles.commentTextInput}
+                inputStyle={styles.commentTextInput}
                 multiline
               />
               <TouchableOpacity onPress={handleSubmitComment} style={styles.commentSubmitBtn} disabled={commentSubmitting}>
@@ -835,6 +838,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 10,
+    zIndex: 100,
   },
   commentTextInput: {
     flex: 1,

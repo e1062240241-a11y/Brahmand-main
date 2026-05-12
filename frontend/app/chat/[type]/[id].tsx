@@ -2007,11 +2007,13 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     color: COLORS.primary,
     marginBottom: 6,
   },
   messageText: {
     fontSize: 15,
+    fontFamily: 'Inter_400Regular',
     color: '#09121A',
     lineHeight: 22,
   },
@@ -2020,6 +2022,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 11,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.textSecondary,
     marginTop: 8,
     alignSelf: 'flex-end',
@@ -2066,6 +2069,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.text,
     paddingTop: 8,
     paddingBottom: 8,
@@ -2403,6 +2407,7 @@ const styles = StyleSheet.create({
   groupHeaderTitle: {
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: 'Inter_600SemiBold',
     color: COLORS.text,
   },
   groupHeaderHint: {
