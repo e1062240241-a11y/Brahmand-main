@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Modal,
-  SafeAreaView,
-  Dimensions,
-  Platform,
+import { Image } from 'expo-image';
+import { 
+  Pressable, 
+  StyleSheet, 
+  Text, 
+  TouchableOpacity, 
+  View, 
+  Modal, 
+  SafeAreaView, 
+  Dimensions, 
+  Platform, 
   ScrollView,
+  useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -21,7 +23,7 @@ import { ReelViewer } from './ReelViewer';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 
 let ExpoVideoModule: any = null;
 try {
@@ -31,7 +33,7 @@ try {
 }
 
 const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
-  if (!ExpoVideoModule?.useVideoPlayer) return null;
+  if (!ExpoVideoModule?.useVideoPlayer || !source) return null;
   return ExpoVideoModule.useVideoPlayer(source, setup);
 };
 
@@ -84,30 +86,33 @@ export const PostFeedCard = memo(({
   theme = 'dark',
   openCommentsOnCaptionPress = false,
 }: PostFeedCardProps) => {
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mediaLoading, setMediaLoading] = useState(true);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [dynamicRatio, setDynamicRatio] = useState(4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
 
-  const mediaUrl = String(
+  const rawMediaUrl = 
     post?.media_url ||
     post?.mediaUrl ||
     post?.image_url ||
     post?.imageUrl ||
     post?.image ||
     post?.thumbnail_url ||
-    post?.thumbnailUrl ||
-    ''
-  );
+    post?.thumbnailUrl;
 
-  const mediaType = String(
+  const mediaUrl = rawMediaUrl ? String(rawMediaUrl) : '';
+
+  const rawMediaType = 
     post?.media_type ||
     post?.mediaType ||
-    post?.type ||
-    ''
-  ).toLowerCase();
+    post?.type;
+
+  const mediaType = rawMediaType ? String(rawMediaType).toLowerCase() : '';
 
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
@@ -123,8 +128,10 @@ export const PostFeedCard = memo(({
 
   const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {
-    p.loop = true;
-    p.muted = isMuted;
+    if (p) {
+      p.loop = true;
+      p.muted = isMuted;
+    }
   });
 
   useEffect(() => {
@@ -140,7 +147,9 @@ export const PostFeedCard = memo(({
     if (Platform.OS === 'web') {
       if (videoRef.current) {
         if (shouldPlay) {
-          videoRef.current.play().catch(() => { });
+          videoRef.current.play().catch((e: any) => { 
+             console.warn('[PostFeedCard] Web Video Play Error:', e);
+          });
         } else {
           videoRef.current.pause();
         }
@@ -240,36 +249,60 @@ export const PostFeedCard = memo(({
       </View>
 
       {/* Media */}
-      <View style={[styles.mediaWrap, { height: feedHeight }]}>
+      <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight }]}>
         {mediaUrl ? (
           isVideo ? (
             <View style={styles.videoContainer}>
               {Platform.OS === 'web' ? (
-                <video
-                  ref={videoRef as any}
-                  src={mediaUrl}
-                  loop
-                  muted
-                  autoPlay
-                  playsInline
-                  onLoadedMetadata={(e) => {
-                    if (!initialRawRatio) {
-                      const target = e.target as HTMLVideoElement;
-                      const ratio = target.videoWidth / target.videoHeight;
-                      if (ratio && !isNaN(ratio)) setDynamicRatio(ratio);
-                    }
-                  }}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
-                />
+                <>
+                  <video
+                    ref={videoRef as any}
+                    src={mediaUrl}
+                    loop
+                    muted
+                    autoPlay
+                    playsInline
+                    crossOrigin="anonymous"
+                    onLoadedData={() => setMediaLoading(false)}
+                    onWaiting={() => setMediaLoading(true)}
+                    onPlaying={() => setMediaLoading(false)}
+                    onLoadedMetadata={(e) => {
+                      if (!initialRawRatio) {
+                        const target = e.target as HTMLVideoElement;
+                        const ratio = target.videoWidth / target.videoHeight;
+                        if (ratio && !isNaN(ratio)) setDynamicRatio(ratio);
+                      }
+                    }}
+                    onError={(e) => {
+                      setMediaLoading(false);
+                      setMediaError('Failed to load video');
+                      console.warn('[PostFeedCard] Web Video Load Error:', e);
+                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    poster={post?.metadata?.thumbnail_url || post?.thumbnail_url || ''}
+                  />
+                  {mediaLoading && (
+                    <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }]}>
+                      <ActivityIndicator color="#FFD26C" />
+                    </View>
+                  )}
+                </>
               ) : ExpoVideoModule?.VideoView && player ? (
                 <ExpoVideoModule.VideoView 
                   player={player} 
                   style={styles.videoBackground} 
                   contentFit="cover" 
                   nativeControls={false}
+                  onLoad={() => setMediaLoading(false)}
+                  onError={(e: any) => {
+                    setMediaLoading(false);
+                    setMediaError('Video Error');
+                  }}
                 />
               ) : (
-                <View style={[styles.videoBackground, { backgroundColor: '#000' }]} />
+                <View style={[styles.videoBackground, { backgroundColor: '#111' }]}>
+                  <Text style={{color: '#666', fontSize: 10}}>Video player unavailable</Text>
+                </View>
               )}
               <Pressable style={styles.videoOverlay} onPress={handleVideoPress} />
               <TouchableOpacity
@@ -288,18 +321,44 @@ export const PostFeedCard = memo(({
             <Image
               source={{ uri: mediaUrl }}
               style={styles.media}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={200}
+              onLoadStart={() => setMediaLoading(true)}
               onLoad={(e) => {
+                setMediaLoading(false);
                 if (!initialRawRatio) {
-                  const source = e.nativeEvent.source;
-                  if (source?.width && source?.height) {
-                    setDynamicRatio(source.width / source.height);
+                  const { width, height } = e.source;
+                  if (width && height) {
+                    setDynamicRatio(width / height);
                   }
                 }
               }}
+              onError={(e) => {
+                setMediaLoading(false);
+                setMediaError('Image Error');
+                console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', mediaUrl);
+              }}
             />
           )
-        ) : null}
+        ) : (
+          <View style={[styles.media, { backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="image-outline" size={40} color="rgba(255,255,255,0.1)" />
+            <Text style={{color: '#444', fontSize: 12, marginTop: 8}}>No media available</Text>
+          </View>
+        )}
+
+        {mediaLoading && mediaUrl && (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator color="#FFD26C" />
+          </View>
+        )}
+
+        {mediaError && (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="alert-circle-outline" size={32} color="#FF4500" />
+            <Text style={{ color: '#FF4500', fontSize: 12, marginTop: 4 }}>{mediaError}</Text>
+          </View>
+        )}
       </View>
 
       {/* Actions */}
@@ -419,7 +478,7 @@ const styles = StyleSheet.create({
   dropdownItem: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
   dropdownText: { color: '#000000', fontSize: 13, fontWeight: '700' },
   dropdownDangerText: { color: COLORS.error },
-  mediaWrap: { width: SCREEN_WIDTH, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  mediaWrap: { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   videoContainer: { width: '100%', height: '100%', position: 'relative' },
   videoBackground: { width: '100%', height: '100%' },
   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },

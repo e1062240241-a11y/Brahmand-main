@@ -634,18 +634,19 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         swipeTranslateX.setValue(g.dx);
       },
       onPanResponderRelease: (_, g) => {
+        const winWidth = Dimensions.get('window').width;
         swipeTranslateX.flattenOffset();
-        if (g.dx > SCREEN_WIDTH * 0.3) {
+        if (g.dx > winWidth * 0.3) {
           Animated.timing(swipeTranslateX, {
-            toValue: SCREEN_WIDTH,
+            toValue: winWidth,
             duration: 200,
             useNativeDriver: true,
           }).start(() => {
             callbacksRef.current.onClose?.();
           });
-        } else if (g.dx < -SCREEN_WIDTH * 0.3) {
+        } else if (g.dx < -winWidth * 0.3) {
           Animated.timing(swipeTranslateX, {
-            toValue: -SCREEN_WIDTH,
+            toValue: -winWidth,
             duration: 200,
             useNativeDriver: true,
           }).start(() => {
@@ -663,14 +664,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       },
     })
   ).current;
-
-  useEffect(() => {
-    const handler = ({ window }: { window: { width: number; height: number } }) => {
-      setScreenSize({ width: window.width, height: window.height });
-    };
-    const subscription = Dimensions.addEventListener?.('change', handler);
-    return () => subscription?.remove?.();
-  }, []);
 
   useEffect(() => {
     const handler = ({ window }: { window: { width: number; height: number } }) => {
