@@ -193,9 +193,12 @@ export const FloatingUtilityButton = () => {
   const sosRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const [myCommunityRequests, setMyCommunityRequests] = useState<any[]>([]);
+  const [resolvingRequestId, setResolvingRequestId] = useState<string | null>(null);
+  const [communityRequestLoading, setCommunityRequestLoading] = useState(false);
   const [wisdom, setWisdom] = useState<any>(null);
   const [panchang, setPanchang] = useState<any>(null);
   const [nextFestival, setNextFestival] = useState<any>(null);
+  const [gitaDropdownOpen, setGitaDropdownOpen] = useState(false);
   
   const wheelAnim = useRef(new Animated.Value(0)).current;
 
@@ -314,7 +317,74 @@ export const FloatingUtilityButton = () => {
     holdConfirmedRef.current = false;
     if (holdTimerRef.current) clearInterval(holdTimerRef.current);
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+  const openSOSLocation = async () => {
+    if (!activeSOS?.latitude || !activeSOS?.longitude) {
+      Alert.alert('Location unavailable', 'Cannot open map without coordinates.');
+      return;
+    }
+    try {
+      await Linking.openURL(`https://maps.google.com/?q=${activeSOS.latitude},${activeSOS.longitude}`);
+    } catch {
+      Alert.alert('Error', 'Could not open maps.');
+    }
   };
+
+  const openNearbySOSLocation = async (sos: any) => {
+    const lat = sos.latitude;
+    const lng = sos.longitude;
+    if (lat == null || lng == null) {
+      Alert.alert('Location unavailable', 'Cannot open map without coordinates.');
+      return;
+    }
+    try {
+      await Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`);
+    } catch {
+      Alert.alert('Error', 'Could not open maps.');
+    }
+  };
+
+  const handleResolveCommunityRequest = async (requestId: string) => {
+    setResolvingRequestId(requestId);
+    setCommunityRequestLoading(true);
+    try {
+      await resolveCommunityRequest(requestId);
+      setMyCommunityRequests(prev => 
+        prev.map(req => req.id === requestId ? { ...req, status: 'fulfilled' } : req)
+      );
+      Alert.alert('Success', 'Request marked as fulfilled!');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to resolve request');
+    } finally {
+      setCommunityRequestLoading(false);
+      setResolvingRequestId(null);
+    }
+  };
+
+  const getCommunityRequestIcon = (type: string): string => {
+    switch (type) {
+      case 'blood': return 'water';
+      case 'medical': return 'medkit';
+      case 'petition': return 'document-text';
+      case 'financial': return 'cash';
+      default: return 'hand-left';
+    }
+  };
+
+  const getCommunityRequestColor = (type: string): string => {
+    switch (type) {
+      case 'blood': return '#E53935';
+      case 'medical': return '#1976D2';
+      case 'petition': return '#7C3AED';
+      case 'financial': return '#43A047';
+      default: return COLORS.primary;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      resetSOSFlow();
+    };
+  }, []);
 
   const loadUtilityData = async () => {
     try {
@@ -430,7 +500,9 @@ export const FloatingUtilityButton = () => {
   const handleStartSOSCountdown = () => setSosStage('countdown');
   const handleCancelSOSCountdown = () => resetSOSFlow();
 
-  const handleCreateSOS = async () => {
+  const RADIUS_LEVELS = [5, 15, 50];
+
+  const handleCreateSOS = async (level = 0) => {
     setSOSLoading(true);
     try {
       let latitude: number, longitude: number;
@@ -448,9 +520,10 @@ export const FloatingUtilityButton = () => {
         longitude,
         emergency_type: sosType,
         micro_location: microLocation,
-        radius: 1,
+        radius: RADIUS_LEVELS[level],
       });
       setActiveSOS(response.data);
+      setSosRadiusLevel(level);
       closeUtilityModal();
       Alert.alert('SOS Alert Sent', 'Stay safe!');
     } catch (error: any) {
@@ -460,6 +533,58 @@ export const FloatingUtilityButton = () => {
       setSOSLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!activeSOS) {
+      if (sosExpandTimerRef.current) {
+        clearInterval(sosExpandTimerRef.current);
+        sosExpandTimerRef.current = null;
+      }
+      return;
+    }
+
+    sosExpandTimerRef.current = setInterval(async () => {
+      try {
+        const res = await getMySOSAlert();
+        const current = res.data;
+        if (!current || (current.responders?.length || 0) > 0) {
+          if (sosExpandTimerRef.current) {
+            clearInterval(sosExpandTimerRef.current);
+            sosExpandTimerRef.current = null;
+          }
+          return;
+        }
+
+        const nextLevel = sosRadiusLevel + 1;
+        if (nextLevel >= RADIUS_LEVELS.length) {
+          if (sosExpandTimerRef.current) {
+            clearInterval(sosExpandTimerRef.current);
+            sosExpandTimerRef.current = null;
+          }
+          return;
+        }
+
+        await resolveMyActiveSOS('cancelled');
+        const loc = await LocationService.getCurrentPosition({});
+        const response = await createSOSAlert({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          emergency_type: current.emergency_type || 'other',
+          micro_location: current.micro_location || '',
+          radius: RADIUS_LEVELS[nextLevel],
+        });
+        setActiveSOS(response.data);
+        setSosRadiusLevel(nextLevel);
+      } catch {}
+    }, 600_000);
+
+    return () => {
+      if (sosExpandTimerRef.current) {
+        clearInterval(sosExpandTimerRef.current);
+        sosExpandTimerRef.current = null;
+      }
+    };
+  }, [activeSOS, sosRadiusLevel]);
 
   useEffect(() => {
     if (sosStage !== 'countdown') return;
@@ -481,15 +606,26 @@ export const FloatingUtilityButton = () => {
 
   const handleResolveActiveSOS = async (status: 'resolved' | 'cancelled') => {
     if (!activeSOS) return;
+    if (status === 'cancelled') {
+       try {
+         setSOSLoading(true);
+         await resolveMyActiveSOS('cancelled');
+         setActiveSOS(null);
+       } catch (error: any) {
+         Alert.alert('Error', error.response?.data?.detail || 'Failed to cancel SOS');
+       } finally { setSOSLoading(false); }
+       return;
+    }
+
     Alert.alert(
-      status === 'resolved' ? 'Help Received' : 'Cancel SOS',
+      'Help Received',
       'Confirm this action?',
       [
         { text: 'No', style: 'cancel' },
         { text: 'Yes', onPress: async () => {
           setSOSLoading(true);
           try {
-            await resolveSOSAlert(activeSOS.id, status);
+            await resolveMyActiveSOS('resolved');
             setActiveSOS(null);
           } catch (error) {} finally { setSOSLoading(false); }
         }}
@@ -538,180 +674,267 @@ export const FloatingUtilityButton = () => {
         <View style={styles.modalOverlay}>
           <TouchableOpacity style={styles.overlayBackground} activeOpacity={1} onPress={closeUtilityModal} />
           <KeyboardAvoidingView style={styles.modalContentWrapper} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View style={[styles.modalContent, sosStage === 'countdown' && styles.countdownOverlay]}>
-              <TouchableOpacity style={styles.closeButton} onPress={closeUtilityModal}>
-                <Ionicons name="close-circle" size={36} color="rgba(255,255,255,0.8)" />
-              </TouchableOpacity>
+            <TouchableOpacity style={styles.closeButton} onPress={closeUtilityModal}>
+              <Ionicons name="close-circle" size={42} color="rgba(255,255,255,0.4)" />
+            </TouchableOpacity>
 
-              {sosStage === 'idle' ? (
-                <Animated.View style={[styles.circularMenuContainer, { opacity: wheelAnim, transform: [{ scale: wheelAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }] }]}>
-                  <View style={styles.menuGlow} />
-                  <View style={styles.outerRing} />
-                  
-                  {/* Segment Dividers */}
-                  <View style={[styles.segmentLine, { transform: [{ rotate: '0deg' }] }]} />
-                  <View style={[styles.segmentLine, { transform: [{ rotate: '60deg' }] }]} />
-                  <View style={[styles.segmentLine, { transform: [{ rotate: '120deg' }] }]} />
-                  
-                  {/* Intersection Dots */}
-                  <View style={[styles.intersectionDot, { top: 25, left: 345 }]} />
-                  <View style={[styles.intersectionDot, { bottom: 25, left: 345 }]} />
-                  <View style={[styles.intersectionDot, { top: 165, left: 635 }]} />
-                  <View style={[styles.intersectionDot, { bottom: 165, left: 635 }]} />
-                  <View style={[styles.intersectionDot, { top: 165, left: 55 }]} />
-                  <View style={[styles.intersectionDot, { bottom: 165, left: 55 }]} />
-                  
-                  <View style={styles.wheelWrapper}>
-                    {/* Brahmand Library (Top-Left) */}
-                    <TouchableOpacity 
-                      style={[styles.segmentButton, { top: 65, left: 150 }]}
-                      onPress={() => { setModalVisible(false); router.push('/library'); }}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#E3F2FD' }]}><Ionicons name="book" size={30} color="#1976D2" /></View>
-                        <Text style={styles.segmentTitle}>Brahmand Library</Text>
-                        <Text style={styles.segmentSubtitle}>Knowledge & Wisdom</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Brahmand Passport (Top-Right) */}
-                    <TouchableOpacity 
-                      style={[styles.segmentButton, { top: 65, right: 150 }]}
-                      onPress={() => { setModalVisible(false); router.push('/passport'); }}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#FFF9C4' }]}><Ionicons name="airplane" size={30} color="#FBC02D" /></View>
-                        <Text style={styles.segmentTitle}>Brahmand Passport</Text>
-                        <Text style={styles.segmentSubtitle}>Spiritual Journey</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Kundli (Mid-Right) */}
-                    <TouchableOpacity 
-                      style={[styles.segmentButton, { top: 290, right: 20 }]}
-                      onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#F3E5F5' }]}><Ionicons name="planet" size={30} color="#7B1FA2" /></View>
-                        <Text style={styles.segmentTitle}>Kundli</Text>
-                        <Text style={styles.segmentSubtitle}>Planet View</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Emergency SOS (Bottom-Right) */}
-                    <TouchableOpacity 
-                      style={[styles.segmentButton, { bottom: 65, right: 150 }]} 
-                      onPress={() => activeSOS ? handleResolveActiveSOS('resolved') : startSOSFlow()}
-                      onLongPress={() => !activeSOS && handleStartSOSCountdown()}
-                    >
-                      {/* Organic Live SOS Glow */}
-                      <Animated.View style={{
-                        position: 'absolute',
-                        width: 160,
-                        height: 160,
-                        borderRadius: 80,
-                        backgroundColor: 'rgba(255, 23, 68, 0.2)',
-                        opacity: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.8] }),
-                        transform: [{ scale: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] }) }],
-                        zIndex: -1,
-                      }} />
-                      <View style={[styles.sosCircularButton, activeSOS && styles.sosCircularButtonActive]}>
-                        <View style={styles.sosButtonInner}><Text style={styles.sosButtonTextLarge}>SOS</Text></View>
-                      </View>
-                      <Text style={styles.segmentTitle}>Emergency SOS</Text>
-                      <Text style={styles.segmentSubtitle}>Double Tap for Help</Text>
-                    </TouchableOpacity>
-
-                    {/* Horoscope (Bottom-Left) */}
-                    <TouchableOpacity 
-                      style={[styles.segmentButton, { bottom: 65, left: 150 }]} 
-                      onPress={() => { setModalVisible(false); router.push('/horoscope'); }}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#E1F5FE' }]}><Ionicons name="star" size={30} color="#0288D1" /></View>
-                        <Text style={styles.segmentTitle}>Horoscope</Text>
-                        <Text style={styles.segmentSubtitle}>Daily Predictions</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Panchang (Mid-Left) */}
-                    <TouchableOpacity 
-                      style={[styles.segmentButton, { top: 290, left: 20 }]} 
-                      onPress={openPanchangWithLocation}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#FFEBEE' }]}><Ionicons name="calendar" size={30} color="#C62828" /></View>
-                        <Text style={styles.segmentTitle}>Panchang</Text>
-                        <Text style={styles.segmentSubtitle}>Daily Hindu Calendar</Text>
-                      </View>
-                    </TouchableOpacity>
+            <ScrollView 
+              style={{ width: '100%' }}
+              contentContainerStyle={{ alignItems: 'center', paddingBottom: 100, paddingTop: 60 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Active SOS Warning Bar */}
+              {activeSOS && (
+                <View style={styles.activeSOSBar}>
+                  <Ionicons name="alert-circle" size={24} color="#FFF" />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.activeSOSTitle}>SOS ALERT ACTIVE</Text>
+                    <Text style={styles.activeSOSSubtitle}>Help is being sought in {activeSOS.area}</Text>
                   </View>
-
-                  <View style={styles.centralAvatarContainer}>
-                    {/* Chamatkari Light Rays */}
-                    <View style={[styles.avatarLightRay, { width: 300, height: 300, opacity: 0.3 }]} />
-                    <View style={[styles.avatarLightRay, { width: 260, height: 260, opacity: 0.5 }]} />
-                    <View style={[styles.avatarLightRay, { width: 220, height: 220, opacity: 0.8 }]} />
-                    
-                    <View style={styles.centralAvatarBorder}>
-                      <Image source={require('../../assets/images/krishna_guru.png')} style={styles.centralAvatar} />
-                    </View>
-                    <View style={styles.centralTitleContainer}>
-                      <Text style={styles.centralTitleLogo}>my Krishna</Text>
-                      <View style={styles.centralTitleSubRow}>
-                        <View style={styles.titleLine} /><Text style={styles.centralTitleSub}>AI Guru</Text><View style={styles.titleLine} />
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Arrow Buttons */}
-                  <TouchableOpacity style={[styles.arrowButton, styles.arrowUp]}>
-                    <Ionicons name="chevron-up" size={24} color="#FFFFFF" />
+                  <TouchableOpacity style={styles.sosMapBtn} onPress={openSOSLocation}>
+                    <Ionicons name="navigate" size={18} color="#FF3B30" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.arrowButton, styles.arrowDown]}>
-                    <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
+                  <TouchableOpacity style={styles.sosResolveBtn} onPress={() => handleResolveActiveSOS('resolved')}>
+                    <Text style={styles.sosResolveText}>I'M SAFE</Text>
                   </TouchableOpacity>
-                </Animated.View>
-              ) : (
-                <View style={styles.sosStepsContainer}>
-                  {sosStage === 'hold' && (
-                    <View style={styles.holdContainer}>
-                      <Text style={styles.sosStepTitle}>Hold to Confirm</Text>
-                      <TouchableOpacity style={styles.sosHoldButton} onPressIn={handleSOSHoldStart} onPressOut={handleSOSHoldEnd} onLongPress={handleSOSHoldComplete} delayLongPress={3000}>
-                        <Text style={styles.sosHoldButtonText}>HOLD TO CONFIRM</Text>
-                        <View style={styles.sosHoldProgressBar}><View style={[styles.sosHoldProgressFill, { width: `${Math.round(holdProgress * 100)}%`}]} /></View>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {sosStage === 'type' && (
-                    <View style={styles.typeContainer}>
-                      <Text style={styles.sosStepTitle}>Emergency Type</Text>
-                      <View style={styles.sosTypeGrid}>
-                        {SOS_TYPES.map(t => (
-                          <TouchableOpacity key={t.value} style={[styles.sosTypeButton, sosType === t.value && styles.sosTypeButtonSelected]} onPress={() => setSosType(t.value)}>
-                            <Text style={[styles.sosTypeButtonText, sosType === t.value && styles.sosTypeButtonSelected && { color: '#FFFFFF' }]}>{t.label}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                      <TouchableOpacity style={styles.sosButton} onPress={() => setSosStage('micro')}><Text style={styles.sosButtonMainText}>CONTINUE</Text></TouchableOpacity>
-                    </View>
-                  )}
-                  {sosStage === 'micro' && (
-                    <View style={styles.microContainer}>
-                      <Text style={styles.sosStepTitle}>Add Details</Text>
-                      <TextInput style={styles.sosInput} placeholder="Floor/Landmark" value={microLocation} onChangeText={setMicroLocation} />
-                      <TouchableOpacity style={styles.sosButton} onPress={handleCreateSOS}><Text style={styles.sosButtonMainText}>SEND ALERT</Text></TouchableOpacity>
-                    </View>
-                  )}
-                  {sosStage === 'countdown' && (
-                    <View style={styles.countdownContainer}>
-                      <Text style={styles.sosCountdownText}>{countdownValue}</Text>
-                      <TouchableOpacity style={[styles.sosButton, styles.sosCancelCountdownButton]} onPress={handleCancelSOSCountdown}><Text style={styles.sosButtonMainText}>CANCEL</Text></TouchableOpacity>
-                    </View>
-                  )}
                 </View>
               )}
-            </View>
+
+              {/* Gita Shloka Card */}
+              <View style={styles.gitaCardCompact}>
+                <TouchableOpacity 
+                  style={styles.gitaHeaderRow}
+                  onPress={() => setGitaDropdownOpen(!gitaDropdownOpen)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.gitaIconBgSmall}>
+                    <Ionicons name="book" size={16} color="#FF8F00" />
+                  </View>
+                  <View style={styles.gitaInfo}>
+                    <Text style={styles.gitaTitleCompact}>Gita {wisdom?.gitaShloka ? `Ch ${wisdom.gitaShloka.chapter}:${wisdom.gitaShloka.verse}` : 'Daily'}</Text>
+                    <Text style={styles.gitaSanskritCompact} numberOfLines={1}>
+                      {wisdom?.gitaShloka?.slok || 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन。'}
+                    </Text>
+                  </View>
+                  <Ionicons name={gitaDropdownOpen ? 'chevron-up' : 'chevron-down'} size={20} color="#FF8F00" />
+                </TouchableOpacity>
+                {gitaDropdownOpen && (
+                  <View style={styles.gitaDropdownContent}>
+                    <Text style={styles.gitaTranslation}>
+                      {wisdom?.gitaShloka?.translation || 'Perform your duty without attachment to the results.'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* My Community Requests */}
+              {myCommunityRequests.length > 0 && (
+                <View style={styles.communityRequestsSection}>
+                  <Text style={styles.sectionTitle}>My Requests</Text>
+                  {myCommunityRequests.map((request) => (
+                    <View key={request.id} style={styles.communityRequestCard}>
+                      <View style={styles.communityRequestHeader}>
+                        <View style={[styles.requestTypeBadge, { backgroundColor: `${getCommunityRequestColor(request.request_type)}20` }]}>
+                          <Ionicons name={getCommunityRequestIcon(request.request_type) as any} size={16} color={getCommunityRequestColor(request.request_type)} />
+                        </View>
+                        <Text style={styles.communityRequestType}>{request.request_type?.toUpperCase()}</Text>
+                        <TouchableOpacity style={styles.resolveButton} onPress={() => handleResolveCommunityRequest(request.id)}>
+                          <Ionicons name="checkmark-circle" size={16} color="#43A047" />
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.communityRequestTitle}>{request.title}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Nearby SOS Alerts */}
+              {nearbySOSAlerts.length > 0 && (
+                <View style={styles.communityRequestsSection}>
+                  <Text style={[styles.sectionTitle, { color: '#FF3B30' }]}>Nearby Emergencies ({nearbySOSAlerts.length})</Text>
+                  {nearbySOSAlerts.map((sos) => (
+                    <View key={sos.id} style={[styles.communityRequestCard, { borderColor: '#FFCDD2', borderWidth: 1 }]}>
+                      <View style={styles.communityRequestHeader}>
+                        <View style={[styles.requestTypeBadge, { backgroundColor: '#FFEBEE' }]}>
+                          <Ionicons name="alert" size={16} color="#FF3B30" />
+                        </View>
+                        <Text style={styles.communityRequestType}>{sos.emergency_type?.toUpperCase()}</Text>
+                        <Text style={{ fontSize: 10, color: '#FF3B30', fontWeight: '800' }}>{sos.distance?.toFixed(1)}km</Text>
+                      </View>
+                      <Text style={styles.communityRequestTitle}>{sos.micro_location || 'Emergency near you'}</Text>
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                         <TouchableOpacity style={styles.sosActionBtn} onPress={() => openNearbySOSLocation(sos)}>
+                           <Text style={styles.sosActionBtnText}>MAP</Text>
+                         </TouchableOpacity>
+                         <TouchableOpacity style={[styles.sosActionBtn, { backgroundColor: '#FF3B30' }]} onPress={() => sos.phone_number && Linking.openURL(`tel:${sos.phone_number}`)}>
+                           <Text style={styles.sosActionBtnText}>CALL</Text>
+                         </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={styles.modalContent}>
+                {sosStage === 'idle' ? (
+                  <Animated.View style={[styles.circularMenuContainer, { opacity: wheelAnim, transform: [{ scale: wheelAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }] }]}>
+                    <View style={styles.menuGlow} />
+                    <View style={styles.outerRing} />
+                    
+                    {/* Segment Dividers */}
+                    <View style={[styles.segmentLine, { transform: [{ rotate: '0deg' }] }]} />
+                    <View style={[styles.segmentLine, { transform: [{ rotate: '60deg' }] }]} />
+                    <View style={[styles.segmentLine, { transform: [{ rotate: '120deg' }] }]} />
+                    
+                    <View style={styles.wheelWrapper}>
+                      {/* Brahmand Library (Top-Left) */}
+                      <TouchableOpacity 
+                        style={[styles.segmentButton, { top: 65, left: 150 }]}
+                        onPress={() => { setModalVisible(false); router.push('/library'); }}
+                      >
+                        <View style={styles.segmentCard}>
+                          <View style={[styles.segmentIconBg, { backgroundColor: '#E3F2FD' }]}><Ionicons name="book" size={30} color="#1976D2" /></View>
+                          <Text style={styles.segmentTitle}>Brahmand Library</Text>
+                          <Text style={styles.segmentSubtitle}>Knowledge & Wisdom</Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Brahmand Passport (Top-Right) */}
+                      <TouchableOpacity 
+                        style={[styles.segmentButton, { top: 65, right: 150 }]}
+                        onPress={() => { setModalVisible(false); router.push('/passport'); }}
+                      >
+                        <View style={styles.segmentCard}>
+                          <View style={[styles.segmentIconBg, { backgroundColor: '#FFF9C4' }]}><Ionicons name="airplane" size={30} color="#FBC02D" /></View>
+                          <Text style={styles.segmentTitle}>Brahmand Passport</Text>
+                          <Text style={styles.segmentSubtitle}>Spiritual Journey</Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Kundli (Mid-Right) */}
+                      <TouchableOpacity 
+                        style={[styles.segmentButton, { top: 290, right: 20 }]}
+                        onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}
+                      >
+                        <View style={styles.segmentCard}>
+                          <View style={[styles.segmentIconBg, { backgroundColor: '#F3E5F5' }]}><Ionicons name="planet" size={30} color="#7B1FA2" /></View>
+                          <Text style={styles.segmentTitle}>Kundli</Text>
+                          <Text style={styles.segmentSubtitle}>Planet View</Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Emergency SOS (Bottom-Right) */}
+                      <TouchableOpacity 
+                        style={[styles.segmentButton, { bottom: 65, right: 150 }]} 
+                        onPress={() => activeSOS ? handleResolveActiveSOS('resolved') : startSOSFlow()}
+                        onLongPress={() => !activeSOS && handleStartSOSCountdown()}
+                      >
+                        <Animated.View style={{
+                          position: 'absolute',
+                          width: 160,
+                          height: 160,
+                          borderRadius: 80,
+                          backgroundColor: 'rgba(255, 23, 68, 0.2)',
+                          opacity: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.8] }),
+                          transform: [{ scale: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] }) }],
+                          zIndex: -1,
+                        }} />
+                        <View style={[styles.sosCircularButton, activeSOS && styles.sosCircularButtonActive]}>
+                          <View style={styles.sosButtonInner}><Text style={styles.sosButtonTextLarge}>SOS</Text></View>
+                        </View>
+                        <Text style={styles.segmentTitle}>Emergency SOS</Text>
+                        <Text style={styles.segmentSubtitle}>Double Tap for Help</Text>
+                      </TouchableOpacity>
+
+                      {/* Horoscope (Bottom-Left) */}
+                      <TouchableOpacity 
+                        style={[styles.segmentButton, { bottom: 65, left: 150 }]} 
+                        onPress={() => { setModalVisible(false); router.push('/horoscope'); }}
+                      >
+                        <View style={styles.segmentCard}>
+                          <View style={[styles.segmentIconBg, { backgroundColor: '#E1F5FE' }]}><Ionicons name="star" size={30} color="#0288D1" /></View>
+                          <Text style={styles.segmentTitle}>Horoscope</Text>
+                          <Text style={styles.segmentSubtitle}>Daily Predictions</Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Panchang (Mid-Left) */}
+                      <TouchableOpacity 
+                        style={[styles.segmentButton, { top: 290, left: 20 }]} 
+                        onPress={openPanchangWithLocation}
+                      >
+                        <View style={styles.segmentCard}>
+                          <View style={[styles.segmentIconBg, { backgroundColor: '#FFEBEE' }]}><Ionicons name="calendar" size={30} color="#C62828" /></View>
+                          <Text style={styles.segmentTitle}>Panchang</Text>
+                          <Text style={styles.segmentSubtitle}>Daily Hindu Calendar</Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.centralAvatarContainer}>
+                      <View style={[styles.avatarLightRay, { width: 300, height: 300, opacity: 0.3 }]} />
+                      <View style={[styles.avatarLightRay, { width: 260, height: 260, opacity: 0.5 }]} />
+                      <View style={[styles.avatarLightRay, { width: 220, height: 220, opacity: 0.8 }]} />
+                      
+                      <View style={styles.centralAvatarBorder}>
+                        <Image source={require('../../assets/images/krishna_guru.png')} style={styles.centralAvatar} />
+                      </View>
+                      <View style={styles.centralTitleContainer}>
+                        <Text style={styles.centralTitleLogo}>my Krishna</Text>
+                        <View style={styles.centralTitleSubRow}>
+                          <View style={styles.titleLine} /><Text style={styles.centralTitleSub}>AI Guru</Text><View style={styles.titleLine} />
+                        </View>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity style={[styles.arrowButton, styles.arrowUp]}>
+                      <Ionicons name="chevron-up" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.arrowButton, styles.arrowDown]}>
+                      <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </Animated.View>
+                ) : (
+                  <View style={styles.sosStepsContainer}>
+                    {sosStage === 'hold' && (
+                      <View style={styles.holdContainer}>
+                        <Text style={styles.sosStepTitle}>Hold to Confirm</Text>
+                        <TouchableOpacity style={styles.sosHoldButton} onPressIn={handleSOSHoldStart} onPressOut={handleSOSHoldEnd} onLongPress={handleSOSHoldComplete} delayLongPress={3000}>
+                          <Text style={styles.sosHoldButtonText}>HOLD TO CONFIRM</Text>
+                          <View style={styles.sosHoldProgressBar}><View style={[styles.sosHoldProgressFill, { width: `${Math.round(holdProgress * 100)}%`}]} /></View>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                    {sosStage === 'type' && (
+                      <View style={styles.typeContainer}>
+                        <Text style={styles.sosStepTitle}>Emergency Type</Text>
+                        <View style={styles.sosTypeGrid}>
+                          {SOS_TYPES.map(t => (
+                            <TouchableOpacity key={t.value} style={[styles.sosTypeButton, sosType === t.value && styles.sosTypeButtonSelected]} onPress={() => setSosType(t.value)}>
+                              <Text style={[styles.sosTypeButtonText, sosType === t.value && styles.sosTypeButtonSelected && { color: '#FFFFFF' }]}>{t.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TouchableOpacity style={styles.sosButton} onPress={() => setSosStage('micro')}><Text style={styles.sosButtonMainText}>CONTINUE</Text></TouchableOpacity>
+                      </View>
+                    )}
+                    {sosStage === 'micro' && (
+                      <View style={styles.microContainer}>
+                        <Text style={styles.sosStepTitle}>Add Details</Text>
+                        <TextInput style={styles.sosInput} placeholder="Floor/Landmark" value={microLocation} onChangeText={setMicroLocation} />
+                        <TouchableOpacity style={styles.sosButton} onPress={() => handleCreateSOS(0)}><Text style={styles.sosButtonMainText}>SEND ALERT</Text></TouchableOpacity>
+                      </View>
+                    )}
+                    {sosStage === 'countdown' && (
+                      <View style={styles.countdownContainer}>
+                        <Text style={styles.sosCountdownText}>{countdownValue}</Text>
+                        <TouchableOpacity style={[styles.sosButton, styles.sosCancelCountdownButton]} onPress={handleCancelSOSCountdown}><Text style={styles.sosButtonMainText}>CANCEL</Text></TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            </ScrollView>
           </KeyboardAvoidingView>
         </View>
       </Modal>
@@ -771,16 +994,6 @@ const styles = StyleSheet.create({
     left: 349,
     top: 30,
     transform: [{ rotate: '0deg' }],
-  },
-  intersectionDot: {
-    position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FFB74D',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    zIndex: 5,
   },
   segmentButton: { 
     position: 'absolute', 
@@ -1059,5 +1272,182 @@ const styles = StyleSheet.create({
     marginTop: 20, 
     backgroundColor: '#424242',
     paddingHorizontal: 40,
+  },
+  intersectionDot: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFB74D',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    zIndex: 5,
+  },
+  activeSOSBar: {
+    width: '90%',
+    backgroundColor: '#FF3B30',
+    borderRadius: 20,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  activeSOSTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  activeSOSSubtitle: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  sosMapBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  sosResolveBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  sosResolveText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  gitaCardCompact: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  gitaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  gitaIconBgSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#FFF8E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gitaInfo: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  gitaTitleCompact: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FF8F00',
+  },
+  gitaSanskritCompact: {
+    fontSize: 14,
+    color: '#37474F',
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  gitaDropdownContent: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+  },
+  gitaTranslation: {
+    fontSize: 13,
+    color: '#546E7A',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  communityRequestsSection: {
+    width: '90%',
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#37474F',
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
+  communityRequestCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  communityRequestHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requestTypeBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  communityRequestType: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#78909C',
+    letterSpacing: 0.5,
+  },
+  communityRequestTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#263238',
+  },
+  resolveButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sosActionBtn: {
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  sosActionBtnText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFF',
   }
 });
+
+export default FloatingUtilityButton;
