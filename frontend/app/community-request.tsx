@@ -1,256 +1,193 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
-import { useAuthStore } from '../src/store/authStore';
-import { createCommunityRequest, getCommunities, parseApiError } from '../src/services/api';
-import { RequestFormModal } from '../src/components/RequestFormModal';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const COMMUNITY_REQUEST_CATEGORIES = [
-  { id: 'blood', title: 'Blood Request', icon: 'blood-bag', color: '#E53935', requestType: 'Blood' as const, offeringType: null },
-  { id: 'emergency', title: 'Emergency Help', icon: 'ambulance', color: '#EF6C00', requestType: 'Help' as const, offeringType: null },
-  { id: 'food', title: 'Food / Grocery Help', icon: 'food-apple', color: '#8E24AA', requestType: 'Help' as const, offeringType: 'Food' as const },
-  { id: 'senior', title: 'Senior Citizen Support', icon: 'account-group-outline', color: '#3949AB', requestType: 'Help' as const, offeringType: null },
-  { id: 'animal', title: 'Gau Seva / Animal Care', icon: 'cow', color: '#43A047', requestType: 'Help' as const, offeringType: null },
-  { id: 'temple', title: 'Temple / Volunteer Help', icon: 'temple-hindu', color: '#FB8C00', requestType: 'Help' as const, offeringType: null },
-  { id: 'other', title: 'Other Community Request', icon: 'help-circle-outline', color: '#00796B', requestType: 'Help' as const, offeringType: null },
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2;
+
+const CATEGORIES = [
+  { id: 'blood', name: 'Blood Request', icon: 'tint', type: 'font-awesome', color: '#E53935', bg: '#FFEBEE' },
+  { id: 'emergency', name: 'Emergency Help', icon: 'ambulance', type: 'font-awesome', color: '#FB8C00', bg: '#FFF3E0' },
+  { id: 'food', name: 'Food / Grocery Help', icon: 'basket', type: 'material', color: '#F25C05', bg: '#FFF4EE' },
+  { id: 'senior', name: 'Senior Citizen Support', icon: 'account-group', type: 'material', color: '#5C6BC0', bg: '#E8EAF6' },
+  { id: 'gau-seva', name: 'Gau Seva / Animal Care', icon: 'cow', type: 'material', color: '#43A047', bg: '#E8F5E9' },
+  { id: 'animal', name: 'Animal Care / Rescue', icon: 'paw', type: 'material', color: '#EF6C00', bg: '#FFF3E0' },
+  { id: 'temple', name: 'Temple / Volunteer Help', icon: 'temple-hindu', type: 'material', color: '#FB8C00', bg: '#FFF3E0' },
+  { id: 'other', name: 'Other Community Request', icon: 'help-circle', type: 'material', color: '#00796B', bg: '#E0F2F1' },
 ];
 
-type CommunityCategory = typeof COMMUNITY_REQUEST_CATEGORIES[number];
-
-interface CommunityOption {
-  id: string;
-  name: string;
-  type?: string;
-}
-
-export default function CommunityRequestPage() {
+export default function CommunityRequestHub() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CommunityCategory | null>(null);
-  const [communities, setCommunities] = useState<CommunityOption[]>([]);
-  const [loadingCommunities, setLoadingCommunities] = useState(false);
-  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
-  const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
 
-  useEffect(() => {
-    loadCommunities();
-  }, []);
-
-  const loadCommunities = async () => {
-    setLoadingCommunities(true);
-    try {
-      const response = await getCommunities();
-      setCommunities((response.data || []).map((item: any) => ({ id: item.id || item.community_id || item._id, name: item.name || item.community_name || 'Community', type: item.type })));
-    } catch (error) {
-      console.error('Error loading communities:', error);
-    } finally {
-      setLoadingCommunities(false);
+  const handleSelectCategory = (categoryId: string) => {
+    switch (categoryId) {
+      case 'blood': router.push('/community-request/blood-request'); break;
+      case 'emergency': router.push('/community-request/emergency-help'); break;
+      case 'food': router.push('/community-request/food'); break;
+      case 'senior': router.push('/senior-citizen/request'); break;
+      case 'gau-seva': router.push('/community-request/gau-seva'); break;
+      case 'animal': router.push('/community-request/animal-care'); break;
+      case 'temple': router.push('/community-request/temple-help'); break;
+      case 'other': router.push('/community-request/other'); break;
+      default: break;
     }
   };
 
-  const handleSelectCategory = (category: CommunityCategory) => {
-    if (category.id === 'blood') {
-      router.push(`/community-request/${category.id}`);
-      return;
-    }
-
-    setSelectedCategory(category);
-    setRequestType(category.requestType);
-    setSelectedOfferingType(category.offeringType || null);
-    setShowRequestModal(true);
-  };
-
-  const handleSubmitRequest = async (data: any) => {
-    try {
-      const title = data.title || `${data.request_type} Request`;
-      const description = data.description || 'Request created from community tab';
-
-      await createCommunityRequest({
-        request_type: data.request_type,
-        visibility_level: data.visibility_level || 'area',
-        title: title.length >= 2 ? title : `${data.request_type} Request`,
-        description: description.length >= 10 ? description : description.padEnd(10, '.'),
-        contact_number: data.contact_number,
-        urgency_level: data.urgency_level || 'low',
-        blood_group: data.blood_group,
-        hospital_name: data.hospital_name,
-        location: data.location,
-        amount: data.amount,
-        support_needed: data.support_needed,
-        contact_person_name: data.contact_person_name,
-      });
-
-      setShowRequestModal(false);
-      Alert.alert('Success', 'Your request has been posted!');
-    } catch (error: any) {
-      console.error('Error submitting request:', error);
-      Alert.alert('Error', parseApiError(error));
-      throw error;
-    }
+  const renderIcon = (cat: typeof CATEGORIES[0]) => {
+    if (cat.type === 'font-awesome') return <FontAwesome5 name={cat.icon} size={24} color={cat.color} />;
+    if (cat.type === 'material') return <MaterialCommunityIcons name={cat.icon as any} size={26} color={cat.color} />;
+    return null;
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.heroContainer}>
-        <View style={styles.heroHeader}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.pageTitle}>Help Your Community</Text>
-            <Text style={styles.pageSubtitle}>Reach out and make a real difference in someone&apos;s life.</Text>
-          </View>
-        </View>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.gridRow}>
-          {COMMUNITY_REQUEST_CATEGORIES.slice(0, 2).map((category) => (
-            <TouchableOpacity key={category.id} style={styles.requestCard} onPress={() => handleSelectCategory(category)} activeOpacity={0.8}>
-              <View style={[styles.requestCardIcon, { backgroundColor: `${category.color}20` }]}> 
-                <MaterialCommunityIcons name={category.icon} size={24} color={category.color} />
-              </View>
-              <Text style={styles.requestCardLabel}>{category.title}</Text>
+    <View style={styles.mainContainer}>
+      <LinearGradient colors={['#FDFBFB', '#EBEDEE']} style={styles.gradientBg} />
+      
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          
+          {/* Header Card */}
+          <View style={styles.headerCard}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="chevron-back" size={24} color="#111" />
             </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.gridRow}>
-          {COMMUNITY_REQUEST_CATEGORIES.slice(2, 4).map((category) => (
-            <TouchableOpacity key={category.id} style={styles.requestCard} onPress={() => handleSelectCategory(category)} activeOpacity={0.8}>
-              <View style={[styles.requestCardIcon, { backgroundColor: `${category.color}20` }]}> 
-                <MaterialCommunityIcons name={category.icon} size={24} color={category.color} />
-              </View>
-              <Text style={styles.requestCardLabel}>{category.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.gridRow}>
-          {COMMUNITY_REQUEST_CATEGORIES.slice(4, 6).map((category) => (
-            <TouchableOpacity key={category.id} style={styles.requestCard} onPress={() => handleSelectCategory(category)} activeOpacity={0.8}>
-              <View style={[styles.requestCardIcon, { backgroundColor: `${category.color}20` }]}> 
-                <MaterialCommunityIcons name={category.icon} size={24} color={category.color} />
-              </View>
-              <Text style={styles.requestCardLabel}>{category.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity style={[styles.requestCard, styles.requestCardFull]} onPress={() => handleSelectCategory(COMMUNITY_REQUEST_CATEGORIES[6])} activeOpacity={0.8}>
-          <View style={[styles.requestCardIcon, { backgroundColor: `${COMMUNITY_REQUEST_CATEGORIES[6].color}20` }]}> 
-            <MaterialCommunityIcons name={COMMUNITY_REQUEST_CATEGORIES[6].icon} size={24} color={COMMUNITY_REQUEST_CATEGORIES[6].color} />
+            <View style={styles.headerTextCol}>
+              <Text style={styles.headerTitle}>Help Your Community</Text>
+              <Text style={styles.headerSubtitle}>Reach out and make a real difference in someone's life.</Text>
+            </View>
           </View>
-          <Text style={styles.requestCardLabel}>{COMMUNITY_REQUEST_CATEGORIES[6].title}</Text>
-        </TouchableOpacity>
 
-        {loadingCommunities && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="small" color={COLORS.primary} />
+          {/* Categories Grid */}
+          <View style={styles.gridContainer}>
+            {CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                style={styles.catCard}
+                activeOpacity={0.8}
+                onPress={() => handleSelectCategory(cat.id)}
+              >
+                <View style={[styles.iconWrapper, { backgroundColor: cat.bg }]}>
+                  {renderIcon(cat)}
+                </View>
+                <Text style={styles.catName} numberOfLines={2}>{cat.name}</Text>
+                <View style={styles.arrowCircle}>
+                  <Ionicons name="arrow-forward" size={14} color="#BBB" />
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
-      </ScrollView>
 
-      <RequestFormModal
-        visible={showRequestModal}
-        onClose={() => setShowRequestModal(false)}
-        requestType={requestType}
-        selectedOfferingType={selectedOfferingType}
-        communities={communities}
-        user={user}
-        onSubmit={handleSubmitRequest}
-      />
-    </SafeAreaView>
+          <View style={styles.footerInfo}>
+            <Ionicons name="shield-checkmark-outline" size={16} color="#888" />
+            <Text style={styles.footerText}>Secure and Verified Community Support</Text>
+          </View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#EFF2FF',
-  },
-  heroContainer: {
-    backgroundColor: '#FFFFFF',
-    margin: SPACING.md,
-    marginBottom: 0,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 5,
-  },
-  heroHeader: {
+  mainContainer: { flex: 1 },
+  gradientBg: { ...StyleSheet.absoluteFillObject },
+  safeArea: { flex: 1 },
+  scrollContent: { padding: 16 },
+  
+  headerCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 15,
+    elevation: 4,
   },
   backButton: {
     width: 44,
     height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.sm,
-    backgroundColor: '#F8F8FF',
-    borderRadius: 12,
+    marginRight: 16,
   },
-  headerTextContainer: {
-    flex: 1,
-  },
-  pageTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  pageSubtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-  },
-  scrollContent: {
-    padding: SPACING.md,
-  },
-  gridRow: {
+  headerTextCol: { flex: 1 },
+  headerTitle: { fontSize: 22, fontFamily: FONTS.bold, color: '#111' },
+  headerSubtitle: { fontSize: 13, fontFamily: FONTS.regular, color: '#666', marginTop: 4, lineHeight: 18 },
+  
+  gridContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: SPACING.md,
   },
-  requestCard: {
-    width: '48%',
-    minHeight: 120,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.md,
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: COLORS.divider,
+  catCard: {
+    width: CARD_WIDTH,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+    position: 'relative',
   },
-  requestCardFull: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  requestCardIcon: {
-    width: 46,
-    height: 46,
+  iconWrapper: {
+    width: 52,
+    height: 52,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: `${COLORS.primary}15`,
-    marginBottom: SPACING.sm,
+    marginBottom: 16,
   },
-  requestCardLabel: {
-    color: COLORS.text,
+  catName: {
     fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 22,
+    fontFamily: FONTS.bold,
+    color: '#333',
+    lineHeight: 20,
+    paddingRight: 10,
   },
-  loadingOverlay: {
-    marginTop: SPACING.md,
+  arrowCircle: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    opacity: 0.8,
+  },
+  footerText: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    color: '#888',
+    marginLeft: 6,
   },
 });

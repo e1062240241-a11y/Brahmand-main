@@ -1,0 +1,581 @@
+const fs = require('fs');
+
+const code = `import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, BORDER_RADIUS } from '../../src/constants/theme';
+import { searchHospitals } from '../../src/services/api';
+import { useAuthStore } from '../../src/store/authStore';
+
+const EMERGENCY_TYPES = ['Medical', 'Accident', 'Fire', 'Police', 'Other'];
+const URGENCY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'];
+const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform Only'];
+
+export default function CommunityRequestEmergencyPage() {
+  const router = useRouter();
+  const { user } = useAuthStore();
+  
+  const [loading, setLoading] = useState(false);
+  const [emergencyType, setEmergencyType] = useState('');
+  const [showTypeModal, setShowTypeModal] = useState(false);
+  
+  const [hospitalName, setHospitalName] = useState('');
+  const [hospitalSuggestions, setHospitalSuggestions] = useState<Array<{ name: string; address: string; area: string; city: string }>>([]);
+  const [selectedHospital, setSelectedHospital] = useState<{ name: string; address: string; area: string; city: string } | null>(null);
+  const [isHospitalSearching, setIsHospitalSearching] = useState(false);
+  
+  const [location, setLocation] = useState('Auto-detected');
+  const [urgency, setUrgency] = useState('Urgent');
+  const [description, setDescription] = useState('');
+  
+  const [contactPreference, setContactPreference] = useState('');
+  const [showContactModal, setShowContactModal] = useState(false);
+  
+  const [contactNumber, setContactNumber] = useState(user?.phone || '');
+
+  useEffect(() => {
+    if (user?.home_location) {
+      const { area, city, state } = user.home_location;
+      const parts = [area, city, state].filter(Boolean);
+      if (parts.length > 0) {
+        setLocation(parts.join(', '));
+      }
+    }
+  }, [user]);
+
+  // Debounced Search using Effect
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (hospitalName.length >= 2 && !selectedHospital) {
+        setIsHospitalSearching(true);
+        try {
+          const results = await searchHospitals(hospitalName);
+          setHospitalSuggestions(results || []);
+        } catch (error) {
+          console.error('Search error', error);
+        } finally {
+          setIsHospitalSearching(false);
+        }
+      } else {
+        setHospitalSuggestions([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [hospitalName, selectedHospital]);
+
+  const handleHospitalSelect = (hospital: any) => {
+    setHospitalName(hospital.name);
+    setSelectedHospital(hospital);
+    setHospitalSuggestions([]);
+    
+    const parts = [hospital.area, hospital.city].filter(Boolean);
+    if (parts.length > 0) {
+      setLocation(parts.join(', '));
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!emergencyType) {
+      Alert.alert('Select Type', 'Please select the type of emergency.');
+      return;
+    }
+    if (!hospitalName.trim()) {
+      Alert.alert('Location Required', 'Please enter the hospital or location.');
+      return;
+    }
+    if (!description.trim()) {
+      Alert.alert('Description Required', 'Please describe the situation.');
+      return;
+    }
+    if (!contactPreference) {
+      Alert.alert('Contact Preference', 'Please select a contact method.');
+      return;
+    }
+
+    router.push({
+      pathname: '/community-request/emergency/review',
+      params: {
+        emergencyType,
+        hospitalName,
+        location: location || 'Auto-detected',
+        urgency,
+        description,
+        contactPreference,
+        contactNumber,
+      },
+    });
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.topHeader}>
+        <Text style={styles.topHeaderText}>1. Emergency Help</Text>
+      </View>
+
+      <KeyboardAvoidingView 
+        style={styles.cardContainerWrapper} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.cardContainer}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            
+            {/* Inner Header */}
+            <View style={styles.headerBar}>
+              <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={24} color="#333" />
+              </TouchableOpacity>
+              <View style={styles.iconCircle}>
+                <Ionicons name="alert" size={24} color="#E53935" />
+              </View>
+              <View style={styles.headerTextCol}>
+                <Text style={styles.title}>Emergency Help Request</Text>
+                <Text style={styles.subtitle}>Fill in the details below</Text>
+              </View>
+            </View>
+
+            {/* Type of Emergency */}
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Type of Emergency <Text style={styles.requiredAsterisk}>*</Text></Text>
+              <TouchableOpacity style={styles.dropdownButton} onPress={() => setShowTypeModal(true)}>
+                <Text style={[styles.dropdownButtonText, !emergencyType && styles.placeholderText]}>
+                  {emergencyType || 'Select Emergency Type'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Hospital / Location */}
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Hospital / Location <Text style={styles.requiredAsterisk}>*</Text></Text>
+              <View style={styles.searchInputContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search hospital or location"
+                  placeholderTextColor="#999"
+                  value={hospitalName}
+                  onChangeText={(text) => {
+                    setHospitalName(text);
+                    setSelectedHospital(null);
+                  }}
+                />
+                <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+              </View>
+              <Text style={styles.helperText}>Start typing to find the hospital</Text>
+
+              {hospitalName.length >= 2 && !selectedHospital && (
+                <View style={styles.suggestionsCard}>
+                  {isHospitalSearching ? (
+                    <Text style={styles.suggestionStatus}>Searching locations...</Text>
+                  ) : hospitalSuggestions.length > 0 ? (
+                    hospitalSuggestions.map((item, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => handleHospitalSelect(item)}
+                      >
+                        <Ionicons name="location-outline" size={20} color={COLORS.primary} />
+                        <View style={styles.suggestionTextContainer}>
+                          <Text style={styles.suggestionName}>{item.name}</Text>
+                          <Text style={styles.suggestionAddress}>{item.address}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        setSelectedHospital({ name: hospitalName, address: '', area: '', city: '' });
+                        setHospitalSuggestions([]);
+                      }}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
+                      <View style={styles.suggestionTextContainer}>
+                        <Text style={styles.suggestionName}>Use "{hospitalName}"</Text>
+                        <Text style={styles.suggestionAddress}>Custom location</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Urgency Level */}
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Urgency Level <Text style={styles.requiredAsterisk}>*</Text></Text>
+              <View style={styles.segmentedControl}>
+                {URGENCY_OPTIONS.map((item) => {
+                  const isSelected = urgency === item;
+                  const isUrgent = item === 'Urgent';
+                  return (
+                    <TouchableOpacity
+                      key={item}
+                      style={[
+                        styles.segmentButton,
+                        isSelected && (isUrgent ? styles.segmentButtonSelectedUrgent : styles.segmentButtonSelected)
+                      ]}
+                      onPress={() => setUrgency(item)}
+                    >
+                      <Text style={[
+                        styles.segmentButtonText,
+                        isSelected && (isUrgent ? styles.segmentButtonTextSelectedUrgent : styles.segmentButtonTextSelected)
+                      ]}>{item}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Description */}
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Description <Text style={styles.requiredAsterisk}>*</Text></Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Describe the situation (required)"
+                placeholderTextColor="#999"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+
+            {/* Contact Preference */}
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Contact Preference <Text style={styles.requiredAsterisk}>*</Text></Text>
+              <TouchableOpacity style={styles.dropdownButton} onPress={() => setShowContactModal(true)}>
+                <Text style={[styles.dropdownButtonText, !contactPreference && styles.placeholderText]}>
+                  {contactPreference || 'Select contact method'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.continueButton} onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.continueButtonText}>Continue</Text>
+              )}
+            </TouchableOpacity>
+            
+            <Text style={styles.bottomDisclaimer}>You will review your request in the next step</Text>
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+
+      {/* Emergency Type Modal */}
+      <Modal visible={showTypeModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTypeModal(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Emergency Type</Text>
+            {EMERGENCY_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={styles.modalOption}
+                onPress={() => {
+                  setEmergencyType(type);
+                  setShowTypeModal(false);
+                }}
+              >
+                <Text style={styles.modalOptionText}>{type}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Contact Preference Modal */}
+      <Modal visible={showContactModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowContactModal(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Contact Method</Text>
+            {CONTACT_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={styles.modalOption}
+                onPress={() => {
+                  setContactPreference(opt);
+                  setShowContactModal(false);
+                }}
+              >
+                <Text style={styles.modalOptionText}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFF4EE', // Matching the outer warm tinted background
+  },
+  topHeader: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  topHeaderText: {
+    color: '#F05D17', // Matching exactly the top orange
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cardContainerWrapper: {
+    flex: 1,
+    marginHorizontal: 16,
+    marginBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  cardContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  content: {
+    padding: 20,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    padding: 4,
+    marginLeft: -4,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFF0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 12,
+  },
+  headerTextCol: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111',
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  fieldSection: {
+    marginBottom: 20,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 8,
+  },
+  requiredAsterisk: {
+    color: '#E53935',
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA', // Slight gray tint for input background
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  dropdownButtonText: {
+    fontSize: 15,
+    color: '#333',
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+    paddingVertical: 14,
+  },
+  searchIcon: {
+    marginLeft: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 6,
+  },
+  input: {
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#333',
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: '#F8F6F4',
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  segmentButtonSelected: {
+    backgroundColor: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  segmentButtonSelectedUrgent: {
+    backgroundColor: '#FFEBEA',
+  },
+  segmentButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#555',
+  },
+  segmentButtonTextSelected: {
+    color: '#222',
+  },
+  segmentButtonTextSelectedUrgent: {
+    color: '#E53935',
+  },
+  continueButton: {
+    backgroundColor: '#F25C05', // Exact orange from screenshot
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#F25C05',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  bottomDisclaimer: {
+    textAlign: 'center',
+    color: '#888',
+    fontSize: 12,
+    marginTop: 16,
+  },
+  suggestionsCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F2F4FF',
+    marginTop: 4,
+    maxHeight: 200,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F6F6F6',
+  },
+  suggestionTextContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  suggestionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  suggestionAddress: {
+    fontSize: 12,
+    color: '#666',
+  },
+  suggestionStatus: {
+    padding: 16,
+    color: '#666',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#222',
+  },
+  modalOption: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: '#444',
+    textAlign: 'center',
+  },
+});
+`;
+
+fs.writeFileSync('app/community-request/emergency.tsx', code);
+console.log('Emergency page rewritten matching screenshot specs');
