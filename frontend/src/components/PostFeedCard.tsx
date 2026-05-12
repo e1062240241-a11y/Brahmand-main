@@ -140,7 +140,10 @@ export const PostFeedCard = memo(({
     if (Platform.OS === 'web') {
       if (videoRef.current) {
         if (shouldPlay) {
-          videoRef.current.play().catch(() => { });
+          videoRef.current.muted = true;
+          videoRef.current.play().then(() => {
+            if (videoRef.current) videoRef.current.muted = isMuted;
+          }).catch(() => {});
         } else {
           videoRef.current.pause();
         }
@@ -152,7 +155,7 @@ export const PostFeedCard = memo(({
         player.pause();
       }
     }
-  }, [shouldPlay, player]);
+  }, [shouldPlay, player, isMuted]);
 
   const prevIsActive = useRef(isActive);
   useEffect(() => {
@@ -250,7 +253,6 @@ export const PostFeedCard = memo(({
                   src={mediaUrl}
                   loop
                   muted
-                  autoPlay
                   playsInline
                   onLoadedMetadata={(e) => {
                     if (!initialRawRatio) {

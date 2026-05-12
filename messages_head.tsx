@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
+import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { Avatar } from '../../src/components/Avatar';
 
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
@@ -164,6 +165,10 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [generalExpanded, setGeneralExpanded] = useState(false);
   const [offeringsExpanded, setOfferingsExpanded] = useState(false);
+  const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showRequestTypeMenu, setShowRequestTypeMenu] = useState(false);
+  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -716,6 +721,25 @@ export default function MessagesScreen() {
             </View>
           </ImageBackground>
 
+          {showRequestTypeMenu && activeTopTab === 'Community' && (
+            <View style={styles.pillDropdown}>
+              {(['Blood', 'Medical'] as const)
+                .map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={styles.pillDropdownItem}
+                    onPress={() => {
+                      setShowRequestTypeMenu(false);
+                      setRequestType(type as any);
+                      setSelectedOfferingType(null);
+                      setShowRequestModal(true);
+                    }}
+                  >
+                    <Text style={styles.pillDropdownText}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          )}
 
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionHeading}>Active Requests</Text>

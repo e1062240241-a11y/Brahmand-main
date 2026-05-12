@@ -29,7 +29,7 @@ import {
   getGitaShloka,
   createSOSAlert, 
   getMySOSAlert, 
-  resolveSOSAlert,
+  resolveMyActiveSOS,
   getActiveSOSAlerts,
   getMyActiveCommunityRequests,
   resolveCommunityRequest,
@@ -247,10 +247,12 @@ export const FloatingUtilityButton = () => {
   const [fetchedCoordinates, setFetchedCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [countdownValue, setCountdownValue] = useState(8);
+  const [sosRadiusLevel, setSosRadiusLevel] = useState(0);
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
   const holdConfirmedRef = useRef(false);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sosRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const sosExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Community requests state
   const [myCommunityRequests, setMyCommunityRequests] = useState<any[]>([]);
@@ -352,6 +354,7 @@ export const FloatingUtilityButton = () => {
     setFetchedCoordinates(null);
     setHoldProgress(0);
     setCountdownValue(5);
+    setSOSLoading(false);
     holdConfirmedRef.current = false;
     if (holdTimerRef.current) {
       clearInterval(holdTimerRef.current);
@@ -369,18 +372,10 @@ export const FloatingUtilityButton = () => {
       return;
     }
 
-    const lat = activeSOS.latitude;
-    const lng = activeSOS.longitude;
-    const label = encodeURIComponent('SOS Location');
-    const url = Platform.OS === 'ios'
-      ? `maps://maps.apple.com/?q=${label}&ll=${lat},${lng}`
-      : `geo:${lat},${lng}?q=${lat},${lng}(${label})`;
-
-    const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
-      await Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`);
+    try {
+      await Linking.openURL(`https://maps.google.com/?q=${activeSOS.latitude},${activeSOS.longitude}`);
+    } catch {
+      Alert.alert('Error', 'Could not open maps.');
     }
   };
 
@@ -392,16 +387,10 @@ export const FloatingUtilityButton = () => {
       return;
     }
 
-    const label = encodeURIComponent('Nearby SOS Location');
-    const url = Platform.OS === 'ios'
-      ? `maps://maps.apple.com/?q=${label}&ll=${lat},${lng}`
-      : `geo:${lat},${lng}?q=${lat},${lng}(${label})`;
-
-    const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
+    try {
       await Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`);
+    } catch {
+      Alert.alert('Error', 'Could not open maps.');
     }
   };
 
@@ -650,17 +639,10 @@ export const FloatingUtilityButton = () => {
   const openFetchedLocation = async () => {
     if (!fetchedCoordinates) return;
 
-    const { latitude, longitude } = fetchedCoordinates;
-    const label = encodeURIComponent('Current Location');
-    const url = Platform.OS === 'ios'
-      ? `maps://maps.apple.com/?q=${label}&ll=${latitude},${longitude}`
-      : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`;
-
-    const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
-      await Linking.openURL(`https://maps.google.com/?q=${latitude},${longitude}`);
+    try {
+      await Linking.openURL(`https://maps.google.com/?q=${fetchedCoordinates.latitude},${fetchedCoordinates.longitude}`);
+    } catch {
+      Alert.alert('Error', 'Could not open maps.');
     }
   };
 
@@ -715,7 +697,9 @@ export const FloatingUtilityButton = () => {
     resetSOSFlow();
   };
 
-  const handleSubmitSOS = async () => {
+  const RADIUS_LEVELS = [5, 15, 50];
+
+  const handleSubmitSOS = async (level = 0) => {
     setSOSLoading(true);
     try {
       const ok = await LocationService.ensureForegroundPermission();
@@ -731,9 +715,15 @@ export const FloatingUtilityButton = () => {
         latitude = fetchedCoordinates.latitude;
         longitude = fetchedCoordinates.longitude;
       } else {
-        const location = await LocationService.getCurrentPosition({});
-        latitude = location.coords.latitude;
-        longitude = location.coords.longitude;
+        try {
+          const loc = await LocationService.getCurrentPosition({});
+          latitude = loc.coords.latitude;
+          longitude = loc.coords.longitude;
+        } catch {
+          Alert.alert('Location Error', 'Could not detect your location. Please ensure GPS is on.');
+          resetSOSFlow();
+          return;
+        }
       }
 
       const response = await createSOSAlert({
@@ -741,10 +731,11 @@ export const FloatingUtilityButton = () => {
         longitude,
         emergency_type: sosType || 'other',
         micro_location: microLocation || '',
-        radius: 1,
+        radius: RADIUS_LEVELS[level] || 50,
       });
 
       setActiveSOS(response.data);
+      setSosRadiusLevel(level);
       resetSOSFlow();
       Alert.alert('SOS Alert Sent', 'Your emergency alert has been sent to nearby community members. Stay safe!');
     } catch (error: any) {
@@ -783,6 +774,62 @@ export const FloatingUtilityButton = () => {
       }
     };
   }, [sosStage]);
+
+  // Auto-expand SOS radius every 10 min if no responders
+  useEffect(() => {
+    if (!activeSOS) {
+      if (sosExpandTimerRef.current) {
+        clearInterval(sosExpandTimerRef.current);
+        sosExpandTimerRef.current = null;
+      }
+      return;
+    }
+
+    sosExpandTimerRef.current = setInterval(async () => {
+      try {
+        const res = await getMySOSAlert();
+        const current = res.data;
+        if (!current || (current.responders?.length || 0) > 0) {
+          if (sosExpandTimerRef.current) {
+            clearInterval(sosExpandTimerRef.current);
+            sosExpandTimerRef.current = null;
+          }
+          return;
+        }
+
+        const nextLevel = sosRadiusLevel + 1;
+        if (nextLevel >= RADIUS_LEVELS.length) {
+          if (sosExpandTimerRef.current) {
+            clearInterval(sosExpandTimerRef.current);
+            sosExpandTimerRef.current = null;
+          }
+          return;
+        }
+
+        // Cancel old SOS and recreate with larger radius
+        await resolveMyActiveSOS('cancelled');
+        const ok = await LocationService.ensureForegroundPermission();
+        if (!ok) return;
+        const loc = await LocationService.getCurrentPosition({});
+        const response = await createSOSAlert({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          emergency_type: current.emergency_type || 'other',
+          micro_location: current.micro_location || '',
+          radius: RADIUS_LEVELS[nextLevel],
+        });
+        setActiveSOS(response.data);
+        setSosRadiusLevel(nextLevel);
+      } catch {}
+    }, 600_000);
+
+    return () => {
+      if (sosExpandTimerRef.current) {
+        clearInterval(sosExpandTimerRef.current);
+        sosExpandTimerRef.current = null;
+      }
+    };
+  }, [activeSOS, sosRadiusLevel]);
 
   const handleCreateSOS = () => {
     startSOSFlow();
@@ -837,15 +884,24 @@ export const FloatingUtilityButton = () => {
   };
 
   const handleResolveActiveSOS = async (status: 'resolved' | 'cancelled') => {
+    if (status === 'cancelled') {
+      try {
+        setSOSLoading(true);
+        await resolveMyActiveSOS('cancelled');
+        setActiveSOS(null);
+      } catch (error: any) {
+        Alert.alert('Error', error.response?.data?.detail || 'Failed to cancel SOS');
+      } finally {
+        setSOSLoading(false);
+      }
+      return;
+    }
+
     if (!activeSOS) return;
     
-    const message = status === 'resolved' 
-      ? 'Has help arrived? This will close your SOS alert.'
-      : 'Cancel your SOS alert?';
-    
     Alert.alert(
-      status === 'resolved' ? 'Help Received' : 'Cancel SOS',
-      message,
+      'Help Received',
+      'Has help arrived? This will close your SOS alert.',
       [
         { text: 'No', style: 'cancel' },
         { 
@@ -853,9 +909,9 @@ export const FloatingUtilityButton = () => {
           onPress: async () => {
             setSOSLoading(true);
             try {
-              await resolveSOSAlert(activeSOS.id, status);
+              await resolveMyActiveSOS('resolved');
               setActiveSOS(null);
-              Alert.alert('Success', status === 'resolved' ? 'Glad you received help!' : 'SOS alert cancelled');
+              Alert.alert('Success', 'Glad you received help!');
             } catch (error: any) {
               Alert.alert('Error', error.response?.data?.detail || 'Failed to resolve SOS');
             } finally {
@@ -1037,7 +1093,11 @@ export const FloatingUtilityButton = () => {
                     </TouchableOpacity>
                   ) : null}
                   <Text style={styles.activeSosStatus}>
-                    {activeSOS.responders?.length > 0 ? 'Help is on the way' : 'Searching for help'}
+                    {activeSOS.responders?.length > 0
+                      ? 'Help is on the way'
+                      : sosRadiusLevel > 0
+                        ? `Searching for help (expanded to ${RADIUS_LEVELS[sosRadiusLevel]}km)`
+                        : 'Searching for help'}
                   </Text>
                   <Text style={styles.activeSosLocation}>
                     Emergency: {activeSOS.emergency_type ? activeSOS.emergency_type.toUpperCase() : 'UNKNOWN'}
@@ -1076,10 +1136,15 @@ export const FloatingUtilityButton = () => {
                     <TouchableOpacity 
                       style={styles.sosCancelButton}
                       onPress={() => handleResolveActiveSOS('cancelled')}
-                      disabled={sosLoading}
                     >
-                      <Ionicons name="close-circle" size={18} color={COLORS.error} />
-                      <Text style={[styles.sosButtonText, { color: COLORS.error }]}>CANCEL</Text>
+                      {sosLoading ? (
+                        <ActivityIndicator color={COLORS.error} size="small" />
+                      ) : (
+                        <>
+                          <Ionicons name="close-circle" size={18} color={COLORS.error} />
+                          <Text style={[styles.sosButtonText, { color: COLORS.error }]}>CANCEL</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
