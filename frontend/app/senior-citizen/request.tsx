@@ -23,7 +23,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 const URGENCY_LEVELS = ['Low', 'Medium', 'High', 'Urgent'];
-const HELP_TYPES = ['Medical Support', 'Grocery Delivery', 'Mobility Help', 'Social Company', 'Other'];
+const HELP_TYPES = [
+  'Medical Assistance',
+  'Daily Essentials Help',
+  'Hospital Visit Support',
+  'Companion / Check-in Visit',
+  'Emergency Assistance',
+  'Medicine Pickup',
+  'Food Delivery',
+  'Spiritual / Temple Visit Support',
+  'Mobility / Wheelchair Help',
+  'Home Assistance',
+  'Emotional Support',
+  'Other Senior Support'
+];
 const AGE_GROUPS = ['60-70', '70-80', '80+'];
 const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
 
@@ -125,10 +138,11 @@ export default function SeniorCitizenRequestScreen() {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalBar} />
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
-              <Ionicons name="close" size={20} color="#666" />
+          <View style={styles.modalBar} />
+          <View style={styles.modalHeaderOrange}>
+            <Text style={styles.modalTitleWhite}>Dropdown Options</Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtnWhite}>
+              <Ionicons name="close" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
           <FlatList
@@ -337,8 +351,11 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '70%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20 },
   modalBar: { width: 40, height: 5, backgroundColor: '#E0E0E0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  modalHeaderOrange: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, backgroundColor: '#F25C05', padding: 12, borderRadius: 8 },
   modalTitle: { fontSize: 20, fontFamily: FONTS.bold, color: '#111' },
+  modalTitleWhite: { fontSize: 18, fontFamily: FONTS.bold, color: '#FFF' },
   modalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
+  modalCloseBtnWhite: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   optionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 12, borderRadius: 16, marginBottom: 8 },
   optionItemSelected: { backgroundColor: '#FFF4EE' },
   optionText: { fontSize: 16, color: '#444', fontFamily: FONTS.regular },
