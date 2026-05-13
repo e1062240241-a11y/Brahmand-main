@@ -169,7 +169,9 @@ class FirebaseNotificationService:
                         notification=fcm.AndroidNotification(
                             channel_id='sos_alerts',
                             sound='default',
-                            priority='high'
+                            priority='high',
+                            notification_priority='PRIORITY_MAX',
+                            vibrate_timings=[0, 1000, 500, 1000, 500, 1000]
                         )
                     )
                     apns_config = fcm.APNSConfig(
