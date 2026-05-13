@@ -8,7 +8,6 @@ import {
  TouchableOpacity, 
  RefreshControl,
  Image,
- ImageBackground,
  TextInput,
  Animated,
  Modal,
@@ -16,981 +15,302 @@ import {
  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTemples } from '../../src/services/api';
-import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
+import { FONTS } from '../../src/constants/theme';
 import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
-  'ISKCON Mira Road': 'Mira Road, Thane',
-  'Shirdi Sai Baba Temple': 'Shirdi, Maharashtra',
-  'Shirdi Sai Baba Temple – Maharashtra': 'Shirdi, Maharashtra',
-  'ISKCON Mira Road – Thane': 'Mira Road, Thane',
-};
-
-const AARTI_TAB_SESSIONS: Array<{ title: string; time: string }> = [];
-
-const getSpecialTempleKey = (name: string) => {
- const normalizedName = String(name || '').toLowerCase();
- if (
- normalizedName.includes('mira road') ||
- normalizedName.includes('iskcon mira') ||
- normalizedName.includes('radhagiridhari') ||
- normalizedName.includes('iskcon borivali') ||
- normalizedName.includes('iskon borivali') ||
- normalizedName.includes('borivali') ||
- normalizedName.includes('brovali')
- ) {
- return 'ISKCON Mira Road';
- }
- if (
- normalizedName.includes('shirdi') ||
- normalizedName.includes('sai baba') ||
- normalizedName.includes('saibaba') ||
- normalizedName.includes('samadhi') ||
- normalizedName.includes('sai baba samadhi') ||
- normalizedName.includes('sai baba mandir')
- ) {
- return 'Shirdi Sai Baba – Maharashtra';
- }
- if (
- normalizedName.includes('somnath') ||
- normalizedName.includes('prabhas patan') ||
- normalizedName.includes('jyotirling-somnath')
- ) {
- return 'Somnath Mandir – Gujrat';
- }
- return '';
-};
-
-const getTempleDisplayName = (item: any) => {
-  const name = item?.name || 'Temple';
-  if (typeof name === 'string' && name.includes('–')) {
-    return name.split('–')[0].trim();
-  }
-  const specialKey = getSpecialTempleKey(name);
-  return specialKey ? specialKey.split('–')[0].trim() : name;
-};
-
-const getTempleDeityLabel = (item: any) => {
- const specialKey = getSpecialTempleKey(item?.name);
- if (specialKey === 'ISKCON Mira Road') return 'Lord RadhaKrishn';
- if (specialKey === 'Shirdi Sai Baba – Maharashtra') return 'Sai Baba';
- return item?.deity || 'Temple';
-};
-
-const AARTI_TIMINGS: Record<string, string> = {
-  'ISKCON Mira Road': '4:30 AM',
-  'Shirdi Sai Baba – Maharashtra': '5:00 AM',
-  'Shirdi Sai Baba Temple – Maharashtra': '5:00 AM',
-  'ISKCON Mira Road – Thane': '4:30 AM',
-  'Somnath Temple – Gujarat': '7:00 AM',
-  'Kedarnath Temple – Uttarakhand': '6:00 AM',
-  'Mahakaleshwar Temple – Ujjain': '4:00 AM',
-  'Kashi Vishwanath Temple – Varanasi': '3:00 AM',
-};
-
-const getTempleAartiText = (item: any) => {
-  const aartiTimings = item?.aarti_timings;
-  if (aartiTimings && typeof aartiTimings === 'object') {
-    const entries = Object.entries(aartiTimings).filter(([, v]) => v);
-    if (entries.length > 0) return entries[0][1] as string;
-  }
-  const specialKey = getSpecialTempleKey(item?.name);
-  if (!specialKey) return null;
-  const timing = AARTI_TIMINGS[specialKey];
-  if (!timing) return null;
-  return timing;
-};
-
 const JYOTIRLING_TEMPLES = [
-  { id: 'jyotirling-somnath-temple-gujarat', name: 'Somnath Temple – Gujarat', location: 'Gujarat', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-kedarnath-temple-uttarakhand', name: 'Kedarnath Temple – Uttarakhand', location: 'Uttarakhand', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-mahakaleshwar-temple-ujjain', name: 'Mahakaleshwar Temple – Ujjain', location: 'Ujjain', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Temple – Varanasi', location: 'Varanasi', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-bhimashankar-temple-maharashtra', name: 'Bhimashankar Temple – Maharashtra', location: 'Pune', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-ramanathaswamy-temple-rameswaram', name: 'Ramanathaswamy Temple – Rameswaram', location: 'Tamil Nadu', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-grishneshwar-temple-ellora', name: 'Grishneshwar Temple – Ellora', location: 'Maharashtra', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-omkareshwar-temple-madhya-pradesh', name: 'Omkareshwar Temple – Madhya Pradesh', location: 'Madhya Pradesh', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-trimbakeshwar-temple-nashik', name: 'Trimbakeshwar Temple – Nashik', location: 'Nashik', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-nageshwar-temple-dwarka', name: 'Nageshwar Temple – Dwarka', location: 'Gujarat', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-mallikarjuna-temple-srisailam', name: 'Mallikarjuna Temple – Srisailam', location: 'Andhra Pradesh', deity: 'Lord Shiva', is_verified: true },
-  { id: 'jyotirling-baidyanath-temple-deoghar', name: 'Baidyanath Temple – Deoghar', location: 'Jharkhand', deity: 'Lord Shiva', is_verified: true },
+  { id: 'jyotirling-somnath-temple-gujarat', name: 'Somnath Temple', location: 'Gujarat', deity: 'Lord Shiva' },
+  { id: 'jyotirling-kedarnath-temple-uttarakhand', name: 'Kedarnath Temple', location: 'Uttarakhand', deity: 'Lord Shiva' },
+  { id: 'jyotirling-mahakaleshwar-temple-ujjain', name: 'Mahakaleshwar Temple', location: 'Ujjain, Madhya Pradesh', deity: 'Lord Shiva' },
+  { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Temple', location: 'Varanasi, Uttar Pradesh', deity: 'Lord Shiva' },
+  { id: 'jyotirling-bhimashankar-temple-maharashtra', name: 'Bhimashankar Temple', location: 'Pune, Maharashtra', deity: 'Lord Shiva' },
+  { id: 'jyotirling-ramanathaswamy-temple-rameswaram', name: 'Ramanathaswamy Temple', location: 'Tamil Nadu', deity: 'Lord Shiva' },
 ];
-
-const OTHER_TEMPLES = [
-  { id: 'other-tirupati-balaji-temple-andhra-pradesh', name: 'Tirupati Balaji Temple – Andhra Pradesh', location: 'Andhra Pradesh', deity: 'Lord Venkateswara', is_verified: true },
-  { id: 'other-vaishno-devi-temple-jammu-kashmir', name: 'Vaishno Devi Temple – Jammu & Kashmir', location: 'Jammu & Kashmir', deity: 'Mata Vaishno Devi', is_verified: true },
-  { id: 'other-siddhivinayak-temple-mumbai', name: 'Siddhivinayak Temple – Mumbai', location: 'Mumbai', deity: 'Lord Ganesha', is_verified: true },
-  { id: 'other-shirdi-sai-baba-temple-maharashtra', name: 'Shirdi Sai Baba Temple – Maharashtra', location: 'Shirdi', deity: 'Sai Baba', is_verified: true },
-  { id: 'other-jagannath-temple-puri', name: 'Jagannath Temple – Puri', location: 'Puri', deity: 'Lord Jagannath', is_verified: true },
-  { id: 'other-golden-temple-amritsar', name: 'Golden Temple – Amritsar', location: 'Amritsar', deity: 'Sri Harmandir Sahib', is_verified: true },
-  { id: 'other-meenakshi-temple-madurai', name: 'Meenakshi Temple – Madurai', location: 'Tamil Nadu', deity: 'Meenakshi Amman', is_verified: true },
-  { id: 'other-iskcon-mira-road-thane', name: 'ISKCON Mira Road – Thane', location: 'Mira Road', deity: 'Radha Giridhari', is_verified: true },
-  { id: 'other-iskcon-temple-bangalore-karnataka', name: 'ISKCON Temple Bangalore – Karnataka', location: 'Bengaluru', deity: 'Lord Krishna', is_verified: true },
-];
-
-const getTempleLocation = (item: any) => {
-  const location = item?.location;
-  const specialKey = getSpecialTempleKey(item?.name);
-  if (!location || (typeof location === 'object' && Object.keys(location).length === 0)) {
-  if (specialKey) {
-  return DEFAULT_TEMPLE_LOCATIONS[specialKey];
-  }
-  return DEFAULT_TEMPLE_LOCATIONS[item?.name] || 'Location';
-  }
-  if (typeof location === 'string') return location;
-  const fallback = [location.area, location.city, location.state, location.country]
-  .filter(Boolean)
-  .join(', ');
-  if (fallback) return fallback;
-  if (specialKey) {
-  return DEFAULT_TEMPLE_LOCATIONS[specialKey];
-  }
-  return Object.values(location || {})
-  .filter((value) => typeof value === 'string' && value.trim())
-  .join(', ') || DEFAULT_TEMPLE_LOCATIONS[item?.name] || 'Location';
-};
-
-const getTempleDisplayNames = () => {
-  return [...JYOTIRLING_TEMPLES, ...OTHER_TEMPLES].map((t) => t.name.split('–')[0].trim());
-};
-
-const getUniqueLocations = () => {
-  const allTemples = [...JYOTIRLING_TEMPLES, ...OTHER_TEMPLES];
-  const locations = new Set(allTemples.map((t) => t.location));
-  return Array.from(locations).sort();
-};
-
-const renderHighlightedText = (text: string, query: string, style: any, highlightStyle: any) => {
- if (!query) return <Text style={style}>{text}</Text>;
- const normalizedText = String(text || '');
- const normalizedQuery = query.trim();
- if (!normalizedQuery) return <Text style={style}>{normalizedText}</Text>;
- const escapedQuery = normalizedQuery.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
- const regex = new RegExp(`(${escapedQuery})`, 'i');
- const parts = normalizedText.split(regex);
- const lowerQuery = normalizedQuery.toLowerCase();
- return (
- <Text style={style}>
- {parts.map((part, index) => {
- const isMatch = part.toLowerCase() === lowerQuery;
- return isMatch ? (
- <Text key={`${part}-${index}`} style={[style, highlightStyle]}>
- {part}
- </Text>
- ) : (
- <Text key={`${part}-${index}`} style={style}>
- {part}
- </Text>
- );
- })}
- </Text>
- );
-};
 
 export default function TempleScreen() {
- const router = useRouter();
- const [selectedTempleSection, setSelectedTempleSection] = useState<'Jyotirling' | 'Others'>('Jyotirling');
- const [temples, setTemples] = useState<any[]>([]);
- const [featuredJyotirling, setFeaturedJyotirling] = useState(JYOTIRLING_TEMPLES);
- const [featuredOthers, setFeaturedOthers] = useState(OTHER_TEMPLES);
- const [loading, setLoading] = useState(true);
- const [refreshing, setRefreshing] = useState(false);
- const [isSearchOpen, setIsSearchOpen] = useState(false);
- const [searchQuery, setSearchQuery] = useState('');
- const [placeholderIndex, setPlaceholderIndex] = useState(0);
- const [showFilterModal, setShowFilterModal] = useState(false);
- const [selectedLocations, setSelectedLocations] = useState<Set<string>>(new Set());
- const searchBarAnim = useRef(new Animated.Value(0)).current;
- const placeholderOpacity = useRef(new Animated.Value(0)).current;
- const placeholderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
- const placeholderOptions = getTempleDisplayNames().slice(0, 6);
- const uniqueLocations = getUniqueLocations();
-
- const openSearch = () => {
- setIsSearchOpen(true);
- Animated.timing(searchBarAnim, {
- toValue: 1,
- duration: 260,
- useNativeDriver: false,
- }).start(() => {
- Animated.timing(placeholderOpacity, {
- toValue: 1,
- duration: 220,
- useNativeDriver: true,
- }).start();
- });
- };
-
- const closeSearch = () => {
- Animated.timing(searchBarAnim, {
- toValue: 0,
- duration: 220,
- useNativeDriver: false,
- }).start(() => {
- setIsSearchOpen(false);
- setSearchQuery('');
- setPlaceholderIndex(0);
- placeholderOpacity.setValue(0);
- if (placeholderTimerRef.current) {
- clearTimeout(placeholderTimerRef.current);
- placeholderTimerRef.current = null;
- }
- });
- };
-
- const openVendorSection = () => {
-   router.push('/vendor');
- };
-
- const openServicesSection = openVendorSection;
-
- useEffect(() => {
- if (!isSearchOpen || searchQuery.trim()) {
- if (placeholderTimerRef.current) {
- clearTimeout(placeholderTimerRef.current);
- placeholderTimerRef.current = null;
- }
- if (!isSearchOpen) {
- placeholderOpacity.setValue(0);
- }
- return;
- }
-
- const startPlaceholderCycle = () => {
- Animated.timing(placeholderOpacity, {
- toValue: 0,
- duration: 240,
- useNativeDriver: true,
- }).start(() => {
- setPlaceholderIndex((prev) => (prev + 1) % placeholderOptions.length);
- Animated.timing(placeholderOpacity, {
- toValue: 1,
- duration: 240,
- useNativeDriver: true,
- }).start(() => {
- placeholderTimerRef.current = setTimeout(startPlaceholderCycle, 1800);
- });
- });
- };
-
- placeholderTimerRef.current = setTimeout(startPlaceholderCycle, 1800);
- return () => {
- if (placeholderTimerRef.current) {
- clearTimeout(placeholderTimerRef.current);
- placeholderTimerRef.current = null;
- }
- };
- }, [isSearchOpen, searchQuery]);
-
- const fetchData = useCallback(async () => {
-  try {
-    const res = await getTemples();
-    const apiTemples = Array.isArray(res.data) ? res.data : [];
-    setTemples(apiTemples);
-
-    const mapApiToFeatured = (featuredList: any[]) => {
-      return featuredList.map(item => {
-        const namePrefix = item.name.split('–')[0].trim().toLowerCase();
-        const match = apiTemples.find(at => 
-          (at.name || '').toLowerCase().includes(namePrefix)
-        );
-        if (match) {
-          return {
-            ...item,
-            ...match,
-            id: match.id || match.temple_id || item.id,
-            name: item.name,
-          };
-        }
-        return item;
-      });
-    };
-
-    setFeaturedJyotirling(mapApiToFeatured(JYOTIRLING_TEMPLES));
-    setFeaturedOthers(mapApiToFeatured(OTHER_TEMPLES));
-  } catch (error) {
-    console.error('Error fetching temples:', error);
-    setTemples([]);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
- }, []);
-
- useEffect(() => {
-  fetchData();
- }, [fetchData]);
-
- const openTempleDetails = (item: any) => {
- const templeId = item?.id || item?.name;
- if (!templeId) return;
- router.push(`/temple/${encodeURIComponent(String(templeId))}`);
- };
-
-  const visibleTempleList = selectedTempleSection === 'Jyotirling' 
-    ? featuredJyotirling 
-    : [...featuredOthers, ...(Array.isArray(temples) ? temples.filter(t => 
-        !featuredJyotirling.some(j => (j.id === t.id || j.temple_id === t.temple_id)) &&
-        !featuredOthers.some(o => (o.id === t.id || o.temple_id === t.temple_id))
-      ) : [])];
-
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const searchableTempleList = normalizedQuery 
-    ? [...featuredJyotirling, ...featuredOthers, ...(Array.isArray(temples) ? temples : [])] 
-    : visibleTempleList;
-
-  const filteredTempleList = searchableTempleList.filter((item) => {
-    const templeName = getTempleDisplayName(item).toLowerCase();
-    const templeLocation = getTempleLocation(item).toLowerCase();
-    const matchesSearch = (
-      templeName.includes(normalizedQuery) ||
-      templeLocation.includes(normalizedQuery)
-    );
-    const matchesLocation = selectedLocations.size === 0 || selectedLocations.has(item.location);
-    return matchesSearch && matchesLocation;
-  });
-
- const toggleLocationFilter = (location: string) => {
- const newLocations = new Set(selectedLocations);
- if (newLocations.has(location)) {
- newLocations.delete(location);
- } else {
- newLocations.add(location);
- }
- setSelectedLocations(newLocations);
- };
-
- const renderTempleCard = (item: any) => {
- const imageSource = TEMPLE_IMAGES[item?.id] || DEFAULT_TEMPLE_IMAGE;
- const displayName = getTempleDisplayName(item);
- const location = getTempleLocation(item);
- const isLive = displayName.toLowerCase().includes('somnath');
- const aartiTime = getTempleAartiText(item);
-
- return (
-  <TouchableOpacity 
-  key={String(item?.id || item?.name)}
-  style={styles.templeCard}
-  onPress={() => openTempleDetails(item)}
-  >
-  <Image source={imageSource} style={styles.templeCardImage} resizeMode="cover" />
-  <View style={styles.templeInfo}>
-   {renderHighlightedText(displayName, searchQuery, styles.templeName, styles.highlightText)}
-   <Text style={styles.templeLocation}>{location}</Text>
-    {aartiTime && (
-      <View style={styles.aartiTimeRow}>
-        <Ionicons name="time-outline" size={12} color={COLORS.primary} />
-        <Text style={styles.aartiTimeText}>Next Aarti: {aartiTime}</Text>
-      </View>
-    )}
-  </View>
-  {isLive && (
-   <View style={styles.cardLiveBadge}>
-   <View style={styles.liveDot} />
-   <Text style={styles.cardLiveBadgeText}>LIVE</Text>
-   </View>
-  )}
-  <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} style={{ marginLeft: 8 }} />
-  </TouchableOpacity>
- );
- };
-
+  const router = useRouter();
+  const [selectedTempleSection, setSelectedTempleSection] = useState<'Jyotirling' | 'Others'>('Jyotirling');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const headerBg = scrollY.interpolate({
-    inputRange: [0, 60],
-    outputRange: ['rgba(255, 248, 240, 0)', 'rgba(255, 248, 240, 1)'],
-    extrapolate: 'clamp',
-  });
+  const fetchData = async () => {
+    setRefreshing(true);
+    // Simulate API fetch
+    setTimeout(() => setRefreshing(false), 1000);
+  };
 
-  const headerBorder = scrollY.interpolate({
-    inputRange: [0, 60],
-    outputRange: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.05)'],
-    extrapolate: 'clamp',
-  });
+  const openTempleDetails = (item: any) => {
+    router.push(`/temple/${encodeURIComponent(String(item.id))}`);
+  };
+
+  const getTempleDisplayName = (item: any) => item.name;
+  const getTempleLocation = (item: any) => item.location;
+  const getTempleDeityLabel = (item: any) => item.deity;
+
+  const filteredTempleList = JYOTIRLING_TEMPLES.filter(t => 
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    t.location.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const uniqueLocations = Array.from(new Set(JYOTIRLING_TEMPLES.map(t => t.location.split(',').pop()?.trim() || t.location))).sort();
+  const [selectedLocations, setSelectedLocations] = useState<Set<string>>(new Set());
+
+  const toggleLocationFilter = (location: string) => {
+    const newLocs = new Set(selectedLocations);
+    if (newLocs.has(location)) newLocs.delete(location);
+    else newLocs.add(location);
+    setSelectedLocations(newLocs);
+  };
 
   return (
-  <SafeAreaView style={styles.container} edges={['top']}>
-  <Animated.View style={[styles.headerBar, { 
-    backgroundColor: headerBg, 
-    borderBottomColor: headerBorder, 
-    borderBottomWidth: 1,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    paddingTop: Platform.OS === 'ios' ? 0 : 40,
-  }]}>
-  <TouchableOpacity style={styles.backButton} onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-   <Ionicons name="arrow-back" size={22} color={COLORS.text} />
-  </TouchableOpacity>
-  <View style={styles.headerActions}>
-    {isSearchOpen ? (
-      <Animated.View
-        style={[
-          styles.searchInputContainer,
-          {
-            width: searchBarAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 240],
-            }),
-            opacity: searchBarAnim,
-          },
-        ]}
-      >
-        <Ionicons name="search" size={16} color={COLORS.textSecondary} />
-        <TextInput
-          style={[
-            styles.searchInput,
-            Platform.OS === 'web' ? ({ outlineWidth: 0, outlineStyle: 'none' } as any) : null,
-          ]}
-          placeholder=""
-          placeholderTextColor={COLORS.textLight}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          returnKeyType="search"
-          underlineColorAndroid="transparent"
-        />
-        {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Top Tab Switcher */}
+      <View style={styles.topTabsContainer}>
+        <View style={styles.topTabsInner}>
+          <TouchableOpacity 
+            style={[styles.topTabButton, selectedTempleSection === 'Others' && styles.topTabButtonActive]}
+            onPress={() => setSelectedTempleSection('Others')}
+          >
+            <Text style={[styles.topTabText, selectedTempleSection === 'Others' && styles.topTabTextActive]}>Jaaps</Text>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={closeSearch}>
-            <Ionicons name="close" size={18} color={COLORS.textLight} />
+          <TouchableOpacity 
+            style={[styles.topTabButton, selectedTempleSection === 'Jyotirling' && styles.topTabButtonActive]}
+            onPress={() => setSelectedTempleSection('Jyotirling')}
+          >
+            <Text style={[styles.topTabText, selectedTempleSection === 'Jyotirling' && styles.topTabTextActive]}>Temple</Text>
           </TouchableOpacity>
+        </View>
+      </View>
+
+      <Animated.ScrollView
+        style={styles.contentScroll}
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
         )}
-      </Animated.View>
-    ) : (
-      <TouchableOpacity style={styles.headerIcon} onPress={openSearch}>
-        <Ionicons name="search-outline" size={24} color={COLORS.text} />
-      </TouchableOpacity>
-    )}
-    <TouchableOpacity style={styles.headerIcon} onPress={() => setShowFilterModal(true)}>
-      <Ionicons name="filter" size={22} color={COLORS.text} />
-    </TouchableOpacity>
-    <TouchableOpacity style={styles.vendorButton} onPress={openVendorSection}>
-      <Ionicons name="storefront" size={18} color={COLORS.text} />
-      <Text style={styles.vendorButtonText}>Vendor</Text>
-    </TouchableOpacity>
-  </View>
-  </Animated.View>
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={fetchData} />
+        }
+      >
+        {/* Hero Section */}
+        <View style={styles.heroRowLayout}>
+          <View style={styles.heroLeftContent}>
+            <TouchableOpacity style={styles.heroBackButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={28} color="#2D1B13" />
+            </TouchableOpacity>
+            
+            <Text style={styles.heroDiscoverText}>Discover</Text>
+            <Text style={styles.heroSacredText}>Sacred</Text>
+            <Text style={styles.heroSacredText}>Temples</Text>
+            
+            <View style={styles.ornateDivider}>
+              <LinearGradient
+                colors={['rgba(255, 102, 0, 0)', 'rgba(255, 102, 0, 0.5)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.ornateLineGradient}
+              />
+              <View style={styles.ornateDiamond}>
+                <View style={styles.diamondInner} />
+              </View>
+              <LinearGradient
+                colors={['rgba(255, 102, 0, 0.5)', 'rgba(255, 102, 0, 0)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.ornateLineGradient}
+              />
+            </View>
 
-  <Animated.ScrollView
-  style={styles.contentScroll}
-  contentContainerStyle={[styles.listContent, { paddingTop: 60 }]}
-  showsVerticalScrollIndicator={false}
-  onScroll={Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false }
-  )}
-  scrollEventThrottle={16}
-  refreshControl={
-   <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
-  }
-  >
-  <TouchableOpacity
-   style={styles.heroBanner}
-   activeOpacity={0.9}
-   onPress={() => router.push('/mantra-jaap' as any)}
-  >
-   <ImageBackground
-   source={TEMPLE_IMAGES['jyotirling-somnath-temple-gujarat'] || DEFAULT_TEMPLE_IMAGE}
-   style={styles.heroBannerImage}
-   imageStyle={styles.heroBannerImageStyle}
-   >
-   <LinearGradient
-    colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.65)']}
-    style={styles.heroBannerOverlay}
-   >
-    <View style={styles.heroBannerTop}>
-    <View style={styles.heroBannerContent}>
-     <View style={styles.heroBadge}>
-      <Ionicons name="sparkles" size={14} color="#FFD700" />
-      <Text style={styles.heroBadgeText}>Most Popular Now</Text>
-     </View>
-     <Text style={styles.heroBannerTitle}>Live Mantra Jaap</Text>
-     <Text style={styles.heroBannerLocation}>Join Thousands in Spiritual Chanting</Text>
-    </View>
-    <TouchableOpacity
-    style={styles.watchNowButton}
-    onPress={() => router.push('/mantra-jaap' as any)}
-    >
-    <Text style={styles.watchNowText}>Watch Now</Text>
-    </TouchableOpacity>
-    </View>
-   </LinearGradient>
-   </ImageBackground>
-  </TouchableOpacity>
+            <Text style={styles.heroSubtitleBlended}>
+              Explore divine places, seek blessings{"\n"}and connect with spirituality.
+            </Text>
+          </View>
 
-  <TouchableOpacity style={styles.servicesRow} onPress={openServicesSection} activeOpacity={0.7}>
-   <View style={styles.servicesIconWrap}>
-    <Ionicons name="information" size={24} color="#FFFFFF" />
-   </View>
-   <Text style={styles.servicesText}>Services</Text>
-    <Ionicons name="chevron-forward" size={22} color={COLORS.textSecondary} />
-  </TouchableOpacity>
+          <View style={styles.heroRightImageContainer}>
+            <Image 
+              source={require('../../assets/images/image temple/SomnathTemple.jpg')} 
+              style={styles.heroSideImage} 
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={['#FFFCEB', 'rgba(255, 252, 235, 0)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.heroLeftMask}
+            />
+            <View style={styles.heroAncientOverlay} />
+          </View>
+        </View>
 
-  <View style={styles.sectionPillRow}>
-   <TouchableOpacity
-   style={[styles.sectionPill, selectedTempleSection === 'Jyotirling' && styles.sectionPillActive]}
-   onPress={() => setSelectedTempleSection('Jyotirling')}
-   >
-   <Text style={[styles.sectionPillText, selectedTempleSection === 'Jyotirling' && styles.sectionPillTextActive]}>
-    Jyotirling
-   </Text>
-   </TouchableOpacity>
-   <TouchableOpacity
-   style={[styles.sectionPill, selectedTempleSection === 'Others' && styles.sectionPillActive]}
-   onPress={() => setSelectedTempleSection('Others')}
-   >
-   <Text style={[styles.sectionPillText, selectedTempleSection === 'Others' && styles.sectionPillTextActive]}>
-    Others
-   </Text>
-   </TouchableOpacity>
-  </View>
+        <View style={styles.searchSection}>
+          <View style={styles.searchBarWrapper}>
+            <Ionicons name="search-outline" size={22} color="#111" style={{ marginRight: 12 }} />
+            <TextInput 
+              placeholder="Search temple name..."
+              style={styles.searchInputField}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#888"
+            />
+            <TouchableOpacity onPress={() => setShowFilterModal(true)}>
+              <Ionicons name="options-outline" size={22} color="#FF6600" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-  <View style={styles.othersSection}>
-   {filteredTempleList.map((item) => renderTempleCard(item))}
-   {filteredTempleList.length === 0 ? (
-   <View style={styles.emptyState}>
-    <Ionicons name="search" size={24} color={COLORS.textLight} />
-    <Text style={styles.emptyText}>No temples found</Text>
-   </View>
-   ) : null}
-  </View>
-  </Animated.ScrollView>
+        {/* Category Pills */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPillsRow} contentContainerStyle={{ paddingHorizontal: 20 }}>
+          <TouchableOpacity style={[styles.catPill, styles.catPillActive]}>
+            <MaterialCommunityIcons name="home-variant" size={18} color="#FF6600" style={{ marginRight: 6 }} />
+            <Text style={[styles.catPillText, styles.catPillTextActive]}>All Temples</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.catPill}>
+            <Text style={{ fontSize: 18, marginRight: 6 }}>🔱</Text>
+            <Text style={styles.catPillText}>Jyotirlinga</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.catPill}>
+            <Ionicons name="location-outline" size={16} color="#555" style={{ marginRight: 6 }} />
+            <Text style={styles.catPillText}>Nearby</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
-  <Modal
-  visible={showFilterModal}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setShowFilterModal(false)}
-  >
-  <TouchableOpacity
-   style={styles.filterModalOverlay}
-   activeOpacity={1}
-   onPress={() => setShowFilterModal(false)}
-  >
-   <View style={styles.filterModalContent}>
-   <View style={styles.filterModalHeader}>
-    <Text style={styles.filterModalTitle}>Filter by Location</Text>
-    <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-    <Ionicons name="close" size={24} color={COLORS.text} />
-    </TouchableOpacity>
-   </View>
-   <ScrollView style={styles.filterOptionsList}>
-    {uniqueLocations.map((location) => (
-    <TouchableOpacity
-     key={location}
-     style={styles.filterOption}
-     onPress={() => toggleLocationFilter(location)}
-    >
-     <View
-     style={[
-      styles.filterCheckbox,
-      selectedLocations.has(location) && styles.filterCheckboxActive,
-     ]}
-     >
-     {selectedLocations.has(location) && (
-      <Ionicons name="checkmark" size={16} color={COLORS.primary} />
-     )}
-     </View>
-     <Text
-     style={[
-      styles.filterOptionText,
-      selectedLocations.has(location) && styles.filterOptionTextActive,
-     ]}
-     >
-     {location}
-     </Text>
-    </TouchableOpacity>
-    ))}
-   </ScrollView>
-   {selectedLocations.size > 0 && (
-    <TouchableOpacity
-    style={styles.filterClearButton}
-    onPress={() => setSelectedLocations(new Set())}
-    >
-    <Text style={styles.filterClearButtonText}>Clear All Filters</Text>
-    </TouchableOpacity>
-   )}
-   </View>
-  </TouchableOpacity>
-  </Modal>
-  </SafeAreaView>
+        {/* Temple List */}
+        <View style={styles.templeListContainer}>
+          {filteredTempleList.map((item) => (
+            <TouchableOpacity 
+              key={item.id} 
+              style={styles.templeItemCard}
+              onPress={() => openTempleDetails(item)}
+            >
+              <Image 
+                source={TEMPLE_IMAGES[item.id] || DEFAULT_TEMPLE_IMAGE} 
+                style={styles.templeItemImage} 
+              />
+              <View style={styles.templeItemInfo}>
+                <Text style={styles.templeItemName}>{getTempleDisplayName(item)}</Text>
+                <View style={styles.templeItemLocRow}>
+                  <Ionicons name="location" size={14} color="#888" />
+                  <Text style={styles.templeItemLocText}>{getTempleLocation(item)}</Text>
+                </View>
+                <Text style={styles.templeItemDeity}>Dedicated to {getTempleDeityLabel(item)}</Text>
+                <View style={styles.templeItemTag}>
+                  <Ionicons name="sparkles" size={12} color="#D35400" />
+                  <Text style={styles.templeItemTagText}>Jyotirlinga</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#BBB" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Animated.ScrollView>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.filterModalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowFilterModal(false)}
+        >
+          <View style={styles.filterModalContent}>
+            <div style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Filter by Location</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                <Ionicons name="close" size={24} color="#111" />
+              </TouchableOpacity>
+            </div>
+            <ScrollView style={styles.filterOptionsList}>
+              {uniqueLocations.map((location) => (
+                <TouchableOpacity
+                  key={location}
+                  style={styles.filterOption}
+                  onPress={() => toggleLocationFilter(location)}
+                >
+                  <View style={[styles.filterCheckbox, selectedLocations.has(location) && styles.filterCheckboxActive]}>
+                    {selectedLocations.has(location) && <Ionicons name="checkmark" size={16} color="#FF6600" />}
+                  </View>
+                  <Text style={[styles.filterOptionText, selectedLocations.has(location) && styles.filterOptionTextActive]}>
+                    {location}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
- container: {
- flex: 1,
- },
- safeArea: {
- flex: 1,
- },
- headerBar: {
- flexDirection: 'row',
- alignItems: 'center',
- justifyContent: 'space-between',
- paddingHorizontal: SPACING.md,
- paddingVertical: SPACING.sm,
- },
- backButton: {
- width: 40,
- height: 40,
- justifyContent: 'center',
- alignItems: 'center',
- },
- headerTitle: {
- fontSize: 20,
- fontWeight: '700',
- color: COLORS.text,
- textAlign: 'center',
- },
- searchBarContainer: {
- paddingHorizontal: SPACING.md,
- marginBottom: SPACING.sm,
- },
-  headerActions: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  flex: 1,
-  justifyContent: 'flex-end',
-  paddingRight: SPACING.md,
-  },
- headerIcon: {
- padding: SPACING.xs,
- marginLeft: SPACING.sm,
- },
- searchInputContainer: {
- flexDirection: 'row',
- alignItems: 'center',
- backgroundColor: COLORS.background,
- borderRadius: BORDER_RADIUS.full,
- paddingHorizontal: SPACING.md,
- paddingVertical: 10,
- borderWidth: 1,
- borderColor: COLORS.border,
- },
- searchInput: {
- flex: 1,
- fontSize: 15,
- color: COLORS.text,
- marginLeft: SPACING.sm,
- paddingVertical: 0,
- },
- contentScroll: {
- flex: 1,
- },
- listContent: {
- paddingBottom: SPACING.xl * 2,
- },
- heroBanner: {
- marginHorizontal: SPACING.md,
- marginBottom: SPACING.md,
- borderRadius: 16,
- overflow: 'hidden',
- },
- heroBannerImage: {
- width: '100%',
- height: 200,
- justifyContent: 'flex-end',
- },
- heroBannerImageStyle: {
- borderRadius: 16,
- },
- heroBannerOverlay: {
- flex: 1,
- justifyContent: 'flex-end',
- padding: SPACING.md,
- borderRadius: 16,
- },
-  heroBannerTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  heroBannerContent: {
-    flex: 1,
-    marginRight: SPACING.md,
-  },
-  heroBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-    gap: 4,
-  },
-   heroBadgeText: {
-    color: '#FFD700',
-    fontSize: 10,
-    fontFamily: FONTS.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  heroBannerTitle: {
-    fontSize: 22,
-    fontFamily: FONTS.bold,
-    color: '#FFFFFF',
-    marginBottom: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  heroBannerLocation: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontFamily: FONTS.medium,
-  },
-  watchNowButton: {
-    backgroundColor: '#FF9500',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
- watchNowText: {
- color: '#FFFFFF',
- fontSize: 14,
- fontWeight: '700',
- },
- liveBadge: {
- flexDirection: 'row',
- alignItems: 'center',
- gap: 5,
- backgroundColor: '#FF3B30', // Red background
- paddingHorizontal: 8,
- paddingVertical: 4,
- borderRadius: 6,
- },
- liveDot: {
- width: 6,
- height: 6,
- borderRadius: 3,
- backgroundColor: '#FFFFFF', // White dot on red background
- },
- liveBadgeText: {
- fontSize: 11,
- fontWeight: '800',
- color: '#FFFFFF', // White text
- },
- cardLiveBadge: {
- flexDirection: 'row',
- alignItems: 'center',
- gap: 4,
- backgroundColor: '#FF3B30', // Red background
- paddingHorizontal: 6,
- paddingVertical: 3,
- borderRadius: 6,
- },
- cardLiveBadgeText: {
- fontSize: 10,
- fontWeight: '800',
- color: '#FFFFFF', // White text
- },
- servicesRow: {
- flexDirection: 'row',
- alignItems: 'center',
- backgroundColor: '#F5F0FF',
- marginHorizontal: SPACING.md,
- marginBottom: SPACING.md,
- paddingHorizontal: SPACING.md,
- paddingVertical: 14,
- borderRadius: 14,
- // Card-like appearance
- shadowColor: '#000',
- shadowOffset: { width: 0, height: 2 },
- shadowOpacity: 0.05,
- shadowRadius: 4,
- elevation: 2,
- },
- servicesIconWrap: {
- width: 36,
- height: 36,
- borderRadius: 18,
- backgroundColor: '#FF9500',
- justifyContent: 'center',
- alignItems: 'center',
- marginRight: SPACING.md,
- },
- servicesText: {
- flex: 1,
- fontSize: 16,
- fontWeight: '700',
- color: COLORS.text,
- },
- sectionPillRow: {
- flexDirection: 'row',
- marginHorizontal: SPACING.md,
- marginBottom: SPACING.sm,
- gap: SPACING.sm,
- },
- sectionPill: {
- flex: 1,
- borderWidth: 1,
- borderColor: COLORS.border,
- borderRadius: BORDER_RADIUS.full,
- paddingVertical: SPACING.sm,
- alignItems: 'center',
- backgroundColor: COLORS.surface,
- },
- sectionPillActive: {
- backgroundColor: `${COLORS.primary}15`,
- borderColor: COLORS.primary,
- },
- sectionPillText: {
- fontSize: 14,
- fontWeight: '600',
- color: COLORS.textSecondary,
- },
- sectionPillTextActive: {
- color: COLORS.primary,
- },
- othersSection: {
- marginHorizontal: SPACING.md,
- marginBottom: SPACING.md,
- },
- templeCard: {
- flexDirection: 'row',
- alignItems: 'center',
- backgroundColor: COLORS.surface,
- padding: SPACING.md,
- borderRadius: 16,
- marginBottom: 12,
- },
- templeCardImage: {
- width: 72,
- height: 72,
- borderRadius: 12,
- marginRight: SPACING.md,
- backgroundColor: '#E8E0D8',
- },
- templeInfo: {
- flex: 1,
- },
- templeName: {
- fontSize: 16,
- fontWeight: '600',
- color: COLORS.text,
- marginBottom: 4,
- },
-  templeLocation: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  aartiTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  aartiTimeText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
- highlightText: {
- backgroundColor: '#FFF8B3',
- color: COLORS.text,
- },
- emptyState: {
- alignItems: 'center',
- paddingVertical: SPACING.xl * 2,
- },
- emptyText: {
- fontSize: 16,
- color: COLORS.textSecondary,
- marginTop: SPACING.md,
- },
- filterModalOverlay: {
- flex: 1,
- backgroundColor: 'rgba(0, 0, 0, 0.5)',
- justifyContent: 'flex-end',
- },
- filterModalContent: {
- backgroundColor: COLORS.background,
- borderTopLeftRadius: BORDER_RADIUS.lg,
- borderTopRightRadius: BORDER_RADIUS.lg,
- paddingTop: SPACING.lg,
- maxHeight: '80%',
- },
- filterModalHeader: {
- flexDirection: 'row',
- alignItems: 'center',
- justifyContent: 'space-between',
- paddingHorizontal: SPACING.lg,
- paddingBottom: SPACING.md,
- borderBottomWidth: 1,
- borderBottomColor: COLORS.divider,
- },
- filterModalTitle: {
- fontSize: 18,
- fontWeight: '700',
- color: COLORS.text,
- },
- filterOptionsList: {
- paddingHorizontal: SPACING.md,
- },
- filterOption: {
- flexDirection: 'row',
- alignItems: 'center',
- paddingVertical: SPACING.md,
- paddingHorizontal: SPACING.md,
- borderRadius: BORDER_RADIUS.md,
- marginBottom: SPACING.sm,
- backgroundColor: COLORS.surface,
- },
- filterCheckbox: {
- width: 24,
- height: 24,
- borderRadius: 6,
- borderWidth: 2,
- borderColor: COLORS.border,
- marginRight: SPACING.md,
- justifyContent: 'center',
- alignItems: 'center',
- },
- filterCheckboxActive: {
- backgroundColor: `${COLORS.primary}15`,
- borderColor: COLORS.primary,
- },
- filterOptionText: {
- fontSize: 16,
- color: COLORS.textSecondary,
- fontWeight: '500',
- },
- filterOptionTextActive: {
- color: COLORS.primary,
- fontWeight: '600',
- },
- filterClearButton: {
- margin: SPACING.lg,
- paddingVertical: SPACING.md,
- paddingHorizontal: SPACING.lg,
- backgroundColor: `${COLORS.error}15`,
- borderRadius: BORDER_RADIUS.md,
- alignItems: 'center',
- },
- filterClearButtonText: {
- fontSize: 14,
- fontWeight: '600',
- color: COLORS.error,
- },
+  container: { flex: 1, backgroundColor: '#FFFAF3' },
+  topTabsContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5, backgroundColor: '#FFF' },
+  topTabsInner: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 28, padding: 4, elevation: 4, shadowOpacity: 0.08, shadowRadius: 10 },
+  topTabButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 22 },
+  topTabButtonActive: { backgroundColor: '#FF6600' },
+  topTabText: { fontSize: 16, fontFamily: FONTS.bold, color: '#2D1B13' },
+  topTabTextActive: { color: '#FFF' },
+
+  heroRowLayout: { flexDirection: 'row', width: '100%', marginBottom: 20, backgroundColor: '#FFFCEB', paddingBottom: 25 },
+  heroLeftContent: { flex: 1, paddingLeft: 20, paddingTop: 15, justifyContent: 'center' },
+  heroRightImageContainer: { width: '50%', height: 345, position: 'relative', overflow: 'hidden' },
+  heroSideImage: { width: '100%', height: '100%', transform: [{ scale: 1.6 }] },
+  heroLeftMask: { position: 'absolute', left: 0, top: 0, width: '75%', height: '100%', zIndex: 2 },
+  heroAncientOverlay: { position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(184, 134, 11, 0.28)', zIndex: 1 },
+  
+  heroBackButton: { marginBottom: 15 },
+  heroDiscoverText: { fontSize: 42, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: 'bold', color: '#2D1B13', letterSpacing: -0.5 },
+  heroSacredText: { fontSize: 42, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: 'bold', color: '#FF6600', marginTop: -10, letterSpacing: -0.5 },
+  
+  ornateDivider: { flexDirection: 'row', alignItems: 'center', marginVertical: 15, width: '90%' },
+  ornateLineGradient: { flex: 1, height: 1.5 },
+  ornateDiamond: { width: 14, height: 14, backgroundColor: 'transparent', marginHorizontal: 6, justifyContent: 'center', alignItems: 'center' },
+  diamondInner: { width: 7, height: 7, backgroundColor: '#FF6600', transform: [{ rotate: '45deg' }] },
+  
+  heroSubtitleBlended: { fontSize: 14, color: '#4E342E', fontFamily: FONTS.medium, lineHeight: 20, opacity: 0.9 },
+
+  searchSection: { paddingHorizontal: 20, marginBottom: 20 },
+  searchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 30, paddingHorizontal: 20, paddingVertical: 14, elevation: 4, shadowOpacity: 0.1, shadowRadius: 10 },
+  searchInputField: { flex: 1, fontSize: 14, color: '#333', fontFamily: FONTS.medium },
+
+  categoryPillsRow: { marginBottom: 20 },
+  catPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, marginRight: 12 },
+  catPillActive: { backgroundColor: '#FFF5EB' },
+  catPillText: { fontSize: 14, fontFamily: FONTS.bold, color: '#555' },
+  catPillTextActive: { color: '#FF6600' },
+
+  templeListContainer: { paddingHorizontal: 20, paddingBottom: 40 },
+  templeItemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 20, padding: 12, marginBottom: 15, elevation: 2, shadowOpacity: 0.05, shadowRadius: 5 },
+  templeItemImage: { width: 90, height: 90, borderRadius: 15 },
+  templeItemInfo: { flex: 1, marginLeft: 15 },
+  templeItemName: { fontSize: 16, fontFamily: FONTS.bold, color: '#111', marginBottom: 4 },
+  templeItemLocRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  templeItemLocText: { fontSize: 12, color: '#888', marginLeft: 4, fontFamily: FONTS.medium },
+  templeItemDeity: { fontSize: 11, color: '#555', fontFamily: FONTS.medium, marginBottom: 6 },
+  templeItemTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF4E5', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  templeItemTagText: { fontSize: 10, fontFamily: FONTS.bold, color: '#D35400', marginLeft: 4 },
+
+  filterModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  filterModalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '70%', paddingBottom: 40 },
+  filterModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  filterModalTitle: { fontSize: 18, fontFamily: FONTS.bold, color: '#111' },
+  filterOptionsList: { padding: 20 },
+  filterOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  filterCheckbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#DDD', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  filterCheckboxActive: { borderColor: '#FF6600', backgroundColor: '#FFFBF1' },
+  filterOptionText: { fontSize: 16, color: '#444', fontFamily: FONTS.regular },
+  filterOptionTextActive: { color: '#FF6600', fontFamily: FONTS.bold },
 });

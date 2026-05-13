@@ -1,49 +1,42 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../src/constants/theme';
 
-const TabIcon = ({ name, color }: { name: any; color: string; focused?: boolean }) => (
+const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
   <View style={styles.iconContainer}>
-    <Ionicons name={name} size={22} color={color} />
+    <IconComponent name={name} size={22} color={color} />
   </View>
 );
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const bottomInset = insets.bottom; // use real inset so tab sits flush with system nav
+  const bottomInset = insets.bottom;
 
   return (
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textLight,
+        tabBarActiveTintColor: '#FF6600',
+        tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border,
-          height: 58 + insets.bottom,
-          paddingBottom: bottomInset,
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E5E5EA',
+          height: 60 + insets.bottom,
+          paddingBottom: bottomInset + 4,
           paddingTop: 8,
-        },
-        tabBarItemStyle: {
-          flex: 1,
+          elevation: 10,
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '500',
+          fontWeight: '600',
           marginTop: 2,
         },
-        headerStyle: {
-          backgroundColor: COLORS.surface,
-        },
-        headerTitleStyle: {
-          color: COLORS.text,
-          fontWeight: '600',
-          fontSize: 18,
-        },
+        headerShown: false,
         headerShadowVisible: false,
       }}
     >
@@ -51,89 +44,63 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: '',
           tabBarLabel: 'Home',
-          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "home" : "home-outline"} color={color} focused={focused} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "home" : "home-outline"} color={color} />
           ),
         }}
       />
 
-      {/* 2. Discover (hidden) */}
-      <Tabs.Screen
-        name="discover"
-        options={{
-          href: null,
-          title: '',
-          headerShown: false,
-        }}
-      />
-
-      {/* 3. Vendor (hidden) */}
-      <Tabs.Screen
-        name="vendor"
-        options={{
-          href: null,
-          title: '',
-          headerShown: false,
-        }}
-      />
-      
-      {/* 4. Chat */}
+      {/* 2. Community (Previously Chat/Messages) */}
       <Tabs.Screen
         name="messages"
         options={{
-          title: '',
-          tabBarLabel: 'Chat',
-          headerShown: false,
+          tabBarLabel: 'Community',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} color={color} focused={focused} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "people" : "people-outline"} color={color} />
           ),
         }}
       />
 
-      {/* 5. Jaap (Hidden) */}
+      {/* 3. Jaap */}
       <Tabs.Screen
         name="jaap"
         options={{
-          href: null,
-          title: '',
           tabBarLabel: 'Jaap',
-          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon IconComponent={FontAwesome5} name="pray" color={color} />
+          ),
         }}
       />
       
-      {/* 6. Temple */}
+      {/* 4. Temple */}
       <Tabs.Screen
         name="temple"
         options={{
-          title: '',
           tabBarLabel: 'Temple',
-          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "business" : "business-outline"} color={color} focused={focused} />
+            <TabIcon IconComponent={MaterialCommunityIcons} name={focused ? "temple-hindu" : "temple-hindu-outline"} color={color} />
           ),
         }}
       />
       
-      {/* 7. Profile */}
+      {/* 5. Profile */}
       <Tabs.Screen
         name="profile"
         options={{
-          title: '',
           tabBarLabel: 'Profile',
-          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "person" : "person-outline"} color={color} focused={focused} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "person" : "person-outline"} color={color} />
           ),
         }}
       />
       
-      {/* Hide these screens from tab bar */}
+      {/* Hidden Screens */}
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="circles" options={{ href: null }} />
       <Tabs.Screen name="jobs" options={{ href: null }} />
+      <Tabs.Screen name="discover" options={{ href: null }} />
+      <Tabs.Screen name="vendor" options={{ href: null }} />
     </Tabs>
   );
 }
