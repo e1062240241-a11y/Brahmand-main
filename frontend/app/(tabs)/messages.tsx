@@ -28,6 +28,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
+import { getAllMutedConversations } from '../../src/services/mutedChats';
 
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
 const COMMUNITIES_CACHE_KEY = 'communities_cache';
@@ -139,6 +140,7 @@ export default function MessagesScreen() {
   const [circles, setCircles] = useState<Circle[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [conversations, setConversations] = useState<DMConversation[]>([]);
+  const [mutedConversations, setMutedConversations] = useState<Set<string>>(new Set());
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [userLokSangma, setUserLokSangma] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
   const [showLokSangmaModal, setShowLokSangmaModal] = useState(false);
@@ -251,6 +253,10 @@ export default function MessagesScreen() {
   useEffect(() => {
     fetchData();
     fetchUserLokSangma();
+  }, []);
+
+  useEffect(() => {
+    getAllMutedConversations().then(setMutedConversations);
   }, []);
 
   const fetchConversations = async () => {
@@ -613,6 +619,7 @@ export default function MessagesScreen() {
   const renderConversationItem = (item: DMConversation) => {
     const conversationId = item.conversation_id || item.chat_id || item.id;
     const otherUser = item.user;
+    const isMuted = conversationId ? mutedConversations.has(conversationId) : false;
     if (!conversationId || !otherUser) {
       return null;
     }
@@ -636,13 +643,16 @@ export default function MessagesScreen() {
         </View>
         <View style={styles.userInfo}>
           <Text style={styles.userName} numberOfLines={1}>{otherUser.name}</Text>
-          <Text style={styles.userSL} numberOfLines={1}>
+          <Text style={[styles.userSL, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>
             {item.last_message || `SL: ${otherUser.sl_id}`}
           </Text>
         </View>
         <View style={styles.userRight}>
           <Text style={styles.userTime}>{formatTime(item.last_message_at)}</Text>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {isMuted && <Ionicons name="notifications-off" size={14} color={COLORS.textLight} style={{ marginRight: 4 }} />}
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
+          </View>
         </View>
       </TouchableOpacity>
     );

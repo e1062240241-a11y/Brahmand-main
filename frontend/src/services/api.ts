@@ -835,6 +835,12 @@ export const approveDirectMessageRequest = (conversationId: string) =>
 export const denyDirectMessageRequest = (conversationId: string) =>
   api.post(`/dm/${conversationId}/request/deny`);
 
+export const muteConversation = (conversationId: string) =>
+  api.post(`/dm/${conversationId}/mute`);
+
+export const unmuteConversation = (conversationId: string) =>
+  api.post(`/dm/${conversationId}/unmute`);
+
 // Discover APIs
 export const discoverCommunities = () => 
   api.get('/discover/communities');

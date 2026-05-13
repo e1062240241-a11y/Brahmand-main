@@ -5,8 +5,9 @@ import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler } from 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
 import { startAuthStateListener } from '../src/services/firebase/authService';
-import { addNotificationResponseReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
+import { addNotificationResponseReceivedListener, addNotificationReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
 import { sendDirectMessage } from '../src/services/api';
+import { getAllMutedConversations } from '../src/services/mutedChats';
 import { COLORS } from '../src/constants/theme';
 import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { useAdminStore } from '../src/store/adminStore';
@@ -229,6 +230,29 @@ function useNotificationResponseHandler() {
   }, [isAuthenticated, user?.name]);
 }
 
+function useMutedNotificationFilter() {
+  const mutedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    getAllMutedConversations().then(set => { mutedRef.current = set; });
+  }, []);
+
+  useEffect(() => {
+    let sub: { remove: () => void } | null = null;
+    const init = async () => {
+      sub = await addNotificationReceivedListener(async (notification: any) => {
+        const data = notification?.request?.content?.data;
+        if (data?.type === 'dm' && data?.chat_id && mutedRef.current.has(data.chat_id)) {
+          const Notifications = await import('expo-notifications');
+          await Notifications.dismissNotificationAsync(notification.request.identifier);
+        }
+      });
+    };
+    init();
+    return () => { sub?.remove(); };
+  }, []);
+}
+
 // Safe Slot wrapper to isolate navigation errors
 function SafeSlot() {
   try {
@@ -272,6 +296,7 @@ export default function RootLayout() {
   useDeepLinkHandler();
   useAndroidBackHandler();
   useNotificationResponseHandler();
+  useMutedNotificationFilter();
 
   useEffect(() => {
     Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {
