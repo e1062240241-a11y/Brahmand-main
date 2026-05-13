@@ -52,6 +52,7 @@ type PostFeedCardProps = {
   onLayout?: (event: any) => void;
   theme?: 'light' | 'dark';
   openCommentsOnCaptionPress?: boolean;
+  isBlackBackground?: boolean;
 };
 
 const formatTime = (raw: any) => {
@@ -83,8 +84,9 @@ export const PostFeedCard = memo(({
   postMenuType,
   isActive = false,
   onLayout,
-  theme = 'dark',
+  theme = 'light',
   openCommentsOnCaptionPress = false,
+  isBlackBackground = false,
 }: PostFeedCardProps) => {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const [isPausedByUser, setIsPausedByUser] = useState(false);
@@ -209,16 +211,16 @@ export const PostFeedCard = memo(({
   }, [router]);
 
   return (
-    <View style={styles.card} onLayout={onLayout}>
+    <View style={[styles.card, isBlackBackground && { backgroundColor: '#000' }]} onLayout={onLayout}>
       {/* Header */}
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
            <View style={styles.userMeta}>
-             <Text style={[styles.username, theme === 'light' && styles.usernameLight]}>{post?.username || 'User'}</Text>
-             {theme === 'light' && (
-               <Text style={styles.timeTextLight}>{formatTime(post?.created_at)}, {post?.location?.city || 'Chennai'}</Text>
-             )}
+             <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+             <Text style={[theme === 'light' ? styles.timeTextLight : styles.timeText]}>
+               {formatTime(post?.created_at)}, {post?.location?.city || 'Chennai'}
+             </Text>
            </View>
         </TouchableOpacity>
 
@@ -416,8 +418,8 @@ export const PostFeedCard = memo(({
           }
         }}
       >
-            <Text style={[styles.captionText, theme === 'light' && styles.captionTextLight]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
-              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#222' }}>{post?.username || 'User'} </Text>
+            <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
+              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFF' }}>{post?.username || 'User'} </Text>
               {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                 seg.isHashtag ? (
                   <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
@@ -428,7 +430,7 @@ export const PostFeedCard = memo(({
                     {seg.text}
                   </Text>
                 ) : (
-                  <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#333', fontWeight: '700' }}>{seg.text}</Text>
+                  <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#EEE', fontWeight: '700' }}>{seg.text}</Text>
                 )
               ) : collapsedCaption}
             </Text>
@@ -444,7 +446,7 @@ export const PostFeedCard = memo(({
       {viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} views</Text>}
 
       <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
-        <Text style={{ color: theme === 'light' ? '#666' : 'rgba(0,0,0,0.6)', fontSize: 13, fontWeight: '700' }}>
+        <Text style={{ color: theme === 'light' ? '#666' : 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '700' }}>
           {commentsCount > 0 ? `View all ${commentsCount} comments` : 'Add a comment...'}
         </Text>
       </TouchableOpacity>
@@ -453,8 +455,8 @@ export const PostFeedCard = memo(({
         <View style={styles.topCommentsWrap}>
           {topComments.map((comment: any, index: number) => (
              <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
-               <Text style={[styles.topCommentUser, theme === 'light' && styles.topCommentUserLight, { color: '#000' }]}>{comment?.username || 'User'} </Text>
-               <Text style={{ color: theme === 'light' ? '#444' : '#222', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
+               <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>{comment?.username || 'User'} </Text>
+               <Text style={{ color: theme === 'light' ? '#444' : '#DDD', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
              </Text>
           ))}
         </View>
@@ -508,16 +510,16 @@ const styles = StyleSheet.create({
   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },
   muteToggle: { position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   media: { width: '100%', height: '100%' },
-  captionText: { color: '#111111', fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  captionTextLight: { color: '#333' },
+  captionText: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  captionTextLight: { color: '#111111' },
   topCommentsWrap: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.lg },
   topCommentText: { marginBottom: 4 },
   topCommentUser: { color: '#000000', fontWeight: '900', fontSize: 13 },
   topCommentUserLight: { color: '#000' },
   actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
   actionBtn: { flexDirection: 'row', alignItems: 'center', marginRight: SPACING.lg },
-  actionText: { color: '#333333', marginLeft: 6, fontSize: 12, fontWeight: '800' },
-  actionTextLight: { color: '#333' },
+  actionText: { color: '#FFFFFF', marginLeft: 6, fontSize: 12, fontWeight: '800' },
+  actionTextLight: { color: '#333333' },
   actionTextActive: { color: COLORS.primary },
   viewsText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '700' },
 });
