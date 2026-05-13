@@ -36,6 +36,7 @@ import {
   parseApiError 
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
+import { getAllMutedConversations } from '../../src/services/mutedChats';
 
 const { width } = Dimensions.get('window');
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
@@ -117,6 +118,7 @@ export default function MessagesScreen() {
   const [circles, setCircles] = useState<Circle[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [conversations, setConversations] = useState<DMConversation[]>([]);
+  const [mutedConversations, setMutedConversations] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
@@ -156,6 +158,10 @@ export default function MessagesScreen() {
       setRefreshing(false);
     }
   }, [activeTopTab]);
+
+  useEffect(() => {
+    getAllMutedConversations().then(setMutedConversations);
+  }, []);
 
   const fetchConversations = async () => {
     setLoadingConversations(true);
@@ -234,6 +240,7 @@ export default function MessagesScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      getAllMutedConversations().then(setMutedConversations);
       if (activeTopTab === 'Private Chat') {
         fetchConversations();
       }
@@ -289,6 +296,7 @@ export default function MessagesScreen() {
       </TouchableOpacity>
     );
   };
+
 
   const renderCommunityItem = (item: Community) => {
     const isVerified = user?.personality_verification_status === 'approved';
@@ -567,23 +575,28 @@ export default function MessagesScreen() {
              <View style={styles.chatSectionHeader}>
                 <Text style={styles.chatSectionTitle}>Direct Messages</Text>
              </View>
-             {conversations.length > 0 ? (
-                conversations.map(conv => (
-                  <TouchableOpacity 
-                    key={conv.conversation_id || conv.id} 
-                    style={styles.chatItem}
-                    onPress={() => router.push(`/dm/${conv.conversation_id || conv.id}`)}
-                  >
-                    <Avatar name={conv.user?.name || '?'} photo={conv.user?.photo} size={50} />
-                    <View style={styles.chatItemInfo}>
-                      <Text style={styles.chatItemName}>{conv.user?.name}</Text>
-                      <Text style={styles.chatItemLastMsg} numberOfLines={1}>{conv.last_message || 'Send a message'}</Text>
-                    </View>
-                    <View style={styles.chatItemRight}>
-                      <Text style={styles.chatItemTime}>{formatTime(conv.last_message_at)}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
+              {conversations.length > 0 ? (
+                 conversations.map(conv => {
+                   const conversationId = conv.conversation_id || conv.id;
+                   const isMuted = conversationId ? mutedConversations.has(conversationId) : false;
+                   return (
+                   <TouchableOpacity 
+                     key={conversationId} 
+                     style={styles.chatItem}
+                     onPress={() => router.push(`/dm/${conversationId}`)}
+                   >
+                     <Avatar name={conv.user?.name || '?'} photo={conv.user?.photo} size={50} />
+                     <View style={styles.chatItemInfo}>
+                       <Text style={styles.chatItemName}>{conv.user?.name}</Text>
+                       <Text style={[styles.chatItemLastMsg, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>{conv.last_message || 'Send a message'}</Text>
+                     </View>
+                     <View style={styles.chatItemRight}>
+                       <Text style={styles.chatItemTime}>{formatTime(conv.last_message_at)}</Text>
+                       {isMuted && <Ionicons name="notifications-off" size={14} color={COLORS.textLight} style={{ marginTop: 4 }} />}
+                     </View>
+                   </TouchableOpacity>
+                   );
+                 })
              ) : (
                 <View style={styles.emptyChat}>
                   <Text style={styles.emptyChatText}>No private messages yet</Text>

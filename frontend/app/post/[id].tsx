@@ -1,27 +1,36 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Share, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, Share, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../../src/constants/theme';
-import { getPostById, getPostComments, addPostComment, repostPost } from '../../src/services/api';
+import { getPostsFeed, getPostById, getPostComments, addPostComment, repostPost } from '../../src/services/api';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const FEED_PAGE_SIZE = 7;
+
 const PostScreen = () => {
-  const params = useLocalSearchParams<{ id: string | string[]; mediaUrl?: string | string[]; caption?: string | string[]; uploaderName?: string | string[]; uploaderPhoto?: string | string[] }>();
+  const params = useLocalSearchParams<{ id: string | string[] }>();
   const router = useRouter();
   const routePostId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const routeMediaUrl = Array.isArray(params.mediaUrl) ? params.mediaUrl[0] : params.mediaUrl;
-  const routeCaption = Array.isArray(params.caption) ? params.caption[0] : params.caption;
-  const routeUploaderName = Array.isArray(params.uploaderName) ? params.uploaderName[0] : params.uploaderName;
-  const routeUploaderPhoto = Array.isArray(params.uploaderPhoto) ? params.uploaderPhoto[0] : params.uploaderPhoto;
-  const [post, setPost] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const [feedPosts, setFeedPosts] = useState<any[]>([]);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [feedOffset, setFeedOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [initialPostLoaded, setInitialPostLoaded] = useState(false);
+
+  const [activePostKey, setActivePostKey] = useState<string | null>(null);
+  const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
+  const [postHeights, setPostHeights] = useState<Record<string, number>>({});
+
   const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [commentPost, setCommentPost] = useState<any>(null);
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState('');
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -29,54 +38,105 @@ const PostScreen = () => {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
 
+  const listRef = useRef<FlatList>(null);
+  const hasScrolled = useRef(false);
+
+  const feedPostKeys = useMemo(
+    () => feedPosts.map((post, index) => String(post.id || post.media_url || index)),
+    [feedPosts],
+  );
+
+  useEffect(() => {
+    if (feedPostKeys.length > 0 && !activePostKey && !hasScrolled.current) {
+      setActivePostKey(feedPostKeys[0]);
+    }
+  }, [feedPostKeys, activePostKey]);
+
+  const loadFeed = useCallback(async (offset: number = 0, append: boolean = false) => {
+    if (!append) setLoadingFeed(true);
+    else setLoadingMore(true);
+    try {
+      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, 'for_you');
+      const payload = response.data;
+      const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
+      const nextHasMore = typeof payload?.has_more === 'boolean' ? payload.has_more : items.length === FEED_PAGE_SIZE;
+      if (append) {
+        setFeedPosts(prev => [...prev, ...items]);
+      } else {
+        setFeedPosts(items);
+      }
+      setFeedOffset(offset + items.length);
+      setHasMore(nextHasMore);
+    } catch (err) {
+      console.warn('[Post] Failed to load feed', err);
+    } finally {
+      setLoadingFeed(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFeed(0, false);
+  }, [loadFeed]);
+
+  useEffect(() => {
+    if (feedPosts.length > 0 && routePostId && !hasScrolled.current) {
+      const idx = feedPosts.findIndex(
+        p => String(p.id) === String(routePostId) || String(p.post_id) === String(routePostId)
+      );
+      if (idx >= 0) {
+        setTimeout(() => {
+          listRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0 });
+          hasScrolled.current = true;
+          setActivePostKey(feedPostKeys[idx]);
+        }, 300);
+      }
+      setInitialPostLoaded(true);
+    }
+  }, [feedPosts, routePostId, feedPostKeys]);
+
   const loadComments = useCallback(async (postId: string) => {
     setCommentsLoading(true);
     try {
       const response = await getPostComments(postId, 200);
       setPostComments(Array.isArray(response.data) ? response.data : []);
-    } catch (err: any) {
-      console.warn('[Post] Failed to load comments', err);
+    } catch {
       setPostComments([]);
     } finally {
       setCommentsLoading(false);
     }
   }, []);
 
-  const handleOpenComment = useCallback(async (post: any) => {
+  const handleOpenComment = useCallback((post: any) => {
     if (!post?.id) return;
+    setCommentPost(post);
     setCommentText('');
     setCommentModalVisible(true);
-    await loadComments(post.id);
+    loadComments(post.id);
   }, [loadComments]);
 
   const handleSubmitComment = useCallback(async () => {
-    const currentPostId = post?.id || routePostId;
-    if (!currentPostId || !commentText.trim()) return;
-
+    if (!commentPost?.id || !commentText.trim()) return;
     setCommentSubmitting(true);
     try {
-      await addPostComment(String(currentPostId), commentText.trim());
+      await addPostComment(String(commentPost.id), commentText.trim());
       setCommentText('');
-      await loadComments(String(currentPostId));
-    } catch (err: any) {
-      console.warn('[Post] Failed to submit comment', err);
+      await loadComments(String(commentPost.id));
+    } catch {
       alert('Unable to submit comment. Please try again.');
     } finally {
       setCommentSubmitting(false);
     }
-  }, [commentText, loadComments, routePostId, post]);
+  }, [commentText, loadComments, commentPost]);
 
   const handleShareExternal = useCallback(async (post: any) => {
     if (!post) return;
-
     const mediaUrl = post.media_url || post.mediaUrl || post.image_url || post.imageUrl || '';
     const caption = post.caption || post.description || '';
     const message = `Check this post on Brahmand!${caption ? `\nCaption: ${caption}` : ''}`;
-
     try {
       await Share.share({ message, url: mediaUrl || undefined, title: 'Share via Brahmand' });
-    } catch (error: any) {
-      console.warn('Failed to open share sheet:', error);
+    } catch {
       alert('Could not open share sheet. Please try again.');
     }
   }, []);
@@ -88,8 +148,7 @@ const PostScreen = () => {
       await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
       alert('Link copied to clipboard');
       setShareModalVisible(false);
-    } catch (error) {
-      console.warn('Failed to copy link:', error);
+    } catch {
       alert('Could not copy link.');
     }
   }, [selectedSharePost]);
@@ -100,21 +159,17 @@ const PostScreen = () => {
       setShareModalVisible(false);
       return;
     }
-
     try {
       const module = await import('expo-file-system');
       const FileSystemModule = (module as any).default ?? module;
       const documentDirectory = FileSystemModule?.documentDirectory as string | undefined;
       const downloadAsync = FileSystemModule?.downloadAsync as ((uri: string, fileUri: string) => Promise<any>) | undefined;
-      if (!downloadAsync || !documentDirectory) {
-        throw new Error('Download unsupported');
-      }
+      if (!downloadAsync || !documentDirectory) throw new Error('Download unsupported');
       const ext = selectedSharePost.media_type === 'video' ? 'mp4' : 'jpg';
       const localPath = `${documentDirectory}brahmand_post_${Date.now()}.${ext}`;
       await downloadAsync(selectedSharePost.media_url, localPath);
       alert('Saved to app documents');
-    } catch (error) {
-      console.warn('Download failed:', error);
+    } catch {
       alert('Download failed');
     } finally {
       setShareModalVisible(false);
@@ -127,59 +182,72 @@ const PostScreen = () => {
   }, []);
 
   const handleRepost = useCallback(async (post: any) => {
-    const postId = post?.id;
-    if (!postId) return;
-
+    if (!post?.id) return;
     try {
-      const response = await repostPost(postId);
-      const repostedPost = response.data?.post;
-      if (repostedPost) {
-        setPost(repostedPost);
-      }
+      await repostPost(post.id);
       alert('Reposted to your feed.');
-    } catch (error) {
-      console.warn('Failed to repost:', error);
+    } catch {
       alert('Could not repost. Please try again.');
     }
   }, []);
 
-  useEffect(() => {
-    const fetchPost = async () => {
-      if (!routePostId) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await getPostById(String(routePostId));
-        setPost(response.data);
-      } catch (err: any) {
-        setError('Unable to load post.');
-        console.warn('[Post] Failed to fetch post by id', err);
-      } finally {
-        setLoading(false);
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasMore) loadFeed(feedOffset, true);
+  }, [loadingMore, hasMore, feedOffset, loadFeed]);
+
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
+    const postKey = String(item.id || item.media_url || index);
+    return (
+      <View
+        onLayout={(event) => {
+          const y = event.nativeEvent.layout.y;
+          const h = event.nativeEvent.layout.height;
+          setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
+          setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
+        }}
+      >
+        <PostFeedCard
+          post={item}
+          isActive={activePostKey === postKey}
+          onLike={() => {}}
+          onComment={handleOpenComment}
+          openCommentsOnCaptionPress
+          onShare={handleSharePost}
+          onRepost={handleRepost}
+          onEdit={() => {}}
+          onUserPress={(u: any) => {
+            const userId = u?.user_id || u?.user?.id || u?.id;
+            if (userId) {
+              router.push({ pathname: '/profile/[id]', params: { id: String(userId) } } as any);
+            }
+          }}
+          theme="light"
+        />
+      </View>
+    );
+  }, [activePostKey, handleOpenComment, handleSharePost, handleRepost, router]);
+
+  const keyExtractor = useCallback((item: any, index: number) => String(item.id || item.media_url || index), []);
+
+  const onScroll = useCallback((event: any) => {
+    const y = event.nativeEvent.contentOffset.y;
+    let closestKey: string | null = null;
+    let maxVisible = 0;
+    for (const key of feedPostKeys) {
+      const offset = postOffsets[key];
+      const height = postHeights[key];
+      if (typeof offset === 'number' && typeof height === 'number') {
+        const visibleTop = Math.max(0, offset - y);
+        const visibleBottom = Math.min(SCREEN_HEIGHT, offset + height - y);
+        const visibleAmount = Math.max(0, visibleBottom - visibleTop);
+        if (visibleAmount > maxVisible) {
+          maxVisible = visibleAmount;
+          closestKey = key;
+        }
       }
-    };
-
-    fetchPost();
-  }, [routePostId]);
-
-  const pId = routePostId ? String(routePostId) : '';
-  const pMedia = routeMediaUrl && routeMediaUrl !== 'undefined' ? String(routeMediaUrl) : '';
-  const pCap = routeCaption && routeCaption !== 'undefined' ? String(routeCaption) : '';
-  const pName = routeUploaderName && routeUploaderName !== 'undefined' ? String(routeUploaderName) : '';
-  const pPhoto = routeUploaderPhoto && routeUploaderPhoto !== 'undefined' ? String(routeUploaderPhoto) : '';
-
-  const displayPost = post || {
-    id: pId,
-    post_id: pId,
-    media_url: pMedia,
-    image_url: pMedia,
-    caption: pCap,
-    description: pCap,
-    username: pName,
-    author: pName,
-    user_photo: pPhoto,
-    author_photo: pPhoto
-  };
+    }
+    setActivePostKey(prev => closestKey ?? prev);
+  }, [feedPostKeys, postOffsets, postHeights]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -187,37 +255,33 @@ const PostScreen = () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Post</Text>
+        <Text style={styles.headerTitle}>Posts</Text>
       </View>
-      
-      {loading && !post ? (
+
+      {loadingFeed && feedPosts.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading post...</Text>
-        </View>
-      ) : error && !post ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>{error}</Text>
+          <Text style={styles.loadingText}>Loading posts...</Text>
         </View>
       ) : (
-        <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
-          <PostFeedCard
-            post={displayPost}
-            isActive={true}
-            onLike={() => {}}
-            onComment={handleOpenComment}
-            openCommentsOnCaptionPress
-            onShare={handleSharePost}
-            onRepost={handleRepost}
-            onEdit={() => {}}
-            onUserPress={(u: any) => {
-              const userId = u?.user_id || u?.user?.id || u?.id;
-              if (userId) {
-                router.push({ pathname: '/profile/[id]', params: { id: String(userId) } } as any);
-              }
-            }}
-          />
-        </ScrollView>
+        <FlatList
+          ref={listRef}
+          data={feedPosts}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          contentContainerStyle={styles.listContent}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footer}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              </View>
+            ) : null
+          }
+        />
       )}
 
       <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
@@ -242,14 +306,16 @@ const PostScreen = () => {
               ) : postComments.length === 0 ? (
                 <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment.</Text>
               ) : (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  {postComments.map((comment, index) => (
-                    <View key={comment.id ?? `comment-${index}`} style={styles.commentItem}>
-                      <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
-                      <MentionText style={styles.commentItemText} text={comment?.text || ''} />
+                <FlatList
+                  data={postComments}
+                  keyExtractor={(item, idx) => String(item.id || idx)}
+                  renderItem={({ item }) => (
+                    <View style={styles.commentItem}>
+                      <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                      <MentionText style={styles.commentItemText} text={item?.text || ''} />
                     </View>
-                  ))}
-                </ScrollView>
+                  )}
+                />
               )}
             </View>
 
@@ -291,21 +357,21 @@ const PostScreen = () => {
       />
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: SPACING.md, 
-    backgroundColor: COLORS.surface, 
-    borderBottomWidth: 1, 
-    borderBottomColor: COLORS.border 
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   backBtn: { marginRight: 15 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
-  content: { flex: 1 },
+  listContent: { paddingBottom: 40 },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -317,6 +383,10 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
     color: COLORS.textSecondary,
     fontSize: 14,
+  },
+  footer: {
+    paddingVertical: SPACING.lg,
+    alignItems: 'center',
   },
   commentModalOverlay: {
     flex: 1,
@@ -401,4 +471,5 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.divider,
   },
 });
+
 export default PostScreen;
