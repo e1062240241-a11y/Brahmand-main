@@ -9,12 +9,12 @@ import {
   Pressable,
   Text,
   Platform,
-  Image,
   ActivityIndicator,
   StyleSheet,
   Animated,
   PanResponder,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
@@ -275,7 +275,8 @@ const ReelVideoItem = React.memo(({
             <Image
               source={{ uri: mediaUrl }}
               style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={300}
             />
           ) : Platform.OS === 'web' ? (
             <video

@@ -69,8 +69,9 @@ class Settings:
     # Logging
     LOG_LEVEL: str = os.environ.get('LOG_LEVEL', 'INFO')
 
-    # Astrology API (Access Token auth via x-astrologyapi-key header)
-    ASTROLOGY_API_TOKEN: str = os.environ.get('ASTROLOGY_API_TOKEN', 'ak-ad5c4b8cc4899325b7eab896f68694c33c6369b0')
+    # Astrology API (astrologyapi.com)
+    ASTROLOGY_API_USER_ID: str = os.environ.get('ASTROLOGY_API_USER_ID', '653183')
+    ASTROLOGY_API_TOKEN: str = os.environ.get('ASTROLOGY_API_TOKEN', 'ak-6ace8303f3b0ecec5c3c31f6bc727b9ed9ca274c')
     
     # Prokerala Astrology API
     PROKERALA_BASE_URL: str = os.environ.get('PROKERALA_BASE_URL', 'https://api.prokerala.com')

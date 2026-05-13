@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
+import {
+  View,
+  Text,
   TextInput,
-  StyleSheet, 
-  TouchableOpacity, 
+  StyleSheet,
+  TouchableOpacity,
   Modal,
   ScrollView,
   KeyboardAvoidingView,
@@ -26,11 +26,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useHelpRequestStore } from '../store/helpRequestStore';
 import { useAuthStore } from '../store/authStore';
-import { 
-  getWisdom, 
+import {
+  getWisdom,
   getGitaShloka,
-  createSOSAlert, 
-  getMySOSAlert, 
+  createSOSAlert,
+  getMySOSAlert,
   resolveSOSAlert,
   getActiveSOSAlerts,
   getMyActiveCommunityRequests,
@@ -43,6 +43,7 @@ import {
 import * as Location from 'expo-location';
 import LocationService from '../services/location';
 import { socketService } from '../services/socket';
+import { SOSFlowModal } from './SOSFlowModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -89,20 +90,20 @@ const loadDailyShloka = async (): Promise<{
   try {
     const today = new Date().toDateString();
     const cached = await AsyncStorage.getItem(SHLOKA_CACHE_KEY);
-    
+
     if (cached) {
       const parsed = JSON.parse(cached);
       if (parsed.date === today && parsed.slok) {
         return parsed;
       }
     }
-    
+
     // Fetch new shloka
     const shlokaIndex = getTodaysShlokaIndex();
     const { chapter, verse } = getChapterVerse(shlokaIndex);
-    
+
     const data = await getGitaShloka(chapter, verse);
-    
+
     if (data && data.slok) {
       const translations: string[] = [];
       if (data.siva?.ec) translations.push(data.siva.ec);
@@ -110,11 +111,11 @@ const loadDailyShloka = async (): Promise<{
       if (data.adi?.et) translations.push(data.adi.et);
       if (data.gambir?.et) translations.push(data.gambir.et);
       if (data.purohit?.et) translations.push(data.purohit.et);
-      
-      let translation = translations.length > 0 
+
+      let translation = translations.length > 0
         ? translations.reduce((a, b) => a.length > b.length ? a : b)
         : 'Translation not available';
-      
+
       translation = translation
         .replace(/[\u0000-\u001F\u007F-\uFFFF]/g, '')
         .replace(/\?+/g, '?')
@@ -123,7 +124,7 @@ const loadDailyShloka = async (): Promise<{
         .replace(/^\?+/, '')
         .replace(/\?$/, '')
         .trim();
-      
+
       const shlokaData = {
         chapter: data.chapter,
         verse: data.verse,
@@ -131,7 +132,7 @@ const loadDailyShloka = async (): Promise<{
         translation: translation,
         date: today
       };
-      
+
       await AsyncStorage.setItem(SHLOKA_CACHE_KEY, JSON.stringify(shlokaData));
       return shlokaData;
     }
@@ -141,7 +142,7 @@ const loadDailyShloka = async (): Promise<{
     try {
       const cached = await AsyncStorage.getItem(SHLOKA_CACHE_KEY);
       if (cached) return JSON.parse(cached);
-    } catch {}
+    } catch { }
     return null;
   }
 };
@@ -174,24 +175,30 @@ export const FloatingUtilityButton = () => {
   const [loading, setLoading] = useState(false);
   const [sosLoading, setSOSLoading] = useState(false);
   const { activeRequest, fetchActiveRequest, resolveRequest, hasActiveRequest } = useHelpRequestStore();
-  
+
   const [activeSOS, setActiveSOS] = useState<any>(null);
   const [nearbySOSCount, setNearbySOSCount] = useState(0);
   const [nearbySOSAlerts, setNearbySOSAlerts] = useState<any[]>([]);
   const [respondedSOSIds, setRespondedSOSIds] = useState<Set<string>>(new Set());
-  const [sosStage, setSosStage] = useState<'idle' | 'hold' | 'type' | 'micro' | 'countdown'>('idle');
-  const [sosType, setSosType] = useState<string>('medical');
   const [microLocation, setMicroLocation] = useState('');
   const [microLocationLoading, setMicroLocationLoading] = useState(false);
   const [locationFetched, setLocationFetched] = useState(false);
+  const [sosFlowVisible, setSosFlowVisible] = useState(false);
   const [fetchedCoordinates, setFetchedCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [holdProgress, setHoldProgress] = useState(0);
-  const [countdownValue, setCountdownValue] = useState(8);
-  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const holdConfirmedRef = useRef(false);
-  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sosRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const sosExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [sosRadiusLevel, setSosRadiusLevel] = useState(0);
+
+  const resolveMyActiveSOS = async (status: 'resolved' | 'cancelled') => {
+    if (!activeSOS?.id) return;
+    try {
+      await resolveSOSAlert(activeSOS.id, status);
+    } catch (error) {
+      console.error('Resolve SOS error:', error);
+      throw error;
+    }
+  };
+
   const [myCommunityRequests, setMyCommunityRequests] = useState<any[]>([]);
   const [resolvingRequestId, setResolvingRequestId] = useState<string | null>(null);
   const [communityRequestLoading, setCommunityRequestLoading] = useState(false);
@@ -199,21 +206,22 @@ export const FloatingUtilityButton = () => {
   const [panchang, setPanchang] = useState<any>(null);
   const [nextFestival, setNextFestival] = useState<any>(null);
   const [gitaDropdownOpen, setGitaDropdownOpen] = useState(false);
-  
+  const [hubExpanded, setHubExpanded] = useState(false);
+
   const wheelAnim = useRef(new Animated.Value(0)).current;
+  const hubAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (modalVisible) {
-      Animated.spring(wheelAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7
-      }).start();
+      Animated.parallel([
+        Animated.spring(wheelAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+        Animated.spring(hubAnim, { toValue: hubExpanded ? 1 : 0, useNativeDriver: true, tension: 40, friction: 8 })
+      ]).start();
     } else {
       wheelAnim.setValue(0);
+      hubAnim.setValue(0);
     }
-  }, [modalVisible]);
+  }, [modalVisible, hubExpanded]);
 
   const rayPulseAnim = useRef(new Animated.Value(0)).current;
   const sosGlowAnim = useRef(new Animated.Value(0)).current;
@@ -306,17 +314,12 @@ export const FloatingUtilityButton = () => {
   }, [nearbySOSCount]);
 
   const resetSOSFlow = () => {
-    setSosStage('idle');
-    setSosType('medical');
     setMicroLocation('');
     setMicroLocationLoading(false);
     setLocationFetched(false);
     setFetchedCoordinates(null);
-    setHoldProgress(0);
-    setCountdownValue(8);
-    holdConfirmedRef.current = false;
-    if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+  };
+
   const openSOSLocation = async () => {
     if (!activeSOS?.latitude || !activeSOS?.longitude) {
       Alert.alert('Location unavailable', 'Cannot open map without coordinates.');
@@ -348,7 +351,7 @@ export const FloatingUtilityButton = () => {
     setCommunityRequestLoading(true);
     try {
       await resolveCommunityRequest(requestId);
-      setMyCommunityRequests(prev => 
+      setMyCommunityRequests(prev =>
         prev.map(req => req.id === requestId ? { ...req, status: 'fulfilled' } : req)
       );
       Alert.alert('Success', 'Request marked as fulfilled!');
@@ -397,7 +400,7 @@ export const FloatingUtilityButton = () => {
       setWisdom({ ...(wisdomRes?.data || {}), gitaShloka: gitaRes });
       setPanchang(panRes);
       setNextFestival(festRes);
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const checkSOSStatus = useCallback(async () => {
@@ -414,7 +417,7 @@ export const FloatingUtilityButton = () => {
         setNearbySOSCount(otherSOS.length);
         setNearbySOSAlerts(otherSOS);
       }
-    } catch (error) {}
+    } catch (error) { }
   }, []);
 
   const loadInitialUtilityData = async () => {
@@ -434,29 +437,33 @@ export const FloatingUtilityButton = () => {
 
   useEffect(() => {
     checkSOSStatus();
-    sosRefreshTimerRef.current = setInterval(checkSOSStatus, 60_000);
+    fetchMyCommunityRequests();
+    sosRefreshTimerRef.current = setInterval(() => {
+      checkSOSStatus();
+      fetchMyCommunityRequests();
+    }, 60_000);
     return () => {
       if (sosRefreshTimerRef.current) clearInterval(sosRefreshTimerRef.current);
     };
   }, [checkSOSStatus]);
 
   const fetchMyCommunityRequests = async () => {
+    if (!user?.id) return;
     try {
       const response = await getMyActiveCommunityRequests();
       let requests = response.data || [];
-      if (user?.id) {
-        requests = requests.filter((req: any) => {
-          const isMyRequest = req.user_id === user.id || req.creator_id === user.id || req.created_by === user.id;
-          return isMyRequest && req.status !== 'fulfilled';
-        });
-      }
+      // Strict filtering: ensure we only show requests specifically tied to this user
+      requests = requests.filter((req: any) => {
+        const isOwner = req.user_id === user.id || req.creator_id === user.id || req.created_by === user.id;
+        return isOwner && req.status !== 'fulfilled' && req.status !== 'resolved';
+      });
       setMyCommunityRequests(requests);
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const startSOSFlow = () => {
     resetSOSFlow();
-    setSosStage('hold');
+    setSosFlowVisible(true);
   };
 
   const fetchCurrentMicroLocation = async () => {
@@ -475,36 +482,13 @@ export const FloatingUtilityButton = () => {
     }
   };
 
-  const handleSOSHoldStart = () => {
-    holdConfirmedRef.current = false;
-    const start = Date.now();
-    holdTimerRef.current = setInterval(() => {
-      const progress = Math.min(1, (Date.now() - start) / 3000);
-      setHoldProgress(progress);
-      if (progress >= 1) handleSOSHoldComplete();
-    }, 50);
-  };
-
-  const handleSOSHoldComplete = () => {
-    holdConfirmedRef.current = true;
-    if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-    setSosStage('type');
-  };
-
-  const handleSOSHoldEnd = () => {
-    if (holdConfirmedRef.current) return;
-    if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-    setHoldProgress(0);
-  };
-
-  const handleStartSOSCountdown = () => setSosStage('countdown');
-  const handleCancelSOSCountdown = () => resetSOSFlow();
 
   const RADIUS_LEVELS = [5, 15, 50];
 
-  const handleCreateSOS = async (level = 0) => {
+  const handleCreateSOS = async (data: { type: string; microLocation: string }, level = 0) => {
     setSOSLoading(true);
     try {
+      const { type, microLocation: mLoc } = data;
       let latitude: number, longitude: number;
       if (fetchedCoordinates) {
         latitude = fetchedCoordinates.latitude;
@@ -518,8 +502,8 @@ export const FloatingUtilityButton = () => {
       const response = await createSOSAlert({
         latitude,
         longitude,
-        emergency_type: sosType,
-        micro_location: microLocation,
+        emergency_type: type,
+        micro_location: mLoc,
         radius: RADIUS_LEVELS[level],
       });
       setActiveSOS(response.data);
@@ -575,7 +559,7 @@ export const FloatingUtilityButton = () => {
         });
         setActiveSOS(response.data);
         setSosRadiusLevel(nextLevel);
-      } catch {}
+      } catch { }
     }, 600_000);
 
     return () => {
@@ -586,35 +570,27 @@ export const FloatingUtilityButton = () => {
     };
   }, [activeSOS, sosRadiusLevel]);
 
-  useEffect(() => {
-    if (sosStage !== 'countdown') return;
-    setCountdownValue(8);
-    countdownTimerRef.current = setInterval(() => {
-      setCountdownValue((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownTimerRef.current!);
-          handleCreateSOS();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => {
-      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
-    };
-  }, [sosStage]);
+  const handleRespondToSOS = async (sosId: string) => {
+    try {
+      await respondToSOS(sosId, 'coming');
+      setRespondedSOSIds(prev => new Set([...prev, sosId]));
+      Alert.alert('Dhanyawad!', 'The creator has been notified that you are on the way.');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to respond to SOS');
+    }
+  };
 
   const handleResolveActiveSOS = async (status: 'resolved' | 'cancelled') => {
     if (!activeSOS) return;
     if (status === 'cancelled') {
-       try {
-         setSOSLoading(true);
-         await resolveMyActiveSOS('cancelled');
-         setActiveSOS(null);
-       } catch (error: any) {
-         Alert.alert('Error', error.response?.data?.detail || 'Failed to cancel SOS');
-       } finally { setSOSLoading(false); }
-       return;
+      try {
+        setSOSLoading(true);
+        await resolveMyActiveSOS('cancelled');
+        setActiveSOS(null);
+      } catch (error: any) {
+        Alert.alert('Error', error.response?.data?.detail || 'Failed to cancel SOS');
+      } finally { setSOSLoading(false); }
+      return;
     }
 
     Alert.alert(
@@ -622,13 +598,15 @@ export const FloatingUtilityButton = () => {
       'Confirm this action?',
       [
         { text: 'No', style: 'cancel' },
-        { text: 'Yes', onPress: async () => {
-          setSOSLoading(true);
-          try {
-            await resolveMyActiveSOS('resolved');
-            setActiveSOS(null);
-          } catch (error) {} finally { setSOSLoading(false); }
-        }}
+        {
+          text: 'Yes', onPress: async () => {
+            setSOSLoading(true);
+            try {
+              await resolveMyActiveSOS('resolved');
+              setActiveSOS(null);
+            } catch (error) { } finally { setSOSLoading(false); }
+          }
+        }
       ]
     );
   };
@@ -642,7 +620,7 @@ export const FloatingUtilityButton = () => {
         router.push({ pathname: '/panchang', params: { lat: String(loc.coords.latitude), lng: String(loc.coords.longitude) } });
         return;
       }
-    } catch {}
+    } catch { }
     router.push({ pathname: '/panchang', params: { needsLocation: '1' } });
   };
 
@@ -655,17 +633,17 @@ export const FloatingUtilityButton = () => {
 
   return (
     <>
-      <Animated.View 
+      <Animated.View
         {...panResponder.panHandlers}
         style={[
           styles.floatingButtonContainer,
           isChatPage && { bottom: 150 },
-          { transform: [...pan.getTranslateTransform(), { scale: nearbySOSCount > 0 ? pulseAnim : 1 }] }
+          { transform: [...pan.getTranslateTransform(), { scale: activeSOS ? pulseAnim : 1 }] }
         ]}
       >
-        <View style={[styles.floatingButton, nearbySOSCount > 0 && styles.floatingButtonEmergency, activeSOS && styles.floatingButtonActiveSOS]}>
-          <View style={[styles.glassBackground, nearbySOSCount > 0 && styles.glassBackgroundEmergency, activeSOS && styles.glassBackgroundActiveSOS]}>
-            {activeSOS ? <Ionicons name="alert-circle" size={24} color="#FFFFFF" /> : nearbySOSCount > 0 ? <Ionicons name="alert" size={24} color="#FFFFFF" /> : <View style={styles.redDot} />}
+        <View style={[styles.floatingButton, activeSOS && styles.floatingButtonActiveSOS]}>
+          <View style={[styles.glassBackground, activeSOS && styles.glassBackgroundActiveSOS]}>
+            {activeSOS ? <Ionicons name="alert-circle" size={24} color="#FFFFFF" /> : <View style={styles.redDot} />}
           </View>
         </View>
       </Animated.View>
@@ -678,266 +656,155 @@ export const FloatingUtilityButton = () => {
               <Ionicons name="close-circle" size={42} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
 
-            <ScrollView 
-              style={{ width: '100%' }}
-              contentContainerStyle={{ alignItems: 'center', paddingBottom: 100, paddingTop: 60 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Active SOS Warning Bar */}
-              {activeSOS && (
-                <View style={styles.activeSOSBar}>
-                  <Ionicons name="alert-circle" size={24} color="#FFF" />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.activeSOSTitle}>SOS ALERT ACTIVE</Text>
-                    <Text style={styles.activeSOSSubtitle}>Help is being sought in {activeSOS.area}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.sosMapBtn} onPress={openSOSLocation}>
-                    <Ionicons name="navigate" size={18} color="#FF3B30" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.sosResolveBtn} onPress={() => handleResolveActiveSOS('resolved')}>
-                    <Text style={styles.sosResolveText}>I'M SAFE</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Gita Shloka Card */}
-              <View style={styles.gitaCardCompact}>
-                <TouchableOpacity 
-                  style={styles.gitaHeaderRow}
-                  onPress={() => setGitaDropdownOpen(!gitaDropdownOpen)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.gitaIconBgSmall}>
-                    <Ionicons name="book" size={16} color="#FF8F00" />
-                  </View>
-                  <View style={styles.gitaInfo}>
-                    <Text style={styles.gitaTitleCompact}>Gita {wisdom?.gitaShloka ? `Ch ${wisdom.gitaShloka.chapter}:${wisdom.gitaShloka.verse}` : 'Daily'}</Text>
-                    <Text style={styles.gitaSanskritCompact} numberOfLines={1}>
-                      {wisdom?.gitaShloka?.slok || 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन。'}
-                    </Text>
-                  </View>
-                  <Ionicons name={gitaDropdownOpen ? 'chevron-up' : 'chevron-down'} size={20} color="#FF8F00" />
-                </TouchableOpacity>
-                {gitaDropdownOpen && (
-                  <View style={styles.gitaDropdownContent}>
-                    <Text style={styles.gitaTranslation}>
-                      {wisdom?.gitaShloka?.translation || 'Perform your duty without attachment to the results.'}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* My Community Requests */}
-              {myCommunityRequests.length > 0 && (
-                <View style={styles.communityRequestsSection}>
-                  <Text style={styles.sectionTitle}>My Requests</Text>
-                  {myCommunityRequests.map((request) => (
-                    <View key={request.id} style={styles.communityRequestCard}>
-                      <View style={styles.communityRequestHeader}>
-                        <View style={[styles.requestTypeBadge, { backgroundColor: `${getCommunityRequestColor(request.request_type)}20` }]}>
-                          <Ionicons name={getCommunityRequestIcon(request.request_type) as any} size={16} color={getCommunityRequestColor(request.request_type)} />
-                        </View>
-                        <Text style={styles.communityRequestType}>{request.request_type?.toUpperCase()}</Text>
-                        <TouchableOpacity style={styles.resolveButton} onPress={() => handleResolveCommunityRequest(request.id)}>
-                          <Ionicons name="checkmark-circle" size={16} color="#43A047" />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={styles.communityRequestTitle}>{request.title}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Nearby SOS Alerts */}
-              {nearbySOSAlerts.length > 0 && (
-                <View style={styles.communityRequestsSection}>
-                  <Text style={[styles.sectionTitle, { color: '#FF3B30' }]}>Nearby Emergencies ({nearbySOSAlerts.length})</Text>
-                  {nearbySOSAlerts.map((sos) => (
-                    <View key={sos.id} style={[styles.communityRequestCard, { borderColor: '#FFCDD2', borderWidth: 1 }]}>
-                      <View style={styles.communityRequestHeader}>
-                        <View style={[styles.requestTypeBadge, { backgroundColor: '#FFEBEE' }]}>
-                          <Ionicons name="alert" size={16} color="#FF3B30" />
-                        </View>
-                        <Text style={styles.communityRequestType}>{sos.emergency_type?.toUpperCase()}</Text>
-                        <Text style={{ fontSize: 10, color: '#FF3B30', fontWeight: '800' }}>{sos.distance?.toFixed(1)}km</Text>
-                      </View>
-                      <Text style={styles.communityRequestTitle}>{sos.micro_location || 'Emergency near you'}</Text>
-                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                         <TouchableOpacity style={styles.sosActionBtn} onPress={() => openNearbySOSLocation(sos)}>
-                           <Text style={styles.sosActionBtnText}>MAP</Text>
-                         </TouchableOpacity>
-                         <TouchableOpacity style={[styles.sosActionBtn, { backgroundColor: '#FF3B30' }]} onPress={() => sos.phone_number && Linking.openURL(`tel:${sos.phone_number}`)}>
-                           <Text style={styles.sosActionBtnText}>CALL</Text>
-                         </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-
+            <View style={styles.hubMainContainer}>
+              {/* Central Divine Circle */}
               <View style={styles.modalContent}>
-                {sosStage === 'idle' ? (
-                  <Animated.View style={[styles.circularMenuContainer, { opacity: wheelAnim, transform: [{ scale: wheelAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }] }]}>
-                    <View style={styles.menuGlow} />
-                    <View style={styles.outerRing} />
-                    
-                    {/* Segment Dividers */}
-                    <View style={[styles.segmentLine, { transform: [{ rotate: '0deg' }] }]} />
-                    <View style={[styles.segmentLine, { transform: [{ rotate: '60deg' }] }]} />
-                    <View style={[styles.segmentLine, { transform: [{ rotate: '120deg' }] }]} />
-                    
-                    <View style={styles.wheelWrapper}>
-                      {/* Brahmand Library (Top-Left) */}
-                      <TouchableOpacity 
-                        style={[styles.segmentButton, { top: 65, left: 150 }]}
-                        onPress={() => { setModalVisible(false); router.push('/library'); }}
-                      >
-                        <View style={styles.segmentCard}>
-                          <View style={[styles.segmentIconBg, { backgroundColor: '#E3F2FD' }]}><Ionicons name="book" size={30} color="#1976D2" /></View>
-                          <Text style={styles.segmentTitle}>Brahmand Library</Text>
-                          <Text style={styles.segmentSubtitle}>Knowledge & Wisdom</Text>
+                <Animated.View style={[styles.circularMenuContainer, { opacity: wheelAnim, transform: [{ scale: wheelAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }] }]}>
+                  <View style={styles.menuGlow} />
+                  <View style={styles.outerRing} />
+
+                  <View style={[styles.segmentLine, { transform: [{ rotate: '0deg' }] }]} />
+                  <View style={[styles.segmentLine, { transform: [{ rotate: '60deg' }] }]} />
+                  <View style={[styles.segmentLine, { transform: [{ rotate: '120deg' }] }]} />
+
+                  {/* Active SOS Creator Sidebar (Beside the circle) */}
+                  {activeSOS && (
+                    <View style={styles.sosActiveDashboardSidebar}>
+                      <View style={styles.sosDashboardHeaderCompact}>
+                        <Ionicons name="alert-circle" size={24} color="#FFF" />
+                        <Text style={styles.sosDashboardTitleCompact}>YOUR SOS IS ACTIVE</Text>
+                      </View>
+
+                      <View style={styles.responderCardCompact}>
+                        <View style={styles.responderMainRowCompact}>
+                          <Text style={styles.responderCountTextCompact}>{activeSOS.responders?.length || 0}</Text>
+                          <Text style={styles.responderStatusTitleCompact}>PEOPLE ARE COMING</Text>
                         </View>
+                        <Text style={styles.responderSubtextCompact}>
+                          {activeSOS.responders?.length || 0} confirmed nearby
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.receivedHelpBtnCompact}
+                        onPress={() => handleResolveActiveSOS('resolved')}
+                      >
+                        <Ionicons name="checkmark-circle" size={18} color="#D32F2F" />
+                        <Text style={styles.receivedHelpBtnTextCompact}>HELP RECEIVED</Text>
                       </TouchableOpacity>
 
-                      {/* Brahmand Passport (Top-Right) */}
-                      <TouchableOpacity 
-                        style={[styles.segmentButton, { top: 65, right: 150 }]}
-                        onPress={() => { setModalVisible(false); router.push('/passport'); }}
+                      <TouchableOpacity
+                        style={styles.cancelSOSLinkCompact}
+                        onPress={() => handleResolveActiveSOS('cancelled')}
                       >
-                        <View style={styles.segmentCard}>
-                          <View style={[styles.segmentIconBg, { backgroundColor: '#FFF9C4' }]}><Ionicons name="airplane" size={30} color="#FBC02D" /></View>
-                          <Text style={styles.segmentTitle}>Brahmand Passport</Text>
-                          <Text style={styles.segmentSubtitle}>Spiritual Journey</Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      {/* Kundli (Mid-Right) */}
-                      <TouchableOpacity 
-                        style={[styles.segmentButton, { top: 290, right: 20 }]}
-                        onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}
-                      >
-                        <View style={styles.segmentCard}>
-                          <View style={[styles.segmentIconBg, { backgroundColor: '#F3E5F5' }]}><Ionicons name="planet" size={30} color="#7B1FA2" /></View>
-                          <Text style={styles.segmentTitle}>Kundli</Text>
-                          <Text style={styles.segmentSubtitle}>Planet View</Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      {/* Emergency SOS (Bottom-Right) */}
-                      <TouchableOpacity 
-                        style={[styles.segmentButton, { bottom: 65, right: 150 }]} 
-                        onPress={() => activeSOS ? handleResolveActiveSOS('resolved') : startSOSFlow()}
-                        onLongPress={() => !activeSOS && handleStartSOSCountdown()}
-                      >
-                        <Animated.View style={{
-                          position: 'absolute',
-                          width: 160,
-                          height: 160,
-                          borderRadius: 80,
-                          backgroundColor: 'rgba(255, 23, 68, 0.2)',
-                          opacity: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.8] }),
-                          transform: [{ scale: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] }) }],
-                          zIndex: -1,
-                        }} />
-                        <View style={[styles.sosCircularButton, activeSOS && styles.sosCircularButtonActive]}>
-                          <View style={styles.sosButtonInner}><Text style={styles.sosButtonTextLarge}>SOS</Text></View>
-                        </View>
-                        <Text style={styles.segmentTitle}>Emergency SOS</Text>
-                        <Text style={styles.segmentSubtitle}>Double Tap for Help</Text>
-                      </TouchableOpacity>
-
-                      {/* Horoscope (Bottom-Left) */}
-                      <TouchableOpacity 
-                        style={[styles.segmentButton, { bottom: 65, left: 150 }]} 
-                        onPress={() => { setModalVisible(false); router.push('/horoscope'); }}
-                      >
-                        <View style={styles.segmentCard}>
-                          <View style={[styles.segmentIconBg, { backgroundColor: '#E1F5FE' }]}><Ionicons name="star" size={30} color="#0288D1" /></View>
-                          <Text style={styles.segmentTitle}>Horoscope</Text>
-                          <Text style={styles.segmentSubtitle}>Daily Predictions</Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      {/* Panchang (Mid-Left) */}
-                      <TouchableOpacity 
-                        style={[styles.segmentButton, { top: 290, left: 20 }]} 
-                        onPress={openPanchangWithLocation}
-                      >
-                        <View style={styles.segmentCard}>
-                          <View style={[styles.segmentIconBg, { backgroundColor: '#FFEBEE' }]}><Ionicons name="calendar" size={30} color="#C62828" /></View>
-                          <Text style={styles.segmentTitle}>Panchang</Text>
-                          <Text style={styles.segmentSubtitle}>Daily Hindu Calendar</Text>
-                        </View>
+                        <Text style={styles.cancelSOSLinkTextCompact}>Cancel SOS</Text>
                       </TouchableOpacity>
                     </View>
+                  )}
 
-                    <View style={styles.centralAvatarContainer}>
-                      <View style={[styles.avatarLightRay, { width: 300, height: 300, opacity: 0.3 }]} />
-                      <View style={[styles.avatarLightRay, { width: 260, height: 260, opacity: 0.5 }]} />
-                      <View style={[styles.avatarLightRay, { width: 220, height: 220, opacity: 0.8 }]} />
-                      
-                      <View style={styles.centralAvatarBorder}>
-                        <Image source={require('../../assets/images/krishna_guru.png')} style={styles.centralAvatar} />
+                  <View style={styles.wheelWrapper}>
+                    <TouchableOpacity
+                      style={[styles.segmentButton, { top: 65, left: 150 }]}
+                      onPress={() => { setModalVisible(false); router.push('/library'); }}
+                    >
+                      <View style={styles.segmentCard}>
+                        <View style={[styles.segmentIconBg, { backgroundColor: '#E3F2FD' }]}><Ionicons name="book" size={30} color="#1976D2" /></View>
+                        <Text style={styles.segmentTitle}>Brahmand Library</Text>
+                        <Text style={styles.segmentSubtitle}>Knowledge</Text>
                       </View>
-                      <View style={styles.centralTitleContainer}>
-                        <Text style={styles.centralTitleLogo}>my Krishna</Text>
-                        <View style={styles.centralTitleSubRow}>
-                          <View style={styles.titleLine} /><Text style={styles.centralTitleSub}>AI Guru</Text><View style={styles.titleLine} />
-                        </View>
-                      </View>
-                    </View>
+                    </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.arrowButton, styles.arrowUp]}>
-                      <Ionicons name="chevron-up" size={24} color="#FFFFFF" />
+                    <TouchableOpacity
+                      style={[styles.segmentButton, { top: 65, right: 150 }]}
+                      onPress={() => { setModalVisible(false); router.push('/passport'); }}
+                    >
+                      <View style={styles.segmentCard}>
+                        <View style={[styles.segmentIconBg, { backgroundColor: '#FFF9C4' }]}><Ionicons name="airplane" size={30} color="#FBC02D" /></View>
+                        <Text style={styles.segmentTitle}>Passport</Text>
+                        <Text style={styles.segmentSubtitle}>Journey</Text>
+                      </View>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.arrowButton, styles.arrowDown]}>
-                      <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
+
+                    <TouchableOpacity
+                      style={[styles.segmentButton, { top: 290, right: 20 }]}
+                      onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}
+                    >
+                      <View style={styles.segmentCard}>
+                        <View style={[styles.segmentIconBg, { backgroundColor: '#F3E5F5' }]}><Ionicons name="planet" size={30} color="#7B1FA2" /></View>
+                        <Text style={styles.segmentTitle}>Kundli</Text>
+                        <Text style={styles.segmentSubtitle}>Planet View</Text>
+                      </View>
                     </TouchableOpacity>
-                  </Animated.View>
-                ) : (
-                  <View style={styles.sosStepsContainer}>
-                    {sosStage === 'hold' && (
-                      <View style={styles.holdContainer}>
-                        <Text style={styles.sosStepTitle}>Hold to Confirm</Text>
-                        <TouchableOpacity style={styles.sosHoldButton} onPressIn={handleSOSHoldStart} onPressOut={handleSOSHoldEnd} onLongPress={handleSOSHoldComplete} delayLongPress={3000}>
-                          <Text style={styles.sosHoldButtonText}>HOLD TO CONFIRM</Text>
-                          <View style={styles.sosHoldProgressBar}><View style={[styles.sosHoldProgressFill, { width: `${Math.round(holdProgress * 100)}%`}]} /></View>
-                        </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.segmentButton, { bottom: 65, right: 150 }]}
+                      onPress={() => activeSOS ? handleResolveActiveSOS('resolved') : startSOSFlow()}
+                      onLongPress={() => !activeSOS && startSOSFlow()}
+                    >
+                      <Animated.View style={{
+                        position: 'absolute',
+                        width: 160,
+                        height: 160,
+                        borderRadius: 80,
+                        backgroundColor: 'rgba(255, 23, 68, 0.2)',
+                        opacity: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.8] }),
+                        transform: [{ scale: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] }) }],
+                        zIndex: -1,
+                      }} />
+                      <View style={[styles.sosCircularButton, activeSOS && styles.sosCircularButtonActive]}>
+                        <View style={styles.sosButtonInner}><Text style={styles.sosButtonTextLarge}>SOS</Text></View>
                       </View>
-                    )}
-                    {sosStage === 'type' && (
-                      <View style={styles.typeContainer}>
-                        <Text style={styles.sosStepTitle}>Emergency Type</Text>
-                        <View style={styles.sosTypeGrid}>
-                          {SOS_TYPES.map(t => (
-                            <TouchableOpacity key={t.value} style={[styles.sosTypeButton, sosType === t.value && styles.sosTypeButtonSelected]} onPress={() => setSosType(t.value)}>
-                              <Text style={[styles.sosTypeButtonText, sosType === t.value && styles.sosTypeButtonSelected && { color: '#FFFFFF' }]}>{t.label}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                        <TouchableOpacity style={styles.sosButton} onPress={() => setSosStage('micro')}><Text style={styles.sosButtonMainText}>CONTINUE</Text></TouchableOpacity>
+                      <Text style={styles.segmentTitle}>Emergency</Text>
+                      <Text style={styles.segmentSubtitle}>Tap for Help</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.segmentButton, { bottom: 65, left: 150 }]}
+                      onPress={() => { setModalVisible(false); router.push('/horoscope'); }}
+                    >
+                      <View style={styles.segmentCard}>
+                        <View style={[styles.segmentIconBg, { backgroundColor: '#E1F5FE' }]}><Ionicons name="star" size={30} color="#0288D1" /></View>
+                        <Text style={styles.segmentTitle}>Horoscope</Text>
+                        <Text style={styles.segmentSubtitle}>Daily</Text>
                       </View>
-                    )}
-                    {sosStage === 'micro' && (
-                      <View style={styles.microContainer}>
-                        <Text style={styles.sosStepTitle}>Add Details</Text>
-                        <TextInput style={styles.sosInput} placeholder="Floor/Landmark" value={microLocation} onChangeText={setMicroLocation} />
-                        <TouchableOpacity style={styles.sosButton} onPress={() => handleCreateSOS(0)}><Text style={styles.sosButtonMainText}>SEND ALERT</Text></TouchableOpacity>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.segmentButton, { top: 290, left: 20 }]}
+                      onPress={openPanchangWithLocation}
+                    >
+                      <View style={styles.segmentCard}>
+                        <View style={[styles.segmentIconBg, { backgroundColor: '#FFEBEE' }]}><Ionicons name="calendar" size={30} color="#C62828" /></View>
+                        <Text style={styles.segmentTitle}>Panchang</Text>
+                        <Text style={styles.segmentSubtitle}>Calendar</Text>
                       </View>
-                    )}
-                    {sosStage === 'countdown' && (
-                      <View style={styles.countdownContainer}>
-                        <Text style={styles.sosCountdownText}>{countdownValue}</Text>
-                        <TouchableOpacity style={[styles.sosButton, styles.sosCancelCountdownButton]} onPress={handleCancelSOSCountdown}><Text style={styles.sosButtonMainText}>CANCEL</Text></TouchableOpacity>
-                      </View>
-                    )}
+                    </TouchableOpacity>
                   </View>
-                )}
+
+                  <View style={styles.centralAvatarContainer}>
+                    <View style={[styles.avatarLightRay, { width: 300, height: 300, opacity: 0.3 }]} />
+                    <View style={[styles.avatarLightRay, { width: 260, height: 260, opacity: 0.5 }]} />
+                    <View style={[styles.avatarLightRay, { width: 220, height: 220, opacity: 0.8 }]} />
+                    <View style={styles.centralAvatarBorder}>
+                      <Image source={require('../../assets/images/krishna_guru.png')} style={styles.centralAvatar} />
+                    </View>
+                    <View style={styles.centralTitleContainer}>
+                      <Text style={styles.centralTitleLogo}>my Krishna</Text>
+                      <Text style={styles.centralTitleSub}>AI Guru</Text>
+                    </View>
+                  </View>
+                </Animated.View>
               </View>
-            </ScrollView>
+            </View>
           </KeyboardAvoidingView>
         </View>
       </Modal>
+
+      <SOSFlowModal
+        visible={sosFlowVisible}
+        onClose={() => setSosFlowVisible(false)}
+        onCreateSOS={handleCreateSOS}
+      />
     </>
   );
 };
@@ -955,36 +822,36 @@ const styles = StyleSheet.create({
   overlayBackground: { ...StyleSheet.absoluteFillObject },
   modalContentWrapper: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-  circularMenuContainer: { 
-    width: 700, 
-    height: 700, 
-    justifyContent: 'center', 
+  circularMenuContainer: {
+    width: 700,
+    height: 700,
+    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 243, 224, 0.15)', // Light orange tint
     borderRadius: 350,
   },
-  menuGlow: { 
-    position: 'absolute', 
-    width: 750, 
-    height: 750, 
-    borderRadius: 375, 
+  menuGlow: {
+    position: 'absolute',
+    width: 750,
+    height: 750,
+    borderRadius: 375,
     backgroundColor: 'rgba(255, 145, 0, 0.05)',
   },
-  outerRing: { 
-    position: 'absolute', 
-    width: 640, 
-    height: 640, 
-    borderRadius: 320, 
-    borderWidth: 2, 
+  outerRing: {
+    position: 'absolute',
+    width: 640,
+    height: 640,
+    borderRadius: 320,
+    borderWidth: 2,
     borderColor: 'rgba(255, 152, 0, 0.2)',
     backgroundColor: 'rgba(255, 224, 178, 0.1)', // Inner orange shade
   },
-  wheelWrapper: { 
-    position: 'absolute', 
-    width: '100%', 
-    height: '100%', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  wheelWrapper: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   segmentLine: {
     position: 'absolute',
@@ -995,86 +862,86 @@ const styles = StyleSheet.create({
     top: 30,
     transform: [{ rotate: '0deg' }],
   },
-  segmentButton: { 
-    position: 'absolute', 
-    width: 140, 
+  segmentButton: {
+    position: 'absolute',
+    width: 140,
     alignItems: 'center',
     zIndex: 10,
   },
-  segmentCard: { 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 24, 
-    padding: 12, 
-    width: 120, 
-    height: 120, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 6 }, 
-    shadowOpacity: 0.08, 
-    shadowRadius: 10, 
-    elevation: 8 
+  segmentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 12,
+    width: 120,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 8
   },
-  segmentIconBg: { 
-    width: 50, 
-    height: 50, 
-    borderRadius: 15, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginBottom: 6 
+  segmentIconBg: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6
   },
-  segmentTitle: { 
-    fontSize: 13, 
-    fontWeight: '800', 
-    color: '#37474F', 
-    textAlign: 'center' 
+  segmentTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#37474F',
+    textAlign: 'center'
   },
-  segmentSubtitle: { 
-    fontSize: 9, 
-    color: '#90A4AE', 
-    textAlign: 'center', 
-    marginTop: 2 
+  segmentSubtitle: {
+    fontSize: 9,
+    color: '#90A4AE',
+    textAlign: 'center',
+    marginTop: 2
   },
-  sosCircularButton: { 
-    width: 115, 
-    height: 115, 
-    borderRadius: 57.5, 
-    backgroundColor: '#FF3B30', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    borderWidth: 10, 
-    borderColor: 'rgba(255, 59, 48, 0.1)', 
-    marginBottom: 8, 
+  sosCircularButton: {
+    width: 115,
+    height: 115,
+    borderRadius: 57.5,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 10,
+    borderColor: 'rgba(255, 59, 48, 0.1)',
+    marginBottom: 8,
     shadowColor: '#FF1744', // Intense red glow
-    shadowOffset: { width: 0, height: 0 }, 
-    shadowOpacity: 0.8, 
-    shadowRadius: 25, 
-    elevation: 15 
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 25,
+    elevation: 15
   },
-  sosCircularButtonActive: { 
-    backgroundColor: '#D32F2F', 
-    borderColor: 'rgba(211, 47, 47, 0.3)' 
+  sosCircularButtonActive: {
+    backgroundColor: '#D32F2F',
+    borderColor: 'rgba(211, 47, 47, 0.3)'
   },
-  sosButtonInner: { 
-    width: 86, 
-    height: 86, 
-    borderRadius: 43, 
-    backgroundColor: '#FF3B30', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    borderWidth: 2, 
-    borderColor: 'rgba(255,255,255,0.2)' 
+  sosButtonInner: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)'
   },
-  sosButtonTextLarge: { 
-    fontSize: 32, 
-    fontWeight: '900', 
-    color: '#FFFFFF' 
+  sosButtonTextLarge: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#FFFFFF'
   },
-  centralAvatarContainer: { 
+  centralAvatarContainer: {
     width: 320, // Expanded for rays
-    height: 320, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
+    height: 320,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarLightRay: {
     position: 'absolute',
@@ -1085,14 +952,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 40,
   },
-  centralAvatarBorder: { 
-    width: 190, 
-    height: 190, 
-    borderRadius: 95, 
-    borderWidth: 4, 
+  centralAvatarBorder: {
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    borderWidth: 4,
     borderColor: '#FFD54F', // Golden border for chamatkari effect
-    padding: 3, 
-    backgroundColor: '#FFFFFF', 
+    padding: 3,
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     shadowColor: '#FFC107',
     shadowOffset: { width: 0, height: 0 },
@@ -1100,49 +967,49 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     zIndex: 10,
   },
-  centralAvatar: { 
-    width: '100%', 
-    height: '100%', 
-    borderRadius: 95 
+  centralAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 95
   },
-  centralTitleContainer: { 
-    position: 'absolute', 
-    bottom: 30, 
-    backgroundColor: '#FFFFFF', 
-    paddingHorizontal: 22, 
-    paddingVertical: 12, 
-    borderRadius: 22, 
-    alignItems: 'center', 
-    borderWidth: 1.5, 
-    borderColor: '#FFD54F', 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 6, 
+  centralTitleContainer: {
+    position: 'absolute',
+    bottom: 30,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 22,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFD54F',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
     elevation: 4,
     zIndex: 20,
   },
-  centralTitleLogo: { 
-    fontSize: 22, 
-    fontWeight: '900', 
+  centralTitleLogo: {
+    fontSize: 22,
+    fontWeight: '900',
     color: '#FF8F00', // Brighter orange
     letterSpacing: 0.5,
   },
-  centralTitleSubRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginTop: -2 
+  centralTitleSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: -2
   },
-  centralTitleSub: { 
-    fontSize: 13, 
-    fontWeight: '700', 
-    color: '#B0BEC5', 
-    marginHorizontal: 10 
+  centralTitleSub: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B0BEC5',
+    marginHorizontal: 10
   },
-  titleLine: { 
-    width: 18, 
-    height: 1.5, 
-    backgroundColor: '#FFE0B2' 
+  titleLine: {
+    width: 18,
+    height: 1.5,
+    backgroundColor: '#FFE0B2'
   },
   arrowButton: {
     position: 'absolute',
@@ -1158,120 +1025,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
   },
-  arrowUp: { 
+  arrowUp: {
     top: 30,
   },
-  arrowDown: { 
+  arrowDown: {
     bottom: 30,
   },
-  closeButton: { 
-    position: 'absolute', 
-    top: 50, 
-    right: 25, 
-    zIndex: 100 
-  },
-  sosStepsContainer: { 
-    width: '90%', 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 30, 
-    padding: 30, 
-    alignItems: 'center',
-  },
-  sosStepTitle: { 
-    fontSize: 26, 
-    fontWeight: '800', 
-    color: '#1A1A1A', 
-    marginBottom: 20 
-  },
-  sosButton: { 
-    backgroundColor: '#FF3B30', 
-    width: '100%', 
-    paddingVertical: 18, 
-    borderRadius: 15, 
-    alignItems: 'center', 
-    marginBottom: 12,
-  },
-  sosButtonMainText: { 
-    color: '#FFFFFF', 
-    fontSize: 18, 
-    fontWeight: '800' 
-  },
-  sosHoldButton: { 
-    width: 220, 
-    height: 220, 
-    borderRadius: 110, 
-    backgroundColor: '#FF3B30', 
-    justifyContent: 'center', 
-    alignItems: 'center',
-  },
-  sosHoldButtonText: { 
-    color: '#FFFFFF', 
-    fontWeight: '900', 
-    fontSize: 18,
-    textAlign: 'center', 
-    padding: 10 
-  },
-  sosHoldProgressBar: { 
-    width: '80%', 
-    height: 8, 
-    backgroundColor: 'rgba(255,255,255,0.3)', 
-    borderRadius: 4, 
-    marginTop: 15 
-  },
-  sosHoldProgressFill: { 
-    height: '100%', 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 4 
-  },
-  sosTypeGrid: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: 12, 
-    marginBottom: 30, 
-    justifyContent: 'center' 
-  },
-  sosTypeButton: { 
-    paddingHorizontal: 20, 
-    paddingVertical: 12, 
-    borderRadius: 25, 
-    borderWidth: 1.5, 
-    borderColor: '#E0E0E0',
-    backgroundColor: '#F5F5F5',
-  },
-  sosTypeButtonSelected: { 
-    backgroundColor: '#FF3B30', 
-    borderColor: '#FF3B30' 
-  },
-  sosTypeButtonText: { 
-    color: '#616161',
-    fontWeight: '700',
-  },
-  sosInput: { 
-    width: '100%', 
-    borderBottomWidth: 2, 
-    borderColor: '#FFCCBC', 
-    paddingVertical: 12, 
-    marginBottom: 30, 
-    fontSize: 18,
-    color: '#1A1A1A',
-  },
-  sosCountdownText: { 
-    fontSize: 130, 
-    fontWeight: '900', 
-    color: '#FF3B30', 
-    marginBottom: 20,
-  },
-  countdownOverlay: { 
-    backgroundColor: 'rgba(255, 59, 48, 0.05)' 
-  },
-  holdContainer: { alignItems: 'center' },
-  typeContainer: { alignItems: 'center', width: '100%' },
-  microContainer: { alignItems: 'center', width: '100%' },
-  countdownContainer: { alignItems: 'center' },
-  sosCancelCountdownButton: { 
-    marginTop: 20, 
-    backgroundColor: '#424242',
-    paddingHorizontal: 40,
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 25,
+    zIndex: 100
   },
   intersectionDot: {
     position: 'absolute',
@@ -1443,9 +1207,249 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
   },
-  sosActionBtnText: {
+  hubMainContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sosActiveDashboardSidebar: {
+    position: 'absolute',
+    left: -200, // Positioned to the left of the circle
+    top: 200,
+    width: 180,
+    backgroundColor: '#FF3B30',
+    borderRadius: 24,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+    zIndex: 2000,
+  },
+  sosDashboardHeaderCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sosDashboardTitleCompact: {
     fontSize: 10,
     fontWeight: '900',
+    color: '#FFF',
+    flex: 1,
+  },
+  responderCardCompact: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+  },
+  responderMainRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  responderCountTextCompact: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#D32F2F',
+  },
+  responderStatusTitleCompact: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#D32F2F',
+    flex: 1,
+  },
+  responderSubtextCompact: {
+    fontSize: 8,
+    color: '#D32F2F',
+    fontWeight: '600',
+  },
+  receivedHelpBtnCompact: {
+    backgroundColor: '#FFF',
+    height: 36,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  receivedHelpBtnTextCompact: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#D32F2F',
+  },
+  cancelSOSLinkCompact: {
+    alignItems: 'center',
+  },
+  cancelSOSLinkTextCompact: {
+    fontSize: 10,
+    color: '#FFF',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  sosStepsFullScreen: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#FF3B30',
+    borderRadius: 350,
+    zIndex: 3000,
+    padding: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 60,
+    left: 40,
+    zIndex: 10,
+  },
+  fullStepContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  stepIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  fullStepTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  fullStepSub: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: 40,
+    paddingHorizontal: 20,
+    lineHeight: 20,
+  },
+  sosFullHoldButton: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  holdInnerCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  holdBtnText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FF3B30',
+  },
+  holdProgressRing: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 80,
+    zIndex: -1,
+  },
+  sosFullTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 15,
+    justifyContent: 'center',
+  },
+  sosFullTypeBtn: {
+    width: '45%',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  sosFullTypeBtnActive: {
+    backgroundColor: '#1A1A1A',
+  },
+  sosFullTypeBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#333',
+  },
+  sosFullTypeBtnTextActive: {
+    color: '#FFF',
+  },
+  sosFullInput: {
+    width: '100%',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 16,
+    padding: 20,
+    fontSize: 18,
+    color: '#FFF',
+    marginBottom: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  sosFullSendBtn: {
+    width: '100%',
+    height: 60,
+    backgroundColor: '#FFF',
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  sosFullSendBtnText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#FF3B30',
+  },
+  countdownValueLarge: {
+    fontSize: 160,
+    fontWeight: '900',
+    color: '#FFF',
+  },
+  countdownSub: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 60,
+    fontWeight: '600',
+  },
+  sosFullCancelBtn: {
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  sosFullCancelBtnText: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#FFF',
   }
 });

@@ -249,7 +249,17 @@ export const PostFeedCard = memo(({
       </View>
 
       {/* Media */}
-      <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight }]}>
+      <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight, backgroundColor: theme === 'light' ? '#F5F5F5' : '#111' }]}>
+        {/* Blurred Poster Background for smooth transition */}
+        {(post?.thumbnail_url || post?.metadata?.thumbnail_url) && mediaLoading && (
+          <Image 
+            source={{ uri: post?.thumbnail_url || post?.metadata?.thumbnail_url }}
+            style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
+            contentFit="cover"
+            blurRadius={20}
+          />
+        )}
+
         {mediaUrl ? (
           isVideo ? (
             <View style={styles.videoContainer}>
@@ -259,8 +269,8 @@ export const PostFeedCard = memo(({
                     ref={videoRef as any}
                     src={mediaUrl}
                     loop
-                    muted
-                    autoPlay
+                    muted={isMuted}
+                    autoPlay={isActive && !isPausedByUser}
                     playsInline
                     crossOrigin="anonymous"
                     onLoadedData={() => setMediaLoading(false)}
@@ -275,15 +285,15 @@ export const PostFeedCard = memo(({
                     }}
                     onError={(e) => {
                       setMediaLoading(false);
-                      setMediaError('Failed to load video');
+                      setMediaError('Video failed to load');
                       console.warn('[PostFeedCard] Web Video Load Error:', e);
                     }}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    poster={post?.metadata?.thumbnail_url || post?.thumbnail_url || ''}
+                    poster={post?.thumbnail_url || post?.metadata?.thumbnail_url || ''}
                   />
                   {mediaLoading && (
                     <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }]}>
-                      <ActivityIndicator color="#FFD26C" />
+                      <ActivityIndicator color={theme === 'light' ? '#FF8F00' : '#FFD26C'} />
                     </View>
                   )}
                 </>
@@ -296,12 +306,13 @@ export const PostFeedCard = memo(({
                   onLoad={() => setMediaLoading(false)}
                   onError={(e: any) => {
                     setMediaLoading(false);
-                    setMediaError('Video Error');
+                    setMediaError('Video player error');
                   }}
                 />
               ) : (
-                <View style={[styles.videoBackground, { backgroundColor: '#111' }]}>
-                  <Text style={{color: '#666', fontSize: 10}}>Video player unavailable</Text>
+                <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Ionicons name="alert-circle-outline" size={32} color="#444" />
+                  <Text style={{color: '#666', fontSize: 10, marginTop: 8}}>Player unavailable</Text>
                 </View>
               )}
               <Pressable style={styles.videoOverlay} onPress={handleVideoPress} />
@@ -322,7 +333,7 @@ export const PostFeedCard = memo(({
               source={{ uri: mediaUrl }}
               style={styles.media}
               contentFit="cover"
-              transition={200}
+              transition={300}
               onLoadStart={() => setMediaLoading(true)}
               onLoad={(e) => {
                 setMediaLoading(false);
@@ -335,19 +346,32 @@ export const PostFeedCard = memo(({
               }}
               onError={(e) => {
                 setMediaLoading(false);
-                setMediaError('Image Error');
+                setMediaError('Failed to load image');
                 console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', mediaUrl);
               }}
             />
           )
         ) : (
-          <View style={[styles.media, { backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
-            <Ionicons name="image-outline" size={40} color="rgba(255,255,255,0.1)" />
-            <Text style={{color: '#444', fontSize: 12, marginTop: 8}}>No media available</Text>
+          <View style={[styles.media, { backgroundColor: theme === 'light' ? '#FAFAFA' : '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="image-outline" size={40} color="rgba(0,0,0,0.05)" />
+            <Text style={{color: '#888', fontSize: 12, marginTop: 8}}>Content removed or missing</Text>
           </View>
         )}
 
-        {mediaLoading && mediaUrl && (
+        {mediaError && (
+          <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.8)' }]}>
+            <Ionicons name="alert-circle" size={40} color="#FF5252" />
+            <Text style={{ color: '#FFF', marginTop: 10, fontSize: 13, fontWeight: '700' }}>{mediaError}</Text>
+            <TouchableOpacity 
+              style={{ marginTop: 15, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }}
+              onPress={() => { setMediaError(null); setMediaLoading(true); }}
+            >
+              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '900' }}>RETRY</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {mediaLoading && !mediaError && (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }]}>
             <ActivityIndicator color="#FFD26C" />
           </View>
