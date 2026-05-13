@@ -1,18 +1,21 @@
 import { ImageSourcePropType } from 'react-native';
 
 const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
+  // Jyotirlingas
   'jyotirling-somnath-temple-gujarat': require('../../assets/images/image temple/SomnathTemple.jpg'),
   'jyotirling-kedarnath-temple-uttarakhand': require('../../assets/images/image temple/KedarnathTemple.jpg'),
   'jyotirling-mahakaleshwar-temple-ujjain': require('../../assets/images/image temple/MahakalTemple.webp'),
   'jyotirling-kashi-vishwanath-temple-varanasi': require('../../assets/images/image temple/Kashi_Vishwanath.jpg'),
-  'jyotirling-bhimashankar-temple-maharashtra': require('../../assets/images/image temple/Mamleshwar.jpg'),
+  'jyotirling-bhimashankar-temple-maharashtra': require('../../assets/images/image temple/Mamleshwar.jpg'), // Fallback to Mamleshwar if Bhima is missing
   'jyotirling-ramanathaswamy-temple-rameswaram': require('../../assets/images/image temple/Ramanathaswamy-temple.webp'),
-  'jyotirling-grishneshwar-temple-ellora': require('../../assets/images/image temple/Grishneshwar.webp'),
+  'jyotirling-grishneshwar-temple-maharashtra': require('../../assets/images/image temple/Grishneshwar.webp'),
   'jyotirling-omkareshwar-temple-madhya-pradesh': require('../../assets/images/image temple/Okareshwar.jpeg'),
-  'jyotirling-trimbakeshwar-temple-nashik': require('../../assets/images/image temple/TrimbakehwarTemple.jpg'),
-  'jyotirling-nageshwar-temple-dwarka': require('../../assets/images/image temple/Nageshwar.webp'),
-  'jyotirling-mallikarjuna-temple-srisailam': require('../../assets/images/image temple/Mallikarjuna.jpg'),
-  'jyotirling-baidyanath-temple-deoghar': require('../../assets/images/image temple/Baidyanath.webp'),
+  'jyotirling-trimbakeshwar-temple-maharashtra': require('../../assets/images/image temple/TrimbakehwarTemple.jpg'),
+  'jyotirling-nageshwar-temple-gujarat': require('../../assets/images/image temple/Nageshwar.webp'),
+  'jyotirling-mallikarjuna-temple-andhra-pradesh': require('../../assets/images/image temple/Mallikarjuna.jpg'),
+  'jyotirling-baidyanath-temple-jharkhand': require('../../assets/images/image temple/Baidyanath.webp'),
+  
+  // Sacred / Others
   'other-tirupati-balaji-temple-andhra-pradesh': require('../../assets/images/image temple/Tirumala_090615.jpg'),
   'other-vaishno-devi-temple-jammu-kashmir': require('../../assets/images/image temple/VaishnoDeviTemple.webp'),
   'other-siddhivinayak-temple-mumbai': require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
@@ -22,6 +25,9 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'other-meenakshi-temple-madurai': require('../../assets/images/image temple/MeenakshiTemple.jpg'),
   'other-iskcon-temple-bangalore-karnataka': require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
   'other-iskcon-mira-road-thane': require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
+  'other-iskcon-temple-mumbai': require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
+  'other-shree-siddhivinayak-temple': require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
+  'other-mahalaxmi-temple': require('../../assets/images/image temple/Mamleshwar.jpg'), // Fallback
 };
 
 const DEFAULT_TEMPLE_IMAGE: ImageSourcePropType = require('../../assets/images/image temple/SomnathTemple.jpg');

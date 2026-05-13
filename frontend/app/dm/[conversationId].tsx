@@ -33,6 +33,8 @@ import {
   uploadChatMedia,
   uploadCompressedVideo,
   getUserProfile,
+  muteConversation,
+  unmuteConversation,
 } from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatMessage } from '../../src/services/firebase/chatService';
@@ -41,6 +43,7 @@ import { Conversation } from '../../src/types';
 import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { socketService } from '../../src/services/socket';
+import { isConversationMuted, muteConversationLocal, unmuteConversationLocal } from '../../src/services/mutedChats';
 
 const DM_MESSAGES_CACHE_KEY = 'dm_messages_cache';
 
@@ -285,6 +288,8 @@ const DirectMessageScreen = () => {
   const [hasMarkedRead, setHasMarkedRead] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [showOptions, setShowOptions] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [muteLoading, setMuteLoading] = useState(false);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showContactPicker, setShowContactPicker] = useState(false);
@@ -362,6 +367,22 @@ const DirectMessageScreen = () => {
       ],
       { cancelable: true }
     );
+  };
+
+  const handleToggleMute = async () => {
+    if (!conversationId) return;
+    setMuteLoading(true);
+    try {
+      if (isMuted) {
+        await unmuteConversation(conversationId).catch(() => {});
+        await unmuteConversationLocal(conversationId);
+      } else {
+        await muteConversation(conversationId).catch(() => {});
+        await muteConversationLocal(conversationId);
+      }
+      setIsMuted(!isMuted);
+    } catch {}
+    setMuteLoading(false);
   };
 
   const parseDateOrNull = (value?: string) => {
@@ -675,6 +696,11 @@ const DirectMessageScreen = () => {
       if (pollingInterval) clearInterval(pollingInterval);
     };
   }, [conversationId, fetchConversation, fetchMessagesViaAPI, markMessagesAsRead, uploadingMedia]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    isConversationMuted(conversationId).then(setIsMuted);
+  }, [conversationId]);
 
   const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
     return [mediaType === 'image' ? 'images' : 'videos'] as any;
@@ -1417,9 +1443,15 @@ const DirectMessageScreen = () => {
       >
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
           <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+            <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
+              <Ionicons name={isMuted ? 'notifications-off' : 'notifications'} size={20} color="#333" style={{ marginRight: 10 }} />
+              <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>
+            </TouchableOpacity>
+            <View style={styles.modalDivider} />
             <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
               <Text style={[styles.modalItemText, styles.modalItemDestructive]}>Clear Chat</Text>
             </TouchableOpacity>
+            <View style={styles.modalDivider} />
             <TouchableOpacity style={styles.modalItem} onPress={closeChatOptions}>
               <Text style={styles.modalItemText}>Cancel</Text>
             </TouchableOpacity>
@@ -1887,6 +1919,11 @@ const styles = StyleSheet.create({
   },
   modalItemDestructive: {
     color: COLORS.error,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: COLORS.divider,
+    marginVertical: SPACING.xs,
   },
   requestCard: {
     marginHorizontal: SPACING.md,

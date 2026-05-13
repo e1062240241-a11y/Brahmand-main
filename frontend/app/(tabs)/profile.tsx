@@ -133,6 +133,11 @@ export default function ProfileScreen() {
   const [postModalVisible, setPostModalVisible] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editedCaption, setEditedCaption] = useState('');
+  const [activePostKey, setActivePostKey] = useState<string | null>(null);
+  const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
+  const [postHeights, setPostHeights] = useState<Record<string, number>>({});
+  const postListRef = useRef<FlatList>(null);
+  const hasScrolledToPost = useRef(false);
   const [activeTab, setActiveTab] = useState('grid');
 
   // Cultural Group states
@@ -477,6 +482,10 @@ export default function ProfileScreen() {
     setSelectedPost(post);
     setPostModalVisible(true);
     setEditedCaption(post?.caption || '');
+    hasScrolledToPost.current = false;
+    setActivePostKey(null);
+    setPostOffsets({});
+    setPostHeights({});
     try {
       viewPost(post.id);
     } catch (e) { }
@@ -923,46 +932,90 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <Text style={styles.postDetailTitle}>Posts</Text>
           </View>
-          {selectedPost ? (
+          {posts.length > 0 ? (
             <FlatList
-              data={[selectedPost]}
-              renderItem={({ item }) => (
-                <PostFeedCard
-                  post={item}
-                  onLike={handleLikePost}
-                  onComment={handleOpenComment}
-                  onShare={handleSharePost}
-                  onRepost={handleRepost}
-                  isActive={postModalVisible}
-                  onUserPress={() => setPostModalVisible(false)}
-                  postMenuType="delete"
-                  onEdit={handleEditPost}
-                  onPostMenuPress={confirmDeletePost}
-                />
-              )}
-              keyExtractor={(item) => item.id}
-              ListFooterComponent={
-                editingPostId === selectedPost?.id ? (
-                  <View style={styles.editPostInline}>
-                    <TextInput
-                      value={editedCaption}
-                      onChangeText={setEditedCaption}
-                      style={styles.editCaptionInput}
-                      multiline
-                      placeholder="Edit caption..."
-                      placeholderTextColor="rgba(255,255,255,0.4)"
+              ref={postListRef}
+              data={posts}
+              renderItem={({ item }) => {
+                const postKey = String(item.id || item.media_url || 0);
+                return (
+                  <View
+                    onLayout={(event) => {
+                      const y = event.nativeEvent.layout.y;
+                      const h = event.nativeEvent.layout.height;
+                      setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
+                      setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
+                    }}
+                  >
+                    <PostFeedCard
+                      post={item}
+                      onLike={handleLikePost}
+                      onComment={handleOpenComment}
+                      onShare={handleSharePost}
+                      onRepost={handleRepost}
+                      isActive={activePostKey === postKey}
+                      onUserPress={() => setPostModalVisible(false)}
+                      postMenuType="delete"
+                      onEdit={handleEditPost}
+                      onPostMenuPress={confirmDeletePost}
                     />
-                    <View style={styles.editPostActions}>
-                      <TouchableOpacity style={styles.cancelEditBtn} onPress={cancelEdit}>
-                        <Text style={styles.cancelEditText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.saveEditBtn} onPress={savePostEdit}>
-                        <Text style={styles.saveEditBtnText}>Save</Text>
-                      </TouchableOpacity>
-                    </View>
+                    {editingPostId === item.id ? (
+                      <View style={styles.editPostInline}>
+                        <TextInput
+                          value={editedCaption}
+                          onChangeText={setEditedCaption}
+                          style={styles.editCaptionInput}
+                          multiline
+                          placeholder="Edit caption..."
+                          placeholderTextColor="rgba(255,255,255,0.4)"
+                        />
+                        <View style={styles.editPostActions}>
+                          <TouchableOpacity style={styles.cancelEditBtn} onPress={cancelEdit}>
+                            <Text style={styles.cancelEditText}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.saveEditBtn} onPress={savePostEdit}>
+                            <Text style={styles.saveEditBtnText}>Save</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : null}
                   </View>
-                ) : null
-              }
+                );
+              }}
+              keyExtractor={(item, idx) => String(item.id || idx)}
+              onScroll={(event) => {
+                const y = event.nativeEvent.contentOffset.y;
+                let closestKey: string | null = null;
+                let maxVisible = 0;
+                const screenH = Dimensions.get('window').height;
+                for (const key of Object.keys(postOffsets)) {
+                  const offset = postOffsets[key];
+                  const height = postHeights[key];
+                  if (typeof offset === 'number' && typeof height === 'number') {
+                    const visibleTop = Math.max(0, offset - y);
+                    const visibleBottom = Math.min(screenH, offset + height - y);
+                    const visibleAmount = Math.max(0, visibleBottom - visibleTop);
+                    if (visibleAmount > maxVisible) {
+                      maxVisible = visibleAmount;
+                      closestKey = key;
+                    }
+                  }
+                }
+                setActivePostKey(prev => closestKey ?? prev);
+              }}
+              scrollEventThrottle={16}
+              onLayout={() => {
+                if (selectedPost && posts.length > 0 && !hasScrolledToPost.current) {
+                  const idx = posts.findIndex(p => p.id === selectedPost.id);
+                  if (idx >= 0) {
+                    setTimeout(() => {
+                      postListRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0 });
+                      hasScrolledToPost.current = true;
+                      setActivePostKey(String(selectedPost.id || selectedPost.media_url || 0));
+                    }, 200);
+                  }
+                }
+              }}
             />
           ) : (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
