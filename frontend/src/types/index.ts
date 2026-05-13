@@ -38,6 +38,11 @@ export interface User {
   circles: string[];
   cultural_community?: string;
   is_verified?: boolean;
+  cover_photo?: string;
+  followers_count?: number;
+  following_count?: number;
+  followers?: string[];
+  following?: string[];
   created_at: string;
 }
 

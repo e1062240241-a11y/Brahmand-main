@@ -95,7 +95,7 @@ env_file.write_text("\n".join(out) + "\n")
 PY
 
 pushd "$FRONTEND_DIR" >/dev/null
-rm -rf .expo .metro-cache
+rm -rf .expo .metro-cache || true
 EXPO_PUBLIC_BACKEND_URL="$BACKEND_URL" npx expo export -p web --clear
 
 echo "Validating compiled frontend backend URL..."

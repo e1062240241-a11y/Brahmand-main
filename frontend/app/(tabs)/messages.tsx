@@ -574,7 +574,7 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFBF7' },
+<  container: { flex: 1, backgroundColor: '#FFFBF7' },
   headerGradient: { paddingBottom: 20 },
   topTabsWrapper: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 10, gap: 12 },
   topTabCard: { flex: 1, height: 80, borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
