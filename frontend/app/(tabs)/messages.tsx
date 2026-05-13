@@ -127,6 +127,7 @@ export default function MessagesScreen() {
   const [lokSangmaSearch, setLokSangmaSearch] = useState('');
   const [lokSangmaList, setLokSangmaList] = useState<string[]>([]);
   const [lokSangmaLoading, setLokSangmaLoading] = useState(false);
+  const [showLockedBanner, setShowLockedBanner] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -138,7 +139,7 @@ export default function MessagesScreen() {
         
         // Filter out very specific types if needed, but here we want to show groups
         const filtered = (communityRes.data || []).filter(
-          (item: Community) => item.type !== 'home_area' && item.type !== 'area'
+          (item: Community) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural'
         );
         
         setCommunities(filtered);
@@ -290,7 +291,17 @@ export default function MessagesScreen() {
   };
 
   const renderCommunityItem = (item: Community) => {
-    const isRestricted = item.type === 'state' || item.type === 'country';
+    const isVerified = user?.personality_verification_status === 'approved';
+    const userLevel = user?.verification_level; // 'state' or 'national'
+    
+    let isLocked = false;
+    if (item.type === 'state') {
+      // Locked if not verified OR verified at a level that isn't state/national (shouldn't happen but safe)
+      isLocked = !isVerified || (userLevel !== 'state' && userLevel !== 'national');
+    } else if (item.type === 'country') {
+      // Locked if not verified OR verified only at state level
+      isLocked = !isVerified || userLevel !== 'national';
+    }
     const label = item.type === 'city' ? 'CITY COMMUNITY' : item.type === 'state' ? 'STATE COMMUNITY' : item.type === 'country' ? 'NATIONAL COMMUNITY' : 'COMMUNITY';
     const labelColor = item.type === 'city' ? '#9B59B6' : item.type === 'state' ? '#E67E22' : '#D35400';
     const iconName = item.type === 'city' ? 'location' : item.type === 'state' ? 'map' : 'flag';
@@ -299,30 +310,45 @@ export default function MessagesScreen() {
     return (
       <TouchableOpacity 
         key={item.id} 
-        style={styles.communityListItem}
-        onPress={() => router.push(`/community/${item.id}`)}
+        style={[styles.communityListItem, isLocked && styles.communityListItemLocked]}
+        onPress={() => {
+          if (isLocked) {
+            setShowLockedBanner(item.type === 'country' ? 'National Community' : 'State Community');
+          } else {
+            router.push(`/community/${item.id}`);
+          }
+        }}
       >
-        <View style={[styles.communityIconBox, { backgroundColor: `${iconColor}15` }]}>
-          <Ionicons name={iconName} size={26} color={iconColor} />
+        <View style={[styles.communityIconBox, { backgroundColor: isLocked ? '#F0F0F0' : `${iconColor}15` }]}>
+          <Ionicons name={isLocked ? 'lock-closed' : iconName} size={26} color={isLocked ? '#AAA' : iconColor} />
         </View>
         <View style={styles.communityItemContent}>
-          <Text style={[styles.communityItemLabel, { color: labelColor }]}>{label}</Text>
-          <Text style={styles.communityItemName}>{item.name}</Text>
+          <Text style={[styles.communityItemLabel, { color: isLocked ? '#AAA' : labelColor }]}>{label}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.communityItemName, isLocked && { color: '#666' }]}>{item.name}</Text>
+            {isLocked && <Ionicons name="lock-closed" size={14} color="#AAA" style={{ marginLeft: 6 }} />}
+          </View>
           <Text style={styles.communityItemMembers}>{item.member_count?.toLocaleString()} members</Text>
         </View>
         <View style={styles.communityItemRight}>
-          <View style={styles.avatarStack}>
-            {[1, 2, 3, 4].map((i) => (
-              <Image 
-                key={i} 
-                source={{ uri: `https://i.pravatar.cc/100?u=${item.id}${i}` }} 
-                style={[styles.stackAvatar, { marginLeft: i === 0 ? 0 : -10 }]} 
-              />
-            ))}
-            <View style={[styles.stackAvatarCount, { marginLeft: -10 }]}>
-              <Text style={styles.stackAvatarCountText}>+8</Text>
+          {!isLocked ? (
+            <View style={styles.avatarStack}>
+              {[1, 2, 3, 4].map((i) => (
+                <Image 
+                  key={i} 
+                  source={{ uri: `https://i.pravatar.cc/100?u=${item.id}${i}` }} 
+                  style={[styles.stackAvatar, { marginLeft: i === 0 ? 0 : -10 }]} 
+                />
+              ))}
+              <View style={[styles.stackAvatarCount, { marginLeft: -10 }]}>
+                <Text style={styles.stackAvatarCountText}>+8</Text>
+              </View>
             </View>
-          </View>
+          ) : (
+            <View style={styles.lockedBadge}>
+              <Text style={styles.lockedBadgeText}>Verify Access</Text>
+            </View>
+          )}
           <Ionicons name="chevron-forward" size={20} color="#CCC" />
         </View>
       </TouchableOpacity>
@@ -424,36 +450,35 @@ export default function MessagesScreen() {
             </View>
 
             {/* Active Requests */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Active Community Requests</Text>
-              <TouchableOpacity onPress={() => router.push('/community-request')}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ marginTop: 10 }}>
-              <ScrollView 
-                ref={activeRequestScrollRef}
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
-                snapToInterval={width * 0.48 + 14}
-                decelerationRate="fast"
-                snapToAlignment="start"
-                style={Platform.OS === 'web' ? { cursor: 'grab' } : {}}
-                onMomentumScrollEnd={(e) => {
-                  const x = e.nativeEvent.contentOffset.x;
-                  const cardWidth = width * 0.48 + 14;
-                  setActiveRequestIndex(Math.round(x / cardWidth));
-                }}
-              >
-                {[
-                  ...requests,
-                  { id: 'm1', title: 'O+ Blood Required', urgency_level: 'Urgent', request_type: 'blood', location: 'Kokilaben D. Ambani Hospital, Andheri West, Mumbai', user_name: 'Rahul Verma' },
-                  { id: 'm2', title: 'Baby Food Required', urgency_level: 'Medium', request_type: 'food', location: 'Bandra West, Mumbai', user_name: 'Neha Sharma' },
-                  { id: 'm3', title: 'Elderly Care Suport', urgency_level: 'Low', request_type: 'care', location: 'Powai, Mumbai', user_name: 'Arjun Metha' }
-                ].map(renderActiveRequestCard)}
-              </ScrollView>
-            </View>
+            {requests.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Active Community Requests</Text>
+                  <TouchableOpacity onPress={() => router.push('/community-request')}>
+                    <Text style={styles.viewAllText}>View All</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ marginTop: 10 }}>
+                  <ScrollView 
+                    ref={activeRequestScrollRef}
+                    horizontal 
+                    showsHorizontalScrollIndicator={false} 
+                    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
+                    snapToInterval={width * 0.48 + 14}
+                    decelerationRate="fast"
+                    snapToAlignment="start"
+                    style={Platform.OS === 'web' ? { cursor: 'grab' } : {}}
+                    onMomentumScrollEnd={(e) => {
+                      const x = e.nativeEvent.contentOffset.x;
+                      const cardWidth = width * 0.48 + 14;
+                      setActiveRequestIndex(Math.round(x / cardWidth));
+                    }}
+                  >
+                    {requests.map(renderActiveRequestCard)}
+                  </ScrollView>
+                </View>
+              </>
+            )}
 
             {/* Verified Communities */}
             <View style={styles.sectionHeader}>
@@ -569,12 +594,35 @@ export default function MessagesScreen() {
           </View>
         )}
       </ScrollView>
+      {/* Locked Group Banner */}
+      {showLockedBanner && (
+        <View style={styles.lockedBannerContainer}>
+          <TouchableOpacity 
+            style={styles.lockedBannerContent}
+            onPress={() => {
+              setShowLockedBanner(null);
+              router.push('/profile/personality-verification');
+            }}
+          >
+            <View style={styles.lockedBannerIcon}>
+              <Ionicons name="lock-closed" size={20} color="#FF6600" />
+            </View>
+            <View style={styles.lockedBannerTextCol}>
+              <Text style={styles.lockedBannerTitle}>Access Restricted</Text>
+              <Text style={styles.lockedBannerSub}>This {showLockedBanner} is for verified personalities. Click to verify yourself.</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowLockedBanner(null)} style={styles.lockedBannerClose}>
+              <Ionicons name="close" size={20} color="#AAA" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-<  container: { flex: 1, backgroundColor: '#FFFBF7' },
+  container: { flex: 1, backgroundColor: '#FFFBF7' },
   headerGradient: { paddingBottom: 20 },
   topTabsWrapper: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 10, gap: 12 },
   topTabCard: { flex: 1, height: 80, borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
@@ -628,6 +676,9 @@ const styles = StyleSheet.create({
 
   communitiesList: { marginBottom: 24, gap: 12 },
   communityListItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBF1', padding: 14, borderRadius: 20, borderWidth: 1, borderColor: '#FFE8D4' },
+  communityListItemLocked: { backgroundColor: '#F9F9F9', borderColor: '#EEE' },
+  lockedBadge: { backgroundColor: '#FFF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#DDD', marginRight: 8 },
+  lockedBadgeText: { fontSize: 10, color: '#AAA', fontFamily: FONTS.bold },
   communityIconBox: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   communityItemContent: { flex: 1 },
   communityItemLabel: { fontSize: 10, fontFamily: FONTS.bold, letterSpacing: 0.5, marginBottom: 2 },
@@ -671,4 +722,53 @@ const styles = StyleSheet.create({
   chatBadgeText: { color: '#FFF', fontSize: 10, fontFamily: FONTS.bold },
   emptyChat: { padding: 20, alignItems: 'center' },
   emptyChatText: { color: '#AAA', fontSize: 14 },
+  
+  lockedBannerContainer: {
+    position: 'absolute',
+    bottom: 100, // Above tab bar
+    left: 16,
+    right: 16,
+    zIndex: 1000,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  lockedBannerContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFE8D4',
+  },
+  lockedBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFF5EE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  lockedBannerTextCol: {
+    flex: 1,
+  },
+  lockedBannerTitle: {
+    fontSize: 15,
+    fontFamily: FONTS.bold,
+    color: '#111',
+  },
+  lockedBannerSub: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  lockedBannerClose: {
+    padding: 4,
+    marginLeft: 8,
+  },
 });

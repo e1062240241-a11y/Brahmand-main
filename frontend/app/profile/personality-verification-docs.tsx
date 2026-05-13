@@ -57,15 +57,37 @@ export default function DocumentUploadScreen() {
   };
 
   const uploadFile = async (uri: string, path: string) => {
-    const storage = getFirebaseStorage();
-    const storageRef = ref(storage, path);
+    const auth = getFirebaseAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
+    // Get the ID token from the native auth SDK
+    const token = await user.getIdToken();
     
-    // Convert URI to Blob for web support
+    // Prepare the file blob
     const response = await fetch(uri);
     const blob = await response.blob();
     
-    await uploadBytes(storageRef, blob);
-    return await getStorageDownloadURL(storageRef);
+    // Use the Firebase Storage REST API to ensure authorization is shared
+    const bucket = 'sanatan-lok.firebasestorage.app'; // From config
+    const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(path)}`;
+    
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': blob.type || 'image/jpeg',
+      },
+      body: blob,
+    });
+    
+    if (!uploadResponse.ok) {
+      const errorData = await uploadResponse.json();
+      throw new Error(errorData.error?.message || 'Upload failed');
+    }
+    
+    const data = await uploadResponse.json();
+    return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media&token=${data.downloadTokens || ''}`;
   };
 
   const handleContinue = async () => {

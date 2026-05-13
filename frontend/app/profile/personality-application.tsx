@@ -117,13 +117,6 @@ export default function PersonalityApplicationScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Note Section */}
-          <View style={styles.noteBox}>
-            <Text style={styles.noteTitle}>Please Note</Text>
-            <Text style={styles.noteText}>
-              National Group is very limited. Only 30-50 verified personalities will be added.
-            </Text>
-          </View>
 
           {/* Footer Action */}
           <TouchableOpacity 
