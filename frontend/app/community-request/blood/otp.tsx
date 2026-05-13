@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Tex
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { verifyOTP, sendOTP as apiSendOTP, createCommunityRequest, parseApiError } from '../../../src/services/api';
+import { createCommunityRequest, parseApiError, sendMsg91OTP, verifyMsg91OTP } from '../../../src/services/api';
 import { getCurrentUserToken } from '../../../src/services/firebase/authService';
 import { useAuthStore } from '../../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
@@ -20,12 +20,13 @@ export default function CommunityRequestBloodOtpPage() {
     contactPreference?: string;
     contactNumber?: string;
   }>();
-  const { login } = useAuthStore();
+  const { login, user } = useAuthStore();
   const phone = (params.phone || '').replace(/[^0-9]/g, '');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(30);
+  const [msg91RequestId, setMsg91RequestId] = useState('');
   const [otpSending, setOtpSending] = useState(false);
   const inputRefs = useRef<TextInput[]>([]);
 
@@ -58,16 +59,21 @@ export default function CommunityRequestBloodOtpPage() {
   }, [resendTimer]);
 
   const sendOtp = async () => {
+    if (otpSending) return;
     setOtpSending(true);
     setError('');
     try {
-      await apiSendOTP(`+91${phone}`);
+      console.log('[MSG91] Requesting backend to send OTP to:', phone);
+      // We pass just the phone, backend handles normalization and MSG91 auth
+      const response = await sendMsg91OTP(`+91${phone}`);
+      console.log('[MSG91] Send response:', response.data);
+      
+      setResendTimer(30);
     } catch (err: any) {
-      console.error('OTP send failed', err);
-      setError(err?.message || 'Unable to send OTP.');
+      console.error('MSG91 OTP send failed', err);
+      setError(err?.response?.data?.detail || err?.message || 'Unable to send OTP.');
     } finally {
       setOtpSending(false);
-      setResendTimer(30);
     }
   };
 
@@ -91,28 +97,23 @@ export default function CommunityRequestBloodOtpPage() {
   };
 
   const verifyCode = async (code: string) => {
+    if (loading) return;
     setLoading(true);
     setError('');
 
     try {
-      // We use the backend verifyOTP exclusively
-      const response = await verifyOTP(`+91${phone}`, code);
-      const data = response.data;
-      
-      if (data.is_new_user) {
-        router.push({ pathname: '/auth/profile', params: { phone: `+91${phone}` } });
-        return;
+      console.log('[MSG91] Verifying OTP via backend...');
+      const response = await verifyMsg91OTP(`+91${phone}`, code);
+      console.log('[MSG91] Verify response:', response.data);
+
+      if (response.data.type === 'success') {
+        // Verification successful, proceed with submission
+        await submitRequestIfKycVerified(user);
+      } else {
+        throw new Error(response.data.message || 'Invalid OTP');
       }
-      
-      if (data.user) {
-        await login(data.user, data.token);
-        await submitRequestIfKycVerified(data.user);
-        return;
-      }
-      
-      router.push({ pathname: '/auth/profile', params: { phone: `+91${phone}` } });
     } catch (err: any) {
-      console.error('OTP verify failed', err);
+      console.error('MSG91 verify failed', err);
       setError(err?.response?.data?.detail || err?.message || 'Invalid OTP. Please try again.');
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
@@ -136,7 +137,7 @@ export default function CommunityRequestBloodOtpPage() {
   };
 
   const handleResend = async () => {
-    if (resendTimer > 0) return;
+    if (resendTimer > 0 || otpSending) return;
     await sendOtp();
   };
 

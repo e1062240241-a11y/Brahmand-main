@@ -10,26 +10,35 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
-  LayoutAnimation,
   Modal,
   Platform,
   TextInput,
-  UIManager,
   Image,
   ImageBackground,
   Animated,
-  Easing,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
-import { getCircles, getCommunities, createCommunityRequest, getCommunityRequests, getMyCommunityRequests, resolveCommunityRequest, getConversations, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
+import { 
+  getCircles, 
+  getCommunities, 
+  getCommunityRequests, 
+  getConversations, 
+  getCulturalCommunities, 
+  getUserCulturalCommunity, 
+  updateUserCulturalCommunity, 
+  parseApiError 
+} from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
 
+const { width } = Dimensions.get('window');
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
 const COMMUNITIES_CACHE_KEY = 'communities_cache';
 
@@ -47,16 +56,12 @@ const setCachedData = async (key: string, data: any) => {
   } catch { }
 };
 
-// Top tabs for Chat section
-const TOP_TABS = ['Community', 'Private Chat'];
-
 interface Circle {
   id: string;
   name: string;
   description?: string;
   photo?: string;
   member_count: number;
-  member_names?: string[];
   last_message?: string;
   last_message_time?: string;
 }
@@ -67,12 +72,14 @@ interface Community {
   type: string;
   label?: string;
   member_count: number;
+  photo?: string;
   is_default?: boolean;
 }
 
 interface CommunityRequest {
   id: string;
   user_id: string;
+  user_name?: string;
   request_type: string;
   title: string;
   description: string;
@@ -81,8 +88,7 @@ interface CommunityRequest {
   status: string;
   created_at: string;
   blood_group?: string;
-  hospital_name?: string;
-  amount?: number;
+  location?: string;
 }
 
 interface DMConversation {
@@ -105,155 +111,52 @@ export default function MessagesScreen() {
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
 
-  // Top tab state (Community vs Private Chat)
-  const defaultTopTab = params.tab && params.tab.toLowerCase().includes('private') ? 'Private Chat' : 'Community';
-  const [activeTopTab, setActiveTopTab] = useState(defaultTopTab);
-
-  // Community sub-tab state
-  const [activeCommunityTab, setActiveCommunityTab] = useState('Chat');
-
-  // Animation state for verified note
-  const verifiedNoteAnim = useRef(new Animated.Value(0)).current;
-  const [showVerifiedNote, setShowVerifiedNote] = useState(false);
-
-  const toggleVerifiedNote = (show: boolean) => {
-    if (show === showVerifiedNote) return;
-
-    setShowVerifiedNote(show);
-    Animated.spring(verifiedNoteAnim, {
-      toValue: show ? 1 : 0,
-      useNativeDriver: true,
-      tension: 50,
-      friction: 7,
-    }).start();
-
-    // Auto-dismiss after 3 seconds if showing
-    if (show) {
-      setTimeout(() => {
-        toggleVerifiedNote(false);
-      }, 3000);
-    }
-  };
-
-  // Data states
+  const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
+  const [activeRequestIndex, setActiveRequestIndex] = useState(0);
+  const activeRequestScrollRef = useRef<ScrollView>(null);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [circles, setCircles] = useState<Circle[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [conversations, setConversations] = useState<DMConversation[]>([]);
   const [mutedConversations, setMutedConversations] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
+
+  // Lok Sangam State
   const [userLokSangma, setUserLokSangma] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
   const [showLokSangmaModal, setShowLokSangmaModal] = useState(false);
   const [lokSangmaSearch, setLokSangmaSearch] = useState('');
   const [lokSangmaList, setLokSangmaList] = useState<string[]>([]);
   const [lokSangmaLoading, setLokSangmaLoading] = useState(false);
 
-  const dedupeCommunities = (items: Community[]) => {
-    const seen = new Set<string>();
-    return items.filter((item) => {
-      if (item.type === 'cultural') {
-        const key = item.name?.trim().toLowerCase() || item.id;
-        if (seen.has(key)) {
-          return false;
-        }
-        seen.add(key);
-      }
-      return true;
-    });
-  };
-
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [generalExpanded, setGeneralExpanded] = useState(false);
-  const [offeringsExpanded, setOfferingsExpanded] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial'>('Blood');
-  const [selectedOfferingType, setSelectedOfferingType] = useState<'Food' | 'Blanket' | 'Clothes' | null>(null);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-
-  const showToast = useCallback((message: string) => {
-    setToastMessage(message);
-    setToastVisible(true);
-    setTimeout(() => {
-      setToastVisible(false);
-    }, 3000);
-  }, []);
-
   const fetchData = useCallback(async () => {
-    // Show cached data first for instant load
-    const cacheKey = activeTopTab === 'Community' ? `communities_${activeCommunityTab}` : 'circles_cache';
-    const cached = await getCachedData(cacheKey);
-    if (cached?.data) {
-      if (activeTopTab === 'Community') {
-        if (activeCommunityTab === 'Chat') {
-          const filtered = dedupeCommunities((cached.data as Community[]).filter(
-            (item) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural'
-          ));
-          setCommunities(filtered);
-        }
-      } else {
-        setCircles(cached.data);
-      }
-    }
-
     try {
       if (activeTopTab === 'Community') {
-        if (activeCommunityTab === 'Chat') {
-          const [communityRes, requestRes] = await Promise.all([
-            getCommunities(),
-            getCommunityRequests({ status: 'active', limit: 10 }),
-          ]);
-          const filtered = dedupeCommunities((communityRes.data || []).filter(
-            (item: Community) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural'
-          ));
-          setCommunities(filtered);
-          setRequests(requestRes.data || []);
-          // Cache
-          await setCachedData('communities_Chat', filtered);
-        } else if (activeCommunityTab === 'General') {
-          setCommunities([]);
-          setRequests([]);
-        }
+        const [communityRes, requestRes] = await Promise.all([
+          getCommunities(),
+          getCommunityRequests({ status: 'active', limit: 10 }),
+        ]);
+        
+        // Filter out very specific types if needed, but here we want to show groups
+        const filtered = (communityRes.data || []).filter(
+          (item: Community) => item.type !== 'home_area' && item.type !== 'area'
+        );
+        
+        setCommunities(filtered);
+        setRequests(requestRes.data || []);
       } else {
         const res = await getCircles();
         setCircles(res.data || []);
-        // Cache
-        await setCachedData('circles_cache', res.data || []);
+        fetchConversations();
       }
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      Alert.alert('Error', parseApiError(error));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTopTab, activeCommunityTab]);
-
-
-  // Only fetch when screen is focused (not on every tab switch)
-  useFocusEffect(
-    useCallback(() => {
-      if (activeTopTab === 'Private Chat') {
-        fetchConversations();
-      }
-    }, [activeTopTab])
-  );
-
-  // Only fetch when screen is focused (not on every tab switch)
-  useFocusEffect(
-    useCallback(() => {
-      if (activeTopTab === 'Private Chat') {
-        fetchConversations();
-      }
-    }, [activeTopTab])
-  );
-
-  // Use regular useEffect only for initial load
-  useEffect(() => {
-    fetchData();
-    fetchUserLokSangma();
-  }, []);
+  }, [activeTopTab]);
 
   useEffect(() => {
     getAllMutedConversations().then(setMutedConversations);
@@ -261,62 +164,14 @@ export default function MessagesScreen() {
 
   const fetchConversations = async () => {
     setLoadingConversations(true);
-
-    // Show cached data first for instant load
-    const cached = await getCachedData(CONVERSATIONS_CACHE_KEY);
-    if (cached?.data) {
-      setConversations(cached.data);
-      setLoadingConversations(false);
-    }
-
     try {
       const response = await getConversations();
-      const newConversations = response.data || [];
-      setConversations(newConversations);
-      // Cache for next time
-      await setCachedData(CONVERSATIONS_CACHE_KEY, newConversations);
+      setConversations(response.data || []);
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
       setLoadingConversations(false);
     }
-  };
-
-  const handleCommunityTabChange = async (tab: string) => {
-    setActiveCommunityTab(tab);
-
-    if (tab === 'General') {
-      setGeneralExpanded(false);
-      setOfferingsExpanded(false);
-      return;
-    }
-
-    if (tab === 'Chat') {
-      fetchUserLokSangma();
-    }
-
-    // No request creation at community sub-tabs, only show existing requests
-  };
-
-  // Request submission disabled inside community sub-tabs.
-
-  const loadLokSangmaOptions = async (search?: string) => {
-    setLokSangmaSearch(search || '');
-    setLokSangmaLoading(true);
-    try {
-      const res = await getCulturalCommunities(search);
-      setLokSangmaList(res.data || []);
-    } catch (error) {
-      console.error('Error loading Lok Sangam options:', error);
-    } finally {
-      setLokSangmaLoading(false);
-    }
-  };
-
-  const handleOpenLokSangmaModal = () => {
-    setLokSangmaSearch('');
-    loadLokSangmaOptions('');
-    setShowLokSangmaModal(true);
   };
 
   const fetchUserLokSangma = useCallback(async () => {
@@ -328,17 +183,24 @@ export default function MessagesScreen() {
     }
   }, []);
 
+  const loadLokSangmaOptions = async (search?: string) => {
+    setLokSangmaLoading(true);
+    try {
+      const res = await getCulturalCommunities(search);
+      setLokSangmaList(res.data || []);
+    } catch (error) {
+      console.error('Error loading Lok Sangam options:', error);
+    } finally {
+      setLokSangmaLoading(false);
+    }
+  };
+
   const handleSelectLokSangma = async (community: string) => {
     if (userLokSangma?.is_locked) {
       Alert.alert('Locked', 'You can only change your Lok Sangam once. It is now locked.');
       return;
     }
-
-    const changeMessage = userLokSangma?.cultural_community
-      ? `Change from "${userLokSangma.cultural_community}" to "${community}"? You have ${1 - (userLokSangma?.change_count || 0)} change remaining.`
-      : `Set your Lok Sangam to "${community}"?`;
-
-    Alert.alert('Confirm', changeMessage, [
+    Alert.alert('Confirm', `Set your Lok Sangam to "${community}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Confirm',
@@ -347,1248 +209,479 @@ export default function MessagesScreen() {
             await updateUserCulturalCommunity(community);
             await fetchUserLokSangma();
             setShowLokSangmaModal(false);
-            Alert.alert('Success', 'Lok Sangam updated!');
           } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
+            Alert.alert('Error', parseApiError(error));
           }
         }
       }
     ]);
   };
 
-  // Request submission disabled inside community sub-tabs.
+  useEffect(() => {
+    fetchData();
+    fetchUserLokSangma();
+  }, [fetchData]);
 
-  const handleResolveRequest = async (requestId: string) => {
-    Alert.alert(
-      'Mark as Fulfilled',
-      'Are you sure you want to mark this request as fulfilled?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            try {
-              await resolveCommunityRequest(requestId);
-              Alert.alert('Success', 'Request marked as fulfilled!');
-              fetchData();
-            } catch (error: any) {
-              console.error('Error resolving request:', error);
-              Alert.alert('Error', error.response?.data?.detail || 'Failed to resolve request');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const getCommunityIcon = (type: string) => {
-    switch (type) {
-      case 'home_area': return 'home';
-      case 'office_area': return 'business';
-      case 'city': return 'location';
-      case 'state': return 'map';
-      case 'country': return 'flag';
-      default: return 'people';
+  useEffect(() => {
+    if (activeTopTab === 'Community') {
+      const combinedCount = (requests?.length || 0) + 3; // Real + 3 mock cards
+      const timer = setInterval(() => {
+        setActiveRequestIndex((prev) => {
+          const nextIndex = (prev + 1) % combinedCount;
+          const cardWidth = width * 0.48 + 14;
+          activeRequestScrollRef.current?.scrollTo({ x: nextIndex * cardWidth, animated: true });
+          return nextIndex;
+        });
+      }, 4000); // Advance every 4 seconds
+      return () => clearInterval(timer);
     }
-  };
+  }, [activeTopTab, requests?.length]);
 
-  const getCommunityColor = (type: string) => {
-    switch (type) {
-      case 'home_area': return COLORS.success;
-      case 'office_area': return COLORS.info;
-      case 'city': return '#9B59B6';
-      case 'state': return COLORS.warning;
-      case 'country': return COLORS.primary;
-      default: return COLORS.textSecondary;
-    }
-  };
-
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'critical': return COLORS.error;
-      case 'high': return '#E67E22';
-      case 'medium': return COLORS.warning;
-      default: return COLORS.success;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
-  };
+  useFocusEffect(
+    useCallback(() => {
+      getAllMutedConversations().then(setMutedConversations);
+      if (activeTopTab === 'Private Chat') {
+        fetchConversations();
+      }
+    }, [activeTopTab])
+  );
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return '';
-    const hours = `${date.getHours()}`.padStart(2, '0');
-    const minutes = `${date.getMinutes()}`.padStart(2, '0');
-    return `${hours}:${minutes}`;
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  const renderCommunity = ({ item }: { item: Community }) => {
-    const isRestricted = item.type === 'state' || item.type === 'country' ||
-      item.name?.toLowerCase().includes('state') ||
-      item.name?.toLowerCase().includes('national');
-
-    const communityLabel = item.type === 'city' ? 'CITY COMMUNITY' :
-      item.type === 'state' ? 'STATE COMMUNITY' :
-        item.type === 'country' ? 'NATIONAL COMMUNITY' : 'COMMUNITY';
-
-    const handlePress = () => {
-      const isVerified = user?.is_verified === true || user?.personality_verification_status === 'approved';
-      const userLevel = user?.verification_level || 'state'; // Fallback to state if not set
-      
-      // Strict access control:
-      // If it's a State group, user must be verified at 'state' or 'national' level
-      // If it's a National group, user must be verified at 'national' level
-      let hasAccess = !isRestricted;
-      if (isRestricted && isVerified) {
-        if (item.type === 'state') {
-          hasAccess = userLevel === 'state' || userLevel === 'national';
-        } else if (item.type === 'country') {
-          hasAccess = userLevel === 'national';
-        }
-      }
-
-      if (isRestricted && !hasAccess) {
-        toggleVerifiedNote(true);
-        const levelNeeded = item.type === 'country' ? 'National' : 'State';
-        showToast(`This group requires ${levelNeeded} verification`);
-      } else {
-        router.push(`/community/${item.id}`);
-      }
-    };
-
-    return (
-      <View key={item.id} style={styles.groupCardWrapper}>
-        <TouchableOpacity
-          style={[
-            styles.newCommunityCard,
-            isRestricted ? styles.newRestrictedCommunityCard : styles.activeGroupCard
-          ]}
-          onPress={handlePress}
-          activeOpacity={0.8}
-        >
-          <View style={[
-            styles.newCommunityIconContainer,
-            { backgroundColor: isRestricted ? '#FDF6E5' : '#F0E8FF', overflow: 'hidden' }
-          ]}>
-            <Avatar name={item.name} photo={item.photo} size={54} shape="square" />
-          </View>
-
-          <View style={styles.newCommunityInfo}>
-            <Text style={[styles.newCommunityLabel, { color: isRestricted ? '#E67E22' : '#9B59B6' }]}>
-              {communityLabel}
-            </Text>
-            <Text style={styles.newCommunityName}>{item.name}</Text>
-            <View style={styles.newCommunityMetaRow}>
-              <Text style={styles.newCommunityStats}>{item.member_count} members</Text>
-              <View style={styles.avatarStack}>
-                {[1, 2, 3, 4].map((i) => (
-                  <View key={i} style={[styles.stackAvatar, { left: i * -8, zIndex: 5 - i }]}>
-                    <Image
-                      source={{ uri: `https://i.pravatar.cc/100?u=${item.id}${i}` }}
-                      style={styles.stackAvatarImg}
-                    />
-                  </View>
-                ))}
-                <View style={[styles.stackAvatarCount, { left: 4 * -8, zIndex: 0 }]}>
-                  <Text style={styles.stackAvatarCountText}>+8</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {isRestricted ? (
-            <View style={styles.joinGroupContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#D4AF37" />
-              <Text style={styles.joinGroupText}>Join Group</Text>
-            </View>
-          ) : (
-            <Ionicons name="chevron-forward" size={24} color="#C7C7CC" />
-          )}
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const renderCircle = ({ item }: { item: Circle }) => (
-    <TouchableOpacity
-      key={item.id}
-      style={[styles.circleCard, styles.activeGroupCard]}
-      onPress={() => router.push(`/chat/circle/${item.id}?name=${encodeURIComponent(item.name)}`)}
-    >
-      <View style={styles.circleAvatar}>
-        <Avatar name={item.name} photo={item.photo} size={48} />
-      </View>
-      <View style={styles.circleInfo}>
-        <Text style={styles.circleName}>{item.name}</Text>
-        <Text style={styles.circleLastMessage} numberOfLines={1}>
-          {item.last_message || 'No messages yet'}
-        </Text>
-      </View>
-      <View style={styles.circleRight}>
-        <Text style={styles.circleTime}>{item.last_message_time || ''}</Text>
-        <Text style={styles.circleMemberCount}>{item.member_count} members</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const renderRequest = ({ item }: { item: CommunityRequest }) => (
-    <View style={styles.requestCard}>
-      <View style={styles.requestHeader}>
-        <View style={[
-          styles.urgencyBadge,
-          { backgroundColor: `${getUrgencyColor(item.urgency_level)}20` }
-        ]}>
-          <View style={[styles.urgencyDot, { backgroundColor: getUrgencyColor(item.urgency_level) }]} />
-          <Text style={[styles.urgencyText, { color: getUrgencyColor(item.urgency_level) }]}>
-            {item.urgency_level.toUpperCase()}
-          </Text>
-        </View>
-        <Text style={styles.requestDate}>{formatDate(item.created_at)}</Text>
-      </View>
-
-      <Text style={styles.requestTitle}>{item.title}</Text>
-      <Text style={styles.requestDescription} numberOfLines={2}>{item.description}</Text>
-
-      <View style={styles.requestFooter}>
-        <TouchableOpacity style={styles.contactButton}>
-          <Ionicons name="call" size={14} color={COLORS.primary} />
-          <Text style={styles.contactButtonText}>{item.contact_number}</Text>
-        </TouchableOpacity>
-
-        {item.status === 'active' && (
-          <TouchableOpacity
-            style={styles.fulfillButton}
-            onPress={() => handleResolveRequest(item.id)}
-          >
-            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-            <Text style={styles.fulfillButtonText}>Fulfilled</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
+  // --- RENDERING COMPONENTS ---
 
   const renderActiveRequestCard = (item: CommunityRequest) => {
-    const isBlood = item.request_type === 'Blood';
-    const isRide = item.request_type === 'Ride' || item.title.includes('Ride');
-    const isGrocery = item.request_type === 'Grocery' || item.title.includes('Grocery');
+    const isBlood = item.request_type?.toLowerCase() === 'blood';
+    const isFood = item.request_type?.toLowerCase() === 'food';
+    const isCare = item.request_type?.toLowerCase() === 'care';
 
-    const cardBg = isBlood ? '#FFF1F1' : isRide ? '#F5F1FF' : '#FFF7F1';
-    const iconColor = isBlood ? '#FF4B4B' : isRide ? '#8E44AD' : '#E67E22';
-    const iconName = isBlood ? 'water' : isRide ? 'car' : 'basket';
+    const cardBg = isBlood ? '#FFE8E8' : isFood ? '#F1F9E8' : '#F4EEFF';
+    const accentColor = isBlood ? '#FF5252' : isFood ? '#4CAF50' : '#7E57C2';
+    const illustSource = isBlood 
+      ? require('../../assets/images/illust_blood.png') 
+      : isFood 
+        ? require('../../assets/images/illust_food.png') 
+        : require('../../assets/images/illust_care.png');
 
     return (
-      <View key={item.id} style={[styles.newRequestCard, { backgroundColor: cardBg }]}>
-        <View style={styles.newRequestIconContainer}>
-          <View style={[styles.newRequestIconCircle, { backgroundColor: '#FFF' }]}>
-            <Ionicons name={iconName} size={24} color={iconColor} />
+      <TouchableOpacity key={item.id} style={[styles.activeRequestCard, { backgroundColor: cardBg }]}>
+        <View style={styles.reqCardIllustWrapper}>
+          <Image source={illustSource} style={styles.reqCardIllustImage} resizeMode="contain" />
+        </View>
+        
+        <View style={styles.reqCardHeader}>
+          <Text style={styles.reqCardTitle} numberOfLines={2}>{item.title}</Text>
+          <View style={styles.reqUrgencyPill}>
+            <Text style={[styles.reqUrgencyText, { color: accentColor }]}>{item.urgency_level || 'Medium'}</Text>
           </View>
         </View>
 
-        <Text style={styles.newRequestTitle}>{item.title}</Text>
-        <Text style={styles.newRequestSub}>{item.blood_group ? `2 Units • ${item.blood_group}` : isRide ? 'Borivali to Dadar' : 'For Senior Citizen'}</Text>
-
-        <View style={styles.newRequestLocation}>
-          <Ionicons name="location" size={12} color={iconColor} />
-          <Text style={styles.newRequestLocationText} numberOfLines={1}>Andheri East, Mumbai</Text>
-        </View>
-
-        <View style={styles.newRequestFooter}>
-          <View style={[styles.newUrgencyBadge, { backgroundColor: isBlood ? '#FFE5E5' : isRide ? '#EBE5FF' : '#FFF1E5' }]}>
-            <Text style={[styles.newUrgencyText, { color: iconColor }]}>{item.urgency_level || 'Low'}</Text>
+        <View style={styles.reqCardFooter}>
+          <View style={styles.reqInfoRow}>
+            <Ionicons name="location-sharp" size={12} color="#000" />
+            <Text style={styles.reqInfoText} numberOfLines={2}>{item.location || 'Mumbai'}</Text>
           </View>
-          <Text style={styles.newRequestTime}>2h ago</Text>
-          <TouchableOpacity style={styles.newRequestArrow}>
-            <Ionicons name="arrow-forward" size={16} color={iconColor} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const renderConversationItem = (item: DMConversation) => {
-    const conversationId = item.conversation_id || item.chat_id || item.id;
-    const otherUser = item.user;
-    const isMuted = conversationId ? mutedConversations.has(conversationId) : false;
-    if (!conversationId || !otherUser) {
-      return null;
-    }
-
-    return (
-      <TouchableOpacity
-        key={conversationId}
-        style={styles.userItem}
-        onPress={() => router.push(`/dm/${conversationId}`)}
-      >
-        <View style={styles.userAvatar}>
-          {otherUser.photo ? (
-            <Image source={{ uri: otherUser.photo }} style={styles.avatarImage} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitial}>
-                {otherUser.name?.charAt(0)?.toUpperCase() || '?'}
-              </Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName} numberOfLines={1}>{otherUser.name}</Text>
-          <Text style={[styles.userSL, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>
-            {item.last_message || `SL: ${otherUser.sl_id}`}
-          </Text>
-        </View>
-        <View style={styles.userRight}>
-          <Text style={styles.userTime}>{formatTime(item.last_message_at)}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {isMuted && <Ionicons name="notifications-off" size={14} color={COLORS.textLight} style={{ marginRight: 4 }} />}
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
+          <View style={[styles.reqInfoRow, { marginBottom: 0 }]}>
+            <Ionicons name="person-circle-sharp" size={14} color="#000" />
+            <Text style={styles.reqPosterName} numberOfLines={1}>Posted by {item.user_name || 'User'}</Text>
+            <Text style={styles.reqPostedTime}>10 min ago</Text>
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
-  if (loading) {
+
+  const renderCommunityItem = (item: Community) => {
+    const isRestricted = item.type === 'state' || item.type === 'country';
+    const label = item.type === 'city' ? 'CITY COMMUNITY' : item.type === 'state' ? 'STATE COMMUNITY' : item.type === 'country' ? 'NATIONAL COMMUNITY' : 'COMMUNITY';
+    const labelColor = item.type === 'city' ? '#9B59B6' : item.type === 'state' ? '#E67E22' : '#D35400';
+    const iconName = item.type === 'city' ? 'location' : item.type === 'state' ? 'map' : 'flag';
+    const iconColor = item.type === 'city' ? '#A55EEA' : item.type === 'state' ? '#FB8C00' : '#FF5252';
+
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <TouchableOpacity 
+        key={item.id} 
+        style={styles.communityListItem}
+        onPress={() => router.push(`/community/${item.id}`)}
+      >
+        <View style={[styles.communityIconBox, { backgroundColor: `${iconColor}15` }]}>
+          <Ionicons name={iconName} size={26} color={iconColor} />
+        </View>
+        <View style={styles.communityItemContent}>
+          <Text style={[styles.communityItemLabel, { color: labelColor }]}>{label}</Text>
+          <Text style={styles.communityItemName}>{item.name}</Text>
+          <Text style={styles.communityItemMembers}>{item.member_count?.toLocaleString()} members</Text>
+        </View>
+        <View style={styles.communityItemRight}>
+          <View style={styles.avatarStack}>
+            {[1, 2, 3, 4].map((i) => (
+              <Image 
+                key={i} 
+                source={{ uri: `https://i.pravatar.cc/100?u=${item.id}${i}` }} 
+                style={[styles.stackAvatar, { marginLeft: i === 0 ? 0 : -10 }]} 
+              />
+            ))}
+            <View style={[styles.stackAvatarCount, { marginLeft: -10 }]}>
+              <Text style={styles.stackAvatarCountText}>+8</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#CCC" />
+        </View>
+      </TouchableOpacity>
     );
-  }
+  };
+
+  const renderLocalCommunityCard = (item: any, index: number) => {
+    const isPurple = index % 2 === 1;
+    const cardBg = isPurple ? '#F4EEFF' : '#F1F9E8';
+    const borderColor = isPurple ? '#7E57C2' : '#4CAF50';
+    const pillText = item.badge || 'Seva';
+
+    return (
+      <TouchableOpacity key={item.id} style={[styles.localCommCard, { backgroundColor: cardBg, borderColor }]}>
+        <View style={styles.localCommMenu}>
+          <Ionicons name="ellipsis-vertical" size={18} color="#000" />
+        </View>
+        
+        <View style={styles.localCommAvatarWrapper}>
+          <Image source={{ uri: item.image }} style={styles.localCommAvatar} />
+        </View>
+
+        <View style={styles.localCommContent}>
+          <Text style={styles.localCommName}>{item.name}</Text>
+          <Text style={styles.localCommMembers}>{item.members} members</Text>
+        </View>
+
+        <View style={[styles.localCommPill, { borderColor }]}>
+          <Text style={[styles.localCommPillText, { color: borderColor }]}>{pillText}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <View style={[styles.topTabsContainer, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 25 : 12) }]}>
-        <View style={styles.topTabsInner}>
-          {TOP_TABS.map((tab, index) => (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.topTab,
-                index !== TOP_TABS.length - 1 && styles.topTabSpacing,
-                activeTopTab === tab && styles.topTabActive,
-              ]}
-              onPress={() => setActiveTopTab(tab)}
+      <LinearGradient colors={['#FF9933', '#FFF8F0']} style={styles.headerGradient}>
+        <SafeAreaView edges={['top']}>
+          <View style={styles.topTabsWrapper}>
+            <TouchableOpacity 
+              style={[styles.topTabCard, activeTopTab === 'Community' ? styles.topTabCardActive : styles.topTabCardInactive]}
+              onPress={() => setActiveTopTab('Community')}
             >
-              <Text style={[styles.topTabText, activeTopTab === tab && styles.topTabTextActive]}>
-                {tab}
-              </Text>
+              <MaterialCommunityIcons 
+                name="account-group" 
+                size={42} 
+                color={activeTopTab === 'Community' ? '#FFF' : '#FF6600'} 
+                style={styles.topTabIcon} 
+              />
+              <View style={styles.topTabTextCol}>
+                <Text style={[styles.topTabTitle, { color: activeTopTab === 'Community' ? '#FFF' : '#333' }]}>Community</Text>
+                <Text style={[styles.topTabSub, { color: activeTopTab === 'Community' ? 'rgba(255,255,255,0.9)' : '#888' }]}>Connect, Join & Grow Together</Text>
+              </View>
             </TouchableOpacity>
-          ))}
-        </View>
-      </View>
 
-      {/* Community Tab Content */}
-      {activeTopTab === 'Community' && (
-        <ScrollView
-          contentContainerStyle={styles.communityScroll}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                fetchData();
-              }}
-            />
-          }
-        >
-          <ImageBackground
-            source={require('../../assets/images/community_hero_bg.jpg')}
-            style={styles.newHeroCard}
-            imageStyle={{ borderRadius: 24 }}
-          >
-            <View style={styles.heroOverlay}>
-              <View style={styles.newHeroContent}>
-                <Text style={styles.newHeroTitle}>Help your community</Text>
-                <Text style={styles.newHeroSubtitle}>Together we can make a difference</Text>
+            <TouchableOpacity 
+              style={[styles.topTabCard, activeTopTab === 'Private Chat' ? styles.topTabCardActivePrivate : styles.topTabCardInactive]}
+              onPress={() => setActiveTopTab('Private Chat')}
+            >
+              <MaterialCommunityIcons 
+                name="chat-processing-outline" 
+                size={40} 
+                color="#111" 
+                style={styles.topTabIcon} 
+              />
+              <View style={styles.topTabTextCol}>
+                <Text style={styles.topTabTitleDark}>Private Chat</Text>
+                <Text style={styles.topTabSubDark}>One-to-one Spiritual Connections</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-                <TouchableOpacity
-                  style={styles.newHeroButton}
-                  onPress={() => router.push('/community-request')}
-                >
-                  <Ionicons name="add" size={20} color="#FFF" />
-                  <Text style={styles.newHeroButtonText}>Create Request</Text>
+      <ScrollView 
+        style={styles.mainContent} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
+      >
+        {activeTopTab === 'Community' ? (
+          <View style={styles.communityContent}>
+            {/* Banner */}
+            <View style={styles.heroBanner}>
+              <View style={styles.heroTextCol}>
+                <Text style={styles.heroTitle}>Help your community</Text>
+                <Text style={styles.heroSubtitle}>Together we can{"\n"}make a difference</Text>
+                <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/community-request')}>
+                  <Ionicons name="add" size={16} color="#FFF" />
+                  <Text style={styles.heroButtonText}>Create Request</Text>
                 </TouchableOpacity>
               </View>
-              <Image
-                source={require('../../assets/images/community_hero_heart.jpg')}
-                style={styles.heroHeartImg}
-                resizeMode="contain"
-              />
-            </View>
-          </ImageBackground>
-
-
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionHeading}>Active Requests</Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {requests.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.activeRequestsRow}
-            >
-              {requests.map(renderActiveRequestCard)}
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyRequestRow}>
-              <Text style={styles.emptyText}>There are no active community requests yet.</Text>
-            </View>
-          )}
-
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionHeading}>Our Groups</Text>
-          </View>
-
-          <View style={styles.groupsContainer}>
-            {communities.length > 0 ? (
-              communities.map((item) => renderCommunity({ item }))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="people-outline" size={44} color={COLORS.textLight} />
-                <Text style={styles.emptyTitle}>No Groups Yet</Text>
-                <Text style={styles.emptyText}>Join your first community group to start helping.</Text>
-              </View>
-            )}
-          </View>
-
-        </ScrollView>
-      )}
-
-      {/* Private Chat Tab Content */}
-      {activeTopTab === 'Private Chat' && (
-        <View style={styles.privateChatContainer}>
-          <View style={styles.privateTopBar}>
-            <Text style={styles.privateTopTitle}>Private Chat</Text>
-            <TouchableOpacity style={styles.newChatPill} onPress={() => router.push('/dm/new')}>
-              <Ionicons name="add" size={16} color={COLORS.primary} />
-              <Text style={styles.newChatPillText}>New Chat</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loadingConversations ? (
-            <ActivityIndicator size="large" color={COLORS.primary} style={styles.loadingUsers} />
-          ) : (
-            <ScrollView
-              contentContainerStyle={styles.listContent}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={() => {
-                    setRefreshing(true);
-                    fetchData();
-                    fetchConversations();
-                  }}
+              <View style={styles.heroImageContainer}>
+                <Image 
+                  source={require('../../assets/images/community_hero_final.png')} 
+                  style={styles.heroImageHalf}
+                  resizeMode="cover"
                 />
-              }
-            >
-              <Text style={styles.sectionHeader}>Groups</Text>
-              {circles.length > 0 ? (
-                circles.map((circle) => renderCircle({ item: circle }))
-              ) : (
-                <View style={styles.emptyState}>
-                  <Ionicons name="people-outline" size={44} color={COLORS.textLight} />
-                  <Text style={styles.emptyTitle}>No Groups Yet</Text>
-                  <Text style={styles.emptyText}>Create a group to chat in a shared space.</Text>
-                </View>
-              )}
+              </View>
+            </View>
 
-              <Text style={styles.sectionHeader}>Recent Chats</Text>
-              {conversations.length > 0 ? (
-                conversations.map((conversation) => renderConversationItem(conversation))
-              ) : (
-                <View style={styles.emptyState}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={44} color={COLORS.textLight} />
-                  <Text style={styles.emptyTitle}>No Conversations Yet</Text>
-                  <Text style={styles.emptyText}>Tap New Chat to start messaging someone.</Text>
-                </View>
-              )}
+            {/* Active Requests */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Active Community Requests</Text>
+              <TouchableOpacity onPress={() => router.push('/community-request')}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ marginTop: 10 }}>
+              <ScrollView 
+                ref={activeRequestScrollRef}
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
+                snapToInterval={width * 0.48 + 14}
+                decelerationRate="fast"
+                snapToAlignment="start"
+                style={Platform.OS === 'web' ? { cursor: 'grab' } : {}}
+                onMomentumScrollEnd={(e) => {
+                  const x = e.nativeEvent.contentOffset.x;
+                  const cardWidth = width * 0.48 + 14;
+                  setActiveRequestIndex(Math.round(x / cardWidth));
+                }}
+              >
+                {[
+                  ...requests,
+                  { id: 'm1', title: 'O+ Blood Required', urgency_level: 'Urgent', request_type: 'blood', location: 'Kokilaben D. Ambani Hospital, Andheri West, Mumbai', user_name: 'Rahul Verma' },
+                  { id: 'm2', title: 'Baby Food Required', urgency_level: 'Medium', request_type: 'food', location: 'Bandra West, Mumbai', user_name: 'Neha Sharma' },
+                  { id: 'm3', title: 'Elderly Care Suport', urgency_level: 'Low', request_type: 'care', location: 'Powai, Mumbai', user_name: 'Arjun Metha' }
+                ].map(renderActiveRequestCard)}
+              </ScrollView>
+            </View>
 
+            {/* Verified Communities */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Our Communities <Text style={styles.verifiedTag}>(Verified) <Ionicons name="shield-checkmark" size={14} color="#FF6600" /></Text></Text>
+            </View>
+            <View style={styles.communitiesList}>
+              {communities.map(renderCommunityItem)}
+            </View>
 
-            </ScrollView>
-          )}
-        </View>
-      )}
-
-
-      <Modal visible={showLokSangmaModal} transparent animationType="slide" onRequestClose={() => setShowLokSangmaModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Your Culture Group</Text>
-              <TouchableOpacity onPress={() => setShowLokSangmaModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+            {/* Local Communities Header */}
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="people" size={24} color="#FF6600" style={{ marginRight: 8 }} />
+                <Text style={styles.sectionTitle}>Loacl Communities <Text style={styles.subTitleSmall}>(User Groups)</Text></Text>
+              </View>
+              <TouchableOpacity>
+                <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search culture groups..."
-              placeholderTextColor={COLORS.textSecondary}
-              value={lokSangmaSearch}
-              onChangeText={(text) => loadLokSangmaOptions(text)}
-            />
-
-            {lokSangmaLoading ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.lg }} />
-            ) : (
-              <ScrollView style={styles.lokSangmaList}>
-                {lokSangmaList && lokSangmaList.length > 0 ? (
-                  lokSangmaList.map((item) => (
-                    <TouchableOpacity
-                      key={item}
-                      style={[
-                        styles.lokSangmaItem,
-                        userLokSangma?.cultural_community === item && styles.lokSangmaItemSelected,
-                      ]}
-                      onPress={() => handleSelectLokSangma(item)}
-                      disabled={userLokSangma?.is_locked}
-                    >
-                      <Text style={[
-                        styles.lokSangmaItemText,
-                        userLokSangma?.cultural_community === item && styles.lokSangmaItemTextSelected,
-                      ]}>
-                        {item}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  <Text style={styles.emptyText}>No matching culture groups found.</Text>
-                )}
+            {/* Local Communities Slider */}
+            <View style={{ marginBottom: 10 }}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+              >
+                {[
+                  { id: 'lc1', name: 'Indore Seva Group', members: 128, badge: 'Seva', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400' },
+                  { id: 'lc2', name: 'Borivali Youth Connect', members: 96, badge: 'Youth', image: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=400' },
+                  { id: 'lc3', name: 'Pune Food Sharing Group', members: 236, badge: 'Seva', image: 'https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=400' }
+                ].map((item, idx) => renderLocalCommunityCard(item, idx))}
               </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Toast Notice */}
-      {toastVisible && (
-        <View style={styles.toastContainer}>
-          <View style={styles.toastContent}>
-            <Ionicons name="information-circle" size={20} color="#FFF" />
-            <Text style={styles.toastText}>{toastMessage}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Verified Personality Note - Animated */}
-      <Animated.View
-        style={[
-          styles.verifiedNoteContainer,
-          {
-            transform: [
-              {
-                translateY: verifiedNoteAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [200, 0],
-                }),
-              },
-            ],
-            opacity: verifiedNoteAnim,
-          }
-        ]}
-      >
-        <View style={styles.verifiedNoteInner}>
-          <View style={styles.verifiedNoteContent}>
-            <View style={styles.verifiedIconContainer}>
-              <Ionicons name="shield-checkmark" size={24} color="#E67E22" />
             </View>
-            <View style={styles.verifiedTextContainer}>
-              <Text style={styles.verifiedTitle}>Verified Personality Groups</Text>
-              <Text style={styles.verifiedSub}>State and National groups are for verified Sanatan personalities only. Join by submitting your details for verification.</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.learnMoreButton}
-              onPress={() => {
-                toggleVerifiedNote(false);
-                router.push('/(tabs)/profile?section=personality_verification');
-              }}
-            >
-              <Text style={styles.learnMoreText}>Learn More</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={styles.closeVerifiedNote}
-            onPress={() => toggleVerifiedNote(false)}
-          >
-            <Ionicons name="close" size={20} color="#999" />
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
 
+            {/* Create Community CTA */}
+            <View style={styles.footerCTA}>
+              <View style={styles.footerIconBox}>
+                 <Ionicons name="people" size={32} color="#FF6600" />
+                 <View style={styles.plusOverlay}><Ionicons name="add-circle" size={16} color="#FF6600" /></View>
+              </View>
+              <View style={styles.footerTextCol}>
+                <Text style={styles.footerTitle}>Create Your Community</Text>
+                <Text style={styles.footerSub}>Build your own local community and bring like-minded people together.</Text>
+              </View>
+              <TouchableOpacity style={styles.footerButton}>
+                <Ionicons name="add" size={16} color="#FFF" />
+                <Text style={styles.footerButtonText}>Create Community</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={{ height: 120 }} />
+          </View>
+        ) : (
+          <View style={styles.chatContent}>
+             <View style={styles.chatSectionHeader}>
+                <Text style={styles.chatSectionTitle}>Groups & Circles</Text>
+                <TouchableOpacity onPress={() => router.push('/circles')}>
+                  <Text style={styles.viewAllText}>Manage</Text>
+                </TouchableOpacity>
+             </View>
+             {circles.length > 0 ? (
+                circles.map(circle => (
+                  <TouchableOpacity 
+                    key={circle.id} 
+                    style={styles.chatItem}
+                    onPress={() => router.push(`/chat/circle/${circle.id}`)}
+                  >
+                    <Avatar name={circle.name} photo={circle.photo} size={50} />
+                    <View style={styles.chatItemInfo}>
+                      <Text style={styles.chatItemName}>{circle.name}</Text>
+                      <Text style={styles.chatItemLastMsg} numberOfLines={1}>{circle.last_message || 'Start a conversation'}</Text>
+                    </View>
+                    <View style={styles.chatItemRight}>
+                      <Text style={styles.chatItemTime}>{circle.last_message_time || ''}</Text>
+                      {circle.member_count > 0 && <View style={styles.chatBadge}><Text style={styles.chatBadgeText}>{circle.member_count}</Text></View>}
+                    </View>
+                  </TouchableOpacity>
+                ))
+             ) : (
+                <View style={styles.emptyChat}>
+                  <Text style={styles.emptyChatText}>No group chats yet</Text>
+                </View>
+             )}
+
+             <View style={styles.chatSectionHeader}>
+                <Text style={styles.chatSectionTitle}>Direct Messages</Text>
+             </View>
+              {conversations.length > 0 ? (
+                 conversations.map(conv => {
+                   const conversationId = conv.conversation_id || conv.id;
+                   const isMuted = conversationId ? mutedConversations.has(conversationId) : false;
+                   return (
+                   <TouchableOpacity 
+                     key={conversationId} 
+                     style={styles.chatItem}
+                     onPress={() => router.push(`/dm/${conversationId}`)}
+                   >
+                     <Avatar name={conv.user?.name || '?'} photo={conv.user?.photo} size={50} />
+                     <View style={styles.chatItemInfo}>
+                       <Text style={styles.chatItemName}>{conv.user?.name}</Text>
+                       <Text style={[styles.chatItemLastMsg, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>{conv.last_message || 'Send a message'}</Text>
+                     </View>
+                     <View style={styles.chatItemRight}>
+                       <Text style={styles.chatItemTime}>{formatTime(conv.last_message_at)}</Text>
+                       {isMuted && <Ionicons name="notifications-off" size={14} color={COLORS.textLight} style={{ marginTop: 4 }} />}
+                     </View>
+                   </TouchableOpacity>
+                   );
+                 })
+             ) : (
+                <View style={styles.emptyChat}>
+                  <Text style={styles.emptyChatText}>No private messages yet</Text>
+                </View>
+             )}
+             
+             <View style={{ height: 120 }} />
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFBF7',
-  },
-  communityScroll: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: 150,
-  },
-  topTabsContainer: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: 16,
-    backgroundColor: '#FFFBF7',
-  },
-  topTabsInner: {
-    flexDirection: 'row',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 30,
-    padding: 4,
-  },
-  topTab: {
-    flex: 1,
-    flexDirection: 'row',
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 26,
-    gap: 8,
-  },
-  topTabSpacing: {
-    marginRight: 0,
-  },
-  topTabActive: {
-    backgroundColor: '#FF5E00',
-    shadowColor: '#FF5E00',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  topTabText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#666',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  topTabTextActive: {
-    color: '#FFFFFF',
-  },
-  newHeroCard: {
-    height: 180,
-    marginBottom: SPACING.xl,
-    overflow: 'hidden',
-    backgroundColor: '#FFE5D4',
-    borderRadius: 24,
-  },
-  heroOverlay: {
-    flex: 1,
-    flexDirection: 'row',
-    padding: SPACING.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  newHeroContent: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  newHeroTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#4A2B1E',
-    marginBottom: 4,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  newHeroSubtitle: {
-    fontSize: 14,
-    color: '#6D4C41',
-    marginBottom: SPACING.md,
-    fontFamily: 'Inter_400Regular',
-  },
-  newHeroButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FF5E00',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    shadowColor: '#FF5E00',
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  newHeroButtonText: {
-    color: '#FFF',
-    fontWeight: '800',
-    marginLeft: 6,
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  heroHeartImg: {
-    width: 120,
-    height: 120,
-    position: 'absolute',
-    right: 0,
-    bottom: -10,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.sm,
-  },
-  sectionHeading: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#2D2D2D',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: '#FF5E00',
-    fontWeight: '700',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  activeRequestsRow: {
-    paddingBottom: SPACING.md,
-  },
-  newRequestCard: {
-    width: 180,
-    borderRadius: 24,
-    padding: SPACING.md,
-    marginRight: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
-  },
-  newRequestIconContainer: {
-    marginBottom: 12,
-  },
-  newRequestIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  newRequestTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#2D2D2D',
-    marginBottom: 2,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  newRequestSub: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-    fontFamily: 'Inter_400Regular',
-  },
-  newRequestLocation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 12,
-  },
-  newRequestLocationText: {
-    fontSize: 11,
-    color: '#888',
-    flex: 1,
-    fontFamily: 'Inter_400Regular',
-  },
-  newRequestFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  newUrgencyBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  newUrgencyText: {
-    fontSize: 10,
-    fontWeight: '800',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  newRequestTime: {
-    fontSize: 10,
-    color: '#999',
-    fontFamily: 'Inter_400Regular',
-  },
-  newRequestArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  groupsContainer: {
-    marginBottom: SPACING.md,
-  },
-  groupCardWrapper: {
-    marginBottom: 12,
-  },
-  newCommunityCard: {
-    flexDirection: 'row',
-    padding: 16,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    overflow: 'hidden',
-    marginRight: SPACING.md,
-  },
-  activeGroupCard: {
-    borderWidth: 1.5,
-    borderColor: '#FF5E00',
-    shadowColor: '#FF5E00',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  newCommunityIconContainer: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  newCommunityInfo: {
-    flex: 1,
-  },
-  newCommunityLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    marginBottom: 2,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  newCommunityName: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    marginBottom: 4,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  newCommunityMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: 10,
-  },
-  newCommunityStats: {
-    fontSize: 13,
-    color: '#8E8E93',
-    fontFamily: 'Inter_400Regular',
-  },
-  avatarStack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stackAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#FFF',
-    overflow: 'hidden',
-    backgroundColor: '#EEE',
-  },
-  stackAvatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  stackAvatarCount: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#F2F2F7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  stackAvatarCountText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#8E8E93',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  joinGroupContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  joinGroupText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#D4AF37',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  verifiedNoteContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    zIndex: 1000,
-  },
-  verifiedNoteInner: {
-    backgroundColor: '#FFF9F5',
-    borderRadius: 24,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: -10 },
-    elevation: 10,
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: '#FFE5D4',
-  },
-  verifiedNoteContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flexWrap: 'wrap',
-  },
-  verifiedIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FFE5D4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  verifiedTextContainer: {
-    flex: 1,
-  },
-  verifiedTitle: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#2D2D2D',
-    marginBottom: 4,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  verifiedSub: {
-    fontSize: 11,
-    color: '#666',
-    lineHeight: 16,
-    fontFamily: 'Inter_400Regular',
-  },
-  learnMoreButton: {
-    backgroundColor: '#FFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FF5E00',
-    marginTop: 8,
-  },
-  learnMoreText: {
-    color: '#FF5E00',
-    fontSize: 12,
-    fontWeight: '800',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  closeVerifiedNote: {
-    padding: 4,
-  },
-  toastContainer: {
-    position: 'absolute',
-    bottom: 100,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-    zIndex: 9999,
-  },
-  toastContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 8,
-  },
-  toastText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter_400Regular',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFBF7',
-  },
-  privateChatContainer: {
-    flex: 1,
-  },
-  privateTopBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: '#FFFBF7',
-  },
-  privateTopTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#2D2D2D',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  newChatPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFE5D4',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  newChatPillText: {
-    color: '#FF5E00',
-    fontWeight: '800',
-    fontSize: 12,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  listContent: {
-    padding: SPACING.lg,
-    paddingBottom: 120,
-  },
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#2D2D2D',
-    marginBottom: 16,
-    marginTop: 8,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    padding: 12,
-    borderRadius: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 1,
-  },
-  userAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FF5E00',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInitial: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '800',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  userSL: {
-    fontSize: 12,
-    color: '#8E8E93',
-    fontFamily: 'Inter_400Regular',
-  },
-  userRight: {
-    alignItems: 'flex-end',
-  },
-  userTime: {
-    fontSize: 11,
-    color: '#AEAEB2',
-    fontFamily: 'Inter_400Regular',
-  },
-  circleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    padding: 12,
-    borderRadius: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 1,
-  },
-  circleAvatar: {
-    marginRight: 12,
-  },
-  circleInfo: {
-    flex: 1,
-  },
-  circleName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  circleLastMessage: {
-    fontSize: 12,
-    color: '#8E8E93',
-    fontFamily: 'Inter_400Regular',
-  },
-  circleRight: {
-    alignItems: 'flex-end',
-  },
-  circleTime: {
-    fontSize: 11,
-    color: '#AEAEB2',
-    fontFamily: 'Inter_400Regular',
-  },
-  circleMemberCount: {
-    fontSize: 10,
-    color: '#8E8E93',
-    fontFamily: 'Inter_400Regular',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFBF7',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: SPACING.lg,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.md,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#2D2D2D',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  searchInput: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFF',
-    color: '#2D2D2D',
-    borderWidth: 1,
-    borderColor: '#EEE',
-    fontFamily: 'Inter_400Regular',
-  },
-  lokSangmaList: {
-    marginHorizontal: SPACING.md,
-  },
-  lokSangmaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  lokSangmaItemSelected: {
-    backgroundColor: '#FFE5D4',
-  },
-  lokSangmaItemText: {
-    color: '#1A1A1A',
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-  },
-  lokSangmaItemTextSelected: {
-    color: '#FF5E00',
-    fontWeight: '800',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginTop: 20,
-    fontFamily: 'Inter_400Regular',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#2D2D2D',
-    marginTop: 12,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  pillDropdown: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    backgroundColor: '#FFFBF7',
-  },
-  pillDropdownItem: {
-    backgroundColor: '#FFE5D4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  pillDropdownText: {
-    color: '#FF5E00',
-    fontWeight: '800',
-    fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
-  },
+  container: { flex: 1, backgroundColor: '#FFFBF7' },
+  headerGradient: { paddingBottom: 20 },
+  topTabsWrapper: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 10, gap: 12 },
+  topTabCard: { flex: 1, height: 80, borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
+  topTabCardActive: { backgroundColor: '#FF4D00' },
+  topTabCardActivePrivate: { backgroundColor: '#FFF' },
+  topTabCardInactive: { backgroundColor: '#FFF' },
+  topTabIcon: { marginRight: 12 },
+  topTabTextCol: { flex: 1 },
+  topTabTitle: { fontSize: 16, fontFamily: FONTS.bold },
+  topTabSub: { fontSize: 9, fontFamily: FONTS.regular, marginTop: 1, lineHeight: 12 },
+  topTabTitleDark: { fontSize: 16, fontFamily: FONTS.bold, color: '#111' },
+  topTabSubDark: { fontSize: 9, fontFamily: FONTS.regular, color: '#888', marginTop: 1, lineHeight: 12 },
+
+  mainContent: { flex: 1 },
+  communityContent: { paddingHorizontal: 16, paddingTop: 16 },
+  
+  heroBanner: { backgroundColor: '#FFF9F5', borderRadius: 24, marginBottom: 24, overflow: 'hidden', height: 160, flexDirection: 'row', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 15, shadowOffset: { width: 0, height: 5 } },
+  heroTextCol: { flex: 1.5, paddingLeft: 20 },
+  heroTitle: { fontSize: 26, fontFamily: FONTS.bold, color: '#111', fontWeight: '900' },
+  heroSubtitle: { fontSize: 14, fontFamily: FONTS.regular, color: '#333', marginTop: 6, lineHeight: 20 },
+  heroButton: { backgroundColor: '#FF6600', alignSelf: 'flex-start', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 14, flexDirection: 'row', alignItems: 'center', marginTop: 15, elevation: 4 },
+  heroButtonText: { color: '#FFF', fontSize: 14, fontFamily: FONTS.bold, marginLeft: 6 },
+  heroImageContainer: { flex: 1, height: '100%', justifyContent: 'center', alignItems: 'flex-end' },
+  heroImageHalf: { width: '100%', height: '100%', opacity: 0.95 },
+  bloodCardBgIllust: { position: 'absolute', right: -10, top: 20, opacity: 0.3 },
+
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 10 },
+  sectionTitle: { fontSize: 17, fontFamily: FONTS.bold, color: '#111' },
+  viewAllText: { fontSize: 14, color: '#FF6600', fontFamily: FONTS.bold },
+  verifiedTag: { color: '#888', fontSize: 12, fontFamily: FONTS.regular },
+  subTitleSmall: { color: '#888', fontSize: 12, fontFamily: FONTS.regular },
+
+  horizontalScroll: { paddingBottom: 10, paddingRight: 20 },
+  activeRequestCard: { width: width * 0.48, borderRadius: 24, padding: 14, marginRight: 14, minHeight: 190, overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
+  reqCardIllustWrapper: { position: 'absolute', right: -40, bottom: -40, width: 280, height: 280, opacity: 0.3 },
+  reqCardIllustImage: { width: '100%', height: '100%' },
+  reqCardHeader: { flex: 1, zIndex: 1 },
+  reqCardTitle: { fontSize: 15, fontFamily: FONTS.bold, color: '#000', marginBottom: 8, lineHeight: 18 },
+  reqUrgencyPill: { backgroundColor: '#FFF', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, elevation: 1, shadowOpacity: 0.05, shadowRadius: 2 },
+  reqUrgencyText: { fontSize: 10, fontFamily: FONTS.bold },
+  reqCardFooter: { marginTop: 'auto', zIndex: 1 },
+  reqInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  reqInfoText: { fontSize: 11, color: '#000', marginLeft: 4, fontFamily: FONTS.medium, flex: 1, lineHeight: 14 },
+  reqPosterName: { fontSize: 11, color: '#000', marginLeft: 4, fontFamily: FONTS.medium },
+  reqPostedTime: { fontSize: 10, color: '#555', marginLeft: 'auto' },
+
+  paginationDots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, marginBottom: 5 },
+  dot: { width: 6, height: 6, borderRadius: 3, marginHorizontal: 3 },
+  dotActive: { backgroundColor: '#FF6600', width: 12 },
+  dotInactive: { backgroundColor: '#DDD' },
+
+  communitiesList: { marginBottom: 24, gap: 12 },
+  communityListItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBF1', padding: 14, borderRadius: 20, borderWidth: 1, borderColor: '#FFE8D4' },
+  communityIconBox: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  communityItemContent: { flex: 1 },
+  communityItemLabel: { fontSize: 10, fontFamily: FONTS.bold, letterSpacing: 0.5, marginBottom: 2 },
+  communityItemName: { fontSize: 16, fontFamily: FONTS.bold, color: '#111' },
+  communityItemMembers: { fontSize: 12, color: '#888', marginTop: 2 },
+  communityItemRight: { flexDirection: 'row', alignItems: 'center' },
+  avatarStack: { flexDirection: 'row', alignItems: 'center', marginRight: 8 },
+  stackAvatar: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#FFFBF1' },
+  stackAvatarCount: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFD4B2', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFBF1' },
+  stackAvatarCountText: { fontSize: 9, fontFamily: FONTS.bold, color: '#FF6600' },
+
+  localCommCard: { width: width * 0.38, borderRadius: 24, padding: 15, marginRight: 15, borderWidth: 1.5, alignItems: 'center' },
+  localCommMenu: { position: 'absolute', right: 10, top: 10 },
+  localCommAvatarWrapper: { width: 75, height: 75, borderRadius: 37.5, overflow: 'hidden', marginBottom: 12, borderWidth: 2, borderColor: '#FFF', elevation: 3, shadowOpacity: 0.1, shadowRadius: 3 },
+  localCommAvatar: { width: '100%', height: '100%' },
+  localCommContent: { alignItems: 'center', marginBottom: 12 },
+  localCommName: { fontSize: 13, fontFamily: FONTS.bold, color: '#000', textAlign: 'center', marginBottom: 4 },
+  localCommMembers: { fontSize: 11, color: '#333', fontFamily: FONTS.medium },
+  localCommPill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: '#FFF' },
+  localCommPillText: { fontSize: 11, fontFamily: FONTS.bold },
+
+  footerCTA: { backgroundColor: '#FFF3E0', borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', marginTop: 20 },
+  footerIconBox: { width: 60, height: 60, justifyContent: 'center', alignItems: 'center' },
+  plusOverlay: { position: 'absolute', right: 8, bottom: 8 },
+  footerTextCol: { flex: 1, paddingHorizontal: 12 },
+  footerTitle: { fontSize: 16, fontFamily: FONTS.bold, color: '#111' },
+  footerSub: { fontSize: 11, fontFamily: FONTS.regular, color: '#666', marginTop: 4 },
+  footerButton: { backgroundColor: '#FF6600', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },
+  footerButtonText: { color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, marginLeft: 4 },
+
+  chatContent: { paddingHorizontal: 16, paddingTop: 10 },
+  chatSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 16 },
+  chatSectionTitle: { fontSize: 18, fontFamily: FONTS.bold, color: '#111' },
+  chatItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 12, borderRadius: 20, marginBottom: 12, elevation: 1 },
+  chatItemInfo: { flex: 1, marginLeft: 12 },
+  chatItemName: { fontSize: 16, fontFamily: FONTS.bold, color: '#111' },
+  chatItemLastMsg: { fontSize: 13, color: '#888', marginTop: 2 },
+  chatItemRight: { alignItems: 'flex-end' },
+  chatItemTime: { fontSize: 11, color: '#AAA' },
+  chatBadge: { backgroundColor: '#FF6600', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
+  chatBadgeText: { color: '#FFF', fontSize: 10, fontFamily: FONTS.bold },
+  emptyChat: { padding: 20, alignItems: 'center' },
+  emptyChatText: { color: '#AAA', fontSize: 14 },
 });

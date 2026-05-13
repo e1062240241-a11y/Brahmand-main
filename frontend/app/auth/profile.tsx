@@ -1106,7 +1106,7 @@ export default function ProfileScreen() {
         visible={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         onUploadStart={handleUploadStart}
-        onSuccess={handleUploadPostSuccess}
+        onUploadSuccess={handleUploadPostSuccess}
       />
     </SafeAreaView>
   );

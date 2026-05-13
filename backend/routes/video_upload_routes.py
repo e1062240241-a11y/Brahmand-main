@@ -182,21 +182,21 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
         "-c:v",
         "libx264",
         "-preset",
-        "medium",  # Better quality than ultrafast
+        "fast",     # Faster encoding for better responsiveness
         "-crf",
-        "23",      # Standard high quality
+        "28",       # Slightly higher compression to reduce buffering lag
         "-profile:v",
         "main",
         "-level",
-        "4.1",     # Better for 1080p
+        "4.0",      # Broad compatibility
         "-pix_fmt",
         "yuv420p",
         "-c:a",
         "aac",
         "-b:a",
-        "128k",
+        "96k",      # Optimize audio bitrate
         "-movflags",
-        "+faststart",
+        "+faststart", # Crucial for web streaming
         output_path,
     ]
 
@@ -248,6 +248,7 @@ def _upload_to_firebase_storage(user_id: str, output_path: str) -> tuple[str, st
 
     with open(output_path, "rb") as video_file:
         blob.upload_from_file(video_file, content_type="video/mp4")
+    blob.patch()
 
     public_url = _build_firebase_public_url(bucket.name, object_path, download_token)
     return object_path, public_url
