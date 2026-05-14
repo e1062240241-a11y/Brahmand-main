@@ -807,7 +807,7 @@ export const FloatingUtilityButton = () => {
         onClose={() => setSosResponderModalVisible(false)}
         onRespond={handleRespondToSOS}
       />
-    </>
+    </View>
   );
 };
 
