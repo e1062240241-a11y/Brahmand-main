@@ -22,7 +22,7 @@ export default function CommunityRequestBloodOtpPage() {
   }>();
   const { login } = useAuthStore();
   const phone = (params.phone || '').replace(/[^0-9]/g, '');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(30);
@@ -76,7 +76,7 @@ export default function CommunityRequestBloodOtpPage() {
     newOtp[index] = value.replace(/[^0-9]/g, '');
     setOtp(newOtp);
     setError('');
-    if (newOtp[index] && index < 5) {
+    if (newOtp[index] && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
     if (newOtp.every((digit) => digit !== '')) {
@@ -114,7 +114,7 @@ export default function CommunityRequestBloodOtpPage() {
     } catch (err: any) {
       console.error('OTP verify failed', err);
       setError(err?.response?.data?.detail || err?.message || 'Invalid OTP. Please try again.');
-      setOtp(['', '', '', '', '', '']);
+      setOtp(['', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -154,7 +154,7 @@ export default function CommunityRequestBloodOtpPage() {
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>Enter OTP</Text>
-          <Text style={styles.subtitle}>We have sent a 6 digit OTP to +91 {phone}</Text>
+          <Text style={styles.subtitle}>We have sent a 4 digit OTP to +91 {phone}</Text>
 
           <View style={styles.otpContainer}>
             {otp.map((digit, index) => (
@@ -246,8 +246,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   otpInput: {
-    width: 44,
-    height: 56,
+    width: 64,
+    height: 64,
     borderRadius: BORDER_RADIUS.lg,
     backgroundColor: '#FFFFFF',
     color: COLORS.text,

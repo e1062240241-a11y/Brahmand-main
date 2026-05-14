@@ -48,8 +48,8 @@ export default function CommunityRequestEmergencyPage() {
       if (hospitalName.length >= 2 && !selectedHospital) {
         setIsHospitalSearching(true);
         try {
-          const results = await searchHospitals(hospitalName);
-          setHospitalSuggestions(results || []);
+          const response = await searchHospitals(hospitalName);
+          setHospitalSuggestions(response.data.results || []);
         } catch (error) {
           console.error('Search error', error);
         } finally {

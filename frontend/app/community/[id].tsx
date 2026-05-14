@@ -345,8 +345,6 @@ export default function CommunityDetailScreen() {
               <Text style={styles.postUserName} numberOfLines={1}>{item.user.name}</Text>
               {item.user.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3B30" style={{ marginLeft: 2 }} />}
               <Text style={styles.postHandle} numberOfLines={1}> @{item.user.name.replace(/\s+/g, '').toLowerCase()}</Text>
-              <Text style={styles.postDot}>·</Text>
-              <Text style={styles.postTimestamp}>{item.timestamp}</Text>
             </View>
             <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
@@ -512,10 +510,12 @@ export default function CommunityDetailScreen() {
         </View>
         <View style={styles.eventTextCol}>
           <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
-          <Text style={styles.eventMeta}>{item.location || 'Mumbai'}</Text>
           <View style={styles.goingRow}>
-            <Ionicons name="person" size={12} color="#888" />
-            <Text style={styles.goingText}>Requested by {item.user_name || 'Anonymous'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Ionicons name="person" size={12} color="#888" />
+              <Text style={styles.goingText}>Requested by {item.user_name || 'Anonymous'}</Text>
+            </View>
+            <Text style={styles.timeAgoText}>{getTimeAgo(item.created_at)}</Text>
           </View>
         </View>
       </View>
@@ -529,6 +529,21 @@ export default function CommunityDetailScreen() {
       </View>
     </View>
   );
+
+  const getTimeAgo = (dateString?: string) => {
+    if (!dateString) return 'Just now';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return 'Just now';
+    
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 0) return 'Just now';
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
 
   const handleNotifications = () => {
     router.push('/notifications');
@@ -1056,6 +1071,8 @@ const styles = StyleSheet.create({
   tabsContent: { paddingHorizontal: 20, paddingVertical: 15, gap: 25 },
   tabItem: { paddingBottom: 5 },
   tabItemActive: { borderBottomWidth: 3, borderBottomColor: '#FF3B30' },
+  goingText: { marginLeft: 6, fontSize: 13, color: '#888', fontFamily: FONTS.regular },
+  timeAgoText: { fontSize: 11, color: '#AAA', fontFamily: FONTS.regular },
   tabText: { fontSize: 15, color: '#888', fontWeight: '600' },
   tabTextActive: { color: '#FF3B30', fontWeight: '700' },
 

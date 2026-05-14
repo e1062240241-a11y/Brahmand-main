@@ -254,6 +254,21 @@ export default function MessagesScreen() {
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
+  const getTimeAgo = (dateString?: string) => {
+    if (!dateString) return 'Just now';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return 'Just now';
+    
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 0) return 'Just now'; // Handle slight clock drift
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
+
   // --- RENDERING COMPONENTS ---
 
   const renderActiveRequestCard = (item: CommunityRequest) => {
@@ -290,7 +305,7 @@ export default function MessagesScreen() {
           <View style={[styles.reqInfoRow, { marginBottom: 0 }]}>
             <Ionicons name="person-circle-sharp" size={14} color="#000" />
             <Text style={styles.reqPosterName} numberOfLines={1}>Posted by {item.user_name || 'User'}</Text>
-            <Text style={styles.reqPostedTime}>10 min ago</Text>
+            <Text style={styles.reqPostedTime}>{getTimeAgo(item.created_at)}</Text>
           </View>
         </View>
       </TouchableOpacity>

@@ -3186,26 +3186,28 @@ async def forward_geocode(request: dict):
         }
         headers = {"User-Agent": "SanatanLok/2.2"}
 
-        def _build_result(data_rows: list) -> dict:
+        def _build_results(data_rows: list) -> list:
             if not isinstance(data_rows, list) or not data_rows:
-                raise HTTPException(status_code=404, detail="Coordinates not found for this location")
+                return []
 
-            first = data_rows[0]
-            lat = first.get("lat")
-            lon = first.get("lon")
-            if lat is None or lon is None:
-                raise HTTPException(status_code=404, detail="Coordinates not found for this location")
+            results = []
+            for row in data_rows[:5]:
+                lat = row.get("lat")
+                lon = row.get("lon")
+                if lat is None or lon is None:
+                    continue
 
-            address = first.get("address", {}) if isinstance(first.get("address"), dict) else {}
-            return {
-                "latitude": float(lat),
-                "longitude": float(lon),
-                "display_name": first.get("display_name") or query,
-                "country": address.get("country", "Unknown").replace("India", "Bharat"),
-                "state": address.get("state", "Unknown"),
-                "city": address.get("city") or address.get("town") or address.get("municipality") or "Unknown",
-                "area": address.get("suburb") or address.get("neighbourhood") or "Unknown",
-            }
+                address = row.get("address", {}) if isinstance(row.get("address"), dict) else {}
+                results.append({
+                    "latitude": float(lat),
+                    "longitude": float(lon),
+                    "display_name": row.get("display_name") or query,
+                    "country": address.get("country", "Unknown").replace("India", "Bharat"),
+                    "state": address.get("state", "Unknown"),
+                    "city": address.get("city") or address.get("town") or address.get("municipality") or "Unknown",
+                    "area": address.get("suburb") or address.get("neighbourhood") or "Unknown",
+                })
+            return results
 
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
@@ -3213,7 +3215,7 @@ async def forward_geocode(request: dict):
                     if resp.status != 200:
                         raise HTTPException(status_code=502, detail=f"Forward geocode API returned status {resp.status}")
                     data = await resp.json()
-                    return _build_result(data)
+                    return _build_results(data)
         except HTTPException:
             raise
         except Exception as aiohttp_error:
@@ -3231,7 +3233,7 @@ async def forward_geocode(request: dict):
                 raise HTTPException(status_code=502, detail=f"Forward geocode API returned status {resp.status_code}")
 
             data = resp.json()
-            return _build_result(data)
+            return _build_results(data)
     except HTTPException:
         raise
     except Exception as e:
