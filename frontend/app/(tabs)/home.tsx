@@ -899,10 +899,6 @@ export default function HomeScreen() {
               <View style={styles.greetingBlock}>
                 <View style={styles.nameRow}>
                   <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
-                  <View style={styles.liveLocationBadge}>
-                    <Ionicons name="location" size={10} color="#FF6B00" />
-                    <Text style={styles.liveLocationText}>{liveLocation}</Text>
-                  </View>
                 </View>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -1160,7 +1156,7 @@ export default function HomeScreen() {
               </View>
               <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                 <View style={styles.cardIconRow}>
-                  <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                 </View>
                 <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
                 <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
@@ -1188,7 +1184,7 @@ export default function HomeScreen() {
               </View>
               <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                 <View style={styles.cardIconRow}>
-                  <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                 </View>
                 <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Register Your Business</Text>
                 <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Become a verified sanatan vendor</Text>
@@ -1209,10 +1205,10 @@ export default function HomeScreen() {
               </View>
               <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                 <View style={styles.cardIconRow}>
-                  <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                 </View>
                 <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Sai Flower Decorator</Text>
-                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor Andheri, Mumbai</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor</Text>
               </View>
               <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
                 <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
@@ -1227,7 +1223,7 @@ export default function HomeScreen() {
               </View>
               <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                 <View style={styles.cardIconRow}>
-                  <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                 </View>
                 <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Live Kedarnath Aarti</Text>
                 <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
