@@ -693,7 +693,6 @@ export default function HomeScreen() {
         );
       }
     } catch (error: any) {
-    } catch (error: any) {
       // Rollback on error
       setPostComments(prev => prev.filter(c => c.id !== tempId));
       const detail = error.response?.data?.detail || error.message;
@@ -1043,7 +1042,13 @@ export default function HomeScreen() {
               </View>
             ) : null}
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.topFeatureRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
+              {quickAccess.map((item, idx) => {
+                let cardBg = '#FFFFFF';
+                let iconBg = '#FF8A3D';
+                if (item.label === 'Panchang') {
                   cardBg = '#FFF9F0';
                   iconBg = '#FF9800';
                 } else if (item.label === 'My Krishna') {
@@ -1053,7 +1058,6 @@ export default function HomeScreen() {
                   cardBg = '#FFF5F5';
                   iconBg = '#FF3B30';
                 }
->>>>>>> 543f0bbe0aa9ebf9557800256df1536802720e1a
 
                 return (
                   <TouchableOpacity
