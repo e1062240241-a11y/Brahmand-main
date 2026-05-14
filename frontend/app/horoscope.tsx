@@ -23,18 +23,18 @@ import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ZODIAC_SIGNS = [
-  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: '♈', dates: '21 March - 19 April', color: '#FF6B00', image: require('../assets/icons/horoicon /aries.svg') },
-  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: '♉', dates: '20 April - 20 May', color: '#8E44AD', image: require('../assets/icons/horoicon /taurus.svg') },
+  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: '♈', dates: '21 March - 19 April', color: '#FF6B00', image: require('../assets/images/icon.png') },
+  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: '♉', dates: '20 April - 20 May', color: '#8E44AD', image: require('../assets/images/icon.png') },
   { id: 'gemini', name: 'Gemini', hindi: 'Mithun', icon: '♊', dates: '21 May - 20 June', color: '#2ECC71', image: require('../assets/images/zodiac/gemini.png') },
-  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: '♋', dates: '21 June - 22 July', color: '#3498DB', image: require('../assets/icons/horoicon /cancer.svg') },
-  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: '♌', dates: '23 July - 22 August', color: '#F1C40F', image: require('../assets/icons/horoicon /leo.svg') },
-  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: '♍', dates: '23 August - 22 September', color: '#16A085', image: require('../assets/icons/horoicon /virgo.svg') },
-  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: '♎', dates: '23 September - 22 October', color: '#E67E22', image: require('../assets/icons/horoicon /libra.svg') },
-  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: '♏', dates: '23 October - 21 November', color: '#C0392B', image: require('../assets/icons/horoicon /scorpio.svg') },
-  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: '♐', dates: '22 November - 21 December', color: '#2980B9', image: require('../assets/icons/horoicon /sagittarius.svg') },
-  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: '♑', dates: '22 December - 19 January', color: '#273C75', image: require('../assets/icons/horoicon /capricorn.svg') },
-  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: '♒', dates: '20 January - 18 February', color: '#192A56', image: require('../assets/icons/horoicon /aquarius.svg') },
-  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: '♓', dates: '19 February - 20 March', color: '#44BD32', image: require('../assets/icons/horoicon /pisces.svg') },
+  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: '♋', dates: '21 June - 22 July', color: '#3498DB', image: require('../assets/images/icon.png') },
+  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: '♌', dates: '23 July - 22 August', color: '#F1C40F', image: require('../assets/images/icon.png') },
+  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: '♍', dates: '23 August - 22 September', color: '#16A085', image: require('../assets/images/icon.png') },
+  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: '♎', dates: '23 September - 22 October', color: '#E67E22', image: require('../assets/images/icon.png') },
+  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: '♏', dates: '23 October - 21 November', color: '#C0392B', image: require('../assets/images/icon.png') },
+  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: '♐', dates: '22 November - 21 December', color: '#2980B9', image: require('../assets/images/icon.png') },
+  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: '♑', dates: '22 December - 19 January', color: '#273C75', image: require('../assets/images/icon.png') },
+  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: '♒', dates: '20 January - 18 February', color: '#192A56', image: require('../assets/images/icon.png') },
+  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: '♓', dates: '19 February - 20 March', color: '#44BD32', image: require('../assets/images/icon.png') },
 ];
 
 export default function HoroscopeScreen() {
