@@ -105,10 +105,18 @@ export default function CommunityRequestBloodPage() {
     return () => clearTimeout(timer);
   }, [hospitalName]);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pageHeader}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <View style={styles.pageHeaderText}>

@@ -3115,48 +3115,89 @@ async def save_fcm_token(request: dict, token_data: dict = Depends(verify_token)
 
 @api_router.post("/geocode/reverse")
 async def reverse_geocode(request: dict):
-    """Reverse geocode coordinates to location"""
-    import aiohttp
-    
+    """Reverse geocode coordinates to location using Google Maps API"""
     lat = request.get("latitude")
     lon = request.get("longitude")
     
     if lat is None or lon is None:
         raise HTTPException(status_code=400, detail="latitude and longitude are required")
     
-    # Mock/fallback for Mumbai coordinates for testing
-    if 18.0 <= lat <= 20.0 and 72.0 <= lon <= 73.0:
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY")
+    
+    if not api_key:
+        # Fallback to test Mumbai data if no key
+        if 18.0 <= float(lat) <= 20.0 and 72.0 <= float(lon) <= 73.0:
+            return {
+                "country": "Bharat",
+                "state": "Maharashtra", 
+                "city": "Mumbai",
+                "area": "Andheri",
+                "display_name": "Andheri, Mumbai, Maharashtra, Bharat"
+            }
+        return {
+            "country": "Unknown",
+            "state": "Unknown", 
+            "city": "Unknown",
+            "area": "Unknown",
+            "display_name": f"Location at {lat}, {lon}"
+        }
+
+    try:
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        params = {
+            "latlng": f"{lat},{lon}",
+            "key": api_key,
+            "language": "en"
+        }
+        
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with session.get(url, params=params) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if data.get("status") == "OK" and data.get("results"):
+                        result = data["results"][0]
+                        addr_components = result.get("address_components", [])
+                        
+                        city = ""
+                        state = ""
+                        country = ""
+                        area = ""
+                        
+                        for comp in addr_components:
+                            types = comp.get("types", [])
+                            if "country" in types:
+                                country = comp.get("long_name", "").replace("India", "Bharat")
+                            if "administrative_area_level_1" in types:
+                                state = comp.get("long_name", "")
+                            if "locality" in types or "administrative_area_level_2" in types:
+                                city = comp.get("long_name", "")
+                            if "sublocality" in types or "neighborhood" in types:
+                                area = comp.get("long_name", "")
+                                
+                        return {
+                            "country": country or "Bharat",
+                            "state": state or "Maharashtra",
+                            "city": city or "Mumbai",
+                            "area": area or "Unknown",
+                            "display_name": result.get("formatted_address", "")
+                        }
+                    else:
+                        logger.warning(f"Google Geocode API returned status: {data.get('status')}")
+                else:
+                    logger.warning(f"Google Geocode API HTTP status: {resp.status}")
+    except Exception as e:
+        logger.error(f"Google Reverse Geocoding error: {e}")
+    
+    # Final Fallback for Mumbai if API fails
+    if 18.0 <= float(lat) <= 20.0 and 72.0 <= float(lon) <= 73.0:
         return {
             "country": "Bharat",
             "state": "Maharashtra", 
             "city": "Mumbai",
-            "area": "Andheri",
-            "display_name": "Andheri, Mumbai, Maharashtra, Bharat"
+            "area": "Mumbai Area",
+            "display_name": "Mumbai, Maharashtra, Bharat"
         }
-    
-    try:
-        url = "https://nominatim.openstreetmap.org/reverse"
-        params = {"lat": lat, "lon": lon, "format": "json", "addressdetails": 1}
-        
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-            async with session.get(url, params=params, headers={"User-Agent": "SanatanLok/2.2"}) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data and "address" in data:
-                        addr = data.get("address", {})
-                        return {
-                            "country": addr.get("country", "Unknown").replace("India", "Bharat"),
-                            "state": addr.get("state", "Unknown"),
-                            "city": addr.get("city") or addr.get("town") or addr.get("municipality", "Unknown"),
-                            "area": addr.get("suburb") or addr.get("neighbourhood", "Unknown"),
-                            "display_name": data.get("display_name", "")
-                        }
-                else:
-                    logger.warning(f"Geocoding API returned status {resp.status}")
-    except Exception as e:
-        logger.error(f"Geocoding error: {e}")
-    
-    # Fallback response when external API fails
+
     return {
         "country": "Unknown",
         "state": "Unknown", 
@@ -3168,76 +3209,74 @@ async def reverse_geocode(request: dict):
 
 @api_router.post("/geocode/forward")
 async def forward_geocode(request: dict):
-    """Forward geocode place text to coordinates."""
-    import aiohttp
-
+    """Forward geocode place text to coordinates using Google Maps API"""
     query = str(request.get("query") or "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="query is required")
 
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY")
+    if not api_key:
+         raise HTTPException(status_code=500, detail="Google Maps API key not configured")
+
     try:
-        url = "https://nominatim.openstreetmap.org/search"
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
         params = {
-            "q": query,
-            "format": "json",
-            "addressdetails": 1,
-            "limit": 5,
-            "accept-language": "en",
+            "address": query,
+            "key": api_key,
+            "language": "en",
+            "components": "country:in"
         }
-        headers = {"User-Agent": "SanatanLok/2.2"}
 
-        def _build_results(data_rows: list) -> list:
-            if not isinstance(data_rows, list) or not data_rows:
-                return []
-
-            results = []
-            for row in data_rows[:5]:
-                lat = row.get("lat")
-                lon = row.get("lon")
-                if lat is None or lon is None:
-                    continue
-
-                address = row.get("address", {}) if isinstance(row.get("address"), dict) else {}
-                results.append({
-                    "latitude": float(lat),
-                    "longitude": float(lon),
-                    "display_name": row.get("display_name") or query,
-                    "country": address.get("country", "Unknown").replace("India", "Bharat"),
-                    "state": address.get("state", "Unknown"),
-                    "city": address.get("city") or address.get("town") or address.get("municipality") or "Unknown",
-                    "area": address.get("suburb") or address.get("neighbourhood") or "Unknown",
-                })
-            return results
-
-        try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-                async with session.get(url, params=params, headers=headers) as resp:
-                    if resp.status != 200:
-                        raise HTTPException(status_code=502, detail=f"Forward geocode API returned status {resp.status}")
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with session.get(url, params=params) as resp:
+                if resp.status == 200:
                     data = await resp.json()
-                    return _build_results(data)
-        except HTTPException:
-            raise
-        except Exception as aiohttp_error:
-            logger.warning(f"Forward geocode aiohttp failed, trying requests fallback: {aiohttp_error}")
-
-            resp = await asyncio.to_thread(
-                requests.get,
-                url,
-                params=params,
-                headers=headers,
-                timeout=10,
-            )
-
-            if resp.status_code != 200:
-                raise HTTPException(status_code=502, detail=f"Forward geocode API returned status {resp.status_code}")
-
-            data = resp.json()
-            return _build_results(data)
+                    if data.get("status") == "OK" and data.get("results"):
+                        results = []
+                        for res in data["results"]:
+                            lat = res["geometry"]["location"]["lat"]
+                            lon = res["geometry"]["location"]["lng"]
+                            addr_components = res.get("address_components", [])
+                            
+                            city = ""
+                            state = ""
+                            country = ""
+                            area = ""
+                            
+                            for comp in addr_components:
+                                types = comp.get("types", [])
+                                if "country" in types:
+                                    country = comp.get("long_name", "").replace("India", "Bharat")
+                                if "administrative_area_level_1" in types:
+                                    state = comp.get("long_name", "")
+                                if "locality" in types or "administrative_area_level_2" in types:
+                                    city = comp.get("long_name", "")
+                                if "sublocality" in types or "neighborhood" in types:
+                                    area = comp.get("long_name", "")
+                            
+                            results.append({
+                                "latitude": float(lat),
+                                "longitude": float(lon),
+                                "display_name": res.get("formatted_address", ""),
+                                "country": country or "Bharat",
+                                "state": state or "Unknown",
+                                "city": city or "Unknown",
+                                "area": area or "Unknown",
+                            })
+                        
+                        # Return first result for single-result compatibility or full list if needed
+                        # The frontend's forwardGeocode usually expects a list or a single object.
+                        # Looking at api.ts: export const forwardGeocode = (query: string) => api.post('/geocode/forward', { query });
+                        # And blood-request.tsx uses response.data which it maps over.
+                        return results
+                    else:
+                        raise HTTPException(status_code=404, detail=f"Location not found: {data.get('status')}")
+                else:
+                    raise HTTPException(status_code=resp.status, detail="Google Geocode API error")
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Forward geocoding error: {e}")
+        logger.error(f"Google Forward Geocoding error: {e}")
         raise HTTPException(status_code=500, detail="Failed to geocode this location")
 
 

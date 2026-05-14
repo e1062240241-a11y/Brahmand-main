@@ -158,13 +158,25 @@ export default function EmergencyHelpScreen() {
     );
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
+
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#FFFDFD', '#F9F9F9']} style={styles.gradientBg} />
       
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topHeader}>
+          <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#FB8C00" />
+          </TouchableOpacity>
           <Text style={styles.topHeaderText}>Emergency Help</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -172,9 +184,6 @@ export default function EmergencyHelpScreen() {
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               
               <View style={styles.headerBar}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                  <Ionicons name="chevron-back" size={22} color="#111" />
-                </TouchableOpacity>
                 <LinearGradient colors={['#FFF3E0', '#FFE0B2']} style={styles.iconCircle}>
                   <FontAwesome5 name="ambulance" size={26} color="#FB8C00" />
                 </LinearGradient>
@@ -268,7 +277,21 @@ const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   gradientBg: { ...StyleSheet.absoluteFillObject },
   safeArea: { flex: 1 },
-  topHeader: { alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.03)' },
+  topHeader: { 
+    flexDirection: 'row',
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingVertical: 14, 
+    paddingHorizontal: 16,
+    borderBottomWidth: 1, 
+    borderBottomColor: 'rgba(0,0,0,0.03)' 
+  },
+  topHeaderBack: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   topHeaderText: { color: '#FB8C00', fontSize: 17, fontFamily: FONTS.bold, letterSpacing: 0.5 },
   cardContainerWrapper: { flex: 1, marginHorizontal: 16, marginTop: 10, marginBottom: 20 },
   cardContainer: { 

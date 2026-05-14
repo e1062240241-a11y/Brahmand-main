@@ -11,6 +11,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.brahmand.app",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "config": {
+        "googleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
+      },
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Upload profile photo to your account",
         "NSCameraUsageDescription": "Take photos for profile and messages",
@@ -32,6 +35,11 @@
     "android": {
       "package": "com.brahmand.app",
       "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
+        }
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#FF6B00"

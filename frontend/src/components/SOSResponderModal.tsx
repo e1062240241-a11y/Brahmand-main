@@ -1,0 +1,314 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  Dimensions,
+  Platform,
+  Linking,
+} from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, FONTS } from '../constants/theme';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+
+try {
+  if (Platform.OS !== 'web') {
+    const Maps = require('react-native-maps');
+    MapView = Maps.default || Maps;
+    Marker = Maps.Marker;
+    PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+  }
+} catch (e) {
+  console.warn('MapView could not be loaded in SOSResponderModal:', e);
+}
+
+interface SOSResponderModalProps {
+  visible: boolean;
+  sosData: any;
+  onClose: () => void;
+  onRespond: (sosId: string) => Promise<void>;
+}
+
+export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
+  visible,
+  sosData,
+  onClose,
+  onRespond,
+}) => {
+  const [loading, setLoading] = useState(false);
+
+  if (!sosData) return null;
+
+  const handleRespond = async () => {
+    setLoading(true);
+    try {
+      await onRespond(sosData.sos_id || sosData.id);
+      onClose();
+    } catch (error) {
+      console.error('Respond error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openInMaps = () => {
+    const lat = sosData.latitude;
+    const lon = sosData.longitude;
+    const url = Platform.select({
+      ios: `maps:0,0?q=${lat},${lon}`,
+      android: `geo:0,0?q=${lat},${lon}`,
+      web: `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`
+    });
+    if (url) Linking.openURL(url);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.overlay}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.emergencyBadge}>
+              <Text style={styles.emergencyBadgeText}>EMERGENCY NEARBY</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.content}>
+            <View style={styles.typeIconContainer}>
+              <MaterialCommunityIcons 
+                name={sosData.emergency_type === 'medical' ? 'heart-pulse' : 'alert-decagram'} 
+                size={40} 
+                color="#FF3B30" 
+              />
+            </View>
+            
+            <Text style={styles.userName}>{sosData.user_name || 'Someone'} needs help!</Text>
+            <Text style={styles.emergencyType}>{sosData.emergency_type?.toUpperCase() || 'EMERGENCY'}</Text>
+            
+            <View style={styles.locationContainer}>
+              <Ionicons name="location" size={18} color="#FF3B30" />
+              <Text style={styles.locationText}>{sosData.micro_location || 'Nearby'}</Text>
+            </View>
+
+            <View style={styles.mapContainer}>
+              {MapView && sosData.latitude && sosData.longitude ? (
+                <MapView
+                  provider={PROVIDER_GOOGLE}
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: parseFloat(sosData.latitude),
+                    longitude: parseFloat(sosData.longitude),
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }}
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: parseFloat(sosData.latitude),
+                      longitude: parseFloat(sosData.longitude),
+                    }}
+                    pinColor="#FF3B30"
+                  />
+                </MapView>
+              ) : (
+                <View style={styles.mapPlaceholder}>
+                  <Ionicons name="map-outline" size={48} color="#D1D1D1" />
+                  <Text style={styles.mapPlaceholderText}>Map preview unavailable</Text>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity style={styles.directionsBtn} onPress={openInMaps}>
+              <Ionicons name="navigate" size={18} color="#FFF" />
+              <Text style={styles.directionsBtnText}>GET DIRECTIONS</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+              <Text style={styles.cancelBtnText}>Ignore</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.respondBtn, loading && styles.respondBtnDisabled]} 
+              onPress={handleRespond}
+              disabled={loading}
+            >
+              <Text style={styles.respondBtnText}>I'M COMING</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    width: '100%',
+    backgroundColor: '#FFF',
+    borderRadius: 30,
+    overflow: 'hidden',
+    maxWidth: 400,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  emergencyBadge: {
+    backgroundColor: '#FFEAEA',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  emergencyBadgeText: {
+    color: '#FF3B30',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+  content: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  typeIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFEAEA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  emergencyType: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FF3B30',
+    marginBottom: 16,
+    letterSpacing: 2,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 20,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
+  mapContainer: {
+    width: '100%',
+    height: 180,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#F0F0F0',
+    marginBottom: 16,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapPlaceholderText: {
+    marginTop: 8,
+    color: '#999',
+    fontSize: 12,
+  },
+  directionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 15,
+  },
+  directionsBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '900',
+    marginLeft: 8,
+    letterSpacing: 1,
+  },
+  footer: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    color: '#999',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  respondBtn: {
+    flex: 2,
+    height: 54,
+    backgroundColor: '#FF3B30',
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  respondBtnDisabled: {
+    opacity: 0.7,
+  },
+  respondBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+});
