@@ -1102,7 +1102,8 @@ export default function HomeScreen() {
                 );
               })}
             </ScrollView>
-          </View>}
+          </View>
+        )}
 
           <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
             <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
