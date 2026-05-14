@@ -133,6 +133,14 @@ export const PostFeedCard = memo(({
     if (p) {
       p.loop = true;
       p.muted = isMuted;
+      if (Platform.OS !== 'web') {
+        p.bufferOptions = {
+          preferredForwardBufferDuration: 20, // Pre-load 20 seconds ahead
+          waitsToMinimizeStalling: true,
+          minBufferForPlayback: 5, // Wait for 5s of buffer before starting
+          maxBufferBytes: 20 * 1024 * 1024, // Use more memory for smoother reels
+        };
+      }
     }
   });
 
@@ -276,7 +284,12 @@ export const PostFeedCard = memo(({
                     playsInline
                     crossOrigin="anonymous"
                     onLoadedData={() => setMediaLoading(false)}
-                    onWaiting={() => setMediaLoading(true)}
+                    onWaiting={() => {
+                      // Only show loader if we haven't started playing or if it stays stuck
+                      if (videoRef.current && videoRef.current.currentTime === 0) {
+                        setMediaLoading(true);
+                      }
+                    }}
                     onPlaying={() => setMediaLoading(false)}
                     onLoadedMetadata={(e) => {
                       if (!initialRawRatio) {

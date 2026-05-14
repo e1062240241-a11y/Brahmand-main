@@ -567,9 +567,26 @@ export default function HomeScreen() {
   const handleSubmitComment = async () => {
     if (!selectedCommentPostId || !commentText.trim() || commentSubmitting) return;
 
+    const textToPost = commentText.trim();
+    const tempId = `temp-${Date.now()}`;
+
+    // Create optimistic comment
+    const optimisticComment = {
+      id: tempId,
+      text: textToPost,
+      username: firstName || 'User',
+      user_photo: avatarUri || '',
+      created_at: new Date().toISOString(),
+      is_optimistic: true,
+    };
+
+    // Add immediately to UI
+    setPostComments(prev => [optimisticComment, ...prev]);
+    setCommentText('');
+    
     setCommentSubmitting(true);
     try {
-      const response = await addPostComment(selectedCommentPostId, commentText.trim());
+      const response = await addPostComment(selectedCommentPostId, textToPost);
       const updatedPost = response.data?.post;
       if (updatedPost) {
         setFeedPosts((prev) =>
@@ -578,11 +595,13 @@ export default function HomeScreen() {
         setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? { ...prev, ...updatedPost } : prev));
       }
 
+      // Re-fetch or replace the temp comment with the official one
       const commentsResponse = await getPostComments(selectedCommentPostId, 300);
       setPostComments(Array.isArray(commentsResponse.data) ? commentsResponse.data : []);
-      setCommentText('');
     } catch (error) {
       console.warn('Failed to add comment:', error);
+      // Rollback on failure
+      setPostComments(prev => prev.filter(c => c.id !== tempId));
       alert('Could not post comment. Please try again.');
     } finally {
       setCommentSubmitting(false);
@@ -884,56 +903,66 @@ export default function HomeScreen() {
                 </View>
               ) : null}
             </View>
-          ) : null}
-
-          <View style={styles.topFeatureRow}>
+          ) : <View style={styles.topFeatureRow}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
               {quickAccess.map((item, idx) => {
+                let cardBg = '#FFFFFF';
+                let iconBg = '#FF8A3D';
+                if (item.label === 'Panchang') {
+                  cardBg = '#FFF9F0';
+                  iconBg = '#FF9800';
+                } else if (item.label === 'My Krishna') {
+                  cardBg = '#FFF8EB';
+                  iconBg = '#FF6B00';
+                } else if (item.label === 'SOS') {
+                  cardBg = '#FFF5F5';
+                  iconBg = '#FF3B30';
+                }
+
                 return (
                   <TouchableOpacity
                     key={idx}
-                    style={styles.featureCard}
+                    style={[styles.featureCard, { backgroundColor: cardBg }]}
                     activeOpacity={0.9}
                     onPress={() => {
                       if (item.label === 'Panchang') router.push('/panchang');
                       else if (item.label === 'My Krishna') router.push('/my-krishna');
-                      else if (item.label === 'SOS') {
-                        router.push('/sos');
-                      }
+                      else if (item.label === 'SOS') router.push('/sos');
                     }}
                   >
                     {item.label === 'SOS' ? (
                       <View style={styles.sosConcentricWrap}>
-                        <View style={[styles.sosRing, { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,80,60,0.15)' }]}>
-                          <View style={[styles.sosRing, { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,80,60,0.25)' }]}>
-                            <View style={[styles.sosRing, { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,80,60,0.4)' }]}>
-                              <View style={[styles.sosRing, { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FF3B30' }]}>
-                                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
+                        <View style={[styles.sosRing, { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,80,60,0.15)' }]}>
+                          <View style={[styles.sosRing, { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,80,60,0.25)' }]}>
+                            <View style={[styles.sosRing, { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,80,60,0.4)' }]}>
+                              <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30' }]}>
+                                <Text style={{ color: '#FFF', fontSize: 6, fontWeight: '900' }}>SOS</Text>
                               </View>
                             </View>
                           </View>
                         </View>
                       </View>
                     ) : (
-                      <View style={[styles.featureIconWrap, { backgroundColor: item.label === 'My Krishna' ? '#FF6B00' : '#FF9800' }]}>
-                        {item.label === 'My Krishna' && (
+                      <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                        {item.label === 'My Krishna' ? (
                           <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>ॐ</Text>
-                        )}
-                        {item.label === 'Panchang' && (
+                        ) : (
                           <Ionicons name="calendar" size={18} color="#FFF" />
                         )}
                       </View>
                     )}
                     <View style={styles.featureTextContainer}>
                       <Text style={styles.featureTitle}>{item.label}</Text>
-                      <Text style={styles.featureSubtitle}>{item.subtitle}</Text>
+                      <Text style={styles.featureSubtitle} numberOfLines={2}>
+                        {item.subtitle.replace('\n', ' ')}
+                      </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={14} color="#999" />
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
-          </View>
+          </View>}
 
           <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
             <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
@@ -981,7 +1010,6 @@ export default function HomeScreen() {
             contentContainerStyle={styles.actionCardsScroll}
             style={{ marginBottom: 20 }}
           >
-
             {/* Urgent Blood Request */}
             <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
               <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
@@ -1442,8 +1470,6 @@ const styles = StyleSheet.create({
     width: 55,
     height: 55,
     borderRadius: 28,
-    borderWidth: 2,
-    borderColor: '#FFF',
     position: 'relative',
   },
   headerOnlineDot: {
@@ -1488,32 +1514,30 @@ const styles = StyleSheet.create({
   topFeatureRow: {
     flexDirection: 'row',
     marginBottom: 20,
-    gap: 12,
+    gap: 8,
   },
   featureCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
-    padding: 11,
-    flexDirection: 'row',
+    padding: 10,
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
-    paddingRight: 14,
-    minWidth: 155,
+    flex: 1,
+    minHeight: 80,
   },
   featureIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginBottom: 4,
   },
   urgentCircle: {
     width: 28,
@@ -1541,21 +1565,22 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   featureTextContainer: {
-    flexShrink: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
   },
   featureTitle: {
     fontSize: 12,
     fontWeight: '700',
     color: '#000',
+    textAlign: 'center',
   },
   featureSubtitle: {
     fontSize: 9,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#666',
     marginTop: 2,
     lineHeight: 12,
+    textAlign: 'center',
   },
   featuredLiveCard: {
     height: 250,
@@ -1646,7 +1671,7 @@ const styles = StyleSheet.create({
   },
   actionCardsScroll: {
     paddingRight: 20,
-    paddingTop: 15,
+    paddingTop: 25,
     gap: 15,
   },
   actionCard: {
@@ -1696,12 +1721,12 @@ const styles = StyleSheet.create({
   },
   cardBadgeText: {
     color: '#FFF',
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '800',
   },
   cardBadgeTextDark: {
     color: '#333',
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '900',
   },
   cardMainContent: {

@@ -39,7 +39,7 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
 
 const styles = StyleSheet.create({
   image: {
-    backgroundColor: COLORS.border,
+    backgroundColor: 'transparent',
   },
   placeholder: {
     backgroundColor: COLORS.primary,

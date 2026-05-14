@@ -19,9 +19,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
-import api from '../services/api';
+import api, { getPostComments, addPostComment, getProfile } from '../services/api';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { useRouter } from 'expo-router';
+import SharePostModal from './SharePostModal';
+import { MentionInput } from './MentionInput';
+import { MentionText } from './MentionText';
+import * as Clipboard from 'expo-clipboard';
+import { Share, Alert, KeyboardAvoidingView, Keyboard } from 'react-native';
 
 let ExpoVideoModule: any = null;
 try {
@@ -71,6 +76,8 @@ const ReelVideoItem = React.memo(({
   isMuted,
   toggleMute,
   screenSize,
+  onShareLocal,
+  onCommentLocal,
 }: any) => {
   const [showPlayPause, setShowPlayPause] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -111,11 +118,11 @@ const ReelVideoItem = React.memo(({
     p.staysActiveInBackground = true;
     if (Platform.OS !== 'web') {
       p.bufferOptions = {
-        preferredForwardBufferDuration: 5,
+        preferredForwardBufferDuration: 25, // Buffer 25s ahead for smooth reels
         waitsToMinimizeStalling: true,
-        minBufferForPlayback: 3,
-        maxBufferBytes: 5 * 1024 * 1024,
-        prioritizeTimeOverSizeThreshold: false,
+        minBufferForPlayback: 6, // Wait for 6s buffer before starting for high quality
+        maxBufferBytes: 25 * 1024 * 1024, // Use 25MB for better caching
+        prioritizeTimeOverSizeThreshold: true,
       };
     }
   });
@@ -253,13 +260,11 @@ const ReelVideoItem = React.memo(({
   };
 
   const handleComment = () => {
-    onClose?.();
-    setTimeout(() => onComment?.(localPost), 150);
+    onCommentLocal?.(localPost);
   };
 
   const handleShare = () => {
-    onClose();
-    setTimeout(() => onShare?.(localPost), 300);
+    onShareLocal?.(localPost);
   };
 
   const likedByMe = !!localPost?.liked_by_me;
@@ -616,6 +621,104 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const activeIndexRef = useRef(0);
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
+  
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await getProfile();
+        setCurrentUser(res.data);
+      } catch (e) {
+        console.warn('Failed to fetch user in ReelViewer', e);
+      }
+    };
+    if (isVisible) fetchMe();
+  }, [isVisible]);
+  
+  const [isShareVisible, setIsShareVisible] = useState(false);
+  const [isCommentVisible, setIsCommentVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  
+  const [localComments, setLocalComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  const handleShareLocal = useCallback((post: any) => {
+    setSelectedPost(post);
+    setIsShareVisible(true);
+  }, []);
+
+  const handleCommentLocal = useCallback(async (post: any) => {
+    setSelectedPost(post);
+    setIsCommentVisible(true);
+    setCommentsLoading(true);
+    try {
+      const res = await getPostComments(post.id);
+      setLocalComments(res.data || []);
+    } catch (e) {
+      console.warn('Failed to load reel comments', e);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, []);
+
+  const submitLocalComment = async () => {
+    if (!selectedPost || !newCommentText.trim() || isSubmittingComment) return;
+    
+    const textToPost = newCommentText.trim();
+    const tempId = `temp-${Date.now()}`;
+    
+    // Create optimistic comment object
+    const optimisticComment = {
+      id: tempId,
+      text: textToPost,
+      username: currentUser?.name || 'User',
+      user_photo: currentUser?.photo || '',
+      created_at: new Date().toISOString(),
+      is_optimistic: true,
+    };
+    
+    // Add to UI immediately
+    setLocalComments(prev => [optimisticComment, ...prev]);
+    setNewCommentText('');
+    Keyboard.dismiss();
+
+    setIsSubmittingComment(true);
+    try {
+      const res = await addPostComment(selectedPost.id, textToPost);
+      // Replace temporary comment with real one from server
+      setLocalComments(prev => prev.map(c => c.id === tempId ? res.data : c));
+    } catch (e) {
+      // Rollback on failure
+      setLocalComments(prev => prev.filter(c => c.id !== tempId));
+      Alert.alert('Error', 'Could not post comment. Please try again.');
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    const postId = selectedPost?.id;
+    if (!postId) return;
+    const link = `https://brahmand.app/post/${postId}`;
+    await Clipboard.setStringAsync(link);
+    Alert.alert('Link Copied', 'The post link has been copied to your clipboard.');
+  };
+
+  const handleExternalShare = async () => {
+    if (!selectedPost) return;
+    try {
+      const link = `https://brahmand.app/post/${selectedPost.id}`;
+      await Share.share({
+        message: `${selectedPost.caption || 'Check this reel on Brahmand!'}\n\n${link}`,
+        url: link,
+      });
+    } catch (e) {
+      console.warn('External share error', e);
+    }
+  };
   const loadMoreRef = useRef<() => void>(() => { });
   const swipeTranslateX = useRef(new Animated.Value(0)).current;
   const swipeStartX = useRef(0);
@@ -759,7 +862,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const nextUrl = String(nextPost?.media_url || nextPost?.mediaUrl || '');
     const isNextVideo = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(nextUrl);
     if (isNextVideo && nextUrl) {
-      fetch(nextUrl, { method: 'HEAD' }).catch(() => { });
+      // Pre-warm the cache for the next reel
+      fetch(nextUrl, { method: 'GET', headers: { Range: 'bytes=0-1048576' } }).catch(() => { });
     }
   }, [activeIndex, videos]);
 
@@ -780,8 +884,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       isMuted={isMuted}
       toggleMute={toggleMute}
       screenSize={screenSize}
+      onShareLocal={handleShareLocal}
+      onCommentLocal={handleCommentLocal}
     />
-  ), [activeIndex, isMuted, screenSize]);
+  ), [activeIndex, isMuted, screenSize, handleShareLocal, handleCommentLocal]);
 
   return (
     <Modal
@@ -823,6 +929,101 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           }
         />
         </Animated.View>
+
+        {/* Local Share Modal */}
+        {selectedPost && (
+          <SharePostModal
+            visible={isShareVisible}
+            post={selectedPost}
+            onClose={() => setIsShareVisible(false)}
+            onCopyLink={handleCopyLink}
+            onShareExternal={handleExternalShare}
+          />
+        )}
+
+        {/* Local Comment Bottom Sheet */}
+        <Modal
+          visible={isCommentVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setIsCommentVisible(false)}
+        >
+          <TouchableOpacity 
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} 
+            activeOpacity={1} 
+            onPress={() => setIsCommentVisible(false)}
+          >
+            <KeyboardAvoidingView 
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={{
+                backgroundColor: '#FFF',
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                height: '75%',
+                paddingTop: 12,
+              }}
+            >
+              <View style={{ width: 40, height: 5, backgroundColor: '#DDD', borderRadius: 3, alignSelf: 'center', marginBottom: 15 }} />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>Comments</Text>
+              
+              <FlatList
+                data={localComments}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <View style={{ flexDirection: 'row', padding: 15, borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0' }}>
+                    <Avatar photo={item.user_photo} name={item.username} size={36} />
+                    <View style={{ marginLeft: 12, flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#111' }}>{item.username}</Text>
+                        <Text style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>{timeAgo(item.created_at)}</Text>
+                      </View>
+                      <MentionText 
+                        text={item.text} 
+                        style={{ fontSize: 14, color: '#333', marginTop: 4, lineHeight: 18 }} 
+                      />
+                    </View>
+                  </View>
+                )}
+                ListEmptyComponent={
+                  commentsLoading ? (
+                    <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+                  ) : (
+                    <View style={{ marginTop: 60, alignItems: 'center' }}>
+                      <Ionicons name="chatbubbles-outline" size={48} color="#CCC" />
+                      <Text style={{ color: '#999', marginTop: 10 }}>No comments yet. Be the first!</Text>
+                    </View>
+                  )
+                }
+              />
+
+              <View style={{ padding: 15, borderTopWidth: 1, borderTopColor: '#EEE', flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center' }}>
+                  <MentionInput
+                    value={newCommentText}
+                    onChangeText={setNewCommentText}
+                    placeholder="Add a comment..."
+                    style={{ flex: 1 }}
+                    inputStyle={{ fontSize: 14, color: '#111', maxHeight: 100 }}
+                    multiline
+                  />
+                  <TouchableOpacity 
+                    onPress={submitLocalComment}
+                    disabled={!newCommentText.trim() || isSubmittingComment}
+                  >
+                    <Text style={{ 
+                      color: newCommentText.trim() ? COLORS.primary : '#999', 
+                      fontWeight: 'bold',
+                      marginLeft: 10 
+                    }}>
+                      {isSubmittingComment ? '...' : 'Post'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          </TouchableOpacity>
+        </Modal>
+
       </View>
     </Modal>
   );
