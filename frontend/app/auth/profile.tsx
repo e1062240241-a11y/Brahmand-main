@@ -1169,10 +1169,7 @@ const styles = StyleSheet.create({
   },
   avatarContainerImage: {
     position: 'relative',
-    padding: 3,
     borderRadius: 55,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
   },
   onlineDot: {
     position: 'absolute',

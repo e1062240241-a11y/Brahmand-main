@@ -567,9 +567,26 @@ export default function HomeScreen() {
   const handleSubmitComment = async () => {
     if (!selectedCommentPostId || !commentText.trim() || commentSubmitting) return;
 
+    const textToPost = commentText.trim();
+    const tempId = `temp-${Date.now()}`;
+
+    // Create optimistic comment
+    const optimisticComment = {
+      id: tempId,
+      text: textToPost,
+      username: firstName || 'User',
+      user_photo: avatarUri || '',
+      created_at: new Date().toISOString(),
+      is_optimistic: true,
+    };
+
+    // Add immediately to UI
+    setPostComments(prev => [optimisticComment, ...prev]);
+    setCommentText('');
+    
     setCommentSubmitting(true);
     try {
-      const response = await addPostComment(selectedCommentPostId, commentText.trim());
+      const response = await addPostComment(selectedCommentPostId, textToPost);
       const updatedPost = response.data?.post;
       if (updatedPost) {
         setFeedPosts((prev) =>
@@ -578,11 +595,13 @@ export default function HomeScreen() {
         setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? { ...prev, ...updatedPost } : prev));
       }
 
+      // Re-fetch or replace the temp comment with the official one
       const commentsResponse = await getPostComments(selectedCommentPostId, 300);
       setPostComments(Array.isArray(commentsResponse.data) ? commentsResponse.data : []);
-      setCommentText('');
     } catch (error) {
       console.warn('Failed to add comment:', error);
+      // Rollback on failure
+      setPostComments(prev => prev.filter(c => c.id !== tempId));
       alert('Could not post comment. Please try again.');
     } finally {
       setCommentSubmitting(false);
@@ -885,56 +904,55 @@ export default function HomeScreen() {
         ) : null}
 
         <View style={styles.topFeatureRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-            {quickAccess.map((item, idx) => {
-              let cardBg = '#FFFFFF';
-              let iconBg = '#FF8A3D';
-              if (item.label === 'Panchang') {
-                cardBg = '#FFF9F0';
-                iconBg = '#FF9800';
-              } else if (item.label === 'My Krishna') {
-                cardBg = '#FFF8EB';
-                iconBg = '#FF6B00';
-              } else if (item.label === 'SOS') {
-                cardBg = '#FFF5F5';
-                iconBg = '#FF3B30';
-              }
+          {quickAccess.map((item, idx) => {
+            let cardBg = '#FFFFFF';
+            let iconBg = '#FF8A3D';
+            if (item.label === 'Panchang') {
+              cardBg = '#FFF9F0';
+              iconBg = '#FF9800';
+            } else if (item.label === 'My Krishna') {
+              cardBg = '#FFF8EB';
+              iconBg = '#FF6B00';
+            } else if (item.label === 'SOS') {
+              cardBg = '#FFF5F5';
+              iconBg = '#FF3B30';
+            }
 
-              return (
-                <TouchableOpacity 
-                  key={idx} 
-                  style={[styles.featureCard, { backgroundColor: cardBg }]} 
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    if (item.label === 'Panchang') router.push('/panchang');
-                    else if (item.label === 'My Krishna') router.push('/my-krishna');
-                    else if (item.label === 'SOS') {
-                       router.push('/sos');
-                    }
-                  }}
-                >
-                  <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
-                    {item.label === 'My Krishna' && (
-                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 16}}>ॐ</Text>
-                    )}
-                    {item.label === 'SOS' && (
-                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 12}}>SOS</Text>
-                    )}
-                    {item.label === 'Panchang' && (
-                      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="calendar" size={18} color="#FFF" />
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.featureTextContainer}>
-                    <Text style={styles.featureTitle}>{item.label}</Text>
-                    <Text style={styles.featureSubtitle}>{item.subtitle.replace('\n', ' ')}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color="#5A5A5A" />
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+            return (
+              <TouchableOpacity 
+                key={idx} 
+                style={[styles.featureCard, { backgroundColor: cardBg }]} 
+                activeOpacity={0.9}
+                onPress={() => {
+                  if (item.label === 'Panchang') router.push('/panchang');
+                  else if (item.label === 'My Krishna') router.push('/my-krishna');
+                  else if (item.label === 'SOS') {
+                     router.push('/sos');
+                  }
+                }}
+              >
+                <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                  {item.label === 'My Krishna' && (
+                    <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 16}}>ॐ</Text>
+                  )}
+                  {item.label === 'SOS' && (
+                    <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 12}}>SOS</Text>
+                  )}
+                  {item.label === 'Panchang' && (
+                    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="calendar" size={18} color="#FFF" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.featureTextContainer}>
+                  <Text style={styles.featureTitle}>{item.label}</Text>
+                  <Text style={styles.featureSubtitle} numberOfLines={2}>
+                    {item.subtitle.replace('\n', ' ')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
@@ -981,7 +999,7 @@ export default function HomeScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.actionCardsScroll}
-          style={{ marginBottom: 20 }}
+          style={{ marginBottom: 20, overflow: 'visible' }}
         >
 
           {/* Urgent Blood Request */}
@@ -1443,8 +1461,6 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    borderWidth: 2,
-    borderColor: '#FFF',
     position: 'relative',
   },
   headerOnlineDot: {
@@ -1480,31 +1496,30 @@ const styles = StyleSheet.create({
   topFeatureRow: {
     flexDirection: 'row',
     marginBottom: 20,
-    gap: 12,
+    gap: 8,
   },
   featureCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 12,
-    flexDirection: 'row',
+    borderRadius: 20,
+    padding: 10,
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
-    marginRight: 10,
-    paddingRight: 16,
-    minWidth: 160,
+    flex: 1,
+    minHeight: 80,
   },
   featureIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginBottom: 4,
   },
   urgentCircle: {
     width: 28,
@@ -1532,21 +1547,22 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   featureTextContainer: {
-    flexShrink: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
   },
   featureTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#111111',
+    textAlign: 'center',
   },
   featureSubtitle: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '600',
     color: '#5A5A5A',
     marginTop: 2,
-    lineHeight: 14,
+    lineHeight: 12,
+    textAlign: 'center',
   },
   featuredLiveCard: {
     height: 280,
@@ -1636,7 +1652,7 @@ const styles = StyleSheet.create({
   },
   actionCardsScroll: {
     paddingRight: 20,
-    paddingTop: 15,
+    paddingTop: 25,
     gap: 15,
   },
   actionCard: {
@@ -1686,12 +1702,12 @@ const styles = StyleSheet.create({
   },
   cardBadgeText: {
     color: '#FFF',
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '800',
   },
   cardBadgeTextDark: {
     color: '#333',
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '900',
   },
   cardMainContent: {
