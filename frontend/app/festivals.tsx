@@ -29,22 +29,22 @@ const CARD_COLORS = [
 
 // Mapping for festival images in assets/images/festival image/
 const festivalImageMap: Record<string, any> = {
-  'Diwali': require('../assets/images/festival image/Diwali .jpeg'),
-  'Holi': require('../assets/images/festival image/Happy Holi.jpg.webp'),
-  'Janmashtami': require('../assets/images/festival image/Janmashtami.jpg'),
-  'Ganesh Chaturthi': require('../assets/images/festival image/Ganesh Chaturthi.jpeg'),
-  'Maha Shivaratri': require('../assets/images/festival image/Maha Shivaratri.jpeg'),
-  'Dussehra': require('../assets/images/festival image/Dussehra.jpg'),
-  'Raksha Bandhan': require('../assets/images/festival image/Raksha Bandhan.jpg'),
-  'Ram Navami': require('../assets/images/festival image/Ram Navami.jpg'),
-  'Karva Chauth': require('../assets/images/festival image/Karva Chauth.jpg.webp'),
-  'Dhanteras': require('../assets/images/festival image/Dhanteras.jpg.avif'),
-  'Bhai Dooj': require('../assets/images/festival image/Bhai Dooj.jpg'),
-  'Chhath Puja': require('../assets/images/festival image/Chhath Puja.jpg'),
-  'Guru Purnima': require('../assets/images/festival image/Guru Purnima.png.avif'),
-  'Onam': require('../assets/images/festival image/Onam.jpg'),
-  'Makar Sankranti': require('../assets/images/festival image/Makar Sankranti .jpg.webp.jpeg'),
-  'Akshaya Tritiya': require('../assets/images/festival image/Akshaya Tritiya.jpg.webp'),
+  'Diwali': null,
+  'Holi': null,
+  'Janmashtami': null,
+  'Ganesh Chaturthi': null,
+  'Maha Shivaratri': null,
+  'Dussehra': null,
+  'Raksha Bandhan': null,
+  'Ram Navami': null,
+  'Karva Chauth': null,
+  'Dhanteras': null,
+  'Bhai Dooj': null,
+  'Chhath Puja': null,
+  'Guru Purnima': null,
+  'Onam': null,
+  'Makar Sankranti': null,
+  'Akshaya Tritiya': null,
 };
 
 const getFestivalImage = (name: string) => {

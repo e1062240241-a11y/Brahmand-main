@@ -226,12 +226,9 @@ export const PostFeedCard = memo(({
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
-           <View style={styles.userMeta}>
-             <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
-             <Text style={[theme === 'light' ? styles.timeTextLight : styles.timeText]}>
-               {formatTime(post?.created_at)}, {post?.location?.city || 'Chennai'}
-             </Text>
-           </View>
+            <View style={styles.userMeta}>
+              <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+            </View>
         </TouchableOpacity>
 
         {onPostMenuPress && postMenuType && (
@@ -405,19 +402,28 @@ export const PostFeedCard = memo(({
       {/* Actions */}
       <View style={styles.actionRow}>
          <TouchableOpacity style={styles.actionBtn} onPress={() => onLike?.(post)}>
-           <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={24} color={likedByMe ? COLORS.primary : (theme === 'light' ? '#333' : '#FFFFFF')} />
-           {likesCount > 0 && <Text style={[styles.actionText, likedByMe && styles.actionTextActive, theme === 'light' && styles.actionTextLight]}>{likesCount}</Text>}
+           <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={26} color={likedByMe ? COLORS.primary : (theme === 'light' ? '#000' : '#FFFFFF')} />
          </TouchableOpacity>
          <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
-           <Ionicons name="chatbubble-outline" size={22} color={theme === 'light' ? '#333' : '#FFFFFF'} />
-           {commentsCount > 0 && <Text style={[styles.actionText, theme === 'light' && styles.actionTextLight]}>{commentsCount}</Text>}
+           <Ionicons name="chatbubble-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
          </TouchableOpacity>
          <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
-           <Ionicons name="paper-plane-outline" size={22} color={theme === 'light' ? '#333' : '#FFFFFF'} />
+           <Ionicons name="paper-plane-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
          </TouchableOpacity>
          <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost?.(post)}>
-           <Ionicons name="repeat-outline" size={24} color={theme === 'light' ? '#333' : '#FFFFFF'} />
+           <Ionicons name="repeat-outline" size={26} color={theme === 'light' ? '#000' : '#FFFFFF'} />
          </TouchableOpacity>
+      </View>
+
+      {/* Stats Summary */}
+      <View style={{ paddingHorizontal: SPACING.md, paddingBottom: 2 }}>
+        <Text style={{ 
+          color: theme === 'light' ? '#000' : '#FFF', 
+          fontWeight: '900', 
+          fontSize: 14 
+        }}>
+          {likesCount > 0 ? `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}` : 'Be the first to like'}
+        </Text>
       </View>
 
       {/* Caption */}
@@ -511,8 +517,8 @@ const styles = StyleSheet.create({
   userMeta: { marginLeft: SPACING.sm },
   username: { color: '#FFFFFF', fontWeight: '900', fontSize: 14 },
   usernameLight: { color: '#000' },
-  timeText: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, marginTop: 2, fontWeight: '600' },
-  timeTextLight: { color: '#666', fontSize: 11, marginTop: 2, fontWeight: '600' },
+  timeText: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 11, marginTop: 2, fontWeight: '800' },
+  timeTextLight: { color: '#666', fontSize: 11, marginTop: 2, fontWeight: '700' },
   menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   menuWrap: { position: 'relative', zIndex: 1000, elevation: 12 },
   dropdownMenu: { position: 'absolute', right: 0, top: 36, minWidth: 140, backgroundColor: '#FFF', borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 20, zIndex: 1001, overflow: 'hidden' },
@@ -525,7 +531,7 @@ const styles = StyleSheet.create({
   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },
   muteToggle: { position: 'absolute', top: 12, right: 12, zIndex: 10000, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   media: { width: '100%', height: '100%' },
-  captionText: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  captionText: { color: '#FFFFFF', fontSize: 14, lineHeight: 19, fontWeight: '800' },
   captionTextLight: { color: '#111111' },
   topCommentsWrap: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.lg },
   topCommentText: { marginBottom: 4 },
@@ -536,7 +542,7 @@ const styles = StyleSheet.create({
   actionText: { color: '#FFFFFF', marginLeft: 6, fontSize: 12, fontWeight: '800' },
   actionTextLight: { color: '#333333' },
   actionTextActive: { color: COLORS.primary },
-  viewsText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '700' },
+  viewsText: { color: 'rgba(255,255,255,0.95)', fontSize: 12, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '800' },
 });
 
 export default PostFeedCard;

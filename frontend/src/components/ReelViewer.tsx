@@ -488,9 +488,6 @@ const ReelVideoItem = React.memo(({
           <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10, fontSize: 14 }}>
             {localPost?.username || 'User'}
           </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', marginLeft: 8, fontSize: 12 }}>
-            {timeAgo(localPost?.created_at || localPost?.timestamp || localPost?.createdAt)}
-          </Text>
         </View>
         {localPost?.caption ? (
           <TouchableOpacity

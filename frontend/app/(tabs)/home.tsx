@@ -113,7 +113,94 @@ export default function HomeScreen() {
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<any[]>([]);
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+
+  useEffect(() => {
+    loadRecentSearches();
+  }, []);
+
+  const loadRecentSearches = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('recent_searches');
+      if (saved) {
+        setRecentSearches(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.warn('Failed to load recent searches:', e);
+    }
+  };
+
+  const saveRecentSearch = async (searchItem: any) => {
+    try {
+      const updated = [searchItem, ...recentSearches.filter(item => item.id !== searchItem.id)].slice(0, 4);
+      setRecentSearches(updated);
+      await AsyncStorage.setItem('recent_searches', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to save recent search:', e);
+    }
+  };
+
+  const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
+    const tabToLoad = tabOverride || activeTab;
+    let hasCachedData = false;
+
+    if (!append && offset === 0) {
+      try {
+        const cacheKey = `home_feed_cache_${tabToLoad}`;
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setFeedPosts(parsed);
+            setFeedOffset(parsed.length);
+            hasCachedData = true;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse home feed cache', e);
+      }
+    }
+
+    if (append) {
+      setLoadingMoreFeed(true);
+    } else if (!hasCachedData) {
+      setLoadingFeed(true);
+    }
+
+    try {
+      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
+      const payload = response.data;
+      const incomingItems = Array.isArray(payload)
+        ? payload
+        : (Array.isArray(payload?.items) ? payload.items : []);
+      const nextHasMore = typeof payload?.has_more === 'boolean'
+        ? payload.has_more
+        : incomingItems.length === FEED_PAGE_SIZE;
+
+      if (append) {
+        setFeedPosts((prev) => {
+          const existingIds = new Set(prev.map((item) => item?.id));
+          return [...prev, ...incomingItems.filter((item: any) => !existingIds.has(item?.id))];
+        });
+        setFeedOffset(offset + incomingItems.length);
+      } else {
+        setFeedPosts(incomingItems);
+        setFeedOffset(incomingItems.length);
+        const cacheKey = `home_feed_cache_${tabToLoad}`;
+        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
+      }
+      setHasMoreFeed(nextHasMore);
+    } catch (error: any) {
+      console.warn('Failed to load posts feed on home:', error);
+      if (!append && !hasCachedData) {
+        setFeedPosts([]);
+      }
+    } finally {
+      setLoadingFeed(false);
+      setLoadingMoreFeed(false);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -122,9 +209,32 @@ export default function HomeScreen() {
         if (status !== 'granted') return;
 
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-        const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
-        if (response.data) {
-          setLiveLocation(response.data.area || response.data.city || 'Bharat');
+        
+        // Use native reverse geocoding for exact details
+        const reverse = await Location.reverseGeocodeAsync({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        });
+
+        if (reverse.length > 0) {
+          const place = reverse[0];
+          // Construct most exact location possible: Name/Street + SubLocality/District + City
+          const parts = [
+            place.name || place.street,
+            place.subLocality || place.district,
+            place.city
+          ].filter(Boolean);
+          
+          // Only take top 2 most specific parts to keep it clean but exact
+          const exactLocation = parts.slice(0, 2).join(', ') || 'Bharat';
+          
+          setLiveLocation(exactLocation);
+        } else {
+          // Fallback to API if native fails
+          const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+          if (response.data) {
+            setLiveLocation(response.data.area || response.data.city || 'Bharat');
+          }
         }
       } catch (e) {
         console.warn('Initial location fetch failed:', e);
@@ -284,66 +394,7 @@ export default function HomeScreen() {
     return () => clearTimeout(debounce);
   }, [searchTerm, searchActive]);
 
-  const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
-    const tabToLoad = tabOverride || activeTab;
-    let hasCachedData = false;
 
-    if (!append && offset === 0) {
-      try {
-        const cacheKey = `home_feed_cache_${tabToLoad}`;
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setFeedPosts(parsed);
-            setFeedOffset(parsed.length);
-            hasCachedData = true;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to parse home feed cache', e);
-      }
-    }
-
-    if (append) {
-      setLoadingMoreFeed(true);
-    } else if (!hasCachedData) {
-      setLoadingFeed(true);
-    }
-
-    try {
-      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
-      const payload = response.data;
-      const incomingItems = Array.isArray(payload)
-        ? payload
-        : (Array.isArray(payload?.items) ? payload.items : []);
-      const nextHasMore = typeof payload?.has_more === 'boolean'
-        ? payload.has_more
-        : incomingItems.length === FEED_PAGE_SIZE;
-
-      if (append) {
-        setFeedPosts((prev) => {
-          const existingIds = new Set(prev.map((item) => item?.id));
-          return [...prev, ...incomingItems.filter((item: any) => !existingIds.has(item?.id))];
-        });
-        setFeedOffset(offset + incomingItems.length);
-      } else {
-        setFeedPosts(incomingItems);
-        setFeedOffset(incomingItems.length);
-        const cacheKey = `home_feed_cache_${tabToLoad}`;
-        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
-      }
-      setHasMoreFeed(nextHasMore);
-    } catch (error: any) {
-      console.warn('Failed to load posts feed on home:', error);
-      if (!append && !hasCachedData) {
-        setFeedPosts([]);
-      }
-    } finally {
-      setLoadingFeed(false);
-      setLoadingMoreFeed(false);
-    }
-  }, []);
 
   useEffect(() => {
     loadFeedPosts(0, false, activeTab);
@@ -617,9 +668,24 @@ export default function HomeScreen() {
 
       if (updatedPost) {
         setFeedPosts((prev) =>
-          prev.map((item) => (item.id === selectedCommentPostId ? { ...item, ...updatedPost } : item))
+          prev.map((item) => {
+            if (item.id === selectedCommentPostId) {
+              const currentTop = Array.isArray(item.top_comments) ? item.top_comments : [];
+              return { 
+                ...item, 
+                ...updatedPost,
+                // Ensure the new comment is shown in the 'outer' preview
+                top_comments: [serverComment || optimisticComment, ...currentTop].slice(0, 2)
+              };
+            }
+            return item;
+          })
         );
-        setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? { ...prev, ...updatedPost } : prev));
+        setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? { 
+          ...prev, 
+          ...updatedPost,
+          top_comments: [serverComment || optimisticComment, ...(Array.isArray(prev.top_comments) ? prev.top_comments : [])].slice(0, 2)
+        } : prev));
       }
 
       // Replace optimistic comment with official server comment to avoid duplication and lag
@@ -629,10 +695,10 @@ export default function HomeScreen() {
         );
       }
     } catch (error: any) {
-      console.warn('Failed to add comment:', error);
-      // Rollback on failure
+      // Rollback on error
       setPostComments(prev => prev.filter(c => c.id !== tempId));
-      alert(`Could not post comment: ${error.message || 'Check your connection'}`);
+      const detail = error.response?.data?.detail || error.message;
+      alert(detail || 'Could not post comment. Please try again.');
     } finally {
       setCommentSubmitting(false);
     }
@@ -793,8 +859,8 @@ export default function HomeScreen() {
           onPostMenuPress={handlePostMenuPress}
           postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
           isActive={activePostKey === postKey}
-          theme={index === 0 ? 'light' : 'dark'}
-          isBlackBackground={index > 0}
+          theme="light"
+          isBlackBackground={false}
         />
       </View>
     );
@@ -833,10 +899,6 @@ export default function HomeScreen() {
               <View style={styles.greetingBlock}>
                 <View style={styles.nameRow}>
                   <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
-                  <View style={styles.liveLocationBadge}>
-                    <Ionicons name="location" size={10} color="#FF6B00" />
-                    <Text style={styles.liveLocationText}>{liveLocation}</Text>
-                  </View>
                 </View>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -870,81 +932,116 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {searchActive ? (
-            <View style={styles.searchPanel}>
-              <View style={styles.searchBar}>
-                <Ionicons name="search" size={18} color="#6F5C70" />
-                <TextInput
-                  style={styles.searchInput}
-                  value={searchTerm}
-                  onChangeText={setSearchTerm}
-                  placeholder="Search users or #hashtags..."
-                  placeholderTextColor="#8E7D90"
-                  autoFocus
-                />
-              </View>
-              {searchTerm.trim().length > 0 ? (
-                <View style={styles.searchResultsSection}>
-                  {searchTerm.trim().startsWith('#') ? (
-                    loadingHashtags ? (
-                      <Text style={styles.searchStatusText}>Loading hashtags...</Text>
-                    ) : hashtagResults.length > 0 ? (
-                      <TouchableOpacity
-                        style={styles.userResultItem}
-                        activeOpacity={0.8}
-                        onPress={() => {
-                          const hashtag = searchTerm.trim().replace(/^#+/, '');
-                          router.push(`/hashtag/${encodeURIComponent(hashtag)}`);
-                        }}
-                      >
-                        <View style={styles.hashtagIcon}>
-                          <Ionicons name="pricetag" size={22} color="#8C36DB" />
-                        </View>
-                        <View style={styles.userResultText}>
-                          <Text style={styles.userResultName}>#{searchTerm.trim().replace('#', '')}</Text>
-                          <Text style={styles.userResultMeta}>{hashtagResults.length} posts</Text>
-                        </View>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={styles.searchStatusText}>No posts found for this hashtag.</Text>
-                    )
-                  ) : loadingUsers ? (
-                    <Text style={styles.searchStatusText}>Loading users...</Text>
-                  ) : searchResults.length > 0 ? (
-                    searchResults.map((item) => {
-                      const isFollowing = followingIds.includes(item.id);
-                      return (
-                        <View key={item.id} style={styles.userResultItem}>
-                          <TouchableOpacity
-                            style={styles.userResultContent}
-                            activeOpacity={0.8}
-                            onPress={() => router.push(`/profile/${item.id}`)}
-                          >
-                            <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
-                            <View style={styles.userResultText}>
-                              <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
-                              <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
-                            </View>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.followButton, isFollowing && styles.followingButton]}
-                            activeOpacity={0.8}
-                            onPress={() => handleFollowUser(item.id)}
-                          >
-                            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                              {isFollowing ? 'Following' : 'Follow'}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      );
-                    })
-                  ) : (
-                    <Text style={styles.searchStatusText}>No users found.</Text>
-                  )}
-                </View>
-              ) : null}
+        {searchActive ? (
+          <View style={styles.searchPanel}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={18} color="#6F5C70" />
+              <TextInput
+                style={styles.searchInput}
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                placeholder="Recent Search..."
+                placeholderTextColor="#8E7D90"
+                autoFocus
+              />
             </View>
-          ) : <View style={styles.topFeatureRow}>
+            {searchTerm.trim().length > 0 ? (
+              <View style={styles.searchResultsSection}>
+                {searchTerm.trim().startsWith('#') ? (
+                  loadingHashtags ? (
+                    <Text style={styles.searchStatusText}>Loading hashtags...</Text>
+                  ) : hashtagResults.length > 0 ? (
+                    <TouchableOpacity
+                      style={styles.userResultItem}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        const hashtag = searchTerm.trim().replace(/^#+/, '');
+                        router.push(`/hashtag/${encodeURIComponent(hashtag)}`);
+                      }}
+                    >
+                      <View style={styles.hashtagIcon}>
+                        <Ionicons name="pricetag" size={22} color="#8C36DB" />
+                      </View>
+                      <View style={styles.userResultText}>
+                        <Text style={styles.userResultName}>#{searchTerm.trim().replace('#', '')}</Text>
+                        <Text style={styles.userResultMeta}>{hashtagResults.length} posts</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.searchStatusText}>No posts found for this hashtag.</Text>
+                  )
+                ) : loadingUsers ? (
+                  <Text style={styles.searchStatusText}>Loading users...</Text>
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((item) => {
+                    const isFollowing = followingIds.includes(item.id);
+                    return (
+                      <View key={item.id} style={styles.userResultItem}>
+                        <TouchableOpacity
+                          style={styles.userResultContent}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            saveRecentSearch(item);
+                            router.push(`/profile/${item.id}`);
+                          }}
+                        >
+                          <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
+                          <View style={styles.userResultText}>
+                            <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                            <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
+                          </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.followButton, isFollowing && styles.followingButton]}
+                          activeOpacity={0.8}
+                          onPress={() => handleFollowUser(item.id)}
+                        >
+                          <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                            {isFollowing ? 'Following' : 'Follow'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text style={styles.searchStatusText}>No users found.</Text>
+                )}
+              </View>
+            ) : recentSearches.length > 0 ? (
+              <View style={styles.recentSearchSection}>
+                <View style={styles.recentSearchHeader}>
+                  <Text style={styles.recentSearchesTitle}>Recent Search</Text>
+                  <TouchableOpacity onPress={async () => {
+                    setRecentSearches([]);
+                    await AsyncStorage.removeItem('recent_searches');
+                  }}>
+                    <Text style={styles.clearAllText}>Clear All</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.recentSearchList}
+                >
+                  {recentSearches.map((item) => (
+                    <TouchableOpacity
+                      key={`recent-${item.id}`}
+                      style={styles.recentSearchItem}
+                      activeOpacity={0.7}
+                      onPress={() => router.push(`/profile/${item.id}`)}
+                    >
+                      <Avatar name={item.name || 'User'} photo={item.photo} size={60} />
+                      <Text style={styles.recentSearchName} numberOfLines={1}>
+                        {item.name?.split(' ')[0] || 'User'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.topFeatureRow}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
               {quickAccess.map((item, idx) => {
                 let cardBg = '#FFFFFF';
@@ -1003,7 +1100,8 @@ export default function HomeScreen() {
                 );
               })}
             </ScrollView>
-          </View>}
+          </View>
+        )}
 
           <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
             <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
@@ -1110,7 +1208,7 @@ export default function HomeScreen() {
                   <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                 </View>
                 <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Sai Flower Decorator</Text>
-                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor Andheri, Mumbai</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor</Text>
               </View>
               <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
                 <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
@@ -1225,8 +1323,8 @@ export default function HomeScreen() {
                       onPostMenuPress={handlePostMenuPress}
                       postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
                       isActive={activePostKey === postKey}
-                      theme={index === 0 ? 'light' : 'dark'}
-                      isBlackBackground={index > 0}
+                      theme="light"
+                      isBlackBackground={false}
                     />
                   </View>
                 );
@@ -1380,9 +1478,19 @@ export default function HomeScreen() {
       >
         <KeyboardAvoidingView
           style={styles.commentOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
         >
+          <TouchableOpacity 
+            style={styles.modalBackgroundDismiss} 
+            activeOpacity={1} 
+            onPress={() => {
+              setCommentModalVisible(false);
+              setSelectedCommentPostId(null);
+              setSelectedCommentPost(null);
+              setPostComments([]);
+            }} 
+          />
           <View style={styles.commentSheet}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentSheetHeader}>
@@ -2457,5 +2565,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3E5F5',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  recentSearchesTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#6F5C70',
+    marginBottom: 0,
+  },
+  recentSearchSection: {
+    marginTop: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  recentSearchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  clearAllText: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    color: COLORS.primary,
+  },
+  recentSearchList: {
+    paddingRight: 20,
+    gap: 20,
+  },
+  recentSearchItem: {
+    alignItems: 'center',
+    width: 70,
+  },
+  recentSearchName: {
+    fontSize: 11,
+    fontFamily: FONTS.bold,
+    color: '#333',
+    marginTop: 6,
+    textAlign: 'center',
   },
 });

@@ -18,14 +18,15 @@ const toParamString = (value: string | string[] | undefined): string => {
 
 export default function NewDMScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ userId?: string; userName?: string; userSL?: string }>();
+  const params = useLocalSearchParams<{ userId?: string; userName?: string; userSL?: string; shareText?: string }>();
   const { user } = useAuthStore();
 
   const selectedUserId = toParamString(params.userId as any);
   const selectedUserName = toParamString(params.userName as any);
   const selectedUserSL = toParamString(params.userSL as any);
+  const initialShareText = toParamString(params.shareText as any);
 
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(initialShareText || '');
   const [foundUser, setFoundUser] = useState<any>(null);
   const [sending, setSending] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -40,12 +41,36 @@ export default function NewDMScreen() {
       if (foundUser?.id === selectedUserId) {
         return;
       }
-      setFoundUser({
-        id: selectedUserId,
-        name: selectedUserName,
-        sl_id: selectedUserSL
-      });
-      setError('');
+      
+      const checkExisting = async () => {
+        try {
+          const convResponse = await getConversations();
+          const conversations = convResponse.data || [];
+          const existingConv = conversations.find((c: any) => c.user?.id === selectedUserId);
+          const conversationId = existingConv?.conversation_id || existingConv?.chat_id || existingConv?.id;
+
+          if (conversationId) {
+            router.replace(`/dm/${conversationId}`);
+            return;
+          }
+          
+          setFoundUser({
+            id: selectedUserId,
+            name: selectedUserName,
+            sl_id: selectedUserSL
+          });
+          setError('');
+        } catch (e) {
+          // Fallback to manual selection if API fails
+          setFoundUser({
+            id: selectedUserId,
+            name: selectedUserName,
+            sl_id: selectedUserSL
+          });
+        }
+      };
+
+      checkExisting();
     }
   }, [selectedUserId, selectedUserName, selectedUserSL]);
 
@@ -85,9 +110,14 @@ export default function NewDMScreen() {
 
   const handleBackNavigation = () => {
     try {
-      router.replace('/messages?tab=Private%20Chat');
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/messages?tab=Private%20Chat');
+      }
     } catch (e) {
       console.warn('[New DM] Back navigation failed:', e);
+      router.replace('/messages?tab=Private%20Chat');
     }
   };
 
