@@ -1,6 +1,6 @@
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
- SafeAreaView,
  View, 
  Text, 
  StyleSheet, 

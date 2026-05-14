@@ -116,8 +116,8 @@ const resolvedWebApiUrl =
     : configuredApiUrl;
 
 export const API_URL = Platform.OS === 'web'
-  ? (resolvedWebApiUrl || 'http://localhost:8081')
-  : (configuredApiUrl || 'http://localhost:8081');
+  ? (resolvedWebApiUrl || 'http://localhost:8000')
+  : (configuredApiUrl || 'http://localhost:8000');
 const isTunnelApiUrl = /\.loca\.lt$/i.test((API_URL || '').replace(/^https?:\/\//i, '').split('/')[0] || '');
 
 const defaultHeaders: Record<string, string> = {
@@ -612,7 +612,9 @@ export const uploadUserPost = (
         onUploadProgress: onProgress,
       });
     } catch (error: any) {
-      console.warn('[API] axios upload failed, retrying native fetch multipart upload', error);
+      if (error.message !== 'Network Error') {
+        console.warn('[API] axios upload failed, retrying native fetch multipart upload', error);
+      }
       if (Platform.OS !== 'web') {
         const token = await AsyncStorage.getItem('auth_token');
         const headers: Record<string, string> = {};
@@ -620,7 +622,10 @@ export const uploadUserPost = (
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const response = await fetch(`${API_URL}/api/posts/upload`, {
+        const uploadUrl = `${API_URL}/api/posts/upload`;
+        console.info('[API] Retrying post upload via native fetch:', uploadUrl);
+
+        const response = await fetch(uploadUrl, {
           method: 'POST',
           headers,
           body: formData,
@@ -628,6 +633,7 @@ export const uploadUserPost = (
 
         if (!response.ok) {
           const text = await response.text();
+          console.error('[API] Native fetch post upload failed:', response.status, text);
           throw new Error(`Upload failed: ${response.status} ${text}`);
         }
 
@@ -666,8 +672,10 @@ export const uploadChatMedia = (file: { uri: string; name: string; type: string 
 
         const data = await response.json();
         return { data };
-      } catch (error) {
-        console.warn('[API] Native chat media upload failed, retrying via axios:', error);
+      } catch (error: any) {
+        if (error.message !== 'Network Error') {
+          console.warn('[API] Native chat media upload failed, retrying via axios:', error);
+        }
         return api.post('/media/upload', formData);
       }
     }

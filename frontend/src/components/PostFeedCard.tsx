@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
@@ -125,7 +126,8 @@ export const PostFeedCard = memo(({
   const displayRatio = dynamicRatio < 1 ? dynamicRatio : Math.max(4 / 5, dynamicRatio);
   const feedHeight = SCREEN_WIDTH / displayRatio;
 
-  const shouldPlay = isActive && !isPausedByUser;
+  const isFocused = useIsFocused();
+  const shouldPlay = isFocused && isActive && !isPausedByUser;
   const videoRef = useRef<any>(null);
 
   const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;

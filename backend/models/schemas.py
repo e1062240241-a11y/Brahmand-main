@@ -72,8 +72,8 @@ class OTPVerify(BaseModel):
     
     @validator('otp')
     def validate_otp(cls, v):
-        if len(v) != 6:
-            raise ValueError('OTP must be 6 digits')
+        if len(v) != 4:
+            raise ValueError('OTP must be 4 digits')
         return v
 
 

@@ -1,15 +1,33 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../src/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
-  <View style={styles.iconContainer}>
-    <IconComponent name={name} size={22} color={color} />
-  </View>
-);
+const TabIcon = ({ IconComponent, name, color, focused, isCenter }: { IconComponent: any; name: any; color: string; focused?: boolean; isCenter?: boolean }) => {
+  if (isCenter) {
+    return (
+      <View style={styles.centerButtonWrapper}>
+        <LinearGradient
+          colors={['#FF8D57', '#FF6600']}
+          style={styles.centerButton}
+        >
+          <View style={styles.centerIconShadow}>
+            <Text style={styles.omSymbol}>ॐ</Text>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.iconContainer}>
+      <IconComponent name={name} size={22} color={color} />
+    </View>
+  );
+};
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -23,21 +41,22 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          borderTopColor: '#E5E5EA',
-          height: 60 + insets.bottom,
+          borderTopWidth: 0,
+          height: 65 + insets.bottom,
           paddingBottom: bottomInset + 4,
           paddingTop: 8,
-          elevation: 10,
-          shadowOpacity: 0.1,
+          elevation: 20,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.05,
           shadowRadius: 10,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
           marginTop: 2,
         },
         headerShown: false,
-        headerShadowVisible: false,
       }}
     >
       {/* 1. Home */}
@@ -46,40 +65,45 @@ export default function TabLayout() {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={Ionicons} name={focused ? "home" : "home-outline"} color={color} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "home" : "home-outline"} color={color} focused={focused} />
           ),
         }}
       />
 
-      {/* 2. Community (Previously Chat/Messages) */}
+      {/* 2. Community */}
       <Tabs.Screen
         name="messages"
         options={{
           tabBarLabel: 'Community',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={Ionicons} name={focused ? "people" : "people-outline"} color={color} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "people" : "people-outline"} color={color} focused={focused} />
           ),
         }}
       />
 
-      {/* 3. Jaap */}
+      {/* 3. Jaap (Center Highlighted) */}
       <Tabs.Screen
         name="jaap"
         options={{
           tabBarLabel: 'Jaap',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={FontAwesome5} name="pray" color={color} />
+            <TabIcon IconComponent={FontAwesome5} name="pray" color={color} focused={focused} isCenter={true} />
           ),
+          tabBarLabelStyle: {
+            color: '#FF6600',
+            fontWeight: '700',
+            fontSize: 11,
+          }
         }}
       />
       
-      {/* 4. Temple */}
+      {/* 4. Service (Previously Temple) */}
       <Tabs.Screen
         name="temple"
         options={{
-          tabBarLabel: 'Temple',
+          tabBarLabel: 'Service',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={MaterialCommunityIcons} name={focused ? "temple-hindu" : "temple-hindu-outline"} color={color} />
+            <TabIcon IconComponent={MaterialCommunityIcons} name={focused ? "hand-heart" : "hand-heart-outline"} color={color} focused={focused} />
           ),
         }}
       />
@@ -90,7 +114,7 @@ export default function TabLayout() {
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={Ionicons} name={focused ? "person" : "person-outline"} color={color} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "person" : "person-outline"} color={color} focused={focused} />
           ),
         }}
       />
@@ -109,8 +133,36 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 42,
     height: 32,
-    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  centerButtonWrapper: {
+    position: 'absolute',
+    top: -30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 60,
+    height: 60,
+  },
+  centerButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  centerIconShadow: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  omSymbol: {
+    fontSize: 28,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 });

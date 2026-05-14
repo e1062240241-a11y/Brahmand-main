@@ -17,10 +17,11 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
@@ -180,7 +181,7 @@ export default function HomeScreen() {
     };
     fetchLiveLocation();
   }, []);
-  
+
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
@@ -190,7 +191,7 @@ export default function HomeScreen() {
         console.log('Failed to fetch unread count:', err);
       }
     };
-    
+
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
     return () => clearInterval(interval);
@@ -217,6 +218,12 @@ export default function HomeScreen() {
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [now, setNow] = useState(new Date());
   const scrollViewRef = useRef<ScrollView | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFeedPosts(0, false);
+    }, [loadFeedPosts])
+  );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
   const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
@@ -231,11 +238,11 @@ export default function HomeScreen() {
   }>({ uploading: false, progress: 0, isCompressing: false });
 
   const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
-    setBackgroundUpload({ 
-      uploading: true, 
-      progress: 0, 
-      isCompressing: false, 
-      mediaUri: media.uri 
+    setBackgroundUpload({
+      uploading: true,
+      progress: 0,
+      isCompressing: false,
+      mediaUri: media.uri
     });
 
     try {
@@ -257,13 +264,13 @@ export default function HomeScreen() {
           }
         }
       );
-      
+
       if (response.data) {
         setFeedPosts(prev => [response.data, ...prev]);
       }
     } catch (error: any) {
-      console.warn('Background upload failed:', error);
-      Alert.alert('Upload Failed', error?.message || 'Could not upload post.');
+      console.warn('[Home] Background upload failed:', error.message || error);
+      Alert.alert('Upload Failed', error?.message || 'Could not upload post. Ensure your connection is stable.');
     } finally {
       setBackgroundUpload({ uploading: false, progress: 0, isCompressing: false });
     }
@@ -329,7 +336,7 @@ export default function HomeScreen() {
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || activeTab;
     let hasCachedData = false;
-    
+
     if (!append && offset === 0) {
       try {
         const cacheKey = `home_feed_cache_${tabToLoad}`;
@@ -373,10 +380,10 @@ export default function HomeScreen() {
         setFeedPosts(incomingItems);
         setFeedOffset(incomingItems.length);
         const cacheKey = `home_feed_cache_${tabToLoad}`;
-        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => {});
+        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
       }
       setHasMoreFeed(nextHasMore);
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
       if (!append && !hasCachedData) {
         setFeedPosts([]);
@@ -415,11 +422,7 @@ export default function HomeScreen() {
     [feedPosts],
   );
 
-  useEffect(() => {
-    if (feedPostKeys.length > 0 && !activePostKey) {
-      setActivePostKey(feedPostKeys[0]);
-    }
-  }, [feedPostKeys, activePostKey]);
+
   const lastScrollTimeRef = useRef(0);
 
   const handleHomeScroll = useCallback((event: any) => {
@@ -442,13 +445,14 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        if (visibleAmount > maxVisible) {
+        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
+        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
           maxVisible = visibleAmount;
           closestKey = key;
         }
       }
     }
-    setActivePostKey(prev => closestKey ?? prev);
+    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
 
     // Infinite Scroll Logic
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed) {
@@ -559,7 +563,7 @@ export default function HomeScreen() {
       updateUser((response.data || { photo }) as any);
     } catch (error) {
       console.warn('Failed to update profile photo from home:', error);
-      alert('Could not save profile picture. Please try again.');
+      alert('Could not save profile picture. Check connection and try again.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -609,7 +613,7 @@ export default function HomeScreen() {
     } catch (error) {
       console.warn('Failed to like/unlike post:', error);
       setFeedPosts((prev) => prev.map((item) => (item.id === postId ? post : item)));
-      alert('Could not update like. Please try again.');
+      alert('Could not update like. Please check your network.');
     }
   }, []);
 
@@ -688,6 +692,7 @@ export default function HomeScreen() {
           prev.map(c => c.id === tempId ? { ...serverComment, is_optimistic: false } : c)
         );
       }
+    } catch (error: any) {
     } catch (error: any) {
       // Rollback on error
       setPostComments(prev => prev.filter(c => c.id !== tempId));
@@ -853,19 +858,24 @@ export default function HomeScreen() {
           onPostMenuPress={handlePostMenuPress}
           postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
           isActive={activePostKey === postKey}
-          theme={index === 0 ? 'light' : 'dark'}
-          isBlackBackground={index > 0}
+          theme="light"
+          isBlackBackground={false}
         />
       </View>
     );
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
+
+  const insets = useSafeAreaInsets();
 
   return (
     <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 10 }
+        ]}
         stickyHeaderIndices={[1]}
         onScroll={handleHomeScroll}
         onMomentumScrollEnd={handleHomeScroll}
@@ -876,14 +886,14 @@ export default function HomeScreen() {
         <View style={styles.upperContentWrapper}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-                <TouchableOpacity
-                  activeOpacity={0.86}
-                  style={styles.profileButton}
-                  onPress={() => router.push('/(tabs)/profile')}
-                  onLongPress={() => setShowProfileActions(true)}
-                >
-                  <Avatar name={firstName} photo={avatarUri} size={55} />
-                </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.86}
+                style={styles.profileButton}
+                onPress={() => router.push('/(tabs)/profile')}
+                onLongPress={() => setShowProfileActions(true)}
+              >
+                <Avatar name={firstName} photo={avatarUri} size={55} />
+              </TouchableOpacity>
 
               <View style={styles.greetingBlock}>
                 <View style={styles.nameRow}>
@@ -905,15 +915,15 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.headerRight}>
-              <TouchableOpacity 
-                activeOpacity={0.7} 
+              <TouchableOpacity
+                activeOpacity={0.7}
                 style={styles.headerIconButton}
                 onPress={() => setSearchActive(!searchActive)}
               >
                 <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={24} color="#000" />
               </TouchableOpacity>
-              <TouchableOpacity 
-                activeOpacity={0.7} 
+              <TouchableOpacity
+                activeOpacity={0.7}
                 style={styles.headerIconButton}
                 onPress={handleNotificationPress}
               >
@@ -1034,214 +1044,205 @@ export default function HomeScreen() {
             ) : null}
           </View>
         ) : null}
+                  cardBg = '#FFF9F0';
+                  iconBg = '#FF9800';
+                } else if (item.label === 'My Krishna') {
+                  cardBg = '#FFF8EB';
+                  iconBg = '#FF6B00';
+                } else if (item.label === 'SOS') {
+                  cardBg = '#FFF5F5';
+                  iconBg = '#FF3B30';
+                }
+>>>>>>> 543f0bbe0aa9ebf9557800256df1536802720e1a
 
-        <View style={styles.topFeatureRow}>
-          {quickAccess.map((item, idx) => {
-            let cardBg = '#FFFFFF';
-            let iconBg = '#FF8A3D';
-            if (item.label === 'Panchang') {
-              cardBg = '#FFF9F0';
-              iconBg = '#FF9800';
-            } else if (item.label === 'My Krishna') {
-              cardBg = '#FFF8EB';
-              iconBg = '#FF6B00';
-            } else if (item.label === 'SOS') {
-              cardBg = '#FFF5F5';
-              iconBg = '#FF3B30';
-            }
-
-            return (
-              <TouchableOpacity 
-                key={idx} 
-                style={[styles.featureCard, { backgroundColor: cardBg }]} 
-                activeOpacity={0.9}
-                onPress={() => {
-                  if (item.label === 'Panchang') router.push('/panchang');
-                  else if (item.label === 'My Krishna') router.push('/my-krishna');
-                  else if (item.label === 'SOS') {
-                     router.push('/sos');
-                  }
-                }}
-              >
-                {item.label === 'SOS' ? (
-                  <View style={styles.sosConcentricWrap}>
-                    <View style={[styles.sosRing, { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,80,60,0.15)' }]}>
-                      <View style={[styles.sosRing, { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,80,60,0.25)' }]}>
-                        <View style={[styles.sosRing, { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,80,60,0.4)' }]}>
-                          <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30' }]}>
-                            <Text style={{ color: '#FFF', fontSize: 6, fontWeight: '900' }}>SOS</Text>
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[styles.featureCard, { backgroundColor: cardBg }]}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      if (item.label === 'Panchang') router.push('/panchang');
+                      else if (item.label === 'My Krishna') router.push('/my-krishna');
+                      else if (item.label === 'SOS') router.push('/sos');
+                    }}
+                  >
+                    {item.label === 'SOS' ? (
+                      <View style={styles.sosConcentricWrap}>
+                        <View style={[styles.sosRing, { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,80,60,0.15)' }]}>
+                          <View style={[styles.sosRing, { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,80,60,0.25)' }]}>
+                            <View style={[styles.sosRing, { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,80,60,0.4)' }]}>
+                              <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30' }]}>
+                                <Text style={{ color: '#FFF', fontSize: 6, fontWeight: '900' }}>SOS</Text>
+                              </View>
+                            </View>
                           </View>
                         </View>
                       </View>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
-                    {item.label === 'My Krishna' && (
-                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 16}}>ॐ</Text>
-                    )}
-                    {item.label === 'Panchang' && (
-                      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="calendar" size={18} color="#FFF" />
+                    ) : (
+                      <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                        {item.label === 'My Krishna' ? (
+                          <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>ॐ</Text>
+                        ) : (
+                          <Ionicons name="calendar" size={18} color="#FFF" />
+                        )}
                       </View>
                     )}
-                  </View>
-                )}
-                <View style={styles.featureTextContainer}>
-                  <Text style={styles.featureTitle}>{item.label}</Text>
-                  <Text style={styles.featureSubtitle} numberOfLines={2}>
-                    {item.subtitle.replace('\n', ' ')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
-          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
-            <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                  <Text style={[styles.featuredLiveTitle, { color: '#FFF' }]}>Mahamrityunjaya Mantra</Text>
-                </View>
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-              </View>
-              
-              <View style={styles.featuredLiveContent}>
-                <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                  <Ionicons name="time-outline" size={14} color="#FFF" />
-                  <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 4 }]}>Live until 5:00 PM</Text>
-                </View>
-
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }}>
-                  <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
-                    <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
-                    <Text style={styles.joinJaapText}>Join Live Jaap</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                    <View style={styles.featureTextContainer}>
+                      <Text style={styles.featureTitle}>{item.label}</Text>
+                      <Text style={styles.featureSubtitle} numberOfLines={2}>
+                        {item.subtitle.replace('\n', ' ')}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color="#999" />
                   </TouchableOpacity>
-                  
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    <View style={[styles.liveDot, { backgroundColor: '#FF6A00' }]} />
+                );
+              })}
+            </ScrollView>
+          </View>}
+
+          <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
+            <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
+              <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.85)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                    <Text style={[styles.featuredLiveTitle, { color: '#FFF' }]}>Mahamrityunjaya Mantra</Text>
+                  </View>
+                  <View style={styles.liveBadge}>
                     <View style={styles.liveDot} />
-                    <View style={styles.liveDot} />
-                    <View style={styles.liveDot} />
+                    <Text style={styles.liveBadgeText}>LIVE</Text>
                   </View>
                 </View>
+
+                <View style={styles.featuredLiveContent}>
+                  <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                    <Ionicons name="time-outline" size={14} color="#FFF" />
+                    <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6 }]}>Live until 5:00 PM</Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
+                      <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
+                      <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                      <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                    </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <View style={[styles.liveDot, { backgroundColor: '#FF6A00' }]} />
+                      <View style={styles.liveDot} />
+                      <View style={styles.liveDot} />
+                      <View style={styles.liveDot} />
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </ImageBackground>
+          </TouchableOpacity>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.actionCardsScroll}
+            style={{ marginBottom: 20 }}
+          >
+            {/* Urgent Blood Request */}
+            <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
               </View>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
+                onPress={() => {
+                  if (bloodRequest) {
+                    router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
+                  } else {
+                    setRequestType('Blood');
+                    setShowRequestModal(true);
+                  }
+                }}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>{bloodRequest ? 'View' : 'View'}</Text>
+                <Ionicons name="chevron-forward" size={12} color="#E53935" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
             </LinearGradient>
-          </ImageBackground>
-        </TouchableOpacity>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.actionCardsScroll}
-          style={{ marginBottom: 20, overflow: 'visible' }}
-        >
-
-          {/* Urgent Blood Request */}
-          <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
-            <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-               <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
-            </View>
-            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-              <View style={styles.cardIconRow}>
-                <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+            {/* Register Business */}
+            <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
               </View>
-              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
-              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
-            </View>
-            <TouchableOpacity 
-              style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
-              onPress={() => {
-                if (bloodRequest) {
-                   router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
-                } else {
-                   setRequestType('Blood');
-                   setShowRequestModal(true);
-                }
-              }}
-            >
-              <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>{bloodRequest ? 'View' : 'View'}</Text>
-              <Ionicons name="chevron-forward" size={12} color="#E53935" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </LinearGradient>
-
-          {/* Register Business */}
-          <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
-            <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-               <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
-            </View>
-            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-              <View style={styles.cardIconRow}>
-                <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Register Your Business</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Become a verified sanatan vendor</Text>
               </View>
-              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Register Your Business</Text>
-              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Become a verified sanatan vendor</Text>
-            </View>
-            <TouchableOpacity 
-              style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
-              onPress={() => router.push('/vendor/business-details')}
-            >
-              <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register Now</Text>
-              <Ionicons name="chevron-forward" size={12} color="#FF9500" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </LinearGradient>
+              <TouchableOpacity
+                style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
+                onPress={() => router.push('/vendor/business-details')}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register Now</Text>
+                <Ionicons name="chevron-forward" size={12} color="#FF9500" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
 
-          {/* Verified Vendor */}
-          <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
-            <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-               <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
-            </View>
-            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-              <View style={styles.cardIconRow}>
-                <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+            {/* Verified Vendor */}
+            <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
               </View>
-              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Sai Flower Decorator</Text>
-              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor Andheri, Mumbai</Text>
-            </View>
-            <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
-              <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
-              <Ionicons name="chevron-forward" size={12} color="#00C781" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </LinearGradient>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Sai Flower Decorator</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor Andheri, Mumbai</Text>
+              </View>
+              <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
+                <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
+                <Ionicons name="chevron-forward" size={12} color="#00C781" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
 
-          {/* Live Aarti */}
-          <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
-            <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-               <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
-            </View>
-            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-              <View style={styles.cardIconRow}>
-                <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+            {/* Live Aarti */}
+            <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
               </View>
-              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Live Kedarnath Aarti</Text>
-              <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
-                <Ionicons name="notifications-outline" size={14} color="#333" />
-                <Text style={[styles.cardNotifyText, { textAlign: 'center' }]}>Notify me for the upcoming events</Text>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Live Kedarnath Aarti</Text>
+                <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
+                  <Ionicons name="notifications-outline" size={14} color="#333" />
+                  <Text style={[styles.cardNotifyText, { textAlign: 'center' }]}>Notify me for the upcoming events</Text>
+                </View>
               </View>
-            </View>
-            <TouchableOpacity 
-              style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
-              onPress={() => router.push('/live-mantra')}
-            >
-              <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch now</Text>
-              <Ionicons name="chevron-forward" size={12} color="#8C36DB" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </LinearGradient>
-        </ScrollView>
+              <TouchableOpacity
+                style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
+                onPress={() => router.push('/live-mantra')}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch now</Text>
+                <Ionicons name="chevron-forward" size={12} color="#8C36DB" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
+          </ScrollView>
 
-        <View style={styles.dots}>
-          <View style={styles.dot} />
-          <View style={styles.activeDot} />
-          <View style={styles.dot} />
-        </View>
+          <View style={styles.dots}>
+            <View style={styles.dot} />
+            <View style={styles.activeDot} />
+            <View style={styles.dot} />
+          </View>
         </View>
 
         <View
@@ -1253,14 +1254,14 @@ export default function HomeScreen() {
           }}
         >
           <View style={styles.stickyFeedTabs}>
-            <HomeFeedTabs 
+            <HomeFeedTabs
               activeTab={activeTab}
               onTabChange={(tab) => {
                 setActiveTab(tab);
                 setFeedPosts([]);
                 loadFeedPosts(0, false, tab);
               }}
-              onCreatePost={() => setShowUploadPostModal(true)} 
+              onCreatePost={() => setShowUploadPostModal(true)}
             />
           </View>
         </View>
@@ -1319,8 +1320,8 @@ export default function HomeScreen() {
                       onPostMenuPress={handlePostMenuPress}
                       postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
                       isActive={activePostKey === postKey}
-                      theme={index === 0 ? 'light' : 'dark'}
-                      isBlackBackground={index > 0}
+                      theme="light"
+                      isBlackBackground={false}
                     />
                   </View>
                 );
@@ -1612,7 +1613,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 12,
     paddingBottom: 106,
   },
   upperContentWrapper: {
@@ -2438,10 +2438,11 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   uploadingStatusBar: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#F8F9FA',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-    padding: 12,
+    borderBottomColor: '#E0E0E0',
+    padding: 16,
+    zIndex: 5,
   },
   uploadingStatusContent: {
     flexDirection: 'row',
@@ -2458,9 +2459,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   uploadingTitle: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '800',
+    color: '#1C1B1F',
+    fontSize: 14,
+    fontWeight: '700',
     marginBottom: 8,
   },
   progressBarBg: {

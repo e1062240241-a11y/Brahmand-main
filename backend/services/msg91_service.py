@@ -33,7 +33,7 @@ class MSG91Service:
             "template_id": MSG91Service.TEMPLATE_ID,
             "mobile": mobile,
             "authkey": MSG91Service.AUTH_KEY,
-            "otp_length": 6
+            "otp_length": 4
         }
 
         try:
@@ -47,6 +47,8 @@ class MSG91Service:
                 logger.error(f"MSG91 OTP send failed: {result}")
                 raise HTTPException(status_code=400, detail=result.get("message", "Failed to send OTP"))
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception("Error during MSG91 OTP send")
             raise HTTPException(status_code=500, detail="Internal error while sending OTP")
@@ -78,6 +80,8 @@ class MSG91Service:
                 logger.error(f"MSG91 OTP verification failed: {result}")
                 raise HTTPException(status_code=400, detail=result.get("message", "Invalid OTP"))
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception("Error during MSG91 OTP verification")
             raise HTTPException(status_code=500, detail="Internal error while verifying OTP")

@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
-import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
+import { searchHospitals, createCommunityRequest, parseApiError } from '../../src/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'];
@@ -37,7 +37,6 @@ export default function BloodRequestScreen() {
   const [contactPref, setContactPref] = useState('');
   
   // UI State
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
@@ -52,8 +51,8 @@ export default function BloodRequestScreen() {
       if (location.length >= 3 && !selectedLocation) {
         setIsSearchingLocation(true);
         try {
-          const response = await forwardGeocode(location);
-          setLocationSuggestions(response.data || []);
+          const response = await searchHospitals(location);
+          setLocationSuggestions(response.data.results || []);
         } catch (error) {
           console.error('Location search failed', error);
         } finally {
@@ -91,24 +90,17 @@ export default function BloodRequestScreen() {
     if (!unitsNeeded) return Alert.alert('Error', 'Please specify units needed');
     if (!contactPref) return Alert.alert('Error', 'Please select a contact preference');
 
-    setIsSubmitting(true);
-    try {
-      await createCommunityRequest({
-        request_type: 'blood',
-        title: `URGENT: ${bloodGroup} Blood Required`,
-        description: `Units Needed: ${unitsNeeded}\nDetails: ${description}`,
-        contact_number: contactPref,
-        urgency_level: urgency.toLowerCase() as any,
+    router.push({
+      pathname: '/community-request/blood/review',
+      params: {
+        bloodGroup: bloodGroup,
+        hospitalName: location, // Using location as hospital name or vice versa
         location: location,
-        support_needed: 'Blood Donation',
-      });
-
-      Alert.alert('Success', 'Blood request posted!', [{ text: 'OK', onPress: () => router.push('/(tabs)/profile') }]);
-    } catch (error: any) {
-      Alert.alert('Error', parseApiError(error));
-    } finally {
-      setIsSubmitting(false);
-    }
+        urgency: urgency,
+        description: `Units Needed: ${unitsNeeded}. ${description}`,
+        contactPreference: contactPref,
+      }
+    });
   };
 
   const renderModalContent = () => {
@@ -210,8 +202,13 @@ export default function BloodRequestScreen() {
                   <View style={styles.suggestionsContainer}>
                     {locationSuggestions.map((item, i) => (
                       <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                        <Ionicons name="navigate-circle-outline" size={20} color="#666" />
-                        <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address}</Text>
+                        <Ionicons name="navigate-circle-outline" size={20} color="#E53935" />
+                        <View style={styles.suggestionTextContainer}>
+                          <Text style={styles.suggestionName} numberOfLines={1}>{item.name || item.display_name}</Text>
+                          {(item.address || item.display_name) && (
+                            <Text style={styles.suggestionAddress} numberOfLines={1}>{item.address || item.display_name}</Text>
+                          )}
+                        </View>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -265,14 +262,10 @@ export default function BloodRequestScreen() {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={[styles.continueButton, isSubmitting && { opacity: 0.7 }]} onPress={handleContinue} disabled={isSubmitting}>
+              <TouchableOpacity style={styles.continueButton} onPress={handleContinue} activeOpacity={0.8}>
                 <LinearGradient colors={['#E53935', '#C62828']} style={styles.continueGradient}>
-                  {isSubmitting ? <ActivityIndicator color="#FFF" /> : (
-                    <>
-                      <Text style={styles.continueButtonText}>Post Blood Request</Text>
-                      <Ionicons name="tint" size={18} color="#FFF" style={{ marginLeft: 8 }} />
-                    </>
-                  )}
+                  <Text style={styles.continueButtonText}>Post Blood Request</Text>
+                  <Ionicons name="water" size={18} color="#FFF" style={{ marginLeft: 8 }} />
                 </LinearGradient>
               </TouchableOpacity>
               
@@ -341,8 +334,10 @@ const styles = StyleSheet.create({
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
   suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-  suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
-  suggestionText: { marginLeft: 10, fontSize: 14, color: '#444', flex: 1 },
+  suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
+  suggestionTextContainer: { marginLeft: 12, flex: 1 },
+  suggestionName: { fontSize: 14, fontFamily: FONTS.bold, color: '#333' },
+  suggestionAddress: { fontSize: 12, fontFamily: FONTS.regular, color: '#999', marginTop: 2 },
   
   inputWrapper: { backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   input: { fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },

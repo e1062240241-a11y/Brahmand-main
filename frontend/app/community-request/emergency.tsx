@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, BORDER_RADIUS } from '../../src/constants/theme';
@@ -48,8 +49,8 @@ export default function CommunityRequestEmergencyPage() {
       if (hospitalName.length >= 2 && !selectedHospital) {
         setIsHospitalSearching(true);
         try {
-          const results = await searchHospitals(hospitalName);
-          setHospitalSuggestions(results || []);
+          const response = await searchHospitals(hospitalName);
+          setHospitalSuggestions(response.data.results || []);
         } catch (error) {
           console.error('Search error', error);
         } finally {
