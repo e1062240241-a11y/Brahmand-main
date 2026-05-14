@@ -557,12 +557,16 @@ export default function MessagesScreen() {
           </View>
         ) : (
           <View style={styles.chatContent}>
-             <View style={styles.chatSectionHeader}>
-                <Text style={styles.chatSectionTitle}>Groups & Circles</Text>
-                <TouchableOpacity onPress={() => router.push('/circles')}>
-                  <Text style={styles.viewAllText}>Manage</Text>
-                </TouchableOpacity>
-             </View>
+              <View style={styles.chatSectionHeader}>
+                 <Text style={styles.chatSectionTitle}>Groups & Circles</Text>
+                 <TouchableOpacity 
+                   onPress={() => router.push('/dm/new')}
+                   style={styles.newChatHeaderButton}
+                 >
+                   <Ionicons name="chatbubbles-outline" size={16} color="#FF6600" />
+                   <Text style={styles.newChatHeaderText}>New Chat</Text>
+                 </TouchableOpacity>
+              </View>
              {circles.length > 0 ? (
                 circles.map(circle => (
                   <TouchableOpacity 
@@ -748,6 +752,20 @@ const styles = StyleSheet.create({
   chatItemTime: { fontSize: 11, color: '#AAA' },
   chatBadge: { backgroundColor: '#FF6600', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
   chatBadgeText: { color: '#FFF', fontSize: 10, fontFamily: FONTS.bold },
+  newChatHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0E6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  newChatHeaderText: {
+    color: '#FF6600',
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+  },
   emptyChat: { padding: 20, alignItems: 'center' },
   emptyChatText: { color: '#AAA', fontSize: 14 },
   

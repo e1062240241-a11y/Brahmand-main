@@ -256,7 +256,7 @@ export default function BloodRequestScreen() {
               <TouchableOpacity style={styles.continueButton} onPress={handleContinue} activeOpacity={0.8}>
                 <LinearGradient colors={['#E53935', '#C62828']} style={styles.continueGradient}>
                   <Text style={styles.continueButtonText}>Post Blood Request</Text>
-                  <Ionicons name="tint" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+                  <Ionicons name="water" size={18} color="#FFF" style={{ marginLeft: 8 }} />
                 </LinearGradient>
               </TouchableOpacity>
               

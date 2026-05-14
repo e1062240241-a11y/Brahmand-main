@@ -1,3 +1,4 @@
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
@@ -10,8 +11,7 @@ import {
     Dimensions,
     Vibration,
     Platform,
-    SafeAreaView,
-} from 'react-native';
+    } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAudioPlayer } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
@@ -324,15 +324,10 @@ const EkantJaapPage = () => {
     useEffect(() => {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
-            if (player) {
-                try {
-                    player.pause();
-                } catch (error) {
-                    console.warn('Ekant Jaap cleanup pause failed', error);
-                }
-            }
+            // We don't manually pause here if managed by useAudioPlayer as it handles its own lifecycle
+            // But if we do, we must be extremely careful about released objects
         };
-    }, [player]);
+    }, []);
 
     const progress = selectedSlot ? ((selectedSlot.seconds - timeLeft) / selectedSlot.seconds) * 100 : 0;
 

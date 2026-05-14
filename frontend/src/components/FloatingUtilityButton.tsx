@@ -648,7 +648,8 @@ export const FloatingUtilityButton = () => {
         {...panResponder.panHandlers}
         style={[
           styles.floatingButtonContainer,
-          isChatPage && { bottom: 150 },
+          { bottom: 90 + insets.bottom },
+          isChatPage && { bottom: 150 + insets.bottom },
           { transform: [...pan.getTranslateTransform(), { scale: activeSOS ? pulseAnim : 1 }] },
           { opacity: overlayFade.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }
         ]}
@@ -798,8 +799,8 @@ const styles = StyleSheet.create({
     alignItems: 'center' 
   },
   hubContainer: {
-    width: SCREEN_WIDTH * 0.94,
-    height: SCREEN_WIDTH * 0.94,
+    width: SCREEN_WIDTH * 0.88,
+    height: SCREEN_WIDTH * 0.88,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -923,7 +924,7 @@ const styles = StyleSheet.create({
   },
   sosButtonText: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
   },
   centerGuruContainer: {
@@ -956,12 +957,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   guruName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '900',
-    color: '#FFF',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    color: '#3E2723',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#FFD54F',
   },
   guruSubLine: {
     flexDirection: 'row',

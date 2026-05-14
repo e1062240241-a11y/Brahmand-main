@@ -366,17 +366,16 @@ const CreateCircleScreen = () => {
                 {users.length === 0 ? (
                   <Text style={styles.emptyText}>No users available to invite.</Text>
                 ) : (
-                  <FlatList
-                    data={users}
-                    extraData={selectedUsers}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderUserItem}
-                    showsVerticalScrollIndicator={false}
-                    initialNumToRender={8}
-                    maxToRenderPerBatch={12}
-                    windowSize={5}
-                    removeClippedSubviews={true}
-                  />
+                  <View style={styles.usersListMapped}>
+                    {users.map((item) => (
+                      <UserListItem
+                        key={item.id}
+                        item={item}
+                        selected={selectedUsers.includes(item.id)}
+                        onPress={toggleUserSelection}
+                      />
+                    ))}
+                  </View>
                 )}
               </View>
 
@@ -628,9 +627,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8E0D8',
     borderRadius: BORDER_RADIUS.lg,
-    maxHeight: 250,
     marginBottom: SPACING.md,
     backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  usersListMapped: {
+    padding: SPACING.xs,
   },
   emptyText: {
     padding: SPACING.md,

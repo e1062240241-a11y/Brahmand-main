@@ -344,12 +344,12 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="dark" />
-      <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
+      <View style={styles.root}>
         <MuteProvider>
           <Slot />
           {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
         </MuteProvider>
-      </SafeAreaView>
+      </View>
     </>
   );
 }
