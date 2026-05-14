@@ -1,6 +1,7 @@
 """Community Routes"""
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
+from models.schemas import CommunityCreate
 from services.firebase_community_service import FirebaseCommunityService as CommunityService
 from middleware.security import verify_token
 
@@ -14,6 +15,21 @@ async def get_user_communities(token_data: dict = Depends(verify_token)):
         return await CommunityService.get_user_communities(token_data["user_id"])
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("")
+async def create_community(
+    data: CommunityCreate,
+    token_data: dict = Depends(verify_token)
+):
+    """Create a user community group"""
+    try:
+        return await CommunityService.create_user_community(
+            token_data["user_id"],
+            data.dict()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/discover")

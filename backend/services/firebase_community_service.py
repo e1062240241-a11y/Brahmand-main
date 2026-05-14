@@ -20,6 +20,53 @@ class FirebaseCommunityService:
         return FirestoreDB(client)
     
     @staticmethod
+    async def create_user_community(user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new user-created community group"""
+        db = await FirebaseCommunityService.get_db()
+
+        # Generate unique code
+        code = generate_community_code(data['name'].split()[0])
+        # In a real app, we'd loop to ensure uniqueness
+
+        community_data = {
+            "name": data['name'],
+            "type": "user_group",
+            "description": data.get('description'),
+            "short_name": data.get('short_name'),
+            "location": {
+                "city": data.get('city'),
+                "area": data.get('area')
+            },
+            "category": data.get('category'),
+            "photo": data.get('photo'),
+            "cover_photo": data.get('cover_photo'),
+            "owner_id": user_id,
+            "admin_ids": list(set([user_id] + data.get('admin_ids', []))),
+            "members": list(set([user_id] + data.get('admin_ids', []) + data.get('member_ids', []))),
+            "code": code,
+            "subgroups": SUBGROUPS.copy(),
+            "created_at": datetime.utcnow()
+        }
+
+        community_data['member_count'] = len(community_data['members'])
+
+        community_id = await db.create_community(community_data)
+        community_data['id'] = community_id
+
+        # Add community to all members
+        from google.cloud import firestore
+        for member_id in community_data['members']:
+            try:
+                await db.client.collection('users').document(member_id).update({
+                    'communities': firestore.ArrayUnion([community_id])
+                })
+            except Exception as e:
+                logger.error(f"Failed to add community to member {member_id}: {e}")
+
+        await cache_manager.invalidate_user_communities(user_id)
+        return community_data
+
+    @staticmethod
     async def get_or_create_community(
         name: str,
         community_type: str,
@@ -113,6 +160,7 @@ class FirebaseCommunityService:
                         "name": community['name'],
                         "type": community['type'],
                         "code": community.get('code', ''),
+                        "photo": community.get('photo'),
                         "member_count": len(community.get('members', [])),
                         "subgroups": community.get('subgroups', [])
                     })

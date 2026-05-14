@@ -774,6 +774,19 @@ export const getCommunity = (id: string) =>
 export const joinCommunityByCode = (code: string) => 
   api.post('/communities/join', { code });
 
+export const createCommunity = (data: {
+  name: string;
+  description?: string;
+  short_name?: string;
+  city?: string;
+  area?: string;
+  category?: string;
+  photo?: string;
+  cover_photo?: string;
+  admin_ids?: string[];
+  member_ids?: string[];
+}) => api.post('/communities', data);
+
 export const agreeToRules = (communityId: string, subgroupType: string) => 
   api.post(`/communities/${communityId}/agree-rules`, { subgroup_type: subgroupType });
 
