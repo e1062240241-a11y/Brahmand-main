@@ -469,22 +469,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 16,
   },
   mediaContainer: {
-    marginBottom: SPACING.xl,
+    marginBottom: 16,
   },
   previewBox: {
     width: '100%',
-    minHeight: 280,
-    borderRadius: 24,
+    minHeight: 220,
+    borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#EADDFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.1,
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   sectionContainer: {
-    marginBottom: SPACING.xl,
+    marginBottom: 16,
   },
   sectionTitle: {
     color: '#1C1B1F',

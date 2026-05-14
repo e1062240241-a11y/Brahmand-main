@@ -1,6 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { BORDER_RADIUS, COLORS, SPACING } from '../../src/constants/theme';
 import { BHAGVAD_GEETA_BOOK, getLibraryBook } from '../../src/features/pdf-book-reader/books';
 

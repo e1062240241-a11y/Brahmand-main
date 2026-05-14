@@ -259,24 +259,7 @@ export default function CommunityDetailScreen() {
           colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.9)', '#FFFFFF']}
           style={styles.headerOverlay}
         >
-          <View style={[styles.topActions, { marginTop: insets.top }]}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-              <Ionicons name="chevron-back" size={28} color="#000" />
-            </TouchableOpacity>
-            <View style={styles.rightActions}>
-              <TouchableOpacity style={styles.createPill} onPress={() => setShowCreateModal(true)}>
-                <Ionicons name="add" size={18} color="#FFF" />
-                <Text style={styles.createPillText}>Create</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} onPress={handleNotifications}>
-                <Ionicons name="notifications-outline" size={24} color="#000" />
-                <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>2</Text></View>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} onPress={handleShareCommunity}>
-                <Ionicons name="share-outline" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-          </View>
+          <View style={{ height: 60 + insets.top }} />
 
           <View style={styles.communityInfo}>
             <View style={styles.communityIconWrapper}>
@@ -293,17 +276,8 @@ export default function CommunityDetailScreen() {
           </View>
 
           <Text style={styles.tagline}>
-            Uniting Mumbaikars for Seva, Dharma & Community Support.
+            Connect with your local community. Share updates, find help, and stay updated with local events.
           </Text>
-
-          <View style={styles.floatingActions}>
-            <TouchableOpacity style={styles.fabBtn} onPress={() => Alert.alert('Download', 'Community guide downloaded successfully!')}>
-              <Ionicons name="download-outline" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.fabBtn, styles.fabBtnMore]} onPress={() => Alert.alert('Options', 'More options coming soon!')}>
-              <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
         </LinearGradient>
       </ImageBackground>
 
@@ -345,8 +319,6 @@ export default function CommunityDetailScreen() {
               <Text style={styles.postUserName} numberOfLines={1}>{item.user.name}</Text>
               {item.user.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3B30" style={{ marginLeft: 2 }} />}
               <Text style={styles.postHandle} numberOfLines={1}> @{item.user.name.replace(/\s+/g, '').toLowerCase()}</Text>
-              <Text style={styles.postDot}>·</Text>
-              <Text style={styles.postTimestamp}>{item.timestamp}</Text>
             </View>
             <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
@@ -512,10 +484,12 @@ export default function CommunityDetailScreen() {
         </View>
         <View style={styles.eventTextCol}>
           <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
-          <Text style={styles.eventMeta}>{item.location || 'Mumbai'}</Text>
           <View style={styles.goingRow}>
-            <Ionicons name="person" size={12} color="#888" />
-            <Text style={styles.goingText}>Requested by {item.user_name || 'Anonymous'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Ionicons name="person" size={12} color="#888" />
+              <Text style={styles.goingText}>Requested by {item.user_name || 'Anonymous'}</Text>
+            </View>
+            <Text style={styles.timeAgoText}>{getTimeAgo(item.created_at)}</Text>
           </View>
         </View>
       </View>
@@ -529,6 +503,21 @@ export default function CommunityDetailScreen() {
       </View>
     </View>
   );
+
+  const getTimeAgo = (dateString?: string) => {
+    if (!dateString) return 'Just now';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return 'Just now';
+    
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 0) return 'Just now';
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
 
   const handleNotifications = () => {
     router.push('/notifications');
@@ -710,6 +699,35 @@ export default function CommunityDetailScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Sticky Top Bar */}
+      <View style={[styles.stickyTopBar, { paddingTop: insets.top }]}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/home');
+            }
+          }} 
+          style={styles.iconBtn}
+        >
+          <Ionicons name="chevron-back" size={28} color="#000" />
+        </TouchableOpacity>
+        <View style={styles.rightActions}>
+          <TouchableOpacity style={styles.createPill} onPress={() => setShowCreateModal(true)}>
+            <Ionicons name="add" size={18} color="#FFF" />
+            <Text style={styles.createPillText}>Create</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleNotifications}>
+            <Ionicons name="notifications-outline" size={24} color="#000" />
+            <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>2</Text></View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleShareCommunity}>
+            <Ionicons name="share-outline" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <FlatList
         data={combinedData}
         keyExtractor={item => item.id || (item.type + (item.title || ''))}
@@ -871,105 +889,110 @@ export default function CommunityDetailScreen() {
       {/* Full Screen Create Post Modal */}
       <Modal visible={showCreateModal} animationType="slide" transparent={false}>
         <SafeAreaView style={styles.createModalRoot}>
-          <View style={styles.createModalHeader}>
-            <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-              <Ionicons name="close" size={28} color="#000" />
-            </TouchableOpacity>
-            <Text style={styles.createModalTitle}>Create Post</Text>
-            <TouchableOpacity onPress={handleCreatePost}>
-              <Text style={styles.postBtnText}>Post</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.createModalContent} keyboardShouldPersistTaps="handled">
-            <View style={styles.createPostUserInfo}>
-              <Avatar name={user?.name || '?'} photo={user?.photo} size={50} />
-              <View style={styles.createPostUserMeta}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                   <Text style={styles.createPostUserName}>{user?.name || 'Rahul Joshi'}</Text>
-                   <MaterialCommunityIcons name="check-circle" size={16} color="#FF6B00" />
-                </View>
-                <Text style={styles.createPostUserLoc}>Andheri West, Mumbai</Text>
-              </View>
-            </View>
-
-            <TextInput
-              style={styles.createPostInput}
-              placeholder="Share your thoughts..."
-              multiline
-              value={newMessage}
-              onChangeText={setNewMessage}
-              autoFocus
-            />
-            <Text style={styles.charCount}>{newMessage.length}/600</Text>
-
-            <View style={styles.createDivider} />
-
-            <View style={styles.createSection}>
-              <Text style={styles.createSectionTitle}>Category <Text style={{color: '#FF3B30'}}>(Required)</Text></Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                {COMMUNITY_TABS.map(cat => (
-                  <TouchableOpacity 
-                    key={cat} 
-                    style={[styles.categoryChip, postCategory === cat && styles.categoryChipActive]}
-                    onPress={() => setPostCategory(cat)}
-                  >
-                    <Text style={[styles.categoryChipText, postCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <View style={styles.categoryPicker}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={styles.catIconCircle}>
-                    <Ionicons name="heart-outline" size={20} color="#A855F7" />
-                  </View>
-                  <Text style={styles.catText}>{postCategory}</Text>
-                </View>
-                <Ionicons name="checkmark-circle" size={20} color="#FF3B30" />
-              </View>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
-              <Text style={styles.infoBoxText}>Your post will be visible in the selected category and in the general community discussion.</Text>
-            </View>
-
-            <View style={styles.createSection}>
-              <Text style={styles.createSectionTitle}>Contact Number <Text style={{color: '#888'}}>(Optional)</Text></Text>
-              <View style={styles.phoneInputContainer}>
-                <TouchableOpacity style={styles.phonePrefix}>
-                   <Image source={{ uri: 'https://flagcdn.com/w40/in.png' }} style={styles.flagIcon} />
-                   <Text style={styles.prefixText}>+91</Text>
-                   <Ionicons name="chevron-down" size={14} color="#888" />
-                </TouchableOpacity>
-                <TextInput
-                  style={styles.phoneInput}
-                  placeholder="Enter phone number (optional)"
-                  value={contactNumber}
-                  onChangeText={setContactNumber}
-                  keyboardType="phone-pad"
-                />
-              </View>
-              <Text style={styles.phoneSub}>Providing your number is optional. Others can contact you if you choose to share it.</Text>
-            </View>
-
-            <View style={styles.mediaActions}>
-              <TouchableOpacity style={styles.mediaActionBtn} onPress={handlePickImage}>
-                <Ionicons name="image-outline" size={24} color="#000" />
-                <Text style={styles.mediaActionLabel}>Add Photo</Text>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            <View style={styles.createModalHeader}>
+              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+                <Ionicons name="close" size={28} color="#000" />
+              </TouchableOpacity>
+              <Text style={styles.createModalTitle}>Create Post</Text>
+              <TouchableOpacity onPress={handleCreatePost}>
+                <Text style={styles.postBtnText}>Post</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.trustBox}>
-               <View style={styles.trustIconBg}>
-                 <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
-               </View>
-               <View style={{ flex: 1, marginLeft: 12 }}>
-                 <Text style={styles.trustTitle}>Stay safe. Be trustworthy.</Text>
-                 <Text style={styles.trustSub}>We encourage respectful and helpful posts that uplift our community.</Text>
-               </View>
-            </View>
-          </ScrollView>
+            <ScrollView style={styles.createModalContent} keyboardShouldPersistTaps="handled">
+              <View style={styles.createPostUserInfo}>
+                <Avatar name={user?.name || '?'} photo={user?.photo} size={50} />
+                <View style={styles.createPostUserMeta}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                     <Text style={styles.createPostUserName}>{user?.name || 'Rahul Joshi'}</Text>
+                     <MaterialCommunityIcons name="check-circle" size={16} color="#FF6B00" />
+                  </View>
+                  <Text style={styles.createPostUserLoc}>Andheri West, Mumbai</Text>
+                </View>
+              </View>
+
+              <TextInput
+                style={styles.createPostInput}
+                placeholder="Share your thoughts..."
+                multiline
+                value={newMessage}
+                onChangeText={setNewMessage}
+                autoFocus
+              />
+              <Text style={styles.charCount}>{newMessage.length}/600</Text>
+
+              <View style={styles.createDivider} />
+
+              <View style={styles.createSection}>
+                <Text style={styles.createSectionTitle}>Category <Text style={{color: '#FF3B30'}}>(Required)</Text></Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                  {COMMUNITY_TABS.map(cat => (
+                    <TouchableOpacity 
+                      key={cat} 
+                      style={[styles.categoryChip, postCategory === cat && styles.categoryChipActive]}
+                      onPress={() => setPostCategory(cat)}
+                    >
+                      <Text style={[styles.categoryChipText, postCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <View style={styles.categoryPicker}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={styles.catIconCircle}>
+                      <Ionicons name="heart-outline" size={20} color="#A855F7" />
+                    </View>
+                    <Text style={styles.catText}>{postCategory}</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={20} color="#FF3B30" />
+                </View>
+              </View>
+
+              <View style={styles.infoBox}>
+                <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
+                <Text style={styles.infoBoxText}>Your post will be visible in the selected category and in the general community discussion.</Text>
+              </View>
+
+              <View style={styles.createSection}>
+                <Text style={styles.createSectionTitle}>Contact Number <Text style={{color: '#888'}}>(Optional)</Text></Text>
+                <View style={styles.phoneInputContainer}>
+                  <TouchableOpacity style={styles.phonePrefix}>
+                     <Image source={{ uri: 'https://flagcdn.com/w40/in.png' }} style={styles.flagIcon} />
+                     <Text style={styles.prefixText}>+91</Text>
+                     <Ionicons name="chevron-down" size={14} color="#888" />
+                  </TouchableOpacity>
+                  <TextInput
+                    style={styles.phoneInput}
+                    placeholder="Enter phone number (optional)"
+                    value={contactNumber}
+                    onChangeText={setContactNumber}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+                <Text style={styles.phoneSub}>Providing your number is optional. Others can contact you if you choose to share it.</Text>
+              </View>
+
+              <View style={styles.mediaActions}>
+                <TouchableOpacity style={styles.mediaActionBtn} onPress={handlePickImage}>
+                  <Ionicons name="image-outline" size={24} color="#000" />
+                  <Text style={styles.mediaActionLabel}>Add Photo</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.trustBox}>
+                 <View style={styles.trustIconBg}>
+                   <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
+                 </View>
+                 <View style={{ flex: 1, marginLeft: 12 }}>
+                   <Text style={styles.trustTitle}>Stay safe. Be trustworthy.</Text>
+                   <Text style={styles.trustSub}>We encourage respectful and helpful posts that uplift our community.</Text>
+                 </View>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
@@ -980,7 +1003,10 @@ export default function CommunityDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowCommentModal(null)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments</Text>
@@ -989,7 +1015,7 @@ export default function CommunityDetailScreen() {
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.commentsList}>
+            <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
               {/* Dummy comments for replica */}
               <View style={styles.commentItem}>
                 <Avatar name="Rahul" size={32} />
@@ -1021,7 +1047,7 @@ export default function CommunityDetailScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -1056,6 +1082,8 @@ const styles = StyleSheet.create({
   tabsContent: { paddingHorizontal: 20, paddingVertical: 15, gap: 25 },
   tabItem: { paddingBottom: 5 },
   tabItemActive: { borderBottomWidth: 3, borderBottomColor: '#FF3B30' },
+  goingText: { marginLeft: 6, fontSize: 13, color: '#888', fontFamily: FONTS.regular },
+  timeAgoText: { fontSize: 11, color: '#AAA', fontFamily: FONTS.regular },
   tabText: { fontSize: 15, color: '#888', fontWeight: '600' },
   tabTextActive: { color: '#FF3B30', fontWeight: '700' },
 
@@ -1108,6 +1136,22 @@ const styles = StyleSheet.create({
   input: { flex: 1, marginHorizontal: 12, fontSize: 14, color: '#111' },
   footerIcon: { padding: 6 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', marginLeft: 4 },
+  
+  stickyTopBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
   
   requestInterestedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   urgencyLabel: { fontSize: 11, fontWeight: '700', color: '#888', backgroundColor: '#F5F5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
@@ -1189,7 +1233,16 @@ const styles = StyleSheet.create({
   createFestBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
   createModalRoot: { flex: 1, backgroundColor: '#FFF' },
-  createModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  createModalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingTop: 25,
+    paddingBottom: 15,
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F0F0F0' 
+  },
   createModalTitle: { fontSize: 18, fontWeight: '800', color: '#111' },
   postBtnText: { color: '#FF3B30', fontSize: 16, fontWeight: '800' },
   createModalContent: { flex: 1, padding: 20 },

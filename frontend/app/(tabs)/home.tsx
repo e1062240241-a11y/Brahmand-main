@@ -17,10 +17,11 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
@@ -168,6 +169,12 @@ export default function HomeScreen() {
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [now, setNow] = useState(new Date());
   const scrollViewRef = useRef<ScrollView | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFeedPosts(0, false);
+    }, [loadFeedPosts])
+  );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
   const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
@@ -213,8 +220,8 @@ export default function HomeScreen() {
         setFeedPosts(prev => [response.data, ...prev]);
       }
     } catch (error: any) {
-      console.warn('Background upload failed:', error);
-      Alert.alert('Upload Failed', error?.message || 'Could not upload post.');
+      console.warn('[Home] Background upload failed:', error.message || error);
+      Alert.alert('Upload Failed', error?.message || 'Could not upload post. Ensure your connection is stable.');
     } finally {
       setBackgroundUpload({ uploading: false, progress: 0, isCompressing: false });
     }
@@ -327,7 +334,7 @@ export default function HomeScreen() {
         AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
       }
       setHasMoreFeed(nextHasMore);
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
       if (!append && !hasCachedData) {
         setFeedPosts([]);
@@ -366,11 +373,7 @@ export default function HomeScreen() {
     [feedPosts],
   );
 
-  useEffect(() => {
-    if (feedPostKeys.length > 0 && !activePostKey) {
-      setActivePostKey(feedPostKeys[0]);
-    }
-  }, [feedPostKeys, activePostKey]);
+
   const lastScrollTimeRef = useRef(0);
 
   const handleHomeScroll = useCallback((event: any) => {
@@ -393,13 +396,14 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        if (visibleAmount > maxVisible) {
+        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
+        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
           maxVisible = visibleAmount;
           closestKey = key;
         }
       }
     }
-    setActivePostKey(prev => closestKey ?? prev);
+    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
 
     // Infinite Scroll Logic
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed) {
@@ -510,7 +514,7 @@ export default function HomeScreen() {
       updateUser((response.data || { photo }) as any);
     } catch (error) {
       console.warn('Failed to update profile photo from home:', error);
-      alert('Could not save profile picture. Please try again.');
+      alert('Could not save profile picture. Check connection and try again.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -560,7 +564,7 @@ export default function HomeScreen() {
     } catch (error) {
       console.warn('Failed to like/unlike post:', error);
       setFeedPosts((prev) => prev.map((item) => (item.id === postId ? post : item)));
-      alert('Could not update like. Please try again.');
+      alert('Could not update like. Please check your network.');
     }
   }, []);
 
@@ -624,11 +628,11 @@ export default function HomeScreen() {
           prev.map(c => c.id === tempId ? { ...serverComment, is_optimistic: false } : c)
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to add comment:', error);
       // Rollback on failure
       setPostComments(prev => prev.filter(c => c.id !== tempId));
-      alert('Could not post comment. Please try again.');
+      alert(`Could not post comment: ${error.message || 'Check your connection'}`);
     } finally {
       setCommentSubmitting(false);
     }
@@ -796,12 +800,17 @@ export default function HomeScreen() {
     );
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
+  const insets = useSafeAreaInsets();
+
   return (
     <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 10 }
+        ]}
         stickyHeaderIndices={[1]}
         onScroll={handleHomeScroll}
         onMomentumScrollEnd={handleHomeScroll}
@@ -1499,7 +1508,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 12,
     paddingBottom: 106,
   },
   upperContentWrapper: {
@@ -2325,10 +2333,11 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   uploadingStatusBar: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#F8F9FA',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-    padding: 12,
+    borderBottomColor: '#E0E0E0',
+    padding: 16,
+    zIndex: 5,
   },
   uploadingStatusContent: {
     flexDirection: 'row',
@@ -2345,9 +2354,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   uploadingTitle: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '800',
+    color: '#1C1B1F',
+    fontSize: 14,
+    fontWeight: '700',
     marginBottom: 8,
   },
   progressBarBg: {

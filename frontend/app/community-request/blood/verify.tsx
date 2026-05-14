@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
@@ -45,20 +46,7 @@ export default function CommunityRequestBloodVerifyPage() {
     router.push('/kyc');
   };
 
-  const handleContinue = () => {
-    router.push({
-      pathname: '/community-request/blood/review',
-      params: {
-        bloodGroup: params.bloodGroup,
-        hospitalName: params.hospitalName,
-        location: params.location,
-        urgency: params.urgency,
-        description: params.description,
-        contactPreference: params.contactPreference,
-        contactNumber: params.contactNumber,
-      },
-    });
-  };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -114,10 +102,6 @@ export default function CommunityRequestBloodVerifyPage() {
         <View style={styles.noteCard}>
           <Text style={styles.noteText}>Your information is secure and never shared with anyone.</Text>
         </View>
-
-        <TouchableOpacity style={styles.continueButton} onPress={handleContinue} activeOpacity={0.8}>
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

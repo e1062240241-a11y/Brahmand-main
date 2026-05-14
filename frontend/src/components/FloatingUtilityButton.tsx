@@ -46,6 +46,7 @@ import * as Location from 'expo-location';
 import LocationService from '../services/location';
 import { socketService } from '../services/socket';
 import { SOSFlowModal } from './SOSFlowModal';
+import { SOSResponderModal } from './SOSResponderModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -187,10 +188,14 @@ export const FloatingUtilityButton = () => {
   const [microLocationLoading, setMicroLocationLoading] = useState(false);
   const [locationFetched, setLocationFetched] = useState(false);
   const [sosFlowVisible, setSosFlowVisible] = useState(false);
+  const [incomingSOS, setIncomingSOS] = useState<any>(null);
+  const [sosResponderModalVisible, setSosResponderModalVisible] = useState(false);
   const [fetchedCoordinates, setFetchedCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const sosRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sosExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [sosRadiusLevel, setSosRadiusLevel] = useState(0);
+  const overlayFade = useRef(new Animated.Value(0)).current;
+  const menuScale = useRef(new Animated.Value(0)).current;
 
   const resolveMyActiveSOS = async (status: 'resolved' | 'cancelled') => {
     if (!activeSOS?.id) return;
@@ -217,12 +222,18 @@ export const FloatingUtilityButton = () => {
   useEffect(() => {
     if (modalVisible) {
       Animated.parallel([
+        Animated.timing(overlayFade, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.spring(menuScale, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
         Animated.spring(wheelAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
         Animated.spring(hubAnim, { toValue: hubExpanded ? 1 : 0, useNativeDriver: true, tension: 40, friction: 8 })
       ]).start();
     } else {
-      wheelAnim.setValue(0);
-      hubAnim.setValue(0);
+      Animated.parallel([
+        Animated.timing(overlayFade, { toValue: 0, duration: 250, useNativeDriver: true }),
+        Animated.timing(menuScale, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(wheelAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(hubAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
     }
   }, [modalVisible, hubExpanded]);
 
@@ -441,14 +452,39 @@ export const FloatingUtilityButton = () => {
   useEffect(() => {
     checkSOSStatus();
     fetchMyCommunityRequests();
+    
+    // Listen for real-time SOS alerts via socket
+    const handleSOSAlert = (data: any) => {
+      console.log('[Socket] Real-time SOS alert:', data);
+      if (data.creator_id !== user?.id) {
+        setIncomingSOS(data);
+        setSosResponderModalVisible(true);
+      }
+    };
+
+    socketService.onEvent('sos_alert', handleSOSAlert);
+
+    // Check for pending SOS from push notifications
+    const checkPendingSOS = setInterval(() => {
+      if (typeof window !== 'undefined' && (window as any).__PENDING_SOS) {
+        const data = (window as any).__PENDING_SOS;
+        delete (window as any).__PENDING_SOS;
+        setIncomingSOS(data);
+        setSosResponderModalVisible(true);
+      }
+    }, 2000);
+
     sosRefreshTimerRef.current = setInterval(() => {
       checkSOSStatus();
       fetchMyCommunityRequests();
     }, 60_000);
+
     return () => {
       if (sosRefreshTimerRef.current) clearInterval(sosRefreshTimerRef.current);
+      clearInterval(checkPendingSOS);
+      socketService.offEvent('sos_alert', handleSOSAlert);
     };
-  }, [checkSOSStatus]);
+  }, [checkSOSStatus, user?.id]);
 
   const fetchMyCommunityRequests = async () => {
     if (!user?.id) return;
@@ -635,13 +671,15 @@ export const FloatingUtilityButton = () => {
   ];
 
   return (
-    <>
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View
         {...panResponder.panHandlers}
         style={[
           styles.floatingButtonContainer,
-          isChatPage && { bottom: 150 },
-          { transform: [...pan.getTranslateTransform(), { scale: activeSOS ? pulseAnim : 1 }] }
+          { bottom: 90 + insets.bottom },
+          isChatPage && { bottom: 150 + insets.bottom },
+          { transform: [...pan.getTranslateTransform(), { scale: activeSOS ? pulseAnim : 1 }] },
+          { opacity: overlayFade.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }
         ]}
       >
         <View style={[styles.floatingButton, activeSOS && styles.floatingButtonActiveSOS]}>
@@ -651,665 +689,341 @@ export const FloatingUtilityButton = () => {
         </View>
       </Animated.View>
 
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={closeUtilityModal}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.overlayBackground} activeOpacity={1} onPress={closeUtilityModal} />
-          <View style={[styles.modalContentWrapper, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-            <TouchableOpacity style={styles.closeButton} onPress={closeUtilityModal}>
-              <Ionicons name="close-circle" size={42} color="rgba(255,255,255,0.4)" />
-            </TouchableOpacity>
+      <Animated.View 
+        style={[
+          styles.modalOverlay, 
+          { opacity: overlayFade, pointerEvents: modalVisible ? 'auto' : 'none' }
+        ]}
+      >
+        <TouchableOpacity style={styles.overlayBackground} activeOpacity={1} onPress={closeUtilityModal} />
+        <Animated.View 
+          style={[
+            styles.modalContentWrapper, 
+            { transform: [{ scale: menuScale }, { translateY: menuScale.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] }
+          ]}
+        >
+          <View style={styles.hubContainer}>
+            {/* Outer Circle Ring */}
+            <View style={styles.outerCircleRing} />
+            
+            {/* Main Menu Circle */}
+            <Animated.View style={[styles.mainMenuCircle, { opacity: wheelAnim, transform: [{ scale: wheelAnim }] }]}>
+              {/* Segment Dividers */}
+              <View style={[styles.segmentLine, { transform: [{ rotate: '30deg' }] }]} />
+              <View style={[styles.segmentLine, { transform: [{ rotate: '90deg' }] }]} />
+              <View style={[styles.segmentLine, { transform: [{ rotate: '150deg' }] }]} />
+              
+              {/* Inner Circle Border */}
+              <View style={styles.innerCircleBorder} />
 
-            <View style={styles.hubMainContainer}>
-              {/* Central Divine Circle */}
-              <View style={styles.modalContent}>
-                <Animated.View style={[styles.circularMenuContainer, { opacity: wheelAnim, transform: [{ scale: wheelAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }] }]}>
-                  <View style={styles.menuGlow} />
-                  <View style={styles.outerRing} />
+              {/* Navigation Arrows */}
+              <View style={styles.arrowTop}><Ionicons name="chevron-up" size={24} color="#FFF" /></View>
+              <View style={styles.arrowBottom}><Ionicons name="chevron-down" size={24} color="#FFF" /></View>
 
-                  <View style={[styles.segmentLine, { transform: [{ rotate: '0deg' }] }]} />
-                  <View style={[styles.segmentLine, { transform: [{ rotate: '60deg' }] }]} />
-                  <View style={[styles.segmentLine, { transform: [{ rotate: '120deg' }] }]} />
+              {/* Menu Items */}
+              <View style={styles.wheelWrapper}>
+                {/* Top Left: Library */}
+                <TouchableOpacity style={[styles.menuItem, styles.posTopLeft]} onPress={() => { setModalVisible(false); router.push('/library'); }}>
+                  <View style={styles.iconBox}><Ionicons name="book" size={28} color="#2196F3" /></View>
+                  <Text style={styles.itemTitle}>Brahmand{"\n"}Library</Text>
+                  <Text style={styles.itemSub}>Knowledge & Wisdom</Text>
+                </TouchableOpacity>
 
-                  {/* Active SOS Creator Sidebar (Beside the circle) */}
-                  {activeSOS && (
-                    <View style={styles.sosActiveDashboardSidebar}>
-                      <View style={styles.sosDashboardHeaderCompact}>
-                        <Ionicons name="alert-circle" size={24} color="#FFF" />
-                        <Text style={styles.sosDashboardTitleCompact}>YOUR SOS IS ACTIVE</Text>
-                      </View>
+                {/* Top Right: Passport */}
+                <TouchableOpacity style={[styles.menuItem, styles.posTopRight]} onPress={() => { setModalVisible(false); router.push('/passport'); }}>
+                  <View style={[styles.iconBox, { backgroundColor: '#FFD600' }]}><Ionicons name="airplane" size={28} color="#FFF" /></View>
+                  <Text style={styles.itemTitle}>Brahmand{"\n"}Passport</Text>
+                  <Text style={styles.itemSub}>Spiritual Journey</Text>
+                </TouchableOpacity>
 
-                      <View style={styles.responderCardCompact}>
-                        <View style={styles.responderMainRowCompact}>
-                          <Text style={styles.responderCountTextCompact}>{activeSOS.responders?.length || 0}</Text>
-                          <Text style={styles.responderStatusTitleCompact}>PEOPLE ARE COMING</Text>
-                        </View>
-                        <Text style={styles.responderSubtextCompact}>
-                          {activeSOS.responders?.length || 0} confirmed nearby
-                        </Text>
-                      </View>
+                {/* Middle Right: Kundli */}
+                <TouchableOpacity style={[styles.menuItem, styles.posRight]} onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}>
+                  <View style={styles.iconBox}><Ionicons name="planet" size={28} color="#7C4DFF" /></View>
+                  <Text style={styles.itemTitle}>Kundli</Text>
+                  <Text style={styles.itemSub}>Planet{"\n"}View</Text>
+                </TouchableOpacity>
 
-                      <TouchableOpacity
-                        style={styles.receivedHelpBtnCompact}
-                        onPress={() => handleResolveActiveSOS('resolved')}
-                      >
-                        <Ionicons name="checkmark-circle" size={18} color="#D32F2F" />
-                        <Text style={styles.receivedHelpBtnTextCompact}>HELP RECEIVED</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.cancelSOSLinkCompact}
-                        onPress={() => handleResolveActiveSOS('cancelled')}
-                      >
-                        <Text style={styles.cancelSOSLinkTextCompact}>Cancel SOS</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  <View style={styles.wheelWrapper}>
-                    <TouchableOpacity
-                      style={[styles.segmentButton, { top: 65, left: 150 }]}
-                      onPress={() => { setModalVisible(false); router.push('/library'); }}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#E3F2FD' }]}><Ionicons name="book" size={30} color="#1976D2" /></View>
-                        <Text style={styles.segmentTitle}>Brahmand Library</Text>
-                        <Text style={styles.segmentSubtitle}>Knowledge</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.segmentButton, { top: 65, right: 150 }]}
-                      onPress={() => { setModalVisible(false); router.push('/passport'); }}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#FFF9C4' }]}><Ionicons name="airplane" size={30} color="#FBC02D" /></View>
-                        <Text style={styles.segmentTitle}>Passport</Text>
-                        <Text style={styles.segmentSubtitle}>Journey</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.segmentButton, { top: 290, right: 20 }]}
-                      onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#F3E5F5' }]}><Ionicons name="planet" size={30} color="#7B1FA2" /></View>
-                        <Text style={styles.segmentTitle}>Kundli</Text>
-                        <Text style={styles.segmentSubtitle}>Planet View</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.segmentButton, { bottom: 65, right: 150 }]}
-                      onPress={() => activeSOS ? handleResolveActiveSOS('resolved') : startSOSFlow()}
-                      onLongPress={() => !activeSOS && startSOSFlow()}
-                    >
-                      <Animated.View style={{
-                        position: 'absolute',
-                        width: 160,
-                        height: 160,
-                        borderRadius: 80,
-                        backgroundColor: 'rgba(255, 23, 68, 0.2)',
-                        opacity: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.8] }),
-                        transform: [{ scale: sosGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] }) }],
-                        zIndex: -1,
-                      }} />
-                      <View style={[styles.sosCircularButton, activeSOS && styles.sosCircularButtonActive]}>
-                        <View style={styles.sosButtonInner}><Text style={styles.sosButtonTextLarge}>SOS</Text></View>
-                      </View>
-                      <Text style={styles.segmentTitle}>Emergency</Text>
-                      <Text style={styles.segmentSubtitle}>Tap for Help</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.segmentButton, { bottom: 65, left: 150 }]}
-                      onPress={() => { setModalVisible(false); router.push('/horoscope'); }}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#E1F5FE' }]}><Ionicons name="star" size={30} color="#0288D1" /></View>
-                        <Text style={styles.segmentTitle}>Horoscope</Text>
-                        <Text style={styles.segmentSubtitle}>Daily</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.segmentButton, { top: 290, left: 20 }]}
-                      onPress={openPanchangWithLocation}
-                    >
-                      <View style={styles.segmentCard}>
-                        <View style={[styles.segmentIconBg, { backgroundColor: '#FFEBEE' }]}><Ionicons name="calendar" size={30} color="#C62828" /></View>
-                        <Text style={styles.segmentTitle}>Panchang</Text>
-                        <Text style={styles.segmentSubtitle}>Calendar</Text>
-                      </View>
-                    </TouchableOpacity>
+                {/* Bottom Right: Emergency SOS */}
+                <TouchableOpacity 
+                  style={[styles.menuItem, styles.posBottomRight]} 
+                  onPress={() => activeSOS ? handleResolveActiveSOS('resolved') : startSOSFlow()}
+                  onLongPress={() => !activeSOS && startSOSFlow()}
+                >
+                  <View style={[styles.sosButtonLarge, activeSOS && styles.sosButtonActive]}>
+                    <Text style={styles.sosButtonText}>SOS</Text>
                   </View>
+                  <Text style={styles.itemTitleSOS}>Emergency SOS</Text>
+                  <Text style={styles.itemSub}>Double Tap for Help</Text>
+                </TouchableOpacity>
 
-                  <View style={styles.centralAvatarContainer}>
-                    <View style={[styles.avatarLightRay, { width: 300, height: 300, opacity: 0.3 }]} />
-                    <View style={[styles.avatarLightRay, { width: 260, height: 260, opacity: 0.5 }]} />
-                    <View style={[styles.avatarLightRay, { width: 220, height: 220, opacity: 0.8 }]} />
-                    <View style={styles.centralAvatarBorder}>
-                      <Image source={require('../../assets/images/krishna_guru.png')} style={styles.centralAvatar} />
-                    </View>
-                    <View style={styles.centralTitleContainer}>
-                      <Text style={styles.centralTitleLogo}>my Krishna</Text>
-                      <Text style={styles.centralTitleSub}>AI Guru</Text>
-                    </View>
-                  </View>
-                </Animated.View>
+                {/* Bottom Left: Horoscope */}
+                <TouchableOpacity style={[styles.menuItem, styles.posBottomLeft]} onPress={() => { setModalVisible(false); router.push('/horoscope'); }}>
+                  <View style={styles.iconBox}><Ionicons name="star" size={28} color="#448AFF" /></View>
+                  <Text style={styles.itemTitle}>Horoscope</Text>
+                  <Text style={styles.itemSub}>Daily{"\n"}Predictions</Text>
+                </TouchableOpacity>
+
+                {/* Middle Left: Panchang */}
+                <TouchableOpacity style={[styles.menuItem, styles.posLeft]} onPress={openPanchangWithLocation}>
+                  <View style={[styles.iconBox, { backgroundColor: '#FF6D00' }]}><Ionicons name="calendar" size={28} color="#FFF" /></View>
+                  <Text style={styles.itemTitle}>Panchang</Text>
+                  <Text style={styles.itemSub}>Daily{"\n"}Hindu Calendar</Text>
+                </TouchableOpacity>
               </View>
-            </View>
+
+              {/* Center: my Krishna AI Guru */}
+              <TouchableOpacity 
+                style={styles.centerGuruContainer}
+                activeOpacity={0.9}
+                onPress={() => { setModalVisible(false); router.push('/my-krishna'); }}
+              >
+                <View style={styles.guruImageWrapper}>
+                  <Image source={require('../../assets/images/krishna_guru.png')} style={styles.guruImage} />
+                </View>
+                <View style={styles.guruTitleBox}>
+                   <Ionicons name="leaf" size={16} color="#FFD54F" style={{ marginBottom: -2 }} />
+                   <Text style={styles.guruName}>my Krishna</Text>
+                   <View style={styles.guruSubLine}>
+                     <View style={styles.guruLine} />
+                     <Text style={styles.guruSubText}>AI Guru</Text>
+                     <View style={styles.guruLine} />
+                   </View>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
-        </View>
-      </Modal>
+        </Animated.View>
+      </Animated.View>
 
       <SOSFlowModal
         visible={sosFlowVisible}
         onClose={() => setSosFlowVisible(false)}
         onCreateSOS={handleCreateSOS}
       />
-    </>
+
+      <SOSResponderModal
+        visible={sosResponderModalVisible}
+        sosData={incomingSOS}
+        onClose={() => setSosResponderModalVisible(false)}
+        onRespond={handleRespondToSOS}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   floatingButtonContainer: { position: 'absolute', bottom: 90, right: 16, zIndex: 1000 },
-  floatingButton: { width: 64, height: 64, borderRadius: 32, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
+  floatingButton: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 8 },
   floatingButtonEmergency: { shadowColor: '#E53935', shadowOpacity: 0.4 },
   floatingButtonActiveSOS: { shadowColor: '#E53935', shadowOpacity: 0.6 },
-  glassBackground: { width: '100%', height: '100%', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderRadius: 32 },
+  glassBackground: { width: '100%', height: '100%', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderRadius: 28 },
   glassBackgroundEmergency: { backgroundColor: '#FF3B30' },
   glassBackgroundActiveSOS: { backgroundColor: '#E53935' },
   redDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#E53935' },
-  modalOverlay: { 
-    flex: 1, 
-    justifyContent: 'flex-end', 
-    backgroundColor: 'rgba(0,0,0,0.75)' 
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.75)'
   },
   overlayBackground: { ...StyleSheet.absoluteFillObject },
-  modalContentWrapper: { 
-    width: '100%', 
-    height: SCREEN_HEIGHT * 0.7, 
-    backgroundColor: 'transparent', 
+  modalContentWrapper: {
+    width: '100%',
+    height: SCREEN_HEIGHT * 0.7,
+    backgroundColor: 'transparent',
     overflow: 'hidden',
-    justifyContent: 'flex-start', 
-    alignItems: 'center' 
+    justifyContent: 'flex-start',
+    alignItems: 'center'
   },
-  modalContent: { 
-    width: '100%', 
-    height: '100%', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  circularMenuContainer: {
-    width: 700,
-    height: 700,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 243, 224, 0.15)', // Light orange tint
-    borderRadius: 350,
-  },
-  menuGlow: {
-    position: 'absolute',
-    width: 750,
-    height: 750,
-    borderRadius: 375,
-    backgroundColor: 'rgba(255, 145, 0, 0.05)',
-  },
-  outerRing: {
-    position: 'absolute',
-    width: 640,
-    height: 640,
-    borderRadius: 320,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 152, 0, 0.2)',
-    backgroundColor: 'rgba(255, 224, 178, 0.1)', // Inner orange shade
-  },
-  wheelWrapper: {
-    position: 'absolute',
+  modalContent: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center'
   },
-  segmentLine: {
+  hubContainer: {
+    width: SCREEN_WIDTH * 0.88,
+    height: SCREEN_WIDTH * 0.88,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outerCircleRing: {
     position: 'absolute',
-    width: 2,
-    height: 320,
-    backgroundColor: 'rgba(255, 152, 0, 0.12)',
-    left: 349,
-    top: 30,
-    transform: [{ rotate: '0deg' }],
-  },
-  segmentButton: {
-    position: 'absolute',
-    width: 140,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  segmentCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 12,
-    width: 120,
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 8
-  },
-  segmentIconBg: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6
-  },
-  segmentTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#37474F',
-    textAlign: 'center'
-  },
-  segmentSubtitle: {
-    fontSize: 9,
-    color: '#90A4AE',
-    textAlign: 'center',
-    marginTop: 2
-  },
-  sosCircularButton: {
-    width: 115,
-    height: 115,
-    borderRadius: 57.5,
-    backgroundColor: '#FF3B30',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 10,
-    borderColor: 'rgba(255, 59, 48, 0.1)',
-    marginBottom: 8,
-    shadowColor: '#FF1744', // Intense red glow
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 25,
-    elevation: 15
-  },
-  sosCircularButtonActive: {
-    backgroundColor: '#D32F2F',
-    borderColor: 'rgba(211, 47, 47, 0.3)'
-  },
-  sosButtonInner: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: '#FF3B30',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)'
-  },
-  sosButtonTextLarge: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#FFFFFF'
-  },
-  centralAvatarContainer: {
-    width: 320, // Expanded for rays
-    height: 320,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarLightRay: {
-    position: 'absolute',
-    borderRadius: 160,
-    backgroundColor: 'rgba(255, 235, 59, 0.2)', // Yellow chamatkari rays
-    shadowColor: '#FDD835',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 40,
-  },
-  centralAvatarBorder: {
-    width: 190,
-    height: 190,
-    borderRadius: 95,
-    borderWidth: 4,
-    borderColor: '#FFD54F', // Golden border for chamatkari effect
-    padding: 3,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    shadowColor: '#FFC107',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    zIndex: 10,
-  },
-  centralAvatar: {
     width: '100%',
     height: '100%',
-    borderRadius: 95
+    borderRadius: SCREEN_WIDTH * 0.47,
+    borderWidth: 8,
+    borderColor: 'rgba(255, 145, 0, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  centralTitleContainer: {
-    position: 'absolute',
-    bottom: 30,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 22,
-    alignItems: 'center',
+  mainMenuCircle: {
+    width: '98%',
+    height: '98%',
+    borderRadius: SCREEN_WIDTH * 0.46,
+    backgroundColor: 'rgba(255, 248, 225, 0.85)',
     borderWidth: 1.5,
     borderColor: '#FFD54F',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-    zIndex: 20,
-  },
-  centralTitleLogo: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#FF8F00', // Brighter orange
-    letterSpacing: 0.5,
-  },
-  centralTitleSubRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: -2
-  },
-  centralTitleSub: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#B0BEC5',
-    marginHorizontal: 10
-  },
-  titleLine: {
-    width: 18,
-    height: 1.5,
-    backgroundColor: '#FFE0B2'
-  },
-  arrowButton: {
-    position: 'absolute',
-    width: 52,
-    height: 34,
-    backgroundColor: '#FB8C00',
-    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 20,
-    shadowColor: '#E65100',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    overflow: 'hidden',
   },
-  arrowUp: {
-    top: 30,
-  },
-  arrowDown: {
-    bottom: 30,
-  },
-  closeButton: {
+  innerCircleBorder: {
     position: 'absolute',
-    top: 20,
-    right: 25,
-    zIndex: 100
+    width: '62%',
+    height: '62%',
+    borderRadius: SCREEN_WIDTH * 0.3,
+    borderWidth: 1.5,
+    borderColor: '#FFD54F',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
-  intersectionDot: {
+  segmentLine: {
     position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FFB74D',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    zIndex: 5,
+    width: 1,
+    height: '100%',
+    backgroundColor: '#FFD54F',
+    opacity: 0.5,
   },
-  activeSOSBar: {
-    width: '90%',
-    backgroundColor: '#FF3B30',
-    borderRadius: 20,
-    padding: 15,
-    flexDirection: 'row',
+  arrowTop: {
+    position: 'absolute',
+    top: 5,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#FF3B30',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
+    backgroundColor: '#FF6F00',
+    borderRadius: 12,
+    padding: 2,
   },
-  activeSOSTitle: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 1,
+  arrowBottom: {
+    position: 'absolute',
+    bottom: 5,
+    alignItems: 'center',
+    backgroundColor: '#FF6F00',
+    borderRadius: 12,
+    padding: 2,
   },
-  activeSOSSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 11,
-    fontWeight: '600',
+  wheelWrapper: {
+    ...StyleSheet.absoluteFillObject,
   },
-  sosMapBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  menuItem: {
+    position: 'absolute',
+    width: 80,
+    alignItems: 'center',
+  },
+  iconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
-  },
-  sosResolveBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  sosResolveText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  gitaCardCompact: {
-    width: '90%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  gitaHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  gitaIconBgSmall: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#FFF8E1',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gitaInfo: {
-    flex: 1,
-    marginHorizontal: 12,
-  },
-  gitaTitleCompact: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FF8F00',
-  },
-  gitaSanskritCompact: {
-    fontSize: 14,
-    color: '#37474F',
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  gitaDropdownContent: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
-  },
-  gitaTranslation: {
-    fontSize: 13,
-    color: '#546E7A',
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  communityRequestsSection: {
-    width: '90%',
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#37474F',
-    marginBottom: 12,
-    paddingLeft: 4,
-  },
-  communityRequestCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
+    marginBottom: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  communityRequestHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  requestTypeBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  communityRequestType: {
-    flex: 1,
-    fontSize: 11,
+  itemTitle: {
+    fontSize: 10,
     fontWeight: '800',
-    color: '#78909C',
-    letterSpacing: 0.5,
+    color: '#3E2723',
+    textAlign: 'center',
+    lineHeight: 12,
   },
-  communityRequestTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#263238',
+  itemTitleSOS: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#D32F2F',
+    textAlign: 'center',
+    marginTop: 4,
   },
-  resolveButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E8F5E9',
+  itemSub: {
+    fontSize: 7,
+    color: '#8D6E63',
+    textAlign: 'center',
+    marginTop: 1,
+  },
+  posTopLeft: { top: '15%', left: '15%' },
+  posTopRight: { top: '15%', right: '15%' },
+  posRight: { top: '42%', right: '4%' },
+  posBottomRight: { bottom: '12%', right: '14%' },
+  posBottomLeft: { bottom: '15%', left: '15%' },
+  posLeft: { top: '42%', left: '4%' },
+  sosButtonLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FF1744',
+    borderWidth: 4,
+    borderColor: 'rgba(255, 23, 68, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#FF1744',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  sosActionBtn: {
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 12,
+  sosButtonActive: {
+    backgroundColor: '#D32F2F',
   },
-  hubMainContainer: {
+  sosButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  centerGuruContainer: {
+    width: '48%',
+    height: '48%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  guruImageWrapper: {
+    width: '80%',
+    height: '80%',
+    borderRadius: 100,
+    borderWidth: 3,
+    borderColor: '#FFD54F',
+    backgroundColor: '#FFF8E1',
+    overflow: 'hidden',
+    shadowColor: '#FFA000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+  },
+  guruImage: {
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  sosActiveDashboardSidebar: {
+  guruTitleBox: {
     position: 'absolute',
-    left: -200, // Positioned to the left of the circle
-    top: 200,
-    width: 180,
-    backgroundColor: '#FF3B30',
-    borderRadius: 24,
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 10,
-    zIndex: 2000,
-  },
-  sosDashboardHeaderCompact: {
-    flexDirection: 'row',
+    bottom: -10,
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
   },
-  sosDashboardTitleCompact: {
-    fontSize: 10,
+  guruName: {
+    fontSize: 14,
     fontWeight: '900',
-    color: '#FFF',
-    flex: 1,
+    color: '#3E2723',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#FFD54F',
   },
-  responderCardCompact: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-  },
-  responderMainRowCompact: {
+  guruSubLine: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  responderCountTextCompact: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#D32F2F',
-  },
-  responderStatusTitleCompact: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#D32F2F',
-    flex: 1,
-  },
-  responderSubtextCompact: {
-    fontSize: 8,
-    color: '#D32F2F',
-    fontWeight: '600',
-  },
-  receivedHelpBtnCompact: {
-    backgroundColor: '#FFF',
-    height: 36,
-    borderRadius: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 6,
-    marginBottom: 10,
   },
-  receivedHelpBtnTextCompact: {
+  guruLine: {
+    width: 15,
+    height: 1,
+    backgroundColor: '#FFD54F',
+  },
+  guruSubText: {
     fontSize: 10,
-    fontWeight: '900',
-    color: '#D32F2F',
-  },
-  cancelSOSLinkCompact: {
-    alignItems: 'center',
-  },
-  cancelSOSLinkTextCompact: {
-    fontSize: 10,
-    color: '#FFF',
     fontWeight: '700',
-    textDecorationLine: 'underline',
+    color: '#FFF',
   },
   sosStepsFullScreen: {
     position: 'absolute',

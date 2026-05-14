@@ -254,6 +254,21 @@ export default function MessagesScreen() {
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
+  const getTimeAgo = (dateString?: string) => {
+    if (!dateString) return 'Just now';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return 'Just now';
+    
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 0) return 'Just now'; // Handle slight clock drift
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
+
   // --- RENDERING COMPONENTS ---
 
   const renderActiveRequestCard = (item: CommunityRequest) => {
@@ -290,7 +305,7 @@ export default function MessagesScreen() {
           <View style={[styles.reqInfoRow, { marginBottom: 0 }]}>
             <Ionicons name="person-circle-sharp" size={14} color="#000" />
             <Text style={styles.reqPosterName} numberOfLines={1}>Posted by {item.user_name || 'User'}</Text>
-            <Text style={styles.reqPostedTime}>10 min ago</Text>
+            <Text style={styles.reqPostedTime}>{getTimeAgo(item.created_at)}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -542,12 +557,16 @@ export default function MessagesScreen() {
           </View>
         ) : (
           <View style={styles.chatContent}>
-             <View style={styles.chatSectionHeader}>
-                <Text style={styles.chatSectionTitle}>Groups & Circles</Text>
-                <TouchableOpacity onPress={() => router.push('/circles')}>
-                  <Text style={styles.viewAllText}>Manage</Text>
-                </TouchableOpacity>
-             </View>
+              <View style={styles.chatSectionHeader}>
+                 <Text style={styles.chatSectionTitle}>Groups & Circles</Text>
+                 <TouchableOpacity 
+                   onPress={() => router.push('/dm/new')}
+                   style={styles.newChatHeaderButton}
+                 >
+                   <Ionicons name="chatbubbles-outline" size={16} color="#FF6600" />
+                   <Text style={styles.newChatHeaderText}>New Chat</Text>
+                 </TouchableOpacity>
+              </View>
              {circles.length > 0 ? (
                 circles.map(circle => (
                   <TouchableOpacity 
@@ -733,6 +752,20 @@ const styles = StyleSheet.create({
   chatItemTime: { fontSize: 11, color: '#AAA' },
   chatBadge: { backgroundColor: '#FF6600', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
   chatBadgeText: { color: '#FFF', fontSize: 10, fontFamily: FONTS.bold },
+  newChatHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0E6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  newChatHeaderText: {
+    color: '#FF6600',
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+  },
   emptyChat: { padding: 20, alignItems: 'center' },
   emptyChatText: { color: '#AAA', fontSize: 14 },
   

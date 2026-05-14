@@ -675,6 +675,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} style={{ marginRight: 15 }}>
+              <Ionicons name="chevron-back" size={28} color={COLORS.text} />
+            </TouchableOpacity>
             <View style={styles.headerLeft}>
               <View style={[styles.iconBg, { backgroundColor: `${getIconColor()}15` }]}>
                 <Ionicons name={getIcon()} size={20} color={getIconColor()} />

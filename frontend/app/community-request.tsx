@@ -51,18 +51,31 @@ export default function CommunityRequestHub() {
     return null;
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
+
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#FDFBFB', '#EBEDEE']} style={styles.gradientBg} />
       
       <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topHeader}>
+          <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#F25C05" />
+          </TouchableOpacity>
+          <Text style={styles.topHeaderText}>Community Requests</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           {/* Header Card */}
           <View style={styles.headerCard}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={24} color="#111" />
-            </TouchableOpacity>
             <View style={styles.headerTextCol}>
               <Text style={styles.headerTitle}>Help Your Community</Text>
               <Text style={styles.headerSubtitle}>Reach out and make a real difference in someone's life.</Text>
@@ -105,29 +118,35 @@ const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   gradientBg: { ...StyleSheet.absoluteFillObject },
   safeArea: { flex: 1 },
-  scrollContent: { padding: 16 },
+  topHeader: { 
+    flexDirection: 'row',
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingVertical: 14, 
+    paddingHorizontal: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1, 
+    borderBottomColor: 'rgba(0,0,0,0.03)' 
+  },
+  topHeaderBack: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topHeaderText: { color: '#F25C05', fontSize: 17, fontFamily: FONTS.bold, letterSpacing: 0.5 },
+  scrollContent: { padding: 16, paddingTop: 10 },
   
   headerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 20,
+    padding: 24,
     marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 15,
     elevation: 4,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
   },
   headerTextCol: { flex: 1 },
   headerTitle: { fontSize: 22, fontFamily: FONTS.bold, color: '#111' },

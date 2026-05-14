@@ -1,10 +1,11 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { createCommunityRequest, parseApiError, sendMsg91OTP, verifyMsg91OTP } from '../../../src/services/api';
-import { getCurrentUserToken } from '../../../src/services/firebase/authService';
+// import { getCurrentUserToken } from '../../../src/services/firebase/authService';
 import { useAuthStore } from '../../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 
@@ -22,7 +23,7 @@ export default function CommunityRequestBloodOtpPage() {
   }>();
   const { login, user } = useAuthStore();
   const phone = (params.phone || '').replace(/[^0-9]/g, '');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(30);
@@ -36,7 +37,7 @@ export default function CommunityRequestBloodOtpPage() {
     title: 'Blood Request',
     description: params.description || '',
     contact_number: params.contactNumber || phone,
-    urgency_level: (params.urgency || 'low').toLowerCase() as 'low' | 'medium' | 'high' | 'critical',
+    urgency_level: (params.urgency === 'Urgent' ? 'critical' : (params.urgency || 'low').toLowerCase()) as 'low' | 'medium' | 'high' | 'critical',
     blood_group: params.bloodGroup || '',
     hospital_name: params.hospitalName || '',
     location: params.location || '',
@@ -82,7 +83,7 @@ export default function CommunityRequestBloodOtpPage() {
     newOtp[index] = value.replace(/[^0-9]/g, '');
     setOtp(newOtp);
     setError('');
-    if (newOtp[index] && index < 5) {
+    if (newOtp[index] && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
     if (newOtp.every((digit) => digit !== '')) {
@@ -115,7 +116,7 @@ export default function CommunityRequestBloodOtpPage() {
     } catch (err: any) {
       console.error('MSG91 verify failed', err);
       setError(err?.response?.data?.detail || err?.message || 'Invalid OTP. Please try again.');
-      setOtp(['', '', '', '', '', '']);
+      setOtp(['', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -155,7 +156,7 @@ export default function CommunityRequestBloodOtpPage() {
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>Enter OTP</Text>
-          <Text style={styles.subtitle}>We have sent a 6 digit OTP to +91 {phone}</Text>
+          <Text style={styles.subtitle}>We have sent a 4 digit OTP to +91 {phone}</Text>
 
           <View style={styles.otpContainer}>
             {otp.map((digit, index) => (
@@ -247,8 +248,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   otpInput: {
-    width: 44,
-    height: 56,
+    width: 64,
+    height: 64,
     borderRadius: BORDER_RADIUS.lg,
     backgroundColor: '#FFFFFF',
     color: COLORS.text,
@@ -261,7 +262,15 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   error: {
-    color: '#FFCDD2',
+    color: '#FFF',
+    backgroundColor: 'rgba(211, 47, 47, 0.3)',
+    padding: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+    textAlign: 'center',
+    overflow: 'hidden',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: SPACING.sm,
     marginBottom: SPACING.sm,
   },
   resendButton: {

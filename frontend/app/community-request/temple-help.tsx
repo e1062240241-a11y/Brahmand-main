@@ -166,13 +166,25 @@ export default function TempleHelpRequestScreen() {
     );
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
+
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#FDFBFB', '#EBEDEE']} style={styles.gradientBg} />
       
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topHeader}>
+          <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#F25C05" />
+          </TouchableOpacity>
           <Text style={styles.topHeaderText}>Temple / Volunteer Help</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -180,9 +192,6 @@ export default function TempleHelpRequestScreen() {
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               
               <View style={styles.headerBar}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                  <Ionicons name="chevron-back" size={22} color="#111" />
-                </TouchableOpacity>
                 <LinearGradient colors={['#FFF3E0', '#FFE0B2']} style={styles.iconCircle}>
                   <MaterialCommunityIcons name="temple-hindu" size={28} color="#FB8C00" />
                 </LinearGradient>
@@ -297,7 +306,21 @@ const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   gradientBg: { ...StyleSheet.absoluteFillObject },
   safeArea: { flex: 1 },
-  topHeader: { alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.03)' },
+  topHeader: { 
+    flexDirection: 'row',
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingVertical: 14, 
+    paddingHorizontal: 16,
+    borderBottomWidth: 1, 
+    borderBottomColor: 'rgba(0,0,0,0.03)' 
+  },
+  topHeaderBack: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   topHeaderText: { color: '#F25C05', fontSize: 17, fontFamily: FONTS.bold, letterSpacing: 0.5 },
   cardContainerWrapper: { flex: 1, marginHorizontal: 16, marginTop: 10, marginBottom: 20 },
   cardContainer: { 

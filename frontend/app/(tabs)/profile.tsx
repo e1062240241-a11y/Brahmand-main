@@ -168,6 +168,47 @@ export default function ProfileScreen() {
     mediaUri?: string;
   }>({ uploading: false, progress: 0, isCompressing: false });
 
+  const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
+    setBackgroundUpload({ 
+      uploading: true, 
+      progress: 0, 
+      isCompressing: false, 
+      mediaUri: media.uri 
+    });
+
+    try {
+      const response = await uploadUserPost(
+        {
+          uri: media.uri,
+          type: media.mimeType,
+          name: media.name,
+        },
+        caption,
+        filterName,
+        (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setBackgroundUpload(prev => ({ ...prev, progress: percent }));
+            if (percent >= 100 && media.mediaType === 'video') {
+              setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
+            }
+          }
+        }
+      );
+      
+      if (response.data) {
+        setOffset(0);
+        loadPosts(true);
+        showToast('Post uploaded successfully!');
+      }
+    } catch (error: any) {
+      console.warn('[Profile] Background upload failed:', error.message || error);
+      Alert.alert('Upload Failed', error?.message || 'Could not upload post. Ensure your connection is stable.');
+    } finally {
+      setBackgroundUpload({ uploading: false, progress: 0, isCompressing: false });
+    }
+  };
+
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
     setToastVisible(true);
@@ -262,44 +303,7 @@ export default function ProfileScreen() {
     }
   }, [userId, offset, postsLoading]);
 
-  const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
-    setBackgroundUpload({
-      uploading: true,
-      progress: 0,
-      isCompressing: false,
-      mediaUri: media.uri
-    });
 
-    try {
-      const response = await uploadUserPost(
-        {
-          uri: media.uri,
-          type: media.mimeType,
-          name: media.name,
-        },
-        caption,
-        filterName,
-        (progressEvent) => {
-          if (progressEvent.total) {
-            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setBackgroundUpload(prev => ({ ...prev, progress: percent }));
-            if (percent >= 100 && media.mediaType === 'video') {
-              setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
-            }
-          }
-        }
-      );
-
-      showToast('Post uploaded successfully!');
-      loadPosts(true); // Refresh profile grid
-    } catch (error: any) {
-      console.warn('Upload failed:', error);
-      const detail = error.response?.data?.detail;
-      Alert.alert('Upload Failed', typeof detail === 'string' ? detail : 'Could not upload your post. Please try again.');
-    } finally {
-      setBackgroundUpload({ uploading: false, progress: 0, isCompressing: false });
-    }
-  };
 
   const handleUploadPostSuccess = () => {
     setShowUploadModal(false);
@@ -1179,9 +1183,10 @@ export default function ProfileScreen() {
       <UploadPostModal
         visible={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        onSuccess={() => {
+        onUploadStart={handleUploadStart}
+        onUploadSuccess={() => {
           setOffset(0);
-          fetchPosts(0, true);
+          loadPosts(true);
         }}
       />
     </SafeAreaView>
