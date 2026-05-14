@@ -14,1859 +14,1218 @@ import {
   Alert,
   Share,
   Modal,
-  Linking,
+  Image,
+  ImageBackground,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as ExpoLinking from 'expo-linking';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, getCommunityRequests, resolveCommunityRequest, getAllUsers, getUserProfile } from '../../src/services/api';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getCommunity, getCommunityMessages, sendCommunityMessage } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { COLORS, FONTS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
+import * as ImagePicker from 'expo-image-picker';
 
-interface MantraSession {
-  id: string;
-  name: string;
-  mantra: string;
-  participants: number;
-  duration: string;
-  isLive: boolean;
-}
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const MANTRA_SESSIONS: MantraSession[] = [
-  { id: '1', name: 'Radha Krishna 108x', mantra: 'Om Kleem Krishnaya Namah', participants: 14, duration: '45 min', isLive: true },
-  { id: '2', name: 'Gayatri Mantra', mantra: 'Om Bhur Bhuva Swaha', participants: 9, duration: '30 min', isLive: true },
-  { id: '3', name: 'Mahamrityunjaya Jaap', mantra: 'Om Tryambakam Yajamahe', participants: 5, duration: '20 min', isLive: true },
-  { id: '4', name: 'Om Namah Shivaya', mantra: 'Om Namah Shivaya', participants: 12, duration: '15 min', isLive: false },
-  { id: '5', name: 'Hanuman Chalisa', mantra: 'Shri Guru Charan Saroj Raj', participants: 8, duration: '25 min', isLive: false },
+const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
+
+const MOCK_FESTIVALS = [
+  { id: '1', name: 'Diwali', icon: 'flame-outline', events: 12, color: '#FFF5F0', iconColor: '#FF6B00' },
+  { id: '2', name: 'Navratri', icon: 'sunny-outline', events: 18, color: '#FFF9EB', iconColor: '#FFB800' },
+  { id: '3', name: 'Janmashtami', icon: 'color-palette-outline', events: 10, color: '#F0F9FF', iconColor: '#00A3FF' },
+  { id: '4', name: 'Ganesh Chaturthi', icon: 'flower-outline', events: 8, color: '#FFF0F5', iconColor: '#FF007A' },
+  { id: '5', name: 'Makar Sankranti', icon: 'paper-plane-outline', events: 6, color: '#F0FFF4', iconColor: '#00C853' },
 ];
 
-const TABS = ['Blood', 'Medical', 'Petition', 'Search'];
+const MOCK_FESTIVAL_EVENTS = [
+  {
+    id: 'fe1',
+    title: 'Diwali Celebration 2024',
+    description: 'Join us for a grand Diwali celebration with prayers, lights & community dinner.',
+    location: 'Ramakrishna Math, Andheri West',
+    time: '31 Oct 2024, 6:00 PM',
+    image: require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
+    organizer: { name: 'Rahul Joshi', photo: null, isVerified: true },
+    timeAgo: '2h ago'
+  },
+  {
+    id: 'fe2',
+    title: 'Ganesh Chaturthi Aarti',
+    description: 'Community aarti and prasad distribution for all devotees.',
+    location: 'Lokhandwala, Andheri West',
+    time: '7 Sep 2024, 7:00 PM',
+    image: require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
+    organizer: { name: 'Neha Sharma', photo: null, isVerified: true },
+    timeAgo: '5h ago'
+  },
+  {
+    id: 'fe3',
+    title: 'Navratri Garba Night',
+    description: 'Nine nights of celebration, dance and divine energy.',
+    location: 'NSCI Dome, Worli',
+    time: '3 Oct 2024, 8:00 PM',
+    image: require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
+    organizer: { name: 'Amit Patel', photo: null, isVerified: true },
+    timeAgo: '1d ago'
+  }
+];
 
-interface Message {
+interface DiscussionPost {
   id: string;
+  user: {
+    name: string;
+    photo?: any;
+    isVerified: boolean;
+    verificationLabel: string;
+  };
   content: string;
-  sender_id: string;
-  sender_name: string;
-  sender_photo?: string;
-  created_at: string;
-  message_type?: string;
+  timestamp: string;
+  shares: number;
+  reposts: number;
+  liked?: boolean;
+  isRepost?: boolean;
+  repostedBy?: string;
+  image?: string;
 }
 
-interface CommunityRequest {
-  id: string;
-  user_id: string;
-  user_name?: string;
-  request_type: string;
-  title: string;
-  description: string;
-  contact_number: string;
-  urgency_level: string;
-  status: string;
-  created_at: string;
-  blood_group?: string;
-  hospital_name?: string;
-  location?: string;
-  amount?: number;
-  support_needed?: string;
-}
-
-interface Community {
-  id: string;
-  name: string;
-  member_count: number;
-  code: string;
-  members?: any[];
-}
+const MOCK_DISCUSSION: DiscussionPost[] = [
+  {
+    id: 'd1',
+    user: {
+      name: 'Sadhvi Ritambhara Ji',
+      isVerified: true,
+      verificationLabel: 'Maharashtra Verified',
+    },
+    content: "This Sunday, join the statewide Hanuman Chalisa Path across Maharashtra. Let's come together for Dharma, Devotion & Desh.",
+    timestamp: '2h ago',
+    likes: 128,
+    comments: 24,
+    reposts: 16,
+    shares: 0,
+    liked: false,
+  },
+  {
+    id: 'd2',
+    user: {
+      name: 'Swami Avimukteshwaranand',
+      isVerified: true,
+      verificationLabel: 'Bharat Verified',
+    },
+    content: "Dharma is not just prayer, it's action. Let's seva together for a stronger Bharat.",
+    timestamp: '4h ago',
+    likes: 96,
+    comments: 18,
+    reposts: 12,
+    shares: 0,
+    liked: false,
+  },
+  {
+    id: 'd3',
+    user: {
+      name: 'Dr. Chinmay Pandya',
+      isVerified: true,
+      verificationLabel: 'Maharashtra Verified',
+    },
+    content: "Youth are the strength of our Bharat. Join the movement. Build values, build the future.",
+    timestamp: '6h ago',
+    likes: 78,
+    comments: 14,
+    reposts: 9,
+    shares: 0,
+    liked: false,
+  }
+];
 
 export default function CommunityDetailScreen() {
-  const { id, communityId } = useLocalSearchParams<{ id: string; communityId?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
-  const flatListRef = useRef<FlatList>(null);
-  const resolvedCommunityId = communityId || id;
   const insets = useSafeAreaInsets();
   
-  const [community, setCommunity] = useState<Community | null>(null);
-  const [showMembersPanel, setShowMembersPanel] = useState(false);
-  const [memberList, setMemberList] = useState<{id: string; name: string}[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-  const [activeTab, setActiveTab] = useState('Chat');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [requests, setRequests] = useState<CommunityRequest[]>([]);
-  const [cachedRequests, setCachedRequests] = useState<Record<string, CommunityRequest[]>>({});
+  const [community, setCommunity] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('Feed');
+  const [requests, setRequests] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [discussionPosts, setDiscussionPosts] = useState<DiscussionPost[]>(MOCK_DISCUSSION);
+  const [communityPosts, setCommunityPosts] = useState<any[]>([]);
+  const [allFestivals, setAllFestivals] = useState<any[]>(MOCK_FESTIVALS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [newMessage, setNewMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [blinkOn, setBlinkOn] = useState(true);
-  const [now, setNow] = useState(Date.now());
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [postCategory, setPostCategory] = useState('Feed');
+  const [contactNumber, setContactNumber] = useState('');
+  
+  const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
+  const [commentText, setCommentText] = useState('');
 
-  const isRestrictedGroup = useMemo(() => {
-    const name = community?.name?.toLowerCase() || '';
-    const level = (community as any)?.community_level?.toLowerCase?.() || '';
-    return [
-      name.includes('state'),
-      name.includes('national'),
-      level === 'state',
-      level === 'country',
-      level === 'national',
-    ].some(Boolean);
-  }, [community]);
-
-  const renderRestrictedGroupNotice = () => (
-    <View style={styles.restrictedScreenContainer}>
-      <View style={styles.restrictedIconWrapper}>
-        <Ionicons name="ribbon" size={64} color="#F1C40F" />
-        <View style={styles.restrictedLockBadge}>
-          <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
-        </View>
-      </View>
-      <Text style={styles.restrictedScreenTitle}>Access Restricted</Text>
-      <Text style={styles.restrictedScreenBody}>
-        You are not eligible to use this group.
-      </Text>
-    </View>
-  );
-
-  const renderChatContent = () => {
-    if (isRestrictedGroup) {
-      return renderRestrictedGroupNotice();
-    }
-
-    return (
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.chatMessagesList, { paddingBottom: SPACING.lg + insets.bottom }]}
-        inverted={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="chatbubbles-outline" size={48} color={COLORS.textLight} />
-            <Text style={styles.emptyText}>No messages yet. Start the conversation!</Text>
-          </View>
-        }
-        onContentSizeChange={() => {
-          if (messages.length > 0) {
-            flatListRef.current?.scrollToEnd({ animated: false });
-          }
-        }}
-        ListHeaderComponent={
-          <View style={styles.quickActionsContainer}>
-            {renderSOSBanner()}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.quickActionsPillsRow}
-            >
-              <TouchableOpacity
-                style={styles.quickActionPill}
-                onPress={() => setActiveTab('Blood')}
-              >
-                <Text style={styles.quickActionPillText}>Blood</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickActionPill}
-                onPress={() => setActiveTab('Medical')}
-              >
-                <Text style={styles.quickActionPillText}>Medical</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickActionPill}
-                onPress={() => setActiveTab('General')}
-              >
-                <Text style={styles.quickActionPillText}>General</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickActionPill}
-                onPress={() => setActiveTab('Petition')}
-              >
-                <Text style={styles.quickActionPillText}>Petition</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        }
-      />
-    );
-  };
-
-  // Navigate back to Chat tab (the Messages tab)
-  const goBackToChat = useCallback(() => {
-    router.replace('/messages');
-  }, [router]);
-
-  const handleBackPress = goBackToChat;
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-      setBlinkOn((prev) => !prev);
-    }, 600);
-    return () => clearInterval(interval);
-  }, []);
-
-  const getMessageAgeSeconds = (dateString: string) => {
-    const date = new Date(dateString).getTime();
-    return Math.max(0, Math.floor((Date.now() - date) / 1000));
-  };
-
-  const isSOSMessage = (item: Message) => {
-    return item.message_type === 'sos' || /\bSOS\b/i.test(item.content);
-  };
-
-  const getPhoneNumber = (text: string) => {
-    const match = text.match(/\+?\d{10,12}/);
-    return match?.[0] ?? null;
-  };
-
-  const getLocationUrl = (text: string) => {
-    const urlMatch = text.match(/https?:\/\/\S+/i);
-    if (urlMatch) return urlMatch[0];
-
-    const geoMatch = text.match(/geo:\S+/i);
-    if (geoMatch) return geoMatch[0];
-
-    const locationMatch = text.match(/location\s*[:\-]?\s*([^\n]+)/i);
-    if (locationMatch) {
-      const place = locationMatch[1].trim();
-      if (place) {
-        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
-      }
-    }
-
-    return null;
-  };
-
-  const openLocationLink = async (url: string) => {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(url)}`);
-      }
-    } catch (error) {
-      console.warn('Unable to open location link:', error);
-    }
-  };
-
-  const renderSOSBanner = () => {
-    const latestSOS = [...messages].reverse().find((message) => {
-      return isSOSMessage(message) && getMessageAgeSeconds(message.created_at) <= 10;
+  const dynamicTabs = useMemo(() => {
+    return COMMUNITY_TABS.filter(tab => {
+      if (tab === 'Requests') return requests.length > 0;
+      return true;
     });
-
-    if (!latestSOS) return null;
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.sosBanner,
-          blinkOn ? styles.sosBannerActive : styles.sosBannerInactive,
-        ]}
-        activeOpacity={0.9}
-      >
-        <Text style={styles.sosBannerText} numberOfLines={2}>
-          SOS ALERT: {latestSOS.sender_name} needs help now.
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+  }, [requests]);
 
   useEffect(() => {
     fetchCommunity();
-  }, [resolvedCommunityId]);
-
-  useEffect(() => {
-    if (community) {
-      fetchData();
-    }
-  }, [activeTab, community]);
-
-  const loadCommunityMembers = async (memberIds: (string | { user_id?: string; id?: string; name?: string; sl_id?: string })[]) => {
-    if (!memberIds?.length) {
-      setMemberList([]);
-      return;
-    }
-
-    const ids = memberIds
-      .map((item) => {
-        if (typeof item === 'string') return item;
-        return item?.user_id || item?.id || item?.sl_id || null;
-      })
-      .filter((id): id is string => Boolean(id));
-
-    if (!ids.length) {
-      setMemberList([]);
-      return;
-    }
-
-    try {
-      setLoadingMembers(true);
-      const response = await getAllUsers('', 200);
-      const users = response.data || [];
-      const userMap = new Map<string, any>();
-      users.forEach((userItem: any) => {
-        if (userItem?.id) {
-          userMap.set(userItem.id, userItem);
-        }
-        if (userItem?.sl_id) {
-          userMap.set(userItem.sl_id, userItem);
-        }
-      });
-
-      const missingIds = ids.filter(id => !userMap.has(id));
-      if (missingIds.length > 0) {
-        await Promise.all(missingIds.slice(0, 20).map(async (id) => {
-          try {
-            const profileResponse = await getUserProfile(id);
-            const profile = profileResponse.data;
-            if (profile?.id || profile?.sl_id) {
-              userMap.set(id, profile);
-            }
-          } catch (err) {
-            // ignore missing profiles and keep id fallback
-          }
-        }));
-      }
-
-      const list = ids.map((id) => {
-        const user = userMap.get(id);
-        return {
-          id,
-          name: user?.name || user?.user_name || user?.sl_id || id,
-        };
-      });
-      setMemberList(list);
-    } catch (error) {
-      console.error('Error fetching member names:', error);
-      const list = ids.map((id) => ({ id, name: id }));
-      setMemberList(list);
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
+  }, [id]);
 
   const fetchCommunity = async () => {
-    if (!resolvedCommunityId) {
-      setLoading(false);
-      return;
-    }
     try {
-      const response = await getCommunity(resolvedCommunityId);
-      const communityData = response.data;
-      setCommunity(communityData);
-      await loadCommunityMembers(communityData?.members || []);
-    } catch (error: any) {
-      console.error('Error fetching community:', error);
-      const message =
-        error?.response?.data?.detail ||
-        error?.userFriendlyMessage ||
-        error?.message ||
-        'Unable to load community data. Please check your network or server status.';
-      Alert.alert('Network Error', message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchData = async () => {
-    if (!resolvedCommunityId) return;
-    try {
-      if (activeTab === 'Chat') {
-        // Fetch chat messages
-        const response = await getCommunityMessages(resolvedCommunityId, 'chat');
-        setMessages(response.data || []);
-        setRequests([]);
-      } else if (activeTab === 'General') {
-        // General tab - fetch requests created from outside general feed (help/financial/other)
-        const response = await getCommunityRequests({
-          community_id: resolvedCommunityId,
-          limit: 50
-        });
-
-        const allRequests = response.data || [];
-        const generalRequests = allRequests.filter((req: any) =>
-          ['help', 'financial', 'other'].includes(req.request_type)
-        );
-
-        setRequests(generalRequests);
-        setCachedRequests(prev => ({ ...prev, General: generalRequests }));
-        setMessages([]);
-      } else {
-        // Fetch community requests for this tab type (Blood/Medical/Petition)
-        const requestTypeMap: Record<string, string> = {
-          'Blood': 'blood',
-          'Medical': 'medical',
-          'Petition': 'petition'
-        };
-        const targetType = requestTypeMap[activeTab];
-        const response = await getCommunityRequests({
-          type: targetType,
-          community_id: resolvedCommunityId,
-          limit: 50
-        });
-        // Frontend filter as backup in case API doesn't filter properly
-        const filteredRequests = (response.data || []).filter((req: any) => 
-          req.request_type === targetType
-        );
-        setRequests(filteredRequests);
-        setCachedRequests(prev => ({ ...prev, [activeTab]: filteredRequests }));
-        setMessages([]);
+      const response = await getCommunity(id as string);
+      setCommunity(response.data);
+      
+      const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList } = require('../../src/services/api');
+      
+      const [reqResponse, eventResponse, msgResponse, festResponse] = await Promise.all([
+        getCommunityRequests({ community_id: id as string }),
+        getEvents(),
+        getCommunityMessages(id as string, 'city'), // Assuming 'city' level for local posts
+        getFestivalList()
+      ]);
+      
+      setRequests(reqResponse.data || []);
+      setEvents(eventResponse.data || []);
+      
+      if (festResponse.data && festResponse.data.length > 0) {
+        setAllFestivals(festResponse.data.map((f: any) => ({
+          ...f,
+          icon: 'flower-outline',
+          color: '#F0F9FF',
+          iconColor: '#00A3FF'
+        })));
       }
-    } catch (error: any) {
-      console.error('Error fetching data:', error);
-      const message =
-        error?.response?.data?.detail ||
-        error?.userFriendlyMessage ||
-        error?.message ||
-        'Unable to load community data. Please check your network or server status.';
-      Alert.alert('Network Error', message);
-      setMessages([]);
-      setRequests([]);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const handleTabChange = async (tab: string) => {
-    setActiveTab(tab);
-    setMessages([]);
-    setRequests(cachedRequests[tab] || []);
-    setRefreshing(true);
-    // No request creation inside community group tabs; list only.
-    // This tab switch is read-only in non-chat modes.
-  };
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || sending || !resolvedCommunityId) return;
-    
-    setSending(true);
-    try {
-      await sendCommunityMessage(resolvedCommunityId, 'chat', newMessage.trim());
-      setNewMessage('');
-      fetchData();
+      
+      // Map API messages to Twitter format
+      const formattedMsgs = (msgResponse.data || []).map((msg: any) => ({
+        id: msg.id || Math.random().toString(),
+        user: {
+          name: msg.sender_name || 'Anonymous',
+          photo: msg.sender_photo,
+          isVerified: msg.is_verified || false,
+          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
+        },
+        content: msg.content,
+        image: msg.media_url,
+        timestamp: 'Just now',
+        likes: msg.likes_count || 0,
+        comments: msg.comments_count || 0,
+        shares: 0,
+        reposts: 0,
+        hideBadge: true,
+      }));
+      
+      setCommunityPosts(formattedMsgs);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error fetching community data:', error);
     } finally {
-      setSending(false);
+      setLoading(false);
     }
   };
 
-  const handleShareCommunityInvite = async () => {
-    if (!community?.id) return;
-
-    const groupUnique = (community.code || community.name || community.id)
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || community.id;
-
-    const query = [
-      `communityId=${encodeURIComponent(community.id)}`,
-      `name=${encodeURIComponent(community.name)}`,
-      community.code ? `code=${encodeURIComponent(community.code)}` : '',
-    ].filter(Boolean).join('&');
-
-    const webBaseUrl =
-      process.env.EXPO_PUBLIC_APP_SHARE_URL ||
-      process.env.EXPO_PUBLIC_SHARE_BASE_URL ||
-      'https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app';
-    const webLink = `${webBaseUrl.replace(/\/$/, '')}/community/${groupUnique}${query ? `?${query}` : ''}`;
-    const appLink = ExpoLinking.createURL(`/community/${community.id}`);
-
+  const handleLoadMore = async () => {
+    if (loadingMore || communityPosts.length < 10) return;
+    setLoadingMore(true);
     try {
-      await Share.share({
-        title: 'Join my community on Brahmand',
-        message: `Join "${community.name}" on Brahmand.\n${webLink}\n\nApp link: ${appLink}`,
-        url: webLink,
-      });
-    } catch {
-      Alert.alert('Error', 'Unable to open share options right now. Please try again.');
+      const { getCommunityMessages } = require('../../src/services/api');
+      const msgResponse = await getCommunityMessages(id as string, 'city', 20); // Simple infinite scroll
+      // Append more messages...
+    } catch (error) {
+      console.error('Error loading more posts:', error);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
-  const handleResolveRequest = async (requestId: string) => {
-    console.log('=== handleResolveRequest called ===');
-    console.log('Request ID:', requestId);
-    console.log('API call about to be made...');
-    
-    Alert.alert(
-      'Mark as Fulfilled',
-      'Are you sure you want to mark this request as fulfilled?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            console.log('=== Confirm pressed, calling API ===');
-            try {
-              console.log('Calling resolveCommunityRequest with ID:', requestId);
-              const response = await resolveCommunityRequest(requestId);
-              console.log('=== API Response ===', response);
-              Alert.alert('Success', 'Request marked as fulfilled!');
-              // Refresh the request list
-              console.log('=== Refreshing data ===');
-              fetchData();
-            } catch (error: any) {
-              console.error('=== Error resolving request ===', error);
-              console.error('Error response:', error.response?.data);
-              Alert.alert('Error', error.response?.data?.detail || 'Failed to resolve request');
-            }
-          }
-        }
-      ]
-    );
-  };
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchCommunity().then(() => setRefreshing(false));
+  }, []);
 
-  // Request submission disabled inside community group detail view.
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
-  };
-
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'critical': return COLORS.error;
-      case 'high': return '#E67E22';
-      case 'medium': return COLORS.warning;
-      default: return COLORS.success;
-    }
-  };
-
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isOwnMessage = item.sender_id === user?.id;
-    const sos = isSOSMessage(item);
-    const recentSOS = sos && getMessageAgeSeconds(item.created_at) <= 10;
-    const hasLocationLink = getLocationUrl(item.content);
-    const phoneNumber = getPhoneNumber(item.content);
-
-    return (
-      <View style={[
-        styles.messageContainer,
-        isOwnMessage ? styles.ownMessageContainer : styles.otherMessageContainer
-      ]}>
-        {!isOwnMessage && (
-          <Avatar name={item.sender_name} photo={item.sender_photo} size={32} />
-        )}
-        <View style={[
-          styles.messageBubble,
-          isOwnMessage ? styles.ownMessageBubble : styles.otherMessageBubble,
-          sos && styles.sosMessageBubble,
-          recentSOS && blinkOn && styles.sosMessageBlink,
-        ]}>
-          {!isOwnMessage && (
-            <Text style={styles.senderName}>{item.sender_name}</Text>
-          )}
-          <Text style={[
-            styles.messageText,
-            isOwnMessage && styles.ownMessageText,
-            sos && styles.sosMessageText,
-          ]}>
-            {item.content}
-          </Text>
-          {phoneNumber ? (
-            <Text style={styles.sosContactText}>Call: {phoneNumber}</Text>
-          ) : null}
-          {hasLocationLink ? (
-            <TouchableOpacity
-              style={styles.sosLinkButton}
-              onPress={() => openLocationLink(hasLocationLink)}
-            >
-              <Ionicons name="location" size={14} color="#FFFFFF" />
-              <Text style={styles.sosLinkButtonText}>Open location</Text>
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <ImageBackground 
+        source={require('../../assets/images/community_banner_ultimate.png')} 
+        style={styles.headerBg}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.9)', '#FFFFFF']}
+          style={styles.headerOverlay}
+        >
+          <View style={[styles.topActions, { marginTop: insets.top }]}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+              <Ionicons name="chevron-back" size={28} color="#000" />
             </TouchableOpacity>
-          ) : null}
-          <Text style={[
-            styles.messageTime,
-            isOwnMessage && styles.ownMessageTime
-          ]}>
-            {formatTime(item.created_at)}
-          </Text>
-        </View>
-      </View>
-    );
-  };
+            <View style={styles.rightActions}>
+              <TouchableOpacity style={styles.createPill} onPress={() => setShowCreateModal(true)}>
+                <Ionicons name="add" size={18} color="#FFF" />
+                <Text style={styles.createPillText}>Create</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconBtn} onPress={handleNotifications}>
+                <Ionicons name="notifications-outline" size={24} color="#000" />
+                <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>2</Text></View>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconBtn} onPress={handleShareCommunity}>
+                <Ionicons name="share-outline" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-  const renderRequest = ({ item }: { item: CommunityRequest }) => {
-    const isOwn = item.user_id === user?.id;
-    const isFulfilled = item.status === 'fulfilled';
-    console.log('=== renderRequest ===');
-    console.log('item.user_id:', item.user_id);
-    console.log('user?.id:', user?.id);
-    console.log('isOwn:', isOwn);
-    console.log('item.status:', item.status);
-    
-    return (
-      <View style={[styles.requestCard, isFulfilled && styles.requestCardFulfilled]}>
-        <View style={styles.requestHeader}>
-          <View style={styles.requestTypeContainer}>
-            <View style={[
-              styles.urgencyBadge,
-              { backgroundColor: `${getUrgencyColor(item.urgency_level)}20` }
-            ]}>
-              <View style={[styles.urgencyDot, { backgroundColor: getUrgencyColor(item.urgency_level) }]} />
-              <Text style={[styles.urgencyText, { color: getUrgencyColor(item.urgency_level) }]}>
-                {item.urgency_level.toUpperCase()}
+          <View style={styles.communityInfo}>
+            <View style={styles.communityIconWrapper}>
+              <View style={styles.communityIcon}>
+                <Ionicons name="people" size={28} color="#FFF" />
+              </View>
+            </View>
+            <View style={styles.infoTextWrapper}>
+              <Text style={styles.communityTitle}>{community?.name || 'Mumbai Community'}</Text>
+              <Text style={styles.communityStats}>
+                {community?.member_count?.toLocaleString() || '1.8K'} Members  •  Mumbai, Maharashtra
               </Text>
             </View>
-            {item.request_type === 'blood' && item.blood_group && (
-              <View style={styles.bloodBadge}>
-                <Ionicons name="water" size={14} color="#E74C3C" />
-                <Text style={styles.bloodText}>{item.blood_group}</Text>
-              </View>
-            )}
-            {isFulfilled && (
-              <View style={styles.fulfilledBadge}>
-                <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-                <Text style={styles.fulfilledText}>Fulfilled</Text>
-              </View>
-            )}
           </View>
-          <Text style={styles.requestDate}>{formatDate(item.created_at)}</Text>
+
+          <Text style={styles.tagline}>
+            Uniting Mumbaikars for Seva, Dharma & Community Support.
+          </Text>
+
+          <View style={styles.floatingActions}>
+            <TouchableOpacity style={styles.fabBtn} onPress={() => Alert.alert('Download', 'Community guide downloaded successfully!')}>
+              <Ionicons name="download-outline" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.fabBtn, styles.fabBtnMore]} onPress={() => Alert.alert('Options', 'More options coming soon!')}>
+              <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
+
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={styles.tabsContainer}
+        contentContainerStyle={styles.tabsContent}
+      >
+        {dynamicTabs.map(tab => (
+          <TouchableOpacity 
+            key={tab} 
+            onPress={() => setActiveTab(tab)}
+            style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
+          >
+            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+  const renderDiscussionItem = ({ item }: { item: DiscussionPost }) => (
+    <View style={styles.postContainer}>
+      {item.isRepost && (
+        <View style={styles.repostHeaderLabel}>
+          <Ionicons name="repeat" size={14} color="#536471" />
+          <Text style={styles.repostHeaderText}>{item.repostedBy || 'Someone'} reposted</Text>
+        </View>
+      )}
+      
+      <View style={styles.postMainRow}>
+        <View style={styles.postLeftCol}>
+          <Avatar name={item.user.name} photo={item.user.photo} size={48} />
         </View>
         
-        <Text style={styles.requestTitle}>{item.title}</Text>
-        <Text style={styles.requestDescription} numberOfLines={3}>{item.description}</Text>
-        
-        {item.hospital_name && (
-          <View style={styles.requestDetail}>
-            <Ionicons name="medical" size={14} color={COLORS.textSecondary} />
-            <Text style={styles.requestDetailText}>{item.hospital_name}</Text>
-          </View>
-        )}
-        
-        {item.location && (
-          <View style={styles.requestDetail}>
-            <Ionicons name="location" size={14} color={COLORS.textSecondary} />
-            <Text style={styles.requestDetailText}>{item.location}</Text>
-          </View>
-        )}
-        
-        {item.amount && (
-          <View style={styles.requestDetail}>
-            <Ionicons name="cash" size={14} color={COLORS.textSecondary} />
-            <Text style={styles.requestDetailText}>Rs {item.amount.toLocaleString()}</Text>
-          </View>
-        )}
-        
-        <View style={styles.requestFooter}>
-          <TouchableOpacity style={styles.contactButton}>
-            <Ionicons name="call" size={16} color={COLORS.primary} />
-            <Text style={styles.contactButtonText}>{item.contact_number}</Text>
-          </TouchableOpacity>
-          
-          {item.status === 'active' && (
-            <TouchableOpacity 
-              style={styles.fulfillButton}
-              onPress={() => {
-                console.log('=== Button pressed for request:', item.id);
-                handleResolveRequest(item.id);
-              }}
-            >
-              <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
-              <Text style={styles.fulfillButtonText}>Mark Fulfilled</Text>
+        <View style={styles.postRightCol}>
+          <View style={styles.postHeaderRow}>
+            <View style={styles.postNameContainer}>
+              <Text style={styles.postUserName} numberOfLines={1}>{item.user.name}</Text>
+              {item.user.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3B30" style={{ marginLeft: 2 }} />}
+              <Text style={styles.postHandle} numberOfLines={1}> @{item.user.name.replace(/\s+/g, '').toLowerCase()}</Text>
+              <Text style={styles.postDot}>·</Text>
+              <Text style={styles.postTimestamp}>{item.timestamp}</Text>
+            </View>
+            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
             </TouchableOpacity>
+          </View>
+
+          <Text style={styles.postContentText}>{item.content}</Text>
+          
+          {item.image && (
+            <Image source={{ uri: item.image }} style={styles.postMediaImage} resizeMode="cover" />
           )}
+
+          <View style={styles.postActionRow}>
+            <TouchableOpacity 
+              style={styles.postActionBtn}
+              onPress={() => setShowCommentModal(item)}
+            >
+              <Ionicons name="chatbubble-outline" size={18} color="#536471" />
+              <Text style={styles.postActionCount}>{item.comments > 0 ? item.comments : ''}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.postActionBtn}
+              onPress={() => handleRepost(item.id)}
+            >
+              <Ionicons name="repeat" size={20} color={item.isRepost ? "#00BA7C" : "#536471"} />
+              <Text style={[styles.postActionCount, item.isRepost && { color: "#00BA7C" }]}>{item.reposts > 0 ? item.reposts : ''}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.postActionBtn}
+              onPress={() => handleLike(item.id)}
+            >
+              <Ionicons name={item.liked ? "heart" : "heart-outline"} size={19} color={item.liked ? "#F91880" : "#536471"} />
+              <Text style={[styles.postActionCount, item.liked && { color: "#F91880" }]}>{item.likes > 0 ? item.likes : ''}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.postActionBtn}
+              onPress={() => handleShare(item.id)}
+            >
+              <Ionicons name="share-outline" size={18} color="#536471" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+
+  const renderEventItem = ({ item }: { item: any }) => {
+    // Basic date parsing for mock parity if data is real
+    const eventDate = item.start_time ? new Date(item.start_time) : new Date();
+    const dateNum = eventDate.getDate().toString();
+    const month = eventDate.toLocaleString('default', { month: 'short' }).toUpperCase();
+
+    return (
+      <View style={styles.eventCard}>
+        <View style={styles.eventInfoRow}>
+          <View style={styles.eventDateCol}>
+            <Text style={styles.eventDate}>{dateNum}</Text>
+            <Text style={styles.eventMonth}>{month}</Text>
+          </View>
+          <View style={styles.eventTextCol}>
+            <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
+            <Text style={styles.eventMeta}>{item.location || 'Online'}</Text>
+            <View style={styles.goingRow}>
+              <Ionicons name="people" size={12} color="#888" />
+              <Text style={styles.goingText}>{item.attendee_count || 0} Going</Text>
+            </View>
+          </View>
+          {item.image_url && <Image source={{ uri: item.image_url }} style={styles.eventImage} />}
+        </View>
+        <View style={styles.eventActionRow}>
+          <View style={styles.interestedBadge}>
+            <Ionicons name="heart" size={14} color="#FF3B30" />
+            <Text style={styles.interestedText}>{item.interested_count || 0} Interested</Text>
+          </View>
+          <TouchableOpacity>
+            <Ionicons name="bookmark-outline" size={20} color="#888" />
+          </TouchableOpacity>
         </View>
       </View>
     );
   };
+
+  const renderFestivalItem = ({ item }: { item: any }) => (
+    <View style={[styles.festivalTypeCard, { backgroundColor: item.color }]}>
+      <View style={styles.festivalIconCircle}>
+        <Ionicons name={item.icon} size={24} color={item.iconColor} />
+      </View>
+      <Text style={styles.festivalTypeName}>{item.name}</Text>
+      <View style={styles.festivalEventCount}>
+        <Text style={styles.festivalEventCountNum}>{item.events}</Text>
+        <Text style={styles.festivalEventCountText}>Events</Text>
+      </View>
+    </View>
+  );
+
+  const renderFestivalEvent = ({ item }: { item: any }) => (
+    <View style={styles.festEventCard}>
+      <View style={styles.festEventMain}>
+        <Image source={item.image} style={styles.festEventImage} />
+        <View style={styles.festEventInfo}>
+          <Text style={styles.festEventTitle}>{item.title}</Text>
+          <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
+          <View style={styles.festEventMeta}>
+            <View style={styles.festMetaRow}>
+              <Ionicons name="location-outline" size={14} color="#FF3B30" />
+              <Text style={styles.festMetaText}>{item.location}</Text>
+            </View>
+            <View style={styles.festMetaRow}>
+              <Ionicons name="time-outline" size={14} color="#FF3B30" />
+              <Text style={styles.festMetaText}>{item.time}</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.festOrganizerCol}>
+          <Avatar name={item.organizer.name} size={40} />
+          <View style={styles.festOrgDetails}>
+            <View style={styles.festOrgNameRow}>
+              <Text style={styles.festOrgName} numberOfLines={1}>{item.organizer.name}</Text>
+              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" />}
+            </View>
+            <Text style={styles.festOrgLabel}>Organizer</Text>
+            <Text style={styles.festTimeAgo}>{item.timeAgo}</Text>
+          </View>
+          <TouchableOpacity style={styles.attendBtn}>
+            <Text style={styles.attendBtnText}>I Will Attend</Text>
+          </TouchableOpacity>
+          <View style={styles.festActionRow}>
+             <TouchableOpacity style={styles.festMiniBtn}>
+               <Ionicons name="bookmark-outline" size={18} color="#536471" />
+             </TouchableOpacity>
+             <TouchableOpacity style={styles.festMiniBtn}>
+               <Ionicons name="share-social-outline" size={18} color="#536471" />
+             </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderRequestItem = ({ item }: { item: any }) => (
+    <View style={styles.eventCard}>
+      <View style={styles.requestInterestedHeader}>
+        <View style={styles.interestedBadge}>
+          <Ionicons name="heart" size={14} color="#FF3B30" />
+          <Text style={styles.interestedText}>{item.interested_count || 0} Interested</Text>
+        </View>
+        <Text style={styles.urgencyLabel}>{item.urgency_level || 'Normal'}</Text>
+      </View>
+      
+      <View style={styles.eventInfoRow}>
+        <View style={styles.requestIconCol}>
+           <View style={[styles.requestIconBg, { backgroundColor: item.request_type === 'blood' ? '#FFEBEB' : '#F0F7FF' }]}>
+             <Ionicons 
+               name={item.request_type === 'blood' ? 'water' : 'medical'} 
+               size={24} 
+               color={item.request_type === 'blood' ? '#FF3B30' : '#007AFF'} 
+             />
+           </View>
+        </View>
+        <View style={styles.eventTextCol}>
+          <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.eventMeta}>{item.location || 'Mumbai'}</Text>
+          <View style={styles.goingRow}>
+            <Ionicons name="person" size={12} color="#888" />
+            <Text style={styles.goingText}>Requested by {item.user_name || 'Anonymous'}</Text>
+          </View>
+        </View>
+      </View>
+      <View style={styles.eventActionRow}>
+        <TouchableOpacity style={styles.helpBtn}>
+          <Text style={styles.helpBtnText}>Offer Help</Text>
+        </TouchableOpacity>
+        <TouchableOpacity>
+          <Ionicons name="share-social-outline" size={20} color="#888" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const handleNotifications = () => {
+    router.push('/notifications');
+  };
+
+  const handleShareCommunity = async () => {
+    try {
+      await Share.share({
+        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!`,
+      });
+    } catch (error) {
+      console.error('Error sharing community:', error);
+    }
+  };
+
+  const handleSearch = () => {
+    Alert.alert('Search', 'Search feature coming soon to community feed!');
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const handleLike = (postId: string) => {
+    setDiscussionPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        const isLiked = post.liked;
+        return {
+          ...post,
+          liked: !isLiked,
+          likes: isLiked ? post.likes - 1 : post.likes + 1
+        };
+      }
+      return post;
+    }));
+  };
+
+  const handleRepost = (postId: string) => {
+    const postToRepost = discussionPosts.find(p => p.id === postId);
+    if (!postToRepost) return;
+
+    const newRepost: DiscussionPost = {
+      ...postToRepost,
+      id: `repost-${Date.now()}`,
+      isRepost: true,
+      repostedBy: user?.name || 'You',
+      timestamp: 'Just now',
+    };
+
+    setDiscussionPosts(prev => [newRepost, ...prev]);
+    
+    // Also update the repost count on the original post
+    setDiscussionPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        return { ...post, reposts: post.reposts + 1 };
+      }
+      return post;
+    }));
+
+    Alert.alert('Success', 'Post reposted successfully!');
+  };
+
+  const handleCreatePost = async () => {
+    if (!newMessage.trim() && !selectedImage) return;
+
+    const newPost = {
+      id: `post-${Date.now()}`,
+      category: postCategory,
+      user: {
+        name: user?.name || 'User',
+        photo: user?.photo,
+        isVerified: user?.personality_verification_status === 'approved',
+        verificationLabel: user?.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
+      },
+      content: newMessage,
+      image: selectedImage || undefined,
+      timestamp: 'Just now',
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      reposts: 0,
+      liked: false,
+      hideBadge: true,
+      contact: contactNumber || undefined,
+      isUniversal: true // Flag to show in general Feed
+    };
+
+    setCommunityPosts(prev => [newPost, ...prev]);
+    
+    // Attempt real API send if text is present
+    if (newMessage.trim()) {
+      try {
+        const { sendCommunityMessage } = require('../../src/services/api');
+        await sendCommunityMessage(id as string, 'city', newMessage);
+      } catch (error) {
+        console.error('Failed to send real message:', error);
+      }
+    }
+
+    setNewMessage('');
+    setSelectedImage(null);
+    setContactNumber('');
+    setShowCreateModal(false);
+  };
+
+  const handleShare = async (postId: string) => {
+    try {
+      await Share.share({
+        message: 'Check out this community post on Brahmand!',
+      });
+      setDiscussionPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          return { ...post, shares: post.shares + 1 };
+        }
+        return post;
+      }));
+    } catch (error) {
+      console.error('Error sharing post:', error);
+    }
+  };
+
+  const handleAddComment = () => {
+    if (!commentText.trim() || !showCommentModal) return;
+    
+    setDiscussionPosts(prev => prev.map(post => {
+      if (post.id === showCommentModal.id) {
+        return { ...post, comments: post.comments + 1 };
+      }
+      return post;
+    }));
+    
+    setCommentText('');
+    Alert.alert('Success', 'Comment added successfully!');
+  };
+
+  const combinedData = useMemo(() => {
+    if (activeTab === 'Requests') return requests;
+    if (activeTab === 'Festivals') {
+      return [
+        { type: 'festivals_header' },
+        { type: 'festivals_list' },
+        { type: 'festival_events_header' },
+        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
+        { type: 'festival_banner' }
+      ];
+    }
+    if (activeTab === 'Feed') {
+      return [
+        ...discussionPosts, 
+        { type: 'header', title: 'Community Requests', icon: 'hand-left-outline' },
+        ...requests.slice(0, 3).map(r => ({ ...r, type: 'request_item' })),
+        { type: 'header', title: 'Community Posts', icon: 'chatbubbles-outline' },
+        ...communityPosts // Show ALL posts in general Feed
+      ];
+    }
+    // Handle other tabs
+    const tabPosts = communityPosts.filter(p => p.category === activeTab);
+    if (tabPosts.length > 0) {
+      return [{ type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
+    }
+    return [];
+  }, [activeTab, requests, discussionPosts, communityPosts]);
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
-  if (!community) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Community not found</Text>
-        </View>
+        <ActivityIndicator size="large" color="#FF3B30" />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      {/* Dynamic Header with Notch support */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, SPACING.md) }]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <Text style={styles.communityName}>{community.name}</Text>
-          <TouchableOpacity style={styles.memberCountRow} onPress={() => setShowMembersPanel(true)} activeOpacity={0.7}>
-            <Ionicons name="people" size={14} color={COLORS.primary} />
-            <Text style={styles.memberCount}>{community.member_count} members</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.headerRight}>
-          <Text style={styles.codeLabel}>Code</Text>
-          <View style={styles.codeRow}>
-            <Text style={styles.codeText}>{community.code}</Text>
-            {!isRestrictedGroup && (
-              <TouchableOpacity style={styles.codeShareButton} onPress={handleShareCommunityInvite}>
-                <Ionicons name="share-social-outline" size={14} color={COLORS.primary} />
-              </TouchableOpacity>
+    <View style={styles.container}>
+      <FlatList
+        data={combinedData}
+        keyExtractor={item => item.id || (item.type + (item.title || ''))}
+        renderItem={({ item }) => {
+          if (item.type === 'festivals_header') {
+            return (
+              <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name="calendar" size={24} color="#A855F7" style={{ marginRight: 10 }} />
+                  <Text style={[styles.sectionTitle, { fontSize: 22 }]}>Festivals</Text>
+                </View>
+                <TouchableOpacity style={styles.filterDropdown}>
+                  <Text style={styles.filterText}>All Festivals</Text>
+                  <Ionicons name="chevron-down" size={16} color="#444" />
+                </TouchableOpacity>
+              </View>
+            );
+          }
+          if (item.type === 'festivals_list') {
+            return (
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={allFestivals}
+                keyExtractor={f => f.id}
+                renderItem={renderFestivalItem}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 25 }}
+              />
+            );
+          }
+          if (item.type === 'festival_events_header') {
+            return (
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { fontSize: 18 }]}>Upcoming Festival Events</Text>
+                <TouchableOpacity style={styles.filterDropdown}>
+                  <Text style={styles.filterText}>Latest First</Text>
+                  <Ionicons name="chevron-down" size={16} color="#444" />
+                </TouchableOpacity>
+              </View>
+            );
+          }
+          if (item.type === 'festival_event') {
+            return renderFestivalEvent({ item });
+          }
+          if (item.type === 'festival_banner') {
+            return (
+              <View style={styles.festBanner}>
+                <View style={styles.festBannerLeft}>
+                  <Ionicons name="party-outline" size={28} color="#FF3B30" />
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={styles.festBannerTitle}>Share the Joy of Festivals!</Text>
+                    <Text style={styles.festBannerSub}>Create a festival post and invite others to be a part of the celebration.</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.createFestBtn} onPress={() => { setPostCategory('Festivals'); setShowCreateModal(true); }}>
+                  <Text style={styles.createFestBtnText}>Create Festival Post</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          }
+          if (item.type === 'header') {
+            return (
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name={item.icon || "chatbubbles-outline"} size={20} color="#FF3B30" style={{ marginRight: 8 }} />
+                  <Text style={styles.sectionTitle}>{item.title}</Text>
+                </View>
+              </View>
+            );
+          }
+          if (item.type === 'request_item') {
+            return renderRequestItem({ item });
+          }
+          return activeTab === 'Requests' ? renderRequestItem({ item }) : renderDiscussionItem({ item });
+        }}
+        onEndReached={activeTab === 'Feed' ? handleLoadMore : undefined}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={() => loadingMore ? <ActivityIndicator size="small" color="#FF3B30" style={{ padding: 20 }} /> : null}
+        ListHeaderComponent={() => (
+          <View>
+            {renderHeader()}
+            
+            {activeTab === 'Feed' && (
+              <>
+                {events.length > 0 && (
+                  <>
+                    <View style={styles.sectionHeader}>
+                      <View style={styles.sectionTitleRow}>
+                        <Ionicons name="calendar-outline" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
+                        <Text style={styles.sectionTitle}>Upcoming Events & Meetups</Text>
+                      </View>
+                      <TouchableOpacity>
+                        <Text style={styles.viewAll}>View All <Ionicons name="chevron-forward" size={12} /></Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <FlatList
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      data={events}
+                      keyExtractor={item => item.id}
+                      renderItem={renderEventItem}
+                      contentContainerStyle={styles.eventsList}
+                    />
+                  </>
+                )}
+
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <Ionicons name="chatbubbles-outline" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
+                    <Text style={styles.sectionTitle}>Community Discussion</Text>
+                  </View>
+                  <View style={styles.verifiedMessagesBadge}>
+                    <MaterialCommunityIcons name="check-decagram" size={14} color="#FF3B30" />
+                    <Text style={styles.verifiedMessagesText}>Featured Verified Messages</Text>
+                    <TouchableOpacity><Text style={styles.viewAllInline}>View All</Text></TouchableOpacity>
+                  </View>
+                </View>
+              </>
             )}
           </View>
-        </View>
-      </View>
-
-      <Modal
-        visible={showMembersPanel}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMembersPanel(false)}
-      >
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowMembersPanel(false)} />
-        <View style={styles.membersModalCard}>
-          <View style={styles.membersModalHeader}>
-            <Text style={styles.membersModalTitle}>Members</Text>
-            <TouchableOpacity onPress={() => setShowMembersPanel(false)}>
-              <Ionicons name="close" size={22} color={COLORS.text} />
-            </TouchableOpacity>
-          </View>
-          {loadingMembers ? (
-            <View style={styles.membersLoadingContainer}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            </View>
-          ) : (
-            <FlatList
-              data={memberList.length ? memberList : (community?.members || []).map((item) => ({ id: typeof item === 'string' ? item : item?.user_id || item?.id || item?.sl_id || 'unknown', name: typeof item === 'string' ? item : item?.name || item?.user_name || item?.sl_id || item?.id || 'Member' })) }
-              keyExtractor={(item, index) => `${item?.id || 'member'}_${index}`}
-              renderItem={({ item }) => (
-                <View style={styles.memberItem}>
-                  <Ionicons name="person-circle-outline" size={18} color={COLORS.textSecondary} />
-                  <Text style={styles.memberName}>{item.name}</Text>
-                </View>
-              )}
-              ListEmptyComponent={
-                <Text style={styles.emptyMembersText}>No members found</Text>
-              }
-            />
-          )}
-        </View>
-      </Modal>
-      {/* Content */}
-      <KeyboardAvoidingView 
-        style={styles.chatContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : insets.bottom + 24}
-      >
-        {activeTab === 'Chat' ? renderChatContent() : (
-          // Request list for General/Blood/Medical/Petition tabs
-          <FlatList
-            data={requests}
-            renderItem={renderRequest}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.requestsList}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
-            }
-            ListEmptyComponent={
-              refreshing ? (
-                <View style={styles.emptyState}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                </View>
-              ) : (
-                <View style={styles.emptyState}>
-                  <Ionicons name="document-text-outline" size={48} color={COLORS.textLight} />
-                  <Text style={styles.emptyText}>No {activeTab.toLowerCase()} requests yet</Text>
-                </View>
-              )
-            }
-          />
         )}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={styles.mainContent}
+      />
 
-        {/* Input Area - Only show for Chat tab */}
-        {activeTab === 'Chat' && !isRestrictedGroup && (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          {selectedImage && (
+            <View style={styles.imagePreviewContainer}>
+              <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+              <TouchableOpacity style={styles.removeImageBtn} onPress={() => setSelectedImage(null)}>
+                <Ionicons name="close-circle" size={24} color="#FF3B30" />
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.inputContainer}>
+            <Avatar name={user?.name || '?'} photo={user?.photo} size={32} />
             <TextInput
-              style={styles.textInput}
-              placeholder="Type a message..."
-              placeholderTextColor={COLORS.textLight}
+              style={styles.input}
+              placeholder="Share your thoughts with your community..."
               value={newMessage}
               onChangeText={setNewMessage}
-              multiline
-              maxLength={1000}
+              placeholderTextColor="#888"
             />
-            <TouchableOpacity 
-              style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
-              onPress={handleSendMessage}
-              disabled={!newMessage.trim() || sending}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Ionicons name="send" size={20} color="#FFFFFF" />
-              )}
+            <TouchableOpacity style={styles.footerIcon} onPress={handlePickImage}>
+              <Ionicons name="image-outline" size={24} color="#888" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sendBtn} onPress={() => setShowCreateModal(true)}>
+              <Ionicons name="add" size={24} color="#FFF" />
             </TouchableOpacity>
           </View>
-        )}
+        </View>
       </KeyboardAvoidingView>
 
+      {/* Full Screen Create Post Modal */}
+      <Modal visible={showCreateModal} animationType="slide" transparent={false}>
+        <SafeAreaView style={styles.createModalRoot}>
+          <View style={styles.createModalHeader}>
+            <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+              <Ionicons name="close" size={28} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.createModalTitle}>Create Post</Text>
+            <TouchableOpacity onPress={handleCreatePost}>
+              <Text style={styles.postBtnText}>Post</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.createModalContent} keyboardShouldPersistTaps="handled">
+            <View style={styles.createPostUserInfo}>
+              <Avatar name={user?.name || '?'} photo={user?.photo} size={50} />
+              <View style={styles.createPostUserMeta}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                   <Text style={styles.createPostUserName}>{user?.name || 'Rahul Joshi'}</Text>
+                   <MaterialCommunityIcons name="check-circle" size={16} color="#FF6B00" />
+                </View>
+                <Text style={styles.createPostUserLoc}>Andheri West, Mumbai</Text>
+              </View>
+            </View>
+
+            <TextInput
+              style={styles.createPostInput}
+              placeholder="Share your thoughts..."
+              multiline
+              value={newMessage}
+              onChangeText={setNewMessage}
+              autoFocus
+            />
+            <Text style={styles.charCount}>{newMessage.length}/600</Text>
+
+            <View style={styles.createDivider} />
+
+            <View style={styles.createSection}>
+              <Text style={styles.createSectionTitle}>Category <Text style={{color: '#FF3B30'}}>(Required)</Text></Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                {COMMUNITY_TABS.map(cat => (
+                  <TouchableOpacity 
+                    key={cat} 
+                    style={[styles.categoryChip, postCategory === cat && styles.categoryChipActive]}
+                    onPress={() => setPostCategory(cat)}
+                  >
+                    <Text style={[styles.categoryChipText, postCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <View style={styles.categoryPicker}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={styles.catIconCircle}>
+                    <Ionicons name="heart-outline" size={20} color="#A855F7" />
+                  </View>
+                  <Text style={styles.catText}>{postCategory}</Text>
+                </View>
+                <Ionicons name="checkmark-circle" size={20} color="#FF3B30" />
+              </View>
+            </View>
+
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
+              <Text style={styles.infoBoxText}>Your post will be visible in the selected category and in the general community discussion.</Text>
+            </View>
+
+            <View style={styles.createSection}>
+              <Text style={styles.createSectionTitle}>Contact Number <Text style={{color: '#888'}}>(Optional)</Text></Text>
+              <View style={styles.phoneInputContainer}>
+                <TouchableOpacity style={styles.phonePrefix}>
+                   <Image source={{ uri: 'https://flagcdn.com/w40/in.png' }} style={styles.flagIcon} />
+                   <Text style={styles.prefixText}>+91</Text>
+                   <Ionicons name="chevron-down" size={14} color="#888" />
+                </TouchableOpacity>
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="Enter phone number (optional)"
+                  value={contactNumber}
+                  onChangeText={setContactNumber}
+                  keyboardType="phone-pad"
+                />
+              </View>
+              <Text style={styles.phoneSub}>Providing your number is optional. Others can contact you if you choose to share it.</Text>
+            </View>
+
+            <View style={styles.mediaActions}>
+              <TouchableOpacity style={styles.mediaActionBtn} onPress={handlePickImage}>
+                <Ionicons name="image-outline" size={24} color="#000" />
+                <Text style={styles.mediaActionLabel}>Add Photo</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.trustBox}>
+               <View style={styles.trustIconBg}>
+                 <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
+               </View>
+               <View style={{ flex: 1, marginLeft: 12 }}>
+                 <Text style={styles.trustTitle}>Stay safe. Be trustworthy.</Text>
+                 <Text style={styles.trustSub}>We encourage respectful and helpful posts that uplift our community.</Text>
+               </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Comment Modal */}
+      <Modal
+        visible={!!showCommentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCommentModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={styles.commentModalHeader}>
+              <Text style={styles.commentModalTitle}>Comments</Text>
+              <TouchableOpacity onPress={() => setShowCommentModal(null)}>
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.commentsList}>
+              {/* Dummy comments for replica */}
+              <View style={styles.commentItem}>
+                <Avatar name="Rahul" size={32} />
+                <View style={styles.commentTextBubble}>
+                  <Text style={styles.commentUserName}>Rahul Sharma</Text>
+                  <Text style={styles.commentText}>Jai Shri Ram! Looking forward to the bhajan sandhya.</Text>
+                </View>
+              </View>
+              <View style={styles.commentItem}>
+                <Avatar name="Neha" size={32} />
+                <View style={styles.commentTextBubble}>
+                  <Text style={styles.commentUserName}>Neha Gupta</Text>
+                  <Text style={styles.commentText}>Great initiative for the food donation drive.</Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.commentInputRow}>
+              <Avatar name={user?.name || '?'} photo={user?.photo} size={32} />
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Add a comment..."
+                value={commentText}
+                onChangeText={setCommentText}
+                onSubmitEditing={handleAddComment}
+              />
+              <TouchableOpacity onPress={handleAddComment} disabled={!commentText.trim()}>
+                <Text style={[styles.postCommentBtn, !commentText.trim() && { opacity: 0.5 }]}>Post</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  restrictedInputContainer: {
-    padding: SPACING.md,
-    backgroundColor: '#F0F0F0',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-    alignItems: 'center',
-  },
-  restrictedInputText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
-  restrictedScreenContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.xl,
-    backgroundColor: COLORS.background,
-  },
-  restrictedIconWrapper: {
-    position: 'relative',
-    marginBottom: SPACING.lg,
-  },
-  restrictedLockBadge: {
-    position: 'absolute',
-    bottom: -5,
-    right: -5,
-    backgroundColor: COLORS.error,
-    borderRadius: 15,
-    padding: 4,
-    borderWidth: 2,
-    borderColor: COLORS.background,
-  },
-  restrictedScreenTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: SPACING.sm,
-  },
-  restrictedScreenBody: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  errorText: {
-    fontSize: 16,
-    color: COLORS.error,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  backButton: {
-    marginRight: SPACING.md,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  communityName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  memberCount: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginLeft: SPACING.xs,
-  },
-  memberCountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.xs,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  membersModalCard: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 320,
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderLeftWidth: 1,
-    borderLeftColor: COLORS.divider,
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 10,
-  },
-  membersModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  membersModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  membersLoadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.md,
-  },
-  memberItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  memberName: {
-    marginLeft: SPACING.sm,
-    color: COLORS.text,
-    fontSize: 14,
-  },
-  emptyMembersText: {
-    color: COLORS.textSecondary,
-    marginTop: SPACING.md,
-    textAlign: 'center',
-  },
-  headerRight: {
-    alignItems: 'flex-end',
-  },
-  codeLabel: {
-    fontSize: 10,
-    color: COLORS.textLight,
-  },
-  codeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  codeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  codeShareButton: {
-    marginLeft: SPACING.xs,
-    padding: 2,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-    paddingVertical: SPACING.sm,
-  },
-  tabsScroll: {
-    flex: 1,
-  },
-  tab: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    marginLeft: SPACING.sm,
-    borderRadius: 20,
-  },
-  tabActive: {
-    backgroundColor: `${COLORS.primary}15`,
-  },
-  tabText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  tabTextActive: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  addButton: {
-    padding: SPACING.sm,
-    marginRight: SPACING.sm,
-  },
-  liveMantraSection: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  liveMantraSectionActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  liveMantraSectionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  liveMantraIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: `${COLORS.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  liveMantraTextContainer: {
-    flex: 1,
-  },
-  liveMantraCard: {
-    backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-  },
-  communitySectionTitleActive: {
-    color: '#FFFFFF',
-  },
-  liveMantraCardTitleActive: {
-    color: 'rgba(255,255,255,0.8)',
-  },
-  liveMantraCardTitle: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginBottom: SPACING.sm,
-  },
-  liveMantraCardButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2C3E50',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  liveMantraCardButtonText: {
-    color: '#FFFFFF',
-    marginLeft: SPACING.xs,
-    fontWeight: '600',
-  },
-  chatContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-  messagesList: {
-    padding: SPACING.md,
-    flexGrow: 1,
-  },
-  chatMessagesList: {
-    paddingBottom: SPACING.md,
-    flexGrow: 1,
-  },
-  quickActionsContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.sm,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  quickActionsPillsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  quickActionPill: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: `${COLORS.primary}15`,
-    borderWidth: 1,
-    borderColor: `${COLORS.primary}40`,
-  },
-  quickActionPillText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  requestsList: {
-    padding: SPACING.md,
-    flexGrow: 1,
-  },
-  generalContainer: {
-    padding: SPACING.md,
-  },
-  generalBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  generalBarText: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  generalOptions: {
-    marginTop: SPACING.sm,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    overflow: 'hidden',
-  },
-  generalOptionItem: {
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-    backgroundColor: COLORS.surface,
-  },
-  generalOptionText: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  messageContainer: {
-    flexDirection: 'row',
-    marginBottom: SPACING.md,
-    alignItems: 'flex-end',
-  },
-  ownMessageContainer: {
-    justifyContent: 'flex-end',
-  },
-  otherMessageContainer: {
-    justifyContent: 'flex-start',
-  },
-  messageBubble: {
-    maxWidth: '75%',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    marginHorizontal: SPACING.xs,
-  },
-  ownMessageBubble: {
-    backgroundColor: COLORS.primary,
-    borderBottomRightRadius: 4,
-  },
-  otherMessageBubble: {
-    backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: 4,
-  },
-  senderName: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-    color: COLORS.primary,
-    marginBottom: 4,
-  },
-  messageText: {
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    color: COLORS.text,
-    lineHeight: 20,
-  },
-  ownMessageText: {
-    color: '#FFFFFF',
-  },
-  messageTime: {
-    fontSize: 10,
-    fontFamily: 'Inter_400Regular',
-    color: COLORS.textLight,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  ownMessageTime: {
-    color: 'rgba(255,255,255,0.7)',
-  },
-  sosMessageBubble: {
-    backgroundColor: '#FFEBEE',
-    borderColor: '#D32F2F',
-    borderWidth: 1,
-  },
-  sosMessageText: {
-    color: '#B71C1C',
-    fontFamily: 'Inter_600SemiBold',
-    fontWeight: '700',
-  },
-  sosMessageBlink: {
-    shadowColor: '#B71C1C',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 8,
-    transform: [{ scale: 1.01 }],
-  },
-  sosContactText: {
-    marginTop: SPACING.xs,
-    fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  sosLinkButton: {
-    marginTop: SPACING.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  sosLinkButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
-    fontWeight: '700',
-    marginLeft: SPACING.xs,
-  },
-  sosBanner: {
-    marginBottom: SPACING.sm,
-    padding: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sosBannerText: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  sosBannerActive: {
-    backgroundColor: '#D32F2F',
-    opacity: 1,
-  },
-  sosBannerInactive: {
-    backgroundColor: '#F44336',
-    opacity: 0.65,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: SPACING.xl * 3,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.md,
-    textAlign: 'center',
-  },
-  createRequestBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-    marginTop: SPACING.lg,
-  },
-  createRequestBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  topTabsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  topTab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.background,
-    marginHorizontal: SPACING.xs,
-  },
-  topTabActive: {
-    backgroundColor: COLORS.primary,
-  },
-  topTabText: {
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  topTabTextActive: {
-    color: '#FFFFFF',
-  },
-  topTabPlus: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 40,
-    height: 36,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    marginLeft: SPACING.xs,
-  },
-  communityLevelContainer: {
-    backgroundColor: '#FEF6EB',
-    padding: SPACING.md,
-  },
-  communitySectionTitle: {
-    marginTop: SPACING.md,
-    color: '#8E44AD',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    fontSize: 12,
-    marginBottom: SPACING.sm,
-  },
-  communityCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.sm,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  communityCardTextWrap: {
-    flex: 1,
-    marginLeft: SPACING.sm,
-  },
-  communityCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  communityCardSub: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  liveMantraBottomBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F0F9FF',
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    padding: SPACING.sm,
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-  },
-  liveMantraBottomTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  liveMantraBottomSubtitle: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  liveMantraBottomButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-  },
-  liveMantraBottomButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 12,
-    marginLeft: SPACING.xs,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 20,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    maxHeight: 100,
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: SPACING.sm,
-  },
-  sendButtonDisabled: {
-    backgroundColor: COLORS.textLight,
-  },
-  // Request card styles
-  requestCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  requestCardFulfilled: {
-    borderWidth: 2,
-    borderColor: COLORS.success,
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  requestTypeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  urgencyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  urgencyDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
-  },
-  urgencyText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  bloodBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FDEDEC',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  bloodText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#E74C3C',
-    marginLeft: 4,
-  },
-  requestDate: {
-    fontSize: 11,
-    color: COLORS.textLight,
-  },
-  requestTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  requestDescription: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-    marginBottom: SPACING.sm,
-  },
-  requestDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  requestDetailText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginLeft: SPACING.xs,
-  },
-  requestFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: SPACING.sm,
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-  },
-  contactButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.primary}10`,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-  },
-  contactButtonText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  activeStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  activeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.success,
-    marginRight: 4,
-  },
-  activeText: {
-    fontSize: 12,
-    color: COLORS.success,
-    fontWeight: '500',
-  },
-  mainTabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-    borderBottomLeftRadius: BORDER_RADIUS.lg,
-    borderBottomRightRadius: BORDER_RADIUS.lg,
-  },
-  mainTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    marginHorizontal: SPACING.xs,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  mainTabActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  mainTabText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.9)',
-    marginLeft: SPACING.xs,
-  },
-  mainTabTextActive: {
-    color: COLORS.primary,
-  },
-  liveIndicator: {
-    backgroundColor: COLORS.error,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: SPACING.xs,
-  },
-  liveIndicatorText: {
-    color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: '700',
-  },
-  liveMantraHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  liveDotAnimated: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.error,
-    marginRight: SPACING.sm,
-  },
-  liveDotPlaying: {
-    backgroundColor: '#FFFFFF',
-  },
-  liveMantraHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  liveMantraHeaderTitleActive: {
-    color: '#FFFFFF',
-  },
-  liveMantraHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  liveMantraHeaderSubtitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginRight: SPACING.xs,
-  },
-  liveMantraHeaderSubtitleActive: {
-    color: 'rgba(255,255,255,0.8)',
-  },
-  liveMantraHeaderActive: {
-    backgroundColor: COLORS.primary,
-  },
-  quickActionContainer: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-  },
-  quickActionButton: {
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.primary,
-  },
-  quickActionText: {
-    color: '#FFF',
-    fontWeight: '700',
-  },
-  liveMantraContainer: {
-    flex: 1,
-    backgroundColor: '#EAF5FF',
-    padding: SPACING.md,
-    borderTopLeftRadius: BORDER_RADIUS.lg,
-    borderTopRightRadius: BORDER_RADIUS.lg,
-  },
-  homeArea: {
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  homeAreaTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  homeAreaSubtitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  homeOptionbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  homeOptionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.sm,
-    marginHorizontal: SPACING.xs,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.background,
-  },
-  homeOptionBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  homeOptionText: {
-    marginLeft: SPACING.xs,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  homeOptionTextActive: {
-    color: '#FFFFFF',
-  },
-  liveMantraHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.error,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: SPACING.sm,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-    marginRight: 4,
-  },
-  liveBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.md,
-    textAlign: 'center',
-  },
-  activeSessionsContainer: {
-    width: '100%',
-    marginTop: SPACING.md,
-  },
-  activeSessionsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
-  sessionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  sessionInfo: {
-    flex: 1,
-  },
-  sessionName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  sessionCount: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  joinSessionBtn: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  joinSessionText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  searchContainer: {
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    margin: SPACING.md,
-  },
-  searchInput: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.sm,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    color: COLORS.text,
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-  },
-  mantraButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: BORDER_RADIUS.md,
-    width: '100%',
-  },
-  mantraButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-    marginLeft: SPACING.sm,
-  },
-  hintText: {
-    marginTop: SPACING.sm,
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  fulfillButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.success}15`,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-  },
-  fulfillButtonText: {
-    color: COLORS.success,
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-    fontSize: 12,
-  },
-  fulfilledBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.success}20`,
-    paddingHorizontal: SPACING.xs,
-    paddingVertical: 2,
-    borderRadius: BORDER_RADIUS.sm,
-  },
-  fulfilledText: {
-    fontSize: 10,
-    color: COLORS.success,
-    fontWeight: '600',
-    marginLeft: 2,
-  },
+  container: { flex: 1, backgroundColor: '#FFF' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  headerContainer: { backgroundColor: '#FFF' },
+  headerBg: { width: '100%', height: 260 },
+  headerOverlay: { flex: 1, paddingHorizontal: 20 },
+  topActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rightActions: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  iconBtn: { padding: 8 },
+  notifBadge: { position: 'absolute', top: 5, right: 5, backgroundColor: '#FF3B30', borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FFF' },
+  notifBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+  
+  communityInfo: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
+  communityIconWrapper: { padding: 4, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 18 },
+  communityIcon: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center' },
+  infoTextWrapper: { marginLeft: 15 },
+  communityTitle: { fontSize: 24, fontFamily: 'Inter_900Black', color: '#111', fontWeight: '900' },
+  communityStats: { fontSize: 13, color: '#444', marginTop: 4, fontWeight: '600' },
+  
+  tagline: { fontSize: 15, color: '#333', marginTop: 15, fontWeight: '600', lineHeight: 22 },
+  
+  floatingActions: { position: 'absolute', right: 20, bottom: 40, gap: 12 },
+  fabBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  fabBtnMore: { backgroundColor: 'rgba(61,40,29,0.9)' },
+  
+  tabsContainer: { borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  tabsContent: { paddingHorizontal: 20, paddingVertical: 15, gap: 25 },
+  tabItem: { paddingBottom: 5 },
+  tabItemActive: { borderBottomWidth: 3, borderBottomColor: '#FF3B30' },
+  tabText: { fontSize: 15, color: '#888', fontWeight: '600' },
+  tabTextActive: { color: '#FF3B30', fontWeight: '700' },
+
+  mainContent: { paddingBottom: 100 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 25, marginBottom: 15 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  sectionTitle: { fontSize: 17, fontFamily: 'Inter_700Bold', color: '#111', fontWeight: '700' },
+  viewAll: { fontSize: 13, color: '#FF3B30', fontWeight: '700' },
+  
+  eventsList: { paddingLeft: 20, paddingRight: 10 },
+  eventCard: { width: SCREEN_WIDTH * 0.8, backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginRight: 15, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F0F0F0' },
+  eventInfoRow: { flexDirection: 'row', alignItems: 'center' },
+  eventDateCol: { alignItems: 'center', marginRight: 15 },
+  eventDate: { fontSize: 24, fontWeight: '900', color: '#FF3B30' },
+  eventMonth: { fontSize: 12, fontWeight: '700', color: '#444' },
+  eventTextCol: { flex: 1 },
+  eventTitle: { fontSize: 15, fontWeight: '700', color: '#111', lineHeight: 20 },
+  eventMeta: { fontSize: 12, color: '#888', marginTop: 4 },
+  goingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 5 },
+  goingText: { fontSize: 12, color: '#888' },
+  eventImage: { width: 60, height: 100, borderRadius: 12 },
+  
+  eventActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
+  interestedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  interestedText: { fontSize: 13, color: '#FF3B30', fontWeight: '700' },
+  
+  verifiedMessagesBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  verifiedMessagesText: { fontSize: 12, color: '#444', fontWeight: '600' },
+  viewAllInline: { fontSize: 12, color: '#FF3B30', fontWeight: '700', marginLeft: 8 },
+  
+  discussionCard: { backgroundColor: '#FFF', marginHorizontal: 20, borderRadius: 24, padding: 16, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, borderWidth: 1, borderColor: '#F5F5F5' },
+  postHeader: { flexDirection: 'row', alignItems: 'center' },
+  postUserMeta: { flex: 1, marginLeft: 12 },
+  postNameRow: { flexDirection: 'row', alignItems: 'center' },
+  postUserName: { fontSize: 16, fontWeight: '700', color: '#111' },
+  postSubRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  postTimestamp: { fontSize: 12, color: '#888' },
+  postLabel: { fontSize: 12, color: '#444', fontWeight: '600' },
+  
+  postBody: { marginTop: 15, paddingHorizontal: 8 },
+  quoteIcon: { marginBottom: -10, opacity: 0.8 },
+  postContent: { fontSize: 15, color: '#333', lineHeight: 24, fontWeight: '500' },
+  
+  postActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
+  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  postActionText: { fontSize: 13, color: '#666', fontWeight: '600' },
+  
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', borderRadius: 28, paddingHorizontal: 12, paddingVertical: 8 },
+  input: { flex: 1, marginHorizontal: 12, fontSize: 14, color: '#111' },
+  footerIcon: { padding: 6 },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', marginLeft: 4 },
+  
+  requestInterestedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  urgencyLabel: { fontSize: 11, fontWeight: '700', color: '#888', backgroundColor: '#F5F5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  requestIconCol: { marginRight: 15 },
+  requestIconBg: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  helpBtn: { backgroundColor: '#FF3B30', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12 },
+  helpBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  commentModalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '70%', padding: 20 },
+  commentModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  commentModalTitle: { fontSize: 18, fontWeight: '800', color: '#111' },
+  commentsList: { flex: 1 },
+  commentItem: { flexDirection: 'row', marginBottom: 20, gap: 12 },
+  commentTextBubble: { flex: 1, backgroundColor: '#F8F9FA', padding: 12, borderRadius: 16 },
+  commentUserName: { fontSize: 14, fontWeight: '700', color: '#111', marginBottom: 4 },
+  commentText: { fontSize: 14, color: '#444', lineHeight: 20 },
+  commentInputRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  commentInput: { flex: 1, backgroundColor: '#F8F9FA', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, fontSize: 14 },
+  postCommentBtn: { color: '#FF3B30', fontWeight: '800', fontSize: 14 },
+
+  postContainer: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EFF3F4', padding: 12 },
+  repostHeaderLabel: { flexDirection: 'row', alignItems: 'center', marginLeft: 40, marginBottom: 4, gap: 4 },
+  repostHeaderText: { fontSize: 13, color: '#536471', fontWeight: '700' },
+  postMainRow: { flexDirection: 'row' },
+  postLeftCol: { marginRight: 12 },
+  postRightCol: { flex: 1 },
+  postHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  postNameContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  postUserName: { fontSize: 15, fontWeight: '700', color: '#0F1419', maxWidth: '40%' },
+  postHandle: { fontSize: 15, color: '#536471', marginLeft: 4, flexShrink: 1 },
+  postDot: { fontSize: 15, color: '#536471', marginHorizontal: 4 },
+  postTimestamp: { fontSize: 15, color: '#536471' },
+  postContentText: { fontSize: 15, color: '#0F1419', lineHeight: 22, marginTop: 2 },
+  postMediaImage: { width: '100%', aspectRatio: 16 / 9, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#EFF3F4' },
+  postActionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingRight: 40 },
+  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  postActionCount: { fontSize: 13, color: '#536471' },
+
+  imagePreviewContainer: { marginBottom: 12, position: 'relative', alignSelf: 'flex-start' },
+  imagePreview: { width: 80, height: 80, borderRadius: 12 },
+  removeImageBtn: { position: 'absolute', top: -10, right: -10, backgroundColor: '#FFF', borderRadius: 12 },
+
+  filterDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#EEE', gap: 6 },
+  filterText: { fontSize: 13, color: '#444', fontWeight: '600' },
+
+  festivalTypeCard: { width: 100, padding: 15, borderRadius: 20, marginRight: 12, alignItems: 'center' },
+  festivalIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  festivalTypeName: { fontSize: 12, fontWeight: '700', color: '#111', marginBottom: 8, textAlign: 'center' },
+  festivalEventCount: { alignItems: 'center' },
+  festivalEventCountNum: { fontSize: 18, fontWeight: '900', color: '#111' },
+  festivalEventCountText: { fontSize: 10, fontWeight: '600', color: '#666' },
+
+  festEventCard: { marginHorizontal: 20, backgroundColor: '#FFF', borderRadius: 24, padding: 12, marginBottom: 15, elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F5F5F5' },
+  festEventMain: { flexDirection: 'row' },
+  festEventImage: { width: 100, height: 120, borderRadius: 16 },
+  festEventInfo: { flex: 1, marginLeft: 12, marginRight: 8 },
+  festEventTitle: { fontSize: 16, fontWeight: '800', color: '#111', marginBottom: 4 },
+  festEventDesc: { fontSize: 12, color: '#666', lineHeight: 18, marginBottom: 10 },
+  festEventMeta: { gap: 6 },
+  festMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  festMetaText: { fontSize: 11, color: '#444', fontWeight: '600' },
+  festOrganizerCol: { width: 100, alignItems: 'center', borderLeftWidth: 1, borderLeftColor: '#F0F0F0', paddingLeft: 8 },
+  festOrgDetails: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
+  festOrgNameRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  festOrgName: { fontSize: 11, fontWeight: '700', color: '#111' },
+  festOrgLabel: { fontSize: 10, color: '#888' },
+  festTimeAgo: { fontSize: 9, color: '#AAA', marginTop: 2 },
+  attendBtn: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#FF3B30', paddingHorizontal: 6, paddingVertical: 6, borderRadius: 10, width: '100%' },
+  attendBtnText: { color: '#FF3B30', fontSize: 10, fontWeight: '700', textAlign: 'center' },
+  festActionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  festMiniBtn: { padding: 4 },
+
+  festBanner: { marginHorizontal: 20, backgroundColor: '#FFF5F0', borderRadius: 20, padding: 15, marginTop: 10, marginBottom: 30, borderWidth: 1, borderColor: '#FFEBE0' },
+  festBannerLeft: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  festBannerTitle: { fontSize: 15, fontWeight: '800', color: '#111' },
+  festBannerSub: { fontSize: 12, color: '#666', marginTop: 2 },
+  createFestBtn: { backgroundColor: '#FF6B00', paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  createFestBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+
+  createModalRoot: { flex: 1, backgroundColor: '#FFF' },
+  createModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  createModalTitle: { fontSize: 18, fontWeight: '800', color: '#111' },
+  postBtnText: { color: '#FF3B30', fontSize: 16, fontWeight: '800' },
+  createModalContent: { flex: 1, padding: 20 },
+  createPostUserInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  createPostUserMeta: { marginLeft: 12 },
+  createPostUserName: { fontSize: 16, fontWeight: '800', color: '#111' },
+  createPostUserLoc: { fontSize: 13, color: '#888', marginTop: 2 },
+  createPostInput: { fontSize: 20, color: '#111', minHeight: 120, textAlignVertical: 'top' },
+  charCount: { alignSelf: 'flex-end', color: '#888', fontSize: 12, marginTop: 10 },
+  createDivider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 25 },
+  createSection: { marginBottom: 25 },
+  createSectionTitle: { fontSize: 15, fontWeight: '800', color: '#111', marginBottom: 12 },
+  categoryPicker: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#FFEBE0', borderRadius: 16, padding: 12, backgroundColor: '#FFF' },
+  catIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3E8FF', justifyContent: 'center', alignItems: 'center' },
+  catText: { fontSize: 16, fontWeight: '700', color: '#111' },
+  infoBox: { flexDirection: 'row', backgroundColor: '#F0F7FF', padding: 15, borderRadius: 12, marginBottom: 25, gap: 10 },
+  infoBoxText: { flex: 1, fontSize: 13, color: '#007AFF', lineHeight: 20 },
+  phoneInputContainer: { flexDirection: 'row', height: 56, borderWidth: 1, borderColor: '#EEE', borderRadius: 16 },
+  phonePrefix: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: '#EEE', gap: 6 },
+  flagIcon: { width: 24, height: 16, borderRadius: 2 },
+  prefixText: { fontSize: 15, fontWeight: '600', color: '#111' },
+  phoneInput: { flex: 1, paddingHorizontal: 15, fontSize: 15, color: '#111' },
+  phoneSub: { fontSize: 12, color: '#888', marginTop: 10, lineHeight: 18 },
+  mediaActions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30, borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 20 },
+  mediaActionBtn: { alignItems: 'center', gap: 6 },
+  mediaActionLabel: { fontSize: 11, color: '#444', fontWeight: '600' },
+  trustBox: { flexDirection: 'row', backgroundColor: '#FFF5F0', padding: 20, borderRadius: 20, marginBottom: 50, alignItems: 'center' },
+  trustIconBg: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+  trustTitle: { fontSize: 15, fontWeight: '800', color: '#111' },
+  trustSub: { fontSize: 12, color: '#666', marginTop: 4, lineHeight: 18 },
+
+  categoryChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F8F9FA', marginRight: 10, borderWidth: 1, borderColor: '#EEE' },
+  categoryChipActive: { backgroundColor: '#FFF5F0', borderColor: '#FF3B30' },
+  categoryChipText: { fontSize: 13, color: '#666', fontWeight: '600' },
+  categoryChipTextActive: { color: '#FF3B30', fontWeight: '700' },
+
+  createPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginRight: 8, gap: 4, shadowColor: '#FF6B00', shadowOpacity: 0.3, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  createPillText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
 });

@@ -18,8 +18,10 @@ import {
   Platform,
   PanResponder,
   Image,
-  ImageBackground
+  ImageBackground,
+  SafeAreaView
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -166,6 +168,7 @@ const getFestivalsData = async () => {
 };
 
 export const FloatingUtilityButton = () => {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuthStore();
@@ -648,10 +651,10 @@ export const FloatingUtilityButton = () => {
         </View>
       </Animated.View>
 
-      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={closeUtilityModal}>
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={closeUtilityModal}>
         <View style={styles.modalOverlay}>
           <TouchableOpacity style={styles.overlayBackground} activeOpacity={1} onPress={closeUtilityModal} />
-          <KeyboardAvoidingView style={styles.modalContentWrapper} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={[styles.modalContentWrapper, { paddingBottom: Math.max(insets.bottom, 20) }]}>
             <TouchableOpacity style={styles.closeButton} onPress={closeUtilityModal}>
               <Ionicons name="close-circle" size={42} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
@@ -796,7 +799,7 @@ export const FloatingUtilityButton = () => {
                 </Animated.View>
               </View>
             </View>
-          </KeyboardAvoidingView>
+          </View>
         </View>
       </Modal>
 
@@ -818,10 +821,26 @@ const styles = StyleSheet.create({
   glassBackgroundEmergency: { backgroundColor: '#FF3B30' },
   glassBackgroundActiveSOS: { backgroundColor: '#E53935' },
   redDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#E53935' },
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.85)' },
+  modalOverlay: { 
+    flex: 1, 
+    justifyContent: 'flex-end', 
+    backgroundColor: 'rgba(0,0,0,0.75)' 
+  },
   overlayBackground: { ...StyleSheet.absoluteFillObject },
-  modalContentWrapper: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+  modalContentWrapper: { 
+    width: '100%', 
+    height: SCREEN_HEIGHT * 0.7, 
+    backgroundColor: 'transparent', 
+    overflow: 'hidden',
+    justifyContent: 'flex-start', 
+    alignItems: 'center' 
+  },
+  modalContent: { 
+    width: '100%', 
+    height: '100%', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
   circularMenuContainer: {
     width: 700,
     height: 700,
@@ -1033,7 +1052,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 50,
+    top: 20,
     right: 25,
     zIndex: 100
   },

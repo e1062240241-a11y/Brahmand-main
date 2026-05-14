@@ -72,9 +72,9 @@ try {
 }
 
 const quickAccess = [
-  { label: 'My Krishna', subtitle: 'AI Dharma\nGuidance', color: '#FFF8F0' },
-  { label: 'SOS', subtitle: 'Sanatan People\nAround You', color: '#FFF8F0', urgent: true },
-  { label: 'Panchang', subtitle: 'Vedic View\nVedic View', color: '#FFF8F0', calendarIcon: true },
+  { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
+  { label: 'SOS', subtitle: 'Sanatan People Around You', color: '#FFF', urgent: true },
+  { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -763,13 +763,15 @@ export default function HomeScreen() {
           onPostMenuPress={handlePostMenuPress}
           postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
           isActive={activePostKey === postKey}
+          theme={index === 0 ? 'light' : 'dark'}
+          isBlackBackground={index > 0}
         />
       </View>
     );
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   return (
-    <LinearGradient colors={['#FA925D', '#FCD7C1', '#FFF7F0', '#FFFFFF']} locations={[0, 0.2, 0.5, 0.8]} style={styles.screen}>
+    <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -790,7 +792,7 @@ export default function HomeScreen() {
                   onPress={() => router.push('/(tabs)/profile')}
                   onLongPress={() => setShowProfileActions(true)}
                 >
-                  <Avatar name={firstName} photo={avatarUri} size={58} />
+                  <Avatar name={firstName} photo={avatarUri} size={55} />
                 </TouchableOpacity>
 
               <View style={styles.greetingBlock}>
@@ -801,7 +803,7 @@ export default function HomeScreen() {
                   onPress={() => setIsEditingBio(true)}
                 >
                   <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
-                  <Ionicons name="pencil" size={14} color="#111111" style={{ marginLeft: 6 }} />
+                  <Ionicons name="pencil" size={12} color="#000" style={{ marginLeft: 6 }} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -812,7 +814,7 @@ export default function HomeScreen() {
                 style={styles.headerIconButton}
                 onPress={() => setSearchActive(!searchActive)}
               >
-                <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={26} color="#111111" />
+                <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={24} color="#000" />
               </TouchableOpacity>
               <TouchableOpacity 
                 activeOpacity={0.7} 
@@ -820,7 +822,7 @@ export default function HomeScreen() {
                 onPress={handleNotificationPress}
               >
                 <View>
-                  <Ionicons name="notifications-outline" size={26} color="#111111" />
+                  <Ionicons name="notifications-outline" size={24} color="#000" />
                   {unreadCount > 0 && <View style={styles.notificationDot} />}
                 </View>
               </TouchableOpacity>
@@ -931,19 +933,30 @@ export default function HomeScreen() {
                   }
                 }}
               >
-                <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
-                  {item.label === 'My Krishna' && (
-                    <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 16}}>ॐ</Text>
-                  )}
-                  {item.label === 'SOS' && (
-                    <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 12}}>SOS</Text>
-                  )}
-                  {item.label === 'Panchang' && (
-                    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="calendar" size={18} color="#FFF" />
+                {item.label === 'SOS' ? (
+                  <View style={styles.sosConcentricWrap}>
+                    <View style={[styles.sosRing, { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,80,60,0.15)' }]}>
+                      <View style={[styles.sosRing, { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,80,60,0.25)' }]}>
+                        <View style={[styles.sosRing, { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,80,60,0.4)' }]}>
+                          <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30' }]}>
+                            <Text style={{ color: '#FFF', fontSize: 6, fontWeight: '900' }}>SOS</Text>
+                          </View>
+                        </View>
+                      </View>
                     </View>
-                  )}
-                </View>
+                  </View>
+                ) : (
+                  <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                    {item.label === 'My Krishna' && (
+                      <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 16}}>ॐ</Text>
+                    )}
+                    {item.label === 'Panchang' && (
+                      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="calendar" size={18} color="#FFF" />
+                      </View>
+                    )}
+                  </View>
+                )}
                 <View style={styles.featureTextContainer}>
                   <Text style={styles.featureTitle}>{item.label}</Text>
                   <Text style={styles.featureSubtitle} numberOfLines={2}>
@@ -956,7 +969,7 @@ export default function HomeScreen() {
         </View>
 
         <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
-          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 30 }}>
+          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
             <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1009,7 +1022,7 @@ export default function HomeScreen() {
             </View>
             <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
               <View style={styles.cardIconRow}>
-                <Ionicons name="water" size={32} color="#E53935" />
+                <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
               </View>
               <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
               <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
@@ -1037,7 +1050,7 @@ export default function HomeScreen() {
             </View>
             <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
               <View style={styles.cardIconRow}>
-                <Ionicons name="storefront-outline" size={32} color="#FF9500" />
+                <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
               </View>
               <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Register Your Business</Text>
               <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Become a verified sanatan vendor</Text>
@@ -1176,7 +1189,8 @@ export default function HomeScreen() {
                       onPostMenuPress={handlePostMenuPress}
                       postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
                       isActive={activePostKey === postKey}
-                      theme="light"
+                      theme={index === 0 ? 'light' : 'dark'}
+                      isBlackBackground={index > 0}
                     />
                   </View>
                 );
@@ -1458,9 +1472,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   profileButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 55,
+    height: 55,
+    borderRadius: 28,
     position: 'relative',
   },
   headerOnlineDot: {
@@ -1474,19 +1488,28 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFF',
   },
+  sosConcentricWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  sosRing: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   greetingBlock: {
     marginLeft: 12,
   },
   greeting: {
-    color: '#111111',
-    fontSize: 24,
-    fontWeight: '800',
+    color: '#000',
+    fontSize: 19,
+    fontWeight: '600',
   },
   subGreeting: {
-    color: '#5A5A5A',
+    color: '#000',
     fontSize: 14,
     fontWeight: '600',
-    opacity: 0.9,
+    opacity: 0.85,
   },
   bioRow: {
     flexDirection: 'row',
@@ -1500,15 +1523,15 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 15,
     padding: 10,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
     flex: 1,
     minHeight: 80,
@@ -1553,20 +1576,20 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#111111',
+    color: '#000',
     textAlign: 'center',
   },
   featureSubtitle: {
     fontSize: 9,
     fontWeight: '600',
-    color: '#5A5A5A',
+    color: '#666',
     marginTop: 2,
     lineHeight: 12,
     textAlign: 'center',
   },
   featuredLiveCard: {
-    height: 280,
-    borderRadius: 30,
+    height: 250,
+    borderRadius: 15,
     overflow: 'hidden',
     marginBottom: 20,
     elevation: 5,
@@ -1581,8 +1604,9 @@ const styles = StyleSheet.create({
   },
   featuredLiveOverlay: {
     ...StyleSheet.absoluteFillObject,
-    padding: 20,
+    padding: 15,
     justifyContent: 'space-between',
+    borderRadius: 15,
   },
   liveBadge: {
     alignSelf: 'flex-end',
@@ -1656,10 +1680,10 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   actionCard: {
-    width: 150,
-    height: 260,
-    borderRadius: 24,
-    padding: 15,
+    width: 140,
+    height: 240,
+    borderRadius: 15,
+    padding: 12,
     justifyContent: 'space-between',
     position: 'relative',
   },

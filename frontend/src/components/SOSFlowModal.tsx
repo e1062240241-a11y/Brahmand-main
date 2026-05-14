@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { COLORS, FONTS } from '../constants/theme';
 import { reverseGeocode } from '../services/api';
@@ -25,6 +26,7 @@ interface SOSFlowModalProps {
 }
 
 export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, onCreateSOS }) => {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(1);
   const [emergencyType, setEmergencyType] = useState('medical');
   const [microLocation, setMicroLocation] = useState('');
@@ -324,7 +326,8 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+          <View style={styles.sheetHandle} />
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={24} color="#666" />
           </TouchableOpacity>
@@ -348,21 +351,30 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
   },
   modalContainer: {
-    width: SCREEN_WIDTH * 0.95,
+    width: '100%',
     backgroundColor: '#FFF',
-    borderRadius: 32,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
     padding: 24,
-    minHeight: 500,
+    minHeight: SCREEN_HEIGHT * 0.6,
+    maxHeight: SCREEN_HEIGHT * 0.85,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: -10 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
-    elevation: 10,
+    elevation: 20,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2.5,
+    alignSelf: 'center',
+    marginBottom: 10,
   },
   closeButton: {
     position: 'absolute',

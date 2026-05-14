@@ -867,46 +867,43 @@ export default function ProfileScreen() {
       <Modal visible={showSettingsModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.settingsSheet}>
-            <LinearGradient
-              colors={['#121212', '#1C1C1E', '#1C1C1E']}
-              style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 20, borderTopRightRadius: 20 }]}
-            />
             <View style={styles.settingsHeader}>
               <View style={styles.settingsHeaderBar} />
-              <Text style={styles.settingsTitle}>Settings and privacy</Text>
-              <TouchableOpacity style={styles.settingsClose} onPress={() => setShowSettingsModal(false)}>
-                <Ionicons name="close" size={24} color="#FFFFFF" />
+              <Text style={styles.settingsTitle}>Settings and Privacy</Text>
+              <TouchableOpacity 
+                style={styles.settingsClose} 
+                onPress={() => setShowSettingsModal(false)}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+              >
+                <Ionicons name="close" size={24} color="#000000" />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               {SETTINGS_SECTIONS.map((section) => (
                 <View key={section.id} style={styles.settingsSection}>
-                  <Text style={styles.sectionLabel}>{section.title}</Text>
-                  <View style={styles.settingsGroupCard}>
-                    {section.items.map((item, index) => (
+                  <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                  {section.items.map((item, index) => (
+                    <View key={item.id}>
                       <TouchableOpacity
-                        key={item.id}
                         style={[
                           styles.settingsRow,
                           item.disabled && styles.settingsRowDisabled,
-                          index === section.items.length - 1 && { borderBottomWidth: 0 }
                         ]}
                         onPress={() => handleMenuPress(item)}
                       >
-                        <View style={[styles.settingsIconCircle, { backgroundColor: item.color || COLORS.primary }]}>
-                          <Ionicons name={item.icon as any} size={20} color="#FFF" />
-                        </View>
+                        <Ionicons name={item.icon as any} size={20} color="#000" style={{ marginRight: 16 }} />
                         <View style={styles.settingsLabelWrap}>
                           <Text style={[styles.settingsLabel, item.action === 'logout' && { color: COLORS.error }]}>{item.label}</Text>
                           {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
                         </View>
                         <View style={styles.settingsRowRight}>
                           {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                          {!item.disabled && <Ionicons name="chevron-forward" size={18} color="rgba(255, 255, 255, 0.3)" />}
+                          {!item.disabled && <Ionicons name="chevron-forward" size={18} color="#000" />}
                         </View>
                       </TouchableOpacity>
-                    ))}
-                  </View>
+                      {index < section.items.length - 1 && <View style={styles.settingsSeparator} />}
+                    </View>
+                  ))}
                 </View>
               ))}
               <View style={styles.bottomSpacer} />
@@ -1270,23 +1267,25 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   displayNameCenter: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   bioTextCenter: {
     fontSize: 14,
-    color: '#E0E0E0',
+    color: '#FFFFFF',
     marginBottom: 4,
+    opacity: 0.9,
   },
   locationContainerCenter: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   locationTextCenter: {
-    fontSize: 13,
-    color: '#BBBBBB',
+    fontSize: 12,
+    color: '#FFFFFF',
     marginLeft: 4,
+    fontWeight: '400',
   },
   statsCardWrapper: {
     paddingHorizontal: 16,
@@ -1310,14 +1309,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statBoxValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '400',
     color: '#FFFFFF',
   },
   statBoxLabel: {
-    fontSize: 12,
-    color: '#888888',
+    fontSize: 10,
+    color: '#FFFFFF',
     marginTop: 2,
+    fontWeight: '400',
   },
   statDivider: {
     width: 1,
@@ -1345,8 +1345,8 @@ const styles = StyleSheet.create({
   },
   addPostText: {
     color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '400',
+    fontSize: 11,
   },
   shareIconButton: {
     width: 44,
@@ -1437,62 +1437,70 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   settingsSheet: {
-    backgroundColor: 'transparent',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
     height: '80%',
     paddingTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 34,
+    elevation: 20,
   },
   settingsHeader: {
     alignItems: 'center',
     paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#DBDBDB',
+    paddingTop: 4,
   },
   settingsHeaderBar: {
     width: 40,
     height: 4,
-    backgroundColor: '#DBDBDB',
-    borderRadius: 2,
-    marginBottom: 12,
+    backgroundColor: '#E4E4E4',
+    borderRadius: 10,
+    marginBottom: 16,
   },
   settingsTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: '700',
+    color: '#000000',
   },
   settingsClose: {
     position: 'absolute',
-    right: 16,
-    top: 0,
+    right: 20,
+    top: 24,
   },
   settingsSection: {
-    paddingTop: 16,
+    paddingTop: 20,
   },
   sectionLabel: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: 'rgba(255, 255, 255, 0.6)',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    letterSpacing: 0.5,
   },
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    minHeight: 56,
+    paddingHorizontal: 20,
   },
   settingsRowDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+  },
+  settingsSeparator: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   settingsGroupCard: {
-    backgroundColor: '#2C2C2E', // Slightly lighter gray for cards on dark background
-    borderRadius: 24,
-    paddingVertical: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 0,
+    paddingVertical: 0,
     overflow: 'hidden',
-    marginHorizontal: 16,
-    marginBottom: 8,
+    marginHorizontal: 0,
+    marginBottom: 0,
   },
   settingsIconCircle: {
     width: 36,
@@ -1507,12 +1515,12 @@ const styles = StyleSheet.create({
   },
   settingsLabel: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
     fontWeight: '500',
   },
   settingsSubLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#999999',
     marginTop: 2,
   },
   settingsRowRight: {
@@ -1522,7 +1530,7 @@ const styles = StyleSheet.create({
   },
   settingsValue: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#999999',
     maxWidth: 100,
     textAlign: 'right',
   },

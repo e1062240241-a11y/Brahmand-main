@@ -12,6 +12,7 @@ import {
   Image,
   Alert,
   Share,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
@@ -21,7 +22,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../../src/components/Input';
 import { useAuthStore } from '../../src/store/authStore';
 import { Button } from '../../src/components/Button';
-import { createCircle, getAllUsers, joinCircle } from '../../src/services/api';
+import { createCircle, getAllUsers, joinCircle, updateCircle } from '../../src/services/api';
+import { getFirebaseAuth } from '../../src/services/firebase/config';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 type PrivacyType = 'private' | 'invite_code';
@@ -168,6 +170,31 @@ const CreateCircleScreen = () => {
     }
   };
 
+  const uploadGroupPhoto = async (uri: string) => {
+    if (!user) return null;
+    const token = await (getFirebaseAuth().currentUser as any)?.getIdToken();
+    if (!token) return null;
+
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const bucket = 'sanatan-lok.firebasestorage.app';
+    const filename = `circles/${Date.now()}_group.jpg`;
+    const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(filename)}`;
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': blob.type || 'image/jpeg',
+      },
+      body: blob,
+    });
+
+    if (!uploadResponse.ok) return null;
+    const data = await uploadResponse.json();
+    return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(filename)}?alt=media&token=${data.downloadTokens || ''}`;
+  };
+
   const handleCreate = async () => {
     if (!name.trim()) {
       setError('Please enter a circle name');
@@ -178,12 +205,23 @@ const CreateCircleScreen = () => {
     setError('');
 
     try {
+      let photoUrl = undefined;
+      if (profileImage) {
+        photoUrl = await uploadGroupPhoto(profileImage);
+      }
+
       const response = await createCircle({
         name: name.trim(),
         description: description.trim() || undefined,
         privacy,
         member_ids: selectedUsers
       });
+
+      if (photoUrl && response.data?.id) {
+        await updateCircle(response.data.id, { photo: photoUrl });
+        response.data.photo = photoUrl;
+      }
+      
       setCreatedCircle(response.data);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create circle');
@@ -286,6 +324,43 @@ const CreateCircleScreen = () => {
                 />
               </View>
 
+              <Text style={styles.sectionTitle}>Privacy Settings *</Text>
+              <TouchableOpacity 
+                style={[styles.privacyOption, privacy === 'invite_code' && styles.privacyOptionSelected]}
+                onPress={() => setPrivacy('invite_code')}
+              >
+                <View style={[styles.privacyIcon, privacy === 'invite_code' && styles.privacyIconSelected]}>
+                  <Ionicons name="key-outline" size={24} color={privacy === 'invite_code' ? '#FFF' : '#666'} />
+                </View>
+                <View style={styles.privacyContent}>
+                  <Text style={[styles.privacyTitle, privacy === 'invite_code' && styles.privacyTitleSelected]}>Group Code</Text>
+                  <Text style={styles.privacySubtitle}>Anyone with the code can join directly.</Text>
+                </View>
+                <Ionicons 
+                  name={privacy === 'invite_code' ? "radio-button-on" : "radio-button-off"} 
+                  size={20} 
+                  color={privacy === 'invite_code' ? '#0088CC' : '#DDD'} 
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.privacyOption, privacy === 'private' && styles.privacyOptionSelected]}
+                onPress={() => setPrivacy('private')}
+              >
+                <View style={[styles.privacyIcon, privacy === 'private' && styles.privacyIconSelected]}>
+                  <Ionicons name="lock-closed-outline" size={24} color={privacy === 'private' ? '#FFF' : '#666'} />
+                </View>
+                <View style={styles.privacyContent}>
+                  <Text style={[styles.privacyTitle, privacy === 'private' && styles.privacyTitleSelected]}>Private</Text>
+                  <Text style={styles.privacySubtitle}>Members can only join if invited by you.</Text>
+                </View>
+                <Ionicons 
+                  name={privacy === 'private' ? "radio-button-on" : "radio-button-off"} 
+                  size={20} 
+                  color={privacy === 'private' ? '#0088CC' : '#DDD'} 
+                />
+              </TouchableOpacity>
+
               <Text style={styles.sectionTitle}>Invite Members (optional)</Text>
               <View style={styles.usersListContainer}>
                 {users.length === 0 ? (
@@ -305,32 +380,36 @@ const CreateCircleScreen = () => {
                 )}
               </View>
 
-              <Text style={styles.sectionTitle}>Group Code Settings</Text>
-              <Text style={styles.subHeaderText}>
-                This group uses a group code (invite code). Anyone entering this code can join directly.
-              </Text>
+              {privacy === 'invite_code' && (
+                <>
+                  <Text style={styles.sectionTitle}>Group Code Settings</Text>
+                  <Text style={styles.subHeaderText}>
+                    This group uses a group code (invite code). Anyone entering this code can join directly.
+                  </Text>
 
-              <View style={styles.joinBox}>
-                <Text style={styles.inputLabel}>Enter existing group code</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. ABC123"
-                  placeholderTextColor={COLORS.textLight}
-                  value={joinCode}
-                  onChangeText={(text) => {
-                    setJoinCode(text);
-                    setJoinError('');
-                  }}
-                  autoCapitalize="characters"
-                />
-                {joinError ? <Text style={styles.errorText}>{joinError}</Text> : null}
-                <Button
-                  title="Join Group"
-                  onPress={handleJoinByCode}
-                  loading={joinLoading}
-                  style={styles.joinButton}
-                />
-              </View>
+                  <View style={styles.joinBox}>
+                    <Text style={styles.inputLabel}>Enter existing group code</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. ABC123"
+                      placeholderTextColor={COLORS.textLight}
+                      value={joinCode}
+                      onChangeText={(text) => {
+                        setJoinCode(text);
+                        setJoinError('');
+                      }}
+                      autoCapitalize="characters"
+                    />
+                    {joinError ? <Text style={styles.errorText}>{joinError}</Text> : null}
+                    <Button
+                      title="Join Group"
+                      onPress={handleJoinByCode}
+                      loading={joinLoading}
+                      style={styles.joinButton}
+                    />
+                  </View>
+                </>
+              )}
 
               <Button
                 title="Create Circle"
