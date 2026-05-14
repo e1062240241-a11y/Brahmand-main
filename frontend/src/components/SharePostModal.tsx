@@ -99,22 +99,24 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
         
         if (download?.uri) {
           if (Platform.OS === 'ios') {
-            await Share.share({
-              message,
-              url: download.uri,
-              title: 'Share on Brahmand',
+            await Sharing.shareAsync(download.uri, {
+              UTI: ext === 'mp4' ? 'public.mpeg-4' : 'public.jpeg',
+              dialogTitle: 'Share to WhatsApp Status',
             });
           } else {
-            // On Android, explicitly copy the caption since we can't reliably pass both video and text to WhatsApp directly without custom native code.
+            // Android: Copy link to clipboard first since system share often strips text from file shares
             await Clipboard.setStringAsync(message);
-            Alert.alert("Link Copied!", "The link has been copied to your clipboard. You can paste it into your WhatsApp Status!");
-            
-            const UTI = ext === 'mp4' ? 'public.mpeg-4' : 'public.jpeg';
-            await Sharing.shareAsync(download.uri, {
-              mimeType: ext === 'mp4' ? 'video/mp4' : 'image/jpeg',
-              dialogTitle: 'Share to WhatsApp',
-              UTI: UTI,
-            });
+            Alert.alert(
+              "Share to WhatsApp", 
+              "Video/Image is ready! The link has been copied to your clipboard. Paste it into your WhatsApp Status caption to share with others.",
+              [{ text: "OK", onPress: async () => {
+                const mimeType = ext === 'mp4' ? 'video/mp4' : 'image/jpeg';
+                await Sharing.shareAsync(download.uri, {
+                  mimeType: mimeType,
+                  dialogTitle: 'Select WhatsApp Status',
+                });
+              }}]
+            );
           }
           onClose();
           return;

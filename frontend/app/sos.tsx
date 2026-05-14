@@ -1,11 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
+
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+
+try {
+  if (Platform.OS !== 'web') {
+    const Maps = require('react-native-maps');
+    MapView = Maps.default || Maps;
+    Marker = Maps.Marker;
+    PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+  }
+} catch (e) {
+  console.warn('MapView could not be loaded:', e);
+}
+
 import { useAuthStore } from '../src/store/authStore';
-import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert } from '../src/services/api';
+import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert, reverseGeocode } from '../src/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -41,6 +57,8 @@ export default function SOSScreen() {
   };
 
   useEffect(() => {
+    let subscription: Location.LocationSubscription | null = null;
+    
     (async () => {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
@@ -51,54 +69,48 @@ export default function SOSScreen() {
 
         // Try getting the high-accuracy location first
         try {
+          setLoadingText('Updating live GPS...');
           let loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.Highest,
           });
           setLocation(loc);
           
           try {
-            const geocoded = await Location.reverseGeocodeAsync({
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude
-            });
-            if (geocoded && geocoded.length > 0) {
-              const place = geocoded[0];
-              const addrTokens = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean);
-              const uniqueTokens = Array.from(new Set(addrTokens));
-              setMicroLocation(uniqueTokens.join(', '));
+            const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+            if (response.data) {
+              setMicroLocation(response.data.display_name || '');
             }
           } catch (e) {
-            console.warn('Reverse geocoding failed', e);
+            console.warn('Backend reverse geocoding failed', e);
           }
           
         } catch (e) {
           console.warn('Error fetching current location, trying last known position...', e);
-          // Fallback to last known position if current position times out or fails (common on emulators)
-          let lastLoc = await Location.getLastKnownPositionAsync();
+          let lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
           if (lastLoc) {
             setLocation(lastLoc);
-            try {
-              const geocoded = await Location.reverseGeocodeAsync({
-                latitude: lastLoc.coords.latitude,
-                longitude: lastLoc.coords.longitude
-              });
-              if (geocoded && geocoded.length > 0) {
-                const place = geocoded[0];
-                const addrTokens = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean);
-                const uniqueTokens = Array.from(new Set(addrTokens));
-                setMicroLocation(uniqueTokens.join(', '));
-              }
-            } catch (e) {
-              console.warn('Reverse geocoding failed', e);
-            }
-          } else {
-            Alert.alert('Location Error', 'Could not detect your location. Please ensure your GPS is turned on.');
           }
         }
+
+        // Start watching for changes to keep it fresh
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Highest,
+            timeInterval: 5000,
+            distanceInterval: 5,
+          },
+          (newLoc) => {
+            setLocation(newLoc);
+          }
+        );
       } catch (err) {
-        console.warn('Location permission request failed', err);
+        console.warn('Location setup failed', err);
       }
     })();
+
+    return () => {
+      if (subscription) subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -154,30 +166,24 @@ export default function SOSScreen() {
           return;
         }
 
-        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
         setLocation(loc);
         
         try {
-          const geocoded = await Location.reverseGeocodeAsync({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude
-          });
-          if (geocoded && geocoded.length > 0) {
-            const place = geocoded[0];
-            const addrTokens = [place.name, place.street, place.subregion, place.city, place.region].filter(Boolean);
-            const uniqueTokens = Array.from(new Set(addrTokens));
-            setMicroLocation(uniqueTokens.join(', '));
+          const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+          if (response.data) {
+            setMicroLocation(response.data.display_name || '');
           }
         } catch (e) {
-          console.warn('Reverse geocoding failed', e);
+          console.warn('Backend reverse geocoding failed', e);
         }
         
       } catch (e) {
-        let lastLoc = await Location.getLastKnownPositionAsync();
+        let lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
         if (lastLoc) {
           setLocation(lastLoc);
         } else {
-          Alert.alert('Location Error', 'Could not detect your location. Please ensure your GPS is turned on.');
+          Alert.alert('Location Error', 'Could not detect your real location. Please ensure your GPS is turned on.');
           setStage('type');
           return;
         }
@@ -235,7 +241,10 @@ export default function SOSScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.content}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.content}
+      >
         {existingSOS ? (
           <View style={styles.activeContainer}>
             <Ionicons name="alert-circle" size={80} color="#FF3B30" />
@@ -321,15 +330,53 @@ export default function SOSScreen() {
         )}
 
         {stage === 'location' && (
-          <>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+            <View style={styles.mapContainer}>
+              {location && MapView && (
+                <MapView
+                  provider={PROVIDER_GOOGLE}
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                  }}
+                  region={{
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                  }}
+                  showsUserLocation
+                  showsMyLocationButton
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: location.coords.latitude,
+                      longitude: location.coords.longitude,
+                    }}
+                    title="You are here"
+                    pinColor="#FF3B30"
+                  />
+                </MapView>
+              )}
+              {Platform.OS === 'web' && (
+                <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }]}>
+                  <Ionicons name="map-outline" size={48} color="#D1D1D1" />
+                  <Text style={{ color: '#8E8E93', marginTop: 8 }}>Map view available on Mobile App</Text>
+                </View>
+              )}
+            </View>
+
             <View style={styles.warningContainer}>
-              <View style={[styles.warningIconBg, { backgroundColor: '#E5F6EB' }]}>
-                <Ionicons name="location" size={40} color="#34C759" />
+              <View style={[styles.warningIconBg, { backgroundColor: '#E5F6EB', width: 60, height: 60, marginTop: 10 }]}>
+                <Ionicons name="location" size={30} color="#34C759" />
               </View>
               <Text style={styles.warningTitle}>Location Detected</Text>
               {location?.coords.accuracy && (
                 <Text style={styles.warningText}>
-                  Accuracy: {location.coords.accuracy.toFixed(1)} meters
+                  GPS Accuracy: {location.coords.accuracy.toFixed(1)}m
                 </Text>
               )}
             </View>
@@ -361,7 +408,7 @@ export default function SOSScreen() {
             <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
               <Text style={styles.secondaryButtonText}>Back</Text>
             </TouchableOpacity>
-          </>
+          </ScrollView>
         )}
 
         {stage === 'countdown' && (
@@ -403,7 +450,7 @@ export default function SOSScreen() {
           </View>
         )}
         </>)}
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -583,6 +630,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1A1A1A',
     marginBottom: 8,
+  },
+  mapContainer: {
+    height: 200,
+    width: '100%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
   },
   textInput: {
     backgroundColor: '#FAFAFA',
