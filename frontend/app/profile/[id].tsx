@@ -554,8 +554,6 @@ const styles = StyleSheet.create({
     width: 86,
     height: 86,
     borderRadius: 43,
-    borderWidth: 1,
-    borderColor: '#DBDBDB',
   },
   followingIndicator: {
     position: 'absolute',
