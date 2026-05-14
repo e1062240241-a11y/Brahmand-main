@@ -141,6 +141,67 @@ export default function HomeScreen() {
     }
   };
 
+  const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
+    const tabToLoad = tabOverride || activeTab;
+    let hasCachedData = false;
+
+    if (!append && offset === 0) {
+      try {
+        const cacheKey = `home_feed_cache_${tabToLoad}`;
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setFeedPosts(parsed);
+            setFeedOffset(parsed.length);
+            hasCachedData = true;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse home feed cache', e);
+      }
+    }
+
+    if (append) {
+      setLoadingMoreFeed(true);
+    } else if (!hasCachedData) {
+      setLoadingFeed(true);
+    }
+
+    try {
+      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
+      const payload = response.data;
+      const incomingItems = Array.isArray(payload)
+        ? payload
+        : (Array.isArray(payload?.items) ? payload.items : []);
+      const nextHasMore = typeof payload?.has_more === 'boolean'
+        ? payload.has_more
+        : incomingItems.length === FEED_PAGE_SIZE;
+
+      if (append) {
+        setFeedPosts((prev) => {
+          const existingIds = new Set(prev.map((item) => item?.id));
+          return [...prev, ...incomingItems.filter((item: any) => !existingIds.has(item?.id))];
+        });
+        setFeedOffset(offset + incomingItems.length);
+      } else {
+        setFeedPosts(incomingItems);
+        setFeedOffset(incomingItems.length);
+        const cacheKey = `home_feed_cache_${tabToLoad}`;
+        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
+      }
+      setHasMoreFeed(nextHasMore);
+    } catch (error: any) {
+      console.warn('Failed to load posts feed on home:', error);
+      if (!append && !hasCachedData) {
+        setFeedPosts([]);
+      }
+    } finally {
+      setLoadingFeed(false);
+      setLoadingMoreFeed(false);
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     const fetchLiveLocation = async () => {
       try {
@@ -333,66 +394,7 @@ export default function HomeScreen() {
     return () => clearTimeout(debounce);
   }, [searchTerm, searchActive]);
 
-  const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
-    const tabToLoad = tabOverride || activeTab;
-    let hasCachedData = false;
 
-    if (!append && offset === 0) {
-      try {
-        const cacheKey = `home_feed_cache_${tabToLoad}`;
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setFeedPosts(parsed);
-            setFeedOffset(parsed.length);
-            hasCachedData = true;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to parse home feed cache', e);
-      }
-    }
-
-    if (append) {
-      setLoadingMoreFeed(true);
-    } else if (!hasCachedData) {
-      setLoadingFeed(true);
-    }
-
-    try {
-      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
-      const payload = response.data;
-      const incomingItems = Array.isArray(payload)
-        ? payload
-        : (Array.isArray(payload?.items) ? payload.items : []);
-      const nextHasMore = typeof payload?.has_more === 'boolean'
-        ? payload.has_more
-        : incomingItems.length === FEED_PAGE_SIZE;
-
-      if (append) {
-        setFeedPosts((prev) => {
-          const existingIds = new Set(prev.map((item) => item?.id));
-          return [...prev, ...incomingItems.filter((item: any) => !existingIds.has(item?.id))];
-        });
-        setFeedOffset(offset + incomingItems.length);
-      } else {
-        setFeedPosts(incomingItems);
-        setFeedOffset(incomingItems.length);
-        const cacheKey = `home_feed_cache_${tabToLoad}`;
-        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
-      }
-      setHasMoreFeed(nextHasMore);
-    } catch (error: any) {
-      console.warn('Failed to load posts feed on home:', error);
-      if (!append && !hasCachedData) {
-        setFeedPosts([]);
-      }
-    } finally {
-      setLoadingFeed(false);
-      setLoadingMoreFeed(false);
-    }
-  }, []);
 
   useEffect(() => {
     loadFeedPosts(0, false, activeTab);
