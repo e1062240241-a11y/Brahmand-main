@@ -112,7 +112,33 @@ export default function HomeScreen() {
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<any[]>([]);
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+
+  useEffect(() => {
+    loadRecentSearches();
+  }, []);
+
+  const loadRecentSearches = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('recent_searches');
+      if (saved) {
+        setRecentSearches(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.warn('Failed to load recent searches:', e);
+    }
+  };
+
+  const saveRecentSearch = async (searchItem: any) => {
+    try {
+      const updated = [searchItem, ...recentSearches.filter(item => item.id !== searchItem.id)].slice(0, 4);
+      setRecentSearches(updated);
+      await AsyncStorage.setItem('recent_searches', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to save recent search:', e);
+    }
+  };
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -121,9 +147,32 @@ export default function HomeScreen() {
         if (status !== 'granted') return;
 
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-        const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
-        if (response.data) {
-          setLiveLocation(response.data.area || response.data.city || 'Bharat');
+        
+        // Use native reverse geocoding for exact details
+        const reverse = await Location.reverseGeocodeAsync({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        });
+
+        if (reverse.length > 0) {
+          const place = reverse[0];
+          // Construct most exact location possible: Name/Street + SubLocality/District + City
+          const parts = [
+            place.name || place.street,
+            place.subLocality || place.district,
+            place.city
+          ].filter(Boolean);
+          
+          // Only take top 2 most specific parts to keep it clean but exact
+          const exactLocation = parts.slice(0, 2).join(', ') || 'Bharat';
+          
+          setLiveLocation(exactLocation);
+        } else {
+          // Fallback to API if native fails
+          const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+          if (response.data) {
+            setLiveLocation(response.data.area || response.data.city || 'Bharat');
+          }
         }
       } catch (e) {
         console.warn('Initial location fetch failed:', e);
@@ -613,9 +662,24 @@ export default function HomeScreen() {
 
       if (updatedPost) {
         setFeedPosts((prev) =>
-          prev.map((item) => (item.id === selectedCommentPostId ? { ...item, ...updatedPost } : item))
+          prev.map((item) => {
+            if (item.id === selectedCommentPostId) {
+              const currentTop = Array.isArray(item.top_comments) ? item.top_comments : [];
+              return { 
+                ...item, 
+                ...updatedPost,
+                // Ensure the new comment is shown in the 'outer' preview
+                top_comments: [serverComment || optimisticComment, ...currentTop].slice(0, 2)
+              };
+            }
+            return item;
+          })
         );
-        setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? { ...prev, ...updatedPost } : prev));
+        setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? { 
+          ...prev, 
+          ...updatedPost,
+          top_comments: [serverComment || optimisticComment, ...(Array.isArray(prev.top_comments) ? prev.top_comments : [])].slice(0, 2)
+        } : prev));
       }
 
       // Replace optimistic comment with official server comment to avoid duplication and lag
@@ -624,11 +688,11 @@ export default function HomeScreen() {
           prev.map(c => c.id === tempId ? { ...serverComment, is_optimistic: false } : c)
         );
       }
-    } catch (error) {
-      console.warn('Failed to add comment:', error);
-      // Rollback on failure
+    } catch (error: any) {
+      // Rollback on error
       setPostComments(prev => prev.filter(c => c.id !== tempId));
-      alert('Could not post comment. Please try again.');
+      const detail = error.response?.data?.detail || error.message;
+      alert(detail || 'Could not post comment. Please try again.');
     } finally {
       setCommentSubmitting(false);
     }
@@ -869,7 +933,7 @@ export default function HomeScreen() {
                 style={styles.searchInput}
                 value={searchTerm}
                 onChangeText={setSearchTerm}
-                placeholder="Search users or #hashtags..."
+                placeholder="Recent Search..."
                 placeholderTextColor="#8E7D90"
                 autoFocus
               />
@@ -909,7 +973,10 @@ export default function HomeScreen() {
                         <TouchableOpacity
                           style={styles.userResultContent}
                           activeOpacity={0.8}
-                          onPress={() => router.push(`/profile/${item.id}`)}
+                          onPress={() => {
+                            saveRecentSearch(item);
+                            router.push(`/profile/${item.id}`);
+                          }}
                         >
                           <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
                           <View style={styles.userResultText}>
@@ -932,6 +999,37 @@ export default function HomeScreen() {
                 ) : (
                   <Text style={styles.searchStatusText}>No users found.</Text>
                 )}
+              </View>
+            ) : recentSearches.length > 0 ? (
+              <View style={styles.recentSearchSection}>
+                <View style={styles.recentSearchHeader}>
+                  <Text style={styles.recentSearchesTitle}>Recent Search</Text>
+                  <TouchableOpacity onPress={async () => {
+                    setRecentSearches([]);
+                    await AsyncStorage.removeItem('recent_searches');
+                  }}>
+                    <Text style={styles.clearAllText}>Clear All</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.recentSearchList}
+                >
+                  {recentSearches.map((item) => (
+                    <TouchableOpacity
+                      key={`recent-${item.id}`}
+                      style={styles.recentSearchItem}
+                      activeOpacity={0.7}
+                      onPress={() => router.push(`/profile/${item.id}`)}
+                    >
+                      <Avatar name={item.name || 'User'} photo={item.photo} size={60} />
+                      <Text style={styles.recentSearchName} numberOfLines={1}>
+                        {item.name?.split(' ')[0] || 'User'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             ) : null}
           </View>
@@ -1376,9 +1474,19 @@ export default function HomeScreen() {
       >
         <KeyboardAvoidingView
           style={styles.commentOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
         >
+          <TouchableOpacity 
+            style={styles.modalBackgroundDismiss} 
+            activeOpacity={1} 
+            onPress={() => {
+              setCommentModalVisible(false);
+              setSelectedCommentPostId(null);
+              setSelectedCommentPost(null);
+              setPostComments([]);
+            }} 
+          />
           <View style={styles.commentSheet}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentSheetHeader}>
@@ -2453,5 +2561,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3E5F5',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  recentSearchesTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#6F5C70',
+    marginBottom: 0,
+  },
+  recentSearchSection: {
+    marginTop: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  recentSearchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  clearAllText: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    color: COLORS.primary,
+  },
+  recentSearchList: {
+    paddingRight: 20,
+    gap: 20,
+  },
+  recentSearchItem: {
+    alignItems: 'center',
+    width: 70,
+  },
+  recentSearchName: {
+    fontSize: 11,
+    fontFamily: FONTS.bold,
+    color: '#333',
+    marginTop: 6,
+    textAlign: 'center',
   },
 });

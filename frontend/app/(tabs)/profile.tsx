@@ -14,7 +14,8 @@ import {
   Platform,
   Alert,
   ScrollView,
-  TextInput
+  TextInput,
+  Animated
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -78,6 +79,13 @@ export default function ProfileScreen() {
   const { user, logout, updateUser } = useAuthStore();
   const { section } = useLocalSearchParams<{ section?: string }>();
   const userId = user?.id;
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const headerTitleOpacity = scrollY.interpolate({
+    inputRange: [100, 200],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
   useEffect(() => {
     if (section === 'personality_verification') {
@@ -815,7 +823,9 @@ export default function ProfileScreen() {
       <View style={[styles.navBarAbsolute, { paddingTop: insets.top || 10 }]}>
         <TouchableOpacity style={styles.navLeft} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#FFF" />
-          <Text style={styles.navTitleWhite}>{profile?.sl_id || user?.sl_id || 'Profile'}</Text>
+          <Animated.Text style={[styles.navTitleWhite, { opacity: headerTitleOpacity }]}>
+            {profile?.sl_id || user?.sl_id || 'Profile'}
+          </Animated.Text>
         </TouchableOpacity>
         <View style={styles.navRight}>
           <TouchableOpacity style={styles.navIcon} onPress={() => setShowSettingsModal(true)}>
@@ -824,11 +834,16 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <FlatList
+      <Animated.FlatList
         data={posts}
         renderItem={renderPost}
         keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}
         numColumns={3}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
         ListHeaderComponent={ListHeader}
         ListFooterComponent={
           postsLoading ? (
@@ -958,6 +973,8 @@ export default function ProfileScreen() {
                       postMenuType="delete"
                       onEdit={handleEditPost}
                       onPostMenuPress={confirmDeletePost}
+                      theme="dark"
+                      isBlackBackground={true}
                     />
                     {editingPostId === item.id ? (
                       <View style={styles.editPostInline}>
@@ -1110,15 +1127,17 @@ export default function ProfileScreen() {
       )}
 
       {/* Comment Modal */}
-      <Modal visible={commentModalVisible} animationType="slide">
-        <SafeAreaView style={styles.commentModalContainer}>
-          <View style={styles.commentHeader}>
-            <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
-              <Ionicons name="close" size={28} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.commentTitle}>Comments</Text>
-            <View style={{ width: 28 }} />
-          </View>
+      <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetOverlay}>
+          <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
+          <View style={styles.sheetContent}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Comments</Text>
+              <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
 
           {commentsLoading ? (
             <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
@@ -1145,7 +1164,6 @@ export default function ProfileScreen() {
             />
           )}
 
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
               <MentionInput
@@ -1165,8 +1183,8 @@ export default function ProfileScreen() {
                 ]}>Post</Text>
               </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <SharePostModal
@@ -1193,6 +1211,47 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  sheetDismiss: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  sheetContent: {
+    height: '75%',
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingTop: 12,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#DDD',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000',
+  },
   navBarAbsolute: {
     position: 'absolute',
     top: 0,
@@ -1203,7 +1262,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 6,
   },
   navLeft: {
     flexDirection: 'row',
@@ -1228,7 +1287,7 @@ const styles = StyleSheet.create({
   },
   coverPhoto: {
     width: '100%',
-    height: 300,
+    height: 240,
   },
   coverGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -1236,10 +1295,10 @@ const styles = StyleSheet.create({
   profileBottomSection: {
     backgroundColor: '#000000',
     alignItems: 'center',
-    paddingBottom: 24,
+    paddingBottom: 16,
   },
   avatarWrapper: {
-    marginTop: -50,
+    marginTop: -60,
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -1289,7 +1348,7 @@ const styles = StyleSheet.create({
   },
   statsCardWrapper: {
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: 6,
   },
   statsCard: {
     flexDirection: 'row',

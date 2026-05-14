@@ -13,8 +13,12 @@ import {
   Platform,
   Alert,
   TextInput,
+  Animated,
+  KeyboardAvoidingView,
+  Keyboard
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
@@ -35,6 +39,15 @@ const UserProfileScreen = () => {
   const profileUserId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const { user } = useAuthStore();
   const currentUserId = user?.id;
+  const insets = useSafeAreaInsets();
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const detailFlatListRef = useRef<FlatList>(null);
+
+  const headerTitleOpacity = scrollY.interpolate({
+    inputRange: [50, 150],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +69,7 @@ const UserProfileScreen = () => {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [totalPosts, setTotalPosts] = useState(0);
   const [activeTab, setActiveTab] = useState('grid');
+  const [userMenuVisible, setUserMenuVisible] = useState(false);
 
   const openPostModal = (post: any) => {
     if (!post?.id) return;
@@ -92,12 +106,30 @@ const UserProfileScreen = () => {
     if (!selectedCommentPost?.id || !commentText.trim() || commentSubmitting) return;
     setCommentSubmitting(true);
     try {
-      await addPostComment(selectedCommentPost.id, commentText.trim());
+      const response = await addPostComment(selectedCommentPost.id, commentText.trim());
+      const serverComment = response.data?.comment || response.data;
+      
       setCommentText('');
+      Keyboard.dismiss();
+      
+      // Update top_comments in local state for outer preview
+      setPosts(prev => prev.map(p => {
+        if (p.id === selectedCommentPost.id) {
+          const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
+          return {
+            ...p,
+            comments_count: (Number(p.comments_count) || 0) + 1,
+            top_comments: [serverComment, ...currentTop].slice(0, 2)
+          };
+        }
+        return p;
+      }));
+
       await loadComments(selectedCommentPost.id);
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to submit comment:', error);
-      alert('Unable to submit comment. Please try again.');
+      const detail = error.response?.data?.detail || error.message;
+      alert(detail || 'Unable to submit comment. Please try again.');
     } finally {
       setCommentSubmitting(false);
     }
@@ -115,6 +147,32 @@ const UserProfileScreen = () => {
       if (showLoading) setLoading(false);
     }
   }, [profileUserId]);
+
+  useEffect(() => {
+    if (profile && profile.id && profile.id !== currentUserId) {
+      saveToRecentSearches(profile);
+    }
+  }, [profile, currentUserId]);
+
+  const saveToRecentSearches = async (userObj: any) => {
+    try {
+      const saved = await AsyncStorage.getItem('recent_searches');
+      let recent = saved ? JSON.parse(saved) : [];
+      // Profile structure might vary between search and profile, normalize
+      const profileToSave = {
+        id: userObj.id,
+        name: userObj.name || userObj.username,
+        photo: userObj.photo || userObj.user_photo,
+        sl_id: userObj.sl_id,
+        phone: userObj.phone
+      };
+      
+      recent = [profileToSave, ...recent.filter((item: any) => item.id !== profileToSave.id)].slice(0, 4);
+      await AsyncStorage.setItem('recent_searches', JSON.stringify(recent));
+    } catch (e) {
+      console.warn('Failed to save visited profile to recent searches:', e);
+    }
+  };
 
   const loadPosts = useCallback(async (reset = false) => {
     if (!profileUserId || (postsLoading && !reset)) return;
@@ -221,6 +279,34 @@ const UserProfileScreen = () => {
     const userName = encodeURIComponent(profile.name || '');
     const userSL = encodeURIComponent(profile.sl_id || '');
     router.push(`/dm/new?userId=${profile.id}&userName=${userName}&userSL=${userSL}`);
+  };
+
+  const handleShareProfile = () => {
+    setUserMenuVisible(false);
+    // Open DM selection with pre-filled profile link
+    router.push({
+      pathname: '/dm/new',
+      params: { 
+        shareText: `Check out ${profile?.name || 'this user'} on Brahmand: @${profile?.sl_id}`
+      }
+    });
+  };
+
+  const handleReportUser = () => {
+    setUserMenuVisible(false);
+    Alert.alert('Report User', 'Thank you for reporting. Our moderation team will review this profile shortly.');
+  };
+
+  const handleBlockUser = () => {
+    setUserMenuVisible(false);
+    Alert.alert(
+      'Block User',
+      `Are you sure you want to block @${profile?.sl_id}? They will no longer be able to see your posts or message you.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Block', style: 'destructive', onPress: () => Alert.alert('Blocked', 'User has been blocked.') }
+      ]
+    );
   };
 
   const renderPost = ({ item }: { item: any }) => {
@@ -371,23 +457,40 @@ const UserProfileScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.navIcon}>
+      <View style={[styles.navBar, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFF', paddingTop: insets.top }]}>
+        <TouchableOpacity 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/home');
+            }
+          }} 
+          style={styles.navIcon}
+        >
           <Ionicons name="chevron-back" size={28} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>{profile?.sl_id || 'Profile'}</Text>
-        <TouchableOpacity style={styles.navIcon}>
+        <Animated.Text style={[styles.navTitle, { opacity: headerTitleOpacity }]}>
+          {profile?.sl_id || 'Profile'}
+        </Animated.Text>
+        <TouchableOpacity style={styles.navIcon} onPress={() => setUserMenuVisible(true)}>
           <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} />
         </TouchableOpacity>
       </View>
 
-      <FlatList
+      <Animated.FlatList
         data={posts}
         renderItem={renderPost}
         keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}
         numColumns={3}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: insets.top + 60 }}
         ListHeaderComponent={ListHeader}
         ListFooterComponent={
           postsLoading ? (
@@ -443,7 +546,14 @@ const UserProfileScreen = () => {
             <Text style={styles.postDetailTitle}>Posts</Text>
           </View>
           <FlatList
-            data={[selectedPost]}
+            ref={detailFlatListRef}
+            data={posts}
+            initialScrollIndex={posts.findIndex(p => p.id === selectedPost?.id) !== -1 ? posts.findIndex(p => p.id === selectedPost?.id) : 0}
+            getItemLayout={(data, index) => ({
+              length: SCREEN_WIDTH + 150, // Approx height of PostFeedCard with header/footer
+              offset: (SCREEN_WIDTH + 150) * index,
+              index,
+            })}
             renderItem={({ item }) => (
               <PostFeedCard
                 post={item}
@@ -453,20 +563,38 @@ const UserProfileScreen = () => {
                 onUserPress={() => setPostModalVisible(false)}
                 postMenuType={profile?.id === currentUserId ? 'delete' : undefined}
                 onPostMenuPress={handleDeletePost}
+                theme="dark"
+                isBlackBackground
               />
             )}
             keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
           />
         </View>
       </Modal>
 
-      <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
-        <View style={styles.commentModalOverlay}>
+      <Modal 
+        visible={commentModalVisible} 
+        transparent 
+        animationType="slide" 
+        onRequestClose={() => setCommentModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.commentModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
+        >
+          <TouchableOpacity 
+            style={styles.modalBackgroundDismiss} 
+            activeOpacity={1} 
+            onPress={() => setCommentModalVisible(false)} 
+          />
           <View style={styles.commentModalSheet}>
+            <View style={styles.bottomSheetHandle} />
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments</Text>
               <TouchableOpacity onPress={() => setCommentModalVisible(false)} style={styles.commentCloseBtn}>
-                <Ionicons name="close" size={20} color={COLORS.text} />
+                <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
             <View style={styles.commentList}>
@@ -475,15 +603,21 @@ const UserProfileScreen = () => {
                   <ActivityIndicator size="large" color={COLORS.primary} />
                 </View>
               ) : postComments.length === 0 ? (
-                <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment.</Text>
+                <View style={styles.emptyCommentsContainer}>
+                  <Ionicons name="chatbubble-outline" size={48} color="#DDD" />
+                  <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
+                </View>
               ) : (
                 <FlatList
                   data={postComments}
                   keyExtractor={(item, index) => item.id ? `comment-${item.id}` : `comment-${index}`}
                   renderItem={({ item }) => (
                     <View style={styles.commentItem}>
-                      <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                        <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                      <View style={styles.commentItemHeader}>
+                        <Avatar photo={item.user_photo} name={item.username || 'User'} size={24} />
+                        <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                      </View>
+                      <MentionText style={styles.commentItemText} text={item?.text || ''} />
                     </View>
                   )}
                   showsVerticalScrollIndicator={false}
@@ -499,10 +633,55 @@ const UserProfileScreen = () => {
                 inputStyle={styles.commentTextInput}
                 multiline
               />
-              <TouchableOpacity onPress={handleSubmitComment} style={styles.commentSubmitBtn} disabled={commentSubmitting}>
-                <Text style={[styles.commentSubmitText, commentSubmitting && { opacity: 0.6 }]}>{commentSubmitting ? 'Posting...' : 'Post'}</Text>
+              <TouchableOpacity 
+                onPress={handleSubmitComment} 
+                style={[styles.commentSubmitBtn, (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }]} 
+                disabled={!commentText.trim() || commentSubmitting}
+              >
+                <Text style={styles.commentSubmitText}>{commentSubmitting ? '...' : 'Post'}</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* User Options Modal */}
+      <Modal
+        visible={userMenuVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setUserMenuVisible(false)}
+      >
+        <View style={styles.userMenuOverlay}>
+          <TouchableOpacity 
+            style={styles.userMenuBackground} 
+            activeOpacity={1} 
+            onPress={() => setUserMenuVisible(false)} 
+          />
+          <View style={styles.userMenuSheet}>
+            <View style={styles.userMenuHandle} />
+            
+            <TouchableOpacity style={styles.userMenuItem} onPress={handleShareProfile}>
+              <Ionicons name="share-social-outline" size={22} color={COLORS.text} />
+              <Text style={styles.userMenuText}>Share this profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.userMenuItem} onPress={handleReportUser}>
+              <Ionicons name="flag-outline" size={22} color={COLORS.error} />
+              <Text style={[styles.userMenuText, { color: COLORS.error }]}>Report User</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.userMenuItem} onPress={handleBlockUser}>
+              <Ionicons name="ban-outline" size={22} color={COLORS.error} />
+              <Text style={[styles.userMenuText, { color: COLORS.error }]}>Block User</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.userMenuItem, { borderBottomWidth: 0, marginTop: 10 }]} 
+              onPress={() => setUserMenuVisible(false)}
+            >
+              <Text style={[styles.userMenuText, { textAlign: 'center', width: '100%', color: '#666' }]}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -544,8 +723,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   avatarContainer: {
     position: 'relative',
@@ -588,7 +767,7 @@ const styles = StyleSheet.create({
   },
   bioSection: {
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   nameRow: {
     flexDirection: 'row',
@@ -773,10 +952,11 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === 'ios' ? 40 : 0,
   },
   postDetailTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 20,
+    fontSize: 18,
+    fontWeight: '900',
+    marginLeft: 15,
     color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   commentModalOverlay: {
     flex: 1,
@@ -797,9 +977,32 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   commentModalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '900',
     color: COLORS.text,
+  },
+  modalBackgroundDismiss: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bottomSheetHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#DDD',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  emptyCommentsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  commentItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 8,
   },
   commentCloseBtn: {
     padding: 8,
@@ -865,7 +1068,44 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
-  }
+  },
+  userMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  userMenuBackground: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  userMenuSheet: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 30,
+  },
+  userMenuHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#DDD',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  userMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#EEE',
+  },
+  userMenuText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginLeft: 15,
+  },
 });
 
 export default UserProfileScreen;

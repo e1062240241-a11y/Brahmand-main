@@ -321,9 +321,14 @@ const DirectMessageScreen = () => {
 
   const handleBackNavigation = useCallback(() => {
     try {
-      router.replace('/messages?tab=Private%20Chat');
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/messages?tab=Private%20Chat');
+      }
     } catch (e) {
       console.warn('[DM] Back navigation failed:', e);
+      router.replace('/messages?tab=Private%20Chat');
     }
   }, [router]);
 
