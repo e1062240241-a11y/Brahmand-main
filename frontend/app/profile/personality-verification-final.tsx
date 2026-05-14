@@ -14,7 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePersonalityStore } from '../../src/store/personalityStore';
-import axios from 'axios';
+import axios from 'axios'; // Import axios for API requests
+import { API_URL } from '../../src/services/api';
 import { COLORS } from '../../src/constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -34,7 +35,6 @@ export default function PersonalityFinalScreen() {
 
       // Final submission to backend
       console.log('[Final] Submitting application for user:', data.fullName);
-      const API_URL = 'http://localhost:8000'; // Fallback if not injected or using standard pattern
       const response = await axios.post(`${API_URL}/api/user/personality-verification`, {
         level: data.level,
         full_name: data.fullName,

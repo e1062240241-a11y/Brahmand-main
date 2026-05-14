@@ -631,8 +631,7 @@ export default function TempleDetailScreen() {
  };
 
   const handleGoBack = () => {
-    // Always return to the temple tab root from inside temple details
-    router.replace('/(tabs)/temple');
+    router.back();
   };
 
  const handleFollowToggle = async () => {

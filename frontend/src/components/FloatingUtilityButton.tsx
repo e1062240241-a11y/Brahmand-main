@@ -501,8 +501,8 @@ export const FloatingUtilityButton = () => {
   };
 
   const startSOSFlow = () => {
-    resetSOSFlow();
-    setSosFlowVisible(true);
+    setModalVisible(false);
+    router.push('/sos');
   };
 
   const fetchCurrentMicroLocation = async () => {
@@ -746,14 +746,14 @@ export const FloatingUtilityButton = () => {
                 {/* Bottom Right: Emergency SOS */}
                 <TouchableOpacity 
                   style={[styles.menuItem, styles.posBottomRight]} 
-                  onPress={() => activeSOS ? handleResolveActiveSOS('resolved') : startSOSFlow()}
-                  onLongPress={() => !activeSOS && startSOSFlow()}
+                  onPress={startSOSFlow}
+                  onLongPress={startSOSFlow}
                 >
                   <View style={[styles.sosButtonLarge, activeSOS && styles.sosButtonActive]}>
                     <Text style={styles.sosButtonText}>SOS</Text>
                   </View>
                   <Text style={styles.itemTitleSOS}>Emergency SOS</Text>
-                  <Text style={styles.itemSub}>Double Tap for Help</Text>
+                  <Text style={styles.itemSub}>Tap for Help</Text>
                 </TouchableOpacity>
 
                 {/* Bottom Left: Horoscope */}
@@ -794,12 +794,6 @@ export const FloatingUtilityButton = () => {
           </View>
         </Animated.View>
       </Animated.View>
-
-      <SOSFlowModal
-        visible={sosFlowVisible}
-        onClose={() => setSosFlowVisible(false)}
-        onCreateSOS={handleCreateSOS}
-      />
 
       <SOSResponderModal
         visible={sosResponderModalVisible}

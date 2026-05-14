@@ -166,11 +166,8 @@ export default function CommunityDetailScreen() {
   const [commentText, setCommentText] = useState('');
 
   const dynamicTabs = useMemo(() => {
-    return COMMUNITY_TABS.filter(tab => {
-      if (tab === 'Requests') return requests.length > 0;
-      return true;
-    });
-  }, [requests]);
+    return COMMUNITY_TABS;
+  }, []);
 
   useEffect(() => {
     fetchCommunity();
@@ -184,12 +181,13 @@ export default function CommunityDetailScreen() {
       const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList } = require('../../src/services/api');
       
       const [reqResponse, eventResponse, msgResponse, festResponse] = await Promise.all([
-        getCommunityRequests({ community_id: id as string }),
+        getCommunityRequests({}),
         getEvents(),
         getCommunityMessages(id as string, 'city'), // Assuming 'city' level for local posts
         getFestivalList()
       ]);
       
+      console.log('[Community] Requests fetched:', reqResponse.data?.length);
       setRequests(reqResponse.data || []);
       setEvents(eventResponse.data || []);
       
@@ -550,13 +548,27 @@ export default function CommunityDetailScreen() {
   };
 
   const handleLike = (postId: string) => {
+    // Check in discussionPosts
     setDiscussionPosts(prev => prev.map(post => {
       if (post.id === postId) {
         const isLiked = post.liked;
         return {
           ...post,
           liked: !isLiked,
-          likes: isLiked ? post.likes - 1 : post.likes + 1
+          likes: isLiked ? Math.max(0, post.likes - 1) : post.likes + 1
+        };
+      }
+      return post;
+    }));
+
+    // Also check in communityPosts
+    setCommunityPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        const isLiked = post.liked;
+        return {
+          ...post,
+          liked: !isLiked,
+          likes: isLiked ? Math.max(0, post.likes - 1) : post.likes + 1
         };
       }
       return post;
@@ -591,9 +603,12 @@ export default function CommunityDetailScreen() {
   const handleCreatePost = async () => {
     if (!newMessage.trim() && !selectedImage) return;
 
+    // Use Seva as default if Feed is removed
+    const finalCategory = postCategory === 'Feed' ? 'Seva' : postCategory;
+
     const newPost = {
       id: `post-${Date.now()}`,
-      category: postCategory,
+      category: finalCategory,
       user: {
         name: user?.name || 'User',
         photo: user?.photo,
@@ -675,9 +690,7 @@ export default function CommunityDetailScreen() {
     if (activeTab === 'Feed') {
       return [
         ...discussionPosts, 
-        { type: 'header', title: 'Community Requests', icon: 'hand-left-outline' },
-        ...requests.slice(0, 3).map(r => ({ ...r, type: 'request_item' })),
-        { type: 'header', title: 'Community Posts', icon: 'chatbubbles-outline' },
+        ...requests.slice(0, 5).map(r => ({ ...r, type: 'request_item' })),
         ...communityPosts // Show ALL posts in general Feed
       ];
     }
@@ -698,7 +711,11 @@ export default function CommunityDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior="padding"
+      keyboardVerticalOffset={90}
+    >
       {/* Sticky Top Bar */}
       <View style={[styles.stickyTopBar, { paddingTop: insets.top }]}>
         <TouchableOpacity 
@@ -854,37 +871,32 @@ export default function CommunityDetailScreen() {
         contentContainerStyle={styles.mainContent}
       />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          {selectedImage && (
-            <View style={styles.imagePreviewContainer}>
-              <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
-              <TouchableOpacity style={styles.removeImageBtn} onPress={() => setSelectedImage(null)}>
-                <Ionicons name="close-circle" size={24} color="#FF3B30" />
-              </TouchableOpacity>
-            </View>
-          )}
-          <View style={styles.inputContainer}>
-            <Avatar name={user?.name || '?'} photo={user?.photo} size={32} />
-            <TextInput
-              style={styles.input}
-              placeholder="Share your thoughts with your community..."
-              value={newMessage}
-              onChangeText={setNewMessage}
-              placeholderTextColor="#888"
-            />
-            <TouchableOpacity style={styles.footerIcon} onPress={handlePickImage}>
-              <Ionicons name="image-outline" size={24} color="#888" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.sendBtn} onPress={() => setShowCreateModal(true)}>
-              <Ionicons name="add" size={24} color="#FFF" />
+      <View style={[styles.footer, { paddingBottom: 16 }]}>
+        {selectedImage && (
+          <View style={styles.imagePreviewContainer}>
+            <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+            <TouchableOpacity style={styles.removeImageBtn} onPress={() => setSelectedImage(null)}>
+              <Ionicons name="close-circle" size={24} color="#FF3B30" />
             </TouchableOpacity>
           </View>
+        )}
+        <View style={styles.inputContainer}>
+          <Avatar name={user?.name || '?'} photo={user?.photo} size={32} />
+          <TextInput
+            style={styles.input}
+            placeholder="Share your thoughts with your community..."
+            value={newMessage}
+            onChangeText={setNewMessage}
+            placeholderTextColor="#888"
+          />
+          <TouchableOpacity style={styles.footerIcon} onPress={handlePickImage}>
+            <Ionicons name="image-outline" size={24} color="#888" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.sendBtn} onPress={handleCreatePost}>
+            <Ionicons name="send" size={20} color="#FFF" style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       {/* Full Screen Create Post Modal */}
       <Modal visible={showCreateModal} animationType="slide" transparent={false}>
@@ -930,7 +942,7 @@ export default function CommunityDetailScreen() {
               <View style={styles.createSection}>
                 <Text style={styles.createSectionTitle}>Category <Text style={{color: '#FF3B30'}}>(Required)</Text></Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                  {COMMUNITY_TABS.map(cat => (
+                  {COMMUNITY_TABS.filter(cat => cat !== 'Feed').map(cat => (
                     <TouchableOpacity 
                       key={cat} 
                       style={[styles.categoryChip, postCategory === cat && styles.categoryChipActive]}
@@ -1049,7 +1061,7 @@ export default function CommunityDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1131,7 +1143,7 @@ const styles = StyleSheet.create({
   postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   postActionText: { fontSize: 13, color: '#666', fontWeight: '600' },
   
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  footer: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', borderRadius: 28, paddingHorizontal: 12, paddingVertical: 8 },
   input: { flex: 1, marginHorizontal: 12, fontSize: 14, color: '#111' },
   footerIcon: { padding: 6 },

@@ -97,9 +97,9 @@ export default function TabLayout() {
         }}
       />
       
-      {/* 4. Service (Previously Temple) */}
+      {/* 4. Service (Vendors/Jobs) */}
       <Tabs.Screen
-        name="temple"
+        name="vendor"
         options={{
           tabBarLabel: 'Service',
           tabBarIcon: ({ color, focused }) => (
@@ -124,7 +124,7 @@ export default function TabLayout() {
       <Tabs.Screen name="circles" options={{ href: null }} />
       <Tabs.Screen name="jobs" options={{ href: null }} />
       <Tabs.Screen name="discover" options={{ href: null }} />
-      <Tabs.Screen name="vendor" options={{ href: null }} />
+      <Tabs.Screen name="temple" options={{ href: null }} />
     </Tabs>
   );
 }

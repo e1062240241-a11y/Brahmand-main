@@ -344,7 +344,7 @@ export default function ProfileScreen() {
     }
     if (item.route) {
       setShowSettingsModal(false);
-      router.push(item.route);
+      router.push(item.route as any);
     }
   };
 

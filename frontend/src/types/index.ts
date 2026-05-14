@@ -44,6 +44,7 @@ export interface User {
   followers?: string[];
   following?: string[];
   created_at: string;
+  personality_verification_status?: 'pending' | 'approved' | 'verified' | 'rejected' | 'none';
 }
 
 export interface Location {
