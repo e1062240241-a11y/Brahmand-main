@@ -46,6 +46,7 @@ import * as Location from 'expo-location';
 import LocationService from '../services/location';
 import { socketService } from '../services/socket';
 import { SOSFlowModal } from './SOSFlowModal';
+import { SOSResponderModal } from './SOSResponderModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -187,6 +188,8 @@ export const FloatingUtilityButton = () => {
   const [microLocationLoading, setMicroLocationLoading] = useState(false);
   const [locationFetched, setLocationFetched] = useState(false);
   const [sosFlowVisible, setSosFlowVisible] = useState(false);
+  const [incomingSOS, setIncomingSOS] = useState<any>(null);
+  const [sosResponderModalVisible, setSosResponderModalVisible] = useState(false);
   const [fetchedCoordinates, setFetchedCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const sosRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sosExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -441,14 +444,39 @@ export const FloatingUtilityButton = () => {
   useEffect(() => {
     checkSOSStatus();
     fetchMyCommunityRequests();
+    
+    // Listen for real-time SOS alerts via socket
+    const handleSOSAlert = (data: any) => {
+      console.log('[Socket] Real-time SOS alert:', data);
+      if (data.creator_id !== user?.id) {
+        setIncomingSOS(data);
+        setSosResponderModalVisible(true);
+      }
+    };
+
+    socketService.onEvent('sos_alert', handleSOSAlert);
+
+    // Check for pending SOS from push notifications
+    const checkPendingSOS = setInterval(() => {
+      if (typeof window !== 'undefined' && (window as any).__PENDING_SOS) {
+        const data = (window as any).__PENDING_SOS;
+        delete (window as any).__PENDING_SOS;
+        setIncomingSOS(data);
+        setSosResponderModalVisible(true);
+      }
+    }, 2000);
+
     sosRefreshTimerRef.current = setInterval(() => {
       checkSOSStatus();
       fetchMyCommunityRequests();
     }, 60_000);
+
     return () => {
       if (sosRefreshTimerRef.current) clearInterval(sosRefreshTimerRef.current);
+      clearInterval(checkPendingSOS);
+      socketService.offEvent('sos_alert', handleSOSAlert);
     };
-  }, [checkSOSStatus]);
+  }, [checkSOSStatus, user?.id]);
 
   const fetchMyCommunityRequests = async () => {
     if (!user?.id) return;
@@ -807,6 +835,13 @@ export const FloatingUtilityButton = () => {
         visible={sosFlowVisible}
         onClose={() => setSosFlowVisible(false)}
         onCreateSOS={handleCreateSOS}
+      />
+
+      <SOSResponderModal
+        visible={sosResponderModalVisible}
+        sosData={incomingSOS}
+        onClose={() => setSosResponderModalVisible(false)}
+        onRespond={handleRespondToSOS}
       />
     </>
   );

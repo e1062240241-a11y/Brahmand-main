@@ -52,7 +52,9 @@ import {
   uploadUserPost,
   getUnreadNotificationCount,
   markAllNotificationsRead,
+  reverseGeocode,
 } from '../../src/services/api';
+import * as Location from 'expo-location';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
@@ -110,6 +112,25 @@ export default function HomeScreen() {
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+
+  useEffect(() => {
+    const fetchLiveLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+        const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+        if (response.data) {
+          setLiveLocation(response.data.area || response.data.city || 'Bharat');
+        }
+      } catch (e) {
+        console.warn('Initial location fetch failed:', e);
+      }
+    };
+    fetchLiveLocation();
+  }, []);
 
   useEffect(() => {
     const fetchUnreadCount = async () => {
@@ -554,7 +575,7 @@ export default function HomeScreen() {
     setCommentsLoading(true);
 
     try {
-      const response = await getPostComments(postId, 300);
+      const response = await getPostComments(postId, 50);
       setPostComments(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.warn('Failed to load comments:', error);
@@ -588,6 +609,8 @@ export default function HomeScreen() {
     try {
       const response = await addPostComment(selectedCommentPostId, textToPost);
       const updatedPost = response.data?.post;
+      const serverComment = response.data?.comment;
+
       if (updatedPost) {
         setFeedPosts((prev) =>
           prev.map((item) => (item.id === selectedCommentPostId ? { ...item, ...updatedPost } : item))
@@ -595,9 +618,12 @@ export default function HomeScreen() {
         setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? { ...prev, ...updatedPost } : prev));
       }
 
-      // Re-fetch or replace the temp comment with the official one
-      const commentsResponse = await getPostComments(selectedCommentPostId, 300);
-      setPostComments(Array.isArray(commentsResponse.data) ? commentsResponse.data : []);
+      // Replace optimistic comment with official server comment to avoid duplication and lag
+      if (serverComment) {
+        setPostComments(prev => 
+          prev.map(c => c.id === tempId ? { ...serverComment, is_optimistic: false } : c)
+        );
+      }
     } catch (error) {
       console.warn('Failed to add comment:', error);
       // Rollback on failure
@@ -796,7 +822,13 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <View style={styles.greetingBlock}>
-                <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
+                  <View style={styles.liveLocationBadge}>
+                    <Ionicons name="location" size={10} color="#FF6B00" />
+                    <Text style={styles.liveLocationText}>{liveLocation}</Text>
+                  </View>
+                </View>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   style={styles.bioRow}
@@ -1371,20 +1403,27 @@ export default function HomeScreen() {
 
             <View style={styles.commentListWrap}>
               {commentsLoading ? (
-                <Text style={styles.commentEmptyText}>Loading comments...</Text>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color="#FF6B00" />
+                  <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>Loading comments...</Text>
+                </View>
               ) : postComments.length > 0 ? (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  {postComments.map((comment) => (
-                    <View key={comment.id || `${comment.user_id}-${comment.created_at}-${comment.text}`} style={styles.commentItem}>
-                      <Avatar name={comment?.username || 'User'} photo={comment?.user_photo} size={32} />
+                <FlatList
+                  data={postComments}
+                  keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
+                  renderItem={({ item }) => (
+                    <View style={styles.commentItem}>
+                      <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
                       <View style={styles.commentBubble}>
-                        <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
-                        <MentionText style={styles.commentItemText} text={comment?.text || ''} />
-                        <Text style={styles.commentTime}>{formatTimeAgo(comment?.created_at)}</Text>
+                        <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                        <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                        <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
                       </View>
                     </View>
-                  ))}
-                </ScrollView>
+                  )}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                />
               ) : (
                 <View style={styles.commentEmptyState}>
                   <Ionicons name="chatbubble-ellipses-outline" size={42} color="#D5C8D6" />
@@ -1433,6 +1472,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6A00',
     borderWidth: 1,
     borderColor: '#FFF',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveLocationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF4ED',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: '#FFD7C2',
+  },
+  liveLocationText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FF6B00',
+    marginLeft: 2,
+    textTransform: 'uppercase',
   },
   screen: {
     flex: 1,
