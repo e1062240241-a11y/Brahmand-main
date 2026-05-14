@@ -821,25 +821,25 @@ const styles = StyleSheet.create({
   glassBackgroundEmergency: { backgroundColor: '#FF3B30' },
   glassBackgroundActiveSOS: { backgroundColor: '#E53935' },
   redDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#E53935' },
-  modalOverlay: { 
-    flex: 1, 
-    justifyContent: 'flex-end', 
-    backgroundColor: 'rgba(0,0,0,0.75)' 
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.75)'
   },
   overlayBackground: { ...StyleSheet.absoluteFillObject },
-  modalContentWrapper: { 
-    width: '100%', 
-    height: SCREEN_HEIGHT * 0.7, 
-    backgroundColor: 'transparent', 
+  modalContentWrapper: {
+    width: '100%',
+    height: SCREEN_HEIGHT * 0.7,
+    backgroundColor: 'transparent',
     overflow: 'hidden',
-    justifyContent: 'flex-start', 
-    alignItems: 'center' 
+    justifyContent: 'flex-start',
+    alignItems: 'center'
   },
-  modalContent: { 
-    width: '100%', 
-    height: '100%', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  modalContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   circularMenuContainer: {
     width: 700,

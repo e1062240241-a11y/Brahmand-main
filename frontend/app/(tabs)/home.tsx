@@ -110,7 +110,7 @@ export default function HomeScreen() {
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
@@ -120,7 +120,7 @@ export default function HomeScreen() {
         console.log('Failed to fetch unread count:', err);
       }
     };
-    
+
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
     return () => clearInterval(interval);
@@ -161,11 +161,11 @@ export default function HomeScreen() {
   }>({ uploading: false, progress: 0, isCompressing: false });
 
   const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
-    setBackgroundUpload({ 
-      uploading: true, 
-      progress: 0, 
-      isCompressing: false, 
-      mediaUri: media.uri 
+    setBackgroundUpload({
+      uploading: true,
+      progress: 0,
+      isCompressing: false,
+      mediaUri: media.uri
     });
 
     try {
@@ -187,7 +187,7 @@ export default function HomeScreen() {
           }
         }
       );
-      
+
       if (response.data) {
         setFeedPosts(prev => [response.data, ...prev]);
       }
@@ -259,7 +259,7 @@ export default function HomeScreen() {
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || activeTab;
     let hasCachedData = false;
-    
+
     if (!append && offset === 0) {
       try {
         const cacheKey = `home_feed_cache_${tabToLoad}`;
@@ -303,7 +303,7 @@ export default function HomeScreen() {
         setFeedPosts(incomingItems);
         setFeedOffset(incomingItems.length);
         const cacheKey = `home_feed_cache_${tabToLoad}`;
-        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => {});
+        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
       }
       setHasMoreFeed(nextHasMore);
     } catch (error) {
@@ -767,14 +767,14 @@ export default function HomeScreen() {
         <View style={styles.upperContentWrapper}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-                <TouchableOpacity
-                  activeOpacity={0.86}
-                  style={styles.profileButton}
-                  onPress={() => router.push('/(tabs)/profile')}
-                  onLongPress={() => setShowProfileActions(true)}
-                >
-                  <Avatar name={firstName} photo={avatarUri} size={55} />
-                </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.86}
+                style={styles.profileButton}
+                onPress={() => router.push('/(tabs)/profile')}
+                onLongPress={() => setShowProfileActions(true)}
+              >
+                <Avatar name={firstName} photo={avatarUri} size={55} />
+              </TouchableOpacity>
 
               <View style={styles.greetingBlock}>
                 <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
@@ -790,15 +790,15 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.headerRight}>
-              <TouchableOpacity 
-                activeOpacity={0.7} 
+              <TouchableOpacity
+                activeOpacity={0.7}
                 style={styles.headerIconButton}
                 onPress={() => setSearchActive(!searchActive)}
               >
                 <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={24} color="#000" />
               </TouchableOpacity>
-              <TouchableOpacity 
-                activeOpacity={0.7} 
+              <TouchableOpacity
+                activeOpacity={0.7}
                 style={styles.headerIconButton}
                 onPress={handleNotificationPress}
               >
@@ -810,275 +810,275 @@ export default function HomeScreen() {
             </View>
           </View>
 
-        {searchActive ? (
-          <View style={styles.searchPanel}>
-            <View style={styles.searchBar}>
-              <Ionicons name="search" size={18} color="#6F5C70" />
-              <TextInput
-                style={styles.searchInput}
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                placeholder="Search users or #hashtags..."
-                placeholderTextColor="#8E7D90"
-                autoFocus
-              />
-            </View>
-            {searchTerm.trim().length > 0 ? (
-              <View style={styles.searchResultsSection}>
-                {searchTerm.trim().startsWith('#') ? (
-                  loadingHashtags ? (
-                    <Text style={styles.searchStatusText}>Loading hashtags...</Text>
-                  ) : hashtagResults.length > 0 ? (
-                    <TouchableOpacity
-                      style={styles.userResultItem}
-                      activeOpacity={0.8}
-                      onPress={() => {
-                        const hashtag = searchTerm.trim().replace(/^#+/, '');
-                        router.push(`/hashtag/${encodeURIComponent(hashtag)}`);
-                      }}
-                    >
-                      <View style={styles.hashtagIcon}>
-                        <Ionicons name="pricetag" size={22} color="#8C36DB" />
-                      </View>
-                      <View style={styles.userResultText}>
-                        <Text style={styles.userResultName}>#{searchTerm.trim().replace('#', '')}</Text>
-                        <Text style={styles.userResultMeta}>{hashtagResults.length} posts</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={styles.searchStatusText}>No posts found for this hashtag.</Text>
-                  )
-                ) : loadingUsers ? (
-                  <Text style={styles.searchStatusText}>Loading users...</Text>
-                ) : searchResults.length > 0 ? (
-                  searchResults.map((item) => {
-                    const isFollowing = followingIds.includes(item.id);
-                    return (
-                      <View key={item.id} style={styles.userResultItem}>
-                        <TouchableOpacity
-                          style={styles.userResultContent}
-                          activeOpacity={0.8}
-                          onPress={() => router.push(`/profile/${item.id}`)}
-                        >
-                          <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
-                          <View style={styles.userResultText}>
-                            <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
-                            <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
-                          </View>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.followButton, isFollowing && styles.followingButton]}
-                          activeOpacity={0.8}
-                          onPress={() => handleFollowUser(item.id)}
-                        >
-                          <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                            {isFollowing ? 'Following' : 'Follow'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    );
-                  })
-                ) : (
-                  <Text style={styles.searchStatusText}>No users found.</Text>
-                )}
+          {searchActive ? (
+            <View style={styles.searchPanel}>
+              <View style={styles.searchBar}>
+                <Ionicons name="search" size={18} color="#6F5C70" />
+                <TextInput
+                  style={styles.searchInput}
+                  value={searchTerm}
+                  onChangeText={setSearchTerm}
+                  placeholder="Search users or #hashtags..."
+                  placeholderTextColor="#8E7D90"
+                  autoFocus
+                />
               </View>
-            ) : null}
-          </View>
-        ) : null}
+              {searchTerm.trim().length > 0 ? (
+                <View style={styles.searchResultsSection}>
+                  {searchTerm.trim().startsWith('#') ? (
+                    loadingHashtags ? (
+                      <Text style={styles.searchStatusText}>Loading hashtags...</Text>
+                    ) : hashtagResults.length > 0 ? (
+                      <TouchableOpacity
+                        style={styles.userResultItem}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          const hashtag = searchTerm.trim().replace(/^#+/, '');
+                          router.push(`/hashtag/${encodeURIComponent(hashtag)}`);
+                        }}
+                      >
+                        <View style={styles.hashtagIcon}>
+                          <Ionicons name="pricetag" size={22} color="#8C36DB" />
+                        </View>
+                        <View style={styles.userResultText}>
+                          <Text style={styles.userResultName}>#{searchTerm.trim().replace('#', '')}</Text>
+                          <Text style={styles.userResultMeta}>{hashtagResults.length} posts</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={styles.searchStatusText}>No posts found for this hashtag.</Text>
+                    )
+                  ) : loadingUsers ? (
+                    <Text style={styles.searchStatusText}>Loading users...</Text>
+                  ) : searchResults.length > 0 ? (
+                    searchResults.map((item) => {
+                      const isFollowing = followingIds.includes(item.id);
+                      return (
+                        <View key={item.id} style={styles.userResultItem}>
+                          <TouchableOpacity
+                            style={styles.userResultContent}
+                            activeOpacity={0.8}
+                            onPress={() => router.push(`/profile/${item.id}`)}
+                          >
+                            <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
+                            <View style={styles.userResultText}>
+                              <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                              <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
+                            </View>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.followButton, isFollowing && styles.followingButton]}
+                            activeOpacity={0.8}
+                            onPress={() => handleFollowUser(item.id)}
+                          >
+                            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                              {isFollowing ? 'Following' : 'Follow'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <Text style={styles.searchStatusText}>No users found.</Text>
+                  )}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
-        <View style={styles.topFeatureRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
-            {quickAccess.map((item, idx) => {
-              return (
-                <TouchableOpacity 
-                  key={idx} 
-                  style={styles.featureCard} 
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    if (item.label === 'Panchang') router.push('/panchang');
-                    else if (item.label === 'My Krishna') router.push('/my-krishna');
-                    else if (item.label === 'SOS') {
-                       router.push('/sos');
-                    }
-                  }}
-                >
-                  {item.label === 'SOS' ? (
-                    <View style={styles.sosConcentricWrap}>
-                      <View style={[styles.sosRing, { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,80,60,0.15)' }]}>
-                        <View style={[styles.sosRing, { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,80,60,0.25)' }]}>
-                          <View style={[styles.sosRing, { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,80,60,0.4)' }]}>
-                            <View style={[styles.sosRing, { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FF3B30' }]}>
-                              <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
+          <View style={styles.topFeatureRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
+              {quickAccess.map((item, idx) => {
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.featureCard}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      if (item.label === 'Panchang') router.push('/panchang');
+                      else if (item.label === 'My Krishna') router.push('/my-krishna');
+                      else if (item.label === 'SOS') {
+                        router.push('/sos');
+                      }
+                    }}
+                  >
+                    {item.label === 'SOS' ? (
+                      <View style={styles.sosConcentricWrap}>
+                        <View style={[styles.sosRing, { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,80,60,0.15)' }]}>
+                          <View style={[styles.sosRing, { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,80,60,0.25)' }]}>
+                            <View style={[styles.sosRing, { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,80,60,0.4)' }]}>
+                              <View style={[styles.sosRing, { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FF3B30' }]}>
+                                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
+                              </View>
                             </View>
                           </View>
                         </View>
                       </View>
+                    ) : (
+                      <View style={[styles.featureIconWrap, { backgroundColor: item.label === 'My Krishna' ? '#FF6B00' : '#FF9800' }]}>
+                        {item.label === 'My Krishna' && (
+                          <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>ॐ</Text>
+                        )}
+                        {item.label === 'Panchang' && (
+                          <Ionicons name="calendar" size={18} color="#FFF" />
+                        )}
+                      </View>
+                    )}
+                    <View style={styles.featureTextContainer}>
+                      <Text style={styles.featureTitle}>{item.label}</Text>
+                      <Text style={styles.featureSubtitle}>{item.subtitle}</Text>
                     </View>
-                  ) : (
-                    <View style={[styles.featureIconWrap, { backgroundColor: item.label === 'My Krishna' ? '#FF6B00' : '#FF9800' }]}>
-                      {item.label === 'My Krishna' && (
-                        <Text style={{color: '#FFF', fontWeight: 'bold', fontSize: 16}}>ॐ</Text>
-                      )}
-                      {item.label === 'Panchang' && (
-                        <Ionicons name="calendar" size={18} color="#FFF" />
-                      )}
-                    </View>
-                  )}
-                  <View style={styles.featureTextContainer}>
-                    <Text style={styles.featureTitle}>{item.label}</Text>
-                    <Text style={styles.featureSubtitle}>{item.subtitle}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={14} color="#999" />
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
-          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
-            <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                  <Text style={[styles.featuredLiveTitle, { color: '#FFF' }]}>Mahamrityunjaya Mantra</Text>
-                </View>
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-              </View>
-              
-              <View style={styles.featuredLiveContent}>
-                <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                  <Ionicons name="time-outline" size={14} color="#FFF" />
-                  <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 4 }]}>Live until 5:00 PM</Text>
-                </View>
-
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }}>
-                  <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
-                    <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
-                    <Text style={styles.joinJaapText}>Join Live Jaap</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                    <Ionicons name="chevron-forward" size={14} color="#999" />
                   </TouchableOpacity>
-                  
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    <View style={[styles.liveDot, { backgroundColor: '#FF6A00' }]} />
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
+            <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
+              <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.85)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                    <Text style={[styles.featuredLiveTitle, { color: '#FFF' }]}>Mahamrityunjaya Mantra</Text>
+                  </View>
+                  <View style={styles.liveBadge}>
                     <View style={styles.liveDot} />
-                    <View style={styles.liveDot} />
-                    <View style={styles.liveDot} />
+                    <Text style={styles.liveBadgeText}>LIVE</Text>
                   </View>
                 </View>
+
+                <View style={styles.featuredLiveContent}>
+                  <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                    <Ionicons name="time-outline" size={14} color="#FFF" />
+                    <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6 }]}>Live until 5:00 PM</Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
+                      <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
+                      <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                      <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                    </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <View style={[styles.liveDot, { backgroundColor: '#FF6A00' }]} />
+                      <View style={styles.liveDot} />
+                      <View style={styles.liveDot} />
+                      <View style={styles.liveDot} />
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </ImageBackground>
+          </TouchableOpacity>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.actionCardsScroll}
+            style={{ marginBottom: 20 }}
+          >
+
+            {/* Urgent Blood Request */}
+            <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
               </View>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
+                onPress={() => {
+                  if (bloodRequest) {
+                    router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
+                  } else {
+                    setRequestType('Blood');
+                    setShowRequestModal(true);
+                  }
+                }}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>{bloodRequest ? 'View' : 'View'}</Text>
+                <Ionicons name="chevron-forward" size={12} color="#E53935" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
             </LinearGradient>
-          </ImageBackground>
-        </TouchableOpacity>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.actionCardsScroll}
-          style={{ marginBottom: 20 }}
-        >
-
-          {/* Urgent Blood Request */}
-          <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
-            <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-               <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
-            </View>
-            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-              <View style={styles.cardIconRow}>
-                <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+            {/* Register Business */}
+            <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
               </View>
-              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
-              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
-            </View>
-            <TouchableOpacity 
-              style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
-              onPress={() => {
-                if (bloodRequest) {
-                   router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
-                } else {
-                   setRequestType('Blood');
-                   setShowRequestModal(true);
-                }
-              }}
-            >
-              <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>{bloodRequest ? 'View' : 'View'}</Text>
-              <Ionicons name="chevron-forward" size={12} color="#E53935" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </LinearGradient>
-
-          {/* Register Business */}
-          <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
-            <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-               <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
-            </View>
-            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-              <View style={styles.cardIconRow}>
-                <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Register Your Business</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Become a verified sanatan vendor</Text>
               </View>
-              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Register Your Business</Text>
-              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Become a verified sanatan vendor</Text>
-            </View>
-            <TouchableOpacity 
-              style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
-              onPress={() => router.push('/vendor/business-details')}
-            >
-              <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register Now</Text>
-              <Ionicons name="chevron-forward" size={12} color="#FF9500" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </LinearGradient>
+              <TouchableOpacity
+                style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
+                onPress={() => router.push('/vendor/business-details')}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register Now</Text>
+                <Ionicons name="chevron-forward" size={12} color="#FF9500" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
 
-          {/* Verified Vendor */}
-          <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
-            <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-               <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
-            </View>
-            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-              <View style={styles.cardIconRow}>
-                <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+            {/* Verified Vendor */}
+            <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
               </View>
-              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Sai Flower Decorator</Text>
-              <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor Andheri, Mumbai</Text>
-            </View>
-            <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
-              <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
-              <Ionicons name="chevron-forward" size={12} color="#00C781" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </LinearGradient>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Sai Flower Decorator</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor Andheri, Mumbai</Text>
+              </View>
+              <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
+                <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
+                <Ionicons name="chevron-forward" size={12} color="#00C781" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
 
-          {/* Live Aarti */}
-          <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
-            <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-               <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
-            </View>
-            <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-              <View style={styles.cardIconRow}>
-                <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+            {/* Live Aarti */}
+            <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
               </View>
-              <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Live Kedarnath Aarti</Text>
-              <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
-                <Ionicons name="notifications-outline" size={14} color="#333" />
-                <Text style={[styles.cardNotifyText, { textAlign: 'center' }]}>Notify me for the upcoming events</Text>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Live Kedarnath Aarti</Text>
+                <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
+                  <Ionicons name="notifications-outline" size={14} color="#333" />
+                  <Text style={[styles.cardNotifyText, { textAlign: 'center' }]}>Notify me for the upcoming events</Text>
+                </View>
               </View>
-            </View>
-            <TouchableOpacity 
-              style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
-              onPress={() => router.push('/live-mantra')}
-            >
-              <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch now</Text>
-              <Ionicons name="chevron-forward" size={12} color="#8C36DB" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </LinearGradient>
-        </ScrollView>
+              <TouchableOpacity
+                style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
+                onPress={() => router.push('/live-mantra')}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch now</Text>
+                <Ionicons name="chevron-forward" size={12} color="#8C36DB" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
+          </ScrollView>
 
-        <View style={styles.dots}>
-          <View style={styles.dot} />
-          <View style={styles.activeDot} />
-          <View style={styles.dot} />
-        </View>
+          <View style={styles.dots}>
+            <View style={styles.dot} />
+            <View style={styles.activeDot} />
+            <View style={styles.dot} />
+          </View>
         </View>
 
         <View
@@ -1090,14 +1090,14 @@ export default function HomeScreen() {
           }}
         >
           <View style={styles.stickyFeedTabs}>
-            <HomeFeedTabs 
+            <HomeFeedTabs
               activeTab={activeTab}
               onTabChange={(tab) => {
                 setActiveTab(tab);
                 setFeedPosts([]);
                 loadFeedPosts(0, false, tab);
               }}
-              onCreatePost={() => setShowUploadPostModal(true)} 
+              onCreatePost={() => setShowUploadPostModal(true)}
             />
           </View>
         </View>
