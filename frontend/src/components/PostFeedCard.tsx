@@ -95,6 +95,7 @@ export const PostFeedCard = memo(({
   const [menuVisible, setMenuVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mediaLoading, setMediaLoading] = useState(true);
+  const [showSpinner, setShowSpinner] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [dynamicRatio, setDynamicRatio] = useState(4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -154,6 +155,17 @@ export const PostFeedCard = memo(({
       videoRef.current.muted = isMuted;
     }
   }, [isMuted, player]);
+
+  useEffect(() => {
+    let timer: any;
+    if (mediaLoading) {
+      // Delay spinner to avoid flickering on fast connections
+      timer = setTimeout(() => setShowSpinner(true), 1500);
+    } else {
+      setShowSpinner(false);
+    }
+    return () => clearTimeout(timer);
+  }, [mediaLoading]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -317,7 +329,7 @@ export const PostFeedCard = memo(({
                   style={styles.videoBackground} 
                   contentFit="cover" 
                   nativeControls={false}
-                  onLoad={() => setMediaLoading(false)}
+                  onFirstFrameRender={() => setMediaLoading(false)}
                   onError={(e: any) => {
                     setMediaLoading(false);
                     setMediaError('Video player error');
@@ -385,9 +397,9 @@ export const PostFeedCard = memo(({
           </View>
         )}
 
-        {mediaLoading && !mediaError && (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }]}>
-            <ActivityIndicator color="#FFD26C" />
+        {showSpinner && !mediaError && (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.1)', justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator color="#FFD26C" size="large" />
           </View>
         )}
 
