@@ -115,6 +115,7 @@ export default function MessagesScreen() {
   const [activeRequestIndex, setActiveRequestIndex] = useState(0);
   const activeRequestScrollRef = useRef<ScrollView>(null);
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [userGroups, setUserGroups] = useState<Community[]>([]);
   const [circles, setCircles] = useState<Circle[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [conversations, setConversations] = useState<DMConversation[]>([]);
@@ -139,12 +140,18 @@ export default function MessagesScreen() {
           getCommunityRequests({ status: 'active', limit: 10 }),
         ]);
         
+        const allComms = communityRes.data || [];
         // Filter out very specific types if needed, but here we want to show groups
-        const filtered = (communityRes.data || []).filter(
-          (item: Community) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural'
+        const verifiedComms = allComms.filter(
+          (item: Community) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural' && item.type !== 'user_group'
         );
         
-        setCommunities(filtered);
+        const userGroupsList = allComms.filter(
+          (item: Community) => item.type === 'user_group'
+        );
+
+        setCommunities(verifiedComms);
+        setUserGroups(userGroupsList);
         setRequests(requestRes.data || []);
       } else {
         const res = await getCircles();
@@ -378,25 +385,33 @@ export default function MessagesScreen() {
     );
   };
 
-  const renderLocalCommunityCard = (item: any, index: number) => {
+  const renderLocalCommunityCard = (item: Community, index: number) => {
     const isPurple = index % 2 === 1;
     const cardBg = isPurple ? '#F4EEFF' : '#F1F9E8';
     const borderColor = isPurple ? '#7E57C2' : '#4CAF50';
-    const pillText = item.badge || 'Seva';
+    const pillText = item.label || 'Local';
 
     return (
-      <TouchableOpacity key={item.id} style={[styles.localCommCard, { backgroundColor: cardBg, borderColor }]}>
+      <TouchableOpacity
+        key={item.id}
+        style={[styles.localCommCard, { backgroundColor: cardBg, borderColor }]}
+        onPress={() => router.push(`/community/${item.id}`)}
+      >
         <View style={styles.localCommMenu}>
           <Ionicons name="ellipsis-vertical" size={18} color="#000" />
         </View>
         
         <View style={styles.localCommAvatarWrapper}>
-          <Image source={{ uri: item.image }} style={styles.localCommAvatar} />
+          {item.photo ? (
+            <Image source={{ uri: item.photo }} style={styles.localCommAvatar} />
+          ) : (
+            <Avatar name={item.name} size={75} />
+          )}
         </View>
 
         <View style={styles.localCommContent}>
-          <Text style={styles.localCommName}>{item.name}</Text>
-          <Text style={styles.localCommMembers}>{item.members} members</Text>
+          <Text style={styles.localCommName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.localCommMembers}>{item.member_count} members</Text>
         </View>
 
         <View style={[styles.localCommPill, { borderColor }]}>
@@ -523,19 +538,17 @@ export default function MessagesScreen() {
             </View>
 
             {/* Local Communities Slider */}
-            <View style={{ marginBottom: 10 }}>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
-              >
-                {[
-                  { id: 'lc1', name: 'Indore Seva Group', members: 128, badge: 'Seva', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400' },
-                  { id: 'lc2', name: 'Borivali Youth Connect', members: 96, badge: 'Youth', image: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=400' },
-                  { id: 'lc3', name: 'Pune Food Sharing Group', members: 236, badge: 'Seva', image: 'https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=400' }
-                ].map((item, idx) => renderLocalCommunityCard(item, idx))}
-              </ScrollView>
-            </View>
+            {userGroups.length > 0 && (
+              <View style={{ marginBottom: 10 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+                >
+                  {userGroups.map((item, idx) => renderLocalCommunityCard(item, idx))}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Create Community CTA */}
             <View style={styles.footerCTA}>
@@ -547,7 +560,10 @@ export default function MessagesScreen() {
                 <Text style={styles.footerTitle}>Create Your Community</Text>
                 <Text style={styles.footerSub}>Build your own local community and bring like-minded people together.</Text>
               </View>
-              <TouchableOpacity style={styles.footerButton}>
+              <TouchableOpacity
+                style={styles.footerButton}
+                onPress={() => router.push('/community/create')}
+              >
                 <Ionicons name="add" size={16} color="#FFF" />
                 <Text style={styles.footerButtonText}>Create Community</Text>
               </TouchableOpacity>

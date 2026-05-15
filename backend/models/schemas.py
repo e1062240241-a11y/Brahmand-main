@@ -23,6 +23,7 @@ class CommunityType(str, Enum):
     CITY = "city"
     STATE = "state"
     COUNTRY = "country"
+    USER_GROUP = "user_group"
 
 
 class EventType(str, Enum):
@@ -189,6 +190,20 @@ class CommunityResponse(BaseModel):
     code: str
     member_count: int
     subgroups: List[Dict[str, Any]] = []
+
+
+class CommunityCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    type: CommunityType = CommunityType.USER_GROUP
+    description: Optional[str] = Field(None, max_length=500)
+    short_name: Optional[str] = Field(None, max_length=50)
+    city: Optional[str] = None
+    area: Optional[str] = None
+    category: Optional[str] = None
+    photo: Optional[str] = None
+    cover_photo: Optional[str] = None
+    admin_ids: List[str] = []
+    member_ids: List[str] = []
 
 
 class CommunityJoin(BaseModel):
