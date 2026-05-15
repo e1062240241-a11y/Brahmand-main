@@ -759,13 +759,7 @@ export default function CommunityDetailScreen() {
       {/* Sticky Top Bar */}
       <View style={[styles.stickyTopBar, { paddingTop: insets.top, height: 60 + insets.top }]}>
         <TouchableOpacity 
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/home');
-            }
-          }} 
+          onPress={() => router.back()} 
           style={styles.iconBtn}
         >
           <Ionicons name="chevron-back" size={28} color="#000" />
