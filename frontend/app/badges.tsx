@@ -9,7 +9,7 @@ export default function BadgesScreen() {
   const router = useRouter();
 
   const handleBack = useCallback(() => {
-    router.replace('/profile');
+    router.back();
   }, [router]);
 
   useEffect(() => {

@@ -39,11 +39,7 @@ export default function SOSScreen() {
       setStage('type');
       return;
     }
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/");
-    }
+    router.back();
   };
 
   useEffect(() => {

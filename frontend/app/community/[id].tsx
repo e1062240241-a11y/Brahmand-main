@@ -175,21 +175,42 @@ export default function CommunityDetailScreen() {
     if (activeTab === 'Requests') return requests;
     if (activeTab === 'Festivals') {
       return [
-        { type: 'festivals_header' },
-        { type: 'festivals_list' },
-        { type: 'festival_events_header' },
+        { id: 'fest-header-main', type: 'festivals_header' },
+        { id: 'fest-list-horizontal', type: 'festivals_list' },
+        { id: 'fest-events-header-sub', type: 'festival_events_header' },
         ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
-        { type: 'festival_banner' }
+        { id: 'fest-banner-footer', type: 'festival_banner' }
       ];
     }
     if (activeTab === 'Feed') {
-      return [
-        ...discussionPosts, 
-        ...requests.slice(0, 5).map(r => ({ ...r, type: 'request_item' })),
-        ...communityPosts // Show ALL posts in general Feed
-      ];
+      // Use a Map to deduplicate items by ID, prioritising discussionPosts
+      const itemMap = new Map();
+      
+      discussionPosts.forEach(p => itemMap.set(p.id, p));
+      requests.slice(0, 5).forEach(r => {
+        if (!itemMap.has(r.id)) {
+          itemMap.set(r.id, { ...r, type: 'request_item' });
+        }
+      });
+      communityPosts.forEach(p => {
+        if (!itemMap.has(p.id)) {
+          itemMap.set(p.id, p);
+        }
+      });
+      
+      return Array.from(itemMap.values());
     }
-    const tabPosts = communityPosts.filter(p => p.category === activeTab);
+    const tabPosts = communityPosts.filter(p => {
+      if (!p.category) return false;
+      const postCat = String(p.category).toLowerCase();
+      const currentTab = activeTab.toLowerCase();
+      
+      if (postCat === currentTab) return true;
+      if (currentTab === 'seva' && postCat.includes('volunteer')) return true;
+      if (postCat === 'feed') return false; // Feed posts only in Feed
+      return false;
+    });
+
     if (tabPosts.length > 0) {
       return [{ id: `header-${activeTab}`, type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
     }
@@ -802,7 +823,10 @@ export default function CommunityDetailScreen() {
       <FlatList
         ref={listRef}
         data={combinedData}
-        keyExtractor={item => String(item.id || item.type + (item.title || '') + (item.content || ''))}
+        keyExtractor={(item, index) => {
+          if (item.id) return String(item.id);
+          return `${item.type || 'item'}-${index}`;
+        }}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (
@@ -824,7 +848,7 @@ export default function CommunityDetailScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 data={allFestivals}
-                keyExtractor={f => f.id}
+                keyExtractor={(f, i) => f.id ? String(f.id) : `fest-${i}`}
                 renderItem={renderFestivalItem}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 25 }}
               />
@@ -900,7 +924,7 @@ export default function CommunityDetailScreen() {
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       data={events}
-                      keyExtractor={item => item.id}
+                      keyExtractor={(item, index) => item.id ? String(item.id) : `event-${index}`}
                       renderItem={renderEventItem}
                       contentContainerStyle={styles.eventsList}
                     />

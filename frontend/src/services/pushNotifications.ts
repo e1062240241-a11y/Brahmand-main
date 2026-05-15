@@ -86,6 +86,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   try {
+    // Web requires a VAPID key in app.json. If it's missing, getDevicePushTokenAsync will throw.
+    // We skip this on web unless we are sure we want web push.
+    if (Platform.OS === 'web') {
+      console.log('[Push] Skipping push token registration on web platform.');
+      return null;
+    }
+
     // Prefer native device push token for FCM-based backend delivery.
     const deviceToken = await Notifications.getDevicePushTokenAsync();
     if (deviceToken?.data) {
@@ -102,8 +109,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
         console.warn('[Push] Unable to get device push token and no Expo projectId fallback available.');
       }
     }
-  } catch (error) {
-    console.error('[Push] Error getting push token:', error);
+  } catch (error: any) {
+    if (Platform.OS === 'web' && error.message?.includes('vapidPublicKey')) {
+      console.log('[Push] Web push notifications disabled: Missing VAPID key in app.json');
+    } else {
+      console.error('[Push] Error getting push token:', error);
+    }
   }
 
   // Configure Android notification channel
