@@ -113,10 +113,10 @@ export default function TempleScreen() {
       <View style={styles.topTabsContainer}>
         <View style={styles.topTabsInner}>
           <TouchableOpacity 
-            style={[styles.topTabButton, selectedTempleSection === 'Others' && styles.topTabButtonActive]}
-            onPress={() => setSelectedTempleSection('Others')}
+            style={styles.topTabButton}
+            onPress={() => router.push('/vendor')}
           >
-            <Text style={[styles.topTabText, selectedTempleSection === 'Others' && styles.topTabTextActive]}>Jaaps</Text>
+            <Text style={styles.topTabText}>Vendor</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.topTabButton, selectedTempleSection === 'Jyotirling' && styles.topTabButtonActive]}

@@ -32,7 +32,13 @@ export const LiveMantraRoom = () => {
     if (bgPlayer) {
       bgPlayer.loop = true;
       bgPlayer.volume = isMuted ? 0 : 0.4;
-      bgPlayer.play();
+      // Note: On some browsers, auto-play might still be blocked until user interacts.
+      // But since user clicks "Join" to reach this screen, it should work.
+      try {
+        bgPlayer.play();
+      } catch (e) {
+        console.warn('Background player failed to auto-play on web:', e);
+      }
     }
   }, [bgPlayer, isMuted]);
 

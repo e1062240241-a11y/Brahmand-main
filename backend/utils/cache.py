@@ -1,7 +1,7 @@
 """Caching utilities with Redis or in-memory fallback"""
 import json
 import logging
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Dict
 from functools import wraps
 from datetime import datetime
 
@@ -41,6 +41,18 @@ class CacheManager:
         except Exception as e:
             logger.debug(f"Cache get error for {key}: {e}")
         return None
+
+    async def get_many(self, keys: List[str]) -> List[Optional[Any]]:
+        """Get multiple values from cache"""
+        try:
+            redis = await self._get_redis()
+            if hasattr(redis, 'get_many'):
+                values = await redis.get_many(keys)
+                return [json.loads(v) if v else None for v in values]
+            return [await self.get(key) for key in keys]
+        except Exception as e:
+            logger.debug(f"Cache get_many error: {e}")
+        return [None] * len(keys)
     
     async def set(
         self, 
@@ -58,7 +70,23 @@ class CacheManager:
             await redis.set(key, serialized, ex=ttl)
         except Exception as e:
             logger.debug(f"Cache set error for {key}: {e}")
-    
+
+    async def set_many(self, mapping: Dict[str, Any], ttl: int = None):
+        """Set multiple values in cache"""
+        if ttl is None:
+            ttl = settings.CACHE_TTL
+            
+        try:
+            redis = await self._get_redis()
+            serialized_mapping = {k: json.dumps(v, default=str) for k, v in mapping.items()}
+            if hasattr(redis, 'set_many'):
+                await redis.set_many(serialized_mapping, ex=ttl)
+            else:
+                for k, v in serialized_mapping.items():
+                    await redis.set(k, v, ex=ttl)
+        except Exception as e:
+            logger.debug(f"Cache set_many error: {e}")
+            
     async def delete(self, key: str):
         """Delete value from cache"""
         try:

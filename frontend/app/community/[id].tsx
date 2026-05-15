@@ -644,6 +644,13 @@ export default function CommunityDetailScreen() {
     setSelectedImage(null);
     setContactNumber('');
     setShowCreateModal(false);
+    
+    // Switch to the tab of the category just posted
+    if (finalCategory && COMMUNITY_TABS.includes(finalCategory)) {
+      setActiveTab(finalCategory);
+    } else if (finalCategory === 'Seva / Volunteer') {
+      setActiveTab('Seva');
+    }
   };
 
   const handleShare = async (postId: string) => {

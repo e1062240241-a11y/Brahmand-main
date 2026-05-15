@@ -6,20 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 
-let MapView: any = null;
-let Marker: any = null;
-let PROVIDER_GOOGLE: any = null;
+import SOSMap from '../src/components/SOSMap';
 
-try {
-  if (Platform.OS !== 'web') {
-    const Maps = require('react-native-maps');
-    MapView = Maps.default || Maps;
-    Marker = Maps.Marker;
-    PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
-  }
-} catch (e) {
-  console.warn('MapView could not be loaded:', e);
-}
 
 import { useAuthStore } from '../src/store/authStore';
 import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert, reverseGeocode } from '../src/services/api';
@@ -358,41 +346,10 @@ export default function SOSScreen() {
             }}
           >
             <View style={styles.mapContainer}>
-              {location && MapView && (
-                <MapView
-                  provider={PROVIDER_GOOGLE}
-                  style={styles.map}
-                  initialRegion={{
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
-                    latitudeDelta: 0.005,
-                    longitudeDelta: 0.005,
-                  }}
-                  region={{
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
-                    latitudeDelta: 0.005,
-                    longitudeDelta: 0.005,
-                  }}
-                  showsUserLocation
-                  showsMyLocationButton
-                >
-                  <Marker
-                    coordinate={{
-                      latitude: location.coords.latitude,
-                      longitude: location.coords.longitude,
-                    }}
-                    title="You are here"
-                    pinColor="#FF3B30"
-                  />
-                </MapView>
-              )}
-              {Platform.OS === 'web' && (
-                <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }]}>
-                  <Ionicons name="map-outline" size={48} color="#D1D1D1" />
-                  <Text style={{ color: '#8E8E93', marginTop: 8 }}>Map view available on Mobile App</Text>
-                </View>
-              )}
+              <SOSMap 
+                latitude={location?.coords.latitude || 0} 
+                longitude={location?.coords.longitude || 0} 
+              />
             </View>
 
             <View style={styles.warningContainer}>

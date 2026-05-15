@@ -80,7 +80,7 @@ export default function MantraJaapRoom() {
     setShowYouTube(false);
   };
 
-  const getYouTubeEmbedUrl = (url: string): string => {
+  const getYouTubeEmbedHtml = (url: string): string => {
     if (!url) return '';
     let videoId = '';
     
@@ -92,7 +92,26 @@ export default function MantraJaapRoom() {
     }
     
     if (videoId) {
-      return `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=1&showinfo=0&modestbranding=1`;
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <style>
+            body { margin: 0; padding: 0; background-color: #000; height: 100vh; display: flex; align-items: center; justify-content: center; }
+            iframe { width: 100%; height: 100%; border: none; }
+          </style>
+        </head>
+        <body>
+          <iframe 
+            src="https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&loop=1&playlist=${videoId}&controls=1&showinfo=0&modestbranding=1" 
+            frameborder="0" 
+            allow="autoplay; fullscreen" 
+            allowfullscreen>
+          </iframe>
+        </body>
+        </html>
+      `;
     }
     return '';
   };
@@ -243,9 +262,11 @@ export default function MantraJaapRoom() {
             <WebView
               ref={webViewRef}
               style={styles.youtubeWebView}
-              source={{ uri: getYouTubeEmbedUrl(activeSession.youtube_url) }}
+              source={{ html: getYouTubeEmbedHtml(activeSession.youtube_url) }}
               javaScriptEnabled={true}
+              domStorageEnabled={true}
               allowsInlineMediaPlayback={true}
+              allowsFullscreenVideo={true}
               mediaPlaybackRequiresUserAction={false}
               startInLoadingState={true}
               renderLoading={() => (
