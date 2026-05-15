@@ -459,7 +459,7 @@ const UserProfileScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
-      <View style={[styles.navBar, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFF', paddingTop: insets.top }]}>
+      <View style={[styles.navBar, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFF', paddingTop: insets.top, height: 50 + insets.top }]}>
         <TouchableOpacity 
           onPress={() => {
             if (router.canGoBack()) {
@@ -539,7 +539,7 @@ const UserProfileScreen = () => {
       {/* Post Detail Modal */}
       <Modal visible={postModalVisible} animationType="slide">
         <View style={styles.postDetailContainer}>
-          <View style={styles.postDetailHeader}>
+          <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
