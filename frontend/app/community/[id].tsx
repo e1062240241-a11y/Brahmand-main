@@ -171,6 +171,32 @@ export default function CommunityDetailScreen() {
     return COMMUNITY_TABS;
   }, []);
 
+  const combinedData = useMemo(() => {
+    if (activeTab === 'Requests') return requests;
+    if (activeTab === 'Festivals') {
+      return [
+        { type: 'festivals_header' },
+        { type: 'festivals_list' },
+        { type: 'festival_events_header' },
+        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
+        { type: 'festival_banner' }
+      ];
+    }
+    if (activeTab === 'Feed') {
+      return [
+        ...discussionPosts, 
+        ...requests.slice(0, 5).map(r => ({ ...r, type: 'request_item' })),
+        ...communityPosts // Show ALL posts in general Feed
+      ];
+    }
+    // Handle other tabs
+    const tabPosts = communityPosts.filter(p => p.category === activeTab);
+    if (tabPosts.length > 0) {
+      return [{ type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
+    }
+    return [];
+  }, [activeTab, requests, discussionPosts, communityPosts]);
+
   useEffect(() => {
     fetchCommunity();
   }, [id]);
@@ -718,31 +744,7 @@ export default function CommunityDetailScreen() {
     // Alert removed for smoother experience, comment appears immediately
   };
 
-  const combinedData = useMemo(() => {
-    if (activeTab === 'Requests') return requests;
-    if (activeTab === 'Festivals') {
-      return [
-        { type: 'festivals_header' },
-        { type: 'festivals_list' },
-        { type: 'festival_events_header' },
-        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
-        { type: 'festival_banner' }
-      ];
-    }
-    if (activeTab === 'Feed') {
-      return [
-        ...discussionPosts, 
-        ...requests.slice(0, 5).map(r => ({ ...r, type: 'request_item' })),
-        ...communityPosts // Show ALL posts in general Feed
-      ];
-    }
-    // Handle other tabs
-    const tabPosts = communityPosts.filter(p => p.category === activeTab);
-    if (tabPosts.length > 0) {
-      return [{ type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
-    }
-    return [];
-  }, [activeTab, requests, discussionPosts, communityPosts]);
+
 
   if (loading) {
     return (
