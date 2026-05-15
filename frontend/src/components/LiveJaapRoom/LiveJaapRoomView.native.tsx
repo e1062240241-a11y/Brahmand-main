@@ -55,7 +55,7 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
 
 const MANTRA_BG_AUDIO: Record<string, any> = {
   gayatri: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
-  hanuman: require('../../../assets/audio/audio ekant/leberch-yoga-509709.mp3'), // Placeholder for Hanuman Chalisa audio
+  hanuman: { uri: 'https://archive.org/download/Hanuman_Chalisa_Fast/Hanuman_Chalisa_Fast.mp3' },
   krishna: require('../../../assets/audio/audio ekant/eisenkern1982-waterfall-176958.mp3'),
   shiva: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
   mrityunjaya: require('../../../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),

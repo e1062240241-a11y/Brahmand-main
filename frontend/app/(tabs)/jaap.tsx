@@ -126,8 +126,6 @@ export default function JaapLandingScreen() {
     return matchesSearch && matchesCategory;
   });
 
-  const { getTempleImageById } = require('../../src/constants/templeImages');
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
@@ -135,58 +133,40 @@ export default function JaapLandingScreen() {
       <View style={[styles.topTabsContainer, { paddingTop: 10 }]}>
         <View style={styles.topTabsInner}>
           <TouchableOpacity 
-            style={[styles.jaapTabExact, activeSection !== 'jaap' && { backgroundColor: 'transparent' }]} 
+            style={styles.jaapTabExact} 
             onPress={() => setActiveSection('jaap')}
             activeOpacity={1}
           >
             {activeSection === 'jaap' ? (
               <LinearGradient colors={['#FF8D57', '#FF6600', '#E65C00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.5 }} style={styles.jaapGradientExact}>
-                <Ionicons name="flower-outline" size={110} color="#FFF" style={styles.jaapMandalaHeader} />
                 <View style={styles.jaapContentRow}>
                   <Text style={styles.omSymbolExact}>ॐ</Text>
-                  <View style={styles.tabTextColumn}>
-                    <Text style={styles.tabTitleExact}>Jaap</Text>
-                    <Text style={styles.tabSubExact}>Live Collective Chanting</Text>
-                  </View>
+                  <Text style={styles.tabTitleExact}>Jaap</Text>
                 </View>
               </LinearGradient>
             ) : (
-              <View style={[styles.jaapContentRow, { paddingHorizontal: 20, flex: 1 }]}>
-                <Text style={[styles.omSymbolExact, { color: '#FF6600', fontSize: 40 }]}>ॐ</Text>
-                <View style={styles.tabTextColumn}>
-                  <Text style={[styles.tabTitleExact, { color: '#5D2E17', fontSize: 28 }]}>Jaap</Text>
-                </View>
+              <View style={[styles.jaapContentRow, { justifyContent: 'center', flex: 1 }]}>
+                <Text style={[styles.omSymbolExact, { color: '#FF6600' }]}>ॐ</Text>
+                <Text style={[styles.tabTitleExact, { color: '#8B4513' }]}>Jaap</Text>
               </View>
             )}
           </TouchableOpacity>
 
-          <View style={styles.lotusPetalEdge}>
-            <View style={styles.petalCurve} />
-          </View>
-
           <TouchableOpacity 
-            style={[styles.templeTabExact, activeSection === 'temple' && { backgroundColor: '#FFF9F2' }]} 
+            style={[styles.templeTabExact, activeSection === 'temple' && { backgroundColor: '#FF6600' }]} 
             onPress={() => setActiveSection('temple')} 
             activeOpacity={0.8}
           >
              <View style={styles.templeContentRow}>
-              {activeSection === 'temple' ? (
-                <>
-                  <View style={styles.templeIconBoxExact}>
-                    <MaterialCommunityIcons name="temple-hindu" size={42} color="#FF6600" />
-                  </View>
-                  <View style={styles.tabTextColumn}>
-                    <Text style={styles.templeTitleExact}>Temple</Text>
-                    <Text style={styles.templeSubExact}>Sacred Temples & Darshan</Text>
-                  </View>
-                </>
-              ) : (
-                <>
-                   <MaterialCommunityIcons name="temple-hindu" size={32} color="#5D2E17" />
-                   <Text style={[styles.templeTitleExact, { fontSize: 28 }]}>Temple</Text>
-                </>
-              )}
-            </View>
+                <MaterialCommunityIcons 
+                  name="temple-hindu" 
+                  size={20} 
+                  color={activeSection === 'temple' ? '#FFF' : '#FF6600'} 
+                />
+                <Text style={[styles.templeTitleExact, { color: activeSection === 'temple' ? '#FFF' : '#FF6600' }]}>
+                  Temple
+                </Text>
+             </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -272,7 +252,7 @@ export default function JaapLandingScreen() {
                       <Text style={styles.mockupJoinJaapText}>{liveActive ? "Join Jaap" : "Set Reminder"}</Text>
                     </View>
                     <Text style={styles.mockupJoinSubtext}>
-                      {liveActive ? `Live until ${formatTime(liveEnd)}` : "Next Session: 6:00 PM Today"}
+                      {liveActive ? `Live until ${liveEnd ? formatTime(liveEnd) : ''}` : "Next Session: 6:00 PM Today"}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -485,23 +465,23 @@ export default function JaapLandingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFBF5' },
-  headerOuter: { paddingHorizontal: 16, backgroundColor: '#FFFBF5', paddingBottom: 15, zIndex: 1000 },
-  unifiedHeaderBarExact: { height: 110, backgroundColor: '#FFF9F2', borderRadius: 32, flexDirection: 'row', borderWidth: 1.5, borderColor: '#F5E0C3', overflow: 'hidden', elevation: 12, shadowColor: '#8B4513', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 15 },
-  jaapTabExact: { width: '56%', height: '100%' },
-  jaapGradientExact: { flex: 1, justifyContent: 'center', paddingHorizontal: 20, position: 'relative' },
-  jaapMandalaHeader: { position: 'absolute', left: -25, top: -20, opacity: 0.15 },
-  jaapContentRow: { flexDirection: 'row', alignItems: 'center', zIndex: 10, gap: 12 },
-  omSymbolExact: { fontSize: 52, color: '#FFF', fontWeight: '400' },
+  topTabsContainer: { paddingHorizontal: 16, backgroundColor: '#FFFBF5', paddingBottom: 10, zIndex: 1000 },
+  topTabsInner: { height: 54, backgroundColor: '#F0E5D8', borderRadius: 27, flexDirection: 'row', borderWidth: 1, borderColor: '#DBC7B0', overflow: 'hidden', elevation: 4, shadowColor: '#8B4513', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6 },
+  jaapTabExact: { flex: 1, height: '100%' },
+  jaapGradientExact: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  jaapMandalaHeader: { display: 'none' },
+  jaapContentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  omSymbolExact: { fontSize: 24, color: '#FFF', fontWeight: '800' },
   tabTextColumn: { justifyContent: 'center' },
-  tabTitleExact: { color: '#FFF', fontSize: 34, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' },
-  tabSubExact: { color: 'rgba(255, 255, 255, 0.95)', fontSize: 11, fontWeight: '700', marginTop: -2 },
-  lotusPetalEdge: { position: 'absolute', left: '56%', top: 0, bottom: 0, marginLeft: -35, width: 70, justifyContent: 'center', alignItems: 'center', zIndex: 100 },
-  petalCurve: { width: 70, height: 110, backgroundColor: '#FFF9F2', borderRadius: 35, transform: [{ scaleX: 0.85 }] },
-  templeTabExact: { flex: 1, justifyContent: 'center', paddingLeft: 35, backgroundColor: '#FFF9F2' },
-  templeContentRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  templeIconBoxExact: { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
-  templeTitleExact: { color: '#5D2E17', fontSize: 32, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' },
-  templeSubExact: { color: '#8B4513', opacity: 0.8, fontSize: 11, fontWeight: '700' },
+  tabTitleExact: { color: '#FFF', fontSize: 18, fontWeight: '900' },
+  tabSubExact: { display: 'none' },
+  lotusPetalEdge: { display: 'none' },
+  petalCurve: { display: 'none' },
+  templeTabExact: { flex: 1, height: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  templeContentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  templeIconBoxExact: { width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
+  templeTitleExact: { color: '#FF6600', fontSize: 18, fontWeight: '900' },
+  templeSubExact: { display: 'none' },
   heroTitleSectionExact: { paddingHorizontal: 25, marginTop: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   heroTextCol: { flex: 1 },
   liveJaapTag: { color: '#FF6600', fontSize: 14, fontWeight: '900', letterSpacing: 0.8, marginBottom: 10 },
