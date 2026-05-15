@@ -36,23 +36,23 @@ function useAndroidBackHandler() {
 // Handle deep links for circle invites
 function useDeepLinkHandler() {
   const { token } = useAuthStore();
-  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
-    const handleDeepLink = (event: any) => {
-      if (!token) return;
+    const handleDeepLink = (event: { url: string }) => {
+      if (!token || !event.url) return;
       
-      const url = event.url;
       try {
-        const urlObj = new URL(url);
-        const path = urlObj.pathname.replace(/^\/+/, '');
+        // Use expo-linking to parse the URL correctly
+        const parsed = Linking.parse(event.url);
+        const path = parsed.path;
         
-        if (path.startsWith('join-circle/')) {
-          const circleCode = path.replace('join-circle/', '');
-          if (circleCode && pathname !== '/circle/join') {
-            console.log('Deep link detected for circle:', circleCode);
-          }
-        }
+        if (!path) return;
+
+        console.log('[DeepLink] Navigating to:', path);
+        // Navigate to the path directly - expo-router handles the rest
+        router.push(`/${path}` as any);
+        
       } catch (error) {
         console.warn('Failed to parse deep link:', error);
       }
@@ -60,13 +60,12 @@ function useDeepLinkHandler() {
 
     const subscription = Linking.addEventListener('url', handleDeepLink);
     
-    // Check initial URL
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });
 
     return () => subscription.remove();
-  }, [token, pathname]);
+  }, [token, router]);
 }
 
 function useNotificationResponseHandler() {

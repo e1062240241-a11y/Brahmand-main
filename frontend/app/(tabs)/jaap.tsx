@@ -19,6 +19,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { getTempleImageById } from '../../src/constants/templeImages';
+import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -84,7 +85,6 @@ export default function JaapLandingScreen() {
   const fetchTemplesData = async () => {
     try {
       setLoadingTemples(true);
-      const { getTemples } = require('../../src/services/api');
       const response = await getTemples();
       if (response.data) {
         setTemples(response.data);
@@ -125,6 +125,7 @@ export default function JaapLandingScreen() {
 
     return matchesSearch && matchesCategory;
   });
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
