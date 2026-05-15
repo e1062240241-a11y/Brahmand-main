@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { requestRecordingPermissionsAsync, useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Animated,
   Easing,
@@ -57,6 +58,8 @@ export const LiveMantraRoom = () => {
   const agoraJoinedRef = useRef(false);
   const agoraUidRef = useRef(0);
 
+  const insets = useSafeAreaInsets();
+  const streamIdRef = useRef<number | null>(null);
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const upcomingFade = useRef(new Animated.Value(0)).current;
@@ -128,6 +131,17 @@ export const LiveMantraRoom = () => {
           
           // Set initial mute state
           engine.current.muteLocalAudioStream(!isMicEnabled);
+
+          // Create data stream for reactions
+          try {
+            const id = engine.current.createDataStream({
+              syncWithAudio: false,
+              ordered: false
+            });
+            streamIdRef.current = id;
+          } catch (err) {
+            console.warn('[Agora] Failed to create data stream', err);
+          }
         },
         onUserJoined: (connection: RtcConnection, remoteUid: number, elapsed: number) => {
           console.log('[Agora] Remote user joined:', remoteUid);
@@ -136,6 +150,17 @@ export const LiveMantraRoom = () => {
         onUserOffline: (connection: RtcConnection, remoteUid: number, reason: number) => {
           console.log('[Agora] Remote user left:', remoteUid, 'Reason:', reason);
           removeRemotePeer(String(remoteUid));
+        },
+        onStreamMessage: (connection: RtcConnection, remoteUid: number, streamId: number, data: Uint8Array) => {
+          try {
+            const message = new TextDecoder().decode(data);
+            const parsed = JSON.parse(message);
+            if (parsed.type === 'reaction') {
+              addReaction(parsed.emoji, false);
+            }
+          } catch (e) {
+            console.warn('[Agora] Failed to decode stream message', e);
+          }
         },
         onRemoteAudioStateChanged: (connection: RtcConnection, remoteUid: number, state: number) => {
           if (state === 2) { // RemoteAudioStateDecoding
@@ -250,11 +275,17 @@ export const LiveMantraRoom = () => {
     }
   };
 
-  const addReaction = (emoji: string) => {
+  const addReaction = (emoji: string, broadcast = true) => {
     const id = Date.now() + Math.random();
     const anim = new Animated.Value(0);
     setReactions(prev => [...prev, { id, emoji, anim }]);
     
+    if (broadcast && streamIdRef.current !== null) {
+      const message = JSON.stringify({ type: 'reaction', emoji });
+      const data = new TextEncoder().encode(message);
+      engine.current.sendStreamMessage(streamIdRef.current, data);
+    }
+
     Animated.timing(anim, {
       toValue: 1,
       duration: 2500,
@@ -401,7 +432,7 @@ export const LiveMantraRoom = () => {
   }, [currentIndex, isHolding]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar barStyle="light-content" />
       <View style={styles.background}> 
         <LinearGradient
@@ -545,7 +576,7 @@ export const LiveMantraRoom = () => {
         </View>
 
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAudioPlayer, requestRecordingPermissionsAsync } from 'expo-audio';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createAgoraRtcEngine,
   ChannelProfileType,
@@ -68,6 +69,8 @@ export default function LiveJaapRoomView() {
     mantraType?: string,
     title?: string 
   }>();
+  const insets = useSafeAreaInsets();
+  const streamIdRef = useRef<number | null>(null);
   
   const selectedMantra = MANTRA_DATA[mantraType || 'gayatri'] || MANTRA_DATA.gayatri;
   const WORDS = selectedMantra.text.split(' ');
@@ -223,12 +226,34 @@ export default function LiveJaapRoomView() {
           setParticipantLabel(`Connected to ${roomTitle || 'Sangat'}`);
           setMicStatus('Audio room live');
           engine.current.muteLocalAudioStream(!isMicEnabled);
+          
+          // Create data stream for reactions
+          try {
+            const id = engine.current.createDataStream({
+              syncWithAudio: false,
+              ordered: false
+            });
+            streamIdRef.current = id;
+          } catch (err) {
+            console.warn('[Agora] Failed to create data stream', err);
+          }
         },
         onUserJoined: (connection: RtcConnection, remoteUid: number) => {
           setRemotePeers(prev => prev + 1);
         },
         onUserOffline: (connection: RtcConnection, remoteUid: number) => {
           setRemotePeers(prev => Math.max(0, prev - 1));
+        },
+        onStreamMessage: (connection: RtcConnection, remoteUid: number, streamId: number, data: Uint8Array) => {
+          try {
+            const message = new TextDecoder().decode(data);
+            const parsed = JSON.parse(message);
+            if (parsed.type === 'reaction') {
+              addReaction(parsed.emoji, false);
+            }
+          } catch (e) {
+            console.warn('[Agora] Failed to decode stream message', e);
+          }
         },
         onError: (err: number, msg: string) => {
           setMicStatus(`Connection Error: ${err}`);
@@ -271,10 +296,17 @@ export default function LiveJaapRoomView() {
     }
   };
 
-  const addReaction = (emoji: string) => {
+  const addReaction = (emoji: string, broadcast = true) => {
     const id = Date.now() + Math.random();
     const anim = new Animated.Value(0);
     setReactions(prev => [...prev, { id, emoji, anim }]);
+    
+    if (broadcast && streamIdRef.current !== null) {
+      const message = JSON.stringify({ type: 'reaction', emoji });
+      const data = new TextEncoder().encode(message);
+      engine.current.sendStreamMessage(streamIdRef.current, data);
+    }
+
     Animated.timing(anim, {
       toValue: 1,
       duration: 2500,
@@ -290,7 +322,7 @@ export default function LiveJaapRoomView() {
       <StatusBar barStyle="light-content" />
       <ImageBackground source={selectedMantra.bg} style={StyleSheet.absoluteFill} resizeMode="cover">
         <LinearGradient colors={['rgba(5,5,5,0.7)', 'rgba(5,5,5,0.9)', 'rgba(47,18,0,0.85)']} style={StyleSheet.absoluteFill} />
-        <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/(tabs)/jaap'); }} style={styles.headerBtn}>
               <Ionicons name="close" size={24} color="#FFF" />
@@ -379,7 +411,7 @@ export default function LiveJaapRoomView() {
               </View>
             </View>
           </View>
-        </SafeAreaView>
+        </View>
       </ImageBackground>
     </View>
   );

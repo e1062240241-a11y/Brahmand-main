@@ -30,8 +30,8 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 
-const { width } = Dimensions.get('window');
-const COLUMN_WIDTH = width / 3;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const COLUMN_WIDTH = SCREEN_WIDTH / 3;
 
 const UserProfileScreen = () => {
   const router = useRouter();
