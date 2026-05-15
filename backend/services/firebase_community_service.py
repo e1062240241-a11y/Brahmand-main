@@ -1,5 +1,9 @@
 """Firebase Community Service"""
 import logging
+import base64
+import os
+from uuid import uuid4
+from urllib.parse import quote
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
@@ -14,6 +18,34 @@ logger = logging.getLogger(__name__)
 class FirebaseCommunityService:
     """Handles community operations with Firestore"""
     
+    @staticmethod
+    async def _upload_to_storage(path: str, base64_data: str, content_type: str = 'image/jpeg') -> str:
+        from firebase_admin import storage as firebase_storage
+
+        bucket_name = (
+            os.getenv('FIREBASE_STORAGE_BUCKET')
+            or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
+            or 'sanatan-lok.firebasestorage.app'
+        )
+        bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
+
+        blob = bucket.blob(path)
+        download_token = uuid4().hex
+        blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+
+        # Strip prefix if present
+        if ',' in base64_data:
+            base64_payload = base64_data.split(',')[1]
+        else:
+            base64_payload = base64_data
+
+        blob.upload_from_string(base64.b64decode(base64_payload), content_type=content_type)
+
+        return (
+            f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
+            f"{quote(path, safe='')}?alt=media&token={download_token}"
+        )
+
     @staticmethod
     async def get_db() -> FirestoreDB:
         client = await get_firestore()
@@ -35,6 +67,24 @@ class FirebaseCommunityService:
             code = f"{base_code}{attempts + 1}"
             attempts += 1
 
+        photo_url = data.get('photo')
+        if photo_url and photo_url.startswith('data:'):
+            try:
+                photo_path = f"communities/photos/{uuid4().hex}.jpg"
+                photo_url = await FirebaseCommunityService._upload_to_storage(photo_path, photo_url)
+            except Exception as e:
+                logger.error(f"Failed to upload community photo: {e}")
+                photo_url = None
+
+        cover_url = data.get('cover_photo')
+        if cover_url and cover_url.startswith('data:'):
+            try:
+                cover_path = f"communities/covers/{uuid4().hex}.jpg"
+                cover_url = await FirebaseCommunityService._upload_to_storage(cover_path, cover_url)
+            except Exception as e:
+                logger.error(f"Failed to upload community cover: {e}")
+                cover_url = None
+
         community_data = {
             "name": data['name'],
             "type": "user_group",
@@ -45,8 +95,8 @@ class FirebaseCommunityService:
                 "area": data.get('area')
             },
             "category": data.get('category'),
-            "photo": data.get('photo'),
-            "cover_photo": data.get('cover_photo'),
+            "photo": photo_url,
+            "cover_photo": cover_url,
             "owner_id": user_id,
             "admin_ids": list(set([user_id] + data.get('admin_ids', []))),
             "members": list(set([user_id] + data.get('admin_ids', []) + data.get('member_ids', []))),
@@ -77,7 +127,10 @@ class FirebaseCommunityService:
         except Exception as e:
             logger.error(f"Failed to commit batch update for community members: {e}")
 
-        await cache_manager.invalidate_user_communities(user_id)
+        # Invalidate cache for all initial members
+        for member_id in community_data['members']:
+            await cache_manager.invalidate_user_communities(member_id)
+
         return community_data
 
     @staticmethod

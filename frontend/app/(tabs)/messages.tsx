@@ -530,9 +530,9 @@ export default function MessagesScreen() {
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="people" size={24} color="#FF6600" style={{ marginRight: 8 }} />
-                <Text style={styles.sectionTitle}>Loacl Communities <Text style={styles.subTitleSmall}>(User Groups)</Text></Text>
+                <Text style={styles.sectionTitle}>Local Communities <Text style={styles.subTitleSmall}>(User Groups)</Text></Text>
               </View>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/community/discover')}>
                 <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             </View>
