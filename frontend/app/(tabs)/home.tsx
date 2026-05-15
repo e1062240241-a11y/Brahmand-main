@@ -1118,7 +1118,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-          <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
+          <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push('/live-jaap-welcome')}>
             <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
               <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.85)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1140,7 +1140,7 @@ export default function HomeScreen() {
                   </View>
 
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
+                    <TouchableOpacity style={styles.joinJaapButton} onPress={() => router.push('/live-jaap-welcome')}>
                       <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
                       <Text style={styles.joinJaapText}>Join Live Jaap</Text>
                       <Ionicons name="chevron-forward" size={18} color="#FFF" />

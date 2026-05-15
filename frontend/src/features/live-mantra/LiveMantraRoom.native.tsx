@@ -71,7 +71,12 @@ export const LiveMantraRoom = () => {
     if (bgPlayer) {
       bgPlayer.loop = true;
       bgPlayer.volume = isMuted ? 0 : 0.4;
-      bgPlayer.play();
+      // Auto-play on native since user already interacted to reach this screen
+      try {
+        bgPlayer.play();
+      } catch (e) {
+        console.warn('Background player failed to play:', e);
+      }
     }
   }, [bgPlayer, isMuted]);
 
@@ -96,14 +101,17 @@ export const LiveMantraRoom = () => {
 
   const connectAgora = async () => {
     try {
+      console.log('[Agora] Connecting for channel:', ROOM_NAME);
       const config = await getAgoraToken(ROOM_NAME);
       if (!config.enabled || !config.token || !config.appId) {
+        console.error('[Agora] Token config invalid or disabled:', config);
         setMicStatus('Agora room not available');
         return false;
       }
 
       agoraUidRef.current = config.uid || 0;
       
+      console.log('[Agora] Initializing engine with AppID:', config.appId);
       await engine.current.initialize({
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
@@ -116,6 +124,9 @@ export const LiveMantraRoom = () => {
           setIsConnected(true);
           setParticipantLabel('Connected to Sangat');
           setMicStatus('Audio room live');
+          
+          // Set initial mute state
+          engine.current.muteLocalAudioStream(!isMicEnabled);
         },
         onUserJoined: (connection: RtcConnection, remoteUid: number, elapsed: number) => {
           console.log('[Agora] Remote user joined:', remoteUid);
@@ -157,8 +168,6 @@ export const LiveMantraRoom = () => {
         return false;
       }
 
-      // Default to muted for privacy
-      await engine.current.muteLocalAudioStream(true);
       return true;
     } catch (error) {
       console.error('[Agora] Failed to setup Agora:', error);
@@ -169,11 +178,12 @@ export const LiveMantraRoom = () => {
 
   const cleanupAgora = async () => {
     if (agoraJoinedRef.current) {
+      console.log('[Agora] Cleaning up engine...');
       try {
         await engine.current.leaveChannel();
         await engine.current.release();
       } catch (error) {
-        console.warn('Agora cleanup error', error);
+        console.warn('[Agora] Cleanup error', error);
       }
       agoraJoinedRef.current = false;
     }
@@ -455,6 +465,20 @@ export const LiveMantraRoom = () => {
 
           <View style={styles.controlPanel}>
             <TouchableOpacity
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/temple');
+                }
+              }}
+              style={styles.endJaapBtn}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.endJaapText}>End Jaap</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[
                 styles.controlButton,
                 isMicEnabled && !roomMuted ? styles.controlButtonActive : null,
@@ -467,7 +491,7 @@ export const LiveMantraRoom = () => {
                 size={22}
                 color="#FFF"
               />
-              <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic On' : 'Mic Off'}</Text>
+              <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic is Enabled' : 'Enable Microphone'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -587,10 +611,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   controlPanel: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'center',
     gap: 16,
     marginTop: 26,
+  },
+  endJaapBtn: {
+    backgroundColor: '#FF3B30',
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  endJaapText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   controlButton: {
     flexDirection: 'row',
