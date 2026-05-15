@@ -17,7 +17,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -884,15 +884,17 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
+    <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
           { 
-            paddingTop: insets.top + 10,
-            paddingBottom: 80 + insets.bottom 
+            paddingTop: 10,
+            paddingBottom: 90 
           }
         ]}
         stickyHeaderIndices={[1]}
@@ -1497,7 +1499,7 @@ export default function HomeScreen() {
         <KeyboardAvoidingView
           style={styles.commentOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={0}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
         >
           <TouchableOpacity 
             style={styles.modalBackgroundDismiss} 
@@ -1593,6 +1595,8 @@ export default function HomeScreen() {
         </KeyboardAvoidingView>
       </Modal>
     </LinearGradient>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -2220,7 +2224,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   commentSheet: {
-    maxHeight: '82%',
+    maxHeight: '75%',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     backgroundColor: '#FFF7ED',

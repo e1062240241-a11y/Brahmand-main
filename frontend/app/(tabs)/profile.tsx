@@ -17,7 +17,7 @@ import {
   TextInput,
   Animated
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -799,7 +799,8 @@ export default function ProfileScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Background Upload Status */}
       {backgroundUpload.uploading && (
         <View style={styles.uploadingStatusBar}>
@@ -885,7 +886,12 @@ export default function ProfileScreen() {
       {/* Settings Menu Modal */}
       <Modal visible={showSettingsModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.settingsSheet}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFill} 
+            activeOpacity={1} 
+            onPress={() => setShowSettingsModal(false)} 
+          />
+          <View style={[styles.settingsSheet, { paddingBottom: insets.bottom }]}>
             <View style={styles.settingsHeader}>
               <View style={styles.settingsHeaderBar} />
               <Text style={styles.settingsTitle}>Settings and Privacy</Text>
@@ -1134,7 +1140,7 @@ export default function ProfileScreen() {
       <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetOverlay}>
           <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
-          <View style={styles.sheetContent}>
+          <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Comments</Text>
@@ -1207,6 +1213,7 @@ export default function ProfileScreen() {
           loadPosts(true);
         }}
       />
+    </SafeAreaView>
     </View>
   );
 }
@@ -1229,7 +1236,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   sheetContent: {
-    height: '75%',
+    height: '70%',
     backgroundColor: '#FFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -1504,7 +1511,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    height: '80%',
+    height: '65%',
     paddingTop: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -12 },

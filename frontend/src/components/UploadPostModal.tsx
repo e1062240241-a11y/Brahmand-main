@@ -329,7 +329,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   return (
     <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={resetAndClose} presentationStyle="fullScreen">
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           
           <View style={styles.appBar}>
             <TouchableOpacity onPress={resetAndClose} style={styles.iconBtn}>

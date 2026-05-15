@@ -453,7 +453,7 @@ export default function PanchangScreen() {
             ))}
           </View>
         )}
-        <View style={{ height: 100 }} />
+        <View style={{ height: 80 + insets.bottom }} />
       </ScrollView>
 
       {/* Sticky AI Input */}

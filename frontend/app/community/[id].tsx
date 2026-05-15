@@ -713,7 +713,7 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior="padding"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
       {/* Sticky Top Bar */}
@@ -871,7 +871,7 @@ export default function CommunityDetailScreen() {
         contentContainerStyle={styles.mainContent}
       />
 
-      <View style={[styles.footer, { paddingBottom: 16 }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         {selectedImage && (
           <View style={styles.imagePreviewContainer}>
             <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
@@ -902,7 +902,7 @@ export default function CommunityDetailScreen() {
       <Modal visible={showCreateModal} animationType="slide" transparent={false}>
         <SafeAreaView style={styles.createModalRoot}>
           <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
             <View style={styles.createModalHeader}>
@@ -1016,7 +1016,8 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
           style={styles.modalOverlay}
         >
           <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -1099,7 +1100,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 15, color: '#888', fontWeight: '600' },
   tabTextActive: { color: '#FF3B30', fontWeight: '700' },
 
-  mainContent: { paddingBottom: 100 },
+  mainContent: { paddingBottom: 120 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 25, marginBottom: 15 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
   sectionTitle: { fontSize: 17, fontFamily: 'Inter_700Bold', color: '#111', fontWeight: '700' },

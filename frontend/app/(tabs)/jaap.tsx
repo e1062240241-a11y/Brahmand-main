@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { getTempleImageById } from '../../src/constants/templeImages';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -94,10 +95,10 @@ export default function JaapLandingScreen() {
   const { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } = require('../../src/constants/templeImages');
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={[styles.topTabsContainer, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.topTabsContainer, { paddingTop: 10 }]}>
         <View style={styles.topTabsInner}>
           <TouchableOpacity 
             style={[styles.topTabButton, activeSection === 'jaap' && styles.topTabButtonActive]}
@@ -117,7 +118,7 @@ export default function JaapLandingScreen() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={{ 
-          paddingBottom: 80 + insets.bottom 
+          paddingBottom: 90 
         }}
       >
         {activeSection === 'jaap' ? (
@@ -362,7 +363,7 @@ export default function JaapLandingScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

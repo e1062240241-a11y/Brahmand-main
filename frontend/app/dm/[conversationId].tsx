@@ -11,6 +11,7 @@ import {
   Platform, 
   ActivityIndicator,
   Keyboard,
+  KeyboardAvoidingView,
   Dimensions,
   BackHandler,
   Alert,
@@ -1739,7 +1740,7 @@ const DirectMessageScreen = () => {
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
       >
         {renderContent()}
       </KeyboardAvoidingView>

@@ -569,7 +569,7 @@ export default function MessagesScreen() {
               </TouchableOpacity>
             </View>
             
-            <View style={{ height: 80 + insets.bottom }} />
+            <View style={{ height: 90 }} />
           </View>
         ) : (
           <View style={styles.chatContent}>
@@ -638,13 +638,13 @@ export default function MessagesScreen() {
                 </View>
               )}
              
-             <View style={{ height: 80 + insets.bottom }} />
+             <View style={{ height: 90 }} />
           </View>
         )}
       </ScrollView>
       {/* Locked Group Banner */}
       {showLockedBanner && (
-        <View style={[styles.lockedBannerContainer, { bottom: 80 + insets.bottom }]}>
+        <View style={[styles.lockedBannerContainer, { bottom: 90 }]}>
           <TouchableOpacity 
             style={styles.lockedBannerContent}
             onPress={() => {
