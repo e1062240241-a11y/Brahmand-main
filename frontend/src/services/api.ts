@@ -831,8 +831,8 @@ export const removeCircleMember = (circleId: string, memberId: string) =>
   api.post(`/circles/${circleId}/remove-member/${memberId}`);
 
 // Message APIs
-export const sendCommunityMessage = (communityId: string, subgroupType: string, content: string, messageType: string = 'text') => 
-  api.post(`/messages/community/${communityId}/${subgroupType}`, { content, message_type: messageType });
+export const sendCommunityMessage = (communityId: string, subgroupType: string, content: string, messageType: string = 'text', category?: string) => 
+  api.post(`/messages/community/${communityId}/${subgroupType}`, { content, message_type: messageType, category });
 
 export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 50) => 
   api.get(`/messages/community/${communityId}/${subgroupType}?limit=${limit}`);

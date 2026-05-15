@@ -95,7 +95,7 @@ export default function NotificationsScreen() {
       <LinearGradient colors={['#FF6600', '#FF9933']} style={styles.headerGradient}>
         <SafeAreaView edges={['top']}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <Ionicons name="chevron-back" size={26} color="#FFF" />
             </TouchableOpacity>
             <View style={styles.headerTitleWrap}>

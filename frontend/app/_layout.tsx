@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
 import { startAuthStateListener } from '../src/services/firebase/authService';
@@ -15,22 +15,23 @@ import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_7
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { MuteProvider } from '../src/contexts/MuteContext';
 
+// Intercept Android hardware back on community pages to avoid "GO_BACK not handled"
 function useAndroidBackHandler() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleBackPress = useCallback(() => {
-    if (pathname.startsWith('/community/')) {
-      router.replace('/messages');
-      return true;
-    }
-    return false;
-  }, [pathname, router]);
-
   useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
-    return () => subscription.remove();
-  }, [handleBackPress]);
+    if (Platform.OS !== 'android') return;
+    const onBackPress = () => {
+      if (pathname.startsWith('/community/')) {
+        router.replace('/(tabs)/messages');
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [pathname, router]);
 }
 
 // Handle deep links for circle invites

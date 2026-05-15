@@ -52,11 +52,7 @@ export default function CommunityRequestHub() {
   };
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)/home');
-    }
+    router.back();
   };
 
   return (

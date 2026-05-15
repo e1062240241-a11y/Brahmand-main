@@ -478,13 +478,7 @@ const UserProfileScreen = () => {
       {/* Custom Header Bar */}
       <View style={[styles.navBar, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFF', paddingTop: insets.top, height: 50 + insets.top }]}>
         <TouchableOpacity 
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/home');
-            }
-          }} 
+          onPress={() => router.back()} 
           style={styles.navIcon}
         >
           <Ionicons name="chevron-back" size={28} color={COLORS.text} />

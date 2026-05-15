@@ -25,7 +25,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const { updateUser } = useAuthStore();
   const handleBack = () => {
-    router.replace('/profile');
+    router.back();
   };
 
   const [loading, setLoading] = useState(true);
