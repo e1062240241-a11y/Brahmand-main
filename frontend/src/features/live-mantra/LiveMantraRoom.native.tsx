@@ -51,6 +51,7 @@ export const LiveMantraRoom = () => {
   const [remoteSpeakers, setRemoteSpeakers] = useState<string[]>([]);
   const [remotePeers, setRemotePeers] = useState<string[]>([]);
   const [voiceTransport, setVoiceTransport] = useState<VoiceTransport>('sfu');
+  const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
 
   const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
   const agoraJoinedRef = useRef(false);
@@ -249,6 +250,21 @@ export const LiveMantraRoom = () => {
     }
   };
 
+  const addReaction = (emoji: string) => {
+    const id = Date.now() + Math.random();
+    const anim = new Animated.Value(0);
+    setReactions(prev => [...prev, { id, emoji, anim }]);
+    
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 2500,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      setReactions(prev => prev.filter(r => r.id !== id));
+    });
+  };
+
   useEffect(() => {
     roomMutedRef.current = roomMuted;
   }, [roomMuted]);
@@ -344,7 +360,7 @@ export const LiveMantraRoom = () => {
   useEffect(() => {
     Animated.timing(activeIndexAnim, {
       toValue: currentIndex,
-      duration: 900,
+      duration: 500, // Snappier transition
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
     }).start();
@@ -365,9 +381,13 @@ export const LiveMantraRoom = () => {
       timer = setTimeout(() => {
         setIsHolding(false);
         setCurrentIndex(0);
-      }, 5000);
+      }, 4000); // Faster reset
       return () => clearTimeout(timer);
     }
+
+    // Adaptive word timing: Long words get 3s hold, others 1.2s
+    const currentWord = WORDS[currentIndex] || '';
+    const wordDuration = currentWord.length > 7 ? 3000 : 1200;
 
     timer = setTimeout(() => {
       if (currentIndex < WORDS.length - 1) {
@@ -375,7 +395,7 @@ export const LiveMantraRoom = () => {
       } else {
         setIsHolding(true);
       }
-    }, 1800);
+    }, wordDuration);
 
     return () => clearTimeout(timer);
   }, [currentIndex, isHolding]);
@@ -463,42 +483,65 @@ export const LiveMantraRoom = () => {
             <Text style={styles.upcomingText}>ॐ भूर्भुवः स्वः</Text>
           </Animated.View>
 
-          <View style={styles.controlPanel}>
-            <TouchableOpacity
-              onPress={() => {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace('/temple');
-                }
-              }}
-              style={styles.endJaapBtn}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.endJaapText}>End Jaap</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.controlButton,
-                isMicEnabled && !roomMuted ? styles.controlButtonActive : null,
-              ]}
-              onPress={handleMicToggle}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={isMicEnabled ? 'mic' : 'mic-off'}
-                size={22}
-                color="#FFF"
-              />
-              <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic is Enabled' : 'Enable Microphone'}</Text>
-            </TouchableOpacity>
+          <View style={styles.reactionOverlay} pointerEvents="none">
+            {reactions.map(r => (
+              <Animated.Text
+                key={r.id}
+                style={[
+                  styles.floatingEmoji,
+                  {
+                    opacity: r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+                    transform: [
+                      { translateY: r.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -300] }) },
+                      { translateX: r.anim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 15, -15, 10, 0] }) },
+                      { scale: r.anim.interpolate({ inputRange: [0, 0.2], outputRange: [0.6, 1.2], extrapolate: 'clamp' }) }
+                    ]
+                  }
+                ]}
+              >
+                {r.emoji}
+              </Animated.Text>
+            ))}
           </View>
 
-          <Text style={styles.micStatus} numberOfLines={1}>
-            {voiceTransport === 'sfu' ? 'Standard Room' : 'Agora Live Room'}: {remotePeers.length || 0}
-            {remoteSpeakers.length ? ` · voices ${remoteSpeakers.length}` : ''}
-          </Text>
+          <View style={styles.footerContainer}>
+            <View style={styles.roomStatsBox}>
+               <Text style={styles.roomStats}>Sangat: {remotePeers.length + 1} Devotees</Text>
+            </View>
+
+            <View style={styles.transparentControlBar}>
+              <View style={styles.leftControls}>
+                <TouchableOpacity onPress={handleMicToggle} style={styles.iconCircle}>
+                  <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={22} color={isMicEnabled ? "#4CD964" : "#FFF"} />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={() => {
+                    if (router.canGoBack()) {
+                      router.back();
+                    } else {
+                      router.replace('/live-mantra');
+                    }
+                  }} 
+                  style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}
+                >
+                  <Ionicons name="call" size={20} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.rightReactions}>
+                {['🙏', '❤️', '😊', '🔔'].map((emoji) => (
+                  <TouchableOpacity 
+                    key={emoji} 
+                    onPress={() => addReaction(emoji)}
+                    style={styles.reactionBtn}
+                  >
+                    <Text style={styles.reactionBtnText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
         </View>
 
       </View>
@@ -585,9 +628,9 @@ const styles = StyleSheet.create({
   },
   mantraWord: {
     color: '#FFF',
-    fontSize: 38,
-    fontWeight: '700',
-    marginHorizontal: 6,
+    fontSize: 40, // Slightly larger
+    fontWeight: '800',
+    marginHorizontal: 8,
     textAlign: 'center',
   },
   upcomingContainer: {
@@ -610,61 +653,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  controlPanel: {
+  footerContainer: {
+    paddingBottom: 20,
+    width: '100%',
     alignItems: 'center',
-    gap: 16,
-    marginTop: 26,
+    gap: 15,
   },
-  endJaapBtn: {
-    backgroundColor: '#FF3B30',
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 30,
-    marginBottom: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#FF3B30',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  endJaapText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  controlButton: {
+  transparentControlBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: '100%',
     paddingVertical: 12,
-    borderRadius: 999,
+    paddingHorizontal: 16,
+    borderRadius: 35,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.15)',
   },
-  controlButtonActive: {
-    backgroundColor: 'rgba(255,215,121,0.18)',
-    borderColor: 'rgba(255,215,121,0.35)',
+  leftControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  controlButtonMuted: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.18)',
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  controlLabel: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '600',
+  rightReactions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  micStatus: {
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
-    marginTop: 12,
+  reactionBtn: {
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reactionBtnText: {
+    fontSize: 22,
+  },
+  reactionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    paddingBottom: 100,
+    paddingRight: 40,
+    zIndex: 100,
+  },
+  floatingEmoji: {
+    position: 'absolute',
+    fontSize: 32,
+    bottom: 0,
+  },
+  roomStatsBox: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  roomStats: {
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
-    maxWidth: '85%',
+    fontWeight: '600',
   },
   headerCloseButton: {
     marginRight: 16,
