@@ -759,7 +759,7 @@ export default function CommunityDetailScreen() {
       keyboardVerticalOffset={90}
     >
       {/* Sticky Top Bar */}
-      <View style={[styles.stickyTopBar, { paddingTop: insets.top }]}>
+      <View style={[styles.stickyTopBar, { paddingTop: insets.top, height: 60 + insets.top }]}>
         <TouchableOpacity 
           onPress={() => {
             if (router.canGoBack()) {

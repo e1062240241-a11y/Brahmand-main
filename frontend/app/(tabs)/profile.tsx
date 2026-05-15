@@ -786,7 +786,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.container}>
       {/* Background Upload Status */}
       {backgroundUpload.uploading && (
         <View style={styles.uploadingStatusBar}>
@@ -811,7 +811,7 @@ export default function ProfileScreen() {
         </View>
       )}
       {/* Custom Header Bar (Instagram Style) */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { paddingTop: insets.top, height: 54 + insets.top }]}>
         <TouchableOpacity style={styles.navLeft} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -939,7 +939,7 @@ export default function ProfileScreen() {
       {/* Post Detail Modal */}
       <Modal visible={postModalVisible} animationType="slide">
         <View style={styles.postDetailContainer}>
-          <View style={[styles.postDetailHeader, { marginTop: insets.top }]}>
+          <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -1205,7 +1205,7 @@ export default function ProfileScreen() {
           loadPosts(true);
         }}
       />
-    </SafeAreaView>
+      </View>
     </View>
   );
 }
