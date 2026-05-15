@@ -347,7 +347,13 @@ export default function SOSScreen() {
         )}
 
         {stage === 'location' && (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+          <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={{ 
+              flexGrow: 1, 
+              paddingBottom: Math.max(insets.bottom, 20) 
+            }}
+          >
             <View style={styles.mapContainer}>
               {location && MapView && (
                 <MapView

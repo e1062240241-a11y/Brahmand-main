@@ -114,7 +114,12 @@ export default function JaapLandingScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ 
+          paddingBottom: 80 + insets.bottom 
+        }}
+      >
         {activeSection === 'jaap' ? (
           <>
             <View style={styles.heroTitleSectionExact}>

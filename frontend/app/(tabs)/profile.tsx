@@ -799,7 +799,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <View style={styles.container}>
       {/* Background Upload Status */}
       {backgroundUpload.uploading && (
         <View style={styles.uploadingStatusBar}>
@@ -1164,7 +1164,7 @@ export default function ProfileScreen() {
                   <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
                 </View>
               }
-              contentContainerStyle={{ paddingBottom: 100 }}
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
             />
           )}
 
@@ -1207,7 +1207,7 @@ export default function ProfileScreen() {
           loadPosts(true);
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

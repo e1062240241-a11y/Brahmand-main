@@ -890,7 +890,10 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 10 }
+          { 
+            paddingTop: insets.top + 10,
+            paddingBottom: 80 + insets.bottom 
+          }
         ]}
         stickyHeaderIndices={[1]}
         onScroll={handleHomeScroll}
@@ -1565,7 +1568,7 @@ export default function HomeScreen() {
               )}
             </View>
 
-            <View style={styles.commentInputWrap}>
+            <View style={[styles.commentInputWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
@@ -1630,9 +1633,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  content: {
-    paddingBottom: 106,
-  },
+  content: {},
   upperContentWrapper: {
     paddingHorizontal: PAGE_PADDING,
   },

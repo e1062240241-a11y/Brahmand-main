@@ -14,7 +14,7 @@ import {
   FlatList,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
@@ -27,6 +27,7 @@ const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
 
 export default function BloodRequestScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
   // Form State
   const [bloodGroup, setBloodGroup] = useState('');
@@ -163,7 +164,11 @@ export default function BloodRequestScreen() {
           <View style={{ width: 40 }} />
         </View>
 
-        <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView 
+          style={styles.cardContainerWrapper} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
           <View style={styles.cardContainer}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               
@@ -270,7 +275,7 @@ export default function BloodRequestScreen() {
               </TouchableOpacity>
               
               <Text style={styles.bottomDisclaimer}>Verified donors will be notified instantly</Text>
-              <View style={{ height: 40 }} />
+              <View style={{ height: Math.max(insets.bottom, 20) }} />
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -303,7 +308,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topHeaderText: { color: '#E53935', fontSize: 17, fontFamily: FONTS.bold, letterSpacing: 0.5 },
-  cardContainerWrapper: { flex: 1, marginHorizontal: 16, marginTop: 10, marginBottom: 20 },
+  cardContainerWrapper: { flex: 1, marginHorizontal: 16, marginTop: 10, marginBottom: 10 },
   cardContainer: { 
     flex: 1, 
     backgroundColor: '#FFFFFF', 
