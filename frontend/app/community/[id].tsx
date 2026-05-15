@@ -189,10 +189,9 @@ export default function CommunityDetailScreen() {
         ...communityPosts // Show ALL posts in general Feed
       ];
     }
-    // Handle other tabs
     const tabPosts = communityPosts.filter(p => p.category === activeTab);
     if (tabPosts.length > 0) {
-      return [{ type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
+      return [{ id: `header-${activeTab}`, type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
     }
     return [];
   }, [activeTab, requests, discussionPosts, communityPosts]);
@@ -276,8 +275,29 @@ export default function CommunityDetailScreen() {
     setLoadingMore(true);
     try {
       const { getCommunityMessages } = require('../../src/services/api');
-      const msgResponse = await getCommunityMessages(id as string, 'city', 20); // Simple infinite scroll
-      // Append more messages...
+      const msgResponse = await getCommunityMessages(id as string, 'city', communityPosts.length + 20);
+      const newMsgs = (msgResponse.data || []).slice(communityPosts.length).map((msg: any) => ({
+        id: msg.id || Math.random().toString(),
+        user: {
+          name: msg.sender_name || 'Anonymous',
+          photo: msg.sender_photo,
+          isVerified: msg.is_verified || false,
+          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
+        },
+        content: msg.content,
+        image: msg.media_url,
+        timestamp: 'Just now',
+        likes: msg.likes_count || 0,
+        comments: msg.comments_count || 0,
+        shares: 0,
+        reposts: 0,
+        hideBadge: true,
+        category: 'Feed',
+      }));
+      
+      if (newMsgs.length > 0) {
+        setCommunityPosts(prev => [...prev, ...newMsgs]);
+      }
     } catch (error) {
       console.error('Error loading more posts:', error);
     } finally {
@@ -782,7 +802,7 @@ export default function CommunityDetailScreen() {
       <FlatList
         ref={listRef}
         data={combinedData}
-        keyExtractor={item => item.id || (item.type + (item.title || ''))}
+        keyExtractor={item => String(item.id || item.type + (item.title || '') + (item.content || ''))}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (
