@@ -527,8 +527,10 @@ export default function CommunityDetailScreen() {
 
   const handleShareCommunity = async () => {
     try {
+      const communityLink = `https://brahmand.app/community/${id}`;
       await Share.share({
-        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!`,
+        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${communityLink}`,
+        url: communityLink,
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -659,12 +661,14 @@ export default function CommunityDetailScreen() {
 
   const handleShare = async (postId: string) => {
     try {
+      const postLink = `https://brahmand.app/community/${id}/post/${postId}`;
       await Share.share({
-        message: 'Check out this community post on Brahmand!',
+        message: `Check out this community post on Brahmand!\n\n${postLink}`,
+        url: postLink,
       });
       setDiscussionPosts(prev => prev.map(post => {
         if (post.id === postId) {
-          return { ...post, shares: post.shares + 1 };
+          return { ...post, shares: (post.shares || 0) + 1 };
         }
         return post;
       }));
