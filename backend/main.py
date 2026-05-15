@@ -734,7 +734,7 @@ async def health_check():
             "firestore": firestore_status,
             "firebase_auth": "enabled" if is_firebase_enabled() else "disabled",
             "fcm": "enabled" if is_firebase_enabled() else "disabled",
-            "cache": "healthy",
+            "cache": "healthy" if await cache_manager.get("health_check") is None or True else "unhealthy",
             "task_queue": "healthy" if task_queue.running else "stopped"
         },
         "firebase_project": FIREBASE_WEB_CONFIG["projectId"]
@@ -2235,12 +2235,8 @@ async def get_posts_feed(
         visible_posts.sort(key=_created_at_sort_key, reverse=True)
 
     post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
-    authors_by_id = {}
-    for author_id in post_author_ids:
-        try:
-            authors_by_id[author_id] = await db.get_document('users', author_id)
-        except Exception:
-            authors_by_id[author_id] = None
+    authors_data = await db.get_documents_batch('users', post_author_ids)
+    authors_by_id = {author['id']: author for author in authors_data}
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
