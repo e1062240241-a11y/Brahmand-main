@@ -531,7 +531,6 @@ export default function CommunityDetailScreen() {
       const webLink = `https://brahmand.app/community/${id}`;
       await Share.share({
         message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
-        url: webLink, // Use standard URL to avoid 'Invalid URL' errors
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -662,12 +661,14 @@ export default function CommunityDetailScreen() {
 
   const handleShare = async (postId: string) => {
     try {
-      const appLink = `sanatanlok://community/${id}/post/${postId}`;
-      const webLink = `https://brahmand.app/community/${id}/post/${postId}`;
+      // Use the standard /post/[id] route which exists in app/post/[id].tsx
+      const appLink = `sanatanlok://post/${postId}`;
+      const webLink = `https://brahmand.app/post/${postId}`;
+      
       await Share.share({
         message: `Check out this community post on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
-        url: webLink, // Use standard URL to avoid 'Invalid URL' errors
       });
+      
       setDiscussionPosts(prev => prev.map(post => {
         if (post.id === postId) {
           return { ...post, shares: (post.shares || 0) + 1 };
