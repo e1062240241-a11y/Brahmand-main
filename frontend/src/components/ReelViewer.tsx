@@ -135,8 +135,8 @@ const ReelVideoItem = React.memo(({
   useEffect(() => {
     let timer: any;
     if (isVideoLoading) {
-      // Shorter delay for reels as they are expected to start faster
-      timer = setTimeout(() => setShowSpinner(true), 1200);
+      // Faster delay for reels
+      timer = setTimeout(() => setShowSpinner(true), 300);
     } else {
       setShowSpinner(false);
     }

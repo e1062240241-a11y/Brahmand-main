@@ -159,8 +159,8 @@ export const PostFeedCard = memo(({
   useEffect(() => {
     let timer: any;
     if (mediaLoading) {
-      // Delay spinner to avoid flickering on fast connections
-      timer = setTimeout(() => setShowSpinner(true), 1500);
+      // Shorter delay to make it responsive but avoid flickering
+      timer = setTimeout(() => setShowSpinner(true), 400);
     } else {
       setShowSpinner(false);
     }
