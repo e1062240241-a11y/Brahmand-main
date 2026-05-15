@@ -816,16 +816,14 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         
         <View style={styles.navCenter}>
-          <Text style={styles.navTitle}>
+          <Text style={styles.navTitle} numberOfLines={1}>
             {profile?.sl_id || user?.sl_id || 'Profile'}
           </Text>
         </View>
 
-        <View style={styles.navRight}>
-          <TouchableOpacity style={styles.navIcon} onPress={() => setShowSettingsModal(true)}>
-            <Ionicons name="menu-outline" size={28} color="#FFF" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.navRight} onPress={() => setShowSettingsModal(true)}>
+          <Ionicons name="ellipsis-vertical" size={24} color="#FFF" />
+        </TouchableOpacity>
       </View>
 
       <Animated.FlatList
@@ -1251,7 +1249,6 @@ const styles = StyleSheet.create({
     height: 54,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     backgroundColor: '#000000',
     borderBottomWidth: 0.5,
@@ -1259,25 +1256,21 @@ const styles = StyleSheet.create({
   },
   navLeft: {
     width: 40,
+    height: '100%',
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   navCenter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+    flex: 1,
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: -1,
   },
   navRight: {
     width: 40,
-    alignItems: 'flex-end',
+    height: '100%',
     justifyContent: 'center',
-  },
-  navIcon: {
-    padding: 4,
+    alignItems: 'flex-end',
   },
   navTitle: {
     fontSize: 16,
