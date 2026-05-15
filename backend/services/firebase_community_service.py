@@ -25,8 +25,15 @@ class FirebaseCommunityService:
         db = await FirebaseCommunityService.get_db()
 
         # Generate unique code
-        code = generate_community_code(data['name'].split()[0])
-        # In a real app, we'd loop to ensure uniqueness
+        base_code = generate_community_code(data['name'].split()[0])
+        code = base_code
+        attempts = 0
+        while attempts < 10:
+            existing = await db.find_one('communities', [('code', '==', code)])
+            if not existing:
+                break
+            code = f"{base_code}{attempts + 1}"
+            attempts += 1
 
         community_data = {
             "name": data['name'],
@@ -55,13 +62,20 @@ class FirebaseCommunityService:
 
         # Add community to all members
         from google.cloud import firestore
+        batch = db.client.batch()
         for member_id in community_data['members']:
             try:
-                await db.client.collection('users').document(member_id).update({
+                user_ref = db.client.collection('users').document(member_id)
+                batch.update(user_ref, {
                     'communities': firestore.ArrayUnion([community_id])
                 })
             except Exception as e:
-                logger.error(f"Failed to add community to member {member_id}: {e}")
+                logger.error(f"Failed to prepare batch update for community to member {member_id}: {e}")
+
+        try:
+            await db._run_sync(batch.commit)
+        except Exception as e:
+            logger.error(f"Failed to commit batch update for community members: {e}")
 
         await cache_manager.invalidate_user_communities(user_id)
         return community_data
