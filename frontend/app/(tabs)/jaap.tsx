@@ -91,7 +91,7 @@ export default function JaapLandingScreen() {
     return matchesSearch && matchesCategory;
   });
 
-  const { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } = require('../../src/constants/templeImages');
+  const { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName, getTempleImageById } = require('../../src/constants/templeImages');
 
   return (
     <View style={styles.container}>
