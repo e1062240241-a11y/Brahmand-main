@@ -164,6 +164,7 @@ export default function CommunityDetailScreen() {
   
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [activeComments, setActiveComments] = useState<any[]>([]);
 
   const dynamicTabs = useMemo(() => {
     return COMMUNITY_TABS;
@@ -332,7 +333,10 @@ export default function CommunityDetailScreen() {
           <View style={styles.postActionRow}>
             <TouchableOpacity 
               style={styles.postActionBtn}
-              onPress={() => setShowCommentModal(item)}
+              onPress={() => {
+                setActiveComments([]); // Clear old comments
+                setShowCommentModal(item);
+              }}
             >
               <Ionicons name="chatbubble-outline" size={18} color="#536471" />
               <Text style={styles.postActionCount}>{item.comments > 0 ? item.comments : ''}</Text>
@@ -672,15 +676,24 @@ export default function CommunityDetailScreen() {
   const handleAddComment = () => {
     if (!commentText.trim() || !showCommentModal) return;
     
+    const newComment = {
+      id: `comment-${Date.now()}`,
+      userName: user?.name || 'You',
+      text: commentText,
+      avatar: user?.photo
+    };
+
+    setActiveComments(prev => [...prev, newComment]);
+
     setDiscussionPosts(prev => prev.map(post => {
       if (post.id === showCommentModal.id) {
-        return { ...post, comments: post.comments + 1 };
+        return { ...post, comments: (post.comments || 0) + 1 };
       }
       return post;
     }));
     
     setCommentText('');
-    Alert.alert('Success', 'Comment added successfully!');
+    // Alert removed for smoother experience, comment appears immediately
   };
 
   const combinedData = useMemo(() => {
@@ -1035,21 +1048,22 @@ export default function CommunityDetailScreen() {
             </View>
             
             <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
-              {/* Dummy comments for replica */}
-              <View style={styles.commentItem}>
-                <Avatar name="Rahul" size={32} />
-                <View style={styles.commentTextBubble}>
-                  <Text style={styles.commentUserName}>Rahul Sharma</Text>
-                  <Text style={styles.commentText}>Jai Shri Ram! Looking forward to the bhajan sandhya.</Text>
+              {activeComments.length > 0 ? (
+                activeComments.map(comment => (
+                  <View key={comment.id} style={styles.commentItem}>
+                    <Avatar name={comment.userName} photo={comment.avatar} size={32} />
+                    <View style={styles.commentTextBubble}>
+                      <Text style={styles.commentUserName}>{comment.userName}</Text>
+                      <Text style={styles.commentText}>{comment.text}</Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40 }}>
+                  <Ionicons name="chatbubble-outline" size={48} color="#CCC" />
+                  <Text style={{ color: '#888', marginTop: 12, fontSize: 14 }}>No comments yet. Be the first to comment!</Text>
                 </View>
-              </View>
-              <View style={styles.commentItem}>
-                <Avatar name="Neha" size={32} />
-                <View style={styles.commentTextBubble}>
-                  <Text style={styles.commentUserName}>Neha Gupta</Text>
-                  <Text style={styles.commentText}>Great initiative for the food donation drive.</Text>
-                </View>
-              </View>
+              )}
             </ScrollView>
 
             <View style={styles.commentInputRow}>
