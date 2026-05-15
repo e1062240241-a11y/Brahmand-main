@@ -304,7 +304,7 @@ export default function LiveJaapRoomView() {
     if (broadcast && streamIdRef.current !== null) {
       const message = JSON.stringify({ type: 'reaction', emoji });
       const data = new TextEncoder().encode(message);
-      engine.current.sendStreamMessage(streamIdRef.current, data);
+      engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
     }
 
     Animated.timing(anim, {
@@ -347,7 +347,7 @@ export default function LiveJaapRoomView() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={[styles.scrollContainer, { justifyContent: 'center', flex: 1 }]} scrollEnabled={false}>
+          <View style={[styles.scrollContainer, { justifyContent: 'center', flex: 1 }]}>
             {activeTab === 'chant' ? (
               <View style={styles.soloFocusContainer}>
                  <Animated.View key={`line-${Math.floor(currentIndex / 4)}`} style={[styles.soloWordBox, { opacity: soloFadeAnim, transform: [{ translateY: soloMoveAnim }] }]}>
@@ -371,10 +371,12 @@ export default function LiveJaapRoomView() {
                   <Ionicons name="document-text" size={16} color="#FFEBB5" />
                   <Text style={styles.scrollHeaderText}>Sacred Full Path</Text>
                 </View>
-                <Text style={styles.fullShlokaText}>{selectedMantra.text}</Text>
+                <ScrollView showsVerticalScrollIndicator={true}>
+                  <Text style={styles.fullShlokaText}>{selectedMantra.text}</Text>
+                </ScrollView>
               </View>
             )}
-          </ScrollView>
+          </View>
 
           <View style={styles.reactionOverlay} pointerEvents="none">
             {reactions.map(r => (
@@ -443,7 +445,7 @@ const styles = StyleSheet.create({
   scrollHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(255,235,181,0.2)', paddingBottom: 10 },
   scrollHeaderText: { color: '#FFEBB5', fontSize: 14, fontWeight: '800' },
   fullShlokaText: { color: '#FFEBB5', fontSize: 20, textAlign: 'center', lineHeight: 36, fontWeight: '700' },
-  footerContainer: { paddingBottom: 30, width: '100%', alignItems: 'center', gap: 15 },
+  footerContainer: { paddingBottom: 10, width: '100%', alignItems: 'center', gap: 15 },
   transparentControlBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.08)', width: '92%', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 35, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
   leftControls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },

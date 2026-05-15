@@ -283,7 +283,7 @@ export const LiveMantraRoom = () => {
     if (broadcast && streamIdRef.current !== null) {
       const message = JSON.stringify({ type: 'reaction', emoji });
       const data = new TextEncoder().encode(message);
-      engine.current.sendStreamMessage(streamIdRef.current, data);
+      engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
     }
 
     Animated.timing(anim, {
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 96,
+    paddingBottom: 10,
     overflow: 'hidden',
   },
   silhouetteOverlay: {
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footerContainer: {
-    paddingBottom: 20,
+    paddingBottom: 5,
     width: '100%',
     alignItems: 'center',
     gap: 15,
