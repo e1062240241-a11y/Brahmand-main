@@ -140,10 +140,11 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
 ];
 
 export default function CommunityDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList>(null);
   
   const [community, setCommunity] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('Feed');
@@ -173,6 +174,21 @@ export default function CommunityDetailScreen() {
   useEffect(() => {
     fetchCommunity();
   }, [id]);
+
+  useEffect(() => {
+    if (!loading && postId && communityPosts.length > 0) {
+      const index = communityPosts.findIndex(p => p.id === postId);
+      if (index !== -1) {
+        // Find the index in combinedData
+        const combinedIndex = combinedData.findIndex(item => item.id === postId);
+        if (combinedIndex !== -1) {
+          setTimeout(() => {
+            listRef.current?.scrollToIndex({ index: combinedIndex, animated: true, viewPosition: 0.5 });
+          }, 500);
+        }
+      }
+    }
+  }, [loading, postId, communityPosts, combinedData]);
 
   const fetchCommunity = async () => {
     try {
@@ -661,9 +677,8 @@ export default function CommunityDetailScreen() {
 
   const handleShare = async (postId: string) => {
     try {
-      // Use the standard /post/[id] route which exists in app/post/[id].tsx
-      const appLink = `sanatanlok://post/${postId}`;
-      const webLink = `https://brahmand.app/post/${postId}`;
+      const appLink = `sanatanlok://community/${id}?postId=${postId}`;
+      const webLink = `https://brahmand.app/community/${id}?postId=${postId}`;
       
       await Share.share({
         message: `Check out this community post on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
@@ -773,6 +788,7 @@ export default function CommunityDetailScreen() {
       </View>
 
       <FlatList
+        ref={listRef}
         data={combinedData}
         keyExtractor={item => item.id || (item.type + (item.title || ''))}
         renderItem={({ item }) => {
