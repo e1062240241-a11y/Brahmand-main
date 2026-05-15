@@ -67,14 +67,17 @@ export default function CreateCommunityScreen() {
 
   useEffect(() => {
     if (step === 6 || step === 7) {
-      fetchUsers();
+      const timer = setTimeout(() => {
+        fetchUsers(searchQuery);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [step]);
+  }, [step, searchQuery]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (search?: string) => {
     setUsersLoading(true);
     try {
-      const response = await getAllUsers();
+      const response = await getAllUsers(search);
       setUsers(response.data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -98,7 +101,21 @@ export default function CreateCommunityScreen() {
     }
   };
 
-  const handleNext = () => setStep(step + 1);
+  const handleNext = () => {
+    if (step === 3 && !formData.type) {
+      Alert.alert('Selection Required', 'Please select a community type.');
+      return;
+    }
+    if (step === 4 && (!formData.name || !formData.description || !formData.city)) {
+      Alert.alert('Required Fields', 'Please fill in name, description, and city.');
+      return;
+    }
+    if (step === 5 && !formData.category) {
+      Alert.alert('Selection Required', 'Please select a community category.');
+      return;
+    }
+    setStep(step + 1);
+  };
   const handleBack = () => {
     if (step === 1) router.back();
     else setStep(step - 1);
@@ -497,7 +514,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Create Community</Text>
-          <Text style={styles.stepIndicator}>Step 4 of 5</Text>
+          <Text style={styles.stepIndicator}>Step 5 of 6</Text>
         </View>
       </View>
       <View style={styles.searchHeader}>
@@ -518,10 +535,7 @@ export default function CreateCommunityScreen() {
         <View style={styles.loadingBox}><ActivityIndicator color="#FF6600" /></View>
       ) : (
         <FlatList
-          data={users.filter(u =>
-            u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            u.sl_id.toLowerCase().includes(searchQuery.toLowerCase())
-          )}
+          data={users}
           keyExtractor={item => item.id}
           contentContainerStyle={{ paddingHorizontal: 16 }}
           renderItem={({ item }) => {
@@ -602,8 +616,7 @@ export default function CreateCommunityScreen() {
       <FlatList
         data={users.filter(u =>
           !selectedAdmins.find(a => a.id === u.id) &&
-          !selectedMembers.find(m => m.id === u.id) &&
-          (u.name.toLowerCase().includes(searchQuery.toLowerCase()) || u.sl_id.toLowerCase().includes(searchQuery.toLowerCase()))
+          !selectedMembers.find(m => m.id === u.id)
         )}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingHorizontal: 16 }}
@@ -635,7 +648,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Review Details</Text>
-          <Text style={styles.stepIndicator}>Step 5 of 5</Text>
+          <Text style={styles.stepIndicator}>Step 6 of 6</Text>
         </View>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
