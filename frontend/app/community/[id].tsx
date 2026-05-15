@@ -30,6 +30,33 @@ import * as ImagePicker from 'expo-image-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Persists across navigation (module-level cache) — survives tab switches but NOT full reloads
+const localPostCategories = new Map<string, string>();
+
+// Persists across full reloads via localStorage (web) / AsyncStorage (native)
+const POST_CACHE_KEY = 'brahmand_local_posts';
+function saveLocalPost(content: string, category: string) {
+  localPostCategories.set(content, category);
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(POST_CACHE_KEY) : null;
+    const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+    map[content] = category;
+    if (typeof localStorage !== 'undefined') localStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
+  } catch {}
+}
+function getLocalCategory(content: string): string | undefined {
+  const fromMap = localPostCategories.get(content);
+  if (fromMap) return fromMap;
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(POST_CACHE_KEY) : null;
+    if (raw) {
+      const map: Record<string, string> = JSON.parse(raw);
+      return map[content];
+    }
+  } catch {}
+  return undefined;
+}
+
 const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 
 const MOCK_FESTIVALS = [
@@ -160,7 +187,7 @@ export default function CommunityDetailScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [postCategory, setPostCategory] = useState('Feed');
+  const [postCategory, setPostCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
@@ -274,16 +301,29 @@ export default function CommunityDetailScreen() {
         },
         content: msg.content,
         image: msg.media_url,
-        timestamp: 'Just now',
+        timestamp: msg.created_at || 'Just now',
         likes: msg.likes_count || 0,
         comments: msg.comments_count || 0,
         shares: 0,
         reposts: 0,
         hideBadge: true,
-        category: 'Feed', // Default category for API messages so they show up in Feed
+        category: getLocalCategory(msg.content) || msg.category || 'Feed',
       }));
-      
-      setCommunityPosts(formattedMsgs);
+
+      setCommunityPosts((prev: any[]) => {
+        const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
+        const apiById = new Map(formattedMsgs.map((p: any) => [p.id, p]));
+        for (const local of localPosts) {
+          const existing = apiById.get(local.id);
+          if (existing) {
+            Object.assign(existing, local);
+          } else {
+            apiById.set(local.id, local);
+          }
+        }
+        const seen = new Set(localPosts.map((p: any) => p.id));
+        return [...localPosts, ...formattedMsgs.filter((p: any) => !seen.has(p.id))];
+      });
     } catch (error) {
       console.error('Error fetching community data:', error);
     } finally {
@@ -307,13 +347,13 @@ export default function CommunityDetailScreen() {
         },
         content: msg.content,
         image: msg.media_url,
-        timestamp: 'Just now',
+        timestamp: msg.created_at || 'Just now',
         likes: msg.likes_count || 0,
         comments: msg.comments_count || 0,
         shares: 0,
         reposts: 0,
         hideBadge: true,
-        category: 'Feed',
+        category: getLocalCategory(msg.content) || msg.category || 'Feed',
       }));
       
       if (newMsgs.length > 0) {
@@ -693,8 +733,8 @@ export default function CommunityDetailScreen() {
   const handleCreatePost = async () => {
     if (!newMessage.trim() && !selectedImage) return;
 
-    // Use Seva as default if Feed is removed
-    const finalCategory = postCategory === 'Feed' ? 'Seva' : postCategory;
+    // Use activeTab as default category (but 'Feed' maps to 'Seva')
+    const finalCategory = postCategory || (activeTab === 'Feed' ? 'Seva' : activeTab);
 
     const newPost = {
       id: `post-${Date.now()}`,
@@ -719,11 +759,16 @@ export default function CommunityDetailScreen() {
     };
 
     setCommunityPosts(prev => [newPost, ...prev]);
-    
+
+    // Save category so it survives refetch even if API doesn't return it
+    if (newMessage.trim()) {
+      saveLocalPost(newMessage.trim(), finalCategory);
+    }
+
     // Attempt real API send if text is present
     if (newMessage.trim()) {
       const { sendCommunityMessage } = require('../../src/services/api');
-      sendCommunityMessage(id as string, 'city', newMessage).catch((error: any) => {
+      sendCommunityMessage(id as string, 'city', newMessage, 'text', finalCategory).catch((error: any) => {
         console.error('Failed to send real message:', error);
       });
     }
@@ -800,13 +845,13 @@ export default function CommunityDetailScreen() {
       {/* Sticky Top Bar */}
       <View style={[styles.stickyTopBar, { paddingTop: insets.top, height: 60 + insets.top }]}>
         <TouchableOpacity 
-          onPress={() => router.back()} 
+          onPress={() => router.replace('/(tabs)/messages')}
           style={styles.iconBtn}
         >
           <Ionicons name="chevron-back" size={28} color="#000" />
         </TouchableOpacity>
         <View style={styles.rightActions}>
-          <TouchableOpacity style={styles.createPill} onPress={() => setShowCreateModal(true)}>
+          <TouchableOpacity style={styles.createPill} onPress={() => { setPostCategory(''); setShowCreateModal(true); }}>
             <Ionicons name="add" size={18} color="#FFF" />
             <Text style={styles.createPillText}>Create</Text>
           </TouchableOpacity>
@@ -1036,7 +1081,7 @@ export default function CommunityDetailScreen() {
                     <View style={styles.catIconCircle}>
                       <Ionicons name="heart-outline" size={20} color="#A855F7" />
                     </View>
-                    <Text style={styles.catText}>{postCategory}</Text>
+                    <Text style={styles.catText}>{postCategory || activeTab}</Text>
                   </View>
                   <Ionicons name="checkmark-circle" size={20} color="#FF3B30" />
                 </View>
