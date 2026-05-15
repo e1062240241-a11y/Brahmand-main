@@ -260,6 +260,7 @@ export default function CommunityDetailScreen() {
         shares: 0,
         reposts: 0,
         hideBadge: true,
+        category: 'Feed', // Default category for API messages so they show up in Feed
       }));
       
       setCommunityPosts(formattedMsgs);
@@ -680,12 +681,10 @@ export default function CommunityDetailScreen() {
     
     // Attempt real API send if text is present
     if (newMessage.trim()) {
-      try {
-        const { sendCommunityMessage } = require('../../src/services/api');
-        await sendCommunityMessage(id as string, 'city', newMessage);
-      } catch (error) {
+      const { sendCommunityMessage } = require('../../src/services/api');
+      sendCommunityMessage(id as string, 'city', newMessage).catch((error: any) => {
         console.error('Failed to send real message:', error);
-      }
+      });
     }
 
     setNewMessage('');
@@ -693,12 +692,9 @@ export default function CommunityDetailScreen() {
     setContactNumber('');
     setShowCreateModal(false);
     
-    // Switch to the tab of the category just posted
-    if (finalCategory && COMMUNITY_TABS.includes(finalCategory)) {
-      setActiveTab(finalCategory);
-    } else if (finalCategory === 'Seva / Volunteer') {
-      setActiveTab('Seva');
-    }
+    // No longer switching tabs automatically to keep the user in their current context
+    // The post will appear immediately in the Feed and its specific category
+    Alert.alert('Success', 'Your post has been shared with the community!');
   };
 
   const handleShare = async (postId: string) => {
