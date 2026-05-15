@@ -1120,7 +1120,11 @@ export default function ProfileScreen() {
 
       {/* Comment Modal */}
       <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={styles.sheetOverlay}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
           <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
           <View style={styles.sheetContent}>
             <View style={styles.sheetHandle} />

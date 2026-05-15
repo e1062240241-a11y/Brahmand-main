@@ -1363,12 +1363,12 @@ export default function HomeScreen() {
           <View style={styles.bioModalCard}>
             <Text style={styles.bioModalTitle}>Edit Bio</Text>
             <TextInput
-              style={styles.bioInput}
+              style={styles.bioModalInput}
               value={bioText}
               onChangeText={setBioText}
-              maxLength={150}
               multiline
-              placeholder="Write your bio"
+              autoFocus
+              placeholder="Tell us about yourself..."
               placeholderTextColor="#8A7B89"
             />
             <View style={styles.bioModalActions}>
@@ -1493,8 +1493,8 @@ export default function HomeScreen() {
       >
         <KeyboardAvoidingView
           style={styles.commentOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
           <TouchableOpacity 
             style={styles.modalBackgroundDismiss} 

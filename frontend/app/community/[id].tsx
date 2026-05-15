@@ -644,6 +644,13 @@ export default function CommunityDetailScreen() {
     setSelectedImage(null);
     setContactNumber('');
     setShowCreateModal(false);
+    
+    // Switch to the tab of the category just posted
+    if (finalCategory && COMMUNITY_TABS.includes(finalCategory)) {
+      setActiveTab(finalCategory);
+    } else if (finalCategory === 'Seva / Volunteer') {
+      setActiveTab('Seva');
+    }
   };
 
   const handleShare = async (postId: string) => {
@@ -713,8 +720,8 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={90}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Sticky Top Bar */}
       <View style={[styles.stickyTopBar, { paddingTop: insets.top }]}>
