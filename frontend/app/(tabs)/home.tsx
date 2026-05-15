@@ -117,12 +117,15 @@ export default function HomeScreen() {
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
 
   useEffect(() => {
-    loadRecentSearches();
-  }, []);
+    if (user?.id) {
+      loadRecentSearches();
+    }
+  }, [user?.id]);
 
   const loadRecentSearches = async () => {
+    if (!user?.id) return;
     try {
-      const saved = await AsyncStorage.getItem('recent_searches');
+      const saved = await AsyncStorage.getItem(`recent_searches_${user.id}`);
       if (saved) {
         setRecentSearches(JSON.parse(saved));
       }
@@ -132,10 +135,16 @@ export default function HomeScreen() {
   };
 
   const saveRecentSearch = async (searchItem: any) => {
+    if (!user?.id) return;
     try {
-      const updated = [searchItem, ...recentSearches.filter(item => item.id !== searchItem.id)].slice(0, 4);
-      setRecentSearches(updated);
-      await AsyncStorage.setItem('recent_searches', JSON.stringify(updated));
+      // Functional update to ensure we use the latest state, though slice(0,4) is already there
+      setRecentSearches(prev => {
+        const updated = [searchItem, ...prev.filter(item => item.id !== searchItem.id)].slice(0, 4);
+        AsyncStorage.setItem(`recent_searches_${user.id}`, JSON.stringify(updated)).catch(e => 
+          console.warn('Failed to save to storage:', e)
+        );
+        return updated;
+      });
     } catch (e) {
       console.warn('Failed to save recent search:', e);
     }
@@ -1032,10 +1041,12 @@ export default function HomeScreen() {
                 <View style={styles.recentSearchHeader}>
                   <Text style={styles.recentSearchesTitle}>Recent Search</Text>
                   <TouchableOpacity onPress={async () => {
-                    setRecentSearches([]);
-                    await AsyncStorage.removeItem('recent_searches');
+                    if (user?.id) {
+                      setRecentSearches([]);
+                      await AsyncStorage.removeItem(`recent_searches_${user.id}`);
+                    }
                   }}>
-                    <Text style={styles.clearAllText}>Clear All</Text>
+                    <Text style={styles.clearHistoryText}>Clear History</Text>
                   </TouchableOpacity>
                 </View>
                 <ScrollView 
@@ -2604,10 +2615,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
-  clearAllText: {
+  clearHistoryText: {
     fontSize: 12,
     fontFamily: FONTS.bold,
-    color: COLORS.primary,
+    color: '#888', // Subtle color for history clear
+    textDecorationLine: 'underline',
   },
   recentSearchList: {
     paddingRight: 20,

@@ -64,7 +64,7 @@ from models.schemas import (
     HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
     VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate, CulturalCommunityUpdate,
     SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel,
-    MSG91TokenRequest
+    MSG91TokenRequest, CommunityCreate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -3507,6 +3507,40 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     communities.sort(key=lambda x: x.get('sort_order', 99))
     
     return communities
+
+
+@api_router.post("/communities")
+async def create_community(
+    data: CommunityCreate,
+    token_data: dict = Depends(verify_token)
+):
+    """Create a user community group"""
+    try:
+        return await FirebaseCommunityService.create_user_community(
+            token_data["user_id"],
+            data.dict()
+        )
+    except Exception as e:
+        logger.error(f"Error creating community: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/communities/join")
+async def join_community_by_code(
+    data: dict,
+    token_data: dict = Depends(verify_token)
+):
+    """Join a community using invite code"""
+    try:
+        return await FirebaseCommunityService.join_by_code(
+            token_data["user_id"],
+            data.get("code", "")
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error joining community: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/communities/discover")
