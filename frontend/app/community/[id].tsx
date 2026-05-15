@@ -527,10 +527,11 @@ export default function CommunityDetailScreen() {
 
   const handleShareCommunity = async () => {
     try {
-      const communityLink = `https://brahmand.app/community/${id}`;
+      const appLink = `sanatanlok://community/${id}`;
+      const webLink = `https://brahmand.app/community/${id}`;
       await Share.share({
-        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${communityLink}`,
-        url: communityLink,
+        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
+        url: appLink,
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -661,10 +662,11 @@ export default function CommunityDetailScreen() {
 
   const handleShare = async (postId: string) => {
     try {
-      const postLink = `https://brahmand.app/community/${id}/post/${postId}`;
+      const appLink = `sanatanlok://community/${id}/post/${postId}`;
+      const webLink = `https://brahmand.app/community/${id}/post/${postId}`;
       await Share.share({
-        message: `Check out this community post on Brahmand!\n\n${postLink}`,
-        url: postLink,
+        message: `Check out this community post on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
+        url: appLink,
       });
       setDiscussionPosts(prev => prev.map(post => {
         if (post.id === postId) {
