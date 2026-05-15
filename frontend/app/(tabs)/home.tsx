@@ -205,10 +205,22 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchLiveLocation = async () => {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
+        const enabled = await Location.hasServicesEnabledAsync();
+        if (!enabled) {
+          setLiveLocation('Location Disabled');
+          return;
+        }
 
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setLiveLocation('Bharat');
+          return;
+        }
+
+        const loc = await Location.getCurrentPositionAsync({ 
+          accuracy: Location.Accuracy.Balanced,
+          timeout: 5000 
+        });
         
         // Use native reverse geocoding for exact details
         const reverse = await Location.reverseGeocodeAsync({
@@ -234,10 +246,13 @@ export default function HomeScreen() {
           const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
           if (response.data) {
             setLiveLocation(response.data.area || response.data.city || 'Bharat');
+          } else {
+            setLiveLocation('Bharat');
           }
         }
       } catch (e) {
         console.warn('Initial location fetch failed:', e);
+        setLiveLocation('Bharat');
       }
     };
     fetchLiveLocation();

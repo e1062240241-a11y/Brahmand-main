@@ -67,11 +67,18 @@ export default function SOSScreen() {
           return;
         }
 
-        // Try getting the high-accuracy location first
+        // Try getting the location
         try {
+          const enabled = await Location.hasServicesEnabledAsync();
+          if (!enabled) {
+            Alert.alert('Location Services Disabled', 'Please enable location services to use the SOS feature.');
+            return;
+          }
+
           setLoadingText('Updating live GPS...');
           let loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Highest,
+            accuracy: Location.Accuracy.Balanced,
+            timeout: 10000,
           });
           setLocation(loc);
           
@@ -166,7 +173,17 @@ export default function SOSScreen() {
           return;
         }
 
-        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+        const enabled = await Location.hasServicesEnabledAsync();
+        if (!enabled) {
+          Alert.alert('Location Services Disabled', 'Please enable location services to use the SOS feature.');
+          setStage('type');
+          return;
+        }
+
+        let loc = await Location.getCurrentPositionAsync({ 
+          accuracy: Location.Accuracy.Balanced,
+          timeout: 10000
+        });
         setLocation(loc);
         
         try {
