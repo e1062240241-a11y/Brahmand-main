@@ -1,24 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 
-let MapView: any = null;
-let Marker: any = null;
-let PROVIDER_GOOGLE: any = null;
+import SOSMap from '../src/components/SOSMap';
 
-try {
-  if (Platform.OS !== 'web') {
-    const Maps = require('react-native-maps');
-    MapView = Maps.default || Maps;
-    Marker = Maps.Marker;
-    PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
-  }
-} catch (e) {
-  console.warn('MapView could not be loaded:', e);
-}
 
 import { useAuthStore } from '../src/store/authStore';
 import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert, reverseGeocode } from '../src/services/api';
@@ -34,6 +23,7 @@ const SOS_TYPES = [
 export default function SOSScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
   
   const [stage, setStage] = useState<'type' | 'location' | 'countdown' | 'activating' | 'active'>('type');
   const [emergencyType, setEmergencyType] = useState<string>('');
@@ -49,11 +39,7 @@ export default function SOSScreen() {
       setStage('type');
       return;
     }
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/");
-    }
+    router.back();
   };
 
   useEffect(() => {
@@ -67,11 +53,18 @@ export default function SOSScreen() {
           return;
         }
 
-        // Try getting the high-accuracy location first
+        // Try getting the location
         try {
+          const enabled = await Location.hasServicesEnabledAsync();
+          if (!enabled) {
+            Alert.alert('Location Services Disabled', 'Please enable location services to use the SOS feature.');
+            return;
+          }
+
           setLoadingText('Updating live GPS...');
           let loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Highest,
+            accuracy: Location.Accuracy.Balanced,
+            timeout: 10000,
           });
           setLocation(loc);
           
@@ -166,7 +159,17 @@ export default function SOSScreen() {
           return;
         }
 
-        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+        const enabled = await Location.hasServicesEnabledAsync();
+        if (!enabled) {
+          Alert.alert('Location Services Disabled', 'Please enable location services to use the SOS feature.');
+          setStage('type');
+          return;
+        }
+
+        let loc = await Location.getCurrentPositionAsync({ 
+          accuracy: Location.Accuracy.Balanced,
+          timeout: 10000
+        });
         setLocation(loc);
         
         try {
@@ -232,7 +235,7 @@ export default function SOSScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="chevron-back" size={28} color="#1A1A1A" />
@@ -242,7 +245,8 @@ export default function SOSScreen() {
       </View>
 
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
         style={styles.content}
       >
         {existingSOS ? (
@@ -330,43 +334,18 @@ export default function SOSScreen() {
         )}
 
         {stage === 'location' && (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+          <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={{ 
+              flexGrow: 1, 
+              paddingBottom: Math.max(insets.bottom, 20) 
+            }}
+          >
             <View style={styles.mapContainer}>
-              {location && MapView && (
-                <MapView
-                  provider={PROVIDER_GOOGLE}
-                  style={styles.map}
-                  initialRegion={{
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
-                    latitudeDelta: 0.005,
-                    longitudeDelta: 0.005,
-                  }}
-                  region={{
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
-                    latitudeDelta: 0.005,
-                    longitudeDelta: 0.005,
-                  }}
-                  showsUserLocation
-                  showsMyLocationButton
-                >
-                  <Marker
-                    coordinate={{
-                      latitude: location.coords.latitude,
-                      longitude: location.coords.longitude,
-                    }}
-                    title="You are here"
-                    pinColor="#FF3B30"
-                  />
-                </MapView>
-              )}
-              {Platform.OS === 'web' && (
-                <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }]}>
-                  <Ionicons name="map-outline" size={48} color="#D1D1D1" />
-                  <Text style={{ color: '#8E8E93', marginTop: 8 }}>Map view available on Mobile App</Text>
-                </View>
-              )}
+              <SOSMap 
+                latitude={location?.coords.latitude || 0} 
+                longitude={location?.coords.longitude || 0} 
+              />
             </View>
 
             <View style={styles.warningContainer}>

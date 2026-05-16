@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { requestRecordingPermissionsAsync, useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Animated,
   Easing,
@@ -51,11 +52,14 @@ export const LiveMantraRoom = () => {
   const [remoteSpeakers, setRemoteSpeakers] = useState<string[]>([]);
   const [remotePeers, setRemotePeers] = useState<string[]>([]);
   const [voiceTransport, setVoiceTransport] = useState<VoiceTransport>('sfu');
+  const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
 
   const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
   const agoraJoinedRef = useRef(false);
   const agoraUidRef = useRef(0);
 
+  const insets = useSafeAreaInsets();
+  const streamIdRef = useRef<number | null>(null);
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const upcomingFade = useRef(new Animated.Value(0)).current;
@@ -71,7 +75,12 @@ export const LiveMantraRoom = () => {
     if (bgPlayer) {
       bgPlayer.loop = true;
       bgPlayer.volume = isMuted ? 0 : 0.4;
-      bgPlayer.play();
+      // Auto-play on native since user already interacted to reach this screen
+      try {
+        bgPlayer.play();
+      } catch (e) {
+        console.warn('Background player failed to play:', e);
+      }
     }
   }, [bgPlayer, isMuted]);
 
@@ -96,14 +105,17 @@ export const LiveMantraRoom = () => {
 
   const connectAgora = async () => {
     try {
+      console.log('[Agora] Connecting for channel:', ROOM_NAME);
       const config = await getAgoraToken(ROOM_NAME);
       if (!config.enabled || !config.token || !config.appId) {
+        console.error('[Agora] Token config invalid or disabled:', config);
         setMicStatus('Agora room not available');
         return false;
       }
 
       agoraUidRef.current = config.uid || 0;
       
+      console.log('[Agora] Initializing engine with AppID:', config.appId);
       await engine.current.initialize({
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
@@ -116,6 +128,20 @@ export const LiveMantraRoom = () => {
           setIsConnected(true);
           setParticipantLabel('Connected to Sangat');
           setMicStatus('Audio room live');
+          
+          // Set initial mute state
+          engine.current.muteLocalAudioStream(!isMicEnabled);
+
+          // Create data stream for reactions
+          try {
+            const id = engine.current.createDataStream({
+              syncWithAudio: false,
+              ordered: false
+            });
+            streamIdRef.current = id;
+          } catch (err) {
+            console.warn('[Agora] Failed to create data stream', err);
+          }
         },
         onUserJoined: (connection: RtcConnection, remoteUid: number, elapsed: number) => {
           console.log('[Agora] Remote user joined:', remoteUid);
@@ -124,6 +150,17 @@ export const LiveMantraRoom = () => {
         onUserOffline: (connection: RtcConnection, remoteUid: number, reason: number) => {
           console.log('[Agora] Remote user left:', remoteUid, 'Reason:', reason);
           removeRemotePeer(String(remoteUid));
+        },
+        onStreamMessage: (connection: RtcConnection, remoteUid: number, streamId: number, data: Uint8Array) => {
+          try {
+            const message = new TextDecoder().decode(data);
+            const parsed = JSON.parse(message);
+            if (parsed.type === 'reaction') {
+              addReaction(parsed.emoji, false);
+            }
+          } catch (e) {
+            console.warn('[Agora] Failed to decode stream message', e);
+          }
         },
         onRemoteAudioStateChanged: (connection: RtcConnection, remoteUid: number, state: number) => {
           if (state === 2) { // RemoteAudioStateDecoding
@@ -157,8 +194,6 @@ export const LiveMantraRoom = () => {
         return false;
       }
 
-      // Default to muted for privacy
-      await engine.current.muteLocalAudioStream(true);
       return true;
     } catch (error) {
       console.error('[Agora] Failed to setup Agora:', error);
@@ -169,11 +204,12 @@ export const LiveMantraRoom = () => {
 
   const cleanupAgora = async () => {
     if (agoraJoinedRef.current) {
+      console.log('[Agora] Cleaning up engine...');
       try {
         await engine.current.leaveChannel();
         await engine.current.release();
       } catch (error) {
-        console.warn('Agora cleanup error', error);
+        console.warn('[Agora] Cleanup error', error);
       }
       agoraJoinedRef.current = false;
     }
@@ -237,6 +273,27 @@ export const LiveMantraRoom = () => {
     if (!roomMuted) {
       await startVoiceLoop();
     }
+  };
+
+  const addReaction = (emoji: string, broadcast = true) => {
+    const id = Date.now() + Math.random();
+    const anim = new Animated.Value(0);
+    setReactions(prev => [...prev, { id, emoji, anim }]);
+    
+    if (broadcast && streamIdRef.current !== null) {
+      const message = JSON.stringify({ type: 'reaction', emoji });
+      const data = new TextEncoder().encode(message);
+      engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
+    }
+
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 2500,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      setReactions(prev => prev.filter(r => r.id !== id));
+    });
   };
 
   useEffect(() => {
@@ -334,7 +391,7 @@ export const LiveMantraRoom = () => {
   useEffect(() => {
     Animated.timing(activeIndexAnim, {
       toValue: currentIndex,
-      duration: 900,
+      duration: 500, // Snappier transition
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
     }).start();
@@ -355,9 +412,13 @@ export const LiveMantraRoom = () => {
       timer = setTimeout(() => {
         setIsHolding(false);
         setCurrentIndex(0);
-      }, 5000);
+      }, 4000); // Faster reset
       return () => clearTimeout(timer);
     }
+
+    // Adaptive word timing: Long words get 3s hold, others 1.2s
+    const currentWord = WORDS[currentIndex] || '';
+    const wordDuration = currentWord.length > 7 ? 3000 : 1200;
 
     timer = setTimeout(() => {
       if (currentIndex < WORDS.length - 1) {
@@ -365,13 +426,13 @@ export const LiveMantraRoom = () => {
       } else {
         setIsHolding(true);
       }
-    }, 1800);
+    }, wordDuration);
 
     return () => clearTimeout(timer);
   }, [currentIndex, isHolding]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar barStyle="light-content" />
       <View style={styles.background}> 
         <LinearGradient
@@ -453,32 +514,69 @@ export const LiveMantraRoom = () => {
             <Text style={styles.upcomingText}>ॐ भूर्भुवः स्वः</Text>
           </Animated.View>
 
-          <View style={styles.controlPanel}>
-            <TouchableOpacity
-              style={[
-                styles.controlButton,
-                isMicEnabled && !roomMuted ? styles.controlButtonActive : null,
-              ]}
-              onPress={handleMicToggle}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={isMicEnabled ? 'mic' : 'mic-off'}
-                size={22}
-                color="#FFF"
-              />
-              <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic On' : 'Mic Off'}</Text>
-            </TouchableOpacity>
+          <View style={styles.reactionOverlay} pointerEvents="none">
+            {reactions.map(r => (
+              <Animated.Text
+                key={r.id}
+                style={[
+                  styles.floatingEmoji,
+                  {
+                    opacity: r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+                    transform: [
+                      { translateY: r.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -300] }) },
+                      { translateX: r.anim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 15, -15, 10, 0] }) },
+                      { scale: r.anim.interpolate({ inputRange: [0, 0.2], outputRange: [0.6, 1.2], extrapolate: 'clamp' }) }
+                    ]
+                  }
+                ]}
+              >
+                {r.emoji}
+              </Animated.Text>
+            ))}
           </View>
 
-          <Text style={styles.micStatus} numberOfLines={1}>
-            {voiceTransport === 'sfu' ? 'Standard Room' : 'Agora Live Room'}: {remotePeers.length || 0}
-            {remoteSpeakers.length ? ` · voices ${remoteSpeakers.length}` : ''}
-          </Text>
+          <View style={styles.footerContainer}>
+            <View style={styles.roomStatsBox}>
+               <Text style={styles.roomStats}>Sangat: {remotePeers.length + 1} Devotees</Text>
+            </View>
+
+            <View style={styles.transparentControlBar}>
+              <View style={styles.leftControls}>
+                <TouchableOpacity onPress={handleMicToggle} style={styles.iconCircle}>
+                  <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={22} color={isMicEnabled ? "#4CD964" : "#FFF"} />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={() => {
+                    if (router.canGoBack()) {
+                      router.back();
+                    } else {
+                      router.replace('/live-mantra');
+                    }
+                  }} 
+                  style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}
+                >
+                  <Ionicons name="call" size={20} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.rightReactions}>
+                {['🙏', '❤️', '😊', '🔔'].map((emoji) => (
+                  <TouchableOpacity 
+                    key={emoji} 
+                    onPress={() => addReaction(emoji)}
+                    style={styles.reactionBtn}
+                  >
+                    <Text style={styles.reactionBtnText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
         </View>
 
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -491,7 +589,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 96,
+    paddingBottom: 10,
     overflow: 'hidden',
   },
   silhouetteOverlay: {
@@ -561,9 +659,9 @@ const styles = StyleSheet.create({
   },
   mantraWord: {
     color: '#FFF',
-    fontSize: 38,
-    fontWeight: '700',
-    marginHorizontal: 6,
+    fontSize: 40, // Slightly larger
+    fontWeight: '800',
+    marginHorizontal: 8,
     textAlign: 'center',
   },
   upcomingContainer: {
@@ -586,42 +684,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  controlPanel: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    marginTop: 26,
+  footerContainer: {
+    paddingBottom: 5,
+    width: '100%',
+    alignItems: 'center',
+    gap: 15,
   },
-  controlButton: {
+  transparentControlBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: '100%',
     paddingVertical: 12,
-    borderRadius: 999,
+    paddingHorizontal: 16,
+    borderRadius: 35,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.15)',
   },
-  controlButtonActive: {
-    backgroundColor: 'rgba(255,215,121,0.18)',
-    borderColor: 'rgba(255,215,121,0.35)',
+  leftControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  controlButtonMuted: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.18)',
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  controlLabel: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '600',
+  rightReactions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  micStatus: {
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
-    marginTop: 12,
+  reactionBtn: {
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reactionBtnText: {
+    fontSize: 22,
+  },
+  reactionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    paddingBottom: 100,
+    paddingRight: 40,
+    zIndex: 100,
+  },
+  floatingEmoji: {
+    position: 'absolute',
+    fontSize: 32,
+    bottom: 0,
+  },
+  roomStatsBox: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  roomStats: {
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
-    maxWidth: '85%',
+    fontWeight: '600',
   },
   headerCloseButton: {
     marginRight: 16,

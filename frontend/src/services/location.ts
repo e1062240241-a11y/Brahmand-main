@@ -42,7 +42,15 @@ export async function getCurrentPosition(options?: any): Promise<{ coords: { lat
     });
   }
 
-  const loc = await Location.getCurrentPositionAsync(options || { accuracy: Location.Accuracy.Balanced });
+  const enabled = await Location.hasServicesEnabledAsync();
+  if (!enabled) {
+    throw new Error('Location services are disabled');
+  }
+
+  const loc = await Location.getCurrentPositionAsync(options || { 
+    accuracy: Location.Accuracy.Balanced,
+    timeout: 10000
+  });
   return { coords: { latitude: loc.coords.latitude, longitude: loc.coords.longitude } };
 }
 

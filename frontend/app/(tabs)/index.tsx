@@ -12,6 +12,10 @@ import {
   TextInput,
   ActivityIndicator
 } from 'react-native';
+import { 
+  SafeAreaView, 
+  useSafeAreaInsets 
+} from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getCommunities, createCommunityRequest, getCommunityRequests, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
@@ -49,6 +53,7 @@ interface CommunityRequest {
 
 export default function CommunityScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const userId = user?.id;
   const [activeTab, setActiveTab] = useState('Chat');
@@ -381,7 +386,7 @@ export default function CommunityScreen() {
             data={communities}
             renderItem={renderCommunity}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
             }
@@ -419,7 +424,7 @@ export default function CommunityScreen() {
           data={requests}
           renderItem={renderRequest}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />
           }
@@ -583,7 +588,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.md,
-    paddingBottom: 100,
+    paddingBottom: 80,
   },
   communityLabel: {
     fontSize: 11,

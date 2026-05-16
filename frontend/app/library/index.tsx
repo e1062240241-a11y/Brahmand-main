@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -108,6 +108,7 @@ const sectionDefinitions = [
 
 const LibraryPage = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const scrollAnim = useRef(new Animated.Value(0)).current;
@@ -245,7 +246,7 @@ const LibraryPage = () => {
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
       >
         {/* Featured Card (Hero) */}
         <View style={styles.heroCardContainer}>

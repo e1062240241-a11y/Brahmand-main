@@ -1067,11 +1067,11 @@ export default function ProfileScreen() {
                   <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
                 </View>
               }
-              contentContainerStyle={{ paddingBottom: 100 }}
+              contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
             />
           )}
 
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
             <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
               <TextInput

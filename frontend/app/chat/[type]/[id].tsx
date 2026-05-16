@@ -1228,9 +1228,9 @@ const ChatScreen = () => {
 
       {/* Messages */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.chatContainer}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? (insets.top + 60) : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
       >
         <FlatList
           ref={flatListRef}

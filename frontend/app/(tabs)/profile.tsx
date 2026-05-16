@@ -17,7 +17,7 @@ import {
   TextInput,
   Animated
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -81,11 +81,7 @@ export default function ProfileScreen() {
   const userId = user?.id;
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const headerTitleOpacity = scrollY.interpolate({
-    inputRange: [100, 200],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+
 
   useEffect(() => {
     if (section === 'personality_verification') {
@@ -686,120 +682,111 @@ export default function ProfileScreen() {
 
   const ListHeader = () => (
     <View style={styles.headerContent}>
+      {/* Cover Photo */}
       <TouchableOpacity activeOpacity={0.9} onPress={handleUploadCoverPhoto}>
         <ImageBackground
           source={{ uri: profile?.cover_photo || user?.cover_photo || 'https://images.unsplash.com/photo-1604537466158-719b1972fb17?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }}
           style={styles.coverPhoto}
         >
           <LinearGradient
-            colors={['transparent', 'transparent', 'rgba(0,0,0,0.8)', '#000000']}
+            colors={['transparent', 'rgba(0,0,0,0.6)']}
             style={styles.coverGradient}
           />
         </ImageBackground>
       </TouchableOpacity>
 
-      <View style={styles.profileBottomSection}>
-        <View style={styles.avatarWrapper}>
+      <View style={styles.profileInfoSection}>
+        {/* Avatar and Stats Row (Insta Style) */}
+        <View style={styles.mainInfoRow}>
           <TouchableOpacity
             onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
             activeOpacity={0.8}
-            style={styles.avatarContainerImage}
+            style={styles.avatarContainer}
           >
             <Avatar
               name={profile?.name || user?.name || 'User'}
               photo={profile?.photo || user?.photo}
-              size={100}
+              size={80}
             />
             <View style={styles.onlineDot} />
           </TouchableOpacity>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{postsCount}</Text>
+              <Text style={styles.statLabel}>Posts</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.statItem} 
+              onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
+            >
+              <Text style={styles.statValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
+              <Text style={styles.statLabel}>Followers</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.statItem} 
+              onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
+            >
+              <Text style={styles.statValue}>{profile?.following_count ?? (Array.isArray(profile?.following) ? profile.following.length : 0)}</Text>
+              <Text style={styles.statLabel}>Following</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.bioCenterSection}>
-          <View style={styles.nameRowCenter}>
-            <Text style={styles.displayNameCenter}>{profile?.name || user?.name || 'User'}</Text>
+        {/* Name and Bio Section */}
+        <View style={styles.bioSection}>
+          <View style={styles.nameRow}>
+            <Text style={styles.displayName}>{profile?.name || user?.name || 'User'}</Text>
             {(profile?.is_verified || user?.is_verified) && (
-              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+              <Ionicons name="checkmark-circle" size={16} color="#3897f0" style={{ marginLeft: 4 }} />
             )}
           </View>
-
+          
           {(profile?.bio || user?.bio) ? (
-            <Text style={styles.bioTextCenter}>{profile?.bio || user?.bio}</Text>
+            <Text style={styles.bioText}>{profile?.bio || user?.bio}</Text>
           ) : null}
 
           {(profile?.home_location || user?.home_location) && (
-            <View style={styles.locationContainerCenter}>
-              <Ionicons name="location-outline" size={14} color="#FFF" />
-              <Text style={styles.locationTextCenter}>
+            <View style={styles.locationContainer}>
+              <Ionicons name="location-outline" size={12} color="#8E8E93" />
+              <Text style={styles.locationText}>
                 {(profile?.home_location || user?.home_location).city}, {(profile?.home_location || user?.home_location).state}
               </Text>
             </View>
           )}
         </View>
-      </View>
 
-      {/* Stats Box */}
-      <View style={styles.statsCardWrapper}>
-        <View style={styles.statsCard}>
+        {/* Action Buttons Row */}
+        <View style={styles.actionButtonsRow}>
           <TouchableOpacity
-            style={styles.statBoxItem}
-            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
+            style={styles.actionButton}
+            onPress={() => setShowUploadModal(true)}
           >
-            <Ionicons name="trending-up-outline" size={20} color="#FFF" style={styles.statIcon} />
-            <Text style={styles.statBoxValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
-            <Text style={styles.statBoxLabel}>Followers</Text>
+            <Ionicons name="add" size={18} color="#FFF" style={{ marginRight: 4 }} />
+            <Text style={styles.actionButtonText}>Add Post</Text>
           </TouchableOpacity>
-
-          <View style={styles.statDivider} />
-
+          
           <TouchableOpacity
-            style={styles.statBoxItem}
-            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
+            style={styles.actionButton}
+            onPress={() => router.push('/profile/edit')}
           >
-            <Ionicons name="people-outline" size={20} color="#FFF" style={styles.statIcon} />
-            <Text style={styles.statBoxValue}>{profile?.following_count ?? (Array.isArray(profile?.following) ? profile.following.length : 0)}</Text>
-            <Text style={styles.statBoxLabel}>Following</Text>
+            <Text style={styles.actionButtonText}>Edit Profile</Text>
           </TouchableOpacity>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statBoxItem}>
-            <Ionicons name="share-outline" size={20} color="#FFF" style={styles.statIcon} />
-            <Text style={styles.statBoxValue}>{postsCount}</Text>
-            <Text style={styles.statBoxLabel}>Posts</Text>
-          </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statBoxItem}>
-            <Ionicons name="bookmark-outline" size={20} color="#FFF" style={styles.statIcon} />
-            <Text style={styles.statBoxValue}>143</Text>
-            <Text style={styles.statBoxLabel}>Saved</Text>
-          </View>
+          
+          <TouchableOpacity
+            style={styles.iconActionButton}
+            onPress={() => handleShareExternal(null)}
+          >
+            <Ionicons name="share-social-outline" size={18} color="#FFF" />
+          </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Add Post & Share Buttons */}
-      <View style={styles.actionButtonsBox}>
-        <TouchableOpacity
-          style={styles.addPostButton}
-          onPress={() => setShowUploadModal(true)}
-        >
-          <Ionicons name="add" size={20} color="#FFF" />
-          <Text style={styles.addPostText}>Add Post</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.shareIconButton}
-          onPress={() => Alert.alert('Coming Soon', 'Share profile functionality is coming soon!')}
-        >
-          <Ionicons name="arrow-redo-outline" size={20} color="#FFF" />
-        </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <View style={styles.container}>
       {/* Background Upload Status */}
       {backgroundUpload.uploading && (
         <View style={styles.uploadingStatusBar}>
@@ -823,19 +810,21 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-      {/* Custom Header Bar */}
-      <View style={[styles.navBarAbsolute, { paddingTop: insets.top || 10 }]}>
+      {/* Custom Header Bar (Instagram Style) */}
+      <View style={[styles.navBar, { paddingTop: insets.top, height: 54 + insets.top }]}>
         <TouchableOpacity style={styles.navLeft} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#FFF" />
-          <Animated.Text style={[styles.navTitleWhite, { opacity: headerTitleOpacity }]}>
-            {profile?.sl_id || user?.sl_id || 'Profile'}
-          </Animated.Text>
         </TouchableOpacity>
-        <View style={styles.navRight}>
-          <TouchableOpacity style={styles.navIcon} onPress={() => setShowSettingsModal(true)}>
-            <Ionicons name="menu-outline" size={30} color="#FFF" />
-          </TouchableOpacity>
+        
+        <View style={styles.navCenter}>
+          <Text style={styles.navTitle} numberOfLines={1}>
+            {profile?.sl_id || user?.sl_id || 'Profile'}
+          </Text>
         </View>
+
+        <TouchableOpacity style={styles.navRight} onPress={() => setShowSettingsModal(true)}>
+          <Ionicons name="ellipsis-vertical" size={24} color="#FFF" />
+        </TouchableOpacity>
       </View>
 
       <Animated.FlatList
@@ -885,7 +874,12 @@ export default function ProfileScreen() {
       {/* Settings Menu Modal */}
       <Modal visible={showSettingsModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.settingsSheet}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFill} 
+            activeOpacity={1} 
+            onPress={() => setShowSettingsModal(false)} 
+          />
+          <View style={[styles.settingsSheet, { paddingBottom: insets.bottom }]}>
             <View style={styles.settingsHeader}>
               <View style={styles.settingsHeaderBar} />
               <Text style={styles.settingsTitle}>Settings and Privacy</Text>
@@ -945,7 +939,7 @@ export default function ProfileScreen() {
       {/* Post Detail Modal */}
       <Modal visible={postModalVisible} animationType="slide">
         <View style={styles.postDetailContainer}>
-          <View style={[styles.postDetailHeader, { marginTop: insets.top }]}>
+          <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -1132,9 +1126,13 @@ export default function ProfileScreen() {
 
       {/* Comment Modal */}
       <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={styles.sheetOverlay}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
           <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
-          <View style={styles.sheetContent}>
+          <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Comments</Text>
@@ -1164,7 +1162,7 @@ export default function ProfileScreen() {
                   <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
                 </View>
               }
-              contentContainerStyle={{ paddingBottom: 100 }}
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
             />
           )}
 
@@ -1207,7 +1205,8 @@ export default function ProfileScreen() {
           loadPosts(true);
         }}
       />
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
@@ -1229,7 +1228,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   sheetContent: {
-    height: '75%',
+    height: '70%',
     backgroundColor: '#FFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -1257,34 +1256,36 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000',
   },
-  navBarAbsolute: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
+  navBar: {
+    height: 54,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 6,
+    backgroundColor: '#000000',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#1A1A1A',
   },
   navLeft: {
-    flexDirection: 'row',
+    width: 40,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  navCenter: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
   },
   navRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    width: 40,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
-  navIcon: {
-    padding: 4,
-  },
-  navTitleWhite: {
+  navTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   headerContent: {
@@ -1292,135 +1293,116 @@ const styles = StyleSheet.create({
   },
   coverPhoto: {
     width: '100%',
-    height: 240,
+    height: 120, // Reduced height for more focus on profile
   },
   coverGradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  profileBottomSection: {
-    backgroundColor: '#000000',
-    alignItems: 'center',
-    paddingBottom: 16,
+  profileInfoSection: {
+    paddingHorizontal: 16,
+    marginTop: -30, // Slight overlap with cover photo
   },
-  avatarWrapper: {
-    marginTop: -60,
+  mainInfoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
   },
-  avatarContainerImage: {
+  avatarContainer: {
     position: 'relative',
-    borderRadius: 55,
+    borderWidth: 4,
+    borderColor: '#000000',
+    borderRadius: 50,
   },
   onlineDot: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#00FF00',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#22C55E',
     borderWidth: 2,
     borderColor: '#000000',
   },
-  bioCenterSection: {
-    alignItems: 'center',
-  },
-  nameRowCenter: {
+  statsRow: {
+    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'space-around',
+    marginLeft: 20,
   },
-  displayNameCenter: {
-    fontSize: 20,
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  bioTextCenter: {
+  statLabel: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  bioSection: {
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  displayName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  bioText: {
     fontSize: 14,
     color: '#FFFFFF',
+    lineHeight: 18,
     marginBottom: 4,
-    opacity: 0.9,
   },
-  locationContainerCenter: {
+  locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 4,
   },
-  locationTextCenter: {
+  locationText: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: '#8E8E93',
     marginLeft: 4,
-    fontWeight: '400',
   },
-  statsCardWrapper: {
-    paddingHorizontal: 16,
-    marginTop: 6,
-  },
-  statsCard: {
+  actionButtonsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#0C0C0C',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#1A1A1A',
-  },
-  statBoxItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statIcon: {
-    marginBottom: 4,
-  },
-  statBoxValue: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#FFFFFF',
-  },
-  statBoxLabel: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    marginTop: 2,
-    fontWeight: '400',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#222222',
-    height: '80%',
-    alignSelf: 'center',
-  },
-  actionButtonsBox: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
     marginTop: 16,
-    gap: 12,
+    gap: 8,
   },
-  addPostButton: {
+  actionButton: {
     flex: 1,
     flexDirection: 'row',
-    height: 44,
-    backgroundColor: '#0C0C0C',
-    borderRadius: 12,
+    height: 34,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1A1A1A',
-    gap: 6,
+    borderColor: '#333',
   },
-  addPostText: {
+  actionButtonText: {
     color: '#FFFFFF',
-    fontWeight: '400',
-    fontSize: 11,
+    fontWeight: '600',
+    fontSize: 13,
   },
-  shareIconButton: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#0C0C0C',
-    borderRadius: 12,
+  iconActionButton: {
+    width: 34,
+    height: 34,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1A1A1A',
+    borderColor: '#333',
   },
   gridItem: {
     width: COLUMN_WIDTH,
@@ -1504,7 +1486,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    height: '80%',
+    height: '65%',
     paddingTop: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -12 },

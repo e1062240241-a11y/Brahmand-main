@@ -569,7 +569,7 @@ export default function MessagesScreen() {
               </TouchableOpacity>
             </View>
             
-            <View style={{ height: 120 }} />
+            <View style={{ height: 90 }} />
           </View>
         ) : (
           <View style={styles.chatContent}>
@@ -632,19 +632,19 @@ export default function MessagesScreen() {
                    </TouchableOpacity>
                    );
                  })
-             ) : (
+              ) : (
                 <View style={styles.emptyChat}>
                   <Text style={styles.emptyChatText}>No private messages yet</Text>
                 </View>
-             )}
+              )}
              
-             <View style={{ height: 120 }} />
+             <View style={{ height: 90 }} />
           </View>
         )}
       </ScrollView>
       {/* Locked Group Banner */}
       {showLockedBanner && (
-        <View style={styles.lockedBannerContainer}>
+        <View style={[styles.lockedBannerContainer, { bottom: 90 }]}>
           <TouchableOpacity 
             style={styles.lockedBannerContent}
             onPress={() => {
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
   
   lockedBannerContainer: {
     position: 'absolute',
-    bottom: 100, // Above tab bar
+    // bottom: handled dynamically
     left: 16,
     right: 16,
     zIndex: 1000,

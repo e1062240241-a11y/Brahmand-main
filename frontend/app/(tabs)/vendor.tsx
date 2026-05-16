@@ -17,6 +17,7 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance from '../../src/utils/formatDistance';
@@ -51,6 +52,7 @@ interface JobProfile {
 
 export default function VendorScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const userId = user?.id;
   const [kycStatus, setKycStatus] = useState<string | null>((user as any)?.kyc_status || null);
@@ -727,7 +729,7 @@ export default function VendorScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sectionTabsContainer}>
+      <View style={[styles.sectionTabsContainer, { paddingTop: insets.top || SPACING.sm }]}>
         <View style={styles.sectionTabsInner}>
           {MAIN_SECTIONS.map((section) => (
             <TouchableOpacity
@@ -988,7 +990,7 @@ export default function VendorScreen() {
         data={activeSection === 'Jobs' ? displayJobProfiles : displayVendors}
         renderItem={activeSection === 'Jobs' ? (renderJobProfile as any) : (renderVendor as any)}
         keyExtractor={(item: any) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -1394,7 +1396,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: SPACING.md,
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
   vendorCard: {
     flexDirection: 'row',

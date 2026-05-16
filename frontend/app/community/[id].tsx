@@ -30,6 +30,33 @@ import * as ImagePicker from 'expo-image-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Persists across navigation (module-level cache) — survives tab switches but NOT full reloads
+const localPostCategories = new Map<string, string>();
+
+// Persists across full reloads via localStorage (web) / AsyncStorage (native)
+const POST_CACHE_KEY = 'brahmand_local_posts';
+function saveLocalPost(content: string, category: string) {
+  localPostCategories.set(content, category);
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(POST_CACHE_KEY) : null;
+    const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+    map[content] = category;
+    if (typeof localStorage !== 'undefined') localStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
+  } catch {}
+}
+function getLocalCategory(content: string): string | undefined {
+  const fromMap = localPostCategories.get(content);
+  if (fromMap) return fromMap;
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(POST_CACHE_KEY) : null;
+    if (raw) {
+      const map: Record<string, string> = JSON.parse(raw);
+      return map[content];
+    }
+  } catch {}
+  return undefined;
+}
+
 const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 
 const MOCK_FESTIVALS = [
@@ -140,10 +167,11 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
 ];
 
 export default function CommunityDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList>(null);
   
   const [community, setCommunity] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('Feed');
@@ -159,19 +187,81 @@ export default function CommunityDetailScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [postCategory, setPostCategory] = useState('Feed');
+  const [postCategory, setPostCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [activeComments, setActiveComments] = useState<any[]>([]);
 
   const dynamicTabs = useMemo(() => {
     return COMMUNITY_TABS;
   }, []);
 
+  const combinedData = useMemo(() => {
+    if (activeTab === 'Requests') return requests;
+    if (activeTab === 'Festivals') {
+      return [
+        { id: 'fest-header-main', type: 'festivals_header' },
+        { id: 'fest-list-horizontal', type: 'festivals_list' },
+        { id: 'fest-events-header-sub', type: 'festival_events_header' },
+        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
+        { id: 'fest-banner-footer', type: 'festival_banner' }
+      ];
+    }
+    if (activeTab === 'Feed') {
+      // Use a Map to deduplicate items by ID, prioritising discussionPosts
+      const itemMap = new Map();
+      
+      discussionPosts.forEach(p => itemMap.set(p.id, p));
+      requests.slice(0, 5).forEach(r => {
+        if (!itemMap.has(r.id)) {
+          itemMap.set(r.id, { ...r, type: 'request_item' });
+        }
+      });
+      communityPosts.forEach(p => {
+        if (!itemMap.has(p.id)) {
+          itemMap.set(p.id, p);
+        }
+      });
+      
+      return Array.from(itemMap.values());
+    }
+    const tabPosts = communityPosts.filter(p => {
+      if (!p.category) return false;
+      const postCat = String(p.category).toLowerCase();
+      const currentTab = activeTab.toLowerCase();
+      
+      if (postCat === currentTab) return true;
+      if (currentTab === 'seva' && postCat.includes('volunteer')) return true;
+      if (postCat === 'feed') return false; // Feed posts only in Feed
+      return false;
+    });
+
+    if (tabPosts.length > 0) {
+      return [{ id: `header-${activeTab}`, type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
+    }
+    return [];
+  }, [activeTab, requests, discussionPosts, communityPosts]);
+
   useEffect(() => {
     fetchCommunity();
   }, [id]);
+
+  useEffect(() => {
+    if (!loading && postId && communityPosts.length > 0) {
+      const index = communityPosts.findIndex(p => p.id === postId);
+      if (index !== -1) {
+        // Find the index in combinedData
+        const combinedIndex = combinedData.findIndex(item => item.id === postId);
+        if (combinedIndex !== -1) {
+          setTimeout(() => {
+            listRef.current?.scrollToIndex({ index: combinedIndex, animated: true, viewPosition: 0.5 });
+          }, 500);
+        }
+      }
+    }
+  }, [loading, postId, communityPosts, combinedData]);
 
   const fetchCommunity = async () => {
     try {
@@ -211,15 +301,29 @@ export default function CommunityDetailScreen() {
         },
         content: msg.content,
         image: msg.media_url,
-        timestamp: 'Just now',
+        timestamp: msg.created_at || 'Just now',
         likes: msg.likes_count || 0,
         comments: msg.comments_count || 0,
         shares: 0,
         reposts: 0,
         hideBadge: true,
+        category: getLocalCategory(msg.content) || msg.category || 'Feed',
       }));
-      
-      setCommunityPosts(formattedMsgs);
+
+      setCommunityPosts((prev: any[]) => {
+        const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
+        const apiById = new Map(formattedMsgs.map((p: any) => [p.id, p]));
+        for (const local of localPosts) {
+          const existing = apiById.get(local.id);
+          if (existing) {
+            Object.assign(existing, local);
+          } else {
+            apiById.set(local.id, local);
+          }
+        }
+        const seen = new Set(localPosts.map((p: any) => p.id));
+        return [...localPosts, ...formattedMsgs.filter((p: any) => !seen.has(p.id))];
+      });
     } catch (error) {
       console.error('Error fetching community data:', error);
     } finally {
@@ -232,8 +336,29 @@ export default function CommunityDetailScreen() {
     setLoadingMore(true);
     try {
       const { getCommunityMessages } = require('../../src/services/api');
-      const msgResponse = await getCommunityMessages(id as string, 'city', 20); // Simple infinite scroll
-      // Append more messages...
+      const msgResponse = await getCommunityMessages(id as string, 'city', communityPosts.length + 20);
+      const newMsgs = (msgResponse.data || []).slice(communityPosts.length).map((msg: any) => ({
+        id: msg.id || Math.random().toString(),
+        user: {
+          name: msg.sender_name || 'Anonymous',
+          photo: msg.sender_photo,
+          isVerified: msg.is_verified || false,
+          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
+        },
+        content: msg.content,
+        image: msg.media_url,
+        timestamp: msg.created_at || 'Just now',
+        likes: msg.likes_count || 0,
+        comments: msg.comments_count || 0,
+        shares: 0,
+        reposts: 0,
+        hideBadge: true,
+        category: getLocalCategory(msg.content) || msg.category || 'Feed',
+      }));
+      
+      if (newMsgs.length > 0) {
+        setCommunityPosts(prev => [...prev, ...newMsgs]);
+      }
     } catch (error) {
       console.error('Error loading more posts:', error);
     } finally {
@@ -332,7 +457,10 @@ export default function CommunityDetailScreen() {
           <View style={styles.postActionRow}>
             <TouchableOpacity 
               style={styles.postActionBtn}
-              onPress={() => setShowCommentModal(item)}
+              onPress={() => {
+                setActiveComments([]); // Clear old comments
+                setShowCommentModal(item);
+              }}
             >
               <Ionicons name="chatbubble-outline" size={18} color="#536471" />
               <Text style={styles.postActionCount}>{item.comments > 0 ? item.comments : ''}</Text>
@@ -523,8 +651,10 @@ export default function CommunityDetailScreen() {
 
   const handleShareCommunity = async () => {
     try {
+      const appLink = `sanatanlok://community/${id}`;
+      const webLink = `https://brahmand.app/community/${id}`;
       await Share.share({
-        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!`,
+        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -603,8 +733,8 @@ export default function CommunityDetailScreen() {
   const handleCreatePost = async () => {
     if (!newMessage.trim() && !selectedImage) return;
 
-    // Use Seva as default if Feed is removed
-    const finalCategory = postCategory === 'Feed' ? 'Seva' : postCategory;
+    // Use activeTab as default category (but 'Feed' maps to 'Seva')
+    const finalCategory = postCategory || (activeTab === 'Feed' ? 'Seva' : activeTab);
 
     const newPost = {
       id: `post-${Date.now()}`,
@@ -629,31 +759,42 @@ export default function CommunityDetailScreen() {
     };
 
     setCommunityPosts(prev => [newPost, ...prev]);
-    
+
+    // Save category so it survives refetch even if API doesn't return it
+    if (newMessage.trim()) {
+      saveLocalPost(newMessage.trim(), finalCategory);
+    }
+
     // Attempt real API send if text is present
     if (newMessage.trim()) {
-      try {
-        const { sendCommunityMessage } = require('../../src/services/api');
-        await sendCommunityMessage(id as string, 'city', newMessage);
-      } catch (error) {
+      const { sendCommunityMessage } = require('../../src/services/api');
+      sendCommunityMessage(id as string, 'city', newMessage, 'text', finalCategory).catch((error: any) => {
         console.error('Failed to send real message:', error);
-      }
+      });
     }
 
     setNewMessage('');
     setSelectedImage(null);
     setContactNumber('');
     setShowCreateModal(false);
+    
+    // No longer switching tabs automatically to keep the user in their current context
+    // The post will appear immediately in the Feed and its specific category
+    Alert.alert('Success', 'Your post has been shared with the community!');
   };
 
   const handleShare = async (postId: string) => {
     try {
+      const appLink = `sanatanlok://community/${id}?postId=${postId}`;
+      const webLink = `https://brahmand.app/community/${id}?postId=${postId}`;
+      
       await Share.share({
-        message: 'Check out this community post on Brahmand!',
+        message: `Check out this community post on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
       });
+      
       setDiscussionPosts(prev => prev.map(post => {
         if (post.id === postId) {
-          return { ...post, shares: post.shares + 1 };
+          return { ...post, shares: (post.shares || 0) + 1 };
         }
         return post;
       }));
@@ -665,42 +806,27 @@ export default function CommunityDetailScreen() {
   const handleAddComment = () => {
     if (!commentText.trim() || !showCommentModal) return;
     
+    const newComment = {
+      id: `comment-${Date.now()}`,
+      userName: user?.name || 'You',
+      text: commentText,
+      avatar: user?.photo
+    };
+
+    setActiveComments(prev => [...prev, newComment]);
+
     setDiscussionPosts(prev => prev.map(post => {
       if (post.id === showCommentModal.id) {
-        return { ...post, comments: post.comments + 1 };
+        return { ...post, comments: (post.comments || 0) + 1 };
       }
       return post;
     }));
     
     setCommentText('');
-    Alert.alert('Success', 'Comment added successfully!');
+    // Alert removed for smoother experience, comment appears immediately
   };
 
-  const combinedData = useMemo(() => {
-    if (activeTab === 'Requests') return requests;
-    if (activeTab === 'Festivals') {
-      return [
-        { type: 'festivals_header' },
-        { type: 'festivals_list' },
-        { type: 'festival_events_header' },
-        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
-        { type: 'festival_banner' }
-      ];
-    }
-    if (activeTab === 'Feed') {
-      return [
-        ...discussionPosts, 
-        ...requests.slice(0, 5).map(r => ({ ...r, type: 'request_item' })),
-        ...communityPosts // Show ALL posts in general Feed
-      ];
-    }
-    // Handle other tabs
-    const tabPosts = communityPosts.filter(p => p.category === activeTab);
-    if (tabPosts.length > 0) {
-      return [{ type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
-    }
-    return [];
-  }, [activeTab, requests, discussionPosts, communityPosts]);
+
 
   if (loading) {
     return (
@@ -713,25 +839,19 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior="padding"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
       {/* Sticky Top Bar */}
-      <View style={[styles.stickyTopBar, { paddingTop: insets.top }]}>
+      <View style={[styles.stickyTopBar, { paddingTop: insets.top, height: 60 + insets.top }]}>
         <TouchableOpacity 
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/home');
-            }
-          }} 
+          onPress={() => router.replace('/(tabs)/messages')}
           style={styles.iconBtn}
         >
           <Ionicons name="chevron-back" size={28} color="#000" />
         </TouchableOpacity>
         <View style={styles.rightActions}>
-          <TouchableOpacity style={styles.createPill} onPress={() => setShowCreateModal(true)}>
+          <TouchableOpacity style={styles.createPill} onPress={() => { setPostCategory(''); setShowCreateModal(true); }}>
             <Ionicons name="add" size={18} color="#FFF" />
             <Text style={styles.createPillText}>Create</Text>
           </TouchableOpacity>
@@ -746,8 +866,12 @@ export default function CommunityDetailScreen() {
       </View>
 
       <FlatList
+        ref={listRef}
         data={combinedData}
-        keyExtractor={item => item.id || (item.type + (item.title || ''))}
+        keyExtractor={(item, index) => {
+          if (item.id) return String(item.id);
+          return `${item.type || 'item'}-${index}`;
+        }}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (
@@ -769,7 +893,7 @@ export default function CommunityDetailScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 data={allFestivals}
-                keyExtractor={f => f.id}
+                keyExtractor={(f, i) => f.id ? String(f.id) : `fest-${i}`}
                 renderItem={renderFestivalItem}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 25 }}
               />
@@ -845,7 +969,7 @@ export default function CommunityDetailScreen() {
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       data={events}
-                      keyExtractor={item => item.id}
+                      keyExtractor={(item, index) => item.id ? String(item.id) : `event-${index}`}
                       renderItem={renderEventItem}
                       contentContainerStyle={styles.eventsList}
                     />
@@ -871,7 +995,7 @@ export default function CommunityDetailScreen() {
         contentContainerStyle={styles.mainContent}
       />
 
-      <View style={[styles.footer, { paddingBottom: 16 }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         {selectedImage && (
           <View style={styles.imagePreviewContainer}>
             <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
@@ -902,7 +1026,7 @@ export default function CommunityDetailScreen() {
       <Modal visible={showCreateModal} animationType="slide" transparent={false}>
         <SafeAreaView style={styles.createModalRoot}>
           <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
             <View style={styles.createModalHeader}>
@@ -957,7 +1081,7 @@ export default function CommunityDetailScreen() {
                     <View style={styles.catIconCircle}>
                       <Ionicons name="heart-outline" size={20} color="#A855F7" />
                     </View>
-                    <Text style={styles.catText}>{postCategory}</Text>
+                    <Text style={styles.catText}>{postCategory || activeTab}</Text>
                   </View>
                   <Ionicons name="checkmark-circle" size={20} color="#FF3B30" />
                 </View>
@@ -1016,7 +1140,8 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
           style={styles.modalOverlay}
         >
           <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -1028,21 +1153,22 @@ export default function CommunityDetailScreen() {
             </View>
             
             <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
-              {/* Dummy comments for replica */}
-              <View style={styles.commentItem}>
-                <Avatar name="Rahul" size={32} />
-                <View style={styles.commentTextBubble}>
-                  <Text style={styles.commentUserName}>Rahul Sharma</Text>
-                  <Text style={styles.commentText}>Jai Shri Ram! Looking forward to the bhajan sandhya.</Text>
+              {activeComments.length > 0 ? (
+                activeComments.map(comment => (
+                  <View key={comment.id} style={styles.commentItem}>
+                    <Avatar name={comment.userName} photo={comment.avatar} size={32} />
+                    <View style={styles.commentTextBubble}>
+                      <Text style={styles.commentUserName}>{comment.userName}</Text>
+                      <Text style={styles.commentText}>{comment.text}</Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40 }}>
+                  <Ionicons name="chatbubble-outline" size={48} color="#CCC" />
+                  <Text style={{ color: '#888', marginTop: 12, fontSize: 14 }}>No comments yet. Be the first to comment!</Text>
                 </View>
-              </View>
-              <View style={styles.commentItem}>
-                <Avatar name="Neha" size={32} />
-                <View style={styles.commentTextBubble}>
-                  <Text style={styles.commentUserName}>Neha Gupta</Text>
-                  <Text style={styles.commentText}>Great initiative for the food donation drive.</Text>
-                </View>
-              </View>
+              )}
             </ScrollView>
 
             <View style={styles.commentInputRow}>
@@ -1099,7 +1225,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 15, color: '#888', fontWeight: '600' },
   tabTextActive: { color: '#FF3B30', fontWeight: '700' },
 
-  mainContent: { paddingBottom: 100 },
+  mainContent: { paddingBottom: 120 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 25, marginBottom: 15 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
   sectionTitle: { fontSize: 17, fontFamily: 'Inter_700Bold', color: '#111', fontWeight: '700' },

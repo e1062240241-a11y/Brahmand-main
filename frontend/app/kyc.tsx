@@ -32,7 +32,7 @@ export default function KYCStatusScreen() {
   };
 
   const handleBack = useCallback(() => {
-    router.replace('/profile');
+    router.back();
   }, [router]);
 
   useEffect(() => {

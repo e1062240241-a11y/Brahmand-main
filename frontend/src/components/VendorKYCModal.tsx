@@ -742,7 +742,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     <Modal visible={visible} animationType="slide" transparent>
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={16}
       >
         <View style={styles.container}>

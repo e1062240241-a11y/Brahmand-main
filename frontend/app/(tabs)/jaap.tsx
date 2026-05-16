@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,14 +18,41 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { getTempleImageById } from '../../src/constants/templeImages';
+import { getTemples } from '../../src/services/api';
+import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const LIVE_JAAPS = [
-  { id: '1', title: 'Hanuman\nChalisa', devotees: '9.6K', image: require('../../assets/images/hanuman_jaap_card_v2.png') },
-  { id: '2', title: 'Hare Krishna\nJaap', devotees: '6.4K', image: require('../../assets/images/krishna_jaap_card_v2.png') },
-  { id: '3', title: 'Om Namah\nShivaya', devotees: '5.2K', image: require('../../assets/images/shiva_jaap_card_v2.png') },
-  { id: '4', title: 'Gayatri\nMantra', devotees: '4.8K', image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.png') },
+  { 
+    id: '1', 
+    title: 'Hanuman\nChalisa', 
+    devotees: '9.6K', 
+    image: require('../../assets/images/hanuman_jaap_card_v2.png'),
+    slok: 'श्रीगुरु चरन सरोज रज निज मनु मुकुरु सुधारि...'
+  },
+  { 
+    id: '2', 
+    title: 'Hare Krishna\nJaap', 
+    devotees: '6.4K', 
+    image: require('../../assets/images/krishna_jaap_card_v2.png'),
+    slok: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे...'
+  },
+  { 
+    id: '3', 
+    title: 'Om Namah\nShivaya', 
+    devotees: '5.2K', 
+    image: require('../../assets/images/shiva_jaap_card_v2.png'),
+    slok: 'ॐ नमः शिवाय ॐ नमः शिवाय...'
+  },
+  { 
+    id: '4', 
+    title: 'Gayatri\nMantra', 
+    devotees: '4.8K', 
+    image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.png'),
+    slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...'
+  },
 ];
 
 const UPCOMING_SESSIONS = [
@@ -38,6 +65,7 @@ const UPCOMING_SESSIONS = [
 export default function JaapLandingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
 
   // Temple State
@@ -46,10 +74,17 @@ export default function JaapLandingScreen() {
   const [templeSearch, setTempleSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Sacred'>('All');
 
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 15_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const liveActive = isWithinGayatriMantraWindow(now);
+  const liveEnd = getCurrentGayatriEnd(now);
+
   const fetchTemplesData = async () => {
     try {
       setLoadingTemples(true);
-      const { getTemples } = require('../../src/services/api');
       const response = await getTemples();
       if (response.data) {
         setTemples(response.data);
@@ -91,30 +126,58 @@ export default function JaapLandingScreen() {
     return matchesSearch && matchesCategory;
   });
 
-  const { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } = require('../../src/constants/templeImages');
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={[styles.topTabsContainer, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.topTabsContainer, { paddingTop: 10 }]}>
         <View style={styles.topTabsInner}>
           <TouchableOpacity 
-            style={[styles.topTabButton, activeSection === 'jaap' && styles.topTabButtonActive]}
+            style={styles.jaapTabExact} 
             onPress={() => setActiveSection('jaap')}
+            activeOpacity={1}
           >
-            <Text style={[styles.topTabText, activeSection === 'jaap' && styles.topTabTextActive]}>Jaaps</Text>
+            {activeSection === 'jaap' ? (
+              <LinearGradient colors={['#FF8D57', '#FF6600', '#E65C00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.5 }} style={styles.jaapGradientExact}>
+                <View style={styles.jaapContentRow}>
+                  <Text style={styles.omSymbolExact}>ॐ</Text>
+                  <Text style={styles.tabTitleExact}>Jaap</Text>
+                </View>
+              </LinearGradient>
+            ) : (
+              <View style={[styles.jaapContentRow, { justifyContent: 'center', flex: 1 }]}>
+                <Text style={[styles.omSymbolExact, { color: '#FF6600' }]}>ॐ</Text>
+                <Text style={[styles.tabTitleExact, { color: '#8B4513' }]}>Jaap</Text>
+              </View>
+            )}
           </TouchableOpacity>
+
           <TouchableOpacity 
-            style={[styles.topTabButton, activeSection === 'temple' && styles.topTabButtonActive]}
-            onPress={() => setActiveSection('temple')}
+            style={[styles.templeTabExact, activeSection === 'temple' && { backgroundColor: '#FF6600' }]} 
+            onPress={() => setActiveSection('temple')} 
+            activeOpacity={0.8}
           >
-            <Text style={[styles.topTabText, activeSection === 'temple' && styles.topTabTextActive]}>Temple</Text>
+             <View style={styles.templeContentRow}>
+                <MaterialCommunityIcons 
+                  name="temple-hindu" 
+                  size={20} 
+                  color={activeSection === 'temple' ? '#FFF' : '#FF6600'} 
+                />
+                <Text style={[styles.templeTitleExact, { color: activeSection === 'temple' ? '#FFF' : '#FF6600' }]}>
+                  Temple
+                </Text>
+             </View>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ 
+          paddingBottom: 90 
+        }}
+      >
         {activeSection === 'jaap' ? (
           <>
             <View style={styles.heroTitleSectionExact}>
@@ -128,31 +191,33 @@ export default function JaapLandingScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* PIXEL-PERFECT MOCKUP UI FOR HERO BANNER */}
             <View style={[styles.heroFixedContainer, { height: 500 }]}>
               <Image
                 source={require('../../assets/images/jaap_hero_shiva_final.png')}
-                style={{ position: 'absolute', width: '180%', height: '100%', left: -SCREEN_WIDTH * 0.6 }}
-                resizeMode="cover"
+                style={{ position: 'absolute', width: '100%', height: '100%' }}
+                resizeMode="stretch"
               />
-              <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} />
 
-              {/* TOP BADGES */}
               <View style={styles.mockupTopRow}>
-                <View style={styles.mockupLiveBadge}>
-                  <Ionicons name="radio" size={16} color="#FFF" />
-                  <Text style={styles.mockupLiveText}>LIVE NOW</Text>
+                <View style={[styles.mockupLiveBadge, !liveActive && { backgroundColor: '#FF8800' }]}>
+                  <Ionicons name={liveActive ? "radio" : "calendar"} size={16} color="#FFF" />
+                  <Text style={styles.mockupLiveText}>{liveActive ? "LIVE NOW" : "SCHEDULED"}</Text>
                 </View>
                 <View style={styles.mockupDevoteeBadge}>
                   <Ionicons name="people" size={16} color="#FFF" />
-                  <Text style={styles.mockupDevoteeText}>12.8K Devotees</Text>
+                  <Text style={styles.mockupDevoteeText}>{liveActive ? "12.8K Devotees" : "Join Waitlist"}</Text>
                 </View>
               </View>
 
-              {/* MAIN CONTENT AREA */}
               <View style={styles.mockupContentArea}>
-                <Text style={styles.mockupMainTitle}>Maha{"\n"}Mrityunjaya{"\n"}Jaap</Text>
-                <Text style={styles.mockupTagline}>We chant. We heal.{"\n"}We rise together.</Text>
+                <Text style={styles.mockupMainTitle}>
+                  {liveActive ? "Maha\nMrityunjaya\nJaap" : "Evening\nGayatri\nChanting"}
+                </Text>
+                <Text style={styles.mockupTagline}>
+                  {liveActive 
+                    ? "We chant. We heal.\nWe rise together." 
+                    : "Connect with the divine light.\nStarting at 6:00 PM."}
+                </Text>
 
                 <View style={styles.mockupDevoteeRow}>
                   <View style={styles.avatarStack}>
@@ -160,20 +225,38 @@ export default function JaapLandingScreen() {
                     <Image source={{ uri: 'https://i.pravatar.cc/100?u=2' }} style={[styles.miniAvatar, { marginLeft: -12 }]} />
                     <Image source={{ uri: 'https://i.pravatar.cc/100?u=3' }} style={[styles.miniAvatar, { marginLeft: -12 }]} />
                   </View>
-                  <Text style={styles.mockupDevoteeCountSub}>12,842+ devotees chanting together</Text>
+                  <Text style={styles.mockupDevoteeCountSub}>
+                    {liveActive ? "12,842+ devotees chanting together" : "4,200+ devotees already joined"}
+                  </Text>
                 </View>
 
-                <TouchableOpacity style={styles.mockupJoinNowBtn} onPress={() => router.push('/live-mantra')}>
-                  <Text style={styles.mockupJoinBtnText}>Join Jaap Now</Text>
-                  <View style={styles.mockupOmCircle}>
-                    <Text style={styles.mockupOmIcon}>ॐ</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+                <TouchableOpacity 
+                  style={styles.mockupJoinNowBtn} 
+                  onPress={() => router.push({
+                    pathname: '/live-jaap-welcome',
+                    params: { 
+                      mantraType: liveActive ? 'mrityunjaya' : 'gayatri',
+                      title: liveActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra'
+                    }
+                  })}
+                >
+                  <LinearGradient
+                    colors={['#FF6B00', '#FF8800']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={styles.mockupJoinGradient}
+                  >
+                    <View style={[styles.buttonNotch, { left: -25 }]} />
+                    <View style={[styles.buttonNotch, { right: -25 }]} />
 
-              <View style={styles.mockupWaveformBox}>
-                <MaterialCommunityIcons name="waveform" size={42} color="rgba(255,255,255,0.8)" />
-                <MaterialCommunityIcons name="waveform" size={42} color="rgba(255,255,255,0.8)" style={{ marginLeft: -10 }} />
+                    <View style={styles.mockupJoinMainRow}>
+                      <Text style={styles.mockupJoinOm}>ॐ</Text>
+                      <Text style={styles.mockupJoinJaapText}>{liveActive ? "Join Jaap" : "Set Reminder"}</Text>
+                    </View>
+                    <Text style={styles.mockupJoinSubtext}>
+                      {liveActive ? `Live until ${liveEnd ? formatTime(liveEnd) : ''}` : "Next Session: 6:00 PM Today"}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -184,7 +267,17 @@ export default function JaapLandingScreen() {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.miniCardsRowPadding}>
               {LIVE_JAAPS.map((jaap) => (
-                <TouchableOpacity key={jaap.id} style={[styles.jaapCardContainer, { width: 240, backgroundColor: '#1A0A00' }]} onPress={() => router.push('/live-mantra')}>
+                <TouchableOpacity 
+                  key={jaap.id} 
+                  style={[styles.jaapCardContainer, { width: 240, backgroundColor: '#1A0A00' }]} 
+                  onPress={() => router.push({
+                    pathname: '/live-jaap-welcome',
+                    params: { 
+                      mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : 'gayatri',
+                      title: jaap.title.replace('\n', ' ')
+                    }
+                  })}
+                >
                   <Image
                     key={`jaap_card_img_v2_${jaap.id}`}
                     source={jaap.image}
@@ -203,7 +296,17 @@ export default function JaapLandingScreen() {
                     </View>
                     <View style={styles.jaapCardBottomArea}>
                       <Text style={styles.jaapCardTitleExact}>{jaap.title}</Text>
-                      <TouchableOpacity style={styles.exactJoinBtn} onPress={() => router.push('/live-mantra')}>
+                      <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
+                      <TouchableOpacity 
+                        style={styles.exactJoinBtn} 
+                        onPress={() => router.push({
+                          pathname: '/live-jaap-welcome',
+                          params: { 
+                            mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : 'gayatri',
+                            title: jaap.title.replace('\n', ' ')
+                          }
+                        })}
+                      >
                         <View style={{ flex: 1, alignItems: 'center', paddingLeft: 30 }}>
                           <Text style={styles.exactJoinText}>Join</Text>
                         </View>
@@ -357,23 +460,34 @@ export default function JaapLandingScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFBF5' },
-  topTabsContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 15, backgroundColor: '#FFF' },
-  topTabsInner: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 28, padding: 4, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
-  topTabButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 22 },
-  topTabButtonActive: { backgroundColor: '#FF6600' },
-  topTabText: { fontSize: 16, fontWeight: '800', color: '#2D1B13' },
-  topTabTextActive: { color: '#FFF' },
+  topTabsContainer: { paddingHorizontal: 16, backgroundColor: '#FFFBF5', paddingBottom: 10, zIndex: 1000 },
+  topTabsInner: { height: 54, backgroundColor: '#F0E5D8', borderRadius: 27, flexDirection: 'row', borderWidth: 1, borderColor: '#DBC7B0', overflow: 'hidden', elevation: 4, shadowColor: '#8B4513', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6 },
+  jaapTabExact: { flex: 1, height: '100%' },
+  jaapGradientExact: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  jaapMandalaHeader: { display: 'none' },
+  jaapContentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  omSymbolExact: { fontSize: 24, color: '#FFF', fontWeight: '800' },
+  tabTextColumn: { justifyContent: 'center' },
+  tabTitleExact: { color: '#FFF', fontSize: 18, fontWeight: '900' },
+  tabSubExact: { display: 'none' },
+  lotusPetalEdge: { display: 'none' },
+  petalCurve: { display: 'none' },
+  templeTabExact: { flex: 1, height: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  templeContentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  templeIconBoxExact: { width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
+  templeTitleExact: { color: '#FF6600', fontSize: 18, fontWeight: '900' },
+  templeSubExact: { display: 'none' },
   heroTitleSectionExact: { paddingHorizontal: 25, marginTop: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   heroTextCol: { flex: 1 },
   liveJaapTag: { color: '#FF6600', fontSize: 14, fontWeight: '900', letterSpacing: 0.8, marginBottom: 10 },
   heroMainTitleExact: { fontSize: 26, fontWeight: '800', color: '#2D1400', lineHeight: 34, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' },
-  viewAllPillRefined: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, borderWidth: 1.2, borderColor: '#FF6600' },
+  viewAllPillRefined: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,102,0,0.1)', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, borderWidth: 1.2, borderColor: '#FF6600' },
   viewAllTextRefined: { color: '#FF6600', fontSize: 14, fontWeight: '900', marginRight: 2 },
   heroFixedContainer: { width: SCREEN_WIDTH - 32, height: 500, overflow: 'hidden', position: 'relative', marginHorizontal: 16, borderRadius: 42, elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, marginTop: 25, backgroundColor: '#1A0A00' },
   mockupTopRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 20 },
@@ -390,8 +504,14 @@ const styles = StyleSheet.create({
   mockupDevoteeCountSub: { color: '#FFF', fontSize: 12, fontWeight: '700', marginLeft: 15 },
   mockupJoinNowBtn: { backgroundColor: '#FF6600', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 20, paddingRight: 4, height: 48, borderRadius: 24, marginTop: 25, width: 190, elevation: 10, shadowColor: '#FF6600', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.4, shadowRadius: 10 },
   mockupJoinBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
-  mockupOmCircle: { backgroundColor: '#FFF', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  mockupOmIcon: { color: '#FF6600', fontSize: 18, fontWeight: '900' },
+  mockupJoinGradient: { flex: 1, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 24 },
+  mockupJoinMainRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mockupJoinOm: { color: '#FFF', fontSize: 24, fontWeight: 'bold' },
+  mockupJoinJaapText: { color: '#FFF', fontSize: 18, fontWeight: '900' },
+  mockupJoinSubtext: { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '700', marginTop: -2 },
+  buttonNotch: { position: 'absolute', width: 50, height: 50, backgroundColor: '#1A0A00', borderRadius: 25, top: -1 },
+  mockupOmCircle: { backgroundColor: 'rgba(255,255,255,0.2)', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  mockupOmIcon: { color: '#FFF', fontSize: 18, fontWeight: '900' },
   mockupWaveformBox: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row' },
   sectionHeaderParity: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginTop: 40, marginBottom: 20 },
   viewAllBtnRefined: { paddingHorizontal: 10, paddingVertical: 5 },
@@ -405,8 +525,9 @@ const styles = StyleSheet.create({
   exactLiveText: { color: '#FFF', fontSize: 11, fontWeight: '900' },
   exactCountBadge: { backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 },
   exactCountText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  jaapCardBottomArea: { gap: 12 },
-  jaapCardTitleExact: { color: '#FFF', fontSize: 26, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
+  jaapCardBottomArea: { width: '100%' },
+  jaapCardTitleExact: { color: '#FFF', fontSize: 26, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, marginBottom: 8 },
+  jaapCardSlokExact: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600', fontStyle: 'italic', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 12 },
   exactJoinBtn: { backgroundColor: '#FFF', height: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', elevation: 5 },
   exactJoinText: { color: '#FF6600', fontSize: 18, fontWeight: '800' },
   waveformIconBox: { marginRight: 15 },
@@ -447,10 +568,6 @@ const styles = StyleSheet.create({
   noTemplesFound: { alignItems: 'center', marginTop: 60, gap: 15 },
   noTemplesText: { fontSize: 16, color: '#8B4513', fontWeight: '700', opacity: 0.5 },
 
-  // Lotus Petal Left
-  lotusPetalEdgeLeft: { position: 'absolute', left: -28, top: 0, bottom: 0, width: 56, justifyContent: 'center', alignItems: 'center', zIndex: 20 },
-  petalCurveLeft: { width: 56, height: 96, backgroundColor: '#E65C00', borderRadius: 48, transform: [{ scaleX: 0.65 }] },
-
   // Epic Temple Hero Styles
   heroRowLayoutExact: { flexDirection: 'row', width: '100%', marginBottom: 25, backgroundColor: '#FFFBF5', paddingBottom: 10 },
   heroLeftContentExact: { flex: 1.1, paddingLeft: 20, paddingTop: 10, justifyContent: 'center' },
@@ -464,31 +581,4 @@ const styles = StyleSheet.create({
   heroRightImageContainerExact: { width: '45%', height: 260, position: 'relative', overflow: 'hidden', borderBottomLeftRadius: 100 },
   heroSideImageExact: { width: '100%', height: '100%', transform: [{ scale: 1.4 }] },
   heroLeftMaskExact: { position: 'absolute', left: 0, top: 0, width: '40%', height: '100%', zIndex: 2 },
-
-  // Modal Live Room Styles
-  modalContainer: { flex: 1, backgroundColor: '#1A0B08' },
-  modalSafeArea: { flex: 1 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10 },
-  modalCloseBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  modalTitleBox: { flex: 1, alignItems: 'center' },
-  modalRoomTitle: { color: '#FFF', fontSize: 18, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' },
-  modalLiveIndicatorRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  modalPulseDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF3B30' },
-  modalLiveStatusText: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginLeft: 6 },
-  modalDevoteeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 },
-  modalDevoteeText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
-  modalCenterContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  modalGlowCircle: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,102,0,0.3)', shadowColor: '#FF6600', shadowRadius: 40, elevation: 20 },
-  modalOmSymbol: { fontSize: 120, color: '#FFF', fontWeight: 'bold', textShadowColor: 'rgba(255,102,0,0.8)', textShadowRadius: 20 },
-  modalLyricsContainer: { marginTop: 60, alignItems: 'center', paddingHorizontal: 30 },
-  modalLyricsHindi: { fontSize: 32, color: '#FFF', fontWeight: '900', textAlign: 'center' },
-  modalLyricsEnglish: { fontSize: 16, color: 'rgba(255,255,255,0.6)', marginTop: 10, textAlign: 'center', fontStyle: 'italic' },
-  modalLyricsHighlightBar: { width: 40, height: 3, backgroundColor: '#FF6600', marginTop: 20, borderRadius: 2 },
-  modalFooter: { paddingBottom: 40, paddingHorizontal: 30, alignItems: 'center' },
-  modalAudioSyncBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 40, marginBottom: 25, gap: 10 },
-  modalSyncText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  modalWaveformContainer: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 10 },
-  modalWaveBar: { width: 3, backgroundColor: '#FF6600', borderRadius: 1.5 },
-  modalLeaveBtn: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 40, paddingVertical: 14, borderRadius: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  modalLeaveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 });

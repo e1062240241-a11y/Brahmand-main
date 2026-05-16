@@ -150,6 +150,8 @@ export default function CreateCommunityScreen() {
     try {
       const payload = {
         ...formData,
+        type: 'user_group', // Backend validation expects one of: area, city, state, country, user_group
+        category: `${formData.type}${formData.category ? ` - ${formData.category}` : ''}`,
         admin_ids: selectedAdmins.map(u => u.id),
         member_ids: selectedMembers.map(u => u.id),
       };

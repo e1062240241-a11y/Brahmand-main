@@ -65,7 +65,7 @@ export default function VendorDashboardScreen() {
 
   useEffect(() => {
     const onBackPress = () => {
-      router.replace('/vendor');
+      router.back();
       return true; // prevent default behavior
     };
 
@@ -90,7 +90,7 @@ export default function VendorDashboardScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.replace('/vendor')}>
+          <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Vendor Dashboard</Text>
@@ -303,7 +303,7 @@ export default function VendorDashboardScreen() {
         } else {
           Alert.alert('Deleted', 'Your business has been deleted.');
         }
-        router.replace('/vendor');
+        router.back();
       } catch (error: any) {
         const message = error?.response?.data?.detail || error?.message || 'Failed to delete business.';
         if (Platform.OS === 'web') {
@@ -366,7 +366,7 @@ export default function VendorDashboardScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/vendor')}>
+        <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Vendor Dashboard</Text>

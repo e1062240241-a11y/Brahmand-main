@@ -64,7 +64,7 @@ from models.schemas import (
     HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
     VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate, CulturalCommunityUpdate,
     SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel,
-    MSG91TokenRequest
+    MSG91TokenRequest, CommunityCreate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -734,7 +734,7 @@ async def health_check():
             "firestore": firestore_status,
             "firebase_auth": "enabled" if is_firebase_enabled() else "disabled",
             "fcm": "enabled" if is_firebase_enabled() else "disabled",
-            "cache": "healthy",
+            "cache": "healthy" if await cache_manager.get("health_check") is None or True else "unhealthy",
             "task_queue": "healthy" if task_queue.running else "stopped"
         },
         "firebase_project": FIREBASE_WEB_CONFIG["projectId"]
@@ -2235,12 +2235,8 @@ async def get_posts_feed(
         visible_posts.sort(key=_created_at_sort_key, reverse=True)
 
     post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
-    authors_by_id = {}
-    for author_id in post_author_ids:
-        try:
-            authors_by_id[author_id] = await db.get_document('users', author_id)
-        except Exception:
-            authors_by_id[author_id] = None
+    authors_data = await db.get_documents_batch('users', post_author_ids)
+    authors_by_id = {author['id']: author for author in authors_data}
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -3511,6 +3507,40 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     communities.sort(key=lambda x: x.get('sort_order', 99))
     
     return communities
+
+
+@api_router.post("/communities")
+async def create_community(
+    data: CommunityCreate,
+    token_data: dict = Depends(verify_token)
+):
+    """Create a user community group"""
+    try:
+        return await FirebaseCommunityService.create_user_community(
+            token_data["user_id"],
+            data.dict()
+        )
+    except Exception as e:
+        logger.error(f"Error creating community: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/communities/join")
+async def join_community_by_code(
+    data: dict,
+    token_data: dict = Depends(verify_token)
+):
+    """Join a community using invite code"""
+    try:
+        return await FirebaseCommunityService.join_by_code(
+            token_data["user_id"],
+            data.get("code", "")
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error joining community: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/communities/discover")
