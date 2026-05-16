@@ -2,7 +2,7 @@
 import logging
 import os
 import time
-from typing import Optional, List
+from typing import Optional
 from google.cloud import firestore
 import firebase_admin
 from firebase_admin import credentials, firestore as admin_firestore
@@ -19,32 +19,26 @@ class InMemoryCache:
         self._expiry = {}
     
     async def get(self, key: str) -> Optional[str]:
-        now = time.time()
+        import time
         if key in self._cache:
-            if key in self._expiry and now > self._expiry[key]:
+            if key in self._expiry and time.time() > self._expiry[key]:
                 del self._cache[key]
                 del self._expiry[key]
                 return None
             return self._cache[key]
         return None
-
-    async def get_many(self, keys: List[str]) -> List[Optional[str]]:
-        return [await self.get(key) for key in keys]
     
     async def set(self, key: str, value: str, ex: int = None):
+        import time
         self._cache[key] = value
         if ex:
             self._expiry[key] = time.time() + ex
-        elif hasattr(settings, 'CACHE_TTL'):
-            self._expiry[key] = time.time() + settings.CACHE_TTL
-    
-    async def set_many(self, mapping: dict, ex: int = None):
-        for key, value in mapping.items():
-            await self.set(key, value, ex)
     
     async def delete(self, key: str):
-        self._cache.pop(key, None)
-        self._expiry.pop(key, None)
+        if key in self._cache:
+            del self._cache[key]
+        if key in self._expiry:
+            del self._expiry[key]
     
     async def ping(self):
         return True

@@ -30,33 +30,6 @@ import * as ImagePicker from 'expo-image-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Persists across navigation (module-level cache) — survives tab switches but NOT full reloads
-const localPostCategories = new Map<string, string>();
-
-// Persists across full reloads via localStorage (web) / AsyncStorage (native)
-const POST_CACHE_KEY = 'brahmand_local_posts';
-function saveLocalPost(content: string, category: string) {
-  localPostCategories.set(content, category);
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(POST_CACHE_KEY) : null;
-    const map: Record<string, string> = raw ? JSON.parse(raw) : {};
-    map[content] = category;
-    if (typeof localStorage !== 'undefined') localStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
-  } catch {}
-}
-function getLocalCategory(content: string): string | undefined {
-  const fromMap = localPostCategories.get(content);
-  if (fromMap) return fromMap;
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(POST_CACHE_KEY) : null;
-    if (raw) {
-      const map: Record<string, string> = JSON.parse(raw);
-      return map[content];
-    }
-  } catch {}
-  return undefined;
-}
-
 const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 
 const MOCK_FESTIVALS = [
@@ -167,13 +140,14 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
 ];
 
 export default function CommunityDetailScreen() {
-  const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
-  const listRef = useRef<FlatList>(null);
   
   const [community, setCommunity] = useState<any>(null);
+  const [isMember, setIsMember] = useState(false);
+  const [joinPending, setJoinPending] = useState(false);
   const [activeTab, setActiveTab] = useState('Feed');
   const [requests, setRequests] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -187,86 +161,36 @@ export default function CommunityDetailScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [postCategory, setPostCategory] = useState('');
+  const [postCategory, setPostCategory] = useState('Feed');
   const [contactNumber, setContactNumber] = useState('');
   
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
   const [commentText, setCommentText] = useState('');
-  const [activeComments, setActiveComments] = useState<any[]>([]);
 
   const dynamicTabs = useMemo(() => {
     return COMMUNITY_TABS;
   }, []);
 
-  const combinedData = useMemo(() => {
-    if (activeTab === 'Requests') return requests;
-    if (activeTab === 'Festivals') {
-      return [
-        { id: 'fest-header-main', type: 'festivals_header' },
-        { id: 'fest-list-horizontal', type: 'festivals_list' },
-        { id: 'fest-events-header-sub', type: 'festival_events_header' },
-        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
-        { id: 'fest-banner-footer', type: 'festival_banner' }
-      ];
-    }
-    if (activeTab === 'Feed') {
-      // Use a Map to deduplicate items by ID, prioritising discussionPosts
-      const itemMap = new Map();
-      
-      discussionPosts.forEach(p => itemMap.set(p.id, p));
-      requests.slice(0, 5).forEach(r => {
-        if (!itemMap.has(r.id)) {
-          itemMap.set(r.id, { ...r, type: 'request_item' });
-        }
-      });
-      communityPosts.forEach(p => {
-        if (!itemMap.has(p.id)) {
-          itemMap.set(p.id, p);
-        }
-      });
-      
-      return Array.from(itemMap.values());
-    }
-    const tabPosts = communityPosts.filter(p => {
-      if (!p.category) return false;
-      const postCat = String(p.category).toLowerCase();
-      const currentTab = activeTab.toLowerCase();
-      
-      if (postCat === currentTab) return true;
-      if (currentTab === 'seva' && postCat.includes('volunteer')) return true;
-      if (postCat === 'feed') return false; // Feed posts only in Feed
-      return false;
-    });
-
-    if (tabPosts.length > 0) {
-      return [{ id: `header-${activeTab}`, type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
-    }
-    return [];
-  }, [activeTab, requests, discussionPosts, communityPosts]);
-
   useEffect(() => {
     fetchCommunity();
   }, [id]);
 
-  useEffect(() => {
-    if (!loading && postId && communityPosts.length > 0) {
-      const index = communityPosts.findIndex(p => p.id === postId);
-      if (index !== -1) {
-        // Find the index in combinedData
-        const combinedIndex = combinedData.findIndex(item => item.id === postId);
-        if (combinedIndex !== -1) {
-          setTimeout(() => {
-            listRef.current?.scrollToIndex({ index: combinedIndex, animated: true, viewPosition: 0.5 });
-          }, 500);
-        }
-      }
-    }
-  }, [loading, postId, communityPosts, combinedData]);
-
   const fetchCommunity = async () => {
     try {
       const response = await getCommunity(id as string);
-      setCommunity(response.data);
+      const communityData = response.data;
+      setCommunity(communityData);
+
+      // Basic membership check
+      if (user && communityData.members?.includes(user.id)) {
+        setIsMember(true);
+      } else if (user && communityData.type === 'user_group') {
+        // For user groups, we'll need a way to check pending status later
+        setIsMember(false);
+      } else {
+        // System communities (city/state) might auto-join or show as joined
+        setIsMember(true);
+      }
       
       const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList } = require('../../src/services/api');
       
@@ -301,29 +225,15 @@ export default function CommunityDetailScreen() {
         },
         content: msg.content,
         image: msg.media_url,
-        timestamp: msg.created_at || 'Just now',
+        timestamp: 'Just now',
         likes: msg.likes_count || 0,
         comments: msg.comments_count || 0,
         shares: 0,
         reposts: 0,
         hideBadge: true,
-        category: getLocalCategory(msg.content) || msg.category || 'Feed',
       }));
 
-      setCommunityPosts((prev: any[]) => {
-        const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
-        const apiById = new Map(formattedMsgs.map((p: any) => [p.id, p]));
-        for (const local of localPosts) {
-          const existing = apiById.get(local.id);
-          if (existing) {
-            Object.assign(existing, local);
-          } else {
-            apiById.set(local.id, local);
-          }
-        }
-        const seen = new Set(localPosts.map((p: any) => p.id));
-        return [...localPosts, ...formattedMsgs.filter((p: any) => !seen.has(p.id))];
-      });
+      setCommunityPosts(formattedMsgs);
     } catch (error) {
       console.error('Error fetching community data:', error);
     } finally {
@@ -336,29 +246,8 @@ export default function CommunityDetailScreen() {
     setLoadingMore(true);
     try {
       const { getCommunityMessages } = require('../../src/services/api');
-      const msgResponse = await getCommunityMessages(id as string, 'city', communityPosts.length + 20);
-      const newMsgs = (msgResponse.data || []).slice(communityPosts.length).map((msg: any) => ({
-        id: msg.id || Math.random().toString(),
-        user: {
-          name: msg.sender_name || 'Anonymous',
-          photo: msg.sender_photo,
-          isVerified: msg.is_verified || false,
-          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
-        },
-        content: msg.content,
-        image: msg.media_url,
-        timestamp: msg.created_at || 'Just now',
-        likes: msg.likes_count || 0,
-        comments: msg.comments_count || 0,
-        shares: 0,
-        reposts: 0,
-        hideBadge: true,
-        category: getLocalCategory(msg.content) || msg.category || 'Feed',
-      }));
-      
-      if (newMsgs.length > 0) {
-        setCommunityPosts(prev => [...prev, ...newMsgs]);
-      }
+      const msgResponse = await getCommunityMessages(id as string, 'city', 20); // Simple infinite scroll
+      // Append more messages...
     } catch (error) {
       console.error('Error loading more posts:', error);
     } finally {
@@ -371,15 +260,37 @@ export default function CommunityDetailScreen() {
     fetchCommunity().then(() => setRefreshing(false));
   }, []);
 
+  const handleJoin = async () => {
+    setJoinPending(true);
+    try {
+      if (community?.type === 'user_group') {
+        const { requestToJoinCommunity } = require('../../src/services/api');
+        const res = await requestToJoinCommunity(id as string);
+        Alert.alert('Requested', res.data?.message || 'Join request sent to admins.');
+      } else {
+        const { joinCommunityByCode } = require('../../src/services/api');
+        if (community?.code) {
+          await joinCommunityByCode(community.code);
+          setIsMember(true);
+          Alert.alert('Joined!', `You are now a member of ${community.name}`);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to join community.');
+    } finally {
+      setJoinPending(false);
+    }
+  };
+
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <ImageBackground 
-        source={require('../../assets/images/community_banner_ultimate.png')} 
+        source={community?.cover_photo ? { uri: community.cover_photo } : require('../../assets/images/community_banner_ultimate.png')}
         style={styles.headerBg}
         resizeMode="cover"
       >
         <LinearGradient
-          colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.9)', '#FFFFFF']}
+          colors={['rgba(0,0,0,0.1)', 'rgba(255,255,255,0.8)', '#FFFFFF']}
           style={styles.headerOverlay}
         >
           <View style={{ height: 60 + insets.top }} />
@@ -387,20 +298,36 @@ export default function CommunityDetailScreen() {
           <View style={styles.communityInfo}>
             <View style={styles.communityIconWrapper}>
               <View style={styles.communityIcon}>
-                <Ionicons name="people" size={28} color="#FFF" />
+                {community?.photo ? (
+                  <Image source={{ uri: community.photo }} style={styles.communityPhoto} />
+                ) : (
+                  <Ionicons name="people" size={28} color="#FFF" />
+                )}
               </View>
             </View>
             <View style={styles.infoTextWrapper}>
               <Text style={styles.communityTitle}>{community?.name || 'Mumbai Community'}</Text>
               <Text style={styles.communityStats}>
-                {community?.member_count?.toLocaleString() || '1.8K'} Members  •  Mumbai, Maharashtra
+                {community?.member_count?.toLocaleString() || '0'} Members  •  {community?.location?.city || 'India'}
               </Text>
             </View>
           </View>
 
-          <Text style={styles.tagline}>
-            Connect with your local community. Share updates, find help, and stay updated with local events.
-          </Text>
+          <View style={styles.actionRowContainer}>
+            <Text style={styles.tagline} numberOfLines={2}>
+              {community?.description || 'Connect with your local community. Share updates, find help, and stay updated.'}
+            </Text>
+
+            {!isMember && (
+              <TouchableOpacity
+                style={styles.joinButton}
+                onPress={handleJoin}
+                disabled={joinPending}
+              >
+                {joinPending ? <ActivityIndicator color="#FFF" /> : <Text style={styles.joinButtonText}>Join Community</Text>}
+              </TouchableOpacity>
+            )}
+          </View>
         </LinearGradient>
       </ImageBackground>
 
@@ -457,10 +384,7 @@ export default function CommunityDetailScreen() {
           <View style={styles.postActionRow}>
             <TouchableOpacity 
               style={styles.postActionBtn}
-              onPress={() => {
-                setActiveComments([]); // Clear old comments
-                setShowCommentModal(item);
-              }}
+              onPress={() => setShowCommentModal(item)}
             >
               <Ionicons name="chatbubble-outline" size={18} color="#536471" />
               <Text style={styles.postActionCount}>{item.comments > 0 ? item.comments : ''}</Text>
@@ -651,10 +575,8 @@ export default function CommunityDetailScreen() {
 
   const handleShareCommunity = async () => {
     try {
-      const appLink = `sanatanlok://community/${id}`;
-      const webLink = `https://brahmand.app/community/${id}`;
       await Share.share({
-        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
+        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!`,
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -733,8 +655,8 @@ export default function CommunityDetailScreen() {
   const handleCreatePost = async () => {
     if (!newMessage.trim() && !selectedImage) return;
 
-    // Use activeTab as default category (but 'Feed' maps to 'Seva')
-    const finalCategory = postCategory || (activeTab === 'Feed' ? 'Seva' : activeTab);
+    // Use Seva as default if Feed is removed
+    const finalCategory = postCategory === 'Feed' ? 'Seva' : postCategory;
 
     const newPost = {
       id: `post-${Date.now()}`,
@@ -760,41 +682,30 @@ export default function CommunityDetailScreen() {
 
     setCommunityPosts(prev => [newPost, ...prev]);
 
-    // Save category so it survives refetch even if API doesn't return it
-    if (newMessage.trim()) {
-      saveLocalPost(newMessage.trim(), finalCategory);
-    }
-
     // Attempt real API send if text is present
     if (newMessage.trim()) {
-      const { sendCommunityMessage } = require('../../src/services/api');
-      sendCommunityMessage(id as string, 'city', newMessage, 'text', finalCategory).catch((error: any) => {
+      try {
+        const { sendCommunityMessage } = require('../../src/services/api');
+        await sendCommunityMessage(id as string, 'city', newMessage);
+      } catch (error) {
         console.error('Failed to send real message:', error);
-      });
+      }
     }
 
     setNewMessage('');
     setSelectedImage(null);
     setContactNumber('');
     setShowCreateModal(false);
-    
-    // No longer switching tabs automatically to keep the user in their current context
-    // The post will appear immediately in the Feed and its specific category
-    Alert.alert('Success', 'Your post has been shared with the community!');
   };
 
   const handleShare = async (postId: string) => {
     try {
-      const appLink = `sanatanlok://community/${id}?postId=${postId}`;
-      const webLink = `https://brahmand.app/community/${id}?postId=${postId}`;
-      
       await Share.share({
-        message: `Check out this community post on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
+        message: 'Check out this community post on Brahmand!',
       });
-      
       setDiscussionPosts(prev => prev.map(post => {
         if (post.id === postId) {
-          return { ...post, shares: (post.shares || 0) + 1 };
+          return { ...post, shares: post.shares + 1 };
         }
         return post;
       }));
@@ -806,27 +717,42 @@ export default function CommunityDetailScreen() {
   const handleAddComment = () => {
     if (!commentText.trim() || !showCommentModal) return;
     
-    const newComment = {
-      id: `comment-${Date.now()}`,
-      userName: user?.name || 'You',
-      text: commentText,
-      avatar: user?.photo
-    };
-
-    setActiveComments(prev => [...prev, newComment]);
-
     setDiscussionPosts(prev => prev.map(post => {
       if (post.id === showCommentModal.id) {
-        return { ...post, comments: (post.comments || 0) + 1 };
+        return { ...post, comments: post.comments + 1 };
       }
       return post;
     }));
     
     setCommentText('');
-    // Alert removed for smoother experience, comment appears immediately
+    Alert.alert('Success', 'Comment added successfully!');
   };
 
-
+  const combinedData = useMemo(() => {
+    if (activeTab === 'Requests') return requests;
+    if (activeTab === 'Festivals') {
+      return [
+        { type: 'festivals_header' },
+        { type: 'festivals_list' },
+        { type: 'festival_events_header' },
+        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
+        { type: 'festival_banner' }
+      ];
+    }
+    if (activeTab === 'Feed') {
+      return [
+        ...discussionPosts,
+        ...requests.slice(0, 5).map(r => ({ ...r, type: 'request_item' })),
+        ...communityPosts // Show ALL posts in general Feed
+      ];
+    }
+    // Handle other tabs
+    const tabPosts = communityPosts.filter(p => p.category === activeTab);
+    if (tabPosts.length > 0) {
+      return [{ type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
+    }
+    return [];
+  }, [activeTab, requests, discussionPosts, communityPosts]);
 
   if (loading) {
     return (
@@ -839,19 +765,31 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior="padding"
       keyboardVerticalOffset={90}
     >
       {/* Sticky Top Bar */}
-      <View style={[styles.stickyTopBar, { paddingTop: insets.top, height: 60 + insets.top }]}>
+      <View style={[styles.stickyTopBar, { paddingTop: insets.top }]}>
         <TouchableOpacity 
-          onPress={() => router.replace('/(tabs)/messages')}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/home');
+            }
+          }}
           style={styles.iconBtn}
         >
           <Ionicons name="chevron-back" size={28} color="#000" />
         </TouchableOpacity>
         <View style={styles.rightActions}>
-          <TouchableOpacity style={styles.createPill} onPress={() => { setPostCategory(''); setShowCreateModal(true); }}>
+          {(community?.owner_id === user?.id || community?.admin_ids?.includes(user?.id)) && (
+            <TouchableOpacity style={[styles.createPill, { backgroundColor: '#FF8C00' }]} onPress={() => router.push(`/community/${id}/admin-review`)}>
+              <Ionicons name="people" size={16} color="#FFF" />
+              <Text style={styles.createPillText}>Review</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.createPill} onPress={() => setShowCreateModal(true)}>
             <Ionicons name="add" size={18} color="#FFF" />
             <Text style={styles.createPillText}>Create</Text>
           </TouchableOpacity>
@@ -866,12 +804,8 @@ export default function CommunityDetailScreen() {
       </View>
 
       <FlatList
-        ref={listRef}
         data={combinedData}
-        keyExtractor={(item, index) => {
-          if (item.id) return String(item.id);
-          return `${item.type || 'item'}-${index}`;
-        }}
+        keyExtractor={item => item.id || (item.type + (item.title || ''))}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (
@@ -893,7 +827,7 @@ export default function CommunityDetailScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 data={allFestivals}
-                keyExtractor={(f, i) => f.id ? String(f.id) : `fest-${i}`}
+                keyExtractor={f => f.id}
                 renderItem={renderFestivalItem}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 25 }}
               />
@@ -969,7 +903,7 @@ export default function CommunityDetailScreen() {
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       data={events}
-                      keyExtractor={(item, index) => item.id ? String(item.id) : `event-${index}`}
+                      keyExtractor={item => item.id}
                       renderItem={renderEventItem}
                       contentContainerStyle={styles.eventsList}
                     />
@@ -995,7 +929,7 @@ export default function CommunityDetailScreen() {
         contentContainerStyle={styles.mainContent}
       />
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={[styles.footer, { paddingBottom: 16 }]}>
         {selectedImage && (
           <View style={styles.imagePreviewContainer}>
             <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
@@ -1026,7 +960,7 @@ export default function CommunityDetailScreen() {
       <Modal visible={showCreateModal} animationType="slide" transparent={false}>
         <SafeAreaView style={styles.createModalRoot}>
           <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
           >
             <View style={styles.createModalHeader}>
@@ -1081,7 +1015,7 @@ export default function CommunityDetailScreen() {
                     <View style={styles.catIconCircle}>
                       <Ionicons name="heart-outline" size={20} color="#A855F7" />
                     </View>
-                    <Text style={styles.catText}>{postCategory || activeTab}</Text>
+                    <Text style={styles.catText}>{postCategory}</Text>
                   </View>
                   <Ionicons name="checkmark-circle" size={20} color="#FF3B30" />
                 </View>
@@ -1140,8 +1074,7 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
           <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -1153,22 +1086,21 @@ export default function CommunityDetailScreen() {
             </View>
             
             <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
-              {activeComments.length > 0 ? (
-                activeComments.map(comment => (
-                  <View key={comment.id} style={styles.commentItem}>
-                    <Avatar name={comment.userName} photo={comment.avatar} size={32} />
-                    <View style={styles.commentTextBubble}>
-                      <Text style={styles.commentUserName}>{comment.userName}</Text>
-                      <Text style={styles.commentText}>{comment.text}</Text>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40 }}>
-                  <Ionicons name="chatbubble-outline" size={48} color="#CCC" />
-                  <Text style={{ color: '#888', marginTop: 12, fontSize: 14 }}>No comments yet. Be the first to comment!</Text>
+              {/* Dummy comments for replica */}
+              <View style={styles.commentItem}>
+                <Avatar name="Rahul" size={32} />
+                <View style={styles.commentTextBubble}>
+                  <Text style={styles.commentUserName}>Rahul Sharma</Text>
+                  <Text style={styles.commentText}>Jai Shri Ram! Looking forward to the bhajan sandhya.</Text>
                 </View>
-              )}
+              </View>
+              <View style={styles.commentItem}>
+                <Avatar name="Neha" size={32} />
+                <View style={styles.commentTextBubble}>
+                  <Text style={styles.commentUserName}>Neha Gupta</Text>
+                  <Text style={styles.commentText}>Great initiative for the food donation drive.</Text>
+                </View>
+              </View>
             </ScrollView>
 
             <View style={styles.commentInputRow}>
@@ -1208,6 +1140,10 @@ const styles = StyleSheet.create({
   communityIcon: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center' },
   infoTextWrapper: { marginLeft: 15 },
   communityTitle: { fontSize: 24, fontFamily: 'Inter_900Black', color: '#111', fontWeight: '900' },
+  communityPhoto: { width: '100%', height: '100%', borderRadius: 16 },
+  actionRowContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 15, gap: 10 },
+  joinButton: { backgroundColor: '#FF3B30', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, elevation: 3 },
+  joinButtonText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
   communityStats: { fontSize: 13, color: '#444', marginTop: 4, fontWeight: '600' },
   
   tagline: { fontSize: 15, color: '#333', marginTop: 15, fontWeight: '600', lineHeight: 22 },
@@ -1225,7 +1161,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 15, color: '#888', fontWeight: '600' },
   tabTextActive: { color: '#FF3B30', fontWeight: '700' },
 
-  mainContent: { paddingBottom: 120 },
+  mainContent: { paddingBottom: 100 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 25, marginBottom: 15 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
   sectionTitle: { fontSize: 17, fontFamily: 'Inter_700Bold', color: '#111', fontWeight: '700' },

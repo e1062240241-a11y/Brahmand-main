@@ -121,10 +121,10 @@ export default function TabLayout() {
 
       {/* Hidden Screens */}
       <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="temple" options={{ href: null }} />
       <Tabs.Screen name="circles" options={{ href: null }} />
       <Tabs.Screen name="jobs" options={{ href: null }} />
       <Tabs.Screen name="discover" options={{ href: null }} />
+      <Tabs.Screen name="temple" options={{ href: null }} />
     </Tabs>
   );
 }

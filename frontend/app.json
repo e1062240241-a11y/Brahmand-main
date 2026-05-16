@@ -34,7 +34,6 @@
     },
     "android": {
       "package": "com.brahmand.app",
-      "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
@@ -132,13 +131,7 @@
       ],
       "expo-web-browser",
       "expo-audio",
-      "expo-sharing",
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
-        }
-      ]
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

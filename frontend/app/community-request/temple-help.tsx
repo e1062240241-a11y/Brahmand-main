@@ -187,7 +187,7 @@ export default function TempleHelpRequestScreen() {
           <View style={{ width: 40 }} />
         </View>
 
-        <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.cardContainer}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               

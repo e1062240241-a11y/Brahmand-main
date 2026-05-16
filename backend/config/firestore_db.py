@@ -5,8 +5,6 @@ from typing import Optional, Dict, Any, List
 import asyncio
 from functools import partial
 
-from utils.cache import cache_manager
-
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +28,6 @@ class FirestoreDB:
     def __init__(self, client):
         self.client = client
         self._loop = None
-        self._cache = cache_manager
     
     def _get_loop(self):
         if self._loop is None:
@@ -61,13 +58,7 @@ class FirestoreDB:
         return await self._run_sync(_create)
     
     async def get_document(self, collection: str, doc_id: str) -> Optional[Dict[str, Any]]:
-        """Get a document by ID with caching"""
-        cache_key = f"{collection}:{doc_id}"
-        cached_doc = await self._cache.get(cache_key)
-        if cached_doc:
-            logger.info(f"Cache HIT for {cache_key}")
-            return cached_doc
-            
+        """Get a document by ID"""
         def _get():
             doc = self.client.collection(collection).document(doc_id).get()
             if doc.exists:
@@ -76,34 +67,25 @@ class FirestoreDB:
                 return data
             return None
         
-        doc_data = await self._run_sync(_get)
-        if doc_data:
-            await self._cache.set(cache_key, doc_data)
-        return doc_data
+        return await self._run_sync(_get)
     
     async def update_document(self, collection: str, doc_id: str, data: Dict[str, Any]) -> bool:
-        """Update a document and invalidate cache"""
+        """Update a document"""
         data['updated_at'] = datetime.utcnow()
         
         def _update():
             self.client.collection(collection).document(doc_id).update(data)
             return True
         
-        result = await self._run_sync(_update)
-        if result:
-            await self._cache.delete(f"{collection}:{doc_id}")
-        return result
+        return await self._run_sync(_update)
     
     async def delete_document(self, collection: str, doc_id: str) -> bool:
-        """Delete a document and invalidate cache"""
+        """Delete a document"""
         def _delete():
             self.client.collection(collection).document(doc_id).delete()
             return True
         
-        result = await self._run_sync(_delete)
-        if result:
-            await self._cache.delete(f"{collection}:{doc_id}")
-        return result
+        return await self._run_sync(_delete)
     
     async def query_documents(
         self, 
@@ -283,48 +265,23 @@ class FirestoreDB:
         await self._run_sync(_update)
     
     async def get_documents_batch(self, collection: str, doc_ids: List[str]) -> List[Dict[str, Any]]:
-        """Get multiple documents by ID with caching and batch fetching"""
+        """Get multiple documents by ID in one batch call"""
         if not doc_ids:
             return []
             
-        # 1. Try to get from cache first
-        cache_keys = [f"{collection}:{uid}" for uid in doc_ids]
-        cached_results = await self._cache.get_many(cache_keys)
-        
-        results = []
-        missing_ids = []
-        
-        for i, doc in enumerate(cached_results):
-            if doc:
-                results.append(doc)
-                logger.debug(f"Batch Cache HIT for {cache_keys[i]}")
-            else:
-                missing_ids.append(doc_ids[i])
-        
-        if not missing_ids:
-            return results
-            
-        # 2. Fetch missing from Firestore in batch
         def _get():
-            refs = [self.client.collection(collection).document(uid) for uid in missing_ids]
+            refs = [self.client.collection(collection).document(uid) for uid in doc_ids]
+            # get_all returns a generator of DocumentSnapshots
             docs = self.client.get_all(refs)
-            batch_result = []
+            result = []
             for doc in docs:
                 if doc and doc.exists:
                     data = doc.to_dict()
                     data['id'] = doc.id
-                    batch_result.append(data)
-            return batch_result
+                    result.append(data)
+            return result
         
-        fresh_docs = await self._run_sync(_get)
-        
-        # 3. Cache fresh results and add to final results
-        if fresh_docs:
-            cache_mapping = {f"{collection}:{doc['id']}": doc for doc in fresh_docs}
-            await self._cache.set_many(cache_mapping)
-            results.extend(fresh_docs)
-            
-        return results
+        return await self._run_sync(_get)
 
     async def array_remove_update(self, collection: str, doc_id: str, field: str, values: list) -> None:
         """Remove values from an array field"""

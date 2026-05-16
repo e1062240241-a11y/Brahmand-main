@@ -1,313 +1,322 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  TextInput,
+  ScrollView,
   TouchableOpacity,
-  FlatList,
-  KeyboardAvoidingView,
+  ActivityIndicator,
+  StyleSheet,
+  Image,
+  Dimensions,
   Platform,
   ImageBackground,
-  ActivityIndicator,
-  Animated,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { aiChat } from '../src/services/api';
-import { COLORS, FONTS, SPACING } from '../src/constants/theme';
+import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
+import { getFestivalList } from '../src/services/api';
+import { useAuthStore } from '../src/store/authStore';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  reasoning_details?: string;
-  timestamp: Date;
-}
+const CARD_COLORS = [
+  '#FFE082', // Yellow
+  '#B2EBF2', // Light Blue
+  '#F48FB1', // Pink
+  '#CE93D8', // Purple
+  '#A5D6A7', // Green
+  '#FFCC80', // Orange
+  '#CFD8DC', // Blue Grey
+];
 
-export default function MyKrishnaChat() {
+// Mapping for festival images in assets/images/festival image/
+const festivalImageMap: Record<string, any> = {
+  'Diwali': require('../assets/images/icon.png'),
+  'Holi': require('../assets/images/icon.png'),
+  'Janmashtami': require('../assets/images/icon.png'),
+  'Ganesh Chaturthi': require('../assets/images/icon.png'),
+  'Maha Shivaratri': require('../assets/images/icon.png'),
+  'Dussehra': require('../assets/images/icon.png'),
+  'Raksha Bandhan': require('../assets/images/icon.png'),
+  'Ram Navami': require('../assets/images/icon.png'),
+  'Karva Chauth': require('../assets/images/icon.png'),
+  'Dhanteras': require('../assets/images/icon.png'),
+  'Bhai Dooj': require('../assets/images/icon.png'),
+  'Chhath Puja': require('../assets/images/icon.png'),
+  'Guru Purnima': require('../assets/images/icon.png'),
+  'Onam': require('../assets/images/icon.png'),
+  'Makar Sankranti': require('../assets/images/icon.png'),
+  'Akshaya Tritiya': require('../assets/images/icon.png'),
+};
+
+const getFestivalImage = (name: string) => {
+  if (!name) return null;
+  // Try exact match
+  if (festivalImageMap[name]) return festivalImageMap[name];
+
+  // Try partial match
+  const key = Object.keys(festivalImageMap).find(k => name.includes(k) || k.includes(name));
+  return key ? festivalImageMap[key] : null;
+};
+
+const FestivalPage = () => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Radhe Radhe! I am your spiritual guide, My Krishna. Plzz reply in Hinglish. On the battlefield of life, I am here to guide you with the wisdom of the Bhagavad Gita. What troubles your mind today, Partha?',
-      timestamp: new Date(),
-    },
-  ]);
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { user } = useAuthStore();
+  const [festivals, setFestivals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputText.trim(),
-      timestamp: new Date(),
+    const loadFestivals = async () => {
+      try {
+        const response = await getFestivalList();
+        const items = response.data || [];
+        setFestivals(items);
+      } catch (err) {
+        console.warn('Failed to load festivals', err);
+        setError('Could not load festivals.');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText('');
-    setIsLoading(true);
+    loadFestivals();
+  }, []);
 
-    try {
-      // Prepare messages for API
-      const apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
-      apiMessages.push({ role: userMessage.role, content: userMessage.content });
+  const userName = user?.name?.split(' ')[0] || 'Daniel';
+  const nextFestivalName = festivals[0]?.name || 'Upcoming';
 
-      const response = await aiChat(apiMessages);
-      
-      if (response.data?.choices?.[0]?.message) {
-        const assistantMsg = response.data.choices[0].message;
-        const newAssistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: assistantMsg.content || '',
-          reasoning_details: assistantMsg.reasoning_details,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, newAssistantMessage]);
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: "I apologize, but I'm having trouble connecting right now. Please try again in a moment. Radhe Radhe!",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isUser = item.role === 'user';
+  if (loading) {
     return (
-      <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
-        {!isUser && (
-          <View style={styles.assistantAvatar}>
-             <Text style={{fontSize: 20}}>🪈</Text>
-          </View>
-        )}
-        <View style={[
-          styles.messageBubble,
-          isUser ? styles.userBubble : styles.assistantBubble
-        ]}>
-          <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
-            {item.content}
-          </Text>
-          <Text style={styles.timestamp}>
-            {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-        </View>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
       </View>
     );
-  };
+  }
 
   return (
-    <View style={{ flex: 1 }}>
-      <ImageBackground 
-        source={require('../assets/images/image temple/MahakalTemple.webp')} 
-        style={styles.container}
+    <View style={styles.page}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
+          <Ionicons name="apps-outline" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <View style={{ width: 44 }} />
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <LinearGradient 
-          colors={['rgba(26, 35, 126, 0.9)', 'rgba(0, 0, 0, 0.85)']} 
-          style={StyleSheet.absoluteFill} 
-        />
-        
-        <Stack.Screen 
-          options={{
-            headerShown: true,
-            headerTitle: 'My Krishna',
-            headerTransparent: true,
-            headerTintColor: '#FFF',
-            headerTitleStyle: { fontFamily: FONTS.bold, fontSize: 20 },
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                <Ionicons name="chevron-back" size={28} color="#FFF" />
-              </TouchableOpacity>
-            ),
-          }} 
-        />
+        {/* White Hero Card */}
+        <View style={styles.heroCard}>
+          <Text style={styles.statisticsLabel}>Discover</Text>
+          <Text style={styles.heroTitle}>
+            Hello {userName} 👋{'\n'}upcoming{'\n'}
+            <Text style={styles.heroTitleBold}>festivals</Text>
+          </Text>
 
-        <SafeAreaView style={styles.chatContainer} edges={['bottom']}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 60 }]}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          />
-
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#FFD700" size="small" />
-              <Text style={styles.loadingText}>Krishna is thinking...</Text>
+          <View style={styles.pillsRow}>
+            <View style={styles.pill}>
+              <Ionicons name="calendar-outline" size={14} color="#D32F2F" />
+              <Text style={styles.pillText} numberOfLines={1}>{nextFestivalName}</Text>
             </View>
-          )}
-
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-          >
-            <View style={styles.inputWrapper}>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ask Krishna anything..."
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={inputText}
-                  onChangeText={setInputText}
-                  multiline
-                  maxLength={500}
-                />
-                <TouchableOpacity 
-                  style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]} 
-                  onPress={handleSend}
-                  disabled={!inputText.trim() || isLoading}
-                >
-                  <Ionicons name="send" size={20} color={inputText.trim() ? "#FFF" : "rgba(255,255,255,0.3)"} />
-                </TouchableOpacity>
-              </View>
+            <View style={styles.arrowIconContainer}>
+              <Ionicons name="arrow-up-outline" size={18} color="#000000" style={{ transform: [{ rotate: '45deg' }] }} />
             </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </ImageBackground>
+          </View>
+        </View>
+
+        {/* Festival Cards with Background Images and Glass Design */}
+        {festivals.map((festival, index) => {
+          const color = CARD_COLORS[index % CARD_COLORS.length];
+          const festivalImg = getFestivalImage(festival.name);
+
+          return (
+            <TouchableOpacity
+              key={festival.name || index}
+              style={[styles.festivalCardContainer, { marginBottom: 12 }]}
+              activeOpacity={0.9}
+              onPress={() => router.push(`/festival-detail?index=${index}`)}
+            >
+              <ImageBackground
+                source={festivalImg}
+                style={[styles.festivalCard, { backgroundColor: color }]}
+                imageStyle={{ borderRadius: 32, opacity: 0.8 }}
+                resizeMode="cover"
+              >
+                {/* White Glass Overlay */}
+                <View style={styles.glassOverlay}>
+                  <View style={styles.cardContent}>
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardLabel}>Festival</Text>
+                      <Text style={styles.cardName}>{festival.name}</Text>
+                      <Text style={styles.cardDate}>{festival.date}</Text>
+                    </View>
+                    <View style={styles.cardRight}>
+                      <View style={styles.festivalIconWrapper}>
+                        <Image source={festivalImg} style={styles.festivalIconImage} />
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#000000" style={styles.chevronIcon} />
+                    </View>
+                  </View>
+                </View>
+              </ImageBackground>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
+  page: {
     flex: 1,
+    backgroundColor: '#000000',
   },
-  chatContainer: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: 16,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 20,
   },
-  messageRow: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    maxWidth: '85%',
-  },
-  userRow: {
-    alignSelf: 'flex-end',
-    flexDirection: 'row-reverse',
-  },
-  assistantRow: {
-    alignSelf: 'flex-start',
-  },
-  assistantAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    alignItems: 'center',
+  headerIcon: {
+    width: 44,
+    height: 44,
     justifyContent: 'center',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#FFD700',
+    alignItems: 'center',
   },
-  messageBubble: {
-    padding: 12,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  heroCard: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 36,
+    padding: 28,
+    marginBottom: 16,
+  },
+  statisticsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+    marginBottom: 12,
+  },
+  heroTitle: {
+    fontSize: 40,
+    lineHeight: 48,
+    fontWeight: '500',
+    color: '#000000',
+    letterSpacing: -1,
+  },
+  heroTitleBold: {
+    fontWeight: '800',
+  },
+  pillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 20,
+    maxWidth: '70%',
   },
-  userBubble: {
-    backgroundColor: '#FF6A00',
-    borderTopRightRadius: 4,
+  pillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 6,
+    color: '#000000',
   },
-  assistantBubble: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderTopLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+  arrowIconContainer: {
+    marginLeft: 'auto',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  messageText: {
-    fontSize: 15,
-    fontFamily: FONTS.medium,
-    lineHeight: 20,
+  festivalCardContainer: {
+    borderRadius: 32,
+    overflow: 'hidden',
   },
-  userText: {
-    color: '#FFF',
+  festivalCard: {
+    borderRadius: 32,
+    minHeight: 120,
   },
-  assistantText: {
-    color: '#FFF',
+  glassOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    padding: 24,
+    justifyContent: 'center',
   },
-  timestamp: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.5)',
+  cardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  cardLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#000000',
+    opacity: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  cardName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#000000',
+  },
+  cardDate: {
+    fontSize: 14,
+    color: '#000000',
+    opacity: 0.7,
     marginTop: 4,
-    alignSelf: 'flex-end',
+  },
+  cardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  festivalIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.8)',
+  },
+  festivalIconImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  chevronIcon: {
+    marginLeft: 12,
   },
   loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  loadingText: {
-    color: '#FFD700',
-    fontSize: 12,
-    marginLeft: 8,
-    fontFamily: FONTS.medium,
-  },
-  inputWrapper: {
-    padding: 16,
-    paddingTop: 8,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  input: {
     flex: 1,
-    color: '#FFF',
-    fontFamily: FONTS.medium,
-    fontSize: 15,
-    maxHeight: 100,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FF6A00',
-    alignItems: 'center',
+    backgroundColor: '#000000',
     justifyContent: 'center',
-    marginLeft: 8,
-  },
-  sendBtnDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  backBtn: {
-    marginLeft: 10,
+    alignItems: 'center',
   },
 });
+
+export default FestivalPage;

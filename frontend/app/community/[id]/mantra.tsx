@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, Modal, ScrollView, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
@@ -38,7 +38,6 @@ const CATEGORIES = ['All', 'Krishna', 'Shiv', 'Gayatri', 'Hanuman', 'Lakshmi', '
 export default function MantraJaapRoom() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { token } = useAuthStore();
   const [sessions, setSessions] = useState<MantraSession[]>(MOCK_SESSIONS);
   const [loading, setLoading] = useState(false);
@@ -80,7 +79,7 @@ export default function MantraJaapRoom() {
     setShowYouTube(false);
   };
 
-  const getYouTubeEmbedHtml = (url: string): string => {
+  const getYouTubeEmbedUrl = (url: string): string => {
     if (!url) return '';
     let videoId = '';
     
@@ -92,26 +91,7 @@ export default function MantraJaapRoom() {
     }
     
     if (videoId) {
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <style>
-            body { margin: 0; padding: 0; background-color: #000; height: 100vh; display: flex; align-items: center; justify-content: center; }
-            iframe { width: 100%; height: 100%; border: none; }
-          </style>
-        </head>
-        <body>
-          <iframe 
-            src="https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&loop=1&playlist=${videoId}&controls=1&showinfo=0&modestbranding=1" 
-            frameborder="0" 
-            allow="autoplay; fullscreen" 
-            allowfullscreen>
-          </iframe>
-        </body>
-        </html>
-      `;
+      return `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=1&showinfo=0&modestbranding=1`;
     }
     return '';
   };
@@ -207,7 +187,7 @@ export default function MantraJaapRoom() {
         data={filteredSessions}
         renderItem={renderSessionCard}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 80 + insets.bottom }]}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <Text style={styles.sectionTitle}>
@@ -218,7 +198,7 @@ export default function MantraJaapRoom() {
 
       {/* Playing Now Mini Player */}
       {activeSession && !showYouTube && (
-        <View style={[styles.miniPlayer, { paddingBottom: Math.max(insets.bottom, SPACING.xl) }]}>
+        <View style={styles.miniPlayer}>
           <View style={styles.miniPlayerInfo}>
             <Text style={styles.miniPlayerTitle} numberOfLines={1}>{activeSession.name}</Text>
             <Text style={styles.miniPlayerSubtitle} numberOfLines={1}>{activeSession.mantra}</Text>
@@ -262,11 +242,9 @@ export default function MantraJaapRoom() {
             <WebView
               ref={webViewRef}
               style={styles.youtubeWebView}
-              source={{ html: getYouTubeEmbedHtml(activeSession.youtube_url) }}
+              source={{ uri: getYouTubeEmbedUrl(activeSession.youtube_url) }}
               javaScriptEnabled={true}
-              domStorageEnabled={true}
               allowsInlineMediaPlayback={true}
-              allowsFullscreenVideo={true}
               mediaPlaybackRequiresUserAction={false}
               startInLoadingState={true}
               renderLoading={() => (
@@ -402,7 +380,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.md,
-    paddingBottom: 80,
+    paddingBottom: 100,
   },
   sessionCard: {
     backgroundColor: COLORS.surface,

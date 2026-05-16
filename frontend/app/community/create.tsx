@@ -63,6 +63,7 @@ export default function CreateCommunityScreen() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [selectedAdmins, setSelectedAdmins] = useState<User[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
+  const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -150,8 +151,6 @@ export default function CreateCommunityScreen() {
     try {
       const payload = {
         ...formData,
-        type: 'user_group', // Backend validation expects one of: area, city, state, country, user_group
-        category: `${formData.type}${formData.category ? ` - ${formData.category}` : ''}`,
         admin_ids: selectedAdmins.map(u => u.id),
         member_ids: selectedMembers.map(u => u.id),
       };
@@ -283,7 +282,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Create Community</Text>
-          <Text style={styles.stepIndicator}>Step 1 of 5</Text>
+          <Text style={styles.stepIndicator}>Step 1 of 6</Text>
         </View>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -334,7 +333,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Create Community</Text>
-          <Text style={styles.stepIndicator}>Step 2 of 5</Text>
+          <Text style={styles.stepIndicator}>Step 2 of 6</Text>
         </View>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -435,7 +434,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Create Community</Text>
-          <Text style={styles.stepIndicator}>Step 3 of 5</Text>
+          <Text style={styles.stepIndicator}>Step 3 of 6</Text>
         </View>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -590,6 +589,16 @@ export default function CreateCommunityScreen() {
     </View>
   );
 
+  const toggleInvite = (userId: string) => {
+    const newInvited = new Set(invitedUserIds);
+    if (newInvited.has(userId)) {
+      newInvited.delete(userId);
+    } else {
+      newInvited.add(userId);
+    }
+    setInvitedUserIds(newInvited);
+  };
+
   const renderStep7 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.header}>
@@ -598,7 +607,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Create Community</Text>
-          <Text style={styles.stepIndicator}>Step 4 of 5</Text>
+          <Text style={styles.stepIndicator}>Step 5 of 6</Text>
         </View>
       </View>
       <View style={styles.searchHeader}>
@@ -622,18 +631,26 @@ export default function CreateCommunityScreen() {
         )}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingHorizontal: 16 }}
-        renderItem={({ item }) => (
-          <View style={styles.userItem}>
-            <Avatar name={item.name} photo={item.photo} size={44} />
-            <View style={styles.userInfo}>
-               <Text style={styles.userName}>{item.name}</Text>
-               <Text style={styles.userSlId}>{item.sl_id}</Text>
+        renderItem={({ item }) => {
+          const isInvited = invitedUserIds.has(item.id);
+          return (
+            <View style={styles.userItem}>
+              <Avatar name={item.name} photo={item.photo} size={44} />
+              <View style={styles.userInfo}>
+                 <Text style={styles.userName}>{item.name}</Text>
+                 <Text style={styles.userSlId}>{item.sl_id}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.inviteButton, isInvited && { backgroundColor: COLORS.success }]}
+                onPress={() => toggleInvite(item.id)}
+              >
+                <Text style={[styles.inviteButtonText, isInvited && { color: '#FFF' }]}>
+                  {isInvited ? 'Sent' : 'Invite'}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.inviteButton}>
-              <Text style={styles.inviteButtonText}>Invite</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          );
+        }}
       />
 
       <TouchableOpacity style={styles.continueButton} onPress={handleNext}>

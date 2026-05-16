@@ -25,7 +25,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const { updateUser } = useAuthStore();
   const handleBack = () => {
-    router.back();
+    router.replace('/profile');
   };
 
   const [loading, setLoading] = useState(true);
@@ -163,7 +163,7 @@ export default function EditProfileScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardWrap}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack}>

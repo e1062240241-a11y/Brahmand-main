@@ -1,8 +1,8 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform } from 'react-native';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
 import { startAuthStateListener } from '../src/services/firebase/authService';
 import { addNotificationResponseReceivedListener, addNotificationReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
@@ -15,45 +15,44 @@ import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_7
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { MuteProvider } from '../src/contexts/MuteContext';
 
-// Intercept Android hardware back on community pages to avoid "GO_BACK not handled"
 function useAndroidBackHandler() {
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const onBackPress = () => {
-      if (pathname.startsWith('/community/')) {
-        router.replace('/(tabs)/messages');
-        return true;
-      }
-      return false;
-    };
-    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => sub.remove();
+  const handleBackPress = useCallback(() => {
+    if (pathname.startsWith('/community/')) {
+      router.replace('/messages');
+      return true;
+    }
+    return false;
   }, [pathname, router]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => subscription.remove();
+  }, [handleBackPress]);
 }
 
 // Handle deep links for circle invites
 function useDeepLinkHandler() {
   const { token } = useAuthStore();
-  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    const handleDeepLink = (event: { url: string }) => {
-      if (!token || !event.url) return;
+    const handleDeepLink = (event: any) => {
+      if (!token) return;
       
+      const url = event.url;
       try {
-        // Use expo-linking to parse the URL correctly
-        const parsed = Linking.parse(event.url);
-        const path = parsed.path;
+        const urlObj = new URL(url);
+        const path = urlObj.pathname.replace(/^\/+/, '');
         
-        if (!path) return;
-
-        console.log('[DeepLink] Navigating to:', path);
-        // Navigate to the path directly - expo-router handles the rest
-        router.push(`/${path}` as any);
-        
+        if (path.startsWith('join-circle/')) {
+          const circleCode = path.replace('join-circle/', '');
+          if (circleCode && pathname !== '/circle/join') {
+            console.log('Deep link detected for circle:', circleCode);
+          }
+        }
       } catch (error) {
         console.warn('Failed to parse deep link:', error);
       }
@@ -61,12 +60,13 @@ function useDeepLinkHandler() {
 
     const subscription = Linking.addEventListener('url', handleDeepLink);
     
+    // Check initial URL
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });
 
     return () => subscription.remove();
-  }, [token, router]);
+  }, [token, pathname]);
 }
 
 function useNotificationResponseHandler() {
@@ -342,15 +342,15 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="auto" />
+    <>
+      <StatusBar style="dark" />
       <View style={styles.root}>
         <MuteProvider>
           <Slot />
           {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
         </MuteProvider>
       </View>
-    </SafeAreaProvider>
+    </>
   );
 }
 

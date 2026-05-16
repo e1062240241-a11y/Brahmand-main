@@ -11,7 +11,6 @@ import {
   Platform, 
   ActivityIndicator,
   Keyboard,
-  KeyboardAvoidingView,
   Dimensions,
   BackHandler,
   Alert,
@@ -287,6 +286,7 @@ const DirectMessageScreen = () => {
   const [isRealtime, setIsRealtime] = useState(false);
   const [viewHeight, setViewHeight] = useState(Dimensions.get('window').height);
   const [hasMarkedRead, setHasMarkedRead] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [showOptions, setShowOptions] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [muteLoading, setMuteLoading] = useState(false);
@@ -519,6 +519,7 @@ const DirectMessageScreen = () => {
           const newHeight = window.visualViewport.height;
           const offset = window.innerHeight - newHeight;
           setViewHeight(newHeight);
+          setKeyboardOffset(offset > 50 ? offset : 0);
           // Scroll to bottom when keyboard opens
           setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
         }
@@ -549,6 +550,23 @@ const DirectMessageScreen = () => {
           window.visualViewport.removeEventListener('scroll', handleViewportResize);
         }
         window.removeEventListener('resize', handleResize);
+      };
+    } else {
+      // Native keyboard handling
+      const showSub = Keyboard.addListener(
+        Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+        (e) => {
+          setKeyboardOffset(e.endCoordinates.height);
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        }
+      );
+      const hideSub = Keyboard.addListener(
+        Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+        () => setKeyboardOffset(0)
+      );
+      return () => {
+        showSub.remove();
+        hideSub.remove();
       };
     }
   }, []);
@@ -1727,9 +1745,10 @@ const DirectMessageScreen = () => {
     </View>
   );
 
+  // For web, use direct height-controlled container
   if (Platform.OS === 'web') {
     return (
-      <View style={[styles.container, { height: viewHeight }]}>
+      <View style={containerStyle}>
         {renderContent()}
       </View>
     );
@@ -1737,13 +1756,7 @@ const DirectMessageScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-      >
-        {renderContent()}
-      </KeyboardAvoidingView>
+      {renderContent()}
     </SafeAreaView>
   );
 }

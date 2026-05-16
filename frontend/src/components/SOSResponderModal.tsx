@@ -11,9 +11,23 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, FONTS } from '../constants/theme';
-import SOSMap from './SOSMap';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+
+try {
+  if (Platform.OS !== 'web') {
+    const Maps = require('react-native-maps');
+    MapView = Maps.default || Maps;
+    Marker = Maps.Marker;
+    PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+  }
+} catch (e) {
+  console.warn('MapView could not be loaded in SOSResponderModal:', e);
+}
 
 interface SOSResponderModalProps {
   visible: boolean;
@@ -86,10 +100,31 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
             </View>
 
             <View style={styles.mapContainer}>
-              <SOSMap 
-                latitude={parseFloat(sosData.latitude)} 
-                longitude={parseFloat(sosData.longitude)} 
-              />
+              {MapView && sosData.latitude && sosData.longitude ? (
+                <MapView
+                  provider={PROVIDER_GOOGLE}
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: parseFloat(sosData.latitude),
+                    longitude: parseFloat(sosData.longitude),
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }}
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: parseFloat(sosData.latitude),
+                      longitude: parseFloat(sosData.longitude),
+                    }}
+                    pinColor="#FF3B30"
+                  />
+                </MapView>
+              ) : (
+                <View style={styles.mapPlaceholder}>
+                  <Ionicons name="map-outline" size={48} color="#D1D1D1" />
+                  <Text style={styles.mapPlaceholderText}>Map preview unavailable</Text>
+                </View>
+              )}
             </View>
 
             <TouchableOpacity style={styles.directionsBtn} onPress={openInMaps}>
@@ -210,6 +245,16 @@ const styles = StyleSheet.create({
   map: {
     width: '100%',
     height: '100%',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapPlaceholderText: {
+    marginTop: 8,
+    color: '#999',
+    fontSize: 12,
   },
   directionsBtn: {
     flexDirection: 'row',

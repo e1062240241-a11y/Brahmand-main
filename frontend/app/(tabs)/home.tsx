@@ -17,7 +17,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -117,15 +117,12 @@ export default function HomeScreen() {
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
 
   useEffect(() => {
-    if (user?.id) {
-      loadRecentSearches();
-    }
-  }, [user?.id]);
+    loadRecentSearches();
+  }, []);
 
   const loadRecentSearches = async () => {
-    if (!user?.id) return;
     try {
-      const saved = await AsyncStorage.getItem(`recent_searches_${user.id}`);
+      const saved = await AsyncStorage.getItem('recent_searches');
       if (saved) {
         setRecentSearches(JSON.parse(saved));
       }
@@ -135,16 +132,10 @@ export default function HomeScreen() {
   };
 
   const saveRecentSearch = async (searchItem: any) => {
-    if (!user?.id) return;
     try {
-      // Functional update to ensure we use the latest state, though slice(0,4) is already there
-      setRecentSearches(prev => {
-        const updated = [searchItem, ...prev.filter(item => item.id !== searchItem.id)].slice(0, 4);
-        AsyncStorage.setItem(`recent_searches_${user.id}`, JSON.stringify(updated)).catch(e =>
-          console.warn('Failed to save to storage:', e)
-        );
-        return updated;
-      });
+      const updated = [searchItem, ...recentSearches.filter(item => item.id !== searchItem.id)].slice(0, 4);
+      setRecentSearches(updated);
+      await AsyncStorage.setItem('recent_searches', JSON.stringify(updated));
     } catch (e) {
       console.warn('Failed to save recent search:', e);
     }
@@ -214,21 +205,10 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchLiveLocation = async () => {
       try {
-        const enabled = await Location.hasServicesEnabledAsync();
-        if (!enabled) {
-          setLiveLocation('Location Disabled');
-          return;
-        }
-
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setLiveLocation('Bharat');
-          return;
-        }
+        if (status !== 'granted') return;
 
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
 
         // Use native reverse geocoding for exact details
         const reverse = await Location.reverseGeocodeAsync({
@@ -237,7 +217,7 @@ export default function HomeScreen() {
         });
 
         if (reverse.length > 0) {
-          const place: any = reverse[0];
+          const place = reverse[0];
           // Construct most exact location possible: Name/Street + SubLocality/District + City
           const parts = [
             place.name || place.street,
@@ -254,13 +234,10 @@ export default function HomeScreen() {
           const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
           if (response.data) {
             setLiveLocation(response.data.area || response.data.city || 'Bharat');
-          } else {
-            setLiveLocation('Bharat');
           }
         }
       } catch (e) {
         console.warn('Initial location fetch failed:', e);
-        setLiveLocation('Bharat');
       }
     };
     fetchLiveLocation();
@@ -892,715 +869,712 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
-          <ScrollView
-            ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.content,
-              {
-                paddingTop: 10,
-                paddingBottom: 90
-              }
-            ]}
-            stickyHeaderIndices={[1]}
-            onScroll={handleHomeScroll}
-            onMomentumScrollEnd={handleHomeScroll}
-            onScrollEndDrag={handleHomeScroll}
-            scrollEventThrottle={16}
-            decelerationRate="fast"
-          >
-            <View style={styles.upperContentWrapper}>
-              <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                  <TouchableOpacity
-                    activeOpacity={0.86}
-                    style={styles.profileButton}
-                    onPress={() => router.push('/(tabs)/profile')}
-                    onLongPress={() => setShowProfileActions(true)}
-                  >
-                    <Avatar name={firstName} photo={avatarUri} size={55} />
-                  </TouchableOpacity>
-
-                  <View style={styles.greetingBlock}>
-                    <View style={styles.nameRow}>
-                      <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
-                    </View>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={styles.bioRow}
-                      onPress={() => setIsEditingBio(true)}
-                    >
-                      <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
-                      <Ionicons name="pencil" size={12} color="#000" style={{ marginLeft: 6 }} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.headerRight}>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.headerIconButton}
-                    onPress={() => setSearchActive(!searchActive)}
-                  >
-                    <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={24} color="#000" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.headerIconButton}
-                    onPress={handleNotificationPress}
-                  >
-                    <View>
-                      <Ionicons name="notifications-outline" size={24} color="#000" />
-                      {unreadCount > 0 && <View style={styles.notificationDot} />}
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {searchActive ? (
-                <View style={styles.searchPanel}>
-                  <View style={styles.searchBar}>
-                    <Ionicons name="search" size={18} color="#6F5C70" />
-                    <TextInput
-                      style={styles.searchInput}
-                      value={searchTerm}
-                      onChangeText={setSearchTerm}
-                      placeholder="Recent Search..."
-                      placeholderTextColor="#8E7D90"
-                      autoFocus
-                    />
-                  </View>
-                  {searchTerm.trim().length > 0 ? (
-                    <View style={styles.searchResultsSection}>
-                      {searchTerm.trim().startsWith('#') ? (
-                        loadingHashtags ? (
-                          <Text style={styles.searchStatusText}>Loading hashtags...</Text>
-                        ) : hashtagResults.length > 0 ? (
-                          <TouchableOpacity
-                            style={styles.userResultItem}
-                            activeOpacity={0.8}
-                            onPress={() => {
-                              const hashtag = searchTerm.trim().replace(/^#+/, '');
-                              router.push(`/hashtag/${encodeURIComponent(hashtag)}`);
-                            }}
-                          >
-                            <View style={styles.hashtagIcon}>
-                              <Ionicons name="pricetag" size={22} color="#8C36DB" />
-                            </View>
-                            <View style={styles.userResultText}>
-                              <Text style={styles.userResultName}>#{searchTerm.trim().replace('#', '')}</Text>
-                              <Text style={styles.userResultMeta}>{hashtagResults.length} posts</Text>
-                            </View>
-                          </TouchableOpacity>
-                        ) : (
-                          <Text style={styles.searchStatusText}>No posts found for this hashtag.</Text>
-                        )
-                      ) : loadingUsers ? (
-                        <Text style={styles.searchStatusText}>Loading users...</Text>
-                      ) : searchResults.length > 0 ? (
-                        searchResults.map((item) => {
-                          const isFollowing = followingIds.includes(item.id);
-                          return (
-                            <View key={item.id} style={styles.userResultItem}>
-                              <TouchableOpacity
-                                style={styles.userResultContent}
-                                activeOpacity={0.8}
-                                onPress={() => {
-                                  saveRecentSearch(item);
-                                  router.push(`/profile/${item.id}`);
-                                }}
-                              >
-                                <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
-                                <View style={styles.userResultText}>
-                                  <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
-                                  <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
-                                </View>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[styles.followButton, isFollowing && styles.followingButton]}
-                                activeOpacity={0.8}
-                                onPress={() => handleFollowUser(item.id)}
-                              >
-                                <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                                  {isFollowing ? 'Following' : 'Follow'}
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
-                          );
-                        })
-                      ) : (
-                        <Text style={styles.searchStatusText}>No users found.</Text>
-                      )}
-                    </View>
-                  ) : recentSearches.length > 0 ? (
-                    <View style={styles.recentSearchSection}>
-                      <View style={styles.recentSearchHeader}>
-                        <Text style={styles.recentSearchesTitle}>Recent Search</Text>
-                        <TouchableOpacity onPress={async () => {
-                          if (user?.id) {
-                            setRecentSearches([]);
-                            await AsyncStorage.removeItem(`recent_searches_${user.id}`);
-                          }
-                        }}>
-                          <Text style={styles.clearHistoryText}>Clear History</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.recentSearchList}
-                      >
-                        {recentSearches.map((item) => (
-                          <TouchableOpacity
-                            key={`recent-${item.id}`}
-                            style={styles.recentSearchItem}
-                            activeOpacity={0.7}
-                            onPress={() => router.push(`/profile/${item.id}`)}
-                          >
-                            <Avatar name={item.name || 'User'} photo={item.photo} size={60} />
-                            <Text style={styles.recentSearchName} numberOfLines={1}>
-                              {item.name?.split(' ')[0] || 'User'}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  ) : null}
-                </View>
-              ) : (
-                <View style={styles.topFeatureRow}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
-                    {quickAccess.map((item, idx) => {
-                      let cardBg = '#FFFFFF';
-                      let iconBg = '#FF8A3D';
-                      if (item.label === 'Panchang') {
-                        cardBg = '#FFF9F0';
-                        iconBg = '#FF9800';
-                      } else if (item.label === 'My Krishna') {
-                        cardBg = '#FFF8EB';
-                        iconBg = '#FF6B00';
-                      } else if (item.label === 'SOS') {
-                        cardBg = '#FFF5F5';
-                        iconBg = '#FF3B30';
-                      }
-
-                      return (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[styles.featureCard, { backgroundColor: cardBg }]}
-                          activeOpacity={0.9}
-                          onPress={() => {
-                            if (item.label === 'Panchang') router.push('/panchang');
-                            else if (item.label === 'My Krishna') router.push('/my-krishna');
-                            else if (item.label === 'SOS') router.push('/sos');
-                          }}
-                        >
-                          {item.label === 'SOS' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
-                                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
-                              </View>
-                            </View>
-                          ) : (
-                            <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
-                              {item.label === 'My Krishna' ? (
-                                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>ॐ</Text>
-                              ) : (
-                                <Ionicons name="calendar" size={14} color="#FFF" />
-                              )}
-                            </View>
-                          )}
-                          <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle} numberOfLines={1}>{item.label}</Text>
-                            <Text style={styles.featureSubtitle} numberOfLines={1}>
-                              {item.subtitle.replace('\n', ' ')}
-                            </Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
-
-              <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push('/live-jaap-welcome')}>
-                <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
-                  <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.85)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                        <Text style={[styles.featuredLiveTitle, { color: '#FFF' }]}>Mahamrityunjaya Mantra</Text>
-                      </View>
-                      <View style={styles.liveBadge}>
-                        <View style={styles.liveDot} />
-                        <Text style={styles.liveBadgeText}>LIVE</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.featuredLiveContent}>
-                      <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-                        <Ionicons name="time-outline" size={14} color="#FFF" />
-                        <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6 }]}>Live until 5:00 PM</Text>
-                      </View>
-
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <TouchableOpacity style={styles.joinJaapButton} onPress={() => router.push('/live-jaap-welcome')}>
-                          <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
-                          <Text style={styles.joinJaapText}>Join Live Jaap</Text>
-                          <Ionicons name="chevron-forward" size={18} color="#FFF" />
-                        </TouchableOpacity>
-
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                          <View style={[styles.liveDot, { backgroundColor: '#FF6A00' }]} />
-                          <View style={styles.liveDot} />
-                          <View style={styles.liveDot} />
-                          <View style={styles.liveDot} />
-                        </View>
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </ImageBackground>
+    <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
+      <ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 10 }
+        ]}
+        stickyHeaderIndices={[1]}
+        onScroll={handleHomeScroll}
+        onMomentumScrollEnd={handleHomeScroll}
+        onScrollEndDrag={handleHomeScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+      >
+        <View style={styles.upperContentWrapper}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                activeOpacity={0.86}
+                style={styles.profileButton}
+                onPress={() => router.push('/(tabs)/profile')}
+                onLongPress={() => setShowProfileActions(true)}
+              >
+                <Avatar name={firstName} photo={avatarUri} size={55} />
               </TouchableOpacity>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.actionCardsScroll}
-                style={{ marginBottom: 20 }}
+              <View style={styles.greetingBlock}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.bioRow}
+                  onPress={() => setIsEditingBio(true)}
+                >
+                  <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
+                  <Ionicons name="pencil" size={12} color="#000" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.headerIconButton}
+                onPress={() => setSearchActive(!searchActive)}
               >
-                {/* Urgent Blood Request */}
-                <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                    </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
-                    onPress={() => {
-                      if (bloodRequest) {
-                        router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
-                      } else {
-                        setRequestType('Blood');
-                        setShowRequestModal(true);
-                      }
-                    }}
-                  >
-                    <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>{bloodRequest ? 'View' : 'View'}</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#E53935" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
-
-                {/* Register Business */}
-                <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                    </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Register Your Business</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Become a verified sanatan vendor</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
-                    onPress={() => router.push('/vendor/business-details')}
-                  >
-                    <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register Now</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#FF9500" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
-
-                {/* Verified Vendor */}
-                <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                    </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Sai Flower Decorator</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Specialised in festival flower decor</Text>
-                  </View>
-                  <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
-                    <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#00C781" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
-
-                {/* Live Aarti */}
-                <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                    </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Live Kedarnath Aarti</Text>
-                    <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
-                      <Ionicons name="notifications-outline" size={12} color="#333" />
-                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Notify me</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
-                    onPress={() => router.push('/live-mantra')}
-                  >
-                    <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch now</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#8C36DB" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </ScrollView>
-
-              <View style={styles.dots}>
-                <View style={styles.dot} />
-                <View style={styles.activeDot} />
-                <View style={styles.dot} />
-              </View>
+                <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={24} color="#000" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.headerIconButton}
+                onPress={handleNotificationPress}
+              >
+                <View>
+                  <Ionicons name="notifications-outline" size={24} color="#000" />
+                  {unreadCount > 0 && <View style={styles.notificationDot} />}
+                </View>
+              </TouchableOpacity>
             </View>
+          </View>
 
-            <View
-              style={styles.stickyFeedTabsShell}
-              onLayout={(event) => {
-                const y = event.nativeEvent.layout.y;
-                feedTabsYRef.current = y;
-                setFeedTabsY(y);
-              }}
-            >
-              <View style={styles.stickyFeedTabs}>
-                <HomeFeedTabs
-                  activeTab={activeTab}
-                  onTabChange={(tab) => {
-                    setActiveTab(tab);
-                    setFeedPosts([]);
-                    loadFeedPosts(0, false, tab);
-                  }}
-                  onCreatePost={() => setShowUploadPostModal(true)}
-                />
-              </View>
+        {searchActive ? (
+          <View style={styles.searchPanel}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={18} color="#6F5C70" />
+              <TextInput
+                style={styles.searchInput}
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                placeholder="Recent Search..."
+                placeholderTextColor="#8E7D90"
+                autoFocus
+              />
             </View>
-
-            <View style={styles.feedPanel}>
-              {backgroundUpload.uploading && (
-                <View style={styles.uploadingStatusBar}>
-                  <View style={styles.uploadingStatusContent}>
-                    {backgroundUpload.mediaUri ? (
-                      <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
-                    ) : (
-                      <View style={[styles.uploadingThumbnail, { backgroundColor: '#F0F0F0' }]} />
-                    )}
-                    <View style={styles.uploadingTextContainer}>
-                      <Text style={styles.uploadingTitle}>
-                        {backgroundUpload.isCompressing ? 'Processing Video...' : 'Posting new Video...'}
-                      </Text>
-                      <View style={styles.progressBarBg}>
-                        <LinearGradient
-                          colors={['#FFD26C', '#FF7F50', '#FF4500']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[styles.progressBarFill, { width: `${backgroundUpload.progress}%` }]}
-                        />
+            {searchTerm.trim().length > 0 ? (
+              <View style={styles.searchResultsSection}>
+                {searchTerm.trim().startsWith('#') ? (
+                  loadingHashtags ? (
+                    <Text style={styles.searchStatusText}>Loading hashtags...</Text>
+                  ) : hashtagResults.length > 0 ? (
+                    <TouchableOpacity
+                      style={styles.userResultItem}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        const hashtag = searchTerm.trim().replace(/^#+/, '');
+                        router.push(`/hashtag/${encodeURIComponent(hashtag)}`);
+                      }}
+                    >
+                      <View style={styles.hashtagIcon}>
+                        <Ionicons name="pricetag" size={22} color="#8C36DB" />
                       </View>
-                    </View>
-                  </View>
-                </View>
-              )}
-              {loadingFeed ? (
-                <View style={styles.feedLoading}>
-                  <ActivityIndicator color="#FFD26C" />
-                  <Text style={styles.feedLoadingText}>Loading feed...</Text>
-                </View>
-              ) : feedPosts.length > 0 ? (
-                <>
-                  {feedPosts.map((post, index) => {
-                    const postKey = String(post.id || post.media_url || index);
+                      <View style={styles.userResultText}>
+                        <Text style={styles.userResultName}>#{searchTerm.trim().replace('#', '')}</Text>
+                        <Text style={styles.userResultMeta}>{hashtagResults.length} posts</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.searchStatusText}>No posts found for this hashtag.</Text>
+                  )
+                ) : loadingUsers ? (
+                  <Text style={styles.searchStatusText}>Loading users...</Text>
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((item) => {
+                    const isFollowing = followingIds.includes(item.id);
                     return (
-                      <View
-                        key={postKey}
-                        onLayout={(event) => {
-                          const y = event.nativeEvent.layout.y;
-                          const h = event.nativeEvent.layout.height;
-                          setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
-                          setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
-                        }}
-                      >
-                        <PostFeedCard
-                          post={post}
-                          onLike={handleLikePost}
-                          onComment={handleOpenComment}
-                          onShare={handleSharePost}
-                          onRepost={handleRepost}
-                          onUserPress={handleOpenPostUserProfile}
-                          onPostMenuPress={handlePostMenuPress}
-                          postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
-                          isActive={activePostKey === postKey}
-                          theme="light"
-                          isBlackBackground={false}
-                        />
+                      <View key={item.id} style={styles.userResultItem}>
+                        <TouchableOpacity
+                          style={styles.userResultContent}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            saveRecentSearch(item);
+                            router.push(`/profile/${item.id}`);
+                          }}
+                        >
+                          <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
+                          <View style={styles.userResultText}>
+                            <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                            <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
+                          </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.followButton, isFollowing && styles.followingButton]}
+                          activeOpacity={0.8}
+                          onPress={() => handleFollowUser(item.id)}
+                        >
+                          <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                            {isFollowing ? 'Following' : 'Follow'}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                     );
-                  })}
-                  {hasMoreFeed && (
-                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                      <ActivityIndicator color="#FFD26C" />
-                    </View>
-                  )}
-                </>
-              ) : (
-                <View style={styles.emptyFeed}>
-                  <Text style={styles.emptyFeedText}>No posts yet</Text>
+                  })
+                ) : (
+                  <Text style={styles.searchStatusText}>No users found.</Text>
+                )}
+              </View>
+            ) : recentSearches.length > 0 ? (
+              <View style={styles.recentSearchSection}>
+                <View style={styles.recentSearchHeader}>
+                  <Text style={styles.recentSearchesTitle}>Recent Search</Text>
+                  <TouchableOpacity onPress={async () => {
+                    setRecentSearches([]);
+                    await AsyncStorage.removeItem('recent_searches');
+                  }}>
+                    <Text style={styles.clearAllText}>Clear All</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-            </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.recentSearchList}
+                >
+                  {recentSearches.map((item) => (
+                    <TouchableOpacity
+                      key={`recent-${item.id}`}
+                      style={styles.recentSearchItem}
+                      activeOpacity={0.7}
+                      onPress={() => router.push(`/profile/${item.id}`)}
+                    >
+                      <Avatar name={item.name || 'User'} photo={item.photo} size={60} />
+                      <Text style={styles.recentSearchName} numberOfLines={1}>
+                        {item.name?.split(' ')[0] || 'User'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.topFeatureRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
+              {quickAccess.map((item, idx) => {
+                let cardBg = '#FFFFFF';
+                let iconBg = '#FF8A3D';
+                if (item.label === 'Panchang') {
+                  cardBg = '#FFF9F0';
+                  iconBg = '#FF9800';
+                } else if (item.label === 'My Krishna') {
+                  cardBg = '#FFF8EB';
+                  iconBg = '#FF6B00';
+                } else if (item.label === 'SOS') {
+                  cardBg = '#FFF5F5';
+                  iconBg = '#FF3B30';
+                }
+
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[styles.featureCard, { backgroundColor: cardBg }]}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      if (item.label === 'Panchang') router.push('/panchang');
+                      else if (item.label === 'My Krishna') router.push('/my-krishna');
+                      else if (item.label === 'SOS') router.push('/sos');
+                    }}
+                  >
+                    {item.label === 'SOS' ? (
+                      <View style={styles.sosConcentricWrap}>
+                        <View style={[styles.sosRing, { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,80,60,0.15)' }]}>
+                          <View style={[styles.sosRing, { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,80,60,0.25)' }]}>
+                            <View style={[styles.sosRing, { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,80,60,0.4)' }]}>
+                              <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30' }]}>
+                                <Text style={{ color: '#FFF', fontSize: 6, fontWeight: '900' }}>SOS</Text>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                        {item.label === 'My Krishna' ? (
+                          <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>ॐ</Text>
+                        ) : (
+                          <Ionicons name="calendar" size={18} color="#FFF" />
+                        )}
+                      </View>
+                    )}
+                    <View style={styles.featureTextContainer}>
+                      <Text style={styles.featureTitle}>{item.label}</Text>
+                      <Text style={styles.featureSubtitle} numberOfLines={2}>
+                        {item.subtitle.replace('\n', ' ')}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color="#999" />
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+          <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => goTo('/live-mantra')}>
+            <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
+              <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.85)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                    <Text style={[styles.featuredLiveTitle, { color: '#FFF' }]}>Mahamrityunjaya Mantra</Text>
+                  </View>
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveBadgeText}>LIVE</Text>
+                  </View>
+                </View>
+
+                <View style={styles.featuredLiveContent}>
+                  <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                    <Ionicons name="time-outline" size={14} color="#FFF" />
+                    <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6 }]}>Live until 5:00 PM</Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <TouchableOpacity style={styles.joinJaapButton} onPress={() => goTo('/live-mantra')}>
+                      <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
+                      <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                      <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                    </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <View style={[styles.liveDot, { backgroundColor: '#FF6A00' }]} />
+                      <View style={styles.liveDot} />
+                      <View style={styles.liveDot} />
+                      <View style={styles.liveDot} />
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </ImageBackground>
+          </TouchableOpacity>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.actionCardsScroll}
+            style={{ marginBottom: 20 }}
+          >
+            {/* Urgent Blood Request */}
+            <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
+              </View>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>{bloodRequest ? `${bloodRequest.blood_group} Required` : 'Blood Request'}</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
+                onPress={() => {
+                  if (bloodRequest) {
+                    router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
+                  } else {
+                    setRequestType('Blood');
+                    setShowRequestModal(true);
+                  }
+                }}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>{bloodRequest ? 'View' : 'View'}</Text>
+                <Ionicons name="chevron-forward" size={12} color="#E53935" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
+
+            {/* Register Business */}
+            <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
+              </View>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Register Your Business</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Become a verified sanatan vendor</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
+                onPress={() => router.push('/vendor/business-details')}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register Now</Text>
+                <Ionicons name="chevron-forward" size={12} color="#FF9500" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
+
+            {/* Verified Vendor */}
+            <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
+              </View>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Sai Flower Decorator</Text>
+                <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]}>Specialised in festival flower decor</Text>
+              </View>
+              <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
+                <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
+                <Ionicons name="chevron-forward" size={12} color="#00C781" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
+
+            {/* Live Aarti */}
+            <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
+              <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
+              </View>
+              <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                <View style={styles.cardIconRow}>
+                  <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]}>Live Kedarnath Aarti</Text>
+                <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
+                  <Ionicons name="notifications-outline" size={14} color="#333" />
+                  <Text style={[styles.cardNotifyText, { textAlign: 'center' }]}>Notify me for the upcoming events</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
+                onPress={() => router.push('/live-mantra')}
+              >
+                <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch now</Text>
+                <Ionicons name="chevron-forward" size={12} color="#8C36DB" style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </LinearGradient>
           </ScrollView>
 
-          <Modal visible={isEditingBio} transparent animationType="fade">
-            <View style={styles.bioModalOverlay}>
-              <View style={styles.bioModalCard}>
-                <Text style={styles.bioModalTitle}>Edit Bio</Text>
-                <TextInput
-                  style={styles.bioModalInput}
-                  value={bioText}
-                  onChangeText={setBioText}
-                  multiline
-                  autoFocus
-                  placeholder="Tell us about yourself..."
-                  placeholderTextColor="#8A7B89"
-                />
-                <View style={styles.bioModalActions}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setBioText(user?.bio || 'Sanatan Lok Community');
-                      setIsEditingBio(false);
-                    }}
-                    style={styles.bioModalBtnCancel}
-                  >
-                    <Text style={styles.bioModalBtnCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleSaveBio} style={styles.bioModalBtn}>
-                    <Text style={styles.bioModalBtnText}>Save</Text>
-                  </TouchableOpacity>
+          <View style={styles.dots}>
+            <View style={styles.dot} />
+            <View style={styles.activeDot} />
+            <View style={styles.dot} />
+          </View>
+        </View>
+
+        <View
+          style={styles.stickyFeedTabsShell}
+          onLayout={(event) => {
+            const y = event.nativeEvent.layout.y;
+            feedTabsYRef.current = y;
+            setFeedTabsY(y);
+          }}
+        >
+          <View style={styles.stickyFeedTabs}>
+            <HomeFeedTabs
+              activeTab={activeTab}
+              onTabChange={(tab) => {
+                setActiveTab(tab);
+                setFeedPosts([]);
+                loadFeedPosts(0, false, tab);
+              }}
+              onCreatePost={() => setShowUploadPostModal(true)}
+            />
+          </View>
+        </View>
+
+        <View style={styles.feedPanel}>
+          {backgroundUpload.uploading && (
+            <View style={styles.uploadingStatusBar}>
+              <View style={styles.uploadingStatusContent}>
+                {backgroundUpload.mediaUri ? (
+                  <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
+                ) : (
+                  <View style={[styles.uploadingThumbnail, { backgroundColor: '#F0F0F0' }]} />
+                )}
+                <View style={styles.uploadingTextContainer}>
+                  <Text style={styles.uploadingTitle}>
+                    {backgroundUpload.isCompressing ? 'Processing Video...' : 'Posting new Video...'}
+                  </Text>
+                  <View style={styles.progressBarBg}>
+                    <LinearGradient
+                      colors={['#FFD26C', '#FF7F50', '#FF4500']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.progressBarFill, { width: `${backgroundUpload.progress}%` }]}
+                    />
+                  </View>
                 </View>
               </View>
             </View>
-          </Modal>
-
-          <Modal visible={showProfileActions} transparent animationType="slide" onRequestClose={() => setShowProfileActions(false)}>
-            <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={() => setShowProfileActions(false)}>
-              <View style={styles.actionSheet}>
-                <View style={styles.bottomSheetHandle} />
-                <Text style={styles.actionSheetTitle}>Create</Text>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    setShowProfileActions(false);
-                    setShowUploadPostModal(true);
-                  }}
-                >
-                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="add-circle" size={24} color="#4CAF50" />
+          )}
+          {loadingFeed ? (
+            <View style={styles.feedLoading}>
+              <ActivityIndicator color="#FFD26C" />
+              <Text style={styles.feedLoadingText}>Loading feed...</Text>
+            </View>
+          ) : feedPosts.length > 0 ? (
+            <>
+              {feedPosts.map((post, index) => {
+                const postKey = String(post.id || post.media_url || index);
+                return (
+                  <View
+                    key={postKey}
+                    onLayout={(event) => {
+                      const y = event.nativeEvent.layout.y;
+                      const h = event.nativeEvent.layout.height;
+                      setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
+                      setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
+                    }}
+                  >
+                    <PostFeedCard
+                      post={post}
+                      onLike={handleLikePost}
+                      onComment={handleOpenComment}
+                      onShare={handleSharePost}
+                      onRepost={handleRepost}
+                      onUserPress={handleOpenPostUserProfile}
+                      onPostMenuPress={handlePostMenuPress}
+                      postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
+                      isActive={activePostKey === postKey}
+                      theme="light"
+                      isBlackBackground={false}
+                    />
                   </View>
-                  <View style={styles.profileActionTextWrap}>
-                    <Text style={styles.profileActionTitle}>New Post</Text>
-                    <Text style={styles.profileActionDesc}>Share a photo or video</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
-                </TouchableOpacity>
+                );
+              })}
+              {hasMoreFeed && (
+                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <ActivityIndicator color="#FFD26C" />
+                </View>
+              )}
+            </>
+          ) : (
+            <View style={styles.emptyFeed}>
+              <Text style={styles.emptyFeedText}>No posts yet</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
 
-                <TouchableOpacity style={styles.profileActionItem} activeOpacity={0.85} onPress={handleOpenChangeProfilePicture}>
-                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#E3F2FD' }]}>
-                    <Ionicons name="camera" size={24} color="#2196F3" />
-                  </View>
-                  <View style={styles.profileActionTextWrap}>
-                    <Text style={styles.profileActionTitle}>Change Profile Photo</Text>
-                    <Text style={styles.profileActionDesc}>Update your profile picture</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
-                </TouchableOpacity>
+      <Modal visible={isEditingBio} transparent animationType="fade">
+        <View style={styles.bioModalOverlay}>
+          <View style={styles.bioModalCard}>
+            <Text style={styles.bioModalTitle}>Edit Bio</Text>
+            <TextInput
+              style={styles.bioInput}
+              value={bioText}
+              onChangeText={setBioText}
+              maxLength={150}
+              multiline
+              placeholder="Write your bio"
+              placeholderTextColor="#8A7B89"
+            />
+            <View style={styles.bioModalActions}>
+              <TouchableOpacity
+                onPress={() => {
+                  setBioText(user?.bio || 'Sanatan Lok Community');
+                  setIsEditingBio(false);
+                }}
+                style={styles.bioCancelButton}
+              >
+                <Text style={styles.bioCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSaveBio} style={styles.bioSaveButton}>
+                <Text style={styles.bioSaveText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
-                <TouchableOpacity style={styles.actionCancelButton} onPress={() => setShowProfileActions(false)}>
-                  <Text style={styles.actionCancelText}>Cancel</Text>
-                </TouchableOpacity>
+      <Modal visible={showProfileActions} transparent animationType="slide" onRequestClose={() => setShowProfileActions(false)}>
+        <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={() => setShowProfileActions(false)}>
+          <View style={styles.actionSheet}>
+            <View style={styles.bottomSheetHandle} />
+            <Text style={styles.actionSheetTitle}>Create</Text>
+
+            <TouchableOpacity
+              style={styles.profileActionItem}
+              activeOpacity={0.85}
+              onPress={() => {
+                setShowProfileActions(false);
+                setShowUploadPostModal(true);
+              }}
+            >
+              <View style={[styles.profileActionIconWrap, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="add-circle" size={24} color="#4CAF50" />
               </View>
+              <View style={styles.profileActionTextWrap}>
+                <Text style={styles.profileActionTitle}>New Post</Text>
+                <Text style={styles.profileActionDesc}>Share a photo or video</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
             </TouchableOpacity>
-          </Modal>
 
-          <UploadPostModal
-            visible={showUploadPostModal}
-            onClose={() => setShowUploadPostModal(false)}
-            onUploadSuccess={handleUploadPostSuccess}
-            onUploadStart={handleUploadStart}
-          />
+            <TouchableOpacity style={styles.profileActionItem} activeOpacity={0.85} onPress={handleOpenChangeProfilePicture}>
+              <View style={[styles.profileActionIconWrap, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="camera" size={24} color="#2196F3" />
+              </View>
+              <View style={styles.profileActionTextWrap}>
+                <Text style={styles.profileActionTitle}>Change Profile Photo</Text>
+                <Text style={styles.profileActionDesc}>Update your profile picture</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
+            </TouchableOpacity>
 
-          <RequestFormModal
-            visible={showRequestModal}
-            onClose={() => setShowRequestModal(false)}
-            requestType={requestType}
-            communities={communities}
-            user={user ?? undefined}
-            onSubmit={handleSubmitRequest}
-          />
+            <TouchableOpacity style={styles.actionCancelButton} onPress={() => setShowProfileActions(false)}>
+              <Text style={styles.actionCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
-          <SharePostModal
-            visible={shareModalVisible}
-            post={selectedSharePost}
-            onClose={() => setShareModalVisible(false)}
-            onShareExternal={() => {
-              setShareModalVisible(false);
-              if (selectedSharePost) handleShareExternal(selectedSharePost);
-            }}
-            onCopyLink={async () => {
-              if (selectedSharePost?.id) {
-                const Clipboard = await import('expo-clipboard');
-                await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
-                alert('Link copied to clipboard');
-                setShareModalVisible(false);
-              }
-            }}
-            onDownload={async () => {
-              if (selectedSharePost?.media_url && FileSystemModule?.downloadAsync) {
-                try {
-                  const ext = selectedSharePost.media_type === 'video' ? 'mp4' : 'jpg';
-                  const localPath = `${FileSystemModule.documentDirectory}brahmand_post_${Date.now()}.${ext}`;
-                  await FileSystemModule.downloadAsync(selectedSharePost.media_url, localPath);
-                  alert('Saved to app documents');
-                } catch {
-                  alert('Download failed');
-                }
-              } else {
-                alert('Download naturally unsupported');
-              }
-              setShareModalVisible(false);
-            }}
-          />
+      <UploadPostModal
+        visible={showUploadPostModal}
+        onClose={() => setShowUploadPostModal(false)}
+        onUploadSuccess={handleUploadPostSuccess}
+        onUploadStart={handleUploadStart}
+      />
 
-          <Modal
-            visible={commentModalVisible}
-            transparent
-            animationType="slide"
-            onRequestClose={() => {
+      <RequestFormModal
+        visible={showRequestModal}
+        onClose={() => setShowRequestModal(false)}
+        requestType={requestType}
+        communities={communities}
+        user={user ?? undefined}
+        onSubmit={handleSubmitRequest}
+      />
+
+      <SharePostModal
+        visible={shareModalVisible}
+        post={selectedSharePost}
+        onClose={() => setShareModalVisible(false)}
+        onShareExternal={() => {
+          setShareModalVisible(false);
+          if (selectedSharePost) handleShareExternal(selectedSharePost);
+        }}
+        onCopyLink={async () => {
+          if (selectedSharePost?.id) {
+            const Clipboard = await import('expo-clipboard');
+            await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
+            alert('Link copied to clipboard');
+            setShareModalVisible(false);
+          }
+        }}
+        onDownload={async () => {
+          if (selectedSharePost?.media_url && FileSystemModule?.downloadAsync) {
+            try {
+              const ext = selectedSharePost.media_type === 'video' ? 'mp4' : 'jpg';
+              const localPath = `${FileSystemModule.documentDirectory}brahmand_post_${Date.now()}.${ext}`;
+              await FileSystemModule.downloadAsync(selectedSharePost.media_url, localPath);
+              alert('Saved to app documents');
+            } catch {
+              alert('Download failed');
+            }
+          } else {
+            alert('Download naturally unsupported');
+          }
+          setShareModalVisible(false);
+        }}
+      />
+
+      <Modal
+        visible={commentModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setCommentModalVisible(false);
+          setSelectedCommentPostId(null);
+          setSelectedCommentPost(null);
+          setPostComments([]);
+        }}
+      >
+        <KeyboardAvoidingView
+          style={styles.commentOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
+        >
+          <TouchableOpacity
+            style={styles.modalBackgroundDismiss}
+            activeOpacity={1}
+            onPress={() => {
               setCommentModalVisible(false);
               setSelectedCommentPostId(null);
               setSelectedCommentPost(null);
               setPostComments([]);
             }}
-          >
-            <KeyboardAvoidingView
-              style={styles.commentOverlay}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-            >
+          />
+          <View style={styles.commentSheet}>
+            <View style={styles.bottomSheetHandle} />
+            <View style={styles.commentSheetHeader}>
+              <Text style={styles.commentTitle}>Comments</Text>
               <TouchableOpacity
-                style={styles.modalBackgroundDismiss}
-                activeOpacity={1}
                 onPress={() => {
                   setCommentModalVisible(false);
                   setSelectedCommentPostId(null);
                   setSelectedCommentPost(null);
                   setPostComments([]);
                 }}
-              />
-              <View style={styles.commentSheet}>
-                <View style={styles.bottomSheetHandle} />
-                <View style={styles.commentSheetHeader}>
-                  <Text style={styles.commentTitle}>Comments</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setCommentModalVisible(false);
-                      setSelectedCommentPostId(null);
-                      setSelectedCommentPost(null);
-                      setPostComments([]);
-                    }}
-                    style={styles.commentCloseBtn}
-                  >
-                    <Ionicons name="close" size={24} color="#22142E" />
-                  </TouchableOpacity>
-                </View>
+                style={styles.commentCloseBtn}
+              >
+                <Ionicons name="close" size={24} color="#22142E" />
+              </TouchableOpacity>
+            </View>
 
-                {selectedCommentPost?.caption ? (
-                  <View style={styles.commentPostPreview}>
-                    <Avatar name={selectedCommentPost?.username || 'User'} photo={selectedCommentPost?.user_photo} size={32} />
-                    <View style={styles.commentPreviewTextWrap}>
-                      <Text style={styles.commentPreviewUser}>{selectedCommentPost?.username}</Text>
-                      <MentionText style={styles.commentPreviewCaption} numberOfLines={2} text={selectedCommentPost?.caption || ''} />
-                    </View>
-                  </View>
-                ) : null}
-
-                <View style={styles.commentListWrap}>
-                  {commentsLoading ? (
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                      <ActivityIndicator size="small" color="#FF6B00" />
-                      <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>Loading comments...</Text>
-                    </View>
-                  ) : postComments.length > 0 ? (
-                    <FlatList
-                      data={postComments}
-                      keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
-                      renderItem={({ item }) => (
-                        <View style={styles.commentItem}>
-                          <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
-                          <View style={styles.commentBubble}>
-                            <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                            <MentionText style={styles.commentItemText} text={item?.text || ''} />
-                            <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
-                          </View>
-                        </View>
-                      )}
-                      showsVerticalScrollIndicator={false}
-                      contentContainerStyle={{ paddingBottom: 20 }}
-                    />
-                  ) : (
-                    <View style={styles.commentEmptyState}>
-                      <Ionicons name="chatbubble-ellipses-outline" size={42} color="#D5C8D6" />
-                      <Text style={styles.commentEmptyText}>No comments yet.</Text>
-                      <Text style={styles.commentEmptySubtext}>Be the first to comment!</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={[styles.commentInputWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-                  <MentionInput
-                    value={commentText}
-                    onChangeText={setCommentText}
-                    placeholder="Add a comment..."
-                    placeholderTextColor="#8A7B89"
-                    multiline
-                    inputStyle={styles.commentInput}
-                  />
-                  <TouchableOpacity
-                    style={[styles.commentSubmitBtn, !commentText.trim() && styles.commentSubmitDisabled]}
-                    onPress={handleSubmitComment}
-                    disabled={!commentText.trim() || commentSubmitting}
-                  >
-                    {commentSubmitting ? (
-                      <ActivityIndicator size="small" color="#3B214E" />
-                    ) : (
-                      <Ionicons name="send" size={18} color={commentText.trim() ? '#8C36DB' : '#A99AAA'} />
-                    )}
-                  </TouchableOpacity>
+            {selectedCommentPost?.caption ? (
+              <View style={styles.commentPostPreview}>
+                <Avatar name={selectedCommentPost?.username || 'User'} photo={selectedCommentPost?.user_photo} size={32} />
+                <View style={styles.commentPreviewTextWrap}>
+                  <Text style={styles.commentPreviewUser}>{selectedCommentPost?.username}</Text>
+                  <MentionText style={styles.commentPreviewCaption} numberOfLines={2} text={selectedCommentPost?.caption || ''} />
                 </View>
               </View>
-            </KeyboardAvoidingView>
-          </Modal>
-        </LinearGradient>
-      </SafeAreaView>
-    </View>
+            ) : null}
+
+            <View style={styles.commentListWrap}>
+              {commentsLoading ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color="#FF6B00" />
+                  <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>Loading comments...</Text>
+                </View>
+              ) : postComments.length > 0 ? (
+                <FlatList
+                  data={postComments}
+                  keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
+                  renderItem={({ item }) => (
+                    <View style={styles.commentItem}>
+                      <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
+                      <View style={styles.commentBubble}>
+                        <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                        <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                        <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
+                      </View>
+                    </View>
+                  )}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                />
+              ) : (
+                <View style={styles.commentEmptyState}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={42} color="#D5C8D6" />
+                  <Text style={styles.commentEmptyText}>No comments yet.</Text>
+                  <Text style={styles.commentEmptySubtext}>Be the first to comment!</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.commentInputWrap}>
+              <MentionInput
+                value={commentText}
+                onChangeText={setCommentText}
+                placeholder="Add a comment..."
+                placeholderTextColor="#8A7B89"
+                multiline
+                inputStyle={styles.commentInput}
+              />
+              <TouchableOpacity
+                style={[styles.commentSubmitBtn, !commentText.trim() && styles.commentSubmitDisabled]}
+                onPress={handleSubmitComment}
+                disabled={!commentText.trim() || commentSubmitting}
+              >
+                {commentSubmitting ? (
+                  <ActivityIndicator size="small" color="#3B214E" />
+                ) : (
+                  <Ionicons name="send" size={18} color={commentText.trim() ? '#8C36DB' : '#A99AAA'} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </LinearGradient>
   );
 }
 
@@ -1641,7 +1615,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  content: {},
+  content: {
+    paddingBottom: 106,
+  },
   upperContentWrapper: {
     paddingHorizontal: PAGE_PADDING,
   },
@@ -1720,23 +1696,25 @@ const styles = StyleSheet.create({
   featureCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
+    padding: 10,
+    flexDirection: 'column',
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
-    width: 113,
-    height: 70,
+    flex: 1,
+    minHeight: 80,
   },
   featureIconWrap: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
   },
   urgentCircle: {
     width: 28,
@@ -1764,26 +1742,25 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   featureTextContainer: {
-    flex: 1,
-    marginLeft: 8,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   featureTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#000',
-    maxWidth: 70,
+    textAlign: 'center',
   },
   featureSubtitle: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '600',
     color: '#666',
-    marginTop: 1,
-    lineHeight: 10,
+    marginTop: 2,
+    lineHeight: 12,
+    textAlign: 'center',
   },
   featuredLiveCard: {
-    width: Math.min(375, SCREEN_WIDTH - 2 * PAGE_PADDING),
-    height: 235,
+    height: 250,
     borderRadius: 15,
     overflow: 'hidden',
     marginBottom: 20,
@@ -1792,7 +1769,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    alignSelf: 'center',
   },
   featuredLiveImage: {
     width: '100%',
@@ -1876,8 +1852,8 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   actionCard: {
-    width: 84,
-    height: 157,
+    width: 140,
+    height: 240,
     borderRadius: 15,
     padding: 12,
     justifyContent: 'space-between',
@@ -1951,22 +1927,21 @@ const styles = StyleSheet.create({
   },
   cardTitleLarge: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '900',
-    lineHeight: 16,
+    lineHeight: 20,
   },
   cardTitleLargeDark: {
     color: '#111111',
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '800',
-    maxWidth: 75,
-    marginBottom: 4,
+    lineHeight: 20,
+    marginBottom: 6,
   },
   cardSubtitleSmallDark: {
     color: '#5A5A5A',
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: '600',
-    maxWidth: 70,
   },
   cardLocationText: {
     color: '#666',
@@ -1999,39 +1974,32 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   cardButtonOutline: {
-    width: 60,
-    height: 19,
-    borderRadius: 6,
+    height: 36,
+    borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    paddingHorizontal: 4,
   },
   cardButtonOutlineTeal: {
-    width: 60,
-    height: 19,
-    borderRadius: 6,
+    height: 36,
+    borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    paddingHorizontal: 4,
   },
   cardButtonOutlinePurple: {
-    width: 60,
-    height: 19,
-    borderRadius: 6,
+    height: 36,
+    borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    paddingHorizontal: 4,
   },
   cardButtonTextDark: {
-    fontSize: 9,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#000',
   },
   dots: {
     flexDirection: 'row',
@@ -2107,6 +2075,68 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
+  bioModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.58)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 22,
+  },
+  bioModalCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 16,
+    backgroundColor: '#FFF7ED',
+    padding: 18,
+  },
+  bioModalTitle: {
+    color: '#2F1725',
+    fontSize: 17,
+    fontWeight: '900',
+    marginBottom: 12,
+  },
+  bioInput: {
+    minHeight: 86,
+    borderWidth: 1,
+    borderColor: '#E5CDBB',
+    borderRadius: 10,
+    padding: 12,
+    color: '#2F1725',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlignVertical: 'top',
+    backgroundColor: '#FFFFFF',
+  },
+  bioModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 14,
+  },
+  bioCancelButton: {
+    paddingHorizontal: 14,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bioCancelText: {
+    color: '#6C5964',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  bioSaveButton: {
+    paddingHorizontal: 18,
+    height: 38,
+    borderRadius: 9,
+    backgroundColor: '#8C36DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bioSaveText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
   actionOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -2174,7 +2204,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   commentSheet: {
-    maxHeight: '75%',
+    maxHeight: '82%',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     backgroundColor: '#FFF7ED',
@@ -2554,11 +2584,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
-  clearHistoryText: {
+  clearAllText: {
     fontSize: 12,
     fontFamily: FONTS.bold,
-    color: '#888', // Subtle color for history clear
-    textDecorationLine: 'underline',
+    color: COLORS.primary,
   },
   recentSearchList: {
     paddingRight: 20,
@@ -2574,70 +2603,5 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 6,
     textAlign: 'center',
-  },
-  // Bio Modal Styles
-  bioModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  bioModalCard: {
-    width: '100%',
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  bioModalTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#1C1B1F',
-    marginBottom: 16,
-  },
-  bioModalInput: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#333',
-    minHeight: 100,
-    textAlignVertical: 'top',
-    marginBottom: 20,
-  },
-  bioModalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  bioModalBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: '#FF6B00',
-  },
-  bioModalBtnCancel: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: '#F5F5F5',
-  },
-  bioModalBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  bioModalBtnCancelText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  modalBackgroundDismiss: {
-    ...StyleSheet.absoluteFillObject,
   },
 });

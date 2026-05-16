@@ -65,6 +65,47 @@ async def join_community_by_code(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@router.post("/{community_id}/request-join")
+async def request_to_join(
+    community_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Submit a request to join community"""
+    try:
+        return await CommunityService.request_to_join(token_data["user_id"], community_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{community_id}/join-requests")
+async def get_join_requests(
+    community_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Get pending join requests"""
+    try:
+        return await CommunityService.get_join_requests(token_data["user_id"], community_id)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/join-requests/{request_id}/handle")
+async def handle_join_request(
+    request_id: str,
+    data: Dict[str, Any],
+    token_data: dict = Depends(verify_token)
+):
+    """Approve or reject join request"""
+    try:
+        return await CommunityService.handle_join_request(
+            token_data["user_id"],
+            request_id,
+            data.get("action", "reject")
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
 @router.post("/{community_id}/agree-rules")
 async def agree_to_rules(
     community_id: str,

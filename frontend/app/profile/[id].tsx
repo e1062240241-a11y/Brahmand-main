@@ -30,8 +30,8 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const COLUMN_WIDTH = SCREEN_WIDTH / 3;
+const { width } = Dimensions.get('window');
+const COLUMN_WIDTH = width / 3;
 
 const UserProfileScreen = () => {
   const router = useRouter();
@@ -61,28 +61,6 @@ const UserProfileScreen = () => {
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
-  const [viewablePostId, setViewablePostId] = useState<string | null>(null);
-
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      setViewablePostId(viewableItems[0].item.id);
-    }
-  }).current;
-
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50
-  }).current;
-
-  const openPostModal = (post: any) => {
-    if (!post?.id) return;
-    setSelectedPost(post);
-    setViewablePostId(post.id);
-    setPostModalVisible(true);
-    try {
-      viewPost(post.id);
-    } catch (e) {}
-  };
-
   const [selectedCommentPost, setSelectedCommentPost] = useState<any>(null);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -92,6 +70,15 @@ const UserProfileScreen = () => {
   const [totalPosts, setTotalPosts] = useState(0);
   const [activeTab, setActiveTab] = useState('grid');
   const [userMenuVisible, setUserMenuVisible] = useState(false);
+
+  const openPostModal = (post: any) => {
+    if (!post?.id) return;
+    setSelectedPost(post);
+    setPostModalVisible(true);
+    try {
+      viewPost(post.id);
+    } catch (e) {}
+  };
 
   const loadComments = async (postId: string) => {
     setCommentsLoading(true);
@@ -204,11 +191,7 @@ const UserProfileScreen = () => {
       if (reset) {
         setPosts(items);
       } else {
-        setPosts(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const uniqueNew = items.filter((p: any) => !existingIds.has(p.id));
-          return [...prev, ...uniqueNew];
-        });
+        setPosts(prev => [...prev, ...items]);
       }
 
       const totalCount = payload?.total_count || items.length;
@@ -476,9 +459,15 @@ const UserProfileScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
-      <View style={[styles.navBar, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFF', paddingTop: insets.top, height: 50 + insets.top }]}>
+      <View style={[styles.navBar, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFF', paddingTop: insets.top }]}>
         <TouchableOpacity 
-          onPress={() => router.back()} 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/home');
+            }
+          }}
           style={styles.navIcon}
         >
           <Ionicons name="chevron-back" size={28} color={COLORS.text} />
@@ -494,7 +483,7 @@ const UserProfileScreen = () => {
       <Animated.FlatList
         data={posts}
         renderItem={renderPost}
-        keyExtractor={(item, index) => item.id ? `profile-post-${item.id}` : `profile-post-idx-${index}`}
+        keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}
         numColumns={3}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -550,7 +539,7 @@ const UserProfileScreen = () => {
       {/* Post Detail Modal */}
       <Modal visible={postModalVisible} animationType="slide">
         <View style={styles.postDetailContainer}>
-          <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
+          <View style={styles.postDetailHeader}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -561,20 +550,14 @@ const UserProfileScreen = () => {
             data={posts}
             initialScrollIndex={posts.findIndex(p => p.id === selectedPost?.id) !== -1 ? posts.findIndex(p => p.id === selectedPost?.id) : 0}
             getItemLayout={(data, index) => ({
-              length: SCREEN_WIDTH * 1.25 + 180,
-              offset: (SCREEN_WIDTH * 1.25 + 180) * index,
+              length: SCREEN_WIDTH + 150, // Approx height of PostFeedCard with header/footer
+              offset: (SCREEN_WIDTH + 150) * index,
               index,
             })}
-            onScrollToIndexFailed={(info) => {
-              const wait = new Promise(resolve => setTimeout(resolve, 500));
-              wait.then(() => {
-                detailFlatListRef.current?.scrollToIndex({ index: info.index, animated: false });
-              });
-            }}
             renderItem={({ item }) => (
               <PostFeedCard
                 post={item}
-                isActive={postModalVisible && viewablePostId === item.id}
+                isActive={postModalVisible}
                 onComment={handleOpenComment}
                 openCommentsOnCaptionPress
                 onUserPress={() => setPostModalVisible(false)}
@@ -586,12 +569,6 @@ const UserProfileScreen = () => {
             )}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-            windowSize={3}
-            initialNumToRender={1}
-            maxToRenderPerBatch={2}
-            removeClippedSubviews={Platform.OS === 'android'}
           />
         </View>
       </Modal>
@@ -604,7 +581,7 @@ const UserProfileScreen = () => {
       >
         <KeyboardAvoidingView
           style={styles.commentModalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={0}
         >
           <TouchableOpacity 
@@ -612,7 +589,7 @@ const UserProfileScreen = () => {
             activeOpacity={1} 
             onPress={() => setCommentModalVisible(false)} 
           />
-          <View style={[styles.commentModalSheet, { paddingBottom: insets.bottom + 10 }]}>
+          <View style={styles.commentModalSheet}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments</Text>
@@ -681,7 +658,7 @@ const UserProfileScreen = () => {
             activeOpacity={1} 
             onPress={() => setUserMenuVisible(false)} 
           />
-          <View style={[styles.userMenuSheet, { paddingBottom: insets.bottom + 10 }]}>
+          <View style={styles.userMenuSheet}>
             <View style={styles.userMenuHandle} />
             
             <TouchableOpacity style={styles.userMenuItem} onPress={handleShareProfile}>
@@ -785,9 +762,8 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.text,
-    fontWeight: '500',
   },
   bioSection: {
     paddingHorizontal: 20,

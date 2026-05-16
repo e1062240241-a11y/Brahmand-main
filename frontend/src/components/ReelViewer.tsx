@@ -83,7 +83,6 @@ const ReelVideoItem = React.memo(({
   const [isPaused, setIsPaused] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
-  const [showSpinner, setShowSpinner] = useState(false);
   const playPauseAnim = useRef(new Animated.Value(0)).current;
   const [localPost, setLocalPost] = useState(post);
   const videoRef = useRef<any>(null);
@@ -131,17 +130,6 @@ const ReelVideoItem = React.memo(({
   useEffect(() => {
     setIsVideoLoading(isVideo);
   }, [mediaUrl, isVideo]);
-
-  useEffect(() => {
-    let timer: any;
-    if (isVideoLoading) {
-      // Faster delay for reels
-      timer = setTimeout(() => setShowSpinner(true), 300);
-    } else {
-      setShowSpinner(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isVideoLoading]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -351,15 +339,16 @@ const ReelVideoItem = React.memo(({
         )}
       </View>
 
-      {isVideo && showSpinner && (
+      {isVideo && isVideoLoading && (
         <View style={{
           ...StyleSheet.absoluteFillObject,
           zIndex: 15,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: 'rgba(0,0,0,0.15)',
+          backgroundColor: 'rgba(0,0,0,0.35)',
         }}>
           <ActivityIndicator size="large" color="#fff" />
+          <Text style={{ color: '#fff', marginTop: 12, fontSize: 14, opacity: 0.9 }}>Loading video…</Text>
         </View>
       )}
 
@@ -962,7 +951,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             onPress={() => setIsCommentVisible(false)}
           >
             <KeyboardAvoidingView 
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               style={{
                 backgroundColor: '#FFF',
                 borderTopLeftRadius: 24,

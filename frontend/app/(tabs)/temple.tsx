@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
  View, 
  Text, 
@@ -113,10 +113,10 @@ export default function TempleScreen() {
       <View style={styles.topTabsContainer}>
         <View style={styles.topTabsInner}>
           <TouchableOpacity 
-            style={styles.topTabButton}
-            onPress={() => router.push('/vendor')}
+            style={[styles.topTabButton, selectedTempleSection === 'Others' && styles.topTabButtonActive]}
+            onPress={() => setSelectedTempleSection('Others')}
           >
-            <Text style={styles.topTabText}>Vendor</Text>
+            <Text style={[styles.topTabText, selectedTempleSection === 'Others' && styles.topTabTextActive]}>Jaaps</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.topTabButton, selectedTempleSection === 'Jyotirling' && styles.topTabButtonActive]}
@@ -312,7 +312,6 @@ export default function TempleScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFAF3' },
-  contentScroll: { flex: 1 },
   topTabsContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5, backgroundColor: '#FFF' },
   topTabsInner: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 28, padding: 4, elevation: 4, shadowOpacity: 0.08, shadowRadius: 10 },
   topTabButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 22 },

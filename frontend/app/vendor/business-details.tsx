@@ -84,7 +84,11 @@ export default function VendorBusinessDetailsScreen() {
   }, [galleryImages, localImagePreviews]);
 
   const handleBack = () => {
-    router.back();
+    if (router.canGoBack && router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/vendor/dashboard');
+    }
   };
 
   const validateAccess = () => {

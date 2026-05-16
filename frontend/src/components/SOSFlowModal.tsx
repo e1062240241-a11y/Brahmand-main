@@ -70,15 +70,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         setAddress('Permission denied');
         return;
       }
-      const enabled = await Location.hasServicesEnabledAsync();
-      if (!enabled) {
-        setAddress('Location services disabled');
-        return;
-      }
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-        timeout: 10000
-      });
+      const location = await Location.getCurrentPositionAsync({});
       const res = await reverseGeocode(location.coords.latitude, location.coords.longitude);
       
       if (res.data) {
