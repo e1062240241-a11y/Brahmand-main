@@ -99,6 +99,9 @@ function useNotificationResponseHandler() {
       if (type === 'follow' && actorUserId) {
         return `follow:${actorUserId}:${actionId}`;
       }
+      if (type === 'community_join_approved' && data?.community_id) {
+        return `community_approved:${data.community_id}:${actionId}`;
+      }
       return null;
     };
 
@@ -135,6 +138,12 @@ function useNotificationResponseHandler() {
 
       if (data.type === 'dm' && data.chat_id) {
         navigateToDm(data.chat_id);
+        return;
+      }
+
+      if (data.type === 'community_join_approved' && data.community_id) {
+        console.log('[Push] Community join approved, navigating to chat:', data.community_id);
+        router.push(`/community/${data.community_id}`);
         return;
       }
 

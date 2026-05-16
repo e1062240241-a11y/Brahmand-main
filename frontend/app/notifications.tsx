@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { useNotificationStore } from '../src/store/notificationStore';
-import { getUserNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '../src/services/api';
+import { getUserNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, handleCommunityJoinRequest } from '../src/services/api';
+import { Avatar } from '../src/components/Avatar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -18,6 +19,7 @@ const NOTIFICATION_ICONS: Record<string, any> = {
   comment: { icon: 'chatbubble', color: '#2196F3', bg: '#E3F2FD' },
   like: { icon: 'heart', color: '#E91E63', bg: '#FCE4EC' },
   follow: { icon: 'person-add', color: '#4CAF50', bg: '#E8F5E9' },
+  community_join_request: { icon: 'people', color: '#FF6600', bg: '#FFF3E0' },
   default: { icon: 'notifications', color: '#795548', bg: '#EFEBE9' }
 };
 
@@ -90,6 +92,34 @@ export default function NotificationsScreen() {
     return NOTIFICATION_ICONS[key] || NOTIFICATION_ICONS.default;
   };
 
+  const handleJoinAction = async (notificationId: string, communityId: string, action: 'approve' | 'reject') => {
+    try {
+      // Find the request_id from notification data if available, or fetch from community requests
+      // For now, let's assume we need to find it from the notification data
+      const notification = notifications.find(n => (n.id || n._id) === notificationId);
+      const requestId = notification?.data?.request_id || notification?.id; // Fallback to notification id if mapped correctly
+
+      if (!requestId) {
+        Alert.alert('Error', 'Request ID not found');
+        return;
+      }
+
+      await handleCommunityJoinRequest(communityId, requestId, action);
+
+      Alert.alert('Success', `Request ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
+
+      // Update local state to hide actions
+      setNotifications(prev => prev.map(n =>
+        (n.id || n._id) === notificationId
+          ? { ...n, data: { ...n.data, handled: true, action_result: action } }
+          : n
+      ));
+    } catch (error: any) {
+      console.error('Error handling join request:', error);
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to process request');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#FF6600', '#FF9933']} style={styles.headerGradient}>
@@ -126,11 +156,13 @@ export default function NotificationsScreen() {
             </View>
           ) : (
             notifications.map((item) => {
-              const style = getNotificationStyle(item.type);
+              const style = getNotificationStyle(item.type || item.notification_type);
+              const isJoinRequest = (item.type || item.notification_type) === 'community_join_request' || item.data?.type === 'community_join_request';
+
               return (
                 <TouchableOpacity
                   key={item.id || item._id || Math.random().toString()}
-                  style={[styles.notificationItem, (!item.is_read || item.unread) && styles.notificationItemUnread]}
+                  style={[styles.notificationItem, (!item.is_read || item.unread) && styles.notificationItemUnread, isJoinRequest && styles.joinRequestItem]}
                   activeOpacity={0.7}
                   onPress={() => handleNotificationPress(item)}
                 >
@@ -142,6 +174,37 @@ export default function NotificationsScreen() {
                     <Text style={styles.notificationText} numberOfLines={2}>
                       {item.body || 'You have a new notification.'}
                     </Text>
+
+                    {isJoinRequest && !item.data?.handled && (
+                      <View style={styles.actionRow}>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.approveBtn]}
+                          onPress={() => handleJoinAction(item.id || item._id, item.data?.community_id, 'approve')}
+                        >
+                          <Text style={styles.actionBtnText}>Approve</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.rejectBtn]}
+                          onPress={() => handleJoinAction(item.id || item._id, item.data?.community_id, 'reject')}
+                        >
+                          <Text style={styles.rejectBtnText}>Reject</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {isJoinRequest && item.data?.handled && (
+                      <View style={styles.handledBadge}>
+                        <Ionicons
+                          name={item.data.action_result === 'approve' ? 'checkmark-circle' : 'close-circle'}
+                          size={14}
+                          color={item.data.action_result === 'approve' ? '#4CAF50' : '#E53935'}
+                        />
+                        <Text style={[styles.handledText, { color: item.data.action_result === 'approve' ? '#4CAF50' : '#E53935' }]}>
+                          {item.data.action_result === 'approve' ? 'Approved' : 'Rejected'}
+                        </Text>
+                      </View>
+                    )}
+
                     <Text style={styles.notificationTime}>{item.time || item.created_at || 'Recently'}</Text>
                   </View>
                   {(!item.is_read || item.unread) && <View style={styles.unreadPulse} />}
@@ -175,6 +238,51 @@ const styles = StyleSheet.create({
   notificationText: { color: '#666', fontSize: 13, lineHeight: 18, marginBottom: 6 },
   notificationTime: { color: '#999', fontSize: 11, fontWeight: '600' },
   unreadPulse: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FF6600', marginLeft: 10 },
+  joinRequestItem: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6600',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  approveBtn: {
+    backgroundColor: '#FF6600',
+    borderColor: '#FF6600',
+  },
+  rejectBtn: {
+    backgroundColor: '#FFF',
+    borderColor: '#DDD',
+  },
+  actionBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  rejectBtnText: {
+    color: '#666',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  handledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 4,
+  },
+  handledText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   emptyState: { marginTop: 80, alignItems: 'center', paddingHorizontal: 40 },
   emptyIconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   emptyTitle: { fontSize: 20, fontWeight: '900', color: '#333', marginBottom: 8 },

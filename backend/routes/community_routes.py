@@ -86,3 +86,51 @@ async def get_community_stats(
 ):
     """Get community activity stats for home screen"""
     return await CommunityService.get_community_stats(community_id)
+
+
+@router.post("/{community_id}/request-join")
+async def request_to_join(
+    community_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Submit a request to join a community"""
+    try:
+        return await CommunityService.request_to_join(
+            token_data["user_id"],
+            community_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{community_id}/requests")
+async def get_join_requests(
+    community_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Get pending join requests (Admins only)"""
+    try:
+        return await CommunityService.get_join_requests(
+            token_data["user_id"],
+            community_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/{community_id}/requests/{request_id}/review")
+async def handle_join_request(
+    community_id: str,
+    request_id: str,
+    data: Dict[str, Any],
+    token_data: dict = Depends(verify_token)
+):
+    """Approve or reject a join request"""
+    try:
+        return await CommunityService.handle_join_request(
+            token_data["user_id"],
+            request_id,
+            data.get("action", "reject")
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))

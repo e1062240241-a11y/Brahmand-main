@@ -402,11 +402,7 @@ export default function MessagesScreen() {
         </View>
         
         <View style={styles.localCommAvatarWrapper}>
-          {item.photo ? (
-            <Image source={{ uri: item.photo }} style={styles.localCommAvatar} />
-          ) : (
-            <Avatar name={item.name} size={75} />
-          )}
+          <Avatar name={item.name} photo={item.photo} size={75} />
         </View>
 
         <View style={styles.localCommContent}>
@@ -532,7 +528,7 @@ export default function MessagesScreen() {
                 <Ionicons name="people" size={24} color="#FF6600" style={{ marginRight: 8 }} />
                 <Text style={styles.sectionTitle}>Local Communities <Text style={styles.subTitleSmall}>(User Groups)</Text></Text>
               </View>
-              <TouchableOpacity onPress={() => router.push('/community/discover')}>
+              <TouchableOpacity onPress={() => router.push('/community/explore')}>
                 <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             </View>
