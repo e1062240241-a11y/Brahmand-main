@@ -3495,6 +3495,7 @@ async def get_communities(token_data: dict = Depends(verify_token)):
                     "type": comm_type,
                     "label": comm.get('label') or TYPE_LABELS.get(comm_type, ''),
                     "code": comm.get('code', ''),
+                    "photo": comm.get('photo'),
                     "member_count": len(comm.get('members', [])),
                     "subgroups": comm.get('subgroups', []),
                     "is_default": cid in default_community_ids or comm.get('is_default', False),
@@ -3545,9 +3546,8 @@ async def join_community_by_code(
 
 @api_router.get("/communities/discover")
 async def discover_communities(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    communities = await db.query_documents('communities', limit=20)
-    return [{"id": c['id'], "name": c['name'], "type": c['type'], "member_count": len(c.get('members', []))} for c in communities]
+    """Discover popular communities"""
+    return await FirebaseCommunityService.discover_communities()
 
 
 @api_router.get("/communities/{community_id}")

@@ -682,6 +682,18 @@ var agreeToRules = function (communityId, subgroupType) {
     return api.post("/communities/".concat(communityId, "/agree-rules"), { subgroup_type: subgroupType });
 };
 exports.agreeToRules = agreeToRules;
+var requestToJoinCommunity = function (communityId) {
+    return api.post("/communities/".concat(communityId, "/request-join"));
+};
+exports.requestToJoinCommunity = requestToJoinCommunity;
+var getCommunityJoinRequests = function (communityId) {
+    return api.get("/communities/".concat(communityId, "/requests"));
+};
+exports.getCommunityJoinRequests = getCommunityJoinRequests;
+var handleCommunityJoinRequest = function (communityId, requestId, action) {
+    return api.post("/communities/".concat(communityId, "/requests/").concat(requestId, "/review"), { action: action });
+};
+exports.handleCommunityJoinRequest = handleCommunityJoinRequest;
 // Circle APIs
 var createCircle = function (data) {
     return api.post('/circles', data);
@@ -789,7 +801,7 @@ var denyDirectMessageRequest = function (conversationId) {
 exports.denyDirectMessageRequest = denyDirectMessageRequest;
 // Discover APIs
 var discoverCommunities = function () {
-    return api.get('/discover/communities');
+    return api.get('/communities/discover');
 };
 exports.discoverCommunities = discoverCommunities;
 // Wisdom & Panchang APIs

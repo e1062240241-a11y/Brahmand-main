@@ -280,6 +280,131 @@ class FirebaseCommunityService:
         return {"message": "Joined community successfully", "community": community['name']}
     
     @staticmethod
+    async def request_to_join(user_id: str, community_id: str) -> Dict[str, Any]:
+        """Submit a request to join a community"""
+        db = await FirebaseCommunityService.get_db()
+
+        # Check if already a member
+        community = await db.get_document('communities', community_id)
+        if not community:
+            raise ValueError("Community not found")
+
+        if user_id in community.get('members', []):
+            return {"status": "already_member", "message": "You are already a member"}
+
+        # Check for existing pending request
+        existing = await db.find_one('community_join_requests', [
+            ('community_id', '==', community_id),
+            ('user_id', '==', user_id),
+            ('status', '==', 'pending')
+        ])
+        if existing:
+            return {"status": "pending", "message": "Your request is already pending review"}
+
+        user = await db.get_document('users', user_id)
+
+        request_data = {
+            "community_id": community_id,
+            "community_name": community['name'],
+            "user_id": user_id,
+            "user_name": user.get('name', 'Unknown User'),
+            "user_photo": user.get('photo'),
+            "status": "pending",
+            "created_at": datetime.utcnow()
+        }
+
+        await db.client.collection('community_join_requests').add(request_data)
+        
+        # Send push notification to admins
+        from services.firebase_notification_service import FirebaseNotificationService
+        admins = community.get('admin_ids', [])
+        if community.get('owner_id') and community.get('owner_id') not in admins:
+            admins.append(community.get('owner_id'))
+        
+        for admin_id in admins:
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=admin_id,
+                    title="New Join Request",
+                    body=f"{user.get('name', 'Someone')} requested to join {community['name']}",
+                    data={"type": "community_join_request", "community_id": community_id}
+                )
+            except Exception as e:
+                logger.error(f"Failed to send push notification to admin {admin_id}: {e}")
+
+        return {"status": "requested", "message": "Request submitted to community admins"}
+
+    @staticmethod
+    async def get_join_requests(user_id: str, community_id: str) -> List[Dict[str, Any]]:
+        """Get pending join requests for a community (only for owner/admins)"""
+        db = await FirebaseCommunityService.get_db()
+        community = await db.get_document('communities', community_id)
+
+        if user_id != community.get('owner_id') and user_id not in community.get('admin_ids', []):
+            raise ValueError("Unauthorized: Only admins can view requests")
+
+        requests = await db.query_documents(
+            'community_join_requests',
+            filters=[('community_id', '==', community_id), ('status', '==', 'pending')],
+            order_by='created_at',
+            order_direction='DESCENDING'
+        )
+        return requests
+
+    @staticmethod
+    async def handle_join_request(admin_id: str, request_id: str, action: str) -> Dict[str, Any]:
+        """Approve or reject a join request"""
+        db = await FirebaseCommunityService.get_db()
+        req_doc = await db.get_document('community_join_requests', request_id)
+        if not req_doc:
+            raise ValueError("Request not found")
+
+        community_id = req_doc['community_id']
+        community = await db.get_document('communities', community_id)
+
+        if admin_id != community.get('owner_id') and admin_id not in community.get('admin_ids', []):
+            raise ValueError("Unauthorized")
+
+        user_id = req_doc['user_id']
+        from services.firebase_notification_service import FirebaseNotificationService
+
+        if action == 'approve':
+            from google.cloud import firestore
+
+            # Add to community
+            await db.client.collection('communities').document(community_id).update({
+                'members': firestore.ArrayUnion([user_id])
+            })
+            # Add community to user
+            await db.client.collection('users').document(user_id).update({
+                'communities': firestore.ArrayUnion([community_id])
+            })
+
+            await db.client.collection('community_join_requests').document(request_id).update({
+                'status': 'approved',
+                'handled_at': datetime.utcnow(),
+                'handled_by': admin_id
+            })
+            await cache_manager.invalidate_user_communities(user_id)
+            
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=user_id,
+                    title="Request Approved",
+                    body=f"Your request to join {community['name']} has been approved!",
+                    data={"type": "community_join_approved", "community_id": community_id}
+                )
+            except Exception as e:
+                logger.error(f"Failed to send approval notification to user {user_id}: {e}")
+                
+            return {"status": "approved", "message": "User added to community"}
+        else:
+            await db.client.collection('community_join_requests').document(request_id).update({
+                'status': 'rejected',
+                'handled_at': datetime.utcnow(),
+                'handled_by': admin_id
+            })
+            return {"status": "rejected", "message": "Request declined"}
     async def agree_to_rules(user_id: str, community_id: str, subgroup_type: str) -> Dict[str, Any]:
         """Agree to rules"""
         db = await FirebaseCommunityService.get_db()
@@ -300,7 +425,7 @@ class FirebaseCommunityService:
             'communities',
             order_by='member_count',
             order_direction='DESCENDING',
-            limit=20
+            limit=100
         )
         
         return [{

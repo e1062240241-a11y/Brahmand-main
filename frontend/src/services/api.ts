@@ -790,6 +790,15 @@ export const createCommunity = (data: {
 export const agreeToRules = (communityId: string, subgroupType: string) => 
   api.post(`/communities/${communityId}/agree-rules`, { subgroup_type: subgroupType });
 
+export const requestToJoinCommunity = (communityId: string) => 
+  api.post(`/communities/${communityId}/request-join`);
+
+export const getCommunityJoinRequests = (communityId: string) => 
+  api.get(`/communities/${communityId}/requests`);
+
+export const handleCommunityJoinRequest = (communityId: string, requestId: string, action: 'approve' | 'reject') => 
+  api.post(`/communities/${communityId}/requests/${requestId}/review`, { action });
+
 // Circle APIs
 export const createCircle = (data: { name: string; description?: string; privacy?: 'private' | 'invite_code'; member_ids?: string[] }) => 
   api.post('/circles', data);
@@ -873,7 +882,7 @@ export const unmuteConversation = (conversationId: string) =>
 
 // Discover APIs
 export const discoverCommunities = () => 
-  api.get('/discover/communities');
+  api.get('/communities/discover');
 
 // Wisdom & Panchang APIs
 export const getTodaysWisdom = () => 

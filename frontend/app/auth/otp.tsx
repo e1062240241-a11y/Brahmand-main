@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -40,12 +40,12 @@ export default function OTPScreen() {
     }
     router.replace('/auth/phone');
   };
-  
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(30);
-  
+
   const inputRefs = useRef<TextInput[]>([]);
 
   useEffect(() => {
@@ -91,7 +91,7 @@ export default function OTPScreen() {
       // 1. Verify OTP via Firebase client SDK
       console.log('[OTP] Verifying with Firebase...');
       const idToken = await verifyFirebaseOTP(code);
-      
+
       // 2. Exchange Firebase ID Token for backend session JWT
       console.log('[OTP] Firebase verified, exchanging for backend token...');
       const response = await verifyFirebaseToken(idToken);
@@ -143,10 +143,10 @@ export default function OTPScreen() {
         setError('Phone number missing. Please go back and request OTP again.');
         return;
       }
-      
+
       // Resend via Firebase
       await sendFirebaseOTP(phone as string);
-      
+
       setResendTimer(30);
       setError('OTP resent. Enter the new code.');
       setOtp(['', '', '', '', '', '']);
@@ -165,8 +165,8 @@ export default function OTPScreen() {
       end={{ x: 1, y: 1 }}
     >
       <MandalaPattern />
-      
-      <KeyboardAvoidingView 
+
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
@@ -198,14 +198,14 @@ export default function OTPScreen() {
           </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          
+
           {loading && (
             <ActivityIndicator color="#FFFFFF" style={{ marginTop: SPACING.md }} />
           )}
 
           {/* Resend */}
-          <TouchableOpacity 
-            style={styles.resendButton} 
+          <TouchableOpacity
+            style={styles.resendButton}
             onPress={handleResend}
             disabled={resendTimer > 0}
           >
