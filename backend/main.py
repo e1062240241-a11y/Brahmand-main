@@ -341,6 +341,29 @@ async def _create_post_document(
     filter_name: Optional[str],
     metadata: Optional[dict] = None,
 ) -> dict:
+    import random as _random
+
+    # Infer category from caption keywords
+    _caption_lower = (caption or '').lower()
+    _CATEGORY_KEYWORDS = {
+        'temple': ['temple', 'mandir', 'darshan', 'dham', 'tirtha', 'iskcon', 'ram'],
+        'jaap': ['jaap', 'mantra', 'chant', 'jap', 'naam', 'om', 'shlok'],
+        'yoga': ['yoga', 'asana', 'pranayam', 'surya', 'namaskar'],
+        'meditation': ['meditation', 'dhyan', 'peace', 'inner', 'mindful', 'shanti'],
+        'travel': ['travel', 'yatra', 'journey', 'pilgrimage', 'tour', 'kashi', 'ayodhya'],
+        'bhajan': ['bhajan', 'kirtan', 'aarti', 'song', 'stuti', 'dhun', 'ram'],
+        'festivals': ['festival', 'utsav', 'puja', 'pooja', 'navratri', 'diwali', 'holi', 'havan', 'kumbh'],
+        'spirituality': ['spiritual', 'adhyatm', 'guru', 'satsang', 'pravachan', 'katha', 'sadhu'],
+        'food': ['prasad', 'food', 'bhog', 'naivedya', 'langar', 'satvik'],
+        'seva': ['seva', 'service', 'volunteer', 'help', 'sewa', 'shramdaan'],
+        'culture': ['culture', 'tradition', 'sanatan', 'dharma', 'sanatani', 'hindu', 'bharat'],
+    }
+    _inferred_category = 'spirituality'
+    for _cat, _keywords in _CATEGORY_KEYWORDS.items():
+        if any(kw in _caption_lower for kw in _keywords):
+            _inferred_category = _cat
+            break
+
     post_doc = {
         'user_id': user_id,
         'username': user.get('name') or user.get('sl_id') or 'User',
@@ -356,6 +379,14 @@ async def _create_post_document(
         'likes_count': 0,
         'comments_count': 0,
         'views_count': 0,
+        'watch_time': 0.0,
+        'completion_rate': 0.0,
+        'rewatches': 0,
+        'engagement_score': 0.0,
+        'random_score': round(_random.random(), 5),
+        'category': _inferred_category,
+        'city': user.get('city'),
+        'area': user.get('area'),
         'created_at': datetime.utcnow(),
         'updated_at': datetime.utcnow(),
     }
@@ -2183,112 +2214,301 @@ async def upload_post_from_storage(
 
 @api_router.get('/posts/feed')
 async def get_posts_feed(
-    limit: int = 20, 
-    offset: int = 0, 
+    limit: int = 15,
+    offset: int = 0,
     tab: str = 'for_you',
+    seen_ids: str = '',
     token_data: dict = Depends(verify_token)
 ):
+    """
+    Smart Weighted Discovery Feed.
+    Mix: 40% random, 30% high-engagement, 20% user-interest, 10% latest.
+    Anti-repetition: no same creator within 5 reels, balanced categories.
+    """
+    import random as _random
+
     db = await get_db()
     current_user_id = token_data['user_id']
-    safe_limit = max(1, min(limit, 100))
-    safe_offset = max(0, offset)
+    safe_limit = max(1, min(limit, 50))
 
-    # Fetch enough posts to handle filtering/sorting
-    fetch_count = 1000 if tab in ['trending', 'following'] else min(500, max(200, safe_offset + safe_limit + 20))
-    
+    # Parse already-seen post IDs to avoid repeats
+    seen_set = set(s.strip() for s in seen_ids.split(',') if s.strip())
+
+    # Fetch a large pool of posts (not ordered by created_at as main sort)
     try:
         posts = await db.query_documents(
-            'posts', 
-            limit=fetch_count, 
-            order_by='created_at', 
+            'posts',
+            limit=500,
+            order_by='created_at',
             order_direction='DESCENDING'
         )
     except Exception as e:
         logger.error("Firestore query error in get_posts_feed: %s", e)
         posts = []
 
-    visible_posts = posts
+    # Filter out already-seen posts and non-public posts
+    pool = [p for p in posts if p.get('id') not in seen_set and p.get('visibility', 'public') == 'public']
 
     if tab == 'following':
-        current_user = await db.get_document('users', current_user_id)
-        following_ids = set(current_user.get('following', []) or [])
-        visible_posts = [p for p in posts if p.get('user_id') in following_ids]
+        try:
+            current_user = await db.get_document('users', current_user_id)
+            following_ids = set(current_user.get('following', []) or [])
+            pool = [p for p in pool if p.get('user_id') in following_ids]
+        except Exception:
+            pass
+        pool.sort(key=lambda p: p.get('created_at') or datetime.min, reverse=True)
+        paged_posts = pool[:safe_limit]
+
     elif tab == 'trending':
-        # Simple trending score: views + (likes * 2)
-        def _trending_score(item: dict):
-            views = item.get('views_count', 0) or 0
-            likes = item.get('likes_count', 0) or 0
-            return views + (likes * 2)
-        visible_posts.sort(key=_trending_score, reverse=True)
+        pool.sort(key=lambda p: (p.get('engagement_score', 0) or 0) + (p.get('views_count', 0) or 0), reverse=True)
+        paged_posts = pool[:safe_limit]
+
     else:
-        # Default 'for_you' latest sort
-        def _created_at_sort_key(item: dict):
-            value = item.get('created_at')
-            if isinstance(value, datetime):
-                return value
-            if isinstance(value, str):
-                try:
-                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
-                except Exception:
-                    return datetime.min
-            return datetime.min
-        visible_posts.sort(key=_created_at_sort_key, reverse=True)
+        # ── Weighted Smart Random Feed (for_you) ──────────────────────
+        # Fetch user interest preferences
+        user_interests: dict = {}
+        try:
+            prefs_doc = await db.get_document('feed_preferences', current_user_id)
+            if prefs_doc:
+                user_interests = prefs_doc.get('category_scores', {})
+        except Exception:
+            pass
 
-    post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
-    authors_data = await db.get_documents_batch('users', post_author_ids)
-    authors_by_id = {author['id']: author for author in authors_data}
+        now_ts = datetime.utcnow().timestamp()
 
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
+        def _recency_score(post: dict) -> float:
+            """Exponential decay: score 1.0 if just posted, decays over 30 days."""
+            val = post.get('created_at')
             try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                if isinstance(val, datetime):
+                    ts = val.timestamp()
+                elif isinstance(val, str):
+                    ts = datetime.fromisoformat(val.replace('Z', '+00:00')).timestamp()
+                else:
+                    return 0.0
+                age_days = max(0, (now_ts - ts) / 86400)
+                return math.exp(-age_days / 30)
             except Exception:
-                return datetime.min
+                return 0.0
+
+        def _engagement(post: dict) -> float:
+            score = post.get('engagement_score', 0) or 0
+            if score > 0:
+                return float(score)
+            # Fallback: compute from raw fields (watch_time weighted highest)
+            wt = float(post.get('watch_time', 0) or 0)
+            likes = float(post.get('likes_count', 0) or 0)
+            views = float(post.get('views_count', 0) or 0)
+            cr = float(post.get('completion_rate', 0) or 0)
+            return (wt * 0.4) + (likes * 0.3) + (cr * 100 * 0.2) + (views * 0.1)
+
+        def _interest_score(post: dict) -> float:
+            cat = post.get('category', '')
+            return float(user_interests.get(cat, 0))
+
+        # Assign composite scores for bucket selection
+        for p in pool:
+            p['_random_val'] = p.get('random_score', _random.random())
+            p['_engagement_val'] = _engagement(p)
+            p['_interest_val'] = _interest_score(p)
+            p['_recency_val'] = _recency_score(p)
+
+        # Sort each bucket
+        random_pool = sorted(pool, key=lambda p: p['_random_val'])
+        engagement_pool = sorted(pool, key=lambda p: p['_engagement_val'], reverse=True)
+        interest_pool = sorted(pool, key=lambda p: p['_interest_val'], reverse=True)
+        latest_pool = sorted(pool, key=lambda p: p['_recency_val'], reverse=True)
+
+        # Bucket sizes: 40% / 30% / 20% / 10%
+        n_random = max(1, int(safe_limit * 0.4))
+        n_engage = max(1, int(safe_limit * 0.3))
+        n_interest = max(1, int(safe_limit * 0.2))
+        n_latest = safe_limit - n_random - n_engage - n_interest
+
+        def _take(src, n):
+            return src[:n]
+
+        candidates = (
+            _take(random_pool, n_random)
+            + _take(engagement_pool, n_engage)
+            + _take(interest_pool, n_interest)
+            + _take(latest_pool, n_latest)
+        )
+
+        # Deduplicate across buckets (preserve order)
+        seen_cand: set = set()
+        unique_candidates = []
+        for p in candidates:
+            pid = p.get('id')
+            if pid and pid not in seen_cand:
+                seen_cand.add(pid)
+                unique_candidates.append(p)
+
+        # Shuffle gently for unpredictability
+        _random.shuffle(unique_candidates)
+
+        # ── Anti-repetition pass ─────────────────────────────────────
+        # No same creator within 5 positions; no same category 3x in a row
+        recent_creators: list = []  # last 5
+        cat_streak: dict = {}       # category -> consecutive count
+        last_cat = None
+        filtered: list = []
+        remainder: list = []
+
+        for p in unique_candidates:
+            creator = p.get('user_id', '')
+            cat = p.get('category', 'spirituality')
+            creator_ok = creator not in recent_creators
+            # Avoid 3+ consecutive same category
+            cat_count = cat_streak.get(cat, 0)
+            cat_ok = cat_count < 2
+
+            if creator_ok and cat_ok:
+                filtered.append(p)
+                recent_creators = (recent_creators + [creator])[-5:]
+                if cat == last_cat:
+                    cat_streak[cat] = cat_streak.get(cat, 0) + 1
+                else:
+                    cat_streak = {cat: 1}
+                last_cat = cat
+            else:
+                remainder.append(p)
+
+        # Fill remaining slots with remainder if needed
+        if len(filtered) < safe_limit:
+            filtered += remainder[:safe_limit - len(filtered)]
+
+        paged_posts = filtered[:safe_limit]
+
+    # ── Enrich posts with author info and like status ─────────────
+    post_author_ids = list({p.get('user_id') for p in paged_posts if p.get('user_id')})
+    try:
+        authors_data = await db.get_documents_batch('users', post_author_ids)
+        authors_by_id = {a['id']: a for a in authors_data}
+    except Exception:
+        authors_by_id = {}
+
+    def _comment_sort_key(item: dict):
+        val = item.get('created_at')
+        if isinstance(val, datetime): return val
+        if isinstance(val, str):
+            try: return datetime.fromisoformat(val.replace('Z', '+00:00'))
+            except Exception: return datetime.min
         return datetime.min
 
-    paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
-
-    # 3. Fetch details (likes, comments, author info) in parallel
     semaphore = asyncio.Semaphore(15)
     async def fetch_post_details(post):
         async with semaphore:
-            latest_author = authors_by_id.get(post.get('user_id'))
-            if latest_author:
-                post['user_photo'] = latest_author.get('photo')
-                post['username'] = latest_author.get('name') or latest_author.get('sl_id') or post.get('username')
-
+            author = authors_by_id.get(post.get('user_id'))
+            if author:
+                post['user_photo'] = author.get('photo')
+                post['username'] = author.get('name') or author.get('sl_id') or post.get('username')
             liked_by = post.get('liked_by', []) or []
             post['likes_count'] = post.get('likes_count', len(liked_by))
             post['comments_count'] = post.get('comments_count', 0)
             post['views_count'] = post.get('views_count', 0)
             post['liked_by_me'] = current_user_id in liked_by
-
+            # Remove internal scoring keys
+            for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
+                post.pop(k, None)
             try:
                 top_comments = await db.query_documents(
                     'post_comments',
                     filters=[('post_id', '==', post.get('id'))],
                     limit=200,
                 )
-                top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+                top_comments.sort(key=_comment_sort_key, reverse=True)
                 post['top_comments'] = top_comments[:5]
             except Exception:
                 post['top_comments'] = []
-            
             return post
 
-    tasks = [fetch_post_details(post) for post in paged_posts]
-    normalized = await asyncio.gather(*tasks)
+    tasks = [fetch_post_details(p) for p in paged_posts]
+    normalized = list(await asyncio.gather(*tasks))
 
-    has_more = (safe_offset + safe_limit) < len(visible_posts)
     return {
         'items': normalized,
         'limit': safe_limit,
-        'offset': safe_offset,
-        'has_more': has_more,
+        'offset': offset,
+        'has_more': len(pool) > safe_limit,
     }
+
+
+@api_router.post('/posts/{post_id}/watch')
+async def record_watch_event(
+    post_id: str,
+    data: dict = Body(...),
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Track watch time and completion. Updates engagement_score and user interest.
+    Body: { watch_seconds: float, duration_seconds: float, rewatched: bool }
+    """
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    watch_seconds = max(0.0, float(data.get('watch_seconds', 0)))
+    duration_seconds = max(1.0, float(data.get('duration_seconds', 1)))
+    rewatched = bool(data.get('rewatched', False))
+    completion = min(1.0, watch_seconds / duration_seconds)
+
+    try:
+        post = await db.get_document('posts', post_id)
+        if not post:
+            raise HTTPException(status_code=404, detail='Post not found')
+
+        # Rolling averages
+        views = max(1, int(post.get('views_count', 0) or 0))
+        old_wt = float(post.get('watch_time', 0) or 0)
+        old_cr = float(post.get('completion_rate', 0) or 0)
+        old_rw = int(post.get('rewatches', 0) or 0)
+
+        new_wt = (old_wt * views + watch_seconds) / (views + 1)
+        new_cr = (old_cr * views + completion) / (views + 1)
+        new_rw = old_rw + (1 if rewatched else 0)
+
+        likes = float(post.get('likes_count', 0) or 0)
+        # engagement_score: watch_time 40%, completion 30%, likes 20%, rewatches 10%
+        new_engagement = (new_wt * 0.4) + (new_cr * 100 * 0.3) + (likes * 0.2) + (new_rw * 10 * 0.1)
+
+        await db.update_document('posts', post_id, {
+            'watch_time': round(new_wt, 3),
+            'completion_rate': round(new_cr, 4),
+            'rewatches': new_rw,
+            'engagement_score': round(new_engagement, 3),
+        })
+
+        # Update user interest preferences
+        cat = post.get('category', 'spirituality')
+        try:
+            prefs_doc = await db.get_document('feed_preferences', user_id)
+            cat_scores = (prefs_doc or {}).get('category_scores', {})
+            old_score = float(cat_scores.get(cat, 0))
+            # Increase if watched > 50%, decrease slightly if skipped
+            delta = 1.0 if completion >= 0.5 else -0.3
+            cat_scores[cat] = round(max(0, min(100, old_score + delta)), 2)
+            await db.set_document('feed_preferences', user_id, {'category_scores': cat_scores})
+        except Exception as e:
+            logger.debug('Feed preference update failed: %s', e)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning('Watch event record failed for post %s: %s', post_id, e)
+
+    return {'ok': True}
+
+
+@api_router.get('/users/me/feed-preferences')
+async def get_feed_preferences(token_data: dict = Depends(verify_token)):
+    """Get the current user's category interest scores."""
+    db = await get_db()
+    user_id = token_data['user_id']
+    try:
+        doc = await db.get_document('feed_preferences', user_id)
+        return {'category_scores': (doc or {}).get('category_scores', {})}
+    except Exception:
+        return {'category_scores': {}}
 
 
 @api_router.get('/posts/hashtag')
