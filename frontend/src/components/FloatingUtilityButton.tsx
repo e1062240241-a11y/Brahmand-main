@@ -1406,7 +1406,6 @@ const styles = StyleSheet.create({
   itemTitleSOSSmall: { color: '#FFF', fontSize: 8, fontWeight: '800', textAlign: 'center', marginTop: 4 },
 
   // RESPONDER SOS VIEW STYLES
-<<<<<<< HEAD
   sosResponderView: { width: '100%', height: '100%', alignItems: 'center', padding: 15 },
   sosAlertHeader: { alignItems: 'center', marginTop: 5 },
   alertIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
@@ -1441,65 +1440,6 @@ const styles = StyleSheet.create({
   closeAlertX: { position: 'absolute', top: -10, right: -10, alignItems: 'center' },
   closeXCircle: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', shadowOpacity: 0.1, shadowRadius: 5, elevation: 5 },
   closeXText: { fontSize: 9, color: '#666', fontWeight: '700', marginTop: 4 }
-=======
-  sosResponderView: { width: '100%', height: '100%', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10, paddingBottom: 5 },
-  sosAlertHeader: { alignItems: 'center', marginTop: 15, marginBottom: 8 },
-  alertIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
-  sosAlertTitle: { color: '#FFF', fontSize: 18, fontWeight: '900', letterSpacing: 0.5 },
-  sosAlertSub: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '600' },
-  sosAlertHighlight: { color: '#FFD54F', fontSize: 11, fontWeight: '800', marginTop: 1 },
-  victimCard: { 
-    width: '94%', 
-    backgroundColor: '#FFF', 
-    borderRadius: 16, 
-    padding: 8, 
-    marginTop: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5
-  },
-  victimRow: { flexDirection: 'row', alignItems: 'center' },
-  victimAvatarBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  victimInfo: { flex: 1 },
-  victimName: { fontSize: 14, fontWeight: '900', color: '#111' },
-  victimPhone: { fontSize: 10, fontWeight: '700', color: '#666', marginBottom: 1 },
-  victimTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-  victimTypeText: { fontSize: 9, fontWeight: '900', color: '#D32F2F' },
-  victimLocRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-  victimLocText: { fontSize: 9, color: '#666', fontWeight: '600', flex: 1 },
-  responderActionRow: { 
-    flexDirection: 'row', 
-    gap: 8, 
-    width: '94%', 
-    justifyContent: 'center', 
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  responderBtn: { 
-    flex: 1,
-    height: 52, 
-    borderRadius: 12, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 8,
-  },
-  responderBtnText: { color: '#FFF', fontSize: 10, fontWeight: '900', textAlign: 'center' },
-  topRightCloseBtn: {
-    position: 'absolute',
-    top: 15,
-    right: 25,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-  },
->>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
 });
 
 export default FloatingUtilityButton;
