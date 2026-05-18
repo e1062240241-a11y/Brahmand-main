@@ -1298,11 +1298,7 @@ export default function HomeScreen() {
                       onPress={() => {
                         if (mumbaiComm) {
                           router.push({
-<<<<<<< HEAD
-                            pathname: `/chat/community/${mumbaiComm.id}`,
-=======
                             pathname: `/community/${mumbaiComm.id}`,
->>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
                             params: { subgroup: 'city', name: mumbaiComm.name }
                           });
                         } else {
@@ -1333,11 +1329,7 @@ export default function HomeScreen() {
                       onPress={() => {
                         if (localComm) {
                           router.push({
-<<<<<<< HEAD
-                            pathname: `/chat/community/${localComm.id}`,
-=======
                             pathname: `/community/${localComm.id}`,
->>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
                             params: { subgroup: 'city', name: localComm.name }
                           });
                         } else {
