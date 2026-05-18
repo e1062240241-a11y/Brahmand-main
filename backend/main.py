@@ -7886,7 +7886,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         "title": data.title,
         "description": data.description,
         "contact_number": data.contact_number,
-        "urgency_level": data.urgency_level.value,
+        "urgency_level": "critical" if data.urgency_level.value == "urgent" else data.urgency_level.value,
         "status": "active",
         # Location data for filtering
         "area": location_area.get('area') if location_area else None,
