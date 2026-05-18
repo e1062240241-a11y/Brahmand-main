@@ -1447,6 +1447,7 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 15, fontWeight: '700', color: '#111', lineHeight: 20 },
   eventMeta: { fontSize: 12, color: '#888', marginTop: 4 },
   goingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 5 },
+  requestGoingText: { fontSize: 12, color: '#888' },
   goingText2: { fontSize: 12, color: '#888' },
   eventImage: { width: 60, height: 100, borderRadius: 12 },
   
@@ -1472,7 +1473,7 @@ const styles = StyleSheet.create({
   postContent: { fontSize: 15, color: '#333', lineHeight: 24, fontWeight: '500' },
   
   postActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
-  discussionActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   postActionText: { fontSize: 13, color: '#666', fontWeight: '600' },
   
   footer: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
