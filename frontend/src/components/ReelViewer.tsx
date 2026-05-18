@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
-import api, { getPostComments, addPostComment, getProfile } from '../services/api';
+import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent } from '../services/api';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { useRouter } from 'expo-router';
 import SharePostModal from './SharePostModal';
@@ -436,7 +436,7 @@ const ReelVideoItem = React.memo(({
           paddingLeft: 16,
         }}
       >
-        <TouchableOpacity onPress={() => onClose?.()} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
+        <TouchableOpacity onPress={handleClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
           <Ionicons name="close" size={30} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -619,17 +619,20 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(1);
   const [screenSize, setScreenSize] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
   const flatListRef = useRef<FlatList<any>>(null);
   const loadingRef = useRef(false);
   const hasMoreRef = useRef(true);
-  const offsetRef = useRef(1);
   const videosRef = useRef<any[]>([]);
   const activeIndexRef = useRef(0);
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
 
+  // Session-level seen IDs — prevents same reel appearing twice
+  const seenIdsRef = useRef<Set<string>>(new Set());
+
+  // Watch-time tracking
+  const watchStartRef = useRef<number>(Date.now());
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
@@ -787,7 +790,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   loadingRef.current = loading;
   hasMoreRef.current = hasMore;
-  offsetRef.current = offset;
   videosRef.current = videos;
   activeIndexRef.current = activeIndex;
   callbacksRef.current = { onClose, onLike, onComment, onShare };
@@ -797,31 +799,35 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
     setLoading(true);
     try {
-      const res = await api.get('/posts/feed', {
-        params: { limit: 10, offset: offsetRef.current },
-        timeout: 60000,
-      });
+      // Build seen_ids param (cap at 200 to keep URL sane)
+      const seenParam = Array.from(seenIdsRef.current).slice(-200).join(',');
+
+      const res = await getPostsFeed(10, 0, 'for_you', seenParam);
       const newPosts = res.data?.items || res.data || [];
 
       if (newPosts.length === 0) {
         setHasMore(false);
+        hasMoreRef.current = false;
       } else {
         setVideos(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
+          const existingIds = new Set(prev.map((p: any) => p.id));
           const uniqueNew = newPosts.filter((p: any) => !existingIds.has(p.id));
+          // Track seen IDs
+          uniqueNew.forEach((p: any) => p.id && seenIdsRef.current.add(p.id));
           return [...prev, ...uniqueNew];
         });
-        setOffset(prev => prev + newPosts.length);
       }
     } catch (error: any) {
       if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
         console.warn('Load more reels timed out — retrying later');
         setHasMore(false);
+        hasMoreRef.current = false;
       } else {
         console.error('Load more reels error:', error);
       }
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, []);
 
@@ -829,25 +835,61 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   useEffect(() => {
     if (isVisible) {
+      // Track initial post
+      if (initialPost?.id) seenIdsRef.current.add(initialPost.id);
       setVideos([initialPost]);
       setActiveIndex(0);
-      setOffset(1);
       setHasMore(true);
       setLoading(false);
       loadingRef.current = false;
       hasMoreRef.current = true;
-      offsetRef.current = 1;
+      watchStartRef.current = Date.now();
       setTimeout(() => loadMoreReels(), 300);
     }
   }, [isVisible, initialPost, loadMoreReels]);
+
+  // Send watch event when active reel changes
+  const sendWatchEventLocal = useCallback((post: any, watchedMs: number) => {
+    if (!post?.id) return;
+    const watchSecs = watchedMs / 1000;
+    const durSecs = post.duration || post.metadata?.duration_seconds || 30;
+    recordWatchEvent(post.id, {
+      watch_seconds: watchSecs,
+      duration_seconds: durSecs,
+      rewatched: false,
+    }).catch(() => {}); // fire-and-forget
+  }, []);
+
+  const handleClose = useCallback(() => {
+    // Send final watch event
+    const currentPost = videosRef.current[activeIndexRef.current];
+    if (currentPost) {
+      const elapsed = Date.now() - watchStartRef.current;
+      sendWatchEventLocal(currentPost, elapsed);
+    }
+    callbacksRef.current.onClose?.();
+  }, [sendWatchEventLocal]);
 
   const viewabilityConfigRef = useRef({ itemVisiblePercentThreshold: 50 });
 
   const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      const index = viewableItems[0].index;
-      setActiveIndex(index);
-      if (index >= videosRef.current.length - 2 && hasMoreRef.current && !loadingRef.current) {
+      const newIndex = viewableItems[0].index;
+      const prevIndex = activeIndexRef.current;
+
+      // Send watch event for the reel we're leaving
+      if (prevIndex !== newIndex) {
+        const prevPost = videosRef.current[prevIndex];
+        if (prevPost) {
+          const elapsed = Date.now() - watchStartRef.current;
+          sendWatchEventLocal(prevPost, elapsed);
+        }
+        watchStartRef.current = Date.now();
+      }
+
+      setActiveIndex(newIndex);
+      activeIndexRef.current = newIndex;
+      if (newIndex >= videosRef.current.length - 2 && hasMoreRef.current && !loadingRef.current) {
         loadMoreRef.current();
       }
     }
@@ -858,6 +900,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const index = Math.round(offsetY / Dimensions.get('window').height);
     if (index !== activeIndexRef.current) {
       setActiveIndex(index);
+      activeIndexRef.current = index;
     }
     if (index >= videosRef.current.length - 2 && hasMoreRef.current && !loadingRef.current) {
       loadMoreRef.current();
@@ -902,7 +945,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       visible={isVisible}
       transparent={true}
       animationType="slide"
-      onRequestClose={() => { callbacksRef.current.onClose?.(); }}
+      onRequestClose={handleClose}
     >
       <View style={{ flex: 1 }}>
         <Animated.View

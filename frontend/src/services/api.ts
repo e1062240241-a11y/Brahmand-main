@@ -701,8 +701,8 @@ export const uploadCompressedVideo = (
   })();
 };
 
-export const getPostsFeed = (limit: number = 20, offset: number = 0, tab: string = 'for_you') =>
-  api.get('/posts/feed', { params: { limit, offset, tab } });
+export const getPostsFeed = (limit: number = 20, offset: number = 0, tab: string = 'for_you', seen_ids?: string) =>
+  api.get('/posts/feed', { params: { limit, offset, tab, seen_ids } });
 
 export const togglePostLike = (postId: string) =>
   api.post(`/posts/${postId}/like`);
@@ -742,6 +742,12 @@ export const getPostById = (postId: string) =>
 
 export const getPostViews = (postId: string) =>
   api.get(`/posts/${postId}/views`);
+
+export const recordWatchEvent = (postId: string, data: { watch_seconds: number; duration_seconds: number; rewatched: boolean }) =>
+  api.post(`/posts/${postId}/watch`, data);
+
+export const getFeedPreferences = () =>
+  api.get('/users/me/feed-preferences');
 
 export const getBhagavadGitaChapter = (chapterNumber: number = 1) =>
   api.get(`/library/bhagavad-gita/chapter/${chapterNumber}`);
