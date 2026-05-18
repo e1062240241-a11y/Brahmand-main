@@ -818,7 +818,6 @@ export const FloatingUtilityButton = () => {
                   <View style={styles.arrowBottom}><Ionicons name="chevron-down" size={24} color="#FFF" /></View>
                 </View>
               ) : nearbySOSAlerts.length > 0 ? (
-<<<<<<< HEAD
                 /* 2. RESPONDER SOS ALERT VIEW (100% Replication of 2nd Image) */
                 <View style={[styles.sosResponderView, styles.mainMenuCircleSOS]}>
                    <View style={styles.sosAlertHeader}>
@@ -902,86 +901,6 @@ export const FloatingUtilityButton = () => {
                       <Text style={styles.closeXText}>Close Alert</Text>
                    </TouchableOpacity>
                 </View>
-=======
-                 <View style={[styles.sosResponderView, styles.mainMenuCircleSOS]}>
-                    <TouchableOpacity 
-                      style={styles.topRightCloseBtn} 
-                      onPress={closeUtilityModal}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="close" size={20} color="#FFF" />
-                    </TouchableOpacity>
-
-                    <View style={styles.sosAlertHeader}>
-                       <View style={styles.alertIconCircle}>
-                          <MaterialCommunityIcons name="alarm-light" size={20} color="#D32F2F" />
-                       </View>
-                       <Text style={styles.sosAlertTitle}>SOS ALERT</Text>
-                       <Text style={styles.sosAlertSub}>Someone nearby needs help</Text>
-                       <Text style={styles.sosAlertHighlight}>You are the nearest to respond</Text>
-                    </View>
-
-                    <View style={styles.victimCard}>
-                       <View style={styles.victimRow}>
-                         <View style={styles.victimAvatarBox}>
-                            {nearbySOSAlerts[0].creator_image ? (
-                              <Image source={{ uri: nearbySOSAlerts[0].creator_image }} style={{ width: 36, height: 36, borderRadius: 18 }} />
-                            ) : (
-                              <Ionicons name="person" size={24} color="#DDD" />
-                            )}
-                         </View>
-                         <View style={styles.victimInfo}>
-                            <Text style={styles.victimName}>{nearbySOSAlerts[0].creator_name || nearbySOSAlerts[0].user_name || 'Rahul Sharma'}</Text>
-                            <Text style={styles.victimPhone}>{nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || '+91 98765 43210'}</Text>
-                            <View style={styles.victimTypeRow}>
-                               <MaterialCommunityIcons name="medical-bag" size={12} color="#D32F2F" />
-                               <Text style={styles.victimTypeText}>{nearbySOSAlerts[0].emergency_type?.toUpperCase() || 'MEDICAL EMERGENCY'}</Text>
-                            </View>
-                            <View style={styles.victimLocRow}>
-                               <Ionicons name="location-outline" size={10} color="#666" />
-                               <Text style={styles.victimLocText} numberOfLines={1}>{nearbySOSAlerts[0].micro_location || 'Sector 15, Noida'}</Text>
-                            </View>
-                            <View style={styles.victimLocRow}>
-                               <MaterialCommunityIcons name="target" size={10} color="#666" />
-                               <Text style={styles.victimLocText}>{nearbySOSAlerts[0].distance?.toFixed(2) || '0.04'} km away</Text>
-                            </View>
-                         </View>
-                         <Ionicons name="chevron-forward" size={18} color="#BBB" />
-                       </View>
-                    </View>
-
-                    <View style={styles.responderActionRow}>
-                       <TouchableOpacity 
-                         style={[styles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
-                         onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
-                         disabled={isResponding}
-                       >
-                          {isResponding ? (
-                            <ActivityIndicator color="#FFF" size="small" />
-                          ) : (
-                            <>
-                              <MaterialCommunityIcons name="walk" size={18} color="#FFF" />
-                              <Text style={styles.responderBtnText}>ON WAY</Text>
-                            </>
-                          )}
-                       </TouchableOpacity>
-                       <TouchableOpacity 
-                         style={[styles.responderBtn, { backgroundColor: '#FF9800' }]}
-                         onPress={() => Linking.openURL(`tel:${nearbySOSAlerts[0].creator_phone || ''}`)}
-                       >
-                          <Ionicons name="call" size={18} color="#FFF" />
-                          <Text style={styles.responderBtnText}>CALL</Text>
-                       </TouchableOpacity>
-                       <TouchableOpacity 
-                         style={[styles.responderBtn, { backgroundColor: '#2196F3' }]}
-                         onPress={() => openNearbySOSLocation(nearbySOSAlerts[0])}
-                       >
-                          <MaterialCommunityIcons name="navigation" size={18} color="#FFF" />
-                          <Text style={styles.responderBtnText}>MAP</Text>
-                       </TouchableOpacity>
-                    </View>
-                 </View>
->>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
               ) : (
                 /* DEFAULT CIRCULAR MENU */
                 <>
