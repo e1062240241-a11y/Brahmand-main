@@ -7851,6 +7851,17 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
                 resolved_community_id = comm_id
                 break
         
+        # Robust fallback: check all city communities in DB and find one containing 'mumbai'
+        if not resolved_community_id:
+            try:
+                all_comms = await db.query_documents('communities', filters=[('type', '==', 'city')])
+                for comm in all_comms:
+                    if 'mumbai' in (comm.get('name') or '').lower():
+                        resolved_community_id = comm['id']
+                        break
+            except Exception as e:
+                logger.warning(f"Failed to query city communities for Mumbai fallback: {e}")
+        
         if not resolved_community_id:
             default_comm = await db.find_one('communities', [('type', '==', 'country')])
             if default_comm:

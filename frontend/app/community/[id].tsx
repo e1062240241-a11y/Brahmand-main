@@ -572,53 +572,81 @@ export default function CommunityDetailScreen() {
     </View>
   );
 
-  const renderRequestItem = ({ item }: { item: any }) => (
-    <View style={styles.eventCard}>
-      <View style={styles.requestInterestedHeader}>
-        <View style={styles.interestedBadge}>
-          <Ionicons name="heart" size={14} color="#FF3B30" />
-          <Text style={styles.interestedText}>{item.interested_count || 0} Interested</Text>
+  const getRequestIconDetails = (item: any) => {
+    const type = item.request_type;
+    const support = item.support_needed || '';
+
+    if (type === 'blood' || support.toLowerCase().includes('blood')) {
+      return { name: 'water', color: '#FF3B30', bg: '#FFEBEB' };
+    }
+    if (support.toLowerCase().includes('emergency') || support.toLowerCase().includes('critical')) {
+      return { name: 'medkit', color: '#FB8C00', bg: '#FFF3E0' };
+    }
+    if (support.toLowerCase().includes('food') || support.toLowerCase().includes('grocery')) {
+      return { name: 'restaurant', color: '#F25C05', bg: '#FFF4EE' };
+    }
+    if (support.toLowerCase().includes('senior') || support.toLowerCase().includes('citizen')) {
+      return { name: 'people', color: '#5C6BC0', bg: '#E8EAF6' };
+    }
+    if (support.toLowerCase().includes('gau') || support.toLowerCase().includes('animal') || support.toLowerCase().includes('cow')) {
+      return { name: 'paw', color: '#43A047', bg: '#E8F5E9' };
+    }
+    if (support.toLowerCase().includes('temple') || support.toLowerCase().includes('volunteer')) {
+      return { name: 'home', color: '#FF9800', bg: '#FFF3E0' };
+    }
+    return { name: 'help-circle', color: '#00796B', bg: '#E0F2F1' };
+  };
+
+  const renderRequestItem = ({ item }: { item: any }) => {
+    const iconDetails = getRequestIconDetails(item);
+    return (
+      <View style={styles.eventCard}>
+        <View style={styles.requestInterestedHeader}>
+          <View style={styles.interestedBadge}>
+            <Ionicons name="heart" size={14} color="#FF3B30" />
+            <Text style={styles.interestedText}>{item.interested_count || 0} Interested</Text>
+          </View>
+          <Text style={styles.urgencyLabel}>{item.urgency_level || 'Normal'}</Text>
         </View>
-        <Text style={styles.urgencyLabel}>{item.urgency_level || 'Normal'}</Text>
-      </View>
-      
-      <View style={styles.eventInfoRow}>
-        <View style={styles.requestIconCol}>
-           <View style={[styles.requestIconBg, { backgroundColor: item.request_type === 'blood' ? '#FFEBEB' : '#F0F7FF' }]}>
-             <Ionicons 
-               name={item.request_type === 'blood' ? 'water' : 'medical'} 
-               size={24} 
-               color={item.request_type === 'blood' ? '#FF3B30' : '#007AFF'} 
-             />
-           </View>
-        </View>
-        <View style={styles.eventTextCol}>
-          <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
-          <View style={styles.goingRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <Ionicons name="person" size={12} color="#888" />
-              <Text style={styles.goingText2}>Requested by {item.user_name || 'Anonymous'}</Text>
+        
+        <View style={styles.eventInfoRow}>
+          <View style={styles.requestIconCol}>
+             <View style={[styles.requestIconBg, { backgroundColor: iconDetails.bg }]}>
+               <Ionicons 
+                 name={iconDetails.name as any} 
+                 size={24} 
+                 color={iconDetails.color} 
+               />
+             </View>
+          </View>
+          <View style={styles.eventTextCol}>
+            <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
+            <View style={styles.goingRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Ionicons name="person" size={12} color="#888" />
+                <Text style={styles.goingText2}>Requested by {item.user_name || 'Anonymous'}</Text>
+              </View>
+              <Text style={styles.timeAgoText}>{getTimeAgo(item.created_at)}</Text>
             </View>
-            <Text style={styles.timeAgoText}>{getTimeAgo(item.created_at)}</Text>
           </View>
         </View>
-      </View>
-      <View style={styles.eventActionRow}>
-        {item.user_id === user?.id ? (
-          <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#FF3B30' }]} onPress={() => handleDeleteRequest(item.id)}>
-            <Text style={styles.helpBtnText}>Delete Request</Text>
+        <View style={styles.eventActionRow}>
+          {item.user_id === user?.id ? (
+            <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#FF3B30' }]} onPress={() => handleDeleteRequest(item.id)}>
+              <Text style={styles.helpBtnText}>Delete Request</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.helpBtn} onPress={() => handleOfferHelp(item)}>
+              <Text style={styles.helpBtnText}>Offer Help</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity>
+            <Ionicons name="share-social-outline" size={20} color="#888" />
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.helpBtn} onPress={() => handleOfferHelp(item)}>
-            <Text style={styles.helpBtnText}>Offer Help</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity>
-          <Ionicons name="share-social-outline" size={20} color="#888" />
-        </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const getTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Just now';
