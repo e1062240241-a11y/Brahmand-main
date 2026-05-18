@@ -116,8 +116,8 @@ const resolvedWebApiUrl =
       : configuredApiUrl;
 
 export const API_URL = Platform.OS === 'web'
-  ? (resolvedWebApiUrl || 'http://localhost:8000')
-  : (configuredApiUrl || 'http://localhost:8000');
+  ? (resolvedWebApiUrl || 'http://localhost:8002')
+  : (configuredApiUrl || 'http://localhost:8002');
 const isTunnelApiUrl = /\.loca\.lt$/i.test((API_URL || '').replace(/^https?:\/\//i, '').split('/')[0] || '');
 
 const defaultHeaders: Record<string, string> = {
@@ -874,13 +874,20 @@ export const removeCircleMember = (circleId: string, memberId: string) =>
   api.post(`/circles/${circleId}/remove-member/${memberId}`);
 
 // Message APIs
-<<<<<<< HEAD
-export const sendCommunityMessage = (communityId: string, subgroupType: string, content: string, messageType: string = 'text', category?: string) =>
-  api.post(`/messages/community/${communityId}/${subgroupType}`, { content, message_type: messageType, category });
-=======
-export const sendCommunityMessage = (communityId: string, subgroupType: string, content: string, messageType: string = 'text', category?: string, mediaUrl?: string) => 
-  api.post(`/messages/community/${communityId}/${subgroupType}`, { content, message_type: messageType, category, media_url: mediaUrl });
->>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
+export const sendCommunityMessage = (
+  communityId: string,
+  subgroupType: string,
+  content: string,
+  messageType: string = 'text',
+  category?: string,
+  mediaUrl?: string,
+) =>
+  api.post(`/messages/community/${communityId}/${subgroupType}`, {
+    content,
+    message_type: messageType,
+    category,
+    media_url: mediaUrl,
+  });
 
 export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 50) =>
   api.get(`/messages/community/${communityId}/${subgroupType}?limit=${limit}`);

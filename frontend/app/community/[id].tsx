@@ -1447,11 +1447,7 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 15, fontWeight: '700', color: '#111', lineHeight: 20 },
   eventMeta: { fontSize: 12, color: '#888', marginTop: 4 },
   goingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 5 },
-<<<<<<< HEAD
-  requestGoingText: { fontSize: 12, color: '#888' },
-=======
   goingText2: { fontSize: 12, color: '#888' },
->>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
   eventImage: { width: 60, height: 100, borderRadius: 12 },
   
   eventActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F5F5F5' },

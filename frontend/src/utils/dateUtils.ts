@@ -25,7 +25,13 @@ export const formatTimeAgo = (dateString: string | Date | null | undefined) => {
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
   
-  if (days > 0) return `${days}d`;
+  if (days > 0) {
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    if (date.getFullYear() !== now.getFullYear()) {
+      options.year = 'numeric';
+    }
+    return date.toLocaleDateString(undefined, options);
+  }
   if (hours > 0) return `${hours}h`;
   if (minutes > 0) return `${minutes}m`;
   return 'now';
