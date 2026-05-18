@@ -597,11 +597,7 @@ export default function CommunityDetailScreen() {
           <View style={styles.goingRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Ionicons name="person" size={12} color="#888" />
-<<<<<<< HEAD
-              <Text style={styles.requestGoingText}>Requested by {item.user_name || 'Anonymous'}</Text>
-=======
               <Text style={styles.goingText2}>Requested by {item.user_name || 'Anonymous'}</Text>
->>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
             </View>
             <Text style={styles.timeAgoText}>{getTimeAgo(item.created_at)}</Text>
           </View>
