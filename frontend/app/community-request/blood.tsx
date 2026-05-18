@@ -93,7 +93,7 @@ export default function CommunityRequestBloodPage() {
 
   React.useEffect(() => {
     const trimmedName = hospitalName.trim();
-    if (trimmedName.length < 2) {
+    if (trimmedName.length < 2 || selectedHospital) {
       setHospitalSuggestions([]);
       return;
     }
@@ -103,13 +103,13 @@ export default function CommunityRequestBloodPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [hospitalName]);
+  }, [hospitalName, selectedHospital]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)/home');
+      router.replace('/(tabs)/messages');
     }
   };
 
@@ -153,7 +153,7 @@ export default function CommunityRequestBloodPage() {
               setSelectedHospital(null);
             }}
           />
-          {hospitalName.length >= 2 && (
+          {hospitalName.length >= 2 && !selectedHospital && (
             <View style={styles.suggestionsCard}>
               {isHospitalSearching ? (
                 <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
@@ -203,7 +203,7 @@ export default function CommunityRequestBloodPage() {
 
         <View style={styles.fieldSection}>
           <Text style={styles.fieldLabel}>Urgency Level</Text>
-          <View style={styles.selectRow}> 
+          <View style={styles.selectRow}>
             {URGENCY_OPTIONS.map((level) => (
               <TouchableOpacity
                 key={level}

@@ -3329,34 +3329,9 @@ async def search_hospitals(request: dict):
             autocomplete_payload = autocomplete_response.json() if autocomplete_response.content else {}
             predictions = autocomplete_payload.get("predictions", []) if isinstance(autocomplete_payload, dict) else []
 
-            details_url = "https://maps.googleapis.com/maps/api/place/details/json"
             seen_names = set()
-
             for prediction in predictions:
-                place_id = prediction.get("place_id")
-                if not place_id:
-                    continue
-
-                details_params = {
-                    "key": api_key,
-                    "place_id": place_id,
-                    "fields": "name,formatted_address,address_components",
-                    "language": "en",
-                }
-
-                details_response = await asyncio.to_thread(
-                    requests.get,
-                    details_url,
-                    params=details_params,
-                    timeout=10,
-                )
-                if details_response.status_code != 200:
-                    continue
-
-                details_payload = details_response.json() if details_response.content else {}
-                result = details_payload.get("result", {}) if isinstance(details_payload, dict) else {}
-
-                name = str(result.get("name") or prediction.get("structured_formatting", {}).get("main_text") or "").strip()
+                name = str(prediction.get("structured_formatting", {}).get("main_text") or prediction.get("description") or "").strip()
                 if not name:
                     continue
 
@@ -3365,17 +3340,17 @@ async def search_hospitals(request: dict):
                     continue
                 seen_names.add(lowered)
 
-                address = str(result.get("formatted_address") or prediction.get("description") or name).strip()
-                components = result.get("address_components", []) if isinstance(result.get("address_components", []), list) else []
-
-                city = ""
+                address = str(prediction.get("description") or name).strip()
+                secondary = str(prediction.get("structured_formatting", {}).get("secondary_text") or "").strip()
+                
                 area = ""
-                for component in components:
-                    types = component.get("types", [])
-                    if not area and ("sublocality" in types or "sublocality_level_1" in types or "neighborhood" in types):
-                        area = component.get("long_name", "")
-                    if not city and ("locality" in types or "administrative_area_level_2" in types):
-                        city = component.get("long_name", "")
+                city = ""
+                if secondary:
+                    parts = [p.strip() for p in secondary.split(",") if p.strip()]
+                    if len(parts) > 0:
+                        area = parts[0]
+                    if len(parts) > 1:
+                        city = parts[1]
 
                 normalized.append({
                     "name": name,
@@ -3545,9 +3520,8 @@ async def join_community_by_code(
 
 @api_router.get("/communities/discover")
 async def discover_communities(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    communities = await db.query_documents('communities', limit=20)
-    return [{"id": c['id'], "name": c['name'], "type": c['type'], "member_count": len(c.get('members', []))} for c in communities]
+    """Discover popular communities"""
+    return await FirebaseCommunityService.discover_communities()
 
 
 @api_router.get("/communities/{community_id}")
@@ -7321,49 +7295,80 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
     
-    # CHECK: User can only have ONE active request at a time
-    existing_active = await db.find_one('community_requests', [
-        ('user_id', '==', user_id),
-        ('status', '==', 'active')
-    ])
-    
-    if existing_active:
-        raise HTTPException(
-            status_code=400, 
-            detail="You already have an active request. Please mark it as fulfilled before creating a new one."
-        )
+    # CHECK: User can only have ONE active request at a time (Disabled as per user request to allow multiple active requests)
+    # existing_active = await db.find_one('community_requests', [
+    #     ('user_id', '==', user_id),
+    #     ('status', '==', 'active')
+    # ])
+    # 
+    # if existing_active:
+    #     raise HTTPException(
+    #         status_code=400, 
+    #         detail="You already have an active request. Please mark it as fulfilled before creating a new one."
+    #     )
     
     # Get user location info for visibility matching
     location_area = user.get('home_location', {}) or user.get('location', {})
     
     resolved_community_id = data.community_id
     if not resolved_community_id:
-        visibility_type_map = {
-            "area": ["home_area", "office_area"],
-            "city": ["city"],
-            "state": ["state"],
-            "national": ["country"],
-        }
-        wanted_types = visibility_type_map.get(data.visibility_level.value, ["home_area", "office_area"])
         user_community_ids = user.get('communities', []) or []
-
-        best_match_id = None
-        fallback_match_id = None
+        city_comm_id = None
         for comm_id in user_community_ids:
             comm = await db.get_document('communities', comm_id)
-            if not comm:
-                continue
-            comm_type = comm.get('type')
-            if comm_type in wanted_types:
-                if data.visibility_level.value == "area" and comm_type == "home_area":
-                    best_match_id = comm_id
-                    break
-                if not best_match_id:
-                    best_match_id = comm_id
-            if not fallback_match_id:
-                fallback_match_id = comm_id
+            if comm and comm.get('type') == 'city':
+                city_comm_id = comm_id
+                break
+        
+        if city_comm_id:
+            resolved_community_id = city_comm_id
+        else:
+            visibility_type_map = {
+                "area": ["home_area", "office_area", "area"],
+                "city": ["city"],
+                "state": ["state"],
+                "national": ["country"],
+            }
+            wanted_types = visibility_type_map.get(data.visibility_level.value, ["home_area", "office_area", "area"])
+            
+            best_match_id = None
+            fallback_match_id = None
+            for comm_id in user_community_ids:
+                comm = await db.get_document('communities', comm_id)
+                if not comm:
+                    continue
+                comm_type = comm.get('type')
+                if comm_type in wanted_types:
+                    if data.visibility_level.value == "area" and (comm_type == "home_area" or comm_type == "area"):
+                        best_match_id = comm_id
+                        break
+                    if not best_match_id:
+                        best_match_id = comm_id
+                
+                if comm_type == 'city':
+                    fallback_match_id = comm_id
 
-        resolved_community_id = best_match_id or fallback_match_id
+            if not fallback_match_id and user_community_ids:
+                fallback_match_id = user_community_ids[0]
+
+            resolved_community_id = best_match_id or fallback_match_id
+
+    if not resolved_community_id:
+        user_community_ids = user.get('communities', []) or []
+        for comm_id in user_community_ids:
+            comm = await db.get_document('communities', comm_id)
+            if comm and comm.get('type') == 'city':
+                resolved_community_id = comm_id
+                break
+        
+        if not resolved_community_id:
+            default_comm = await db.find_one('communities', [('type', '==', 'country')])
+            if default_comm:
+                resolved_community_id = default_comm.get('id')
+            else:
+                all_comms = await db.query_documents('communities', limit=1)
+                if all_comms:
+                    resolved_community_id = all_comms[0].get('id')
 
     if not resolved_community_id:
         raise HTTPException(status_code=400, detail="No target community found. Please set your location first.")

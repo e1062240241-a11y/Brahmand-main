@@ -81,8 +81,18 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
       return;
     }
 
-    if (!title.trim() || !description.trim() || !contactNumber.trim()) {
+    const trimmedTitle = title.trim();
+    const trimmedDesc = description.trim();
+    const trimmedPhone = contactNumber.trim();
+
+    if (!trimmedTitle || !trimmedDesc || !trimmedPhone) {
       Alert.alert('Missing Information', 'Please fill all required fields.');
+      return;
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(trimmedPhone)) {
+      Alert.alert('Error', 'Contact number must be a valid 10-digit mobile number starting with 6, 7, 8, or 9.');
       return;
     }
 

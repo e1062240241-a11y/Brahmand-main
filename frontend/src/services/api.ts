@@ -26,7 +26,7 @@ const getRuntimeWebApiUrl = (): string | undefined => {
     }
 
     const storedApiUrl = window.localStorage.getItem('BRAHMAND_RUNTIME_API_URL')?.trim();
-    
+
     // Auto-clear stale IP-based overrides when running on localhost
     const isWebLocal = /localhost|127\.0\.0\.1/.test(window.location.hostname);
     if (isWebLocal && storedApiUrl && !/localhost|127\.0\.0\.1/.test(storedApiUrl)) {
@@ -34,7 +34,7 @@ const getRuntimeWebApiUrl = (): string | undefined => {
       window.localStorage.removeItem('BRAHMAND_RUNTIME_API_URL');
       return undefined;
     }
-    
+
     return storedApiUrl || undefined;
   } catch {
     return undefined;
@@ -54,7 +54,7 @@ const isWebRunningOnLocalhost =
 const normalizeMimeType = (type?: string, name?: string) => {
   const normalized = (type || '').toLowerCase();
   const allowedImageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/gif', 'image/bmp'];
-  
+
   if (allowedImageTypes.includes(normalized)) {
     return normalized === 'image/jpg' ? 'image/jpeg' : normalized;
   }
@@ -112,8 +112,8 @@ const resolvedWebApiUrl =
   runtimeWebApiUrl
     ? runtimeWebApiUrl
     : configuredWebApiUrl && (!isLocalhostUrl(configuredWebApiUrl) || isWebRunningOnLocalhost)
-    ? configuredWebApiUrl
-    : configuredApiUrl;
+      ? configuredWebApiUrl
+      : configuredApiUrl;
 
 export const API_URL = Platform.OS === 'web'
   ? (resolvedWebApiUrl || 'http://localhost:8000')
@@ -252,8 +252,8 @@ api.interceptors.response.use(
 
     // Enhance generic server errors with specific backend error payload if present
     if (error.response && error.response.data && error.response.data.detail) {
-      error.message = typeof error.response.data.detail === 'string' 
-        ? error.response.data.detail 
+      error.message = typeof error.response.data.detail === 'string'
+        ? error.response.data.detail
         : JSON.stringify(error.response.data.detail);
     }
 
@@ -263,10 +263,10 @@ api.interceptors.response.use(
 );
 
 // Auth APIs
-export const sendOTP = (phone: string) => 
+export const sendOTP = (phone: string) =>
   api.post('/auth/send-otp', { phone });
 
-export const verifyOTP = (phone: string, otp: string) => 
+export const verifyOTP = (phone: string, otp: string) =>
   api.post('/auth/verify-otp', { phone, otp });
 
 export const loginAnonymous = (data: { phone: string; name: string; photo?: string | null; language: string }) =>
@@ -464,17 +464,17 @@ export const sendMsg91OTP = (phone: string) =>
 export const verifyMsg91OTP = (phone: string, otp: string) =>
   api.post('/auth/msg91/verify', { phone, otp });
 
-export const register = (data: { phone: string; name: string; photo?: string; language: string }) => 
+export const register = (data: { phone: string; name: string; photo?: string; language: string }) =>
   api.post('/auth/register', data);
 
-export const registerUser = (data: { phone: string; name: string; photo?: string | null; language: string }) => 
+export const registerUser = (data: { phone: string; name: string; photo?: string | null; language: string }) =>
   api.post('/auth/register', data);
 
 // User APIs
-export const getProfile = () => 
+export const getProfile = () =>
   api.get('/user/profile');
 
-export const getUserProfile = (userId?: string) => 
+export const getUserProfile = (userId?: string) =>
   api.get(userId ? `/users/${userId}` : '/user/profile');
 
 export const getUserPosts = (userId: string, limit: number = 20, offset: number = 0) =>
@@ -486,13 +486,13 @@ export const getUsersBatch = (userIds: string[]) =>
 export const updateProfile = (data: { name?: string; photo?: string; language?: string; bio?: string }) =>
   api.put('/user/profile', data);
 
-export const setupLocation = (location: { country: string; state: string; city: string; area: string }) => 
+export const setupLocation = (location: { country: string; state: string; city: string; area: string }) =>
   api.post('/user/location', location);
 
-export const setupDualLocation = (locations: { 
+export const setupDualLocation = (locations: {
   home_location?: { country: string; state: string; city: string; area: string; latitude?: number; longitude?: number };
   office_location?: { country: string; state: string; city: string; area: string; latitude?: number; longitude?: number };
-}) => 
+}) =>
   api.post('/user/dual-location', locations);
 
 export const updateCurrentLocation = async (location: { latitude: number; longitude: number }) => {
@@ -520,7 +520,7 @@ export const updateCurrentLocation = async (location: { latitude: number; longit
   }
 };
 
-export const reverseGeocode = (latitude: number, longitude: number) => 
+export const reverseGeocode = (latitude: number, longitude: number) =>
   api.post('/geocode/reverse', { latitude, longitude });
 
 export const forwardGeocode = (query: string) =>
@@ -529,16 +529,16 @@ export const forwardGeocode = (query: string) =>
 export const searchHospitals = (query: string, limit: number = 10) =>
   api.post('/places/hospitals/search', { query, limit });
 
-export const searchUserBySLId = (slId: string) => 
+export const searchUserBySLId = (slId: string) =>
   api.get(`/user/search/${slId}`);
 
-export const getAllUsers = (search?: string, limit: number = 200) => 
+export const getAllUsers = (search?: string, limit: number = 200) =>
   api.get('/users', { params: { search, limit } });
 
-export const getUserNotifications = () => 
+export const getUserNotifications = () =>
   api.get('/notifications');
 
-export const getUnreadNotificationCount = () => 
+export const getUnreadNotificationCount = () =>
   api.get('/notifications/unread-count');
 
 export const markAllNotificationsRead = () =>
@@ -547,7 +547,7 @@ export const markAllNotificationsRead = () =>
 export const markNotificationRead = (notificationId: string) =>
   api.post(`/notifications/${notificationId}/mark-read`);
 
-export const aiChat = (messages: any[]) => 
+export const aiChat = (messages: any[]) =>
   api.post('/ai/chat', { messages });
 
 const nativeMultipartPost = async (endpoint: string, formData: FormData) => {
@@ -765,13 +765,13 @@ export const getMahabharataBook = (bookNumber: number = 1) =>
   api.get(`/library/mahabharata/book/${bookNumber}`);
 
 // Community APIs
-export const getCommunities = () => 
+export const getCommunities = () =>
   api.get('/communities');
 
-export const getCommunity = (id: string) => 
+export const getCommunity = (id: string) =>
   api.get(`/communities/${id}`);
 
-export const joinCommunityByCode = (code: string) => 
+export const joinCommunityByCode = (code: string) =>
   api.post('/communities/join', { code });
 
 export const createCommunity = (data: {
@@ -787,76 +787,76 @@ export const createCommunity = (data: {
   member_ids?: string[];
 }) => api.post('/communities', data);
 
-export const agreeToRules = (communityId: string, subgroupType: string) => 
+export const agreeToRules = (communityId: string, subgroupType: string) =>
   api.post(`/communities/${communityId}/agree-rules`, { subgroup_type: subgroupType });
 
 // Circle APIs
-export const createCircle = (data: { name: string; description?: string; privacy?: 'private' | 'invite_code'; member_ids?: string[] }) => 
+export const createCircle = (data: { name: string; description?: string; privacy?: 'private' | 'invite_code'; member_ids?: string[] }) =>
   api.post('/circles', data);
 
-export const getCircles = () => 
+export const getCircles = () =>
   api.get('/circles');
 
-export const getCircle = (circleId: string) => 
+export const getCircle = (circleId: string) =>
   api.get(`/circles/${circleId}`);
 
-export const updateCircle = (circleId: string, data: { name?: string; description?: string; privacy?: 'private' | 'invite_code'; photo?: string }) => 
+export const updateCircle = (circleId: string, data: { name?: string; description?: string; privacy?: 'private' | 'invite_code'; photo?: string }) =>
   api.put(`/circles/${circleId}`, data);
 
-export const joinCircle = (code: string) => 
+export const joinCircle = (code: string) =>
   api.post('/circles/join', { code });
 
-export const getCircleRequests = (circleId: string) => 
+export const getCircleRequests = (circleId: string) =>
   api.get(`/circles/${circleId}/requests`);
 
-export const approveCircleRequest = (circleId: string, userId: string) => 
+export const approveCircleRequest = (circleId: string, userId: string) =>
   api.post(`/circles/${circleId}/approve/${userId}`);
 
-export const rejectCircleRequest = (circleId: string, userId: string) => 
+export const rejectCircleRequest = (circleId: string, userId: string) =>
   api.post(`/circles/${circleId}/reject/${userId}`);
 
-export const inviteToCircle = (circleId: string, slId: string) => 
+export const inviteToCircle = (circleId: string, slId: string) =>
   api.post(`/circles/${circleId}/invite`, { sl_id: slId });
 
 export const transferCircleAdmin = (circleId: string, memberId: string) =>
   api.post(`/circles/${circleId}/transfer-admin/${memberId}`);
 
-export const leaveCircle = (circleId: string) => 
+export const leaveCircle = (circleId: string) =>
   api.post(`/circles/${circleId}/leave`);
 
-export const deleteCircle = (circleId: string) => 
+export const deleteCircle = (circleId: string) =>
   api.delete(`/circles/${circleId}`);
 
-export const removeCircleMember = (circleId: string, memberId: string) => 
+export const removeCircleMember = (circleId: string, memberId: string) =>
   api.post(`/circles/${circleId}/remove-member/${memberId}`);
 
 // Message APIs
-export const sendCommunityMessage = (communityId: string, subgroupType: string, content: string, messageType: string = 'text', category?: string) => 
+export const sendCommunityMessage = (communityId: string, subgroupType: string, content: string, messageType: string = 'text', category?: string) =>
   api.post(`/messages/community/${communityId}/${subgroupType}`, { content, message_type: messageType, category });
 
-export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 50) => 
+export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 50) =>
   api.get(`/messages/community/${communityId}/${subgroupType}?limit=${limit}`);
 
-export const sendCircleMessage = (circleId: string, content: string, messageType: string = 'text') => 
+export const sendCircleMessage = (circleId: string, content: string, messageType: string = 'text') =>
   api.post(`/messages/circle/${circleId}`, { content, message_type: messageType });
 
-export const getCircleMessages = (circleId: string, limit: number = 50) => 
+export const getCircleMessages = (circleId: string, limit: number = 50) =>
   api.get(`/messages/circle/${circleId}?limit=${limit}`);
 
 // Direct Message APIs
-export const sendDirectMessage = (recipientSlId: string, content: string, messageType: string = 'text') => 
+export const sendDirectMessage = (recipientSlId: string, content: string, messageType: string = 'text') =>
   api.post('/dm', { recipient_sl_id: recipientSlId, content, message_type: messageType });
 
-export const getConversations = () => 
+export const getConversations = () =>
   api.get('/dm/conversations', { timeout: 120000 });
 
-export const getDirectMessages = (conversationId: string, limit: number = 50) => 
+export const getDirectMessages = (conversationId: string, limit: number = 50) =>
   api.get(`/dm/${conversationId}?limit=${limit}`, { timeout: 120000 });
 
 export const markDirectMessagesRead = (conversationId: string) =>
   api.post(`/dm/${conversationId}/read`);
 
-export const clearDirectMessages = (conversationId: string) => 
+export const clearDirectMessages = (conversationId: string) =>
   api.delete(`/dm/${conversationId}/messages`);
 
 export const approveDirectMessageRequest = (conversationId: string) =>
@@ -872,11 +872,11 @@ export const unmuteConversation = (conversationId: string) =>
   api.post(`/dm/${conversationId}/unmute`);
 
 // Discover APIs
-export const discoverCommunities = () => 
+export const discoverCommunities = () =>
   api.get('/discover/communities');
 
 // Wisdom & Panchang APIs
-export const getTodaysWisdom = () => 
+export const getTodaysWisdom = () =>
   api.get('/wisdom/today');
 
 // =================== ASTROLOGY CACHE HELPER ===================
@@ -941,19 +941,19 @@ export const getUserHoroscope = () =>
 
 
 // Temple APIs
-export const getTemples = () => 
+export const getTemples = () =>
   api.get('/temples');
 
-export const getNearbyTemples = (lat?: number, lng?: number) => 
+export const getNearbyTemples = (lat?: number, lng?: number) =>
   api.get(`/temples/nearby${lat && lng ? `?lat=${lat}&lng=${lng}` : ''}`);
 
-export const getTemple = (templeId: string) => 
+export const getTemple = (templeId: string) =>
   api.get(`/temples/${templeId}`);
 
-export const followTemple = (templeId: string) => 
+export const followTemple = (templeId: string) =>
   api.post(`/temples/${templeId}/follow`);
 
-export const unfollowTemple = (templeId: string) => 
+export const unfollowTemple = (templeId: string) =>
   api.post(`/temples/${templeId}/unfollow`);
 
 export const followUser = (userId: string) =>
@@ -962,27 +962,27 @@ export const followUser = (userId: string) =>
 export const unfollowUser = (userId: string) =>
   api.post(`/users/${userId}/unfollow`);
 
-export const getTemplePosts = (templeId: string) => 
+export const getTemplePosts = (templeId: string) =>
   api.get(`/temples/${templeId}/posts`);
 
-export const reactToTemplePost = (templeId: string, postId: string, reaction: string) => 
+export const reactToTemplePost = (templeId: string, postId: string, reaction: string) =>
   api.post(`/temples/${templeId}/posts/${postId}/react`, { reaction });
 
 // Event APIs
-export const getEvents = () => 
+export const getEvents = () =>
   api.get('/events');
 
-export const getNearbyEvents = () => 
+export const getNearbyEvents = () =>
   api.get('/events/nearby');
 
-export const attendEvent = (eventId: string) => 
+export const attendEvent = (eventId: string) =>
   api.post(`/events/${eventId}/attend`);
 
 // Verification APIs
-export const getVerificationStatus = () => 
+export const getVerificationStatus = () =>
   api.get('/user/verification-status');
 
-export const requestVerification = (data: { full_name: string; id_type: string; id_number: string }) => 
+export const requestVerification = (data: { full_name: string; id_type: string; id_number: string }) =>
   api.post('/user/request-verification', data);
 
 // Profile APIs
@@ -997,30 +997,30 @@ export const updateExtendedProfile = (data: {
   time_of_birth?: string;
   place_of_birth_latitude?: number;
   place_of_birth_longitude?: number;
-}) => 
+}) =>
   api.put('/user/profile/extended', data);
 
-export const getProfileCompletion = () => 
+export const getProfileCompletion = () =>
   api.get('/user/profile-completion');
 
-export const getHoroscope = () => 
+export const getHoroscope = () =>
   api.get('/user/horoscope');
 
 // Community Stats
-export const getCommunityStats = (communityId: string) => 
+export const getCommunityStats = (communityId: string) =>
   api.get(`/communities/${communityId}/stats`);
 
 // KYC APIs
-export const getKYCStatus = () => 
+export const getKYCStatus = () =>
   api.get('/kyc/status');
 
-export const submitKYC = (data: { 
+export const submitKYC = (data: {
   kyc_role: 'temple' | 'vendor' | 'organizer';
   id_type: 'aadhaar' | 'pan';
   id_number: string;
   id_photo?: string;
   selfie_photo?: string;
-}) => 
+}) =>
   api.post('/kyc/submit', data);
 
 export const generateUserAadhaarOtp = (data: {
@@ -1041,7 +1041,7 @@ export const reportContent = (data: {
   chat_id?: string;
   category: 'religious_attack' | 'disrespectful' | 'spam' | 'abuse' | 'other';
   description?: string;
-}) => 
+}) =>
   api.post('/report', data);
 
 // Temple Channel APIs
@@ -1051,18 +1051,18 @@ export const createTemple = (data: {
   description?: string;
   deity?: string;
   aarti_timings?: { [key: string]: string };
-}) => 
+}) =>
   api.post('/temples', data);
 
 export const createTemplePost = (templeId: string, data: {
   title: string;
   content: string;
   post_type?: 'announcement' | 'event' | 'donation' | 'aarti';
-}) => 
+}) =>
   api.post(`/temples/${templeId}/posts`, data);
 
 // Mark messages as read
-export const markMessagesRead = (chatId: string) => 
+export const markMessagesRead = (chatId: string) =>
   api.post(`/dm/${chatId}/read`);
 
 // =================== HELP REQUEST APIS ===================
@@ -1087,19 +1087,19 @@ export const getHelpRequests = (params?: {
   limit?: number;
 }) => api.get('/help-requests', { params });
 
-export const getMyHelpRequests = () => 
+export const getMyHelpRequests = () =>
   api.get('/help-requests/my');
 
-export const getActiveHelpRequest = () => 
+export const getActiveHelpRequest = () =>
   api.get('/help-requests/active');
 
-export const fulfillHelpRequest = (requestId: string) => 
+export const fulfillHelpRequest = (requestId: string) =>
   api.post(`/help-requests/${requestId}/fulfill`);
 
-export const verifyHelpRequest = (requestId: string) => 
+export const verifyHelpRequest = (requestId: string) =>
   api.post(`/help-requests/${requestId}/verify`);
 
-export const deleteHelpRequest = (requestId: string) => 
+export const deleteHelpRequest = (requestId: string) =>
   api.delete(`/help-requests/${requestId}`);
 
 // =================== COMMUNITY REQUESTS APIS ===================
@@ -1119,7 +1119,11 @@ export const createCommunityRequest = (data: {
   contact_person_name?: string;
   support_needed?: string;
   attachments?: string[];
-}) => api.post('/community-requests', data);
+}) => {
+  const desc = (data.description || '').trim();
+  const paddedDescription = desc.length >= 10 ? desc : `${desc} (Emergency request for community support)`;
+  return api.post('/community-requests', { ...data, description: paddedDescription });
+};
 
 export const getCommunityRequests = (params?: {
   type?: string;
@@ -1129,16 +1133,16 @@ export const getCommunityRequests = (params?: {
   limit?: number;
 }) => api.get('/community-requests', { params });
 
-export const getMyCommunityRequests = () => 
+export const getMyCommunityRequests = () =>
   api.get('/community-requests/my');
 
-export const getMyActiveCommunityRequests = () => 
+export const getMyActiveCommunityRequests = () =>
   api.get('/community-requests/my', { params: { status: 'active' } });
 
-export const resolveCommunityRequest = (requestId: string) => 
+export const resolveCommunityRequest = (requestId: string) =>
   api.post(`/community-requests/${requestId}/resolve`);
 
-export const deleteCommunityRequest = (requestId: string) => 
+export const deleteCommunityRequest = (requestId: string) =>
   api.delete(`/community-requests/${requestId}`);
 
 // =================== VENDOR APIS ===================
@@ -1173,13 +1177,13 @@ export const getVendors = (params?: {
   limit?: number;
 }) => api.get('/vendors', { params });
 
-export const getMyVendor = () => 
+export const getMyVendor = () =>
   api.get('/vendors/my');
 
-export const getVendorCategories = () => 
+export const getVendorCategories = () =>
   api.get('/vendors/categories');
 
-export const getVendor = (vendorId: string) => 
+export const getVendor = (vendorId: string) =>
   api.get(`/vendors/${vendorId}`);
 
 export const updateVendor = (vendorId: string, data: {
@@ -1332,7 +1336,7 @@ export const uploadVendorKycFile = (
 
 export const extractKycTextFromImage = async (vendorId: string, file: { uri: string; name: string; type: string }) => {
   const token = await AsyncStorage.getItem('auth_token');
-  
+
   const formData = new FormData();
 
   let fileAttached = false;
@@ -1364,7 +1368,7 @@ export const extractKycTextFromImage = async (vendorId: string, file: { uri: str
 
   console.log('[OCR API] Sending request to backend...');
   console.log('[OCR API] Fetch URL:', `${API_URL}/api/vendors/${vendorId}/kyc/vision-extract`);
-  
+
   let response;
   try {
     const headers: Record<string, string> = {
@@ -1373,7 +1377,7 @@ export const extractKycTextFromImage = async (vendorId: string, file: { uri: str
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     response = await fetch(`${API_URL}/api/vendors/${vendorId}/kyc/vision-extract`, {
       method: 'POST',
       headers,
@@ -1474,12 +1478,12 @@ export const verifyVendorAadhaarOtp = (vendorId: string, data: {
   otp: string;
 }) => api.post(`/vendors/${vendorId}/kyc/aadhaar/otp/verify`, data);
 
-export const addVendorPhoto = (vendorId: string, photo: string) => 
+export const addVendorPhoto = (vendorId: string, photo: string) =>
   api.post(`/vendors/${vendorId}/photos`, photo, {
     headers: { 'Content-Type': 'application/json' }
   });
 
-export const deleteVendor = (vendorId: string) => 
+export const deleteVendor = (vendorId: string) =>
   api.delete(`/vendors/${vendorId}`);
 
 export interface JobProfilePayload {
@@ -1532,18 +1536,18 @@ export const uploadJobProfileFile = (
 
 // =================== CULTURAL COMMUNITY APIS ===================
 
-export const getCulturalCommunities = (search?: string) => 
+export const getCulturalCommunities = (search?: string) =>
   api.get('/cultural-communities', { params: { search } });
 
-export const getUserCulturalCommunity = () => 
+export const getUserCulturalCommunity = () =>
   api.get('/user/cultural-community');
 
-export const updateUserCulturalCommunity = (cultural_community: string) => 
+export const updateUserCulturalCommunity = (cultural_community: string) =>
   api.put('/user/cultural-community', { cultural_community });
 
 // =================== UTILITY APIS ===================
 
-export const getWisdom = () => 
+export const getWisdom = () =>
   api.get('/wisdom/today');
 
 export const getGitaShloka = async (chapter: number, verse: number) => {
@@ -1625,16 +1629,16 @@ export const getActiveSOSAlerts = (params?: {
   radius?: number;
 }) => api.get('/sos/nearby', { params });
 
-export const getMySOSAlert = () => 
+export const getMySOSAlert = () =>
   api.get('/sos/my');
 
-export const resolveSOSAlert = (sosId: string, status: 'resolved' | 'cancelled') => 
+export const resolveSOSAlert = (sosId: string, status: 'resolved' | 'cancelled') =>
   api.post(`/sos/${sosId}/resolve`, { status });
 
 export const resolveMyActiveSOS = (status: 'resolved' | 'cancelled') =>
   api.post('/sos/my/resolve', { status });
 
-export const respondToSOS = (sosId: string, response: 'coming' | 'called') => 
+export const respondToSOS = (sosId: string, response: 'coming' | 'called') =>
   api.post(`/sos/${sosId}/respond`, { response });
 
 // =================== SPEECH TRANSCRIPTION API ===================

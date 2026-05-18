@@ -294,7 +294,13 @@ export default function SOSScreen() {
                       styles.typeOption,
                       isSelected && styles.typeOptionSelected
                     ]}
-                    onPress={() => setEmergencyType(option.value)}
+                    onPress={() => {
+                      setEmergencyType(option.value);
+                      // Auto-continue to location stage after selection
+                      setTimeout(() => {
+                        handleContinueToLocation();
+                      }, 400);
+                    }}
                     activeOpacity={0.7}
                   >
                     <Ionicons 

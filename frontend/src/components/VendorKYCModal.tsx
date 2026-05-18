@@ -49,10 +49,10 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     Boolean((user as any)?.is_verified) ||
     myVendor?.kyc_status === 'verified'
   );
-  
+
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  
+
   // Scans & Documents
   const [idType, setIdType] = useState<'aadhaar' | 'pan'>('aadhaar');
   const [idNumber, setIdNumber] = useState('');
@@ -377,9 +377,9 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     setFaceDetected(hasFace);
 
     if (hasFace && face.bounds) {
-        setFaceBounds(face.bounds);
+      setFaceBounds(face.bounds);
     } else {
-        setFaceBounds(null);
+      setFaceBounds(null);
     }
   };
 
@@ -464,8 +464,9 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
       return;
     }
 
-    if (idType === 'pan' && idNumber.trim().length !== 10) {
-      Alert.alert('Invalid PAN', 'PAN number must be 10 characters.');
+    const panRegex = /^[a-zA-Z]{5}\d{4}[a-zA-Z]{1}$/;
+    if (idType === 'pan' && (!panRegex.test(idNumber.trim()) || idNumber.trim().length !== 10)) {
+      Alert.alert('Invalid PAN', 'PAN number must be 10 alphanumeric characters in the standard format (e.g., ABCDE1234F).');
       return;
     }
 
@@ -771,127 +772,127 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
               </View>
             ) : (
               <>
-            <Text style={styles.sectionDesc}>Aadhaar verification only. Enter Aadhaar number directly, or upload Aadhaar image to auto-extract number via OCR.</Text>
-            
-            {/* ID Number & Upload Row */}
-            <View style={styles.docRow}>
-              <View style={styles.docInfo}>
-                <Text style={styles.docTitle}>Aadhaar Number</Text>
-                <Text style={styles.docStatus}>{idDocumentUri ? 'Aadhaar uploaded (OCR required)' : 'Enter number or upload Aadhaar image'}</Text>
-                <TextInput
-                  style={styles.idInput}
-                  placeholder="Enter 12-digit Aadhaar"
-                  value={idNumber}
-                  autoCapitalize="none"
-                  keyboardType="number-pad"
-                  maxLength={12}
-                  onChangeText={(value) => setIdNumber(value.replace(/[^\d]/g, '').slice(0, 12))}
-                />
-              </View>
-              <View style={styles.docActionCol}>
-                {idDocumentUri && <Image source={{ uri: idDocumentUri }} style={styles.previewThumb} />}
-                <TouchableOpacity
-                  style={[styles.uploadBtn, (documentPicking || loading) && styles.uploadBtnDisabled]}
-                  onPress={pickDocument}
-                  disabled={documentPicking || loading}
-                >
-                  <Ionicons name="cloud-upload" size={18} color="#FFF" />
-                  <Text style={styles.uploadBtnText}>
-                    {documentPicking
-                      ? 'Picking...'
-                      : idDocumentUri || !!previousAadhaar
-                        ? 'Upload Different Image'
-                        : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                <Text style={styles.sectionDesc}>Aadhaar verification only. Enter Aadhaar number directly, or upload Aadhaar image to auto-extract number via OCR.</Text>
 
-            {/* Live face scan section */}
-            <View style={styles.docRow}>
-              <View style={styles.docInfo}>
-                <Text style={styles.docTitle}>Live Face Scan</Text>
-                <Text style={styles.docStatus}>{faceScanUri ? 'Face scan captured' : 'Scan a live face using camera'}</Text>
-                {faceScanUri && <Text style={styles.faceScanHint}>Tap again to re-scan</Text>}
-              </View>
-              {faceScanUri ? (
-                <Image source={{ uri: faceScanUri }} style={styles.previewThumb} />
-              ) : (
-                <TouchableOpacity style={styles.uploadBtn} onPress={startFaceScan}>
-                  <Ionicons name="camera" size={18} color="#FFF" />
-                  <Text style={styles.uploadBtnText}>Scan Face</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                {/* ID Number & Upload Row */}
+                <View style={styles.docRow}>
+                  <View style={styles.docInfo}>
+                    <Text style={styles.docTitle}>Aadhaar Number</Text>
+                    <Text style={styles.docStatus}>{idDocumentUri ? 'Aadhaar uploaded (OCR required)' : 'Enter number or upload Aadhaar image'}</Text>
+                    <TextInput
+                      style={styles.idInput}
+                      placeholder="Enter 12-digit Aadhaar"
+                      value={idNumber}
+                      autoCapitalize="none"
+                      keyboardType="number-pad"
+                      maxLength={12}
+                      onChangeText={(value) => setIdNumber(value.replace(/[^\d]/g, '').slice(0, 12))}
+                    />
+                  </View>
+                  <View style={styles.docActionCol}>
+                    {idDocumentUri && <Image source={{ uri: idDocumentUri }} style={styles.previewThumb} />}
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, (documentPicking || loading) && styles.uploadBtnDisabled]}
+                      onPress={pickDocument}
+                      disabled={documentPicking || loading}
+                    >
+                      <Ionicons name="cloud-upload" size={18} color="#FFF" />
+                      <Text style={styles.uploadBtnText}>
+                        {documentPicking
+                          ? 'Picking...'
+                          : idDocumentUri || !!previousAadhaar
+                            ? 'Upload Different Image'
+                            : 'Upload'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
-            {aadhaarExtracting && (
-              <Text style={styles.ocrInfo}>Please wait, extracting Aadhaar details...</Text>
-            )}
-
-            {ocrInProgress && !aadhaarExtracting && (
-              <Text style={styles.ocrInfo}>Scanning document text for Aadhaar number...</Text>
-            )}
-
-            {previousAadhaar && (
-              <Text style={styles.autoExtractInfo}>
-                Previously uploaded Aadhaar: {previousAadhaar}
-              </Text>
-            )}
-
-            {aadhaarMismatch && (
-              <Text style={styles.ocrError}>
-                Uploaded image Aadhaar does not match previously saved number. Please upload a different image or correct Aadhaar number.
-              </Text>
-            )}
-
-            {hasAutoExtracted && idNumber.length === 12 && !aadhaarMismatch && (
-              <Text style={styles.autoExtractInfo}>
-                Aadhaar number extracted automatically: {idNumber}
-              </Text>
-            )}
-
-            {otpFlowActive ? (
-              <View style={styles.otpCard}>
-                <Text style={styles.docTitle}>Aadhaar OTP Verification</Text>
-                <Text style={styles.docStatus}>Enter OTP sent to Aadhaar linked mobile number</Text>
-                <TextInput
-                  style={styles.idInput}
-                  placeholder="Enter OTP"
-                  value={otpValue}
-                  keyboardType="number-pad"
-                  onChangeText={setOtpValue}
-                  maxLength={8}
-                />
-                <TouchableOpacity
-                  style={styles.textActionWrap}
-                  onPress={handleVerifyOtp}
-                  disabled={otpLoading}
-                >
-                  {otpLoading ? (
-                    <ActivityIndicator color={COLORS.primary} />
+                {/* Live face scan section */}
+                <View style={styles.docRow}>
+                  <View style={styles.docInfo}>
+                    <Text style={styles.docTitle}>Live Face Scan</Text>
+                    <Text style={styles.docStatus}>{faceScanUri ? 'Face scan captured' : 'Scan a live face using camera'}</Text>
+                    {faceScanUri && <Text style={styles.faceScanHint}>Tap again to re-scan</Text>}
+                  </View>
+                  {faceScanUri ? (
+                    <Image source={{ uri: faceScanUri }} style={styles.previewThumb} />
                   ) : (
-                    <Text style={[styles.textAction, otpLoading && styles.textActionDisabled]}>Verify OTP</Text>
+                    <TouchableOpacity style={styles.uploadBtn} onPress={startFaceScan}>
+                      <Ionicons name="camera" size={18} color="#FFF" />
+                      <Text style={styles.uploadBtnText}>Scan Face</Text>
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.textActionWrap}
-                  onPress={handleResendOtp}
-                  disabled={otpCooldown > 0 || otpLoading}
-                >
-                  <Text style={[styles.textAction, (otpCooldown > 0 || otpLoading) && styles.textActionDisabled]}>
-                    {otpCooldown > 0 ? `Resend OTP in ${otpCooldown}s` : 'Resend OTP'}
+                </View>
+
+                {aadhaarExtracting && (
+                  <Text style={styles.ocrInfo}>Please wait, extracting Aadhaar details...</Text>
+                )}
+
+                {ocrInProgress && !aadhaarExtracting && (
+                  <Text style={styles.ocrInfo}>Scanning document text for Aadhaar number...</Text>
+                )}
+
+                {previousAadhaar && (
+                  <Text style={styles.autoExtractInfo}>
+                    Previously uploaded Aadhaar: {previousAadhaar}
                   </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[styles.submitBtn, (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri) && styles.submitBtnDisabled]}
-                onPress={handleSubmit}
-                disabled={loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri}
-              >
-                {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Submit KYC Documents</Text>}
-              </TouchableOpacity>
-            )}
+                )}
+
+                {aadhaarMismatch && (
+                  <Text style={styles.ocrError}>
+                    Uploaded image Aadhaar does not match previously saved number. Please upload a different image or correct Aadhaar number.
+                  </Text>
+                )}
+
+                {hasAutoExtracted && idNumber.length === 12 && !aadhaarMismatch && (
+                  <Text style={styles.autoExtractInfo}>
+                    Aadhaar number extracted automatically: {idNumber}
+                  </Text>
+                )}
+
+                {otpFlowActive ? (
+                  <View style={styles.otpCard}>
+                    <Text style={styles.docTitle}>Aadhaar OTP Verification</Text>
+                    <Text style={styles.docStatus}>Enter OTP sent to Aadhaar linked mobile number</Text>
+                    <TextInput
+                      style={styles.idInput}
+                      placeholder="Enter OTP"
+                      value={otpValue}
+                      keyboardType="number-pad"
+                      onChangeText={setOtpValue}
+                      maxLength={8}
+                    />
+                    <TouchableOpacity
+                      style={styles.textActionWrap}
+                      onPress={handleVerifyOtp}
+                      disabled={otpLoading}
+                    >
+                      {otpLoading ? (
+                        <ActivityIndicator color={COLORS.primary} />
+                      ) : (
+                        <Text style={[styles.textAction, otpLoading && styles.textActionDisabled]}>Verify OTP</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.textActionWrap}
+                      onPress={handleResendOtp}
+                      disabled={otpCooldown > 0 || otpLoading}
+                    >
+                      <Text style={[styles.textAction, (otpCooldown > 0 || otpLoading) && styles.textActionDisabled]}>
+                        {otpCooldown > 0 ? `Resend OTP in ${otpCooldown}s` : 'Resend OTP'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.submitBtn, (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri) && styles.submitBtnDisabled]}
+                    onPress={handleSubmit}
+                    disabled={loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri}
+                  >
+                    {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Submit KYC Documents</Text>}
+                  </TouchableOpacity>
+                )}
               </>
             )}
 
@@ -920,12 +921,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.divider,
   },
   sectionDesc: { fontSize: 14, color: COLORS.textLight, marginBottom: SPACING.lg, lineHeight: 20 },
-  
+
   docRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.divider },
   docInfo: { flex: 1 },
   docTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text },
   docStatus: { fontSize: 12, color: COLORS.textLight, marginTop: 4 },
-  
+
   uploadBtn: { flexDirection: 'row', backgroundColor: COLORS.primary, paddingHorizontal: SPACING.md, paddingVertical: 8, borderRadius: BORDER_RADIUS.md, alignItems: 'center', gap: 6 },
   uploadBtnText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
   idTypeActions: { flexDirection: 'row', gap: 8 },
@@ -937,13 +938,13 @@ const styles = StyleSheet.create({
   autoExtractInfo: { marginTop: 8, color: COLORS.success, fontSize: 13, fontWeight: '500' },
   ocrError: { marginTop: 8, color: COLORS.error || '#d32f2f', fontSize: 13, fontWeight: '600' },
   ocrInfo: { marginTop: 8, color: COLORS.primary, fontSize: 13, fontWeight: '500' },
-  
+
   cameraActionBtn: { flexDirection: 'row', backgroundColor: COLORS.primaryLight, paddingHorizontal: SPACING.md, paddingVertical: 8, borderRadius: BORDER_RADIUS.md, alignItems: 'center', gap: 6 },
   cameraActionText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
-  
+
   previewThumb: { width: 40, height: 40, borderRadius: BORDER_RADIUS.sm, borderWidth: 1, borderColor: COLORS.divider },
   docActionCol: { alignItems: 'center', gap: 8 },
-  
+
   submitBtn: { backgroundColor: COLORS.primary, padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, alignItems: 'center', marginTop: SPACING.xl },
   submitBtnText: { color: COLORS.surface, fontSize: 16, fontWeight: '700' },
   submitBtnDisabled: { opacity: 0.7 },

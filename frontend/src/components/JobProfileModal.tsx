@@ -282,14 +282,36 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
+    const nameRegex = /^[a-zA-Z\s.'-]{2,50}$/;
+    const addressRegex = /^[a-zA-Z0-9\s.,'#\-\/()]{5,150}$/;
+    const experienceRegex = /^(0|[1-9]\d?)$/;
+
+    const trimmedName = name.trim();
+    const trimmedAddress = currentAddress.trim();
+
+    if (!trimmedName) {
       Alert.alert('Required Field', 'Please enter your name.');
       return;
     }
-    if (!currentAddress.trim()) {
+    if (!nameRegex.test(trimmedName)) {
+      Alert.alert('Invalid Name', 'Name must be 2 to 50 characters and contain only letters, spaces, dots, and hyphens.');
+      return;
+    }
+
+    if (!trimmedAddress) {
       Alert.alert('Required Field', 'Please enter current address.');
       return;
     }
+    if (!addressRegex.test(trimmedAddress)) {
+      Alert.alert('Invalid Address', 'Address must be between 5 and 150 characters and can only contain letters, numbers, spaces, and basic symbols (.,\'#-/()).');
+      return;
+    }
+
+    if (experienceYears && !experienceRegex.test(experienceYears)) {
+      Alert.alert('Invalid Experience', 'Experience must be a valid number of years between 0 and 99.');
+      return;
+    }
+
     if (!profession.trim()) {
       Alert.alert('Required Field', 'Please select work profession.');
       return;

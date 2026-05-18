@@ -9,8 +9,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
-    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    var _ = { label: 0, sent: function () { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function () { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
@@ -104,45 +104,47 @@ var normalizeMimeType = function (type, name) {
     }
     return 'image/jpeg';
 };
-var normalizeNativeUploadFile = function (file) { return __awaiter(void 0, void 0, void 0, function () {
-    var fileName, fileType, fileSystem, cacheDir, localUri, downloadResult, error_1;
-    var _a;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                fileName = file.name || 'upload.jpg';
-                fileType = normalizeMimeType(file.type, fileName);
-                if (!(react_native_1.Platform.OS !== 'web' && ((_a = file.uri) === null || _a === void 0 ? void 0 : _a.startsWith('content://')))) return [3 /*break*/, 4];
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 3, , 4]);
-                fileSystem = FileSystem;
-                cacheDir = fileSystem.cacheDirectory || fileSystem.documentDirectory || '';
-                localUri = "".concat(cacheDir, "upload-").concat(Date.now(), "-").concat(fileName);
-                return [4 /*yield*/, FileSystem.downloadAsync(file.uri, localUri)];
-            case 2:
-                downloadResult = _b.sent();
-                return [2 /*return*/, {
+var normalizeNativeUploadFile = function (file) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var fileName, fileType, fileSystem, cacheDir, localUri, downloadResult, error_1;
+        var _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    fileName = file.name || 'upload.jpg';
+                    fileType = normalizeMimeType(file.type, fileName);
+                    if (!(react_native_1.Platform.OS !== 'web' && ((_a = file.uri) === null || _a === void 0 ? void 0 : _a.startsWith('content://')))) return [3 /*break*/, 4];
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    fileSystem = FileSystem;
+                    cacheDir = fileSystem.cacheDirectory || fileSystem.documentDirectory || '';
+                    localUri = "".concat(cacheDir, "upload-").concat(Date.now(), "-").concat(fileName);
+                    return [4 /*yield*/, FileSystem.downloadAsync(file.uri, localUri)];
+                case 2:
+                    downloadResult = _b.sent();
+                    return [2 /*return*/, {
                         uri: downloadResult.uri,
                         name: fileName,
                         type: fileType,
                     }];
-            case 3:
-                error_1 = _b.sent();
-                console.warn('[API] Failed to convert content URI to local file:', error_1);
-                return [2 /*return*/, {
+                case 3:
+                    error_1 = _b.sent();
+                    console.warn('[API] Failed to convert content URI to local file:', error_1);
+                    return [2 /*return*/, {
                         uri: file.uri,
                         name: fileName,
                         type: fileType,
                     }];
-            case 4: return [2 /*return*/, {
+                case 4: return [2 /*return*/, {
                     uri: file.uri,
                     name: fileName,
                     type: fileType,
                 }];
-        }
+            }
+        });
     });
-}); };
+};
 var resolvedWebApiUrl = runtimeWebApiUrl
     ? runtimeWebApiUrl
     : configuredWebApiUrl && (!isLocalhostUrl(configuredWebApiUrl) || isWebRunningOnLocalhost)
@@ -178,28 +180,29 @@ var CLOUD_RUN_SAFE_UPLOAD_BYTES = 28 * 1024 * 1024;
 var ENABLE_WEB_DIRECT_VIDEO_UPLOAD = process.env.EXPO_PUBLIC_ENABLE_WEB_DIRECT_VIDEO_UPLOAD === 'true';
 var isVideoMimeType = function (value) { return (value || '').toLowerCase().startsWith('video/'); };
 var makeUploadId = function () { return "".concat(Date.now(), "-").concat(Math.random().toString(36).slice(2, 10)); };
-var uploadLargeVideoViaFirebase = function (file, onProgress) { return __awaiter(void 0, void 0, void 0, function () {
-    var response, blob, uploadId, safeName, objectPath, storage, uploadRef, task;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, fetch(file.uri)];
-            case 1:
-                response = _a.sent();
-                return [4 /*yield*/, response.blob()];
-            case 2:
-                blob = _a.sent();
-                if (!blob || blob.size <= 0) {
-                    throw new Error('Could not read selected video file');
-                }
-                uploadId = makeUploadId();
-                safeName = (file.name || "video-".concat(uploadId, ".mp4")).replace(/[^a-zA-Z0-9._-]/g, '_');
-                objectPath = "raw-post-videos/direct/".concat(uploadId, "-").concat(safeName);
-                storage = (0, config_1.getFirebaseStorage)();
-                uploadRef = (0, storage_1.ref)(storage, objectPath);
-                task = (0, storage_1.uploadBytesResumable)(uploadRef, blob, {
-                    contentType: file.type || 'video/mp4',
-                });
-                return [4 /*yield*/, new Promise(function (resolve, reject) {
+var uploadLargeVideoViaFirebase = function (file, onProgress) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var response, blob, uploadId, safeName, objectPath, storage, uploadRef, task;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, fetch(file.uri)];
+                case 1:
+                    response = _a.sent();
+                    return [4 /*yield*/, response.blob()];
+                case 2:
+                    blob = _a.sent();
+                    if (!blob || blob.size <= 0) {
+                        throw new Error('Could not read selected video file');
+                    }
+                    uploadId = makeUploadId();
+                    safeName = (file.name || "video-".concat(uploadId, ".mp4")).replace(/[^a-zA-Z0-9._-]/g, '_');
+                    objectPath = "raw-post-videos/direct/".concat(uploadId, "-").concat(safeName);
+                    storage = (0, config_1.getFirebaseStorage)();
+                    uploadRef = (0, storage_1.ref)(storage, objectPath);
+                    task = (0, storage_1.uploadBytesResumable)(uploadRef, blob, {
+                        contentType: file.type || 'video/mp4',
+                    });
+                    return [4 /*yield*/, new Promise(function (resolve, reject) {
                         task.on('state_changed', function (snapshot) {
                             if (!onProgress) {
                                 return;
@@ -209,76 +212,81 @@ var uploadLargeVideoViaFirebase = function (file, onProgress) { return __awaiter
                             onProgress({ loaded: loaded, total: total });
                         }, function (error) { return reject(error); }, function () { return resolve(); });
                     })];
-            case 3:
-                _a.sent();
-                return [2 /*return*/, {
+                case 3:
+                    _a.sent();
+                    return [2 /*return*/, {
                         objectPath: objectPath,
                         fileSize: blob.size,
                     }];
-        }
+            }
+        });
     });
-}); };
+};
 // Add auth token to requests
-api.interceptors.request.use(function (config) { return __awaiter(void 0, void 0, void 0, function () {
-    var token;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
-            case 1:
-                token = _a.sent();
-                if (token) {
-                    config.headers.Authorization = "Bearer ".concat(token);
-                }
-                return [2 /*return*/, config];
-        }
+api.interceptors.request.use(function (config) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var token;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
+                case 1:
+                    token = _a.sent();
+                    if (token) {
+                        config.headers.Authorization = "Bearer ".concat(token);
+                    }
+                    return [2 /*return*/, config];
+            }
+        });
     });
-}); });
+});
 // Robust retry on 503 errors and network disconnections
-api.interceptors.response.use(function (response) { return response; }, function (error) { return __awaiter(void 0, void 0, void 0, function () {
-    var config, method, status, shouldRetry, delay_1;
-    var _a;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                config = error.config;
-                method = ((config === null || config === void 0 ? void 0 : config.method) || 'get').toLowerCase();
-                status = (_a = error.response) === null || _a === void 0 ? void 0 : _a.status;
-                shouldRetry = config &&
-                    RETRYABLE_METHODS.has(method) &&
-                    (RETRYABLE_STATUS_CODES.has(status) || error.code === 'ERR_NETWORK') &&
-                    (config._retryCount || 0) < MAX_RETRY_ATTEMPTS;
-                if (!shouldRetry) return [3 /*break*/, 3];
-                config._retryCount = (config._retryCount || 0) + 1;
-                console.warn("[API] Retrying ".concat(method.toUpperCase(), " ").concat(config.url, "... Attempt ").concat(config._retryCount));
-                delay_1 = error.code === 'ERR_NETWORK' ? 1000 * config._retryCount : 0;
-                if (!(delay_1 > 0)) return [3 /*break*/, 2];
-                return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, delay_1); })];
-            case 1:
-                _b.sent();
-                _b.label = 2;
-            case 2: return [2 /*return*/, api(config)];
-            case 3:
-                // If backend is temporarily unavailable, return a graceful fallback only for read requests.
-                if (RETRYABLE_STATUS_CODES.has(status) && RETRYABLE_METHODS.has(method)) {
-                    console.warn('[API] Backend unavailable, returning fallback payload for 503/502');
-                    return [2 /*return*/, Promise.resolve({
+api.interceptors.response.use(function (response) { return response; }, function (error) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var config, method, status, shouldRetry, delay_1;
+        var _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    config = error.config;
+                    method = ((config === null || config === void 0 ? void 0 : config.method) || 'get').toLowerCase();
+                    status = (_a = error.response) === null || _a === void 0 ? void 0 : _a.status;
+                    shouldRetry = config &&
+                        RETRYABLE_METHODS.has(method) &&
+                        (RETRYABLE_STATUS_CODES.has(status) || error.code === 'ERR_NETWORK') &&
+                        (config._retryCount || 0) < MAX_RETRY_ATTEMPTS;
+                    if (!shouldRetry) return [3 /*break*/, 3];
+                    config._retryCount = (config._retryCount || 0) + 1;
+                    console.warn("[API] Retrying ".concat(method.toUpperCase(), " ").concat(config.url, "... Attempt ").concat(config._retryCount));
+                    delay_1 = error.code === 'ERR_NETWORK' ? 1000 * config._retryCount : 0;
+                    if (!(delay_1 > 0)) return [3 /*break*/, 2];
+                    return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, delay_1); })];
+                case 1:
+                    _b.sent();
+                    _b.label = 2;
+                case 2: return [2 /*return*/, api(config)];
+                case 3:
+                    // If backend is temporarily unavailable, return a graceful fallback only for read requests.
+                    if (RETRYABLE_STATUS_CODES.has(status) && RETRYABLE_METHODS.has(method)) {
+                        console.warn('[API] Backend unavailable, returning fallback payload for 503/502');
+                        return [2 /*return*/, Promise.resolve({
                             data: null,
                             status: error.response.status,
                             statusText: error.response.statusText,
                             headers: error.response.headers,
                             config: config,
                         })];
-                }
-                // Enhance generic server errors with specific backend error payload if present
-                if (error.response && error.response.data && error.response.data.detail) {
-                    error.message = typeof error.response.data.detail === 'string'
-                        ? error.response.data.detail
-                        : JSON.stringify(error.response.data.detail);
-                }
-                return [2 /*return*/, Promise.reject(error)];
-        }
+                    }
+                    // Enhance generic server errors with specific backend error payload if present
+                    if (error.response && error.response.data && error.response.data.detail) {
+                        error.message = typeof error.response.data.detail === 'string'
+                            ? error.response.data.detail
+                            : JSON.stringify(error.response.data.detail);
+                    }
+                    return [2 /*return*/, Promise.reject(error)];
+            }
+        });
     });
-}); });
+});
 // Auth APIs
 var sendOTP = function (phone) {
     return api.post('/auth/send-otp', { phone: phone });
@@ -373,42 +381,44 @@ var setupDualLocation = function (locations) {
     return api.post('/user/dual-location', locations);
 };
 exports.setupDualLocation = setupDualLocation;
-var updateCurrentLocation = function (location) { return __awaiter(void 0, void 0, void 0, function () {
-    var error_2, token, headers, rootError_1;
-    var _a, _b;
-    return __generator(this, function (_c) {
-        switch (_c.label) {
-            case 0:
-                _c.trys.push([0, 2, , 7]);
-                return [4 /*yield*/, api.post('/user/current-location', location)];
-            case 1: return [2 /*return*/, _c.sent()];
-            case 2:
-                error_2 = _c.sent();
-                if (!(((_a = error_2.response) === null || _a === void 0 ? void 0 : _a.status) === 404)) return [3 /*break*/, 6];
-                _c.label = 3;
-            case 3:
-                _c.trys.push([3, 5, , 6]);
-                return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
-            case 4:
-                token = _c.sent();
-                headers = {
-                    'Content-Type': 'application/json',
-                };
-                if (token) {
-                    headers.Authorization = "Bearer ".concat(token);
-                }
-                return [2 /*return*/, axios_1.default.post("".concat(exports.API_URL, "/user/current-location"), location, { headers: headers, timeout: 30000 })];
-            case 5:
-                rootError_1 = _c.sent();
-                if (((_b = rootError_1.response) === null || _b === void 0 ? void 0 : _b.status) === 404) {
-                    return [2 /*return*/, { data: null }];
-                }
-                throw rootError_1;
-            case 6: throw error_2;
-            case 7: return [2 /*return*/];
-        }
+var updateCurrentLocation = function (location) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var error_2, token, headers, rootError_1;
+        var _a, _b;
+        return __generator(this, function (_c) {
+            switch (_c.label) {
+                case 0:
+                    _c.trys.push([0, 2, , 7]);
+                    return [4 /*yield*/, api.post('/user/current-location', location)];
+                case 1: return [2 /*return*/, _c.sent()];
+                case 2:
+                    error_2 = _c.sent();
+                    if (!(((_a = error_2.response) === null || _a === void 0 ? void 0 : _a.status) === 404)) return [3 /*break*/, 6];
+                    _c.label = 3;
+                case 3:
+                    _c.trys.push([3, 5, , 6]);
+                    return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
+                case 4:
+                    token = _c.sent();
+                    headers = {
+                        'Content-Type': 'application/json',
+                    };
+                    if (token) {
+                        headers.Authorization = "Bearer ".concat(token);
+                    }
+                    return [2 /*return*/, axios_1.default.post("".concat(exports.API_URL, "/user/current-location"), location, { headers: headers, timeout: 30000 })];
+                case 5:
+                    rootError_1 = _c.sent();
+                    if (((_b = rootError_1.response) === null || _b === void 0 ? void 0 : _b.status) === 404) {
+                        return [2 /*return*/, { data: null }];
+                    }
+                    throw rootError_1;
+                case 6: throw error_2;
+                case 7: return [2 /*return*/];
+            }
+        });
     });
-}); };
+};
 exports.updateCurrentLocation = updateCurrentLocation;
 var reverseGeocode = function (latitude, longitude) {
     return api.post('/geocode/reverse', { latitude: latitude, longitude: longitude });
@@ -448,158 +458,166 @@ var markNotificationRead = function (notificationId) {
     return api.post("/notifications/".concat(notificationId, "/mark-read"));
 };
 exports.markNotificationRead = markNotificationRead;
-var nativeMultipartPost = function (endpoint, formData) { return __awaiter(void 0, void 0, void 0, function () {
-    var token, headers, response, text, data;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
-            case 1:
-                token = _a.sent();
-                headers = {};
-                if (token) {
-                    headers.Authorization = "Bearer ".concat(token);
-                }
-                return [4 /*yield*/, fetch("".concat(exports.API_URL, "/api").concat(endpoint.startsWith('/') ? endpoint : "/".concat(endpoint)), {
-                        method: 'POST',
-                        headers: headers,
-                        body: formData,
-                    })];
-            case 2:
-                response = _a.sent();
-                if (!!response.ok) return [3 /*break*/, 4];
-                return [4 /*yield*/, response.text()];
-            case 3:
-                text = _a.sent();
-                throw new Error("Upload failed: ".concat(response.status, " ").concat(text));
-            case 4: return [4 /*yield*/, response.json()];
-            case 5:
-                data = _a.sent();
-                return [2 /*return*/, { data: data }];
-        }
-    });
-}); };
-var uploadUserPost = function (file, caption, filterName, onProgress) {
-    return (function () { return __awaiter(void 0, void 0, void 0, function () {
-        var localResponse, localBlob, objectPath, formData_1, formData, error_3, token, headers, response, text, data;
+var nativeMultipartPost = function (endpoint, formData) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var token, headers, response, text, data;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0:
-                    if (!(react_native_1.Platform.OS === 'web' && ENABLE_WEB_DIRECT_VIDEO_UPLOAD && isVideoMimeType(file.type))) return [3 /*break*/, 4];
-                    return [4 /*yield*/, fetch(file.uri)];
+                case 0: return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
                 case 1:
-                    localResponse = _a.sent();
-                    return [4 /*yield*/, localResponse.blob()];
-                case 2:
-                    localBlob = _a.sent();
-                    if (!(localBlob.size > CLOUD_RUN_SAFE_UPLOAD_BYTES)) return [3 /*break*/, 4];
-                    return [4 /*yield*/, uploadLargeVideoViaFirebase(file, onProgress)];
-                case 3:
-                    objectPath = (_a.sent()).objectPath;
-                    formData_1 = new FormData();
-                    formData_1.append('storage_path', objectPath);
-                    formData_1.append('caption', caption || '');
-                    formData_1.append('source', 'camera_roll');
-                    if (filterName) {
-                        formData_1.append('filter_name', filterName);
-                    }
-                    return [2 /*return*/, api.post('/posts/upload-from-storage', formData_1, {
-                            headers: { 'Content-Type': 'multipart/form-data' },
-                            timeout: 30 * 60 * 1000,
-                        })];
-                case 4:
-                    formData = new FormData();
-                    formData.append('caption', caption || '');
-                    if (filterName) {
-                        formData.append('filter_name', filterName);
-                    }
-                    return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
-                case 5:
-                    _a.sent();
-                    _a.label = 6;
-                case 6:
-                    _a.trys.push([6, 8, , 15]);
-                    return [4 /*yield*/, api.post('/posts/upload', formData, {
-                            headers: react_native_1.Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
-                            timeout: 10 * 60 * 1000,
-                            onUploadProgress: onProgress,
-                        })];
-                case 7: return [2 /*return*/, _a.sent()];
-                case 8:
-                    error_3 = _a.sent();
-                    console.warn('[API] axios upload failed, retrying native fetch multipart upload', error_3);
-                    if (!(react_native_1.Platform.OS !== 'web')) return [3 /*break*/, 14];
-                    return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
-                case 9:
                     token = _a.sent();
                     headers = {};
                     if (token) {
                         headers.Authorization = "Bearer ".concat(token);
                     }
-                    return [4 /*yield*/, fetch("".concat(exports.API_URL, "/api/posts/upload"), {
+                    return [4 /*yield*/, fetch("".concat(exports.API_URL, "/api").concat(endpoint.startsWith('/') ? endpoint : "/".concat(endpoint)), {
+                        method: 'POST',
+                        headers: headers,
+                        body: formData,
+                    })];
+                case 2:
+                    response = _a.sent();
+                    if (!!response.ok) return [3 /*break*/, 4];
+                    return [4 /*yield*/, response.text()];
+                case 3:
+                    text = _a.sent();
+                    throw new Error("Upload failed: ".concat(response.status, " ").concat(text));
+                case 4: return [4 /*yield*/, response.json()];
+                case 5:
+                    data = _a.sent();
+                    return [2 /*return*/, { data: data }];
+            }
+        });
+    });
+};
+var uploadUserPost = function (file, caption, filterName, onProgress) {
+    return (function () {
+        return __awaiter(void 0, void 0, void 0, function () {
+            var localResponse, localBlob, objectPath, formData_1, formData, error_3, token, headers, response, text, data;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!(react_native_1.Platform.OS === 'web' && ENABLE_WEB_DIRECT_VIDEO_UPLOAD && isVideoMimeType(file.type))) return [3 /*break*/, 4];
+                        return [4 /*yield*/, fetch(file.uri)];
+                    case 1:
+                        localResponse = _a.sent();
+                        return [4 /*yield*/, localResponse.blob()];
+                    case 2:
+                        localBlob = _a.sent();
+                        if (!(localBlob.size > CLOUD_RUN_SAFE_UPLOAD_BYTES)) return [3 /*break*/, 4];
+                        return [4 /*yield*/, uploadLargeVideoViaFirebase(file, onProgress)];
+                    case 3:
+                        objectPath = (_a.sent()).objectPath;
+                        formData_1 = new FormData();
+                        formData_1.append('storage_path', objectPath);
+                        formData_1.append('caption', caption || '');
+                        formData_1.append('source', 'camera_roll');
+                        if (filterName) {
+                            formData_1.append('filter_name', filterName);
+                        }
+                        return [2 /*return*/, api.post('/posts/upload-from-storage', formData_1, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                            timeout: 30 * 60 * 1000,
+                        })];
+                    case 4:
+                        formData = new FormData();
+                        formData.append('caption', caption || '');
+                        if (filterName) {
+                            formData.append('filter_name', filterName);
+                        }
+                        return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                    case 5:
+                        _a.sent();
+                        _a.label = 6;
+                    case 6:
+                        _a.trys.push([6, 8, , 15]);
+                        return [4 /*yield*/, api.post('/posts/upload', formData, {
+                            headers: react_native_1.Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
+                            timeout: 10 * 60 * 1000,
+                            onUploadProgress: onProgress,
+                        })];
+                    case 7: return [2 /*return*/, _a.sent()];
+                    case 8:
+                        error_3 = _a.sent();
+                        console.warn('[API] axios upload failed, retrying native fetch multipart upload', error_3);
+                        if (!(react_native_1.Platform.OS !== 'web')) return [3 /*break*/, 14];
+                        return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
+                    case 9:
+                        token = _a.sent();
+                        headers = {};
+                        if (token) {
+                            headers.Authorization = "Bearer ".concat(token);
+                        }
+                        return [4 /*yield*/, fetch("".concat(exports.API_URL, "/api/posts/upload"), {
                             method: 'POST',
                             headers: headers,
                             body: formData,
                         })];
-                case 10:
-                    response = _a.sent();
-                    if (!!response.ok) return [3 /*break*/, 12];
-                    return [4 /*yield*/, response.text()];
-                case 11:
-                    text = _a.sent();
-                    throw new Error("Upload failed: ".concat(response.status, " ").concat(text));
-                case 12: return [4 /*yield*/, response.json()];
-                case 13:
-                    data = _a.sent();
-                    return [2 /*return*/, { data: data }];
-                case 14: throw error_3;
-                case 15: return [2 /*return*/];
-            }
+                    case 10:
+                        response = _a.sent();
+                        if (!!response.ok) return [3 /*break*/, 12];
+                        return [4 /*yield*/, response.text()];
+                    case 11:
+                        text = _a.sent();
+                        throw new Error("Upload failed: ".concat(response.status, " ").concat(text));
+                    case 12: return [4 /*yield*/, response.json()];
+                    case 13:
+                        data = _a.sent();
+                        return [2 /*return*/, { data: data }];
+                    case 14: throw error_3;
+                    case 15: return [2 /*return*/];
+                }
+            });
         });
-    }); })();
+    })();
 };
 exports.uploadUserPost = uploadUserPost;
 var uploadChatMedia = function (file) {
-    return (function () { return __awaiter(void 0, void 0, void 0, function () {
-        var formData;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    formData = new FormData();
-                    return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
-                case 1:
-                    _a.sent();
-                    if (react_native_1.Platform.OS !== 'web') {
-                        return [2 /*return*/, nativeMultipartPost('/media/upload', formData)];
-                    }
-                    return [2 /*return*/, api.post('/media/upload', formData, {
+    return (function () {
+        return __awaiter(void 0, void 0, void 0, function () {
+            var formData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        formData = new FormData();
+                        return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                    case 1:
+                        _a.sent();
+                        if (react_native_1.Platform.OS !== 'web') {
+                            return [2 /*return*/, nativeMultipartPost('/media/upload', formData)];
+                        }
+                        return [2 /*return*/, api.post('/media/upload', formData, {
                             headers: { 'Content-Type': 'multipart/form-data' },
                             timeout: 10 * 60 * 1000,
                         })];
-            }
+                }
+            });
         });
-    }); })();
+    })();
 };
 exports.uploadChatMedia = uploadChatMedia;
 var uploadCompressedVideo = function (file) {
-    return (function () { return __awaiter(void 0, void 0, void 0, function () {
-        var formData;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    formData = new FormData();
-                    return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
-                case 1:
-                    _a.sent();
-                    if (react_native_1.Platform.OS !== 'web') {
-                        return [2 /*return*/, nativeMultipartPost('/videos/upload', formData)];
-                    }
-                    return [2 /*return*/, api.post('/videos/upload', formData, {
+    return (function () {
+        return __awaiter(void 0, void 0, void 0, function () {
+            var formData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        formData = new FormData();
+                        return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                    case 1:
+                        _a.sent();
+                        if (react_native_1.Platform.OS !== 'web') {
+                            return [2 /*return*/, nativeMultipartPost('/videos/upload', formData)];
+                        }
+                        return [2 /*return*/, api.post('/videos/upload', formData, {
                             headers: { 'Content-Type': 'multipart/form-data' },
                             timeout: 10 * 60 * 1000,
                         })];
-            }
+                }
+            });
         });
-    }); })();
+    })();
 };
 exports.uploadCompressedVideo = uploadCompressedVideo;
 var getPostsFeed = function (limit, offset) {
@@ -789,7 +807,7 @@ var denyDirectMessageRequest = function (conversationId) {
 exports.denyDirectMessageRequest = denyDirectMessageRequest;
 // Discover APIs
 var discoverCommunities = function () {
-    return api.get('/discover/communities');
+    return api.get('/communities/discover');
 };
 exports.discoverCommunities = discoverCommunities;
 // Wisdom & Panchang APIs
@@ -946,7 +964,12 @@ var deleteHelpRequest = function (requestId) {
 };
 exports.deleteHelpRequest = deleteHelpRequest;
 // =================== COMMUNITY REQUESTS APIS ===================
-var createCommunityRequest = function (data) { return api.post('/community-requests', data); };
+var createCommunityRequest = function (data) {
+    var desc = (data.description || '').trim();
+    var paddedDescription = desc.length >= 10 ? desc : desc + " (Emergency request for community support)";
+    var finalData = Object.assign({}, data, { description: paddedDescription });
+    return api.post('/community-requests', finalData);
+};
 exports.createCommunityRequest = createCommunityRequest;
 var getCommunityRequests = function (params) { return api.get('/community-requests', { params: params }); };
 exports.getCommunityRequests = getCommunityRequests;
@@ -1005,48 +1028,50 @@ var parseApiError = function (error) {
 exports.parseApiError = parseApiError;
 var updateVendorBusinessProfile = function (vendorId, data) { return api.put("/vendors/".concat(vendorId, "/business/profile"), data); };
 exports.updateVendorBusinessProfile = updateVendorBusinessProfile;
-var appendMultipartFile = function (formData, fieldName, file) { return __awaiter(void 0, void 0, void 0, function () {
-    var response, blob, webFile, preparedFile, error_4, response, blob;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                if (!(react_native_1.Platform.OS === 'web')) return [3 /*break*/, 3];
-                return [4 /*yield*/, fetch(file.uri)];
-            case 1:
-                response = _a.sent();
-                return [4 /*yield*/, response.blob()];
-            case 2:
-                blob = _a.sent();
-                webFile = new File([blob], file.name || 'upload.jpg', { type: file.type || blob.type || 'image/jpeg' });
-                formData.append(fieldName, webFile);
-                return [2 /*return*/];
-            case 3: return [4 /*yield*/, normalizeNativeUploadFile(file)];
-            case 4:
-                preparedFile = _a.sent();
-                _a.label = 5;
-            case 5:
-                _a.trys.push([5, 6, , 9]);
-                formData.append(fieldName, {
-                    uri: preparedFile.uri,
-                    name: preparedFile.name,
-                    type: preparedFile.type,
-                });
-                return [3 /*break*/, 9];
-            case 6:
-                error_4 = _a.sent();
-                console.warn('[API] Multipart append failed, falling back to blob upload:', error_4);
-                return [4 /*yield*/, fetch(preparedFile.uri)];
-            case 7:
-                response = _a.sent();
-                return [4 /*yield*/, response.blob()];
-            case 8:
-                blob = _a.sent();
-                formData.append(fieldName, blob, preparedFile.name || 'upload.jpg');
-                return [3 /*break*/, 9];
-            case 9: return [2 /*return*/];
-        }
+var appendMultipartFile = function (formData, fieldName, file) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var response, blob, webFile, preparedFile, error_4, response, blob;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!(react_native_1.Platform.OS === 'web')) return [3 /*break*/, 3];
+                    return [4 /*yield*/, fetch(file.uri)];
+                case 1:
+                    response = _a.sent();
+                    return [4 /*yield*/, response.blob()];
+                case 2:
+                    blob = _a.sent();
+                    webFile = new File([blob], file.name || 'upload.jpg', { type: file.type || blob.type || 'image/jpeg' });
+                    formData.append(fieldName, webFile);
+                    return [2 /*return*/];
+                case 3: return [4 /*yield*/, normalizeNativeUploadFile(file)];
+                case 4:
+                    preparedFile = _a.sent();
+                    _a.label = 5;
+                case 5:
+                    _a.trys.push([5, 6, , 9]);
+                    formData.append(fieldName, {
+                        uri: preparedFile.uri,
+                        name: preparedFile.name,
+                        type: preparedFile.type,
+                    });
+                    return [3 /*break*/, 9];
+                case 6:
+                    error_4 = _a.sent();
+                    console.warn('[API] Multipart append failed, falling back to blob upload:', error_4);
+                    return [4 /*yield*/, fetch(preparedFile.uri)];
+                case 7:
+                    response = _a.sent();
+                    return [4 /*yield*/, response.blob()];
+                case 8:
+                    blob = _a.sent();
+                    formData.append(fieldName, blob, preparedFile.name || 'upload.jpg');
+                    return [3 /*break*/, 9];
+                case 9: return [2 /*return*/];
+            }
+        });
     });
-}); };
+};
 var blobToDataUrl = function (blob) {
     return new Promise(function (resolve, reject) {
         var reader = new FileReader();
@@ -1055,263 +1080,273 @@ var blobToDataUrl = function (blob) {
         reader.readAsDataURL(blob);
     });
 };
-var getImageBase64FromUri = function (file) { return __awaiter(void 0, void 0, void 0, function () {
-    var response, blob, dataUrl;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, fetch(file.uri)];
-            case 1:
-                response = _a.sent();
-                return [4 /*yield*/, response.blob()];
-            case 2:
-                blob = _a.sent();
-                return [4 /*yield*/, blobToDataUrl(blob)];
-            case 3:
-                dataUrl = _a.sent();
-                if (dataUrl && dataUrl.startsWith('data:')) {
-                    return [2 /*return*/, dataUrl];
-                }
-                return [2 /*return*/, "data:".concat(file.type || blob.type || 'image/jpeg', ";base64,").concat(dataUrl)];
-        }
-    });
-}); };
-var uploadVendorBusinessImage = function (vendorId, slot, file) {
-    return (function () { return __awaiter(void 0, void 0, void 0, function () {
-        var formData, token, url, headers, response, text, data, error_5;
+var getImageBase64FromUri = function (file) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var response, blob, dataUrl;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0:
-                    formData = new FormData();
-                    formData.append('slot', String(slot));
-                    return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                case 0: return [4 /*yield*/, fetch(file.uri)];
                 case 1:
-                    _a.sent();
-                    if (!(react_native_1.Platform.OS !== 'web')) return [3 /*break*/, 9];
-                    _a.label = 2;
+                    response = _a.sent();
+                    return [4 /*yield*/, response.blob()];
                 case 2:
-                    _a.trys.push([2, 8, , 9]);
-                    return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
+                    blob = _a.sent();
+                    return [4 /*yield*/, blobToDataUrl(blob)];
                 case 3:
-                    token = _a.sent();
-                    url = "".concat(exports.API_URL, "/api/vendors/").concat(vendorId, "/business/images/upload");
-                    headers = {};
-                    if (token) {
-                        headers.Authorization = "Bearer ".concat(token);
+                    dataUrl = _a.sent();
+                    if (dataUrl && dataUrl.startsWith('data:')) {
+                        return [2 /*return*/, dataUrl];
                     }
-                    return [4 /*yield*/, fetch(url, {
+                    return [2 /*return*/, "data:".concat(file.type || blob.type || 'image/jpeg', ";base64,").concat(dataUrl)];
+            }
+        });
+    });
+};
+var uploadVendorBusinessImage = function (vendorId, slot, file) {
+    return (function () {
+        return __awaiter(void 0, void 0, void 0, function () {
+            var formData, token, url, headers, response, text, data, error_5;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        formData = new FormData();
+                        formData.append('slot', String(slot));
+                        return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                    case 1:
+                        _a.sent();
+                        if (!(react_native_1.Platform.OS !== 'web')) return [3 /*break*/, 9];
+                        _a.label = 2;
+                    case 2:
+                        _a.trys.push([2, 8, , 9]);
+                        return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
+                    case 3:
+                        token = _a.sent();
+                        url = "".concat(exports.API_URL, "/api/vendors/").concat(vendorId, "/business/images/upload");
+                        headers = {};
+                        if (token) {
+                            headers.Authorization = "Bearer ".concat(token);
+                        }
+                        return [4 /*yield*/, fetch(url, {
                             method: 'POST',
                             headers: headers,
                             body: formData,
                         })];
-                case 4:
-                    response = _a.sent();
-                    if (!!response.ok) return [3 /*break*/, 6];
-                    return [4 /*yield*/, response.text()];
-                case 5:
-                    text = _a.sent();
-                    throw new Error("Upload failed: ".concat(response.status, " ").concat(text));
-                case 6: return [4 /*yield*/, response.json()];
-                case 7:
-                    data = _a.sent();
-                    return [2 /*return*/, { data: data }];
-                case 8:
-                    error_5 = _a.sent();
-                    console.warn('[API] Native vendor upload failed, retrying via axios:', error_5);
-                    return [2 /*return*/, api.post("/vendors/".concat(vendorId, "/business/images/upload"), formData)];
-                case 9: return [2 /*return*/, api.post("/vendors/".concat(vendorId, "/business/images/upload"), formData, {
+                    case 4:
+                        response = _a.sent();
+                        if (!!response.ok) return [3 /*break*/, 6];
+                        return [4 /*yield*/, response.text()];
+                    case 5:
+                        text = _a.sent();
+                        throw new Error("Upload failed: ".concat(response.status, " ").concat(text));
+                    case 6: return [4 /*yield*/, response.json()];
+                    case 7:
+                        data = _a.sent();
+                        return [2 /*return*/, { data: data }];
+                    case 8:
+                        error_5 = _a.sent();
+                        console.warn('[API] Native vendor upload failed, retrying via axios:', error_5);
+                        return [2 /*return*/, api.post("/vendors/".concat(vendorId, "/business/images/upload"), formData)];
+                    case 9: return [2 /*return*/, api.post("/vendors/".concat(vendorId, "/business/images/upload"), formData, {
                         headers: { 'Content-Type': 'multipart/form-data' },
                     })];
-            }
+                }
+            });
         });
-    }); })();
+    })();
 };
 exports.uploadVendorBusinessImage = uploadVendorBusinessImage;
 var uploadVendorKycFile = function (vendorId, docType, file) {
-    return (function () { return __awaiter(void 0, void 0, void 0, function () {
-        var formData;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    formData = new FormData();
-                    formData.append('doc_type', docType);
-                    return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
-                case 1:
-                    _a.sent();
-                    return [2 /*return*/, api.post("/vendors/".concat(vendorId, "/kyc/upload"), formData, {
+    return (function () {
+        return __awaiter(void 0, void 0, void 0, function () {
+            var formData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        formData = new FormData();
+                        formData.append('doc_type', docType);
+                        return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/, api.post("/vendors/".concat(vendorId, "/kyc/upload"), formData, {
                             headers: react_native_1.Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
                         })];
-            }
+                }
+            });
         });
-    }); })();
+    })();
 };
 exports.uploadVendorKycFile = uploadVendorKycFile;
-var extractKycTextFromImage = function (vendorId, file) { return __awaiter(void 0, void 0, void 0, function () {
-    var token, formData, fileAttached, error_6, imageBase64, error_7, response, headers, fetchError_1, errorText, data;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
-            case 1:
-                token = _a.sent();
-                formData = new FormData();
-                fileAttached = false;
-                _a.label = 2;
-            case 2:
-                _a.trys.push([2, 4, , 5]);
-                return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
-            case 3:
-                _a.sent();
-                fileAttached = true;
-                console.log('[OCR API] File attached successfully, has file:', formData.has('file'));
-                return [3 /*break*/, 5];
-            case 4:
-                error_6 = _a.sent();
-                console.warn('extractKycTextFromImage: multipart file attach failed, will try base64 fallback', error_6);
-                return [3 /*break*/, 5];
-            case 5:
-                if (!(react_native_1.Platform.OS === 'web')) return [3 /*break*/, 9];
-                _a.label = 6;
-            case 6:
-                _a.trys.push([6, 8, , 9]);
-                console.log('[OCR API] Converting to base64 for web...');
-                return [4 /*yield*/, getImageBase64FromUri(file)];
-            case 7:
-                imageBase64 = _a.sent();
-                if (imageBase64) {
-                    formData.append('image_base64', imageBase64);
-                    console.log('[OCR API] Base64 attached, length:', imageBase64.length, 'has image_base64:', formData.has('image_base64'));
-                }
-                return [3 /*break*/, 9];
-            case 8:
-                error_7 = _a.sent();
-                console.warn('extractKycTextFromImage: base64 fallback generation failed', error_7);
-                return [3 /*break*/, 9];
-            case 9:
-                if (!fileAttached && !formData.get('image_base64')) {
-                    throw new Error('Failed to prepare image payload for OCR upload');
-                }
-                console.log('[OCR API] Sending request to backend...');
-                console.log('[OCR API] Fetch URL:', "".concat(exports.API_URL, "/api/vendors/").concat(vendorId, "/kyc/vision-extract"));
-                _a.label = 10;
-            case 10:
-                _a.trys.push([10, 12, , 13]);
-                headers = {
-                    'Bypass-Tunnel-Reminder': 'true', // Required for localtunnel
-                };
-                if (token) {
-                    headers['Authorization'] = "Bearer ".concat(token);
-                }
-                return [4 /*yield*/, fetch("".concat(exports.API_URL, "/api/vendors/").concat(vendorId, "/kyc/vision-extract"), {
+var extractKycTextFromImage = function (vendorId, file) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var token, formData, fileAttached, error_6, imageBase64, error_7, response, headers, fetchError_1, errorText, data;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
+                case 1:
+                    token = _a.sent();
+                    formData = new FormData();
+                    fileAttached = false;
+                    _a.label = 2;
+                case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                case 3:
+                    _a.sent();
+                    fileAttached = true;
+                    console.log('[OCR API] File attached successfully, has file:', formData.has('file'));
+                    return [3 /*break*/, 5];
+                case 4:
+                    error_6 = _a.sent();
+                    console.warn('extractKycTextFromImage: multipart file attach failed, will try base64 fallback', error_6);
+                    return [3 /*break*/, 5];
+                case 5:
+                    if (!(react_native_1.Platform.OS === 'web')) return [3 /*break*/, 9];
+                    _a.label = 6;
+                case 6:
+                    _a.trys.push([6, 8, , 9]);
+                    console.log('[OCR API] Converting to base64 for web...');
+                    return [4 /*yield*/, getImageBase64FromUri(file)];
+                case 7:
+                    imageBase64 = _a.sent();
+                    if (imageBase64) {
+                        formData.append('image_base64', imageBase64);
+                        console.log('[OCR API] Base64 attached, length:', imageBase64.length, 'has image_base64:', formData.has('image_base64'));
+                    }
+                    return [3 /*break*/, 9];
+                case 8:
+                    error_7 = _a.sent();
+                    console.warn('extractKycTextFromImage: base64 fallback generation failed', error_7);
+                    return [3 /*break*/, 9];
+                case 9:
+                    if (!fileAttached && !formData.get('image_base64')) {
+                        throw new Error('Failed to prepare image payload for OCR upload');
+                    }
+                    console.log('[OCR API] Sending request to backend...');
+                    console.log('[OCR API] Fetch URL:', "".concat(exports.API_URL, "/api/vendors/").concat(vendorId, "/kyc/vision-extract"));
+                    _a.label = 10;
+                case 10:
+                    _a.trys.push([10, 12, , 13]);
+                    headers = {
+                        'Bypass-Tunnel-Reminder': 'true', // Required for localtunnel
+                    };
+                    if (token) {
+                        headers['Authorization'] = "Bearer ".concat(token);
+                    }
+                    return [4 /*yield*/, fetch("".concat(exports.API_URL, "/api/vendors/").concat(vendorId, "/kyc/vision-extract"), {
                         method: 'POST',
                         headers: headers,
                         body: formData,
                     })];
-            case 11:
-                response = _a.sent();
-                return [3 /*break*/, 13];
-            case 12:
-                fetchError_1 = _a.sent();
-                console.error('[OCR API] Fetch error:', fetchError_1);
-                throw new Error("Network error: ".concat(fetchError_1.message));
-            case 13:
-                console.log('[OCR API] Response status:', response.status, response.statusText);
-                if (!!response.ok) return [3 /*break*/, 15];
-                return [4 /*yield*/, response.text()];
-            case 14:
-                errorText = _a.sent();
-                console.error('[OCR API] Error response:', response.status, errorText);
-                throw new Error("OCR failed: ".concat(response.status, " - ").concat(errorText));
-            case 15: return [4 /*yield*/, response.json()];
-            case 16:
-                data = _a.sent();
-                console.log('[OCR API] Response data:', JSON.stringify(data).substring(0, 500));
-                return [2 /*return*/, { data: data }];
-        }
+                case 11:
+                    response = _a.sent();
+                    return [3 /*break*/, 13];
+                case 12:
+                    fetchError_1 = _a.sent();
+                    console.error('[OCR API] Fetch error:', fetchError_1);
+                    throw new Error("Network error: ".concat(fetchError_1.message));
+                case 13:
+                    console.log('[OCR API] Response status:', response.status, response.statusText);
+                    if (!!response.ok) return [3 /*break*/, 15];
+                    return [4 /*yield*/, response.text()];
+                case 14:
+                    errorText = _a.sent();
+                    console.error('[OCR API] Error response:', response.status, errorText);
+                    throw new Error("OCR failed: ".concat(response.status, " - ").concat(errorText));
+                case 15: return [4 /*yield*/, response.json()];
+                case 16:
+                    data = _a.sent();
+                    console.log('[OCR API] Response data:', JSON.stringify(data).substring(0, 500));
+                    return [2 /*return*/, { data: data }];
+            }
+        });
     });
-}); };
+};
 exports.extractKycTextFromImage = extractKycTextFromImage;
-var extractUserKycTextFromImage = function (file) { return __awaiter(void 0, void 0, void 0, function () {
-    var token, formData, fileAttached, error_8, imageBase64, error_9, response, headers, fetchError_2, errorText, data;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
-            case 1:
-                token = _a.sent();
-                formData = new FormData();
-                fileAttached = false;
-                _a.label = 2;
-            case 2:
-                _a.trys.push([2, 4, , 5]);
-                return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
-            case 3:
-                _a.sent();
-                fileAttached = true;
-                console.log('[User OCR API] File attached successfully, has file:', formData.has('file'));
-                return [3 /*break*/, 5];
-            case 4:
-                error_8 = _a.sent();
-                console.warn('extractUserKycTextFromImage: multipart file attach failed, will try base64 fallback', error_8);
-                return [3 /*break*/, 5];
-            case 5:
-                if (!(react_native_1.Platform.OS === 'web')) return [3 /*break*/, 9];
-                _a.label = 6;
-            case 6:
-                _a.trys.push([6, 8, , 9]);
-                console.log('[User OCR API] Converting to base64 for web...');
-                return [4 /*yield*/, getImageBase64FromUri(file)];
-            case 7:
-                imageBase64 = _a.sent();
-                if (imageBase64) {
-                    formData.append('image_base64', imageBase64);
-                    console.log('[User OCR API] Base64 attached, length:', imageBase64.length, 'has image_base64:', formData.has('image_base64'));
-                }
-                return [3 /*break*/, 9];
-            case 8:
-                error_9 = _a.sent();
-                console.warn('extractUserKycTextFromImage: base64 fallback generation failed', error_9);
-                return [3 /*break*/, 9];
-            case 9:
-                if (!fileAttached && !formData.get('image_base64')) {
-                    throw new Error('Failed to prepare image payload for OCR upload');
-                }
-                console.log('[User OCR API] Sending request to backend...');
-                console.log('[User OCR API] Fetch URL:', "".concat(exports.API_URL, "/api/kyc/vision-extract"));
-                _a.label = 10;
-            case 10:
-                _a.trys.push([10, 12, , 13]);
-                headers = {
-                    'Bypass-Tunnel-Reminder': 'true',
-                };
-                if (token) {
-                    headers['Authorization'] = "Bearer ".concat(token);
-                }
-                return [4 /*yield*/, fetch("".concat(exports.API_URL, "/api/kyc/vision-extract"), {
+var extractUserKycTextFromImage = function (file) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var token, formData, fileAttached, error_8, imageBase64, error_9, response, headers, fetchError_2, errorText, data;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
+                case 1:
+                    token = _a.sent();
+                    formData = new FormData();
+                    fileAttached = false;
+                    _a.label = 2;
+                case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                case 3:
+                    _a.sent();
+                    fileAttached = true;
+                    console.log('[User OCR API] File attached successfully, has file:', formData.has('file'));
+                    return [3 /*break*/, 5];
+                case 4:
+                    error_8 = _a.sent();
+                    console.warn('extractUserKycTextFromImage: multipart file attach failed, will try base64 fallback', error_8);
+                    return [3 /*break*/, 5];
+                case 5:
+                    if (!(react_native_1.Platform.OS === 'web')) return [3 /*break*/, 9];
+                    _a.label = 6;
+                case 6:
+                    _a.trys.push([6, 8, , 9]);
+                    console.log('[User OCR API] Converting to base64 for web...');
+                    return [4 /*yield*/, getImageBase64FromUri(file)];
+                case 7:
+                    imageBase64 = _a.sent();
+                    if (imageBase64) {
+                        formData.append('image_base64', imageBase64);
+                        console.log('[User OCR API] Base64 attached, length:', imageBase64.length, 'has image_base64:', formData.has('image_base64'));
+                    }
+                    return [3 /*break*/, 9];
+                case 8:
+                    error_9 = _a.sent();
+                    console.warn('extractUserKycTextFromImage: base64 fallback generation failed', error_9);
+                    return [3 /*break*/, 9];
+                case 9:
+                    if (!fileAttached && !formData.get('image_base64')) {
+                        throw new Error('Failed to prepare image payload for OCR upload');
+                    }
+                    console.log('[User OCR API] Sending request to backend...');
+                    console.log('[User OCR API] Fetch URL:', "".concat(exports.API_URL, "/api/kyc/vision-extract"));
+                    _a.label = 10;
+                case 10:
+                    _a.trys.push([10, 12, , 13]);
+                    headers = {
+                        'Bypass-Tunnel-Reminder': 'true',
+                    };
+                    if (token) {
+                        headers['Authorization'] = "Bearer ".concat(token);
+                    }
+                    return [4 /*yield*/, fetch("".concat(exports.API_URL, "/api/kyc/vision-extract"), {
                         method: 'POST',
                         headers: headers,
                         body: formData,
                     })];
-            case 11:
-                response = _a.sent();
-                return [3 /*break*/, 13];
-            case 12:
-                fetchError_2 = _a.sent();
-                console.error('[User OCR API] Fetch error:', fetchError_2);
-                throw new Error("Network error: ".concat(fetchError_2.message));
-            case 13:
-                console.log('[User OCR API] Response status:', response.status, response.statusText);
-                if (!!response.ok) return [3 /*break*/, 15];
-                return [4 /*yield*/, response.text()];
-            case 14:
-                errorText = _a.sent();
-                console.error('[User OCR API] Error response:', response.status, errorText);
-                throw new Error("OCR failed: ".concat(response.status, " - ").concat(errorText));
-            case 15: return [4 /*yield*/, response.json()];
-            case 16:
-                data = _a.sent();
-                console.log('[User OCR API] Response data:', JSON.stringify(data).substring(0, 500));
-                return [2 /*return*/, { data: data }];
-        }
+                case 11:
+                    response = _a.sent();
+                    return [3 /*break*/, 13];
+                case 12:
+                    fetchError_2 = _a.sent();
+                    console.error('[User OCR API] Fetch error:', fetchError_2);
+                    throw new Error("Network error: ".concat(fetchError_2.message));
+                case 13:
+                    console.log('[User OCR API] Response status:', response.status, response.statusText);
+                    if (!!response.ok) return [3 /*break*/, 15];
+                    return [4 /*yield*/, response.text()];
+                case 14:
+                    errorText = _a.sent();
+                    console.error('[User OCR API] Error response:', response.status, errorText);
+                    throw new Error("OCR failed: ".concat(response.status, " - ").concat(errorText));
+                case 15: return [4 /*yield*/, response.json()];
+                case 16:
+                    data = _a.sent();
+                    console.log('[User OCR API] Response data:', JSON.stringify(data).substring(0, 500));
+                    return [2 /*return*/, { data: data }];
+            }
+        });
     });
-}); };
+};
 exports.extractUserKycTextFromImage = extractUserKycTextFromImage;
 var generateVendorAadhaarOtp = function (vendorId, data) { return api.post("/vendors/".concat(vendorId, "/kyc/aadhaar/otp"), data); };
 exports.generateVendorAadhaarOtp = generateVendorAadhaarOtp;
@@ -1344,22 +1379,24 @@ var getJobProfiles = function (params) {
 };
 exports.getJobProfiles = getJobProfiles;
 var uploadJobProfileFile = function (profileId, docType, file) {
-    return (function () { return __awaiter(void 0, void 0, void 0, function () {
-        var formData;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    formData = new FormData();
-                    formData.append('doc_type', docType);
-                    return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
-                case 1:
-                    _a.sent();
-                    return [2 /*return*/, api.post("/jobs/profile/".concat(profileId, "/upload"), formData, {
+    return (function () {
+        return __awaiter(void 0, void 0, void 0, function () {
+            var formData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        formData = new FormData();
+                        formData.append('doc_type', docType);
+                        return [4 /*yield*/, appendMultipartFile(formData, 'file', file)];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/, api.post("/jobs/profile/".concat(profileId, "/upload"), formData, {
                             headers: react_native_1.Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
                         })];
-            }
+                }
+            });
         });
-    }); })();
+    })();
 };
 exports.uploadJobProfileFile = uploadJobProfileFile;
 // =================== CULTURAL COMMUNITY APIS ===================
@@ -1380,27 +1417,29 @@ var getWisdom = function () {
     return api.get('/wisdom/today');
 };
 exports.getWisdom = getWisdom;
-var getGitaShloka = function (chapter, verse) { return __awaiter(void 0, void 0, void 0, function () {
-    var response, error_10;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 3, , 4]);
-                return [4 /*yield*/, fetch("https://vedicscriptures.github.io/slok/".concat(chapter, "/").concat(verse))];
-            case 1:
-                response = _a.sent();
-                if (!response.ok)
-                    throw new Error('Failed to fetch');
-                return [4 /*yield*/, response.json()];
-            case 2: return [2 /*return*/, _a.sent()];
-            case 3:
-                error_10 = _a.sent();
-                console.error('Error fetching Gita shloka:', error_10);
-                throw error_10;
-            case 4: return [2 /*return*/];
-        }
+var getGitaShloka = function (chapter, verse) {
+    return __awaiter(void 0, void 0, void 0, function () {
+        var response, error_10;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, fetch("https://vedicscriptures.github.io/slok/".concat(chapter, "/").concat(verse))];
+                case 1:
+                    response = _a.sent();
+                    if (!response.ok)
+                        throw new Error('Failed to fetch');
+                    return [4 /*yield*/, response.json()];
+                case 2: return [2 /*return*/, _a.sent()];
+                case 3:
+                    error_10 = _a.sent();
+                    console.error('Error fetching Gita shloka:', error_10);
+                    throw error_10;
+                case 4: return [2 /*return*/];
+            }
+        });
     });
-}); };
+};
 exports.getGitaShloka = getGitaShloka;
 var getPanchang = function () {
     return api.get('/panchang/today');
@@ -1439,9 +1478,9 @@ var transcribeAudio = function (audioBase64_1) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, api.post('/speech/transcribe', {
-                        audio_base64: audioBase64,
-                        language_code: languageCode,
-                    })];
+                    audio_base64: audioBase64,
+                    language_code: languageCode,
+                })];
                 case 1:
                     response = _a.sent();
                     return [2 /*return*/, response.data];

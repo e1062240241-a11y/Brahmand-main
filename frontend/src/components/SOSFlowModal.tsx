@@ -220,7 +220,13 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
           <TouchableOpacity
             key={t.id}
             style={[styles.typeButton, emergencyType === t.id && styles.typeButtonActive]}
-            onPress={() => setEmergencyType(t.id)}
+            onPress={() => {
+              setEmergencyType(t.id);
+              // Auto-continue to next step after selection
+              setTimeout(() => {
+                setStep(3);
+              }, 400);
+            }}
           >
             <View style={[styles.typeIconBg, emergencyType === t.id && styles.typeIconBgActive]}>
               <MaterialCommunityIcons 

@@ -63,9 +63,17 @@ export default function VendorDashboardScreen() {
     fetchMyVendor().catch((e) => console.warn('fetchMyVendor failed', e));
   }, [fetchMyVendor]);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/vendor');
+    }
+  };
+
   useEffect(() => {
     const onBackPress = () => {
-      router.back();
+      handleBack();
       return true; // prevent default behavior
     };
 
@@ -90,7 +98,7 @@ export default function VendorDashboardScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Vendor Dashboard</Text>
@@ -145,7 +153,7 @@ export default function VendorDashboardScreen() {
       case 'rejected':
         return 'Rejected';
       default:
-        return 'Pending';
+        return 'Pending KYC';
     }
   };
 
@@ -274,11 +282,11 @@ export default function VendorDashboardScreen() {
 
   const isVerified = myVendor?.kyc_status === 'verified';
   const isManualReview = myVendor?.kyc_status === 'manual_review';
-  const isUserKycVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
-  const effectiveKycStatus = isVerified || isUserKycVerified ? 'verified' : myVendor?.kyc_status;
+  const isUserKycVerified = false;
+  const effectiveKycStatus = isVerified ? 'verified' : myVendor?.kyc_status;
   const isReviewOrVerified = isManualReview || effectiveKycStatus === 'verified';
-  const isVendorApproved = isVerified || isUserKycVerified;
-  const hasVerifiedKyc = isUserKycVerified || isVendorApproved;
+  const isVendorApproved = isVerified;
+  const hasVerifiedKyc = isVendorApproved;
 
   const handleTellBusiness = () => {
     router.push('/vendor/business-details');
@@ -366,7 +374,7 @@ export default function VendorDashboardScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Vendor Dashboard</Text>

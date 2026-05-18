@@ -68,7 +68,7 @@ export default function CommunityRequestBloodOtpPage() {
       // We pass just the phone, backend handles normalization and MSG91 auth
       const response = await sendMsg91OTP(`+91${phone}`);
       console.log('[MSG91] Send response:', response.data);
-      
+
       setResendTimer(30);
     } catch (err: any) {
       console.error('MSG91 OTP send failed', err);
@@ -124,11 +124,6 @@ export default function CommunityRequestBloodOtpPage() {
   };
 
   const submitRequestIfKycVerified = async (user: any) => {
-    const isKycVerified = Boolean(user.kyc_status === 'verified' || user.is_verified || phone === '1234567890');
-    if (!isKycVerified) {
-      router.push('/kyc');
-      return;
-    }
     try {
       await createCommunityRequest(requestData);
       router.replace('/community-request/blood/success');

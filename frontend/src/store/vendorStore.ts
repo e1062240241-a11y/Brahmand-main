@@ -42,6 +42,8 @@ export interface Vendor {
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
+  gstin?: string;
+  business_email?: string;
   kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected' | 'approved';
   is_verified?: boolean;
   review_status?: string;

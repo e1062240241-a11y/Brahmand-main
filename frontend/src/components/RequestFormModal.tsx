@@ -140,7 +140,16 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       Alert.alert('Required Field', 'Please enter your contact number.');
       return;
     }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(contactNumber.trim())) {
+      setLoading(false);
+      Alert.alert('Error', 'Contact number must be a valid 10-digit mobile number starting with 6, 7, 8, or 9.');
+      return;
+    }
+
     if (requestType === 'Blood' && phoneOtpStage !== 'verified') {
+      setLoading(false);
       Alert.alert('Verify Phone', 'Please verify your contact number with OTP before posting a blood request.');
       return;
     }
@@ -149,10 +158,18 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       Alert.alert('Required Field', 'Please select a blood group.');
       return;
     }
-    if (requestType === 'Financial' && !selectedOfferingType && !amount.trim()) {
-      setLoading(false);
-      Alert.alert('Required Field', 'Please enter amount required.');
-      return;
+    if (requestType === 'Financial' && !selectedOfferingType) {
+      if (!amount.trim()) {
+        setLoading(false);
+        Alert.alert('Required Field', 'Please enter amount required.');
+        return;
+      }
+      const amountRegex = /^[1-9]\d*(\.\d{1,2})?$/;
+      if (!amountRegex.test(amount.trim())) {
+        setLoading(false);
+        Alert.alert('Invalid Amount', 'Please enter a valid positive number for the amount.');
+        return;
+      }
     }
 
     // Determine community_id based on visibility level

@@ -123,7 +123,7 @@ export default function AnimalCareRequestScreen() {
         title: `Animal Care: ${animalType} - ${helpType}`,
         description: description,
         contact_number: contactPref,
-        urgency_level: urgency.toLowerCase() as any,
+        urgency_level: (urgency === 'Urgent' ? 'critical' : urgency.toLowerCase()) as any,
         location: location,
         support_needed: 'Animal Care',
       });

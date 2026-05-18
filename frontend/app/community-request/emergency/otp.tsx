@@ -99,18 +99,18 @@ export default function CommunityRequestBloodOtpPage() {
       // We use the backend verifyOTP exclusively
       const response = await verifyOTP(`+91${phone}`, code);
       const data = response.data;
-      
+
       if (data.is_new_user) {
         router.push({ pathname: '/auth/profile', params: { phone: `+91${phone}` } });
         return;
       }
-      
+
       if (data.user) {
         await login(data.user, data.token);
         await submitRequestIfKycVerified(data.user);
         return;
       }
-      
+
       router.push({ pathname: '/auth/profile', params: { phone: `+91${phone}` } });
     } catch (err: any) {
       console.error('OTP verify failed', err);
@@ -123,11 +123,6 @@ export default function CommunityRequestBloodOtpPage() {
   };
 
   const submitRequestIfKycVerified = async (user: any) => {
-    const isKycVerified = Boolean(user.kyc_status === 'verified' || user.is_verified || phone === '1234567890');
-    if (!isKycVerified) {
-      router.push('/kyc');
-      return;
-    }
     try {
       await createCommunityRequest(requestData);
       router.replace('/community-request/blood/success');

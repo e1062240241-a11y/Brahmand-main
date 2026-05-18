@@ -125,3 +125,17 @@ brahmand.zip
 /temp-check-frontend.sh
 /temp-check-pdf.sh
 /frontend/assets/pdf/Brahmand_Privacy_Policy_Final.pdf
+
+# Virtual Environments
+.venv_sys/
+**/.venv_sys/
+
+# Expo Cache
+.expo/
+**/.expo/
+
+# Local Debug Scripts
+backend/count_domains.py
+backend/debug_matching.py
+backend/test_register.py
+backend/test_urls.py

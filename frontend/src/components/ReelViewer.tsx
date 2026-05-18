@@ -224,7 +224,7 @@ const ReelVideoItem = React.memo(({
 
   const seekBarRef = useRef<any>(null);
 
-  const seekPlayerRef = useRef<(pageX: number) => void>(() => {});
+  const seekPlayerRef = useRef<(pageX: number) => void>(() => { });
 
   seekPlayerRef.current = (pageX: number) => {
     if (!player) return;
@@ -629,7 +629,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const activeIndexRef = useRef(0);
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
-  
+
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
@@ -643,11 +643,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     };
     if (isVisible) fetchMe();
   }, [isVisible]);
-  
+
   const [isShareVisible, setIsShareVisible] = useState(false);
   const [isCommentVisible, setIsCommentVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
-  
+
   const [localComments, setLocalComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
@@ -674,10 +674,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   const submitLocalComment = async () => {
     if (!selectedPost || !newCommentText.trim() || isSubmittingComment) return;
-    
+
     const textToPost = newCommentText.trim();
     const tempId = `temp-${Date.now()}`;
-    
+
     // Create optimistic comment object
     const optimisticComment = {
       id: tempId,
@@ -687,7 +687,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       created_at: new Date().toISOString(),
       is_optimistic: true,
     };
-    
+
     // Add to UI immediately
     setLocalComments(prev => [optimisticComment, ...prev]);
     setNewCommentText('');
@@ -909,33 +909,33 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           style={{ flex: 1, backgroundColor: '#000', transform: [{ translateX: swipeTranslateX }] }}
           {...swipePan.panHandlers}
         >
-        <FlatList
-          ref={flatListRef}
-          data={videos}
-          renderItem={renderItem}
-          extraData={{ activeIndex, isMuted }}
-          keyExtractor={(item, index) => `${item.id || index}`}
-          pagingEnabled={true}
-          showsVerticalScrollIndicator={false}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-          onViewableItemsChanged={handleViewableItemsChanged}
-          viewabilityConfig={viewabilityConfigRef.current}
-          getItemLayout={getItemLayout}
-          initialNumToRender={2}
-          maxToRenderPerBatch={3}
-          windowSize={3}
-          removeClippedSubviews={true}
-          snapToInterval={screenSize.height}
-          snapToAlignment="start"
-          decelerationRate="fast"
-          ListFooterComponent={
-            loading ? (
-              <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-              </View>
-            ) : null
-          }
-        />
+          <FlatList
+            ref={flatListRef}
+            data={videos}
+            renderItem={renderItem}
+            extraData={{ activeIndex, isMuted }}
+            keyExtractor={(item, index) => `${item.id || index}`}
+            pagingEnabled={true}
+            showsVerticalScrollIndicator={false}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
+            onViewableItemsChanged={handleViewableItemsChanged}
+            viewabilityConfig={viewabilityConfigRef.current}
+            getItemLayout={getItemLayout}
+            initialNumToRender={2}
+            maxToRenderPerBatch={3}
+            windowSize={3}
+            removeClippedSubviews={true}
+            snapToInterval={screenSize.height}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            ListFooterComponent={
+              loading ? (
+                <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                </View>
+              ) : null
+            }
+          />
         </Animated.View>
 
         {/* Local Share Modal */}
@@ -956,12 +956,12 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           animationType="slide"
           onRequestClose={() => setIsCommentVisible(false)}
         >
-          <TouchableOpacity 
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} 
-            activeOpacity={1} 
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+            activeOpacity={1}
             onPress={() => setIsCommentVisible(false)}
           >
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{
                 backgroundColor: '#FFF',
@@ -973,7 +973,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             >
               <View style={{ width: 40, height: 5, backgroundColor: '#DDD', borderRadius: 3, alignSelf: 'center', marginBottom: 15 }} />
               <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>Comments</Text>
-              
+
               <FlatList
                 data={localComments}
                 keyExtractor={(item) => String(item.id)}
@@ -985,9 +985,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                         <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#111' }}>{item.username}</Text>
                         <Text style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>{timeAgo(item.created_at)}</Text>
                       </View>
-                      <MentionText 
-                        text={item.text} 
-                        style={{ fontSize: 14, color: '#333', marginTop: 4, lineHeight: 18 }} 
+                      <MentionText
+                        text={item.text}
+                        style={{ fontSize: 14, color: '#333', marginTop: 4, lineHeight: 18 }}
                       />
                     </View>
                   </View>
@@ -1014,14 +1014,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                     inputStyle={{ fontSize: 14, color: '#111', maxHeight: 100 }}
                     multiline
                   />
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={submitLocalComment}
                     disabled={!newCommentText.trim() || isSubmittingComment}
                   >
-                    <Text style={{ 
-                      color: newCommentText.trim() ? COLORS.primary : '#999', 
+                    <Text style={{
+                      color: newCommentText.trim() ? COLORS.primary : '#999',
                       fontWeight: 'bold',
-                      marginLeft: 10 
+                      marginLeft: 10
                     }}>
                       {isSubmittingComment ? '...' : 'Post'}
                     </Text>

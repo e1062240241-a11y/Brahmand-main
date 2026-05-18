@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Image } from 'expo-image';
-import { 
-  Pressable, 
-  StyleSheet, 
-  Text, 
-  TouchableOpacity, 
-  View, 
-  Modal, 
-  SafeAreaView, 
-  Dimensions, 
-  Platform, 
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Modal,
+  SafeAreaView,
+  Dimensions,
+  Platform,
   ScrollView,
   useWindowDimensions,
   ActivityIndicator,
@@ -72,7 +72,7 @@ const parseCaption = (caption: string): { text: string; isHashtag: boolean; isMe
   }));
 };
 
-export const PostFeedCard = memo(({ 
+export const PostFeedCard = memo(({
   post,
   onLike,
   onComment,
@@ -100,7 +100,7 @@ export const PostFeedCard = memo(({
   const [dynamicRatio, setDynamicRatio] = useState(4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
 
-  const rawMediaUrl = 
+  const rawMediaUrl =
     post?.media_url ||
     post?.mediaUrl ||
     post?.image_url ||
@@ -111,7 +111,7 @@ export const PostFeedCard = memo(({
 
   const mediaUrl = rawMediaUrl ? String(rawMediaUrl) : '';
 
-  const rawMediaType = 
+  const rawMediaType =
     post?.media_type ||
     post?.mediaType ||
     post?.type;
@@ -171,8 +171,8 @@ export const PostFeedCard = memo(({
     if (Platform.OS === 'web') {
       if (videoRef.current) {
         if (shouldPlay) {
-          videoRef.current.play().catch((e: any) => { 
-             console.warn('[PostFeedCard] Web Video Play Error:', e);
+          videoRef.current.play().catch((e: any) => {
+            console.warn('[PostFeedCard] Web Video Play Error:', e);
           });
         } else {
           videoRef.current.pause();
@@ -229,7 +229,7 @@ export const PostFeedCard = memo(({
       const res = await searchUserBySLId(username);
       const user = res.data;
       if (user?.id) router.push(`/profile/${user.id}`);
-    } catch {}
+    } catch { }
   }, [router]);
 
   return (
@@ -238,16 +238,16 @@ export const PostFeedCard = memo(({
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
-            <View style={styles.userMeta}>
-              <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
-            </View>
+          <View style={styles.userMeta}>
+            <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+          </View>
         </TouchableOpacity>
 
         {onPostMenuPress && postMenuType && (
           <View style={styles.menuWrap}>
-             <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(!menuVisible)}>
-               <Ionicons name="ellipsis-horizontal" size={18} color={theme === 'light' ? '#333' : '#FFFFFF'} />
-             </TouchableOpacity>
+            <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(!menuVisible)}>
+              <Ionicons name="ellipsis-horizontal" size={18} color={theme === 'light' ? '#333' : '#FFFFFF'} />
+            </TouchableOpacity>
             {menuVisible && (
               <View style={styles.dropdownMenu}>
                 {postMenuType === 'delete' && onEdit && (
@@ -273,7 +273,7 @@ export const PostFeedCard = memo(({
       <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight, backgroundColor: theme === 'light' ? '#F5F5F5' : '#111' }]}>
         {/* Blurred Poster Background for smooth transition */}
         {(post?.thumbnail_url || post?.metadata?.thumbnail_url) && mediaLoading && (
-          <Image 
+          <Image
             source={{ uri: post?.thumbnail_url || post?.metadata?.thumbnail_url }}
             style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
             contentFit="cover"
@@ -324,10 +324,10 @@ export const PostFeedCard = memo(({
                   )}
                 </>
               ) : ExpoVideoModule?.VideoView && player ? (
-                <ExpoVideoModule.VideoView 
-                  player={player} 
-                  style={styles.videoBackground} 
-                  contentFit="cover" 
+                <ExpoVideoModule.VideoView
+                  player={player}
+                  style={styles.videoBackground}
+                  contentFit="cover"
                   nativeControls={false}
                   onFirstFrameRender={() => setMediaLoading(false)}
                   onError={(e: any) => {
@@ -338,7 +338,7 @@ export const PostFeedCard = memo(({
               ) : (
                 <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
                   <Ionicons name="alert-circle-outline" size={32} color="#444" />
-                  <Text style={{color: '#666', fontSize: 10, marginTop: 8}}>Player unavailable</Text>
+                  <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>Player unavailable</Text>
                 </View>
               )}
               <Pressable style={styles.videoOverlay} onPress={handleVideoPress} />
@@ -380,7 +380,7 @@ export const PostFeedCard = memo(({
         ) : (
           <View style={[styles.media, { backgroundColor: theme === 'light' ? '#FAFAFA' : '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
             <Ionicons name="image-outline" size={40} color="rgba(0,0,0,0.05)" />
-            <Text style={{color: '#888', fontSize: 12, marginTop: 8}}>Content removed or missing</Text>
+            <Text style={{ color: '#888', fontSize: 12, marginTop: 8 }}>Content removed or missing</Text>
           </View>
         )}
 
@@ -388,7 +388,7 @@ export const PostFeedCard = memo(({
           <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.8)' }]}>
             <Ionicons name="alert-circle" size={40} color="#FF5252" />
             <Text style={{ color: '#FFF', marginTop: 10, fontSize: 13, fontWeight: '700' }}>{mediaError}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={{ marginTop: 15, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }}
               onPress={() => { setMediaError(null); setMediaLoading(true); }}
             >
@@ -413,26 +413,26 @@ export const PostFeedCard = memo(({
 
       {/* Actions */}
       <View style={styles.actionRow}>
-         <TouchableOpacity style={styles.actionBtn} onPress={() => onLike?.(post)}>
-           <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={26} color={likedByMe ? COLORS.primary : (theme === 'light' ? '#000' : '#FFFFFF')} />
-         </TouchableOpacity>
-         <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
-           <Ionicons name="chatbubble-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
-         </TouchableOpacity>
-         <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
-           <Ionicons name="paper-plane-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
-         </TouchableOpacity>
-         <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost?.(post)}>
-           <Ionicons name="repeat-outline" size={26} color={theme === 'light' ? '#000' : '#FFFFFF'} />
-         </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onLike?.(post)}>
+          <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={26} color={likedByMe ? COLORS.primary : (theme === 'light' ? '#000' : '#FFFFFF')} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
+          <Ionicons name="chatbubble-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
+          <Ionicons name="paper-plane-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost?.(post)}>
+          <Ionicons name="repeat-outline" size={26} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+        </TouchableOpacity>
       </View>
 
       {/* Stats Summary */}
       <View style={{ paddingHorizontal: SPACING.md, paddingBottom: 2 }}>
-        <Text style={{ 
-          color: theme === 'light' ? '#000' : '#FFF', 
-          fontWeight: '900', 
-          fontSize: 14 
+        <Text style={{
+          color: theme === 'light' ? '#000' : '#FFF',
+          fontWeight: '900',
+          fontSize: 14
         }}>
           {likesCount > 0 ? `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}` : 'Be the first to like'}
         </Text>
@@ -442,15 +442,15 @@ export const PostFeedCard = memo(({
       {captionSegments.length > 0 && (
         <View style={{ paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm }}>
           <Pressable
-        onPress={() => {
-          if (!isLongCaption) return;
-          const nextExpanded = !isCaptionExpanded;
-          setIsCaptionExpanded(nextExpanded);
-          if (nextExpanded && onComment && openCommentsOnCaptionPress) {
-            setTimeout(() => onComment(post), 150);
-          }
-        }}
-      >
+            onPress={() => {
+              if (!isLongCaption) return;
+              const nextExpanded = !isCaptionExpanded;
+              setIsCaptionExpanded(nextExpanded);
+              if (nextExpanded && onComment && openCommentsOnCaptionPress) {
+                setTimeout(() => onComment(post), 150);
+              }
+            }}
+          >
             <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
               <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFF' }}>{post?.username || 'User'} </Text>
               {isCaptionExpanded ? captionSegments.map((seg, idx) =>
@@ -487,10 +487,10 @@ export const PostFeedCard = memo(({
       {topComments.length > 0 && (
         <View style={styles.topCommentsWrap}>
           {topComments.map((comment: any, index: number) => (
-             <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
-               <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>{comment?.username || 'User'} </Text>
-               <Text style={{ color: theme === 'light' ? '#444' : '#DDD', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
-             </Text>
+            <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
+              <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>{comment?.username || 'User'} </Text>
+              <Text style={{ color: theme === 'light' ? '#444' : '#DDD', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
+            </Text>
           ))}
         </View>
       )}

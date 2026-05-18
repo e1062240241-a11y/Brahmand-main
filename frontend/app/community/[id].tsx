@@ -18,11 +18,11 @@ import {
   ImageBackground,
   Dimensions,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getCommunity, getCommunityMessages, sendCommunityMessage } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityRequest, sendDirectMessage, getUserProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
@@ -244,9 +244,11 @@ export default function CommunityDetailScreen() {
     return [];
   }, [activeTab, requests, discussionPosts, communityPosts]);
 
-  useEffect(() => {
-    fetchCommunity();
-  }, [id]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCommunity();
+    }, [id])
+  );
 
   useEffect(() => {
     if (!loading && postId && communityPosts.length > 0) {
@@ -271,7 +273,7 @@ export default function CommunityDetailScreen() {
       const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList } = require('../../src/services/api');
       
       const [reqResponse, eventResponse, msgResponse, festResponse] = await Promise.all([
-        getCommunityRequests({}),
+        getCommunityRequests({ community_id: id as string }),
         getEvents(),
         getCommunityMessages(id as string, 'city'), // Assuming 'city' level for local posts
         getFestivalList()
@@ -439,7 +441,7 @@ export default function CommunityDetailScreen() {
         <View style={styles.postRightCol}>
           <View style={styles.postHeaderRow}>
             <View style={styles.postNameContainer}>
-              <Text style={styles.postUserName} numberOfLines={1}>{item.user.name}</Text>
+              <Text style={styles.feedPostUserName} numberOfLines={1}>{item.user.name}</Text>
               {item.user.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3B30" style={{ marginLeft: 2 }} />}
               <Text style={styles.postHandle} numberOfLines={1}> @{item.user.name.replace(/\s+/g, '').toLowerCase()}</Text>
             </View>
@@ -613,16 +615,22 @@ export default function CommunityDetailScreen() {
           <View style={styles.goingRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Ionicons name="person" size={12} color="#888" />
-              <Text style={styles.goingText}>Requested by {item.user_name || 'Anonymous'}</Text>
+              <Text style={styles.requestGoingText}>Requested by {item.user_name || 'Anonymous'}</Text>
             </View>
             <Text style={styles.timeAgoText}>{getTimeAgo(item.created_at)}</Text>
           </View>
         </View>
       </View>
       <View style={styles.eventActionRow}>
-        <TouchableOpacity style={styles.helpBtn}>
-          <Text style={styles.helpBtnText}>Offer Help</Text>
-        </TouchableOpacity>
+        {item.user_id === user?.id ? (
+          <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#FF3B30' }]} onPress={() => handleDeleteRequest(item.id)}>
+            <Text style={styles.helpBtnText}>Delete Request</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.helpBtn} onPress={() => handleOfferHelp(item)}>
+            <Text style={styles.helpBtnText}>Offer Help</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity>
           <Ionicons name="share-social-outline" size={20} color="#888" />
         </TouchableOpacity>
@@ -643,6 +651,154 @@ export default function CommunityDetailScreen() {
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
+
+  const handleDeleteRequest = (requestId: string) => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to permanently delete this request?');
+      if (confirmed) {
+        (async () => {
+          try {
+            await deleteCommunityRequest(requestId);
+            window.alert('Request deleted successfully!');
+            fetchCommunity(); // Reload requests list!
+          } catch (error: any) {
+            const { parseApiError } = require('../../src/services/api');
+            window.alert(parseApiError(error));
+          }
+        })();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete Request',
+      'Are you sure you want to permanently delete this request?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCommunityRequest(requestId);
+              Alert.alert('Success', 'Request deleted successfully!');
+              fetchCommunity(); // Reload requests list!
+            } catch (error: any) {
+              const { parseApiError } = require('../../src/services/api');
+              Alert.alert('Error', parseApiError(error));
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleOfferHelp = async (item: any) => {
+    let targetSlId = item.user_sl_id;
+    let targetPhone = item.contact_number || item.user_phone;
+
+    if (!targetSlId && item.user_id) {
+      try {
+        const res = await getUserProfile(item.user_id);
+        const profile = res.data?.user || res.data;
+        targetSlId = profile?.sl_id;
+        if (!targetPhone) {
+          targetPhone = profile?.phone;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch legacy user profile', err);
+      }
+    }
+
+    if (!targetSlId) {
+      if (Platform.OS === 'web') {
+        window.alert('This request does not have a valid chat ID.');
+      } else {
+        Alert.alert('Error', 'This request does not have a valid chat ID.');
+      }
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      const messageText = `Hare Krishna! I saw your request '${item.title}' in the Mumbai Group and would like to offer my support/help.`;
+      const confirmed = window.confirm(`Would you like to offer help to ${item.user_name || 'devotee'} by starting a chat?\n\nMessage: "${messageText}"`);
+      if (confirmed) {
+        try {
+          const response = await sendDirectMessage(targetSlId, messageText);
+          const conversationId = response.data?.chat_id || response.data?.conversation_id;
+          if (conversationId) {
+            router.push(`/dm/${conversationId}`);
+          } else {
+            router.push('/(tabs)/messages');
+          }
+        } catch (error: any) {
+          window.alert(error?.response?.data?.detail || 'Failed to start chat. You might already have a pending message request.');
+        }
+      }
+      return;
+    }
+    
+    const options: any[] = [
+      {
+        text: 'Send Message (Chat)',
+        onPress: () => {
+          Alert.alert(
+            'Offer Help',
+            `Send a message to ${item.user_name || 'devotee'}?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Send',
+                onPress: async () => {
+                  try {
+                    const messageText = `Hare Krishna! I saw your request '${item.title}' in the Mumbai Group and would like to offer my support/help.`;
+                    const response = await sendDirectMessage(targetSlId, messageText);
+                    const conversationId = response.data?.chat_id || response.data?.conversation_id;
+                    if (conversationId) {
+                      router.push(`/dm/${conversationId}`);
+                    } else {
+                      router.push('/(tabs)/messages');
+                    }
+                  } catch (error: any) {
+                    Alert.alert('Error', error?.response?.data?.detail || 'Failed to start chat. You might already have a pending message request.');
+                  }
+                }
+              }
+            ]
+          );
+        }
+      }
+    ];
+
+    const contactNum = item.contact_number;
+    const hasPhone = contactNum && /^\+?[0-9\s-]{10,15}$/.test(contactNum);
+
+    if (hasPhone) {
+      options.push({
+        text: `Call: ${contactNum}`,
+        onPress: () => {
+          const { Linking } = require('react-native');
+          Linking.openURL(`tel:${contactNum}`);
+        }
+      });
+    } else if (targetPhone) {
+      options.push({
+        text: `Call: ${targetPhone}`,
+        onPress: () => {
+          const { Linking } = require('react-native');
+          Linking.openURL(`tel:${targetPhone}`);
+        }
+      });
+    }
+
+    options.push({ text: 'Cancel', style: 'cancel' });
+
+    Alert.alert(
+      'Offer Help',
+      `How would you like to contact ${item.user_name || 'devotee'}?`,
+      options
+    );
   };
 
   const handleNotifications = () => {
@@ -1241,7 +1397,7 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 15, fontWeight: '700', color: '#111', lineHeight: 20 },
   eventMeta: { fontSize: 12, color: '#888', marginTop: 4 },
   goingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 5 },
-  goingText: { fontSize: 12, color: '#888' },
+  requestGoingText: { fontSize: 12, color: '#888' },
   eventImage: { width: 60, height: 100, borderRadius: 12 },
   
   eventActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
@@ -1295,7 +1451,7 @@ const styles = StyleSheet.create({
   urgencyLabel: { fontSize: 11, fontWeight: '700', color: '#888', backgroundColor: '#F5F5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   requestIconCol: { marginRight: 15 },
   requestIconBg: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  helpBtn: { backgroundColor: '#FF3B30', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12 },
+  helpBtn: { backgroundColor: '#F25C05', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12 },
   helpBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -1319,14 +1475,12 @@ const styles = StyleSheet.create({
   postRightCol: { flex: 1 },
   postHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   postNameContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  postUserName: { fontSize: 15, fontWeight: '700', color: '#0F1419', maxWidth: '40%' },
+  feedPostUserName: { fontSize: 15, fontWeight: '700', color: '#0F1419', maxWidth: '40%' },
   postHandle: { fontSize: 15, color: '#536471', marginLeft: 4, flexShrink: 1 },
   postDot: { fontSize: 15, color: '#536471', marginHorizontal: 4 },
-  postTimestamp: { fontSize: 15, color: '#536471' },
   postContentText: { fontSize: 15, color: '#0F1419', lineHeight: 22, marginTop: 2 },
   postMediaImage: { width: '100%', aspectRatio: 16 / 9, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#EFF3F4' },
   postActionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingRight: 40 },
-  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   postActionCount: { fontSize: 13, color: '#536471' },
 
   imagePreviewContainer: { marginBottom: 12, position: 'relative', alignSelf: 'flex-start' },

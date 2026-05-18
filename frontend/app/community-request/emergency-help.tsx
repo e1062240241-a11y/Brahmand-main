@@ -59,13 +59,13 @@ export default function EmergencyHelpScreen() {
   // Debounced Location Search
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (location.length >= 3 && !selectedLocation) {
+      if (location.length >= 2 && !selectedLocation) {
         setIsSearchingLocation(true);
         try {
           const response = await forwardGeocode(location);
           setLocationSuggestions(response.data || []);
         } catch (error) {
-          console.error('Location search failed', error);
+          console.warn('Location search failed', error);
         } finally {
           setIsSearchingLocation(false);
         }
@@ -99,18 +99,20 @@ export default function EmergencyHelpScreen() {
     if (!emergencyType) return Alert.alert('Error', 'Please select emergency type');
     if (!location) return Alert.alert('Error', 'Please provide location');
     if (!description.trim()) return Alert.alert('Error', 'Please describe the situation');
+    if (description.trim().length < 10) return Alert.alert('Error', 'Please describe the situation in at least 10 characters');
     if (!contactPref) return Alert.alert('Error', 'Please select contact preference');
 
     setIsSubmitting(true);
     try {
       await createCommunityRequest({
-        request_type: 'emergency',
+        request_type: 'help',
         title: `EMERGENCY: ${emergencyType}`,
         description: description,
         contact_number: contactPref,
-        urgency_level: 'urgent',
+        urgency_level: 'critical',
         location: location,
         support_needed: 'Emergency Help',
+        visibility_level: 'city',
       });
 
       Alert.alert('Success', 'Emergency request posted!', [{ text: 'OK', onPress: () => router.push('/(tabs)/profile') }]);
@@ -214,14 +216,26 @@ export default function EmergencyHelpScreen() {
                   />
                   {isSearchingLocation ? <ActivityIndicator size="small" color="#FB8C00" /> : <Ionicons name="search" size={18} color="#BBB" />}
                 </View>
-                {locationSuggestions.length > 0 && (
+                {location.trim().length >= 2 && !selectedLocation && (
                   <View style={styles.suggestionsContainer}>
                     {locationSuggestions.map((item, i) => (
                       <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
                         <Ionicons name="navigate-circle-outline" size={20} color="#666" />
-                        <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address}</Text>
+                        <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address || item.name}</Text>
                       </TouchableOpacity>
                     ))}
+                    <TouchableOpacity
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        setSelectedLocation({ display_name: location, name: location });
+                        setLocationSuggestions([]);
+                      }}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color="#FB8C00" />
+                      <Text style={[styles.suggestionText, { color: '#FB8C00', fontWeight: 'bold' }]}>
+                        Use "{location}" as typed
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>

@@ -111,7 +111,7 @@ export default function OtherRequestScreen() {
         title: `Community Request: ${helpType}`,
         description: description,
         contact_number: contactPref,
-        urgency_level: urgency.toLowerCase() as any,
+        urgency_level: (urgency === 'Urgent' ? 'critical' : urgency.toLowerCase()) as any,
         location: location,
         support_needed: 'General',
       });

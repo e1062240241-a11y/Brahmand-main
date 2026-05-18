@@ -502,6 +502,9 @@ class VendorCreate(BaseModel):
     offers_home_delivery: Optional[bool] = False
     business_media_key: Optional[str] = None
     kyc_status: KYCStatus = KYCStatus.PENDING
+    gstin: Optional[str] = None
+    business_email: Optional[str] = None
+    website_link: Optional[str] = None
 
 
 class VendorUpdate(BaseModel):
@@ -524,6 +527,9 @@ class VendorUpdate(BaseModel):
     offers_home_delivery: Optional[bool] = None
     business_media_key: Optional[str] = None
     kyc_status: Optional[KYCStatus] = None
+    gstin: Optional[str] = None
+    business_email: Optional[str] = None
+    website_link: Optional[str] = None
 
 
 class VendorResponse(BaseModel):

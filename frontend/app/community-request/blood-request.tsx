@@ -18,7 +18,8 @@ import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
-import { searchHospitals, createCommunityRequest, parseApiError } from '../../src/services/api';
+import { searchHospitals, createCommunityRequest, parseApiError, reverseGeocode } from '../../src/services/api';
+import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'];
@@ -28,7 +29,7 @@ const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
 export default function BloodRequestScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+
   // Form State
   const [bloodGroup, setBloodGroup] = useState('');
   const [location, setLocation] = useState('');
@@ -36,12 +37,12 @@ export default function BloodRequestScreen() {
   const [description, setDescription] = useState('');
   const [urgency, setUrgency] = useState('Urgent');
   const [contactPref, setContactPref] = useState('');
-  
+
   // UI State
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'blood' | 'contact' | null>(null);
@@ -49,13 +50,14 @@ export default function BloodRequestScreen() {
   // Debounced Location Search
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (location.length >= 3 && !selectedLocation) {
+      const query = location.trim();
+      if (query.length >= 2 && !selectedLocation) {
         setIsSearchingLocation(true);
         try {
-          const response = await searchHospitals(location);
+          const response = await searchHospitals(query);
           setLocationSuggestions(response.data.results || []);
         } catch (error) {
-          console.error('Location search failed', error);
+          console.warn('Location search failed', error);
         } finally {
           setIsSearchingLocation(false);
         }
@@ -72,6 +74,37 @@ export default function BloodRequestScreen() {
     setLocation(name);
     setSelectedLocation(item);
     setLocationSuggestions([]);
+  };
+
+  const handleGpsDetect = async () => {
+    setIsSearchingLocation(true);
+    try {
+      const hasPermission = await ensureForegroundPermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Denied', 'Please grant location permissions to auto-detect your location.');
+        return;
+      }
+      const position = await getCurrentPosition({ accuracy: 3 });
+      const { latitude, longitude } = position.coords;
+      const response = await reverseGeocode(latitude, longitude);
+      const data = response.data;
+      if (data && data.display_name) {
+        setLocation(data.display_name);
+        setSelectedLocation({
+          name: data.display_name,
+          address: data.display_name,
+          area: data.area || '',
+          city: data.city || ''
+        });
+      } else {
+        Alert.alert('Detection failed', 'Could not resolve location address.');
+      }
+    } catch (err: any) {
+      console.error('GPS detection failed', err);
+      Alert.alert('Detection failed', 'An error occurred while fetching your current position.');
+    } finally {
+      setIsSearchingLocation(false);
+    }
   };
 
   const openModal = (type: 'blood' | 'contact') => {
@@ -126,12 +159,12 @@ export default function BloodRequestScreen() {
             contentContainerStyle={{ paddingBottom: 30 }}
             numColumns={modalType === 'blood' ? 3 : 1}
             renderItem={({ item }) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.optionItem, 
+                  styles.optionItem,
                   (bloodGroup === item || contactPref === item) && styles.optionItemSelected,
                   modalType === 'blood' && styles.bloodOptionItem
-                ]} 
+                ]}
                 onPress={() => handleSelectOption(item)}
               >
                 <Text style={[styles.optionText, (bloodGroup === item || contactPref === item) && styles.optionTextSelected]}>{item}</Text>
@@ -144,13 +177,17 @@ export default function BloodRequestScreen() {
   };
 
   const handleBack = () => {
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/messages');
+    }
   };
 
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#FFFDFD', '#F9F9F9']} style={styles.gradientBg} />
-      
+
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topHeader}>
           <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack}>
@@ -160,14 +197,14 @@ export default function BloodRequestScreen() {
           <View style={{ width: 40 }} />
         </View>
 
-        <KeyboardAvoidingView 
-          style={styles.cardContainerWrapper} 
+        <KeyboardAvoidingView
+          style={styles.cardContainerWrapper}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <View style={styles.cardContainer}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              
+
               <View style={styles.headerBar}>
                 <LinearGradient colors={['#FFEBEE', '#FFCDD2']} style={styles.iconCircle}>
                   <FontAwesome5 name="tint" size={26} color="#E53935" />
@@ -189,7 +226,9 @@ export default function BloodRequestScreen() {
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Hospital Location <Text style={styles.requiredAsterisk}>*</Text></Text>
                 <View style={styles.searchInputContainer}>
-                  <Ionicons name="location-sharp" size={18} color="#E53935" style={{ marginRight: 10 }} />
+                  <TouchableOpacity onPress={handleGpsDetect} style={{ padding: 4 }} disabled={isSearchingLocation}>
+                    <Ionicons name="location-sharp" size={18} color="#E53935" style={{ marginRight: 6 }} />
+                  </TouchableOpacity>
                   <TextInput
                     style={styles.searchInput}
                     placeholder="Search hospital or area"
@@ -197,21 +236,47 @@ export default function BloodRequestScreen() {
                     value={location}
                     onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
                   />
-                  {isSearchingLocation ? <ActivityIndicator size="small" color="#E53935" /> : <Ionicons name="search" size={18} color="#BBB" />}
+                  {isSearchingLocation ? (
+                    <ActivityIndicator size="small" color="#E53935" />
+                  ) : location.length > 0 ? (
+                    <TouchableOpacity onPress={() => { setLocation(''); setSelectedLocation(null); setLocationSuggestions([]); }} style={{ padding: 4 }}>
+                      <Ionicons name="close-circle" size={18} color="#BBB" />
+                    </TouchableOpacity>
+                  ) : (
+                    <Ionicons name="search" size={18} color="#BBB" />
+                  )}
                 </View>
-                {locationSuggestions.length > 0 && (
+                {location.trim().length >= 2 && !selectedLocation && (
                   <View style={styles.suggestionsContainer}>
-                    {locationSuggestions.map((item, i) => (
-                      <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                        <Ionicons name="navigate-circle-outline" size={20} color="#E53935" />
-                        <View style={styles.suggestionTextContainer}>
-                          <Text style={styles.suggestionName} numberOfLines={1}>{item.name || item.display_name}</Text>
-                          {(item.address || item.display_name) && (
-                            <Text style={styles.suggestionAddress} numberOfLines={1}>{item.address || item.display_name}</Text>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    ))}
+                    {isSearchingLocation ? (
+                      <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
+                    ) : locationSuggestions.length > 0 ? (
+                      locationSuggestions.map((item, i) => (
+                        <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
+                          <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
+                          <View style={styles.suggestionTextContainer}>
+                            <Text style={styles.suggestionName} numberOfLines={1}>{item.name || item.display_name}</Text>
+                            {(item.address || item.display_name) && (
+                              <Text style={styles.suggestionAddress} numberOfLines={1}>{item.address || item.display_name}</Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View>
+                        <Text style={styles.suggestionStatus}>No hospitals found</Text>
+                        <TouchableOpacity
+                          style={styles.suggestionItem}
+                          onPress={() => handleLocationSelect({ name: location.trim(), address: location.trim(), area: '', city: '' })}
+                        >
+                          <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
+                          <View style={styles.suggestionTextContainer}>
+                            <Text style={styles.suggestionName}>Use hospital / location as typed</Text>
+                            <Text style={styles.suggestionAddress}>{location.trim()}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
@@ -269,7 +334,7 @@ export default function BloodRequestScreen() {
                   <Ionicons name="water" size={18} color="#FFF" style={{ marginLeft: 8 }} />
                 </LinearGradient>
               </TouchableOpacity>
-              
+
               <Text style={styles.bottomDisclaimer}>Verified donors will be notified instantly</Text>
               <View style={{ height: Math.max(insets.bottom, 20) }} />
             </ScrollView>
@@ -288,14 +353,14 @@ const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   gradientBg: { ...StyleSheet.absoluteFillObject },
   safeArea: { flex: 1 },
-  topHeader: { 
+  topHeader: {
     flexDirection: 'row',
-    alignItems: 'center', 
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14, 
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderBottomWidth: 1, 
-    borderBottomColor: 'rgba(0,0,0,0.03)' 
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.03)'
   },
   topHeaderBack: {
     width: 40,
@@ -305,14 +370,14 @@ const styles = StyleSheet.create({
   },
   topHeaderText: { color: '#E53935', fontSize: 17, fontFamily: FONTS.bold, letterSpacing: 0.5 },
   cardContainerWrapper: { flex: 1, marginHorizontal: 16, marginTop: 10, marginBottom: 10 },
-  cardContainer: { 
-    flex: 1, 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 30, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 10 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 20, 
+  cardContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
     elevation: 5,
     overflow: 'hidden'
   },
@@ -323,15 +388,15 @@ const styles = StyleSheet.create({
   headerTextCol: { flex: 1 },
   title: { fontSize: 20, fontFamily: FONTS.bold, color: '#111' },
   subtitle: { fontSize: 13, fontFamily: FONTS.regular, color: '#999', marginTop: 2 },
-  
+
   fieldSection: { marginBottom: 22 },
   fieldLabel: { fontSize: 14, fontFamily: FONTS.bold, color: '#333', marginBottom: 10, marginLeft: 4 },
   requiredAsterisk: { color: '#FF5252' },
-  
+
   dropdownButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 16 },
   dropdownButtonText: { fontSize: 15, fontFamily: FONTS.regular, color: '#333' },
   placeholderText: { color: '#BBB' },
-  
+
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
   suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
@@ -339,12 +404,12 @@ const styles = StyleSheet.create({
   suggestionTextContainer: { marginLeft: 12, flex: 1 },
   suggestionName: { fontSize: 14, fontFamily: FONTS.bold, color: '#333' },
   suggestionAddress: { fontSize: 12, fontFamily: FONTS.regular, color: '#999', marginTop: 2 },
-  
+
   inputWrapper: { backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   input: { fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
   textAreaWrapper: { backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14 },
   textArea: { minHeight: 100, fontSize: 15, color: '#333', textAlignVertical: 'top' },
-  
+
   segmentedControl: { flexDirection: 'row', backgroundColor: '#F0F0F3', borderRadius: 16, padding: 5 },
   segmentButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
   segmentButtonSelected: { backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
@@ -352,12 +417,12 @@ const styles = StyleSheet.create({
   segmentButtonText: { fontSize: 13, fontFamily: FONTS.bold, color: '#777' },
   segmentButtonTextSelected: { color: '#111' },
   segmentButtonTextSelectedUrgent: { color: '#FF5252' },
-  
+
   continueButton: { marginTop: 10, borderRadius: 18, overflow: 'hidden' },
   continueGradient: { flexDirection: 'row', paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
   continueButtonText: { color: '#FFFFFF', fontSize: 17, fontFamily: FONTS.bold },
   bottomDisclaimer: { textAlign: 'center', color: '#BBB', fontSize: 12, marginTop: 18, fontFamily: FONTS.regular },
-  
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '70%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20 },
   modalBar: { width: 40, height: 5, backgroundColor: '#E0E0E0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 },

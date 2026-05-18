@@ -68,7 +68,7 @@ export default function VendorScreen() {
     fetchCategories,
     createVendor 
   } = useVendorStore();
-  const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
+  const hasVerifiedKyc = myVendor?.kyc_status === 'verified';
   
   const [activeTab, setActiveTab] = useState('Nearby');
   const [activeSection, setActiveSection] = useState('Services');
@@ -163,7 +163,22 @@ export default function VendorScreen() {
       } else {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-          const location = await Location.getCurrentPositionAsync({});
+          // Robust location retrieval with timeout to avoid permanent hangs on devices/emulators
+          const location = await Promise.race([
+            (async () => {
+              try {
+                const lastKnown = await Location.getLastKnownPositionAsync({});
+                if (lastKnown) return lastKnown;
+              } catch (e) {}
+              return await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+              });
+            })(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Location timeout')), 4000)
+            )
+          ]) as any;
+
           setUserLocation({
             lat: location.coords.latitude,
             lng: location.coords.longitude
@@ -492,40 +507,54 @@ export default function VendorScreen() {
         businessName: data.businessName,
         ownerName: data.ownerName,
         yearsInBusiness: data.yearsInBusiness || 0,
-        categories: data.categories,
+        categories: data.categories || [],
         address: data.address,
         locationLink: data.locationLink || undefined,
         phoneNumber: data.phoneNumber,
-        latitude: data.latitude || undefined,
-        longitude: data.longitude || undefined,
+        latitude: data.latitude || userLocation?.lat || undefined,
+        longitude: data.longitude || userLocation?.lng || undefined,
       });
       
       console.log('Vendor registration response:', JSON.stringify(newVendor, null, 2));
       
-      // Refresh vendor data to get the actual status
-      await fetchMyVendor();
-      if (userLocation) {
-        await fetchVendors(userLocation);
-      } else {
-        await fetchVendors();
-      }
+      // Close modal immediately so UI feels fast
+      setShowRegistrationModal(false);
+      
+      // Refresh vendor data in background
+      Promise.all([
+        fetchMyVendor(),
+        userLocation ? fetchVendors(userLocation) : fetchVendors()
+      ]).catch(err => console.warn('Background fetch error:', err));
       
       // Check vendor status and prompt accordingly
       const kycStatus = newVendor?.kyc_status;
       
       console.log('KYC Status from registration:', kycStatus);
       
-      setShowRegistrationModal(false);
-      
       if (kycStatus === 'verified' || hasVerifiedKyc) {
-        Alert.alert('Approved', 'Your business has been registered and your KYC is already verified.');
+        Alert.alert(
+          'Approved', 
+          'Your business has been registered and your KYC is already verified.',
+          [
+            {
+              text: 'Go to Dashboard',
+              onPress: () => router.push('/vendor/dashboard')
+            }
+          ]
+        );
       } else {
         // Show KYC modal for verification
         Alert.alert(
           'Registration Complete', 
           'Your business is registered. Please complete KYC verification to make it visible and access all features.',
           [
-            { text: 'Later', style: 'cancel' },
+            { 
+              text: 'Later', 
+              style: 'cancel',
+              onPress: () => {
+                router.push('/vendor/dashboard');
+              }
+            },
             { 
               text: 'Complete KYC', 
               onPress: () => {
@@ -539,18 +568,33 @@ export default function VendorScreen() {
       }
     } catch (error: any) {
       console.error('Vendor API Registration Error:', error.response?.data);
-      let errorMsg = 'Failed to register business';
-      if (error.response?.data?.detail) {
-        if (Array.isArray(error.response.data.detail)) {
-          errorMsg = error.response.data.detail.map((err: any) => `${err.loc?.[1] || err.loc?.[0]}: ${err.msg}`).join('\n');
-        } else if (typeof error.response.data.detail === 'string') {
-          errorMsg = error.response.data.detail;
-        } else {
-          errorMsg = JSON.stringify(error.response.data.detail);
-        }
-      }
-      Alert.alert('Error', errorMsg);
+      throw error;
     }
+  };
+
+  const handleDeleteVendor = () => {
+    if (!myVendor?.id) return;
+    Alert.alert(
+      'Delete Service Profile',
+      'Are you sure you want to permanently delete your service business profile? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const store = useVendorStore.getState();
+              await store.deleteVendor(myVendor.id);
+              Alert.alert('Deleted', 'Your service registration was deleted successfully.');
+              await loadData();
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Failed to delete service.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleCall = (phone: string) => {
@@ -913,16 +957,7 @@ export default function VendorScreen() {
         <TouchableOpacity 
           style={styles.myBusinessCard}
           onPress={() => {
-            if (hasVerifiedKyc) {
-              router.push('/vendor/dashboard');
-              return;
-            }
-            if (myVendor.kyc_status !== 'verified') {
-              setKycModalVendorId(myVendor.id);
-              setShowKycModal(true);
-            } else {
-              router.push('/vendor/dashboard');
-            }
+            router.push('/vendor/dashboard');
           }}
         >
           <View style={styles.myBusinessIcon}>
@@ -932,27 +967,64 @@ export default function VendorScreen() {
             <Text style={styles.myBusinessLabel}>Manage My Service</Text>
             <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
             {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
-              <View style={styles.kycStatusBadge}>
-                <View style={[
-                  styles.kycStatusDot,
-                  { 
-                    backgroundColor: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning 
-                  }
-                ]} />
-                <Text style={[
-                  styles.kycStatusText,
-                  { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
-                ]}>
-                  {myVendor.kyc_status === 'rejected'
-                    ? 'KYC Rejected - Tap to Update'
-                    : myVendor.kyc_status === 'manual_review'
-                      ? 'KYC In Review'
-                      : 'KYC Pending - Tap to Complete'}
-                </Text>
+              <View style={{ marginTop: SPACING.xs }}>
+                <View style={styles.kycStatusBadge}>
+                  <View style={[
+                    styles.kycStatusDot,
+                    { 
+                      backgroundColor: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning 
+                    }
+                  ]} />
+                  <Text style={[
+                    styles.kycStatusText,
+                    { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
+                  ]}>
+                    {myVendor.kyc_status === 'rejected'
+                      ? 'KYC Rejected'
+                      : myVendor.kyc_status === 'manual_review'
+                        ? 'Verification In Review'
+                        : 'Pending KYC'}
+                  </Text>
+                </View>
+                {myVendor.kyc_status !== 'manual_review' && (
+                  <TouchableOpacity
+                    style={{
+                      marginTop: SPACING.xs,
+                      backgroundColor: COLORS.primary,
+                      paddingVertical: 4,
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      alignSelf: 'flex-start',
+                    }}
+                    onPress={() => {
+                      setKycModalVendorId(myVendor.id);
+                      setShowKycModal(true);
+                    }}
+                  >
+                    <Text style={{ color: COLORS.surface, fontSize: 12, fontWeight: '600' }}>
+                      Complete Verification
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <TouchableOpacity
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onPress={handleDeleteVendor}
+            >
+              <Ionicons name="trash" size={18} color={COLORS.error} />
+            </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+          </View>
         </TouchableOpacity>
       )}
 
@@ -1038,6 +1110,7 @@ export default function VendorScreen() {
         onKycUpdated={() => {
           setShowKycModal(false);
           loadKycStatus();
+          router.push('/vendor/dashboard');
         }}
       />
     </View>
