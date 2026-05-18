@@ -37,6 +37,7 @@ import {
   muteConversation,
   unmuteConversation,
 } from '../../src/services/api';
+import { MentionInput } from '../../src/components/MentionInput';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatMessage } from '../../src/services/firebase/chatService';
 import { useAuthStore } from '../../src/store/authStore';
@@ -1549,14 +1550,13 @@ const DirectMessageScreen = () => {
 
         <View style={styles.inputContainer}>
         <View style={styles.inputFieldContainer}>
-          <TextInput
-            style={styles.input}
+          <MentionInput
             value={newMessage}
             onChangeText={setNewMessage}
             placeholder="Type a message"
             placeholderTextColor={COLORS.textSecondary}
             multiline
-            maxHeight={100}
+            inputStyle={styles.input}
             editable={!isInputLocked}
           />
           <TouchableOpacity

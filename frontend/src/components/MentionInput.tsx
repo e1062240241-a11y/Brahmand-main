@@ -28,6 +28,8 @@ interface MentionInputProps {
   multiline?: boolean;
   style?: any;
   inputStyle?: any;
+  editable?: boolean;
+  autoFocus?: boolean;
 }
 
 export const MentionInput = ({
@@ -38,6 +40,8 @@ export const MentionInput = ({
   multiline = false,
   style,
   inputStyle,
+  editable = true,
+  autoFocus = false,
 }: MentionInputProps) => {
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
@@ -54,12 +58,7 @@ export const MentionInput = ({
       return;
     }
     const textAfterAt = beforeCursor.slice(atIndex + 1);
-    if (!textAfterAt) {
-      setShowMentions(false);
-      return;
-    }
-    const hasSpace = /\s/.test(textAfterAt);
-    if (hasSpace) {
+    if (/\s/.test(textAfterAt)) {
       setShowMentions(false);
       return;
     }
@@ -74,7 +73,7 @@ export const MentionInput = ({
     const atIndex = text.lastIndexOf('@', cursorPos);
     if (atIndex === -1) { setShowMentions(false); return; }
     const textAfterAt = text.slice(atIndex + 1, cursorPos);
-    if (!textAfterAt || /\s/.test(textAfterAt)) { setShowMentions(false); return; }
+    if (/\s/.test(textAfterAt)) { setShowMentions(false); return; }
     setMentionQuery(textAfterAt);
     searchTimeout.current = setTimeout(async () => {
       try {
@@ -134,6 +133,8 @@ export const MentionInput = ({
         placeholder={placeholder}
         placeholderTextColor={placeholderTextColor}
         multiline={multiline}
+        editable={editable}
+        autoFocus={autoFocus}
       />
     </View>
   );

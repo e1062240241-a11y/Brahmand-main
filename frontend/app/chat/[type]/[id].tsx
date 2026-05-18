@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, P
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { MentionInput } from '../../../src/components/MentionInput';
 import * as ExpoLinking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
@@ -1307,14 +1308,13 @@ const ChatScreen = () => {
             )}
             <View style={styles.inputContainer}>
               <View style={styles.inputFieldContainer}>
-                <TextInput
-                  style={styles.input}
+                <MentionInput
                   value={newMessage}
                   onChangeText={setNewMessage}
                   placeholder="Type a message"
                   placeholderTextColor={COLORS.textSecondary}
                   multiline
-                  maxHeight={100}
+                  inputStyle={styles.input}
                 />
                 <TouchableOpacity
                   style={styles.attachButton}

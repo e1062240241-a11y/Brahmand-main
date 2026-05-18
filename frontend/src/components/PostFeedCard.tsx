@@ -223,6 +223,9 @@ export const PostFeedCard = memo(({
   const isLongCaption = captionWords.length > 4;
   const captionSegments = captionText ? parseCaption(captionText) : [];
   const router = useRouter();
+  const postedAt = post?.created_at || post?.createdAt || post?.createdAtUtc || post?.created_at || null;
+  const postTimeText = formatTimeAgo(postedAt);
+
   const handleMentionPress = useCallback(async (username: string) => {
     try {
       const { searchUserBySLId } = await import('../services/api');
@@ -240,6 +243,7 @@ export const PostFeedCard = memo(({
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
           <View style={styles.userMeta}>
             <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+            <Text style={[styles.timeText, theme === 'light' ? styles.timeTextLight : {}]}>{postTimeText}</Text>
           </View>
         </TouchableOpacity>
 

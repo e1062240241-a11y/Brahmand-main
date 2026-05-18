@@ -26,6 +26,7 @@ import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommuni
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
+import { MentionInput } from '../../src/components/MentionInput';
 import * as ImagePicker from 'expo-image-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -1212,12 +1213,12 @@ export default function CommunityDetailScreen() {
         )}
         <View style={styles.inputContainer}>
           <Avatar name={user?.name || '?'} photo={user?.photo} size={32} />
-          <TextInput
-            style={styles.input}
-            placeholder="Share your thoughts with your community..."
+          <MentionInput
             value={newMessage}
             onChangeText={setNewMessage}
+            placeholder="Share your thoughts with your community..."
             placeholderTextColor="#888"
+            inputStyle={styles.input}
           />
           <TouchableOpacity style={styles.footerIcon} onPress={handlePickImage}>
             <Ionicons name="image-outline" size={24} color="#888" />
@@ -1257,12 +1258,13 @@ export default function CommunityDetailScreen() {
                 </View>
               </View>
 
-              <TextInput
-                style={styles.createPostInput}
-                placeholder="Share your thoughts..."
-                multiline
+              <MentionInput
                 value={newMessage}
                 onChangeText={setNewMessage}
+                placeholder="Share your thoughts..."
+                placeholderTextColor="#888"
+                multiline
+                inputStyle={styles.createPostInput}
                 autoFocus
               />
               <Text style={styles.charCount}>{newMessage.length}/600</Text>
@@ -1379,12 +1381,12 @@ export default function CommunityDetailScreen() {
 
             <View style={styles.commentInputRow}>
               <Avatar name={user?.name || '?'} photo={user?.photo} size={32} />
-              <TextInput
-                style={styles.commentInput}
-                placeholder="Add a comment..."
+              <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
-                onSubmitEditing={handleAddComment}
+                placeholder="Add a comment..."
+                placeholderTextColor="#888"
+                inputStyle={styles.commentInput}
               />
               <TouchableOpacity onPress={handleAddComment} disabled={!commentText.trim()}>
                 <Text style={[styles.postCommentBtn, !commentText.trim() && { opacity: 0.5 }]}>Post</Text>

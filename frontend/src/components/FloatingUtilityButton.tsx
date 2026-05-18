@@ -1447,6 +1447,7 @@ const styles = StyleSheet.create({
   cancelSOSText: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
   itemTitleSOSSmall: { color: '#FFF', fontSize: 8, fontWeight: '800', textAlign: 'center', marginTop: 4 },
 
+  // RESPONDER SOS VIEW STYLES
   sosResponderView: { width: '100%', height: '100%', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10, paddingBottom: 5 },
   sosAlertHeader: { alignItems: 'center', marginTop: 15, marginBottom: 8 },
   alertIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
