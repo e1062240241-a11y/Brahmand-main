@@ -327,8 +327,19 @@ const UserProfileScreen = () => {
   };
 
   const renderPost = ({ item }: { item: any }) => {
-    const isVideo = (item.media_url || '').match(/\.(mp4|mov|avi)$/i) || (item.media_type === 'video');
-    const displayUrl = item.thumbnail_url || item.image_url || (!isVideo ? item.media_url : null);
+    const rawUrl = item.media_url || item.mediaUrl || item.image_url || item.image || '';
+    const isVideo = (rawUrl.match(/\.(mp4|mov|m4v|webm|m3u8|avi|mkv|flv|wmv)(\?|$)/i) || false) ||
+      item.media_type === 'video' ||
+      item.is_video ||
+      item.isVideo ||
+      (rawUrl.includes('firebasestorage.googleapis.com') && (
+        rawUrl.toLowerCase().includes('%2fvideo') ||
+        rawUrl.toLowerCase().includes('/video') ||
+        rawUrl.toLowerCase().includes('.mp4') ||
+        rawUrl.toLowerCase().includes('.m3u8') ||
+        rawUrl.toLowerCase().includes('%2fposts%2f')
+      ));
+    const displayUrl = item.thumbnail_url || item.thumbnailUrl || item.image_url || item.image || rawUrl;
     const views = item.views_count || 0;
 
     return (

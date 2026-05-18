@@ -300,7 +300,7 @@ class FirebaseCommunityService:
             'communities',
             order_by='member_count',
             order_direction='DESCENDING',
-            limit=20
+            limit=100
         )
         
         return [{

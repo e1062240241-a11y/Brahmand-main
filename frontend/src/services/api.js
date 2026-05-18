@@ -678,6 +678,10 @@ var joinCommunityByCode = function (code) {
     return api.post('/communities/join', { code: code });
 };
 exports.joinCommunityByCode = joinCommunityByCode;
+var respondToCommunityRequest = function (requestId, status) {
+    return api.post("/communities/requests/".concat(requestId, "/respond"), { status: status });
+};
+exports.respondToCommunityRequest = respondToCommunityRequest;
 var agreeToRules = function (communityId, subgroupType) {
     return api.post("/communities/".concat(communityId, "/agree-rules"), { subgroup_type: subgroupType });
 };
@@ -789,7 +793,7 @@ var denyDirectMessageRequest = function (conversationId) {
 exports.denyDirectMessageRequest = denyDirectMessageRequest;
 // Discover APIs
 var discoverCommunities = function () {
-    return api.get('/discover/communities');
+    return api.get('/communities/discover');
 };
 exports.discoverCommunities = discoverCommunities;
 // Wisdom & Panchang APIs

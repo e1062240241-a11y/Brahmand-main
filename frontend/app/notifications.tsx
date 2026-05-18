@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { useNotificationStore } from '../src/store/notificationStore';
-import { getUserNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '../src/services/api';
+import { getUserNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, respondToCommunityRequest } from '../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -18,6 +18,7 @@ const NOTIFICATION_ICONS: Record<string, any> = {
   comment: { icon: 'chatbubble', color: '#2196F3', bg: '#E3F2FD' },
   like: { icon: 'heart', color: '#E91E63', bg: '#FCE4EC' },
   follow: { icon: 'person-add', color: '#4CAF50', bg: '#E8F5E9' },
+  community_creation_invite: { icon: 'people', color: '#9933FF', bg: '#F0E6FF' },
   default: { icon: 'notifications', color: '#795548', bg: '#EFEBE9' }
 };
 
@@ -27,6 +28,7 @@ export default function NotificationsScreen() {
   const { dismissBadge } = useNotificationStore();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const { unreadCount, setUnreadCount } = useNotificationStore();
 
   const loadNotifications = async () => {
@@ -62,7 +64,7 @@ export default function NotificationsScreen() {
           ? { ...notif, is_read: true, unread: false }
           : notif
       )));
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setUnreadCount(Math.max(0, unreadCount - 1));
       try {
         await markNotificationRead(notificationId);
       } catch (err) {
@@ -72,6 +74,35 @@ export default function NotificationsScreen() {
 
     if (item?.link) {
       router.push(item.link);
+    }
+  };
+
+  const handleRespondToInvite = async (requestId: string, status: 'accepted' | 'declined', notificationId: string) => {
+    setActionLoadingId(notificationId);
+    try {
+      const response = await respondToCommunityRequest(requestId, status);
+      Alert.alert(
+        status === 'accepted' ? 'Accepted' : 'Declined',
+        response.data?.message || `You have ${status} the community group invitation successfully.`
+      );
+      // Mark notification as read
+      if (notificationId) {
+        await markNotificationRead(notificationId);
+      }
+      // Reload notifications list
+      await loadNotifications();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to respond to invitation.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
     }
   };
 
@@ -95,7 +126,7 @@ export default function NotificationsScreen() {
       <LinearGradient colors={['#FF6600', '#FF9933']} style={styles.headerGradient}>
         <SafeAreaView edges={['top']}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
               <Ionicons name="chevron-back" size={26} color="#FFF" />
             </TouchableOpacity>
             <View style={styles.headerTitleWrap}>
@@ -127,25 +158,68 @@ export default function NotificationsScreen() {
           ) : (
             notifications.map((item) => {
               const style = getNotificationStyle(item.type);
+              const isInvite = item.type === 'community_creation_invite';
+              
+              // Safely extract request_id from nested data payload
+              const requestData = typeof item.data === 'string' 
+                ? (() => { try { return JSON.parse(item.data); } catch { return null; } })() 
+                : item.data;
+              const requestId = requestData?.request_id;
+
+              const CardWrapper = isInvite ? View : TouchableOpacity;
+              const wrapperProps = isInvite ? {} : { activeOpacity: 0.7, onPress: () => handleNotificationPress(item) };
+
               return (
-                <TouchableOpacity
+                <CardWrapper
                   key={item.id || item._id || Math.random().toString()}
-                  style={[styles.notificationItem, (!item.is_read || item.unread) && styles.notificationItemUnread]}
-                  activeOpacity={0.7}
-                  onPress={() => handleNotificationPress(item)}
+                  style={[
+                    styles.notificationItem, 
+                    (!item.is_read || item.unread) && styles.notificationItemUnread,
+                    isInvite && styles.inviteItemCard
+                  ]}
+                  {...wrapperProps}
                 >
-                  <View style={[styles.iconCircle, { backgroundColor: style.bg }]}>
-                    <Ionicons name={style.icon} size={22} color={style.color} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.iconCircle, { backgroundColor: style.bg }]}>
+                      <Ionicons name={style.icon} size={22} color={style.color} />
+                    </View>
+                    <View style={styles.notificationBody}>
+                      <Text style={styles.notificationTitle}>{item.title || 'Notification'}</Text>
+                      <Text style={styles.notificationText} numberOfLines={isInvite ? 4 : 2}>
+                        {item.body || 'You have a new notification.'}
+                      </Text>
+                      <Text style={styles.notificationTime}>{item.time || item.created_at || 'Recently'}</Text>
+                    </View>
+                    {(!item.is_read || item.unread) && !isInvite && <View style={styles.unreadPulse} />}
                   </View>
-                  <View style={styles.notificationBody}>
-                    <Text style={styles.notificationTitle}>{item.title || 'Notification'}</Text>
-                    <Text style={styles.notificationText} numberOfLines={2}>
-                      {item.body || 'You have a new notification.'}
-                    </Text>
-                    <Text style={styles.notificationTime}>{item.time || item.created_at || 'Recently'}</Text>
-                  </View>
-                  {(!item.is_read || item.unread) && <View style={styles.unreadPulse} />}
-                </TouchableOpacity>
+
+                  {isInvite && (
+                    <View style={styles.inviteActionsRow}>
+                      <TouchableOpacity
+                        style={[styles.inviteActionBtn, styles.acceptBtn, actionLoadingId === item.id && styles.disabledBtn]}
+                        onPress={() => handleRespondToInvite(requestId, 'accepted', item.id || item._id)}
+                        disabled={actionLoadingId === item.id || !requestId}
+                      >
+                        {actionLoadingId === item.id ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                            <Text style={styles.inviteBtnText}>Accept</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.inviteActionBtn, styles.declineBtn, actionLoadingId === item.id && styles.disabledBtn]}
+                        onPress={() => handleRespondToInvite(requestId, 'declined', item.id || item._id)}
+                        disabled={actionLoadingId === item.id || !requestId}
+                      >
+                        <Ionicons name="close-circle-outline" size={16} color="#FF3B30" style={{ marginRight: 6 }} />
+                        <Text style={[styles.inviteBtnText, { color: '#FF3B30' }]}>Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </CardWrapper>
               );
             })
           )}
@@ -179,4 +253,11 @@ const styles = StyleSheet.create({
   emptyIconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   emptyTitle: { fontSize: 20, fontWeight: '900', color: '#333', marginBottom: 8 },
   emptyText: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20 },
+  inviteItemCard: { flexDirection: 'column', alignItems: 'stretch' },
+  inviteActionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, borderTopWidth: 1, borderColor: '#F5F5F5', paddingTop: 12, gap: 8 },
+  inviteActionBtn: { flex: 1, flexDirection: 'row', height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  acceptBtn: { backgroundColor: '#4CAF50' },
+  declineBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#FF3B30' },
+  inviteBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  disabledBtn: { opacity: 0.5 },
 });

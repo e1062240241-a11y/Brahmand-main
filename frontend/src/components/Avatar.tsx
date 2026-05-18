@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { COLORS, BORDER_RADIUS } from '../constants/theme';
 
 interface AvatarProps {
@@ -22,10 +22,21 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
 
   if (photo) {
     const isUrl = photo.startsWith('http') || photo.startsWith('https://');
-    return (
+    const uri = (isUrl || photo.startsWith('data:')) ? photo : `data:image/jpeg;base64,${photo}`;
+    
+    return Platform.OS === 'web' ? (
+      <img 
+        src={uri}
+        style={{ width: size, height: size, borderRadius, objectFit: 'cover' }}
+        alt={name}
+      />
+    ) : (
       <Image
-        source={{ uri: (isUrl || photo.startsWith('data:')) ? photo : `data:image/jpeg;base64,${photo}` }}
+        source={{ uri }}
         style={[styles.image, { width: size, height: size, borderRadius }]}
+        contentFit="cover"
+        transition={200}
+        cachePolicy="disk"
       />
     );
   }

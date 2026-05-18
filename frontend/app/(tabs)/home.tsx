@@ -178,11 +178,13 @@ export default function HomeScreen() {
     }
 
     try {
+      console.log(`[Antigravity] Fetching home feed: limit=${FEED_PAGE_SIZE}, offset=${offset}, tab=${tabToLoad}`);
       const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
       const payload = response.data;
       const incomingItems = Array.isArray(payload)
         ? payload
         : (Array.isArray(payload?.items) ? payload.items : []);
+
       const nextHasMore = typeof payload?.has_more === 'boolean'
         ? payload.has_more
         : incomingItems.length === FEED_PAGE_SIZE;
@@ -190,7 +192,8 @@ export default function HomeScreen() {
       if (append) {
         setFeedPosts((prev) => {
           const existingIds = new Set(prev.map((item) => item?.id));
-          return [...prev, ...incomingItems.filter((item: any) => !existingIds.has(item?.id))];
+          const newItems = incomingItems.filter((item: any) => !existingIds.has(item?.id));
+          return [...prev, ...newItems];
         });
         setFeedOffset(offset + incomingItems.length);
       } else {
@@ -199,10 +202,12 @@ export default function HomeScreen() {
         const cacheKey = `home_feed_cache_${tabToLoad}`;
         AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
       }
-      setHasMoreFeed(nextHasMore);
+      setHasMoreFeed(nextHasMore && incomingItems.length > 0);
     } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
-      if (!append && !hasCachedData) {
+      if (append) {
+        setHasMoreFeed(false); // Stop trying to load more if it's failing
+      } else if (!hasCachedData) {
         setFeedPosts([]);
       }
     } finally {
@@ -479,12 +484,28 @@ export default function HomeScreen() {
     }
     setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
 
-    // Infinite Scroll Logic
-    if (hasMoreFeed && !loadingMoreFeed && !loadingFeed) {
+    // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
+    if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
       const scrollHeight = event.nativeEvent.contentSize.height;
       const layoutHeight = event.nativeEvent.layoutMeasurement.height;
-      if (y + layoutHeight > scrollHeight - 800) {
-        loadFeedPosts(feedOffset, true);
+
+      // Determine which post is currently visible near the bottom of the viewport
+      // We trigger when the 6th-to-last post (index = length - 2) is reached
+      const targetIndex = Math.max(0, feedPosts.length - 2);
+      const targetPost = feedPosts[targetIndex];
+      const targetKey = String(targetPost?.id || targetPost?.media_url || targetIndex);
+      const targetOffset = postOffsets[targetKey];
+
+      if (typeof targetOffset === 'number') {
+        // If the target post's top is visible in the bottom portion of the screen
+        if (y + layoutHeight > targetOffset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT) {
+          loadFeedPosts(feedOffset, true);
+        }
+      } else {
+        // Fallback to pixel-based trigger if layout not yet captured
+        if (y + layoutHeight > scrollHeight - 1000) {
+          loadFeedPosts(feedOffset, true);
+        }
       }
     }
   }, [feedPostKeys, postOffsets, postHeights]);
@@ -1265,6 +1286,75 @@ export default function HomeScreen() {
                 </LinearGradient>
               </ScrollView>
 
+              <View style={styles.twoButtonsRow}>
+                {/* Mumbai Community Card */}
+                {(() => {
+                  const mumbaiComm = communities.find(c => c.type === 'city' && c.name?.toLowerCase().includes('mumbai')) ||
+                    communities.find(c => c.name?.toLowerCase().includes('mumbai'));
+                  return (
+                    <TouchableOpacity
+                      style={styles.communityCardMini}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        if (mumbaiComm) {
+                          router.push({
+                            pathname: `/community/${mumbaiComm.id}`,
+                            params: { subgroup: 'city', name: mumbaiComm.name }
+                          });
+                        } else {
+                          router.push('/messages?tab=Community');
+                        }
+                      }}
+                    >
+                      <View style={styles.miniCardIconBox}>
+                        <Ionicons name="location" size={20} color="#8C36DB" />
+                      </View>
+                      <View style={styles.miniCardContent}>
+                        <Text style={styles.miniCardType}>CITY COMMUNITY</Text>
+                        <Text style={styles.miniCardTitle} numberOfLines={1}>{mumbaiComm?.name || 'Mumbai Community'}</Text>
+                        <Text style={styles.miniCardMembers}>{mumbaiComm?.member_count?.toLocaleString() || '12K'} members</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
+                    </TouchableOpacity>
+                  );
+                })()}
+
+                {/* Local Community Card */}
+                {(() => {
+                  const localComm = communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area');
+                  return (
+                    <TouchableOpacity
+                      style={styles.communityCardMini}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        if (localComm) {
+                          router.push({
+                            pathname: `/community/${localComm.id}`,
+                            params: { subgroup: 'city', name: localComm.name }
+                          });
+                        } else {
+                          router.push('/messages?tab=Community');
+                        }
+                      }}
+                    >
+                      <View style={styles.miniCardImageBox}>
+                        <Image source={{ uri: 'https://images.unsplash.com/photo-1591604466107-ec97de577aff?w=200' }} style={styles.miniCardCircleImg} />
+                      </View>
+                      <View style={styles.miniCardContent}>
+                        <Text style={styles.miniCardTitle} numberOfLines={1}>{localComm?.name || 'Local Community'}</Text>
+                        <View style={styles.miniCardBottomRow}>
+                          <Text style={styles.miniCardMembers}>{localComm?.member_count?.toLocaleString() || '235'} members</Text>
+                          <View style={styles.sevaBadgeMini}>
+                            <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                          </View>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
+                    </TouchableOpacity>
+                  );
+                })()}
+              </View>
+
               <View style={styles.dots}>
                 <View style={styles.dot} />
                 <View style={styles.activeDot} />
@@ -1895,30 +1985,36 @@ const styles = StyleSheet.create({
   },
   cardHeaderBadgeYellow: {
     backgroundColor: '#FFF5E0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderColor: '#FFD6A5',
+    zIndex: 100,
+    elevation: 5,
   },
   cardHeaderBadgeTeal: {
     backgroundColor: '#E8F5E9',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderColor: '#A5D6A7',
+    zIndex: 100,
+    elevation: 5,
   },
   cardHeaderBadgePurple: {
     backgroundColor: '#F3E5F5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderColor: '#CE93D8',
+    zIndex: 100,
+    elevation: 5,
   },
   cardBadgeText: {
     color: '#FFF',
@@ -2051,6 +2147,114 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#FF6B00',
+  },
+  twoButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    gap: 12,
+  },
+  bigServiceButton: {
+    width: 174,
+    height: 70,
+    borderRadius: 18,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  bigButtonGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    gap: 12,
+  },
+  bigButtonIcon: {
+    width: 32,
+    height: 32,
+  },
+  bigButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#333',
+    flex: 1,
+  },
+  communityCardMini: {
+    flex: 1,
+    height: 70,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  miniCardIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#F3E5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  miniCardImageBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 8,
+    overflow: 'hidden',
+  },
+  miniCardCircleImg: {
+    width: '100%',
+    height: '100%',
+  },
+  miniCardContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  miniCardType: {
+    fontSize: 7,
+    fontWeight: '900',
+    color: '#8C36DB',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  miniCardTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#111',
+    lineHeight: 12,
+  },
+  miniCardMembers: {
+    fontSize: 8,
+    color: '#888',
+    marginTop: 1,
+  },
+  miniCardBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  sevaBadgeMini: {
+    borderWidth: 0.8,
+    borderColor: '#4CAF50',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  sevaBadgeTextMini: {
+    fontSize: 7,
+    fontWeight: '800',
+    color: '#4CAF50',
   },
   stickyFeedTabsShell: {
     backgroundColor: '#FFF',

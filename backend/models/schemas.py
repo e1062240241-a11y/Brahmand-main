@@ -269,6 +269,8 @@ class MessageCreate(BaseModel):
     message_type: MessageType = MessageType.TEXT
     post_id: Optional[str] = None  # Required for POST_SHARE
     media_url: Optional[str] = None  # Required for POST_SHARE
+    category: Optional[str] = None
+
 
     @model_validator(mode='after')
     def validate_post_share(cls, values):
