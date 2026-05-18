@@ -1078,7 +1078,7 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.topFeatureRow}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}>
                     {quickAccess.map((item, idx) => {
                       let cardBg = '#FFFFFF';
                       let iconBg = '#FF8A3D';
@@ -1184,7 +1184,7 @@ export default function HomeScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.actionCardsScroll}
-                style={{ marginBottom: 20 }}
+                style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
                 {/* Urgent Blood Request */}
                 <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
@@ -1290,8 +1290,8 @@ export default function HomeScreen() {
                       onPress={() => {
                         if (mumbaiComm) {
                           router.push({
-                            pathname: `/community/${mumbaiComm.id}`,
-                            params: { subgroup: 'city', name: mumbaiComm.name }
+                            pathname: '/community/[id]',
+                            params: { id: mumbaiComm.id, subgroup: 'city', name: mumbaiComm.name }
                           });
                         } else {
                           router.push('/messages?tab=Community');
@@ -1321,8 +1321,8 @@ export default function HomeScreen() {
                       onPress={() => {
                         if (localComm) {
                           router.push({
-                            pathname: `/community/${localComm.id}`,
-                            params: { subgroup: 'city', name: localComm.name }
+                            pathname: '/community/[id]',
+                            params: { id: localComm.id, subgroup: 'city', name: localComm.name }
                           });
                         } else {
                           router.push('/messages?tab=Community');
@@ -1798,6 +1798,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 20,
     gap: 8,
+    marginHorizontal: -PAGE_PADDING,
   },
   featureCard: {
     backgroundColor: '#FFFFFF',
@@ -1958,9 +1959,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
   },
+  actionCardsScrollView: {
+    marginHorizontal: -PAGE_PADDING,
+  },
   actionCardsScroll: {
-    paddingRight: 20,
+    paddingHorizontal: PAGE_PADDING,
     paddingTop: 25,
+    paddingBottom: 5,
     gap: Platform.OS === 'ios' ? 10 : 15,
   },
   actionCard: {
@@ -2151,6 +2156,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 20,
     gap: 12,
+    marginHorizontal: -PAGE_PADDING,
+    paddingHorizontal: PAGE_PADDING,
   },
   bigServiceButton: {
     width: 174,
@@ -2187,7 +2194,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -2219,6 +2226,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   miniCardType: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 7,
     fontWeight: '900',
     color: '#8C36DB',
@@ -2226,12 +2234,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   miniCardTitle: {
+    fontFamily: 'Outfit_700Bold',
     fontSize: 10,
     fontWeight: '800',
     color: '#111',
     lineHeight: 12,
   },
   miniCardMembers: {
+    fontFamily: 'Inter_500Medium',
     fontSize: 8,
     color: '#888',
     marginTop: 1,
@@ -2250,6 +2260,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   sevaBadgeTextMini: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 7,
     fontWeight: '800',
     color: '#4CAF50',
