@@ -701,14 +701,46 @@ export const uploadCompressedVideo = (
   })();
 };
 
-export const getPostsFeed = (limit: number = 20, offset: number = 0, tab: string = 'for_you', seen_ids?: string) =>
-  api.get('/posts/feed', { params: { limit, offset, tab, seen_ids } });
+export const markPostAsSeen = async (postId: string) => {
+  if (!postId) return;
+  try {
+    const saved = await AsyncStorage.getItem('global_seen_reels');
+    let seenArray = saved ? JSON.parse(saved) : [];
+    if (!Array.isArray(seenArray)) seenArray = [];
+    if (!seenArray.includes(postId)) {
+      seenArray.push(postId);
+      if (seenArray.length > 500) seenArray = seenArray.slice(seenArray.length - 500);
+      await AsyncStorage.setItem('global_seen_reels', JSON.stringify(seenArray));
+    }
+  } catch (e) {}
+};
 
-export const togglePostLike = (postId: string) =>
-  api.post(`/posts/${postId}/like`);
+export const getPostsFeed = async (limit: number = 20, offset: number = 0, tab: string = 'for_you', seen_ids?: string) => {
+  try {
+    const savedSeen = await AsyncStorage.getItem('global_seen_reels');
+    let localSeenIds = '';
+    if (savedSeen) {
+      const parsed = JSON.parse(savedSeen);
+      if (Array.isArray(parsed)) {
+        localSeenIds = parsed.slice(-300).join(',');
+      }
+    }
+    const combinedSeen = [seen_ids, localSeenIds].filter(Boolean).join(',');
+    return api.get('/posts/feed', { params: { limit, offset, tab, seen_ids: combinedSeen } });
+  } catch (e) {
+    return api.get('/posts/feed', { params: { limit, offset, tab, seen_ids } });
+  }
+};
 
-export const addPostComment = (postId: string, text: string) =>
-  api.post(`/posts/${postId}/comments`, { text });
+export const togglePostLike = (postId: string) => {
+  markPostAsSeen(postId);
+  return api.post(`/posts/${postId}/like`);
+};
+
+export const addPostComment = (postId: string, text: string) => {
+  markPostAsSeen(postId);
+  return api.post(`/posts/${postId}/comments`, { text });
+};
 
 export const getPostComments = (postId: string, limit: number = 200) =>
   api.get(`/posts/${postId}/comments`, { params: { limit } });
@@ -743,8 +775,10 @@ export const getPostById = (postId: string) =>
 export const getPostViews = (postId: string) =>
   api.get(`/posts/${postId}/views`);
 
-export const recordWatchEvent = (postId: string, data: { watch_seconds: number; duration_seconds: number; rewatched: boolean }) =>
-  api.post(`/posts/${postId}/watch`, data);
+export const recordWatchEvent = (postId: string, data: { watch_seconds: number; duration_seconds: number; rewatched: boolean }) => {
+  markPostAsSeen(postId);
+  return api.post(`/posts/${postId}/watch`, data);
+};
 
 export const getFeedPreferences = () =>
   api.get('/users/me/feed-preferences');

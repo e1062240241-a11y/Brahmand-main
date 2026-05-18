@@ -54,6 +54,7 @@ import {
   getUnreadNotificationCount,
   markAllNotificationsRead,
   reverseGeocode,
+  markPostAsSeen,
 } from '../../src/services/api';
 import * as Location from 'expo-location';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
@@ -152,28 +153,9 @@ export default function HomeScreen() {
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || activeTab;
-    let hasCachedData = false;
-
-    if (!append && offset === 0) {
-      try {
-        const cacheKey = `home_feed_cache_${tabToLoad}`;
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setFeedPosts(parsed);
-            setFeedOffset(parsed.length);
-            hasCachedData = true;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to parse home feed cache', e);
-      }
-    }
-
     if (append) {
       setLoadingMoreFeed(true);
-    } else if (!hasCachedData) {
+    } else {
       setLoadingFeed(true);
     }
 
@@ -199,15 +181,13 @@ export default function HomeScreen() {
       } else {
         setFeedPosts(incomingItems);
         setFeedOffset(incomingItems.length);
-        const cacheKey = `home_feed_cache_${tabToLoad}`;
-        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
       }
       setHasMoreFeed(nextHasMore && incomingItems.length > 0);
     } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
       if (append) {
         setHasMoreFeed(false); // Stop trying to load more if it's failing
-      } else if (!hasCachedData) {
+      } else {
         setFeedPosts([]);
       }
     } finally {
@@ -452,6 +432,11 @@ export default function HomeScreen() {
     [feedPosts],
   );
 
+  useEffect(() => {
+    if (activePostKey && activePostKey.length > 10) {
+      markPostAsSeen(activePostKey);
+    }
+  }, [activePostKey]);
 
   const lastScrollTimeRef = useRef(0);
 

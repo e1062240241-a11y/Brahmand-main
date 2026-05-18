@@ -436,7 +436,7 @@ const ReelVideoItem = React.memo(({
           paddingLeft: 16,
         }}
       >
-        <TouchableOpacity onPress={handleClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
+        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
           <Ionicons name="close" size={30} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -447,7 +447,7 @@ const ReelVideoItem = React.memo(({
           {...seekBarPan.panHandlers}
           style={{
             position: 'absolute',
-            bottom: Platform.OS === 'ios' ? 60 : 50,
+            bottom: Platform.OS === 'ios' ? 40 : 30,
             left: 16,
             right: 16,
             height: isScrubbing ? 40 : 20,
@@ -488,7 +488,7 @@ const ReelVideoItem = React.memo(({
         pointerEvents="box-none"
         style={{
           position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 120 : 100,
+          bottom: Platform.OS === 'ios' ? 95 : 75,
           left: 16,
           right: 90,
           zIndex: 20,
@@ -544,9 +544,9 @@ const ReelVideoItem = React.memo(({
       </View>
 
       {/* Right Side - Action Buttons + Speed */}
-      <View pointerEvents="box-none" style={{
+      <View style={{
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 120 : 100,
+        bottom: Platform.OS === 'ios' ? 75 : 65,
         right: 12,
         alignItems: 'center',
         zIndex: 20,
