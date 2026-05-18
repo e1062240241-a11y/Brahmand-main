@@ -7797,6 +7797,8 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     
     # Get user location info for visibility matching
     location_area = user.get('home_location', {}) or user.get('location', {})
+    if not isinstance(location_area, dict):
+        location_area = {}
     
     resolved_community_id = data.community_id
     if not resolved_community_id:
@@ -7926,6 +7928,8 @@ async def get_community_requests(
         or user.get('location_area')
         or {}
     )
+    if not isinstance(location_area, dict):
+        location_area = {}
     
     requests = await db.query_documents('community_requests', filters=filters, limit=limit)
     
