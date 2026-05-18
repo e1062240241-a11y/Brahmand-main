@@ -3484,19 +3484,279 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     return communities
 
 
+class CommunityRequestResponse(BaseModel):
+    status: str
+
 @api_router.post("/communities")
 async def create_community(
     data: CommunityCreate,
     token_data: dict = Depends(verify_token)
 ):
-    """Create a user community group"""
+    """Create a user community group request (consensus driven)"""
     try:
-        return await FirebaseCommunityService.create_user_community(
-            token_data["user_id"],
-            data.dict()
-        )
+        db = await get_db()
+        owner_id = token_data["user_id"]
+        
+        # 1. Validation: Must have exactly 2 admins and 2 members
+        # Make sure owner is not in either, and no duplicates
+        admin_ids = list(set(data.admin_ids))
+        member_ids = list(set(data.member_ids))
+        
+        if len(admin_ids) != 2 or len(member_ids) != 2:
+            raise HTTPException(
+                status_code=400,
+                detail="A local community group requires exactly 1 owner, 2 admins, and 2 members to initiate consensus creation."
+            )
+            
+        all_members_set = set([owner_id] + admin_ids + member_ids)
+        if len(all_members_set) != 5:
+            raise HTTPException(
+                status_code=400,
+                detail="Owner, admins, and members must all be unique users."
+            )
+
+        # 2. Upload photos to Firebase Storage if provided as base64
+        photo_url = data.photo
+        if photo_url and photo_url.startswith('data:'):
+            try:
+                photo_path = f"communities/photos/{uuid4().hex}.jpg"
+                photo_url = await FirebaseCommunityService._upload_to_storage(photo_path, photo_url)
+            except Exception as e:
+                logger.error(f"Failed to upload community photo: {e}")
+                photo_url = None
+
+        cover_url = data.cover_photo
+        if cover_url and cover_url.startswith('data:'):
+            try:
+                cover_path = f"communities/covers/{uuid4().hex}.jpg"
+                cover_url = await FirebaseCommunityService._upload_to_storage(cover_path, cover_url)
+            except Exception as e:
+                logger.error(f"Failed to upload community cover: {e}")
+                cover_url = None
+
+        # 3. Generate unique community code
+        from utils.helpers import generate_community_code
+        base_code = generate_community_code(data.name.split()[0])
+        code = base_code
+        attempts = 0
+        while attempts < 10:
+            existing = await db.find_one('communities', [('code', '==', code)])
+            if not existing:
+                break
+            code = f"{base_code}{attempts + 1}"
+            attempts += 1
+
+        # 4. Save to community_creation_requests collection
+        invited_users = admin_ids + member_ids
+        request_data = {
+            "name": data.name,
+            "description": data.description,
+            "short_name": data.short_name,
+            "city": data.city,
+            "area": data.area,
+            "type": "user_group",
+            "category": data.category or "Devotional",
+            "photo": photo_url,
+            "cover_photo": cover_url,
+            "owner_id": owner_id,
+            "admin_ids": admin_ids,
+            "member_ids": member_ids,
+            "code": code,
+            "status": "pending",
+            "responses": {uid: "pending" for uid in invited_users},
+            "created_at": datetime.utcnow().isoformat()
+        }
+
+        request_id = await db.create_document('community_creation_requests', request_data)
+        request_data['id'] = request_id
+
+        # 5. Fetch owner name
+        owner_user = await db.get_document('users', owner_id)
+        owner_name = owner_user.get('name') or "A user"
+
+        # 6. Send notifications to all invited admins and members
+        for admin_id in admin_ids:
+            await db.create_document('notifications', {
+                "user_id": admin_id,
+                "title": "Community Group Invitation",
+                "body": f"{owner_name} has invited you as an ADMIN to help create the community group '{data.name}'.",
+                "type": "community_creation_invite",
+                "data": {
+                    "request_id": request_id,
+                    "community_name": data.name,
+                    "role": "admin",
+                    "owner_name": owner_name
+                },
+                "is_read": False,
+                "created_at": datetime.utcnow().isoformat()
+            })
+
+        for member_id in member_ids:
+            await db.create_document('notifications', {
+                "user_id": member_id,
+                "title": "Community Group Invitation",
+                "body": f"{owner_name} has invited you as a MEMBER to help create the community group '{data.name}'.",
+                "type": "community_creation_invite",
+                "data": {
+                    "request_id": request_id,
+                    "community_name": data.name,
+                    "role": "member",
+                    "owner_name": owner_name
+                },
+                "is_read": False,
+                "created_at": datetime.utcnow().isoformat()
+            })
+
+        return {
+            "message": "Community group creation request submitted. Waiting for consensus approval from invited users.",
+            "request_id": request_id
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error creating community: {e}")
+        logger.error(f"Error initiating community creation request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/communities/requests/{request_id}/respond")
+async def respond_to_community_request(
+    request_id: str,
+    data: CommunityRequestResponse,
+    token_data: dict = Depends(verify_token)
+):
+    """Respond to a pending community creation request"""
+    try:
+        db = await get_db()
+        user_id = token_data["user_id"]
+        status = data.status.lower()
+
+        if status not in ['accepted', 'declined']:
+            raise HTTPException(status_code=400, detail="Status must be either 'accepted' or 'declined'")
+
+        # 1. Fetch the request
+        request_doc = await db.get_document('community_creation_requests', request_id)
+        if not request_doc:
+            raise HTTPException(status_code=404, detail="Community creation request not found")
+
+        if request_doc.get('status') != 'pending':
+            raise HTTPException(status_code=400, detail=f"Request is already {request_doc.get('status')}")
+
+        admin_ids = request_doc.get('admin_ids', [])
+        member_ids = request_doc.get('member_ids', [])
+        invited_users = admin_ids + member_ids
+
+        if user_id not in invited_users:
+            raise HTTPException(status_code=403, detail="You are not invited to this community group creation request.")
+
+        # 2. Fetch responder name
+        responder_user = await db.get_document('users', user_id)
+        responder_name = responder_user.get('name') or "A user"
+        comm_name = request_doc.get('name', 'Community')
+
+        responses = request_doc.get('responses', {})
+        responses[user_id] = status
+
+        owner_id = request_doc.get('owner_id')
+
+        # 3. Handle 'declined' case (Consensus broken, group creation fails)
+        if status == 'declined':
+            await db.update_document('community_creation_requests', request_id, {
+                "responses": responses,
+                "status": "declined"
+            })
+
+            # Notify group owner
+            await db.create_document('notifications', {
+                "user_id": owner_id,
+                "title": "Community Creation Declined",
+                "body": f"{responder_name} declined your invitation to create '{comm_name}'. The group will not be created.",
+                "type": "system",
+                "data": {
+                    "request_id": request_id,
+                    "community_name": comm_name,
+                    "status": "declined"
+                },
+                "is_read": False,
+                "created_at": datetime.utcnow().isoformat()
+            })
+            return {"message": "Invitation declined. Consensus broken, community will not be created."}
+
+        # 4. Handle 'accepted' case
+        # Check if all invited users have now accepted
+        all_accepted = True
+        for uid in invited_users:
+            if responses.get(uid) != 'accepted':
+                all_accepted = False
+                break
+
+        if all_accepted:
+            # 5. Consensus reached! Create the community group document
+            await db.update_document('community_creation_requests', request_id, {
+                "responses": responses,
+                "status": "approved"
+            })
+
+            # Prepare creation parameters
+            community_payload = {
+                "name": request_doc.get('name'),
+                "description": request_doc.get('description'),
+                "short_name": request_doc.get('short_name'),
+                "city": request_doc.get('city'),
+                "area": request_doc.get('area'),
+                "photo": request_doc.get('photo'),
+                "cover_photo": request_doc.get('cover_photo'),
+                "category": request_doc.get('category'),
+                "admin_ids": admin_ids,
+                "member_ids": member_ids
+            }
+
+            # Call FirebaseCommunityService to create the live community
+            created_community = await FirebaseCommunityService.create_user_community(owner_id, community_payload)
+
+            # Notify owner
+            await db.create_document('notifications', {
+                "user_id": owner_id,
+                "title": "Community Group Live!",
+                "body": f"Congratulations! All invited members have accepted. The community group '{comm_name}' is now live!",
+                "type": "system",
+                "data": {
+                    "community_id": created_community.get('id'),
+                    "community_name": comm_name,
+                    "status": "approved"
+                },
+                "is_read": False,
+                "created_at": datetime.utcnow().isoformat()
+            })
+
+            # Notify all invited users
+            for invited_uid in invited_users:
+                await db.create_document('notifications', {
+                    "user_id": invited_uid,
+                    "title": "Community Group Live!",
+                    "body": f"All members have accepted! The community group '{comm_name}' is now live. Tap to join the chat.",
+                    "type": "system",
+                    "data": {
+                        "community_id": created_community.get('id'),
+                        "community_name": comm_name,
+                        "status": "approved"
+                    },
+                    "is_read": False,
+                    "created_at": datetime.utcnow().isoformat()
+                })
+
+            return {
+                "message": "Invitation accepted. Consensus achieved! Community group has been created and is now live.",
+                "community": created_community
+            }
+        else:
+            # Consensus still pending other responses
+            await db.update_document('community_creation_requests', request_id, {
+                "responses": responses
+            })
+            return {"message": "Invitation accepted. Waiting for remaining invited users to respond."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error responding to community request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -3588,6 +3848,10 @@ async def send_community_message(
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat()
     }
+    if message.media_url:
+        msg_data['media_url'] = message.media_url
+    if message.category:
+        msg_data['category'] = message.category
     
     msg_id = await db.add_message_to_chat(chat_id, msg_data.copy())
     
@@ -3602,6 +3866,10 @@ async def send_community_message(
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat()
     }
+    if message.media_url:
+        response_data['media_url'] = message.media_url
+    if message.category:
+        response_data['category'] = message.category
     
     # Emit via Socket.IO
     await sio.emit('new_message', response_data, room=chat_id)

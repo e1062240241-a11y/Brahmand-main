@@ -96,11 +96,20 @@ export default function EmergencyHelpScreen() {
   };
 
   const handleContinue = async () => {
-    if (!emergencyType) return Alert.alert('Error', 'Please select emergency type');
-    if (!location) return Alert.alert('Error', 'Please provide location');
-    if (!description.trim()) return Alert.alert('Error', 'Please describe the situation');
-    if (description.trim().length < 10) return Alert.alert('Error', 'Please describe the situation in at least 10 characters');
-    if (!contactPref) return Alert.alert('Error', 'Please select contact preference');
+    const showAlert = (title: string, msg: string, cb?: () => void) => {
+      if (Platform.OS === 'web') {
+        window.alert(`${title}: ${msg}`);
+        if (cb) cb();
+      } else {
+        Alert.alert(title, msg, cb ? [{ text: 'OK', onPress: cb }] : undefined);
+      }
+    };
+
+    if (!emergencyType) return showAlert('Error', 'Please select emergency type');
+    if (!location) return showAlert('Error', 'Please provide location');
+    if (!description.trim()) return showAlert('Error', 'Please describe the situation');
+    if (description.trim().length < 10) return showAlert('Error', 'Please describe the situation in at least 10 characters');
+    if (!contactPref) return showAlert('Error', 'Please select contact preference');
 
     setIsSubmitting(true);
     try {
@@ -115,9 +124,9 @@ export default function EmergencyHelpScreen() {
         visibility_level: 'city',
       });
 
-      Alert.alert('Success', 'Emergency request posted!', [{ text: 'OK', onPress: () => router.push('/(tabs)/profile') }]);
+      showAlert('Success', 'Emergency request posted!', () => router.push('/(tabs)/profile'));
     } catch (error: any) {
-      Alert.alert('Error', parseApiError(error));
+      showAlert('Error', parseApiError(error));
     } finally {
       setIsSubmitting(false);
     }

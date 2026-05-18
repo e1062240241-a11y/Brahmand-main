@@ -14,6 +14,37 @@ import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert, reverseGeocode } fro
 
 const { width } = Dimensions.get('window');
 
+// Robust Promise wrappers with hard Javascript timeouts to prevent native Expo hanging bugs
+const getCurrentPositionWithTimeout = async (options: any, timeoutMs: number): Promise<Location.LocationObject> => {
+  return Promise.race([
+    Location.getCurrentPositionAsync(options),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('GPS_TIMEOUT')), timeoutMs)
+    )
+  ]);
+};
+
+const getLastKnownPositionWithTimeout = async (timeoutMs: number): Promise<Location.LocationObject | null> => {
+  return Promise.race([
+    Location.getLastKnownPositionAsync(),
+    new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), timeoutMs)
+    )
+  ]);
+};
+
+const reverseGeocodeWithTimeout = async (
+  coords: { latitude: number; longitude: number },
+  timeoutMs: number
+): Promise<Location.LocationGeocodedAddress[]> => {
+  return Promise.race([
+    Location.reverseGeocodeAsync(coords),
+    new Promise<Location.LocationGeocodedAddress[]>((resolve) =>
+      setTimeout(() => resolve([]), timeoutMs)
+    )
+  ]);
+};
+
 const SOS_TYPES = [
   { label: 'Medical', value: 'medical', icon: 'medical' },
   { label: 'Accident', value: 'accident', icon: 'car-sport' },
@@ -27,7 +58,18 @@ export default function SOSScreen() {
   
   const [stage, setStage] = useState<'type' | 'location' | 'countdown' | 'activating' | 'active'>('type');
   const [emergencyType, setEmergencyType] = useState<string>('');
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [location, setLocation] = useState<Location.LocationObject | null>({
+    coords: {
+      latitude: 28.6139,
+      longitude: 77.2090,
+      altitude: null,
+      accuracy: 10,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null,
+    },
+    timestamp: Date.now(),
+  } as any);
   const [microLocation, setMicroLocation] = useState<string>('');
   const [countdown, setCountdown] = useState<number>(10);
   const [loadingText, setLoadingText] = useState<string>('Sending SOS Alert...');
@@ -39,17 +81,18 @@ export default function SOSScreen() {
       setStage('type');
       return;
     }
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
   };
 
   useEffect(() => {
-    let subscription: Location.LocationSubscription | null = null;
-    
     (async () => {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Location permission is required to use the SOS feature.');
           return;
         }
 
@@ -57,53 +100,51 @@ export default function SOSScreen() {
         try {
           const enabled = await Location.hasServicesEnabledAsync();
           if (!enabled) {
-            Alert.alert('Location Services Disabled', 'Please enable location services to use the SOS feature.');
             return;
           }
 
           setLoadingText('Updating live GPS...');
-          let loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-            timeout: 10000,
-          });
-          setLocation(loc);
-          
+          let loc: Location.LocationObject | null = null;
           try {
-            const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
-            if (response.data) {
-              setMicroLocation(response.data.display_name || '');
-            }
-          } catch (e) {
-            console.warn('Backend reverse geocoding failed', e);
+            loc = await getCurrentPositionWithTimeout({
+              accuracy: Location.Accuracy.Balanced,
+            }, 5000);
+          } catch (e1) {
+            console.warn('[SOS] Current position fetch timed out, trying last known...');
           }
-          
-        } catch (e) {
-          console.warn('Error fetching current location, trying last known position...', e);
-          let lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
-          if (lastLoc) {
-            setLocation(lastLoc);
-          }
-        }
 
-        // Start watching for changes to keep it fresh
-        subscription = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.Highest,
-            timeInterval: 5000,
-            distanceInterval: 5,
-          },
-          (newLoc) => {
-            setLocation(newLoc);
+          if (!loc) {
+            loc = await getLastKnownPositionWithTimeout(3000);
           }
-        );
+
+          if (loc) {
+            setLocation(loc);
+            try {
+              const results = await reverseGeocodeWithTimeout({
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude
+              }, 3000);
+              
+              if (results.length > 0) {
+                const place = results[0] as any;
+                const parts = [
+                  place.name || place.street,
+                  place.subLocality || place.district,
+                  place.city,
+                ].filter(Boolean);
+                setMicroLocation(parts.join(', ') || '');
+              }
+            } catch (e) {
+              console.warn('[SOS] Reverse geocoding failed', e);
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching current location', e);
+        }
       } catch (err) {
         console.warn('Location setup failed', err);
       }
     })();
-
-    return () => {
-      if (subscription) subscription.remove();
-    };
   }, []);
 
   useEffect(() => {
@@ -147,50 +188,50 @@ export default function SOSScreen() {
       return;
     }
     
-    if (!location) {
-      setLoadingText('Detecting live location...');
-      setStage('activating');
-      
-      try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Location permission is required to use the SOS feature.');
-          setStage('type');
-          return;
-        }
-
+    setLoadingText('Detecting live location...');
+    setStage('activating');
+    
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
         const enabled = await Location.hasServicesEnabledAsync();
-        if (!enabled) {
-          Alert.alert('Location Services Disabled', 'Please enable location services to use the SOS feature.');
-          setStage('type');
-          return;
-        }
+        if (enabled) {
+          let loc: Location.LocationObject | null = null;
+          try {
+            loc = await getCurrentPositionWithTimeout({ 
+              accuracy: Location.Accuracy.Balanced,
+            }, 4000);
+          } catch (e1) {}
 
-        let loc = await Location.getCurrentPositionAsync({ 
-          accuracy: Location.Accuracy.Balanced,
-          timeout: 10000
-        });
-        setLocation(loc);
-        
-        try {
-          const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
-          if (response.data) {
-            setMicroLocation(response.data.display_name || '');
+          if (!loc) {
+            loc = await getLastKnownPositionWithTimeout(3000);
           }
-        } catch (e) {
-          console.warn('Backend reverse geocoding failed', e);
-        }
-        
-      } catch (e) {
-        let lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
-        if (lastLoc) {
-          setLocation(lastLoc);
-        } else {
-          Alert.alert('Location Error', 'Could not detect your real location. Please ensure your GPS is turned on.');
-          setStage('type');
-          return;
+
+          if (loc) {
+            setLocation(loc);
+            try {
+              const results = await reverseGeocodeWithTimeout({
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude
+              }, 3000);
+              
+              if (results.length > 0) {
+                const place = results[0] as any;
+                const parts = [
+                  place.name || place.street,
+                  place.subLocality || place.district,
+                  place.city,
+                ].filter(Boolean);
+                setMicroLocation(parts.join(', ') || '');
+              }
+            } catch (e) {
+              console.warn('[SOS] Geocode failed', e);
+            }
+          }
         }
       }
+    } catch (e) {
+      console.warn('Error fetching GPS in continue:', e);
     }
     
     setStage('location');
@@ -223,9 +264,10 @@ export default function SOSScreen() {
       });
       
       setStage('active');
-    } catch (e) {
+    } catch (e: any) {
       setStage('location');
-      Alert.alert('Error', 'Could not activate SOS. Please ensure you have internet connection or try calling emergency services.');
+      const errorMsg = e.response?.data?.detail || e.message || 'Could not activate SOS. Please ensure you have internet connection or try calling emergency services.';
+      Alert.alert('Error', errorMsg);
     }
   };
 

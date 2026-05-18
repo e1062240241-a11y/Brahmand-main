@@ -19,6 +19,37 @@ import { reverseGeocode } from '../services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// Robust Promise wrappers with hard Javascript timeouts to prevent native Expo hanging bugs
+const getCurrentPositionWithTimeout = async (options: any, timeoutMs: number): Promise<Location.LocationObject> => {
+  return Promise.race([
+    Location.getCurrentPositionAsync(options),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('GPS_TIMEOUT')), timeoutMs)
+    )
+  ]);
+};
+
+const getLastKnownPositionWithTimeout = async (timeoutMs: number): Promise<Location.LocationObject | null> => {
+  return Promise.race([
+    Location.getLastKnownPositionAsync(),
+    new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), timeoutMs)
+    )
+  ]);
+};
+
+const reverseGeocodeWithTimeout = async (
+  coords: { latitude: number; longitude: number },
+  timeoutMs: number
+): Promise<Location.LocationGeocodedAddress[]> => {
+  return Promise.race([
+    Location.reverseGeocodeAsync(coords),
+    new Promise<Location.LocationGeocodedAddress[]>((resolve) =>
+      setTimeout(() => resolve([]), timeoutMs)
+    )
+  ]);
+};
+
 interface SOSFlowModalProps {
   visible: boolean;
   onClose: () => void;
@@ -75,21 +106,67 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         setAddress('Location services disabled');
         return;
       }
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-        timeout: 10000
-      });
-      const res = await reverseGeocode(location.coords.latitude, location.coords.longitude);
-      
-      if (res.data) {
-        // Backend returns display_name or a combination of area, city, etc.
-        const addressText = res.data.display_name || 
-          `${res.data.area || ''}, ${res.data.city || ''}, ${res.data.state || ''}`.replace(/^, /, '');
-        setAddress(addressText || 'Location detected');
+      setAddress('Fetching live GPS...');
+
+      let location: Location.LocationObject | null = null;
+      try {
+        location = await getCurrentPositionWithTimeout({
+          accuracy: Location.Accuracy.Balanced,
+        }, 5000);
+      } catch (e1) {
+        console.warn('[SOSModal] Current position fetch timed out, trying last known...');
+      }
+
+      if (!location) {
+        location = await getLastKnownPositionWithTimeout(3000);
+      }
+
+      if (!location) {
+        throw new Error('All location retrieval attempts failed');
+      }
+
+      // Set raw coordinates immediately as a fallback display so user has instant feedback!
+      const fallbackAddr = `Lat: ${location.coords.latitude.toFixed(6)}, Lng: ${location.coords.longitude.toFixed(6)}`;
+      setAddress(fallbackAddr);
+
+      // Try geocoding with timeout
+      try {
+        const results = await reverseGeocodeWithTimeout({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude
+        }, 3000);
+
+        if (results.length > 0) {
+          const place = results[0] as any;
+          const parts = [
+            place.name || place.street,
+            place.subLocality || place.district,
+            place.city,
+          ].filter(Boolean);
+          const nativeAddr = parts.join(', ');
+          if (nativeAddr) {
+            setAddress(nativeAddr);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('[SOSModal] Native geocoding failed', e);
+      }
+
+      // Try backend fallback
+      try {
+        const res = await reverseGeocode(location.coords.latitude, location.coords.longitude);
+        if (res.data) {
+          const addressText = res.data.display_name || 
+            `${res.data.area || ''}, ${res.data.city || ''}, ${res.data.state || ''}`.replace(/^, /, '');
+          if (addressText) setAddress(addressText);
+        }
+      } catch (e) {
+        console.warn('[SOSModal] Backend reverse geocode failed', e);
       }
     } catch (error) {
       console.error('Fetch address error:', error);
-      setAddress('Could not fetch address from backend');
+      setAddress('Could not fetch address');
     }
   };
 

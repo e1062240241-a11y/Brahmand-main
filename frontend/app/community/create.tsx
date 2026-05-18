@@ -712,8 +712,10 @@ export default function CreateCommunityScreen() {
       {step === 9 && (
         <View style={styles.successContainer}>
            <Ionicons name="checkmark-circle" size={100} color={COLORS.success} />
-           <Text style={styles.successTitle}>Thanks!</Text>
-           <Text style={styles.successSub}>Your community group has been created successfully.</Text>
+           <Text style={styles.successTitle}>Request Submitted!</Text>
+           <Text style={styles.successSub}>
+             Your community group creation request has been initiated. Invitations have been sent to your selected admins and members. Once they all accept, your local community group will be activated and become live!
+           </Text>
            <TouchableOpacity style={styles.finishButton} onPress={() => router.replace('/(tabs)/messages')}>
              <Text style={styles.finishButtonText}>Back to Chats</Text>
            </TouchableOpacity>

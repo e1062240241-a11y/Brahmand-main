@@ -110,12 +110,16 @@ interface DiscussionPost {
   };
   content: string;
   timestamp: string;
+  likes: number;
+  comments: number;
   shares: number;
   reposts: number;
   liked?: boolean;
   isRepost?: boolean;
   repostedBy?: string;
   image?: string;
+  hideBadge?: boolean;
+  sender_id?: string;
 }
 
 const MOCK_DISCUSSION: DiscussionPost[] = [
@@ -183,6 +187,7 @@ export default function CommunityDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
@@ -199,7 +204,12 @@ export default function CommunityDetailScreen() {
   }, []);
 
   const combinedData = useMemo(() => {
-    if (activeTab === 'Requests') return requests;
+    if (activeTab === 'Requests') {
+      return requests;
+    }
+    if (activeTab === 'Events') {
+      return events;
+    }
     if (activeTab === 'Festivals') {
       return [
         { id: 'fest-header-main', type: 'festivals_header' },
@@ -210,15 +220,12 @@ export default function CommunityDetailScreen() {
       ];
     }
     if (activeTab === 'Feed') {
-      // Use a Map to deduplicate items by ID, prioritising discussionPosts
       const itemMap = new Map();
       
+      // Discussion posts are always chat posts in Feed
       discussionPosts.forEach(p => itemMap.set(p.id, p));
-      requests.slice(0, 5).forEach(r => {
-        if (!itemMap.has(r.id)) {
-          itemMap.set(r.id, { ...r, type: 'request_item' });
-        }
-      });
+      
+      // All chat messages (community posts) only show in Feed section
       communityPosts.forEach(p => {
         if (!itemMap.has(p.id)) {
           itemMap.set(p.id, p);
@@ -227,22 +234,16 @@ export default function CommunityDetailScreen() {
       
       return Array.from(itemMap.values());
     }
-    const tabPosts = communityPosts.filter(p => {
-      if (!p.category) return false;
-      const postCat = String(p.category).toLowerCase();
-      const currentTab = activeTab.toLowerCase();
-      
-      if (postCat === currentTab) return true;
-      if (currentTab === 'seva' && postCat.includes('volunteer')) return true;
-      if (postCat === 'feed') return false; // Feed posts only in Feed
-      return false;
-    });
-
-    if (tabPosts.length > 0) {
-      return [{ id: `header-${activeTab}`, type: 'header', title: `${activeTab} Updates`, icon: 'newspaper-outline' }, ...tabPosts];
-    }
+    
+    // For other tabs (like Lost & Found, Seva, Temple Updates), they do not show chat messages either
     return [];
-  }, [activeTab, requests, discussionPosts, communityPosts]);
+  }, [activeTab, requests, events, discussionPosts, communityPosts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCommunity();
+    }, [id])
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -267,6 +268,7 @@ export default function CommunityDetailScreen() {
 
   const fetchCommunity = async () => {
     try {
+      setHasMorePosts(true);
       const response = await getCommunity(id as string);
       setCommunity(response.data);
       
@@ -302,7 +304,7 @@ export default function CommunityDetailScreen() {
           verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
         },
         content: msg.content,
-        image: msg.media_url,
+        image: msg.media_url || msg.mediaUrl || msg.image,
         timestamp: msg.created_at || 'Just now',
         likes: msg.likes_count || 0,
         comments: msg.comments_count || 0,
@@ -310,6 +312,7 @@ export default function CommunityDetailScreen() {
         reposts: 0,
         hideBadge: true,
         category: getLocalCategory(msg.content) || msg.category || 'Feed',
+        sender_id: msg.sender_id, // Map sender ID to check for delete ownership
       }));
 
       setCommunityPosts((prev: any[]) => {
@@ -334,7 +337,7 @@ export default function CommunityDetailScreen() {
   };
 
   const handleLoadMore = async () => {
-    if (loadingMore || communityPosts.length < 10) return;
+    if (loadingMore || !hasMorePosts || communityPosts.length < 10) return;
     setLoadingMore(true);
     try {
       const { getCommunityMessages } = require('../../src/services/api');
@@ -348,7 +351,7 @@ export default function CommunityDetailScreen() {
           verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
         },
         content: msg.content,
-        image: msg.media_url,
+        image: msg.media_url || msg.mediaUrl || msg.image,
         timestamp: msg.created_at || 'Just now',
         likes: msg.likes_count || 0,
         comments: msg.comments_count || 0,
@@ -356,10 +359,13 @@ export default function CommunityDetailScreen() {
         reposts: 0,
         hideBadge: true,
         category: getLocalCategory(msg.content) || msg.category || 'Feed',
+        sender_id: msg.sender_id, // Map sender ID to check for delete ownership
       }));
       
       if (newMsgs.length > 0) {
         setCommunityPosts(prev => [...prev, ...newMsgs]);
+      } else {
+        setHasMorePosts(false);
       }
     } catch (error) {
       console.error('Error loading more posts:', error);
@@ -375,36 +381,7 @@ export default function CommunityDetailScreen() {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <ImageBackground 
-        source={require('../../assets/images/community_banner_ultimate.png')} 
-        style={styles.headerBg}
-        resizeMode="cover"
-      >
-        <LinearGradient
-          colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.9)', '#FFFFFF']}
-          style={styles.headerOverlay}
-        >
-          <View style={{ height: 60 + insets.top }} />
-
-          <View style={styles.communityInfo}>
-            <View style={styles.communityIconWrapper}>
-              <View style={styles.communityIcon}>
-                <Ionicons name="people" size={28} color="#FFF" />
-              </View>
-            </View>
-            <View style={styles.infoTextWrapper}>
-              <Text style={styles.communityTitle}>{community?.name || 'Mumbai Community'}</Text>
-              <Text style={styles.communityStats}>
-                {community?.member_count?.toLocaleString() || '1.8K'} Members  •  Mumbai, Maharashtra
-              </Text>
-            </View>
-          </View>
-
-          <Text style={styles.tagline}>
-            Connect with your local community. Share updates, find help, and stay updated with local events.
-          </Text>
-        </LinearGradient>
-      </ImageBackground>
+      <View style={{ height: 60 + insets.top }} />
 
       <ScrollView 
         horizontal 
@@ -445,9 +422,14 @@ export default function CommunityDetailScreen() {
               {item.user.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3B30" style={{ marginLeft: 2 }} />}
               <Text style={styles.postHandle} numberOfLines={1}> @{item.user.name.replace(/\s+/g, '').toLowerCase()}</Text>
             </View>
-            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
-            </TouchableOpacity>
+            {(item.sender_id === user?.id || item.user.name === user?.name) && (
+              <TouchableOpacity 
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                onPress={() => handleDeletePost(item.id)}
+              >
+                <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <Text style={styles.postContentText}>{item.content}</Text>
@@ -515,7 +497,7 @@ export default function CommunityDetailScreen() {
             <Text style={styles.eventMeta}>{item.location || 'Online'}</Text>
             <View style={styles.goingRow}>
               <Ionicons name="people" size={12} color="#888" />
-              <Text style={styles.goingText}>{item.attendee_count || 0} Going</Text>
+              <Text style={styles.goingText2}>{item.attendee_count || 0} Going</Text>
             </View>
           </View>
           {item.image_url && <Image source={{ uri: item.image_url }} style={styles.eventImage} />}
@@ -615,7 +597,11 @@ export default function CommunityDetailScreen() {
           <View style={styles.goingRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Ionicons name="person" size={12} color="#888" />
+<<<<<<< HEAD
               <Text style={styles.requestGoingText}>Requested by {item.user_name || 'Anonymous'}</Text>
+=======
+              <Text style={styles.goingText2}>Requested by {item.user_name || 'Anonymous'}</Text>
+>>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
             </View>
             <Text style={styles.timeAgoText}>{getTimeAgo(item.created_at)}</Text>
           </View>
@@ -886,6 +872,64 @@ export default function CommunityDetailScreen() {
     Alert.alert('Success', 'Post reposted successfully!');
   };
 
+  const handleDeletePost = (postId: string) => {
+    const postToDelete = discussionPosts.find(p => p.id === postId) || communityPosts.find(p => p.id === postId);
+    if (postToDelete) {
+      const isOwn = postToDelete.sender_id === user?.id || postToDelete.user?.name === user?.name;
+      if (!isOwn) {
+        if (Platform.OS === 'web') {
+          alert('You can only delete your own messages.');
+        } else {
+          Alert.alert('Error', 'You can only delete your own messages.');
+        }
+        return;
+      }
+    }
+
+    if (Platform.OS === 'web') {
+      const confirmDelete = window.confirm('Are you sure you want to delete this post from the community?');
+      if (confirmDelete) {
+        setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
+        setCommunityPosts(prev => prev.filter(post => post.id !== postId));
+        
+        try {
+          const { deletePost } = require('../../src/services/api');
+          deletePost(postId).catch((e: any) => console.log('API delete err:', e));
+        } catch (error) {
+          console.log('[Community] Post delete API error:', error);
+        }
+        
+        alert('Post has been deleted successfully!');
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post from the community?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
+            setCommunityPosts(prev => prev.filter(post => post.id !== postId));
+            
+            try {
+              const { deletePost } = require('../../src/services/api');
+              await deletePost(postId);
+            } catch (error) {
+              console.log('[Community] Post delete API error (safe to ignore for local/mock posts):', error);
+            }
+            
+            Alert.alert('Success', 'Post has been deleted successfully!');
+          }
+        }
+      ]
+    );
+  };
+
   const handleCreatePost = async () => {
     if (!newMessage.trim() && !selectedImage) return;
 
@@ -899,7 +943,7 @@ export default function CommunityDetailScreen() {
         name: user?.name || 'User',
         photo: user?.photo,
         isVerified: user?.personality_verification_status === 'approved',
-        verificationLabel: user?.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
+        verificationLabel: (user as any)?.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
       },
       content: newMessage,
       image: selectedImage || undefined,
@@ -911,7 +955,8 @@ export default function CommunityDetailScreen() {
       liked: false,
       hideBadge: true,
       contact: contactNumber || undefined,
-      isUniversal: true // Flag to show in general Feed
+      isUniversal: true, // Flag to show in general Feed
+      sender_id: user?.id, // Track ownership of local posts
     };
 
     setCommunityPosts(prev => [newPost, ...prev]);
@@ -921,13 +966,36 @@ export default function CommunityDetailScreen() {
       saveLocalPost(newMessage.trim(), finalCategory);
     }
 
-    // Attempt real API send if text is present
-    if (newMessage.trim()) {
-      const { sendCommunityMessage } = require('../../src/services/api');
-      sendCommunityMessage(id as string, 'city', newMessage, 'text', finalCategory).catch((error: any) => {
-        console.error('Failed to send real message:', error);
-      });
-    }
+    // Attempt real API send if text or image is present
+    (async () => {
+      let uploadedUrl: string | undefined = undefined;
+      const localImageToUpload = selectedImage;
+      
+      if (localImageToUpload) {
+        try {
+          const { uploadChatMedia } = require('../../src/services/api');
+          const uploadRes = await uploadChatMedia({
+            uri: localImageToUpload,
+            name: `community_post_${Date.now()}.jpg`,
+            type: 'image/jpeg'
+          });
+          uploadedUrl = uploadRes?.data?.media_url || uploadRes?.data?.mediaUrl || uploadRes?.data?.url || uploadRes?.url || uploadRes?.mediaUrl;
+          console.log('[Community] Image uploaded successfully:', uploadedUrl);
+        } catch (error) {
+          console.error('[Community] Image upload failed:', error);
+        }
+      }
+
+      if (newMessage.trim() || uploadedUrl) {
+        try {
+          const { sendCommunityMessage } = require('../../src/services/api');
+          await sendCommunityMessage(id as string, 'city', newMessage, 'text', finalCategory, uploadedUrl);
+          console.log('[Community] Real message sent with media:', uploadedUrl);
+        } catch (error) {
+          console.error('Failed to send real message:', error);
+        }
+      }
+    })();
 
     setNewMessage('');
     setSelectedImage(null);
@@ -1002,21 +1070,24 @@ export default function CommunityDetailScreen() {
       <View style={[styles.stickyTopBar, { paddingTop: insets.top, height: 60 + insets.top }]}>
         <TouchableOpacity 
           onPress={() => router.replace('/(tabs)/messages')}
-          style={styles.iconBtn}
+          style={styles.backButtonContainer}
         >
           <Ionicons name="chevron-back" size={28} color="#000" />
+          {community && (
+            <View style={styles.headerCommunityInfo}>
+              <View style={styles.headerCommunityIconBg}>
+                <Ionicons name="people" size={18} color="#FFF" />
+              </View>
+              <Text style={styles.headerCommunityName} numberOfLines={1}>
+                {community.name}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
         <View style={styles.rightActions}>
           <TouchableOpacity style={styles.createPill} onPress={() => { setPostCategory(''); setShowCreateModal(true); }}>
             <Ionicons name="add" size={18} color="#FFF" />
             <Text style={styles.createPillText}>Create</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleNotifications}>
-            <Ionicons name="notifications-outline" size={24} color="#000" />
-            <View style={styles.notifBadge}><Text style={styles.notifBadgeText}>2</Text></View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleShareCommunity}>
-            <Ionicons name="share-outline" size={24} color="#000" />
           </TouchableOpacity>
         </View>
       </View>
@@ -1073,7 +1144,7 @@ export default function CommunityDetailScreen() {
             return (
               <View style={styles.festBanner}>
                 <View style={styles.festBannerLeft}>
-                  <Ionicons name="party-outline" size={28} color="#FF3B30" />
+                  <Ionicons name="sparkles-outline" size={28} color="#FF3B30" />
                   <View style={{ marginLeft: 12 }}>
                     <Text style={styles.festBannerTitle}>Share the Joy of Festivals!</Text>
                     <Text style={styles.festBannerSub}>Create a festival post and invite others to be a part of the celebration.</Text>
@@ -1098,40 +1169,23 @@ export default function CommunityDetailScreen() {
           if (item.type === 'request_item') {
             return renderRequestItem({ item });
           }
-          return activeTab === 'Requests' ? renderRequestItem({ item }) : renderDiscussionItem({ item });
+          if (activeTab === 'Requests') {
+            return renderRequestItem({ item });
+          }
+          if (activeTab === 'Events') {
+            return renderEventItem({ item });
+          }
+          return renderDiscussionItem({ item });
         }}
         onEndReached={activeTab === 'Feed' ? handleLoadMore : undefined}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={() => loadingMore ? <ActivityIndicator size="small" color="#FF3B30" style={{ padding: 20 }} /> : null}
+        ListFooterComponent={() => (activeTab === 'Feed' && loadingMore) ? <ActivityIndicator size="small" color="#FF3B30" style={{ padding: 20 }} /> : null}
         ListHeaderComponent={() => (
           <View>
             {renderHeader()}
             
             {activeTab === 'Feed' && (
               <>
-                {events.length > 0 && (
-                  <>
-                    <View style={styles.sectionHeader}>
-                      <View style={styles.sectionTitleRow}>
-                        <Ionicons name="calendar-outline" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
-                        <Text style={styles.sectionTitle}>Upcoming Events & Meetups</Text>
-                      </View>
-                      <TouchableOpacity>
-                        <Text style={styles.viewAll}>View All <Ionicons name="chevron-forward" size={12} /></Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <FlatList
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      data={events}
-                      keyExtractor={(item, index) => item.id ? String(item.id) : `event-${index}`}
-                      renderItem={renderEventItem}
-                      contentContainerStyle={styles.eventsList}
-                    />
-                  </>
-                )}
-
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionTitleRow}>
                     <Ionicons name="chatbubbles-outline" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
@@ -1397,7 +1451,11 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 15, fontWeight: '700', color: '#111', lineHeight: 20 },
   eventMeta: { fontSize: 12, color: '#888', marginTop: 4 },
   goingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 5 },
+<<<<<<< HEAD
   requestGoingText: { fontSize: 12, color: '#888' },
+=======
+  goingText2: { fontSize: 12, color: '#888' },
+>>>>>>> a367f9c108858a8c4f7145804ae43a4511baf5f6
   eventImage: { width: 60, height: 100, borderRadius: 12 },
   
   eventActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
@@ -1412,9 +1470,9 @@ const styles = StyleSheet.create({
   postHeader: { flexDirection: 'row', alignItems: 'center' },
   postUserMeta: { flex: 1, marginLeft: 12 },
   postNameRow: { flexDirection: 'row', alignItems: 'center' },
-  postUserName: { fontSize: 16, fontWeight: '700', color: '#111' },
+  discussionUserName: { fontSize: 16, fontWeight: '700', color: '#111' },
   postSubRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  postTimestamp: { fontSize: 12, color: '#888' },
+  discussionTimestamp: { fontSize: 12, color: '#888' },
   postLabel: { fontSize: 12, color: '#444', fontWeight: '600' },
   
   postBody: { marginTop: 15, paddingHorizontal: 8 },
@@ -1422,7 +1480,7 @@ const styles = StyleSheet.create({
   postContent: { fontSize: 15, color: '#333', lineHeight: 24, fontWeight: '500' },
   
   postActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
-  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  discussionActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   postActionText: { fontSize: 13, color: '#666', fontWeight: '600' },
   
   footer: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
@@ -1446,6 +1504,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
+  backButtonContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 8 },
+  headerCommunityInfo: { flexDirection: 'row', alignItems: 'center', marginLeft: 4, gap: 8, flex: 1 },
+  headerCommunityName: { fontSize: 16, fontWeight: '700', color: '#000', flex: 1 },
+  headerCommunityIconBg: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center' },
   
   requestInterestedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   urgencyLabel: { fontSize: 11, fontWeight: '700', color: '#888', backgroundColor: '#F5F5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
