@@ -400,7 +400,10 @@ export default function PanchangScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity 
+          onPress={() => router.replace('/(tabs)/home')} 
+          style={styles.backBtn}
+        >
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Panchang & Muhurta</Text>

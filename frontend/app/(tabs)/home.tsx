@@ -208,6 +208,7 @@ const quickAccess = [
   { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
+  { label: 'Kundli', subtitle: 'Your Cosmic Blueprint', color: '#FFF', kundliIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -261,7 +262,7 @@ export default function HomeScreen() {
   // Horizontal auto-scroll interval for the top quickAccess cards (Panchang, My Krishna, SOS)
   useEffect(() => {
     let currentIndex = 0;
-    const totalCards = 3;
+    const totalCards = 4;
     const interval = setInterval(() => {
       if (topFeaturesScrollRef.current) {
         currentIndex = (currentIndex + 1) % totalCards;
@@ -1325,6 +1326,7 @@ export default function HomeScreen() {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
+                            else if (item.label === 'Kundli') router.push('/kundli');
                           }}
                         >
                           {item.label === 'SOS' ? (
@@ -1341,6 +1343,10 @@ export default function HomeScreen() {
                             <View style={styles.featureIconWrap}>
                               <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
                             </View>
+                          ) : item.label === 'Kundli' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/kundli_chart_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
                           ) : (
                             <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
                               <Ionicons name="calendar" size={14} color="#FFF" />
@@ -1356,7 +1362,7 @@ export default function HomeScreen() {
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
-                                  fontSize: item.label === 'Panchang' ? 7 : 6,
+                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli') ? 7 : 6,
                                 }
                               ]} 
                               numberOfLines={2} 
@@ -1527,7 +1533,13 @@ export default function HomeScreen() {
                     </View>
                     <TouchableOpacity
                       style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
-                      onPress={() => router.push('/live-mantra')}
+                      onPress={() => router.push({
+                        pathname: '/live-jaap-welcome',
+                        params: {
+                          mantraType: 'kedarnath',
+                          title: 'Kedarnath Aarti'
+                        }
+                      })}
                     >
                       <Text style={{ color: '#8C36DB', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
                     </TouchableOpacity>

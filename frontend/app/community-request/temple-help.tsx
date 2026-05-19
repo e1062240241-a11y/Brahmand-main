@@ -170,7 +170,7 @@ export default function TempleHelpRequestScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)/home');
+      router.replace('/community-request');
     }
   };
 
