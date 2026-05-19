@@ -36,7 +36,7 @@ export default function CommunityRequestBloodOtpPage() {
     title: 'Blood Request',
     description: params.description || '',
     contact_number: params.contactNumber || phone,
-    urgency_level: (params.urgency || 'low').toLowerCase() as 'low' | 'medium' | 'high' | 'critical',
+    urgency_level: (params.urgency === 'Urgent' ? 'critical' : (params.urgency || 'low').toLowerCase()) as 'low' | 'medium' | 'high' | 'critical',
     blood_group: params.bloodGroup || '',
     hospital_name: params.hospitalName || '',
     location: params.location || '',

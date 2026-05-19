@@ -628,6 +628,7 @@ class RequestUrgency(str, Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+    URGENT = "urgent"
 
 
 class VisibilityLevel(str, Enum):

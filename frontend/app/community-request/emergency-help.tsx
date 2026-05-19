@@ -142,10 +142,10 @@ export default function EmergencyHelpScreen() {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalBar} />
-          <View style={styles.modalHeaderOrange}>
-            <Text style={styles.modalTitleWhite}>Dropdown Options</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtnWhite}>
-              <Ionicons name="close" size={20} color="#FFF" />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+              <Ionicons name="close" size={20} color="#111" />
             </TouchableOpacity>
           </View>
           <FlatList
@@ -159,7 +159,7 @@ export default function EmergencyHelpScreen() {
               >
                 <Text style={[styles.optionText, (emergencyType === item || contactPref === item) && styles.optionTextSelected]}>{item}</Text>
                 {(emergencyType === item || contactPref === item) && (
-                  <Ionicons name="checkmark-circle" size={22} color="#F25C05" />
+                  <Ionicons name="checkmark-circle" size={22} color="#FB8C00" />
                 )}
               </TouchableOpacity>
             )}

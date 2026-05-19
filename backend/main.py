@@ -7992,6 +7992,8 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     
     # Get user location info for visibility matching
     location_area = user.get('home_location', {}) or user.get('location', {})
+    if not isinstance(location_area, dict):
+        location_area = {}
     
     resolved_community_id = data.community_id
     if not resolved_community_id:
@@ -8044,6 +8046,17 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
                 resolved_community_id = comm_id
                 break
         
+        # Robust fallback: check all city communities in DB and find one containing 'mumbai'
+        if not resolved_community_id:
+            try:
+                all_comms = await db.query_documents('communities', filters=[('type', '==', 'city')])
+                for comm in all_comms:
+                    if 'mumbai' in (comm.get('name') or '').lower():
+                        resolved_community_id = comm['id']
+                        break
+            except Exception as e:
+                logger.warning(f"Failed to query city communities for Mumbai fallback: {e}")
+        
         if not resolved_community_id:
             default_comm = await db.find_one('communities', [('type', '==', 'country')])
             if default_comm:
@@ -8068,7 +8081,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         "title": data.title,
         "description": data.description,
         "contact_number": data.contact_number,
-        "urgency_level": data.urgency_level.value,
+        "urgency_level": "critical" if data.urgency_level.value == "urgent" else data.urgency_level.value,
         "status": "active",
         # Location data for filtering
         "area": location_area.get('area') if location_area else None,
@@ -8121,6 +8134,8 @@ async def get_community_requests(
         or user.get('location_area')
         or {}
     )
+    if not isinstance(location_area, dict):
+        location_area = {}
     
     requests = await db.query_documents('community_requests', filters=filters, limit=limit)
     
