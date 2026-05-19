@@ -1316,30 +1316,12 @@ export default function HomeScreen() {
                       } else if (item.label === 'SOS') {
                         cardBg = '#FFF5F5';
                         iconBg = '#FF3B30';
-                      } else if (item.label === 'Kundli') {
-                        cardBg = '#FFFDF5';
-                        iconBg = '#FF9500';
-                      } else if (item.label === 'Matchmaking') {
-                        cardBg = '#FFF2EB';
-                        iconBg = '#FF7A00';
                       }
 
                       return (
                          <TouchableOpacity
                           key={idx}
-                          style={[
-                            styles.featureCard, 
-                            { 
-                              backgroundColor: cardBg, 
-                              overflow: 'hidden',
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              alignItems: 'flex-start',
-                              paddingLeft: 10,
-                              paddingRight: 28,
-                              position: 'relative'
-                            }
-                          ]}
+                          style={[styles.featureCard, { backgroundColor: item.label === 'SOS' ? '#FFF' : 'transparent', overflow: 'hidden' }]}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
@@ -1352,54 +1334,57 @@ export default function HomeScreen() {
                           {item.label === 'My Krishna' && (
                             <Image 
                               source={require('../../assets/images/peacock_feather_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
                             />
                           )}
                           {item.label === 'Panchang' && (
                             <Image 
                               source={require('../../assets/images/panchang_calendar_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
                             />
                           )}
                           {item.label === 'Kundli' && (
                             <Image 
                               source={require('../../assets/images/kundli_chart_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
                             />
                           )}
                           {item.label === 'Matchmaking' && (
                             <Image 
                               source={require('../../assets/images/matchmaking_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
-                            />
-                          )}
-                          {item.label === 'SOS' && (
-                            <Image 
-                              source={require('../../assets/images/sos_siren_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
                             />
                           )}
 
-                          <View style={{ width: '100%' }}>
-                            <Text style={[styles.featureTitle, { fontSize: 9.5, fontWeight: '700', color: '#111', marginLeft: 0 }]} numberOfLines={1}>{item.label}</Text>
+                          {item.label === 'SOS' ? (
+                            <View style={styles.featureIconWrap}>
+                              <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
+                                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={{ width: 24 }} />
+                          )}
+                          <View style={styles.featureTextContainer}>
+                            <Text style={styles.featureTitle} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
                             <Text 
                               style={[
                                 styles.featureSubtitle, 
                                 {
-                                  color: '#555',
+                                  color: '#000',
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
                                   fontSize: (item.label === 'Panchang' || item.label === 'Kundli' || item.label === 'Matchmaking') ? 7 : 6,
-                                  marginLeft: 0,
-                                  marginTop: 2
                                 }
                               ]} 
                               numberOfLines={2} 
+                              adjustsFontSizeToFit
                             >
-                               {item.subtitle}
+                               {item.subtitle.replace('\n', ' ')}
                             </Text>
                           </View>
+                          <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
                       );
                     })}
