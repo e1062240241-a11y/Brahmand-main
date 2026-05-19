@@ -134,18 +134,18 @@ export default function MyKrishnaChat() {
         
         <Stack.Screen 
           options={{
-            headerShown: true,
-            headerTitle: 'My Krishna',
-            headerTransparent: true,
-            headerTintColor: '#FFF',
-            headerTitleStyle: { fontFamily: FONTS.bold, fontSize: 20 },
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                <Ionicons name="chevron-back" size={28} color="#FFF" />
-              </TouchableOpacity>
-            ),
+            headerShown: false,
           }} 
         />
+
+        {/* Custom Header */}
+        <View style={[styles.customHeader, { height: 60 + insets.top, paddingTop: insets.top }]}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/home')} style={styles.customBackBtn}>
+            <Ionicons name="chevron-back" size={28} color="#FFF" />
+          </TouchableOpacity>
+          <Text style={styles.customHeaderTitle}>My Krishna</Text>
+          <View style={{ width: 40 }} />
+        </View>
 
         <SafeAreaView style={styles.chatContainer} edges={['bottom']}>
           <FlatList
@@ -309,5 +309,31 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     marginLeft: 10,
+  },
+  customHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    zIndex: 100,
+    backgroundColor: 'rgba(26, 35, 126, 0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  customBackBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customHeaderTitle: {
+    color: '#FFF',
+    fontSize: 20,
+    fontFamily: FONTS.bold,
+    fontWeight: '800',
   },
 });

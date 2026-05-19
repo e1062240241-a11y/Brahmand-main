@@ -167,7 +167,7 @@ export default function GauSevaRequestScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)/home');
+      router.replace('/community-request');
     }
   };
 

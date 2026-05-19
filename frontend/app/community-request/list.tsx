@@ -12,6 +12,7 @@ import {
   Alert,
   Share,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -69,6 +70,18 @@ export default function ActiveRequestsList() {
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (selectedRequest) {
+        setSelectedRequest(null);
+        return true;
+      }
+      return false;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [selectedRequest]);
 
   const fetchRequests = async () => {
     try {

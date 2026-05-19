@@ -1209,30 +1209,23 @@ export default function HomeScreen() {
                 contentContainerStyle={styles.actionCardsScroll}
                 style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
-                {/* Urgent Blood Request */}
+                {/* Community Help Requests */}
                 <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
                   <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
+                    <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>Your community</Text>
                   </View>
                   <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                     <View style={styles.cardIconRow}>
                       <Image source={require('../../assets/icons/horoicon/homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                     </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
+                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Blood Request</Text>
+                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Blood, Emergency, Food</Text>
                   </View>
                   <TouchableOpacity
                     style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
-                    onPress={() => {
-                      if (bloodRequest) {
-                        router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
-                      } else {
-                        setRequestType('Blood');
-                        setShowRequestModal(true);
-                      }
-                    }}
+                    onPress={() => router.push('/community-request/list')}
                   >
-                    <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>{bloodRequest ? 'View' : 'View'}</Text>
+                    <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>View</Text>
                     <Ionicons name="chevron-forward" size={10} color="#E53935" style={{ marginLeft: 2 }} />
                   </TouchableOpacity>
                 </LinearGradient>
@@ -1276,7 +1269,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </LinearGradient>
 
-                {/* Live Aarti */}
+                {/* Live Aarti / Temple */}
                 <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
                   <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
                     <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
@@ -1293,7 +1286,13 @@ export default function HomeScreen() {
                   </View>
                   <TouchableOpacity
                     style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
-                    onPress={() => router.push('/live-mantra')}
+                    onPress={() => router.push({
+                      pathname: '/live-jaap-welcome',
+                      params: {
+                        mantraType: 'kedarnath',
+                        title: 'Kedarnath Aarti'
+                      }
+                    })}
                   >
                     <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch</Text>
                     <Ionicons name="chevron-forward" size={10} color="#8C36DB" style={{ marginLeft: 2 }} />
@@ -2875,5 +2874,70 @@ const styles = StyleSheet.create({
   },
   modalBackgroundDismiss: {
     ...StyleSheet.absoluteFillObject,
+  },
+  liveDualContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: Math.min(375, SCREEN_WIDTH - 2 * PAGE_PADDING),
+    alignSelf: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  liveHalfCard: {
+    flex: 1,
+    height: 195,
+    borderRadius: 15,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  liveHalfContent: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  liveHalfHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  liveHalfBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  liveHalfTitle: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FFF',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  liveHalfSub: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: '#DDD',
+    marginBottom: 8,
+  },
+  liveHalfButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6A00',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignSelf: 'stretch',
+    gap: 4,
+  },
+  liveHalfButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '900',
   },
 });
