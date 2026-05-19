@@ -209,6 +209,7 @@ const quickAccess = [
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
   { label: 'Kundli', subtitle: 'Your Cosmic Blueprint', color: '#FFF', kundliIcon: true },
+  { label: 'Matchmaking', subtitle: 'Gun Milan', color: '#FFF', matchmakingIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -262,7 +263,7 @@ export default function HomeScreen() {
   // Horizontal auto-scroll interval for the top quickAccess cards (Panchang, My Krishna, SOS)
   useEffect(() => {
     let currentIndex = 0;
-    const totalCards = 4;
+    const totalCards = 5;
     const interval = setInterval(() => {
       if (topFeaturesScrollRef.current) {
         currentIndex = (currentIndex + 1) % totalCards;
@@ -1320,37 +1321,49 @@ export default function HomeScreen() {
                       return (
                          <TouchableOpacity
                           key={idx}
-                          style={[styles.featureCard, { backgroundColor: '#FFF' }]}
+                          style={[styles.featureCard, { backgroundColor: item.label === 'SOS' ? '#FFF' : 'transparent', overflow: 'hidden' }]}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
                             else if (item.label === 'Kundli') router.push('/kundli');
+                            else if (item.label === 'Matchmaking') router.push('/matchmaking');
                           }}
                         >
+                          {item.label === 'My Krishna' && (
+                            <Image 
+                              source={require('../../assets/images/peacock_feather_icon.png')} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                            />
+                          )}
+                          {item.label === 'Panchang' && (
+                            <Image 
+                              source={require('../../assets/images/panchang_calendar_icon.png')} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                            />
+                          )}
+                          {item.label === 'Kundli' && (
+                            <Image 
+                              source={require('../../assets/images/kundli_chart_icon.png')} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                            />
+                          )}
+                          {item.label === 'Matchmaking' && (
+                            <Image 
+                              source={require('../../assets/images/matchmaking_icon.png')} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                            />
+                          )}
+
                           {item.label === 'SOS' ? (
                             <View style={styles.featureIconWrap}>
                               <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
                                 <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
                               </View>
                             </View>
-                          ) : item.label === 'My Krishna' ? (
-                            <View style={styles.featureIconWrap}>
-                              <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
-                            </View>
-                          ) : item.label === 'Panchang' ? (
-                            <View style={styles.featureIconWrap}>
-                              <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
-                            </View>
-                          ) : item.label === 'Kundli' ? (
-                            <View style={styles.featureIconWrap}>
-                              <Image source={require('../../assets/images/kundli_chart_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
-                            </View>
                           ) : (
-                            <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
-                              <Ionicons name="calendar" size={14} color="#FFF" />
-                            </View>
+                            <View style={{ width: 24 }} />
                           )}
                           <View style={styles.featureTextContainer}>
                             <Text style={styles.featureTitle} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
@@ -1362,7 +1375,7 @@ export default function HomeScreen() {
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
-                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli') ? 7 : 6,
+                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli' || item.label === 'Matchmaking') ? 7 : 6,
                                 }
                               ]} 
                               numberOfLines={2} 
