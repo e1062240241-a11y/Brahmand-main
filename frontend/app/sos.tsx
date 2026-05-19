@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView, Linking } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView, Linking, Vibration, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 
 import SOSMap from '../src/components/SOSMap';
 
@@ -65,6 +66,42 @@ export default function SOSScreen() {
   const [loadingText, setLoadingText] = useState<string>('Sending SOS Alert...');
   const [existingSOS, setExistingSOS] = useState<any>(null);
   const [resolving, setResolving] = useState(false);
+
+  const pulse1 = useRef(new Animated.Value(0)).current;
+  const pulse2 = useRef(new Animated.Value(0)).current;
+  const pulse3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (stage === 'activating') {
+      pulse1.setValue(0);
+      pulse2.setValue(0);
+      pulse3.setValue(0);
+
+      const createAnim = (val: Animated.Value, delay: number) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(val, {
+              toValue: 1,
+              duration: 2000,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+      };
+
+      const anim = Animated.parallel([
+        createAnim(pulse1, 0),
+        createAnim(pulse2, 600),
+        createAnim(pulse3, 1200),
+      ]);
+      anim.start();
+
+      return () => {
+        anim.stop();
+      };
+    }
+  }, [stage]);
 
   const handleBack = () => {
     if (stage === 'location' || stage === 'countdown') {
@@ -184,10 +221,22 @@ export default function SOSScreen() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (stage === 'countdown' && countdown > 0) {
+      if (countdown === 10) {
+        Vibration.vibrate([0, 500, 200, 500, 200], true);
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: '🚨 Emergency SOS Countdown Started',
+            body: `SOS will be sent automatically in 10 seconds. Tap cancel if this is a mistake.`,
+            sound: true,
+          },
+          trigger: null,
+        }).catch(() => {});
+      }
       timer = setTimeout(() => {
         setCountdown((prev) => prev - 1);
       }, 1000);
     } else if (stage === 'countdown' && countdown === 0) {
+      Vibration.cancel();
       executeSOS();
     }
     return () => {
@@ -242,8 +291,19 @@ export default function SOSScreen() {
         micro_location: microLocation || 'Emergency SOS Page',
       });
       
+      Vibration.vibrate(1000);
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🚨 Emergency SOS Sent!',
+          body: `Nearby users and emergency contacts have been alerted.`,
+          sound: true,
+        },
+        trigger: null,
+      }).catch(() => {});
+
       setStage('active');
     } catch (e: any) {
+      Vibration.cancel();
       setStage('location');
       const errorMsg = e.response?.data?.detail || e.message || 'Could not activate SOS. Please ensure you have internet connection or try calling emergency services.';
       Alert.alert('Error', errorMsg);
@@ -251,6 +311,7 @@ export default function SOSScreen() {
   };
 
   const handleCancelCountdown = () => {
+    Vibration.cancel();
     setStage('location');
     setCountdown(10);
   };
@@ -559,7 +620,23 @@ export default function SOSScreen() {
 
         {stage === 'activating' && (
           <View style={styles.activatingContainer}>
-            <ActivityIndicator size="large" color="#FF3B30" />
+            <View style={styles.pulseContainer}>
+              <Animated.View style={[styles.pulseCircle, {
+                transform: [{ scale: pulse1.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
+                opacity: pulse1.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
+              }]} />
+              <Animated.View style={[styles.pulseCircle, {
+                transform: [{ scale: pulse2.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
+                opacity: pulse2.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
+              }]} />
+              <Animated.View style={[styles.pulseCircle, {
+                transform: [{ scale: pulse3.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
+                opacity: pulse3.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
+              }]} />
+              <View style={styles.pulseCenter}>
+                <Ionicons name="radio" size={32} color="#FFF" />
+              </View>
+            </View>
             <Text style={styles.activatingText}>{loadingText}</Text>
           </View>
         )}
@@ -722,12 +799,42 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFF',
   },
   activatingText: {
-    marginTop: 16,
+    marginTop: 40,
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontWeight: '700',
+    color: '#FF3B30',
+    textAlign: 'center',
+  },
+  pulseContainer: {
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pulseCircle: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 59, 48, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#FF3B30',
+  },
+  pulseCenter: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
   },
   activeContainer: {
     flex: 1,

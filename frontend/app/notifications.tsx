@@ -56,6 +56,21 @@ export default function NotificationsScreen() {
     if (user?.id) loadNotifications();
   }, [user?.id]);
 
+  const formatNotificationTime = (timeStr?: string) => {
+    if (!timeStr) return 'Recently';
+    const date = new Date(timeStr);
+    if (isNaN(date.getTime())) return timeStr;
+
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 0) return 'Just now';
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
+
   const getNotificationLink = (item: any) => {
     if (!item) return undefined;
     if (item.link) return item.link;
@@ -63,6 +78,11 @@ export default function NotificationsScreen() {
     const itemData = typeof item.data === 'string'
       ? (() => { try { return JSON.parse(item.data); } catch { return null; } })()
       : item.data;
+
+    const typeKey = item?.type?.toLowerCase() || item?.notification_type?.toLowerCase() || 'default';
+    if (typeKey === 'sos' || itemData?.sos_id) {
+      return '/sos';
+    }
 
     if (itemData?.actor_user_id) {
       return `/profile/${itemData.actor_user_id}`;
@@ -215,7 +235,7 @@ export default function NotificationsScreen() {
                       <Text style={styles.notificationText} numberOfLines={isInvite ? 4 : 2}>
                         {item.body || 'You have a new notification.'}
                       </Text>
-                      <Text style={styles.notificationTime}>{item.time || item.created_at || 'Recently'}</Text>
+                      <Text style={styles.notificationTime}>{item.time ? item.time : formatNotificationTime(item.created_at)}</Text>
                     </View>
                     {(!item.is_read || item.unread) && !isInvite && <View style={styles.unreadPulse} />}
                   </View>
