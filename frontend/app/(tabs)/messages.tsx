@@ -594,6 +594,7 @@ export default function MessagesScreen() {
             </View>
 
 
+
             {/* Verified Communities */}
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

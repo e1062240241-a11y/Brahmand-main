@@ -146,6 +146,11 @@ export default function NotificationsScreen() {
       ? (() => { try { return JSON.parse(item.data); } catch { return null; } })()
       : item.data;
 
+    const typeKey = item?.type?.toLowerCase() || item?.notification_type?.toLowerCase() || 'default';
+    if (typeKey === 'sos' || itemData?.sos_id) {
+      return '/sos';
+    }
+
     if (itemData?.actor_user_id) {
       return `/profile/${itemData.actor_user_id}`;
     }

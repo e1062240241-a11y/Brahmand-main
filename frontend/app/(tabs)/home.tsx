@@ -1193,7 +1193,7 @@ export default function HomeScreen() {
                   </View>
                   <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                     <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon /homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                     </View>
                     <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
                     <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
@@ -1221,7 +1221,7 @@ export default function HomeScreen() {
                   </View>
                   <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                     <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon /homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                     </View>
                     <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Register Your Business</Text>
                     <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Become a verified sanatan vendor</Text>
@@ -1242,7 +1242,7 @@ export default function HomeScreen() {
                   </View>
                   <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                     <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon /homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                     </View>
                     <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Sai Flower Decorator</Text>
                     <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Specialised in festival flower decor</Text>
@@ -1260,7 +1260,7 @@ export default function HomeScreen() {
                   </View>
                   <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                     <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon /homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                     </View>
                     <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Live Kedarnath Aarti</Text>
                     <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
