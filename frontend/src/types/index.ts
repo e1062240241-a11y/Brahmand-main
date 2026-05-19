@@ -45,6 +45,7 @@ export interface User {
   following?: string[];
   created_at: string;
   personality_verification_status?: 'pending' | 'approved' | 'verified' | 'rejected' | 'none';
+  verification_level?: 'state' | 'national' | null;
 }
 
 export interface Location {
