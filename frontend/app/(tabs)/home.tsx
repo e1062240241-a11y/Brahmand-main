@@ -625,6 +625,8 @@ export default function HomeScreen() {
     let maxVisible = 0;
     const viewportTop = y;
     const viewportBottom = y + SCREEN_HEIGHT;
+    const viewportCenter = viewportTop + SCREEN_HEIGHT / 2;
+    let closestDistance = Number.POSITIVE_INFINITY;
 
     for (const key of feedPostKeys) {
       const offset = postOffsets[key];
@@ -635,14 +637,21 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
-        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
-          maxVisible = visibleAmount;
-          closestKey = key;
+        const visibleRatio = height > 0 ? visibleAmount / height : 0;
+        const postCenter = postAbsoluteTop + height / 2;
+        const centerDistance = Math.abs(postCenter - viewportCenter);
+
+        // Autoplay if the post is at least 50% visible or covers half of screen height
+        if (visibleRatio >= 0.5 || visibleAmount >= SCREEN_HEIGHT * 0.5) {
+          if (centerDistance < closestDistance) {
+            closestDistance = centerDistance;
+            maxVisible = visibleAmount;
+            closestKey = key;
+          }
         }
       }
     }
-    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
+    setActivePostKey(closestKey); // If none reaches 50%, none are active.
 
     // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
@@ -1316,12 +1325,30 @@ export default function HomeScreen() {
                       } else if (item.label === 'SOS') {
                         cardBg = '#FFF5F5';
                         iconBg = '#FF3B30';
+                      } else if (item.label === 'Kundli') {
+                        cardBg = '#FFFDF5';
+                        iconBg = '#FF9500';
+                      } else if (item.label === 'Matchmaking') {
+                        cardBg = '#FFF2EB';
+                        iconBg = '#FF7A00';
                       }
 
                       return (
                          <TouchableOpacity
                           key={idx}
-                          style={[styles.featureCard, { backgroundColor: item.label === 'SOS' ? '#FFF' : 'transparent', overflow: 'hidden' }]}
+                          style={[
+                            styles.featureCard, 
+                            { 
+                              backgroundColor: cardBg, 
+                              overflow: 'hidden',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              alignItems: 'flex-start',
+                              paddingLeft: 10,
+                              paddingRight: 28,
+                              position: 'relative'
+                            }
+                          ]}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
@@ -1334,57 +1361,54 @@ export default function HomeScreen() {
                           {item.label === 'My Krishna' && (
                             <Image 
                               source={require('../../assets/images/peacock_feather_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
                             />
                           )}
                           {item.label === 'Panchang' && (
                             <Image 
                               source={require('../../assets/images/panchang_calendar_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
                             />
                           )}
                           {item.label === 'Kundli' && (
                             <Image 
                               source={require('../../assets/images/kundli_chart_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
                             />
                           )}
                           {item.label === 'Matchmaking' && (
                             <Image 
                               source={require('../../assets/images/matchmaking_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
+                            />
+                          )}
+                          {item.label === 'SOS' && (
+                            <Image 
+                              source={require('../../assets/images/sos_siren_icon.png')} 
+                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
                             />
                           )}
 
-                          {item.label === 'SOS' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
-                                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
-                              </View>
-                            </View>
-                          ) : (
-                            <View style={{ width: 24 }} />
-                          )}
-                          <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
+                          <View style={{ width: '100%' }}>
+                            <Text style={[styles.featureTitle, { fontSize: 9.5, fontWeight: '700', color: '#111', marginLeft: 0 }]} numberOfLines={1}>{item.label}</Text>
                             <Text 
                               style={[
                                 styles.featureSubtitle, 
                                 {
-                                  color: '#000',
+                                  color: '#555',
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
                                   fontSize: (item.label === 'Panchang' || item.label === 'Kundli' || item.label === 'Matchmaking') ? 7 : 6,
+                                  marginLeft: 0,
+                                  marginTop: 2
                                 }
                               ]} 
                               numberOfLines={2} 
-                              adjustsFontSizeToFit
                             >
-                               {item.subtitle.replace('\n', ' ')}
+                               {item.subtitle}
                             </Text>
                           </View>
-                          <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
                       );
                     })}
