@@ -384,7 +384,7 @@ export default function MessagesScreen() {
     return (
       <TouchableOpacity 
         key={item.id} 
-        onPress={() => router.push(`/community-request`)}
+        onPress={() => router.push('/community-request/list')}
         activeOpacity={0.9}
       >
         <LinearGradient
@@ -583,6 +583,7 @@ export default function MessagesScreen() {
             </View>
 
 
+
             {/* Verified Communities */}
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -630,7 +631,7 @@ export default function MessagesScreen() {
               <>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Active Community Requests</Text>
-                  <TouchableOpacity onPress={() => router.push('/community-request')}>
+                  <TouchableOpacity onPress={() => router.push('/community-request/list')}>
                     <Text style={styles.viewAllText}>View All</Text>
                   </TouchableOpacity>
                 </View>

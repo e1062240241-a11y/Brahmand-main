@@ -52,6 +52,66 @@ class FirebaseNotificationService:
         return notification_data
     
     @staticmethod
+    async def _send_expo_push_notifications(
+        tokens: List[str],
+        title: str,
+        body: str,
+        data: Optional[Dict[str, str]] = None
+    ) -> int:
+        """Send push notifications to Expo Go clients using the Expo Push API"""
+        if not tokens:
+            return 0
+        import httpx
+        url = "https://exp.host/--/api/v2/push/send"
+        
+        notification_type = data.get('type') if data else None
+        is_sos = bool(notification_type and notification_type.startswith('sos'))
+        
+        payloads = []
+        for token in tokens:
+            payload = {
+                "to": token,
+                "title": title,
+                "body": body,
+                "sound": "default",
+                "priority": "high" if is_sos else "default",
+                "channelId": "sos_alerts" if is_sos else "default",
+                "badge": 1 if is_sos else 0,
+                "data": data or {}
+            }
+            payloads.append(payload)
+            
+        chunk_size = 100
+        chunks = [payloads[i:i + chunk_size] for i in range(0, len(payloads), chunk_size)]
+        
+        success_count = 0
+        async with httpx.AsyncClient() as client:
+            for chunk in chunks:
+                try:
+                    response = await client.post(
+                        url,
+                        json=chunk,
+                        headers={
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                            "Accept-Encoding": "gzip, deflate"
+                        },
+                        timeout=10.0
+                    )
+                    if response.status_code == 200:
+                        res_data = response.json()
+                        for item in res_data.get('data', []):
+                            if item.get('status') == 'ok':
+                                success_count += 1
+                            else:
+                                logger.warning(f"Expo push error for token: {item.get('message')}")
+                    else:
+                        logger.error(f"Expo Push API error {response.status_code}: {response.text}")
+                except Exception as e:
+                    logger.error(f"Failed to send Expo push chunk: {e}")
+        return success_count
+
+    @staticmethod
     async def send_push_notification(
         user_id: str,
         title: str,
@@ -59,8 +119,8 @@ class FirebaseNotificationService:
         data: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """
-        Send push notification to user via FCM.
-        Sends to all registered FCM tokens for the user.
+        Send push notification to user via FCM / Expo.
+        Sends to all registered tokens for the user.
         """
         db = await FirebaseNotificationService.get_db()
         user = await db.get_document('users', user_id)
@@ -70,100 +130,39 @@ class FirebaseNotificationService:
         
         fcm_tokens = user.get('fcm_tokens', [])
         if not fcm_tokens:
-            logger.info(f"No FCM tokens for user {user_id}")
-            return {"message": "No FCM tokens registered", "sent": 0}
+            logger.info(f"No tokens for user {user_id}")
+            return {"message": "No tokens registered", "sent": 0}
+            
+        # Separate FCM and Expo tokens
+        expo_tokens = [t for t in fcm_tokens if t.startswith('ExponentPushToken') or t.startswith('ExpoPushToken')]
+        fcm_native_tokens = [t for t in fcm_tokens if not (t.startswith('ExponentPushToken') or t.startswith('ExpoPushToken'))]
         
-        try:
-            messaging = get_firebase_messaging()
-            
-            # Create message
-            from firebase_admin import messaging as fcm
-            
-            notification = fcm.Notification(
-                title=title,
-                body=body
+        success_count = 0
+        
+        # 1. Send to Expo tokens if any
+        if expo_tokens:
+            expo_sent = await FirebaseNotificationService._send_expo_push_notifications(
+                expo_tokens, title, body, data
             )
+            success_count += expo_sent
             
-            # Send to each token
-            success_count = 0
-            failed_tokens = []
-            
-            for token in fcm_tokens:
-                try:
-                    message = fcm.Message(
-                        notification=notification,
-                        data=data or {},
-                        token=token
-                    )
-                    messaging.send(message)
-                    success_count += 1
-                except Exception as e:
-                    logger.warning(f"Failed to send to token: {e}")
-                    failed_tokens.append(token)
-            
-            # Remove failed tokens
-            if failed_tokens:
-                await db.array_remove_update('users', user_id, 'fcm_tokens', failed_tokens)
-            
-            return {
-                "message": "Notifications sent",
-                "sent": success_count,
-                "failed": len(failed_tokens)
-            }
-            
-        except Exception as e:
-            logger.error(f"FCM send error: {e}")
-            return {"message": f"FCM error: {str(e)}", "sent": 0}
-    
-    @staticmethod
-    async def send_multicast(
-        user_ids: List[str],
-        title: str,
-        body: str,
-        data: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
-        """Send push notification to multiple users"""
-        db = await FirebaseNotificationService.get_db()
-        
-        if not user_ids:
-            logger.warning("send_multicast: No user_ids provided")
-            return {"message": "No user_ids", "sent": 0}
-        
-        # Collect all FCM tokens from users
-        all_tokens = []
-        users_with_tokens = 0
-        for user_id in user_ids:
-            user = await db.get_document('users', user_id)
-            if user:
-                tokens = user.get('fcm_tokens', [])
-                if tokens:
-                    users_with_tokens += 1
-                    all_tokens.extend(tokens)
-                    # Deduplicate tokens
-                    all_tokens = list(set(all_tokens))
-        
-        if not all_tokens:
-            logger.warning(f"send_multicast: No FCM tokens found for {len(user_ids)} users ({users_with_tokens} had fcm_tokens)")
-            return {"message": "No tokens found", "sent": 0}
-        
-        logger.info(f"SOS: Sending to {len(user_ids)} users, {len(all_tokens)} unique tokens")
-        
-        try:
-            from firebase_admin import messaging as fcm
-            
-            # FCM allows max 500 tokens per multicast
-            chunks = [all_tokens[i:i+500] for i in range(0, len(all_tokens), 500)]
-            total_success = 0
-            total_failure = 0
-            
-            for i, chunk in enumerate(chunks):
+        # 2. Send to FCM native tokens if any
+        if fcm_native_tokens:
+            try:
+                messaging = get_firebase_messaging()
+                from firebase_admin import messaging as fcm
+                
+                notification = fcm.Notification(
+                    title=title,
+                    body=body
+                )
+                
+                # High-priority configuration for SOS
                 android_config = None
                 apns_config = None
-                
                 notification_type = data.get('type') if data else None
                 
-                # High-priority for SOS
-                if notification_type in ['sos_alert', 'sos_responder_count']:
+                if notification_type and notification_type.startswith('sos'):
                     android_config = fcm.AndroidConfig(
                         priority='high',
                         notification=fcm.AndroidNotification(
@@ -175,6 +174,7 @@ class FirebaseNotificationService:
                         )
                     )
                     apns_config = fcm.APNSConfig(
+                        headers={'apns-priority': '10'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
                                 sound='default',
@@ -185,28 +185,147 @@ class FirebaseNotificationService:
                         )
                     )
                 
-                message_kwargs = {
-                    'notification': fcm.Notification(title=title, body=body),
-                    'data': data or {},
-                    'tokens': chunk
-                }
-                if android_config:
-                    message_kwargs['android'] = android_config
-                if apns_config:
-                    message_kwargs['apns'] = apns_config
+                failed_tokens = []
+                for token in fcm_native_tokens:
+                    try:
+                        message_kwargs = {
+                            'notification': notification,
+                            'data': data or {},
+                            'token': token
+                        }
+                        if android_config:
+                            message_kwargs['android'] = android_config
+                        if apns_config:
+                            message_kwargs['apns'] = apns_config
+                            
+                        message = fcm.Message(**message_kwargs)
+                        messaging.send(message)
+                        success_count += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to send to token: {e}")
+                        failed_tokens.append(token)
                 
-                message = fcm.MulticastMessage(**message_kwargs)
-                response = fcm.send_multicast(message)
-                total_success += response.success_count
-                total_failure += response.failure_count
+                # Remove failed native tokens
+                if failed_tokens:
+                    await db.array_remove_update('users', user_id, 'fcm_tokens', failed_tokens)
+            except Exception as e:
+                logger.error(f"FCM send error: {e}")
                 
-                if response.failure_count > 0:
-                    logger.warning(f"SOS chunk {i}: {response.success_count} success, {response.failure_count} failed")
-                    # Log which tokens failed
-                    for idx, err in enumerate(response.errors):
-                        logger.warning(f"  Token error {idx}: {err}")
+        return {
+            "message": "Notifications sent",
+            "sent": success_count
+        }
+    
+    @staticmethod
+    async def send_multicast(
+        user_ids: List[str],
+        title: str,
+        body: str,
+        data: Optional[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
+        """Send push notification to multiple users via FCM or Expo"""
+        try:
+            db = await FirebaseNotificationService.get_db()
             
-            logger.info(f"SOS: Multicast complete - {total_success} sent, {total_failure} failed")
+            if not user_ids:
+                logger.warning("send_multicast: No user_ids provided")
+                return {"message": "No user_ids", "sent": 0}
+            
+            # Collect all FCM and Expo tokens from users
+            all_fcm_tokens = []
+            all_expo_tokens = []
+            users_with_tokens = 0
+            for user_id in user_ids:
+                user = await db.get_document('users', user_id)
+                if user:
+                    tokens = user.get('fcm_tokens', [])
+                    if tokens:
+                        users_with_tokens += 1
+                        for token in tokens:
+                            if token.startswith('ExponentPushToken') or token.startswith('ExpoPushToken'):
+                                all_expo_tokens.append(token)
+                            else:
+                                all_fcm_tokens.append(token)
+                                
+            # Deduplicate
+            all_fcm_tokens = list(set(all_fcm_tokens))
+            all_expo_tokens = list(set(all_expo_tokens))
+            
+            total_success = 0
+            total_failure = 0
+            
+            # 1. Send via Expo Push API if there are Expo tokens
+            if all_expo_tokens:
+                logger.info(f"SOS: Sending via Expo Push to {len(all_expo_tokens)} tokens")
+                expo_sent = await FirebaseNotificationService._send_expo_push_notifications(
+                    all_expo_tokens, title, body, data
+                )
+                total_success += expo_sent
+                total_failure += len(all_expo_tokens) - expo_sent
+                
+            # 2. Send via FCM if there are native FCM tokens
+            if all_fcm_tokens:
+                logger.info(f"SOS: Sending via FCM to {len(all_fcm_tokens)} tokens")
+                try:
+                    from firebase_admin import messaging as fcm
+                    
+                    # FCM allows max 500 tokens per multicast
+                    chunks = [all_fcm_tokens[i:i+500] for i in range(0, len(all_fcm_tokens), 500)]
+                    
+                    for i, chunk in enumerate(chunks):
+                        android_config = None
+                        apns_config = None
+                        
+                        notification_type = data.get('type') if data else None
+                        
+                        # High-priority for SOS
+                        if notification_type and notification_type.startswith('sos'):
+                            android_config = fcm.AndroidConfig(
+                                priority='high',
+                                notification=fcm.AndroidNotification(
+                                    channel_id='sos_alerts',
+                                    sound='default',
+                                    priority='high',
+                                    notification_priority='PRIORITY_MAX',
+                                    vibrate_timings=[0, 1000, 500, 1000, 500, 1000]
+                                )
+                            )
+                            apns_config = fcm.APNSConfig(
+                                headers={'apns-priority': '10'},
+                                payload=fcm.APNSPayload(
+                                    aps=fcm.Aps(
+                                        sound='default',
+                                        badge=1,
+                                        content_available=True,
+                                        mutable_content=True
+                                    )
+                                )
+                            )
+                        
+                        message_kwargs = {
+                            'notification': fcm.Notification(title=title, body=body),
+                            'data': data or {},
+                            'tokens': chunk
+                        }
+                        if android_config:
+                            message_kwargs['android'] = android_config
+                        if apns_config:
+                            message_kwargs['apns'] = apns_config
+                        
+                        message = fcm.MulticastMessage(**message_kwargs)
+                        response = fcm.send_multicast(message)
+                        total_success += response.success_count
+                        total_failure += response.failure_count
+                        
+                        if response.failure_count > 0:
+                            logger.warning(f"SOS chunk {i}: {response.success_count} success, {response.failure_count} failed")
+                            for idx, err in enumerate(response.errors):
+                                logger.warning(f"  Token error {idx}: {err}")
+                                
+                except Exception as e:
+                    logger.error(f"Multicast FCM error: {e}")
+                    total_failure += len(all_fcm_tokens)
+                    
             return {"message": "Sent", "sent": total_success, "failed": total_failure}
             
         except Exception as e:

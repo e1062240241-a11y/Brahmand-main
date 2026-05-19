@@ -6,7 +6,6 @@ import api from './api';
 const isExpoGo = Constants.appOwnership === 'expo' || Constants.appOwnership === 'guest';
 
 async function getNotificationsModule() {
-  if (isExpoGo) return null;
   try {
     const Notifications = await import('expo-notifications');
     return Notifications;
@@ -48,8 +47,6 @@ async function getNotificationsModule() {
         console.warn('[Push] Failed to create SOS notification category:', e);
       }
     }
-  } else if (isExpoGo) {
-    console.warn('[Push] expo-notifications not available in Expo Go; skipping notification handler. Use dev-client for push support.');
   }
 })();
 
@@ -134,6 +131,17 @@ export async function registerForPushNotifications(): Promise<string | null> {
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
       });
+
+      await Notifications.setNotificationChannelAsync('sos_alerts', {
+        name: 'Emergency SOS Alerts',
+        description: 'High-priority notifications for emergency SOS requests nearby',
+        importance: Notifications.AndroidImportance?.MAX ?? 5,
+        vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
+        lightColor: '#FF0000',
+        bypassDnd: true,
+        showBadge: true,
+        enableVibrate: true,
+      });
     } catch (e) {
       console.warn('[Push] Failed to configure Android channels', e);
     }
@@ -143,26 +151,15 @@ export async function registerForPushNotifications(): Promise<string | null> {
 }
 
 /**
- * Save the FCM token to the backend/Firestore
+ * Save the FCM/Expo token to the backend/Firestore
  */
-function isExpoPushToken(token: string) {
-  return token.startsWith('ExponentPushToken') || token.startsWith('ExpoPushToken');
-}
-
 export async function saveFCMToken(token: string): Promise<boolean> {
-  if (isExpoPushToken(token)) {
-    console.warn(
-      '[Push] Expo push token detected. Backend expects a native FCM device token, so this token will not be sent. Use a standalone/custom client build for FCM support.'
-    );
-    return false;
-  }
-
   try {
     await api.post('/user/fcm-token', { fcm_token: token });
-    console.log('[Push] FCM token saved to backend');
+    console.log('[Push] Notification token saved to backend:', token);
     return true;
   } catch (error) {
-    console.error('[Push] Error saving FCM token:', error);
+    console.error('[Push] Error saving notification token:', error);
     return false;
   }
 }
