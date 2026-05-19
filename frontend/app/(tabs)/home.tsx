@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -520,6 +521,20 @@ export default function HomeScreen() {
     loadHomeRequests();
   }, [loadHomeRequests]);
 
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadFeedPosts(0, false),
+        loadHomeRequests(),
+      ]);
+    } catch (error) {
+      console.warn('Failed to refresh home feed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadFeedPosts, loadHomeRequests]);
+
   const normalizeRequestText = (request: any) =>
     `${request?.title || ''} ${request?.description || ''} ${request?.support_needed || ''}`.toLowerCase();
 
@@ -916,6 +931,14 @@ export default function HomeScreen() {
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                colors={['#FF6600']}
+                tintColor="#FF6600"
+              />
+            }
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
