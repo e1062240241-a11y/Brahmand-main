@@ -668,10 +668,9 @@ const styles = StyleSheet.create({
     zIndex: 99999,
   },
   heartShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 6,
   },
 });
 
