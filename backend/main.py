@@ -508,6 +508,7 @@ async def _notify_mentioned_users(
                 'notification_type': 'social',
                 'data': notification_data,
                 'is_read': False,
+                'created_at': datetime.utcnow().isoformat(),
             })
             logger.info('Mention notification created for %s by %s', target_user_id, actor_id)
 
@@ -1511,6 +1512,35 @@ async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depe
     return await db.get_document('users', token_data["user_id"])
 
 
+@api_router.delete("/user/profile")
+async def delete_user_profile(token_data: dict = Depends(verify_token)):
+    """Delete user profile, including posts and comments."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    
+    # 1. Fetch user to verify they exist
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # 2. Delete user's posts
+    try:
+        posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        for post in posts:
+            try:
+                await _delete_post_with_dependencies(db, post['id'])
+            except Exception as e:
+                logger.warning(f"Failed to delete post {post.get('id')} during user deletion: {e}")
+    except Exception as e:
+        logger.warning(f"Error querying posts for deletion: {e}")
+
+    # 3. Delete the user document
+    await db.delete_document('users', user_id)
+    
+    logger.info(f"User account deleted: {user_id}")
+    return {"message": "Account deleted successfully"}
+
+
 @api_router.post("/user/location")
 async def setup_location(location: LocationSetup, token_data: dict = Depends(verify_token)):
     """Setup user location and join communities"""
@@ -1967,6 +1997,7 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
                 'action': 'follow',
             },
             'is_read': False,
+            'created_at': datetime.utcnow().isoformat(),
         })
         logger.info(f"Follow notification created for user {user_id} by {current_user_id}")
 
@@ -2048,14 +2079,28 @@ async def upload_post(
         raise HTTPException(status_code=404, detail='User not found')
 
     content_type = (file.content_type or '').lower()
-    if (not content_type or content_type == 'application/octet-stream') and file.filename:
-        filename_lower = file.filename.lower()
-        if filename_lower.endswith(('.mp4', '.mov', '.webm', '.mkv')):
-            content_type = 'video/mp4'
-        elif filename_lower.endswith(('.jpg', '.jpeg')):
-            content_type = 'image/jpeg'
-        elif filename_lower.endswith('.png'):
+    header = await file.read(32)
+    await file.seek(0)
+
+    is_actually_video = b'ftyp' in header or header.startswith(b'\x00\x00\x00')
+    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG')
+
+    if is_actually_video:
+        content_type = 'video/mp4'
+    elif is_actually_image:
+        if header.startswith(b'\x89PNG'):
             content_type = 'image/png'
+        else:
+            content_type = 'image/jpeg'
+    else:
+        if (not content_type or content_type == 'application/octet-stream') and file.filename:
+            filename_lower = file.filename.lower()
+            if filename_lower.endswith(('.mp4', '.mov', '.webm', '.mkv')):
+                content_type = 'video/mp4'
+            elif filename_lower.endswith(('.jpg', '.jpeg')):
+                content_type = 'image/jpeg'
+            elif filename_lower.endswith('.png'):
+                content_type = 'image/png'
 
     allowed_content_types = {
         'image/jpeg', 'image/jpg', 'image/png',
@@ -2399,7 +2444,12 @@ async def get_posts_feed(
         posts = []
 
     # Filter out already-seen posts and non-public posts
-    pool = [p for p in posts if p.get('id') not in seen_set and p.get('visibility', 'public') == 'public']
+    public_posts = [p for p in posts if p.get('visibility', 'public') == 'public']
+    pool = [p for p in public_posts if p.get('id') not in seen_set]
+    
+    # Fallback: If user has seen everything (or pool is too small), show old public posts so feed isn't empty
+    if len(pool) < safe_limit:
+        pool = public_posts
 
     if tab == 'following':
         try:
@@ -2894,6 +2944,7 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                         'action': 'like',
                     },
                     'is_read': False,
+                    'created_at': datetime.utcnow().isoformat(),
                 })
                 logger.info(f"Like notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
@@ -3064,6 +3115,7 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
                     'action': 'comment',
                 },
                 'is_read': False,
+                'created_at': datetime.utcnow().isoformat(),
             })
             logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
@@ -3841,26 +3893,28 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     communities = []
     default_community_ids = set(user.get('default_communities', []))
     
-    for cid in user.get('communities', []):
+    user_comm_ids = user.get('communities', [])
+    if user_comm_ids:
         try:
-            comm = await db.get_document('communities', cid)
-            if comm:
-                comm_type = comm.get('type', 'other')
-                if comm_type in ['home_area', 'area']:
-                    continue
-                communities.append({
-                    "id": comm['id'],
-                    "name": comm['name'],
-                    "type": comm_type,
-                    "label": comm.get('label') or TYPE_LABELS.get(comm_type, ''),
-                    "code": comm.get('code', ''),
-                    "member_count": len(comm.get('members', [])),
-                    "subgroups": comm.get('subgroups', []),
-                    "is_default": cid in default_community_ids or comm.get('is_default', False),
-                    "sort_order": comm.get('sort_order') or TYPE_ORDER.get(comm_type, 99)
-                })
-        except:
-            pass
+            fetched_comms = await db.get_documents_batch('communities', list(set(user_comm_ids)))
+            for comm in fetched_comms:
+                if comm:
+                    comm_type = comm.get('type', 'other')
+                    if comm_type in ['home_area', 'area']:
+                        continue
+                    communities.append({
+                        "id": comm['id'],
+                        "name": comm.get('name', 'Unknown'),
+                        "type": comm_type,
+                        "label": comm.get('label') or TYPE_LABELS.get(comm_type, ''),
+                        "code": comm.get('code', ''),
+                        "member_count": len(comm.get('members', [])),
+                        "subgroups": comm.get('subgroups', []),
+                        "is_default": comm['id'] in default_community_ids or comm.get('is_default', False),
+                        "sort_order": comm.get('sort_order') or TYPE_ORDER.get(comm_type, 99)
+                    })
+        except Exception as e:
+            logger.error("Error batch fetching communities: %s", e)
     
     # Sort by sort_order
     communities.sort(key=lambda x: x.get('sort_order', 99))
@@ -4474,12 +4528,16 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
     db = await get_db()
     user_id = token_data["user_id"]
     
-    # Query all private chats
-    chats = await db.query_documents('chats', filters=[('chat_type', '==', 'private')])
+    # Query all private chats where user is a member
+    user_chats = await db.query_documents(
+        'chats', 
+        filters=[
+            ('chat_type', '==', 'private'),
+            ('members', 'array_contains', user_id)
+        ]
+    )
     
     result = []
-    # Check if user is a member of this chat
-    user_chats = [chat for chat in chats if user_id in chat.get('members', [])]
     
     # 1. Collect all other user IDs to fetch in batch
     other_user_ids = []
@@ -4800,47 +4858,54 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     circles = []
     user_circle_ids = list(user.get('circles', []))
     
-    for cid in user_circle_ids:
-        circle = await db.get_document('circles', cid)
-        if circle:
-            # Check if this is a cultural group
-            is_cultural = (
-                circle.get('type') == 'cultural' or 
-                'Culture Group' in circle.get('name', '') or 
-                circle.get('cultural_group_key') is not None
-            )
+    if user_circle_ids:
+        try:
+            fetched_circles = await db.get_documents_batch('circles', user_circle_ids)
+            for circle in fetched_circles:
+                if circle:
+                    cid = circle['id']
+                    # Check if this is a cultural group
+                    is_cultural = (
+                        circle.get('type') == 'cultural' or 
+                        'Culture Group' in circle.get('name', '') or 
+                        circle.get('cultural_group_key') is not None
+                    )
+                    
+                    if is_cultural:
+                        # If it doesn't match the current key, remove it silently
+                        if not current_cultural_key or circle.get('cultural_group_key') != current_cultural_key:
+                            logger.info(f"Auto-removing user {user_id} from legacy cultural circle {cid}")
+                            await db.array_remove_update('users', user_id, 'circles', [cid])
+                            await db.array_remove_update('circles', cid, 'members', [user_id])
+                            continue
+
+                    member_names = []
+                    for member_id in circle.get('members', []):
+                        if member_id == user_id:
+                            continue
+                        member_doc = await db.get_document('users', member_id)
+                        if member_doc and member_doc.get('name'):
+                            member_names.append(member_doc['name'])
+
+                    circles.append({
+                        "id": circle['id'],
+                        "name": circle['name'],
+                        "description": circle.get('description', ''),
+                        "photo": circle.get('photo'),
+                        "code": circle['code'],
+                        "privacy": circle.get('privacy', 'private'),
+                        "creator_id": circle.get('creator_id', circle.get('admin_id')),
+                        "admin_id": circle.get('admin_id'),
+                        "admin_ids": _circle_admin_ids(circle),
+                        "member_count": len(circle.get('members', [])),
+                        "member_names": member_names,
+                        "is_admin": _is_circle_admin(circle, user_id),
+                        "created_at": circle.get('created_at')
+                    })
+        except Exception as e:
+            logger.error("Error batch fetching circles: %s", e)
             
-            if is_cultural:
-                # If it doesn't match the current key, remove it silently
-                if not current_cultural_key or circle.get('cultural_group_key') != current_cultural_key:
-                    logger.info(f"Auto-removing user {user_id} from legacy cultural circle {cid}")
-                    await db.array_remove_update('users', user_id, 'circles', [cid])
-                    await db.array_remove_update('circles', cid, 'members', [user_id])
-                    continue
 
-            member_names = []
-            for member_id in circle.get('members', []):
-                if member_id == user_id:
-                    continue
-                member_doc = await db.get_document('users', member_id)
-                if member_doc and member_doc.get('name'):
-                    member_names.append(member_doc['name'])
-
-            circles.append({
-                "id": circle['id'],
-                "name": circle['name'],
-                "description": circle.get('description', ''),
-                "photo": circle.get('photo'),
-                "code": circle['code'],
-                "privacy": circle.get('privacy', 'private'),
-                "creator_id": circle.get('creator_id', circle.get('admin_id')),
-                "admin_id": circle.get('admin_id'),
-                "admin_ids": _circle_admin_ids(circle),
-                "member_count": len(circle.get('members', [])),
-                "member_names": member_names,
-                "is_admin": _is_circle_admin(circle, user_id),
-                "created_at": circle.get('created_at')
-            })
     return circles
 
 
@@ -8368,18 +8433,44 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
         sos_alert = await db.get_document('sos_alerts', sos_id)
         title = f"Emergency SOS nearby: {sos_alert.get('emergency_type', 'Emergency')}"
         body = f"{sos_alert.get('user_name')} needs help at {sos_alert.get('micro_location', 'nearby')}"
-        await _send_sos_notifications(next_batch, title, body, {
+        
+        notification_data = {
             'type': 'sos_alert',
             'sos_id': sos_id,
+            'creator_name': sos_alert.get('user_name', 'User'),
             'creator_sl_id': sos_alert.get('user_sl_id'),
+            'sos_type': sos_alert.get('emergency_type') or 'emergency',
             'latitude': str(sos_alert.get('latitude')),
             'longitude': str(sos_alert.get('longitude')),
+            'phone': sos_alert.get('phone_number', ''),
+            'micro_location': sos_alert.get('micro_location') or '',
             'action_accept': 'accept_sos',
             'action_deny': 'deny_sos',
             'action_label_accept': 'Accept',
             'action_label_deny': 'Deny'
-        })
+        }
+        
+        await _send_sos_notifications(next_batch, title, body, notification_data)
+        asyncio.create_task(_save_bulk_notifications(db, next_batch, title, body, 'sos', notification_data))
         step += 1
+
+
+async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, notification_type: str, data: dict):
+    if not user_ids:
+        return
+    for uid in user_ids:
+        try:
+            await db.create_document('notifications', {
+                'user_id': uid,
+                'title': title,
+                'body': body,
+                'notification_type': notification_type,
+                'data': data,
+                'is_read': False,
+                'created_at': datetime.utcnow().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Failed to save bulk notification for user {uid}: {e}")
 
 
 @api_router.post("/sos")
@@ -8431,7 +8522,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     sos_id = await db.create_document('sos_alerts', sos_data)
     sos_data['id'] = sos_id
 
-    # Only try to get nearest users by location (max 1km, within 10 min)
+    # Try to get nearest users by location (max 1km, within 10 min)
     nearest_user_ids = await _get_nearest_users(
         db,
         user_id,
@@ -8441,7 +8532,48 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         max_distance_km=1.0
     )
     
-    all_target_user_ids = nearest_user_ids
+    all_target_user_ids = list(nearest_user_ids)
+    
+    # Fallback 1: If fewer than 5 users found, expand time check to 24 hours and distance to 10km
+    if len(all_target_user_ids) < 5:
+        logger.info("SOS: Few users found within 1km/10min, expanding search to 10km/24h")
+        expanded_users = []
+        users = await db.query_documents('users')
+        from datetime import datetime, timedelta
+        one_day_ago = datetime.utcnow() - timedelta(hours=24)
+        for u in users:
+            uid = u.get('id')
+            if uid == user_id or uid in all_target_user_ids:
+                continue
+            current_loc = u.get('current_location')
+            if not current_loc:
+                continue
+            u_lat = current_loc.get('latitude')
+            u_lng = current_loc.get('longitude')
+            updated_at_str = current_loc.get('updated_at')
+            if u_lat is None or u_lng is None or not updated_at_str:
+                continue
+            try:
+                if updated_at_str.endswith('Z'):
+                    updated_at_str = updated_at_str[:-1]
+                updated_at = datetime.fromisoformat(updated_at_str)
+                if updated_at < one_day_ago:
+                    continue
+            except:
+                continue
+            dist = await _haversine_distance(data.latitude, data.longitude, u_lat, u_lng)
+            if dist <= 10.0:
+                expanded_users.append((dist, uid))
+        expanded_users.sort(key=lambda x: x[0])
+        all_target_user_ids.extend([uid for _, uid in expanded_users[:(150 - len(all_target_user_ids))]])
+
+    # Fallback 2: If still fewer than 5 users found, fall back to community members
+    if len(all_target_user_ids) < 5:
+        logger.info("SOS: Still few users found, falling back to community members")
+        community_users = await _get_community_users(db, user_id, max_users=100)
+        for uid in community_users:
+            if uid not in all_target_user_ids:
+                all_target_user_ids.append(uid)
     logger.info(f"SOS: using {len(all_target_user_ids)} total targets (nearby within 1km and 10min)")
     
     # Send simple SOS notification to all target users
@@ -8470,6 +8602,9 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         
         await _send_sos_notifications(all_target_user_ids, title, body, notification_data)
         logger.info(f"SOS: sent notification to {len(all_target_user_ids)} users")
+        
+        # Save notifications to database in background
+        asyncio.create_task(_save_bulk_notifications(db, all_target_user_ids, title, body, 'sos', notification_data))
 
     # Broadcast to community chat
     community_ids = user.get('communities', [])
@@ -8575,14 +8710,24 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
             if not responder_id:
                 continue
             try:
+                notification_data = {'type': 'sos_resolved', 'sos_id': sos_id}
                 await FirebaseNotificationService.send_push_notification(
                     responder_id,
                     'SOS Resolved',
                     f"{alert.get('user_name')} is safe now. Thank you for helping.",
-                    {'type': 'sos_resolved', 'sos_id': sos_id}
+                    notification_data
                 )
-            except Exception:
-                pass
+                await db.create_document('notifications', {
+                    'user_id': responder_id,
+                    'title': 'SOS Resolved',
+                    'body': f"{alert.get('user_name')} is safe now. Thank you for helping.",
+                    'notification_type': 'sos',
+                    'data': notification_data,
+                    'is_read': False,
+                    'created_at': datetime.utcnow().isoformat()
+                })
+            except Exception as e:
+                logger.error(f"Failed to send/save SOS resolved notification for responder {responder_id}: {e}")
             
             responder_user = await db.get_document('users', responder_id)
             if responder_user:
@@ -8639,19 +8784,34 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     creator_user_id = updated_alert.get('user_id')
     if creator_user_id:
         count_msg = f"{responder_count} {'person is' if responder_count == 1 else 'people are'} on the way to help"
+        notification_data = {
+            'type': 'sos_responder_count', 
+            'sos_id': sos_id, 
+            'responder_count': str(responder_count),
+            'responder_name': user.get('name'),
+            'response': response
+        }
         await FirebaseNotificationService.send_push_notification(
             creator_user_id,
             f'{user.get("name")} is coming to help!',
             count_msg,
-            {
-                'type': 'sos_responder_count', 
-                'sos_id': sos_id, 
-                'responder_count': str(responder_count),
-                'responder_name': user.get('name'),
-                'response': response
-            }
+            notification_data
         )
         logger.info(f"SOS {sos_id}: Notified creator of {responder_count} responder(s)")
+        
+        # Save notification to database
+        try:
+            await db.create_document('notifications', {
+                'user_id': creator_user_id,
+                'title': f'{user.get("name")} is coming to help!',
+                'body': count_msg,
+                'notification_type': 'sos',
+                'data': notification_data,
+                'is_read': False,
+                'created_at': datetime.utcnow().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Failed to save SOS responder notification: {e}")
 
     await sio.emit('sos_response', {
         'sos_id': sos_id,
@@ -8674,6 +8834,9 @@ async def update_sos_responder_status(
     """Update a responder status for an SOS (on_the_way / reached)"""
     db = await get_db()
     user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     if status not in ['on_the_way', 'reached']:
         raise HTTPException(status_code=400, detail="Status must be 'on_the_way' or 'reached'")
@@ -8698,12 +8861,28 @@ async def update_sos_responder_status(
 
     await db.update_document('sos_alerts', sos_id, {'responders': responders})
 
+    notification_data = {'type': 'sos_responder_status', 'sos_id': sos_id, 'status': status}
+
     await FirebaseNotificationService.send_push_notification(
         alert.get('user_id'),
         'SOS update',
         f"{user.get('name')} is now {status.replace('_', ' ')}.",
-        {'type': 'sos_responder_status', 'sos_id': sos_id, 'status': status}
+        notification_data
     )
+
+    # Save notification to database
+    try:
+        await db.create_document('notifications', {
+            'user_id': alert.get('user_id'),
+            'title': 'SOS update',
+            'body': f"{user.get('name')} is now {status.replace('_', ' ')}.",
+            'notification_type': 'sos',
+            'data': notification_data,
+            'is_read': False,
+            'created_at': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Failed to save SOS responder status update notification: {e}")
 
     await sio.emit('sos_responder_status', {
         'sos_id': sos_id,

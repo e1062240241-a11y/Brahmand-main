@@ -796,7 +796,7 @@ export const FloatingUtilityButton = () => {
                         <Ionicons name="people" size={24} color="#FFF" />
                       </View>
                       <View style={styles.sosStatusTextCol}>
-                        <Text style={styles.sosStatusTitle}>{(activeSOS.responders?.length || 0) + 1} PEOPLE ARE</Text>
+                        <Text style={styles.sosStatusTitle}>{(activeSOS.responders?.length || 0)} {(activeSOS.responders?.length === 1) ? 'PERSON IS' : 'PEOPLE ARE'}</Text>
                         <Text style={styles.sosStatusTitle}>COMING TO HELP YOU</Text>
                         <View style={styles.sosVerifiedRow}>
                           <Ionicons name="checkmark-circle" size={12} color="#FFD54F" />
@@ -867,7 +867,6 @@ export const FloatingUtilityButton = () => {
                         </View>
                         <View style={styles.victimInfo}>
                            <Text style={styles.victimName}>{nearbySOSAlerts[0].creator_name || nearbySOSAlerts[0].user_name || 'Rahul Sharma'}</Text>
-                           <Text style={styles.victimPhone}>{nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || '+91 98765 43210'}</Text>
                            <View style={styles.victimTypeRow}>
                               <MaterialCommunityIcons name="medical-bag" size={14} color="#D32F2F" />
                               <Text style={styles.victimTypeText}>{nearbySOSAlerts[0].emergency_type?.toUpperCase() || 'MEDICAL EMERGENCY'}</Text>
@@ -900,23 +899,37 @@ export const FloatingUtilityButton = () => {
                            <ActivityIndicator color="#FFF" size="small" />
                          ) : (
                            <>
-                             <MaterialCommunityIcons name="walk" size={28} color="#FFF" />
+                             <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
                              <Text style={styles.responderBtnText}>I'M ON{"\n"}MY WAY</Text>
                            </>
                          )}
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={[styles.responderBtn, { backgroundColor: '#FF9800' }]}
-                        onPress={() => Linking.openURL(`tel:${nearbySOSAlerts[0].creator_phone || ''}`)}
+                        onPress={() => {
+                          const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || nearbySOSAlerts[0].phone_number || '';
+                          if (!phone) {
+                            Alert.alert('Not Available', 'Phone number not provided.');
+                            return;
+                          }
+                          Alert.alert(
+                            'Emergency Contact',
+                            `Phone Number: ${phone}`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              { text: 'Call', onPress: () => Linking.openURL(`tel:${phone}`) }
+                            ]
+                          );
+                        }}
                       >
-                         <Ionicons name="call" size={28} color="#FFF" />
+                         <Ionicons name="call" size={22} color="#FFF" />
                          <Text style={styles.responderBtnText}>CALL</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={[styles.responderBtn, { backgroundColor: '#2196F3' }]}
                         onPress={() => openNearbySOSLocation(nearbySOSAlerts[0])}
                       >
-                         <MaterialCommunityIcons name="navigation" size={28} color="#FFF" />
+                         <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
                          <Text style={styles.responderBtnText}>OPEN MAP</Text>
                       </TouchableOpacity>
                    </View>
@@ -1415,77 +1428,77 @@ const styles = StyleSheet.create({
   // NEW SOS ACTIVE STYLES (REPLICATION)
   outerCircleRingSOS: { borderColor: 'rgba(255, 59, 48, 0.5)', backgroundColor: 'rgba(255, 59, 48, 0.1)' },
   mainMenuCircleSOS: { backgroundColor: '#D32F2F', borderColor: '#FF5252', borderWidth: 2 },
-  sosActiveView: { width: '100%', height: '100%', alignItems: 'center', padding: 20 },
-  sosHeader: { alignItems: 'center', marginTop: 10 },
-  sosCircleIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  sosHeaderText: { color: '#D32F2F', fontWeight: '900', fontSize: 16 },
-  sosActiveTitle: { color: '#FFF', fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
-  sosActiveSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 },
-  centerGuruContainerSOS: { width: 140, height: 140, justifyContent: 'center', alignItems: 'center', marginVertical: 10 },
-  guruImageWrapperSOS: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#FFD54F', backgroundColor: '#FFF8E1', overflow: 'hidden' },
+  sosActiveView: { width: '100%', height: '100%', alignItems: 'center', padding: 12 },
+  sosHeader: { alignItems: 'center', marginTop: 4 },
+  sosCircleIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  sosHeaderText: { color: '#D32F2F', fontWeight: '900', fontSize: 12 },
+  sosActiveTitle: { color: '#FFF', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
+  sosActiveSub: { color: 'rgba(255,255,255,0.8)', fontSize: 10, textAlign: 'center', marginTop: 2, lineHeight: 14 },
+  centerGuruContainerSOS: { width: 80, height: 80, justifyContent: 'center', alignItems: 'center', marginVertical: 4 },
+  guruImageWrapperSOS: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: '#FFD54F', backgroundColor: '#FFF8E1', overflow: 'hidden' },
   sosStatusCard: { 
     width: SCREEN_WIDTH * 0.72, 
     backgroundColor: 'rgba(0,0,0,0.3)', 
-    borderRadius: 24, 
-    padding: 16, 
+    borderRadius: 20, 
+    padding: 12, 
     borderWidth: 1, 
     borderColor: 'rgba(255,255,255,0.2)',
-    marginTop: -20
+    marginTop: -8
   },
-  sosStatusHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-  peopleIconBox: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#FF5252', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  sosStatusHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  peopleIconBox: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FF5252', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   sosStatusTextCol: { flex: 1 },
-  sosStatusTitle: { color: '#FFF', fontSize: 14, fontWeight: '900', lineHeight: 18 },
-  sosVerifiedRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 },
-  sosVerifiedText: { color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: '600' },
+  sosStatusTitle: { color: '#FFF', fontSize: 12, fontWeight: '900', lineHeight: 15 },
+  sosVerifiedRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 4 },
+  sosVerifiedText: { color: 'rgba(255,255,255,0.7)', fontSize: 8, fontWeight: '600' },
   receivedHelpBtn: { 
     backgroundColor: '#FFF', 
-    borderRadius: 25, 
-    height: 46, 
+    borderRadius: 20, 
+    height: 38, 
     flexDirection: 'row', 
     alignItems: 'center', 
-    paddingHorizontal: 6 
+    paddingHorizontal: 4 
   },
-  receivedHelpCheck: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFF', borderWidth: 2, borderColor: '#D32F2F', justifyContent: 'center', alignItems: 'center' },
-  receivedHelpText: { flex: 1, textAlign: 'center', color: '#D32F2F', fontWeight: '900', fontSize: 13, marginRight: 20 },
-  cancelSOSLink: { marginTop: 20 },
-  cancelSOSText: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
+  receivedHelpCheck: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFF', borderWidth: 2, borderColor: '#D32F2F', justifyContent: 'center', alignItems: 'center' },
+  receivedHelpText: { flex: 1, textAlign: 'center', color: '#D32F2F', fontWeight: '900', fontSize: 11, marginRight: 14 },
+  cancelSOSLink: { marginTop: 10 },
+  cancelSOSText: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textDecorationLine: 'underline' },
   itemTitleSOSSmall: { color: '#FFF', fontSize: 8, fontWeight: '800', textAlign: 'center', marginTop: 4 },
 
-  sosResponderView: { width: '100%', height: '100%', alignItems: 'center', padding: 15 },
-  sosAlertHeader: { alignItems: 'center', marginTop: 5 },
-  alertIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  sosAlertTitle: { color: '#FFF', fontSize: 24, fontWeight: '900', letterSpacing: 1 },
-  sosAlertSub: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '600' },
-  sosAlertHighlight: { color: '#FFD54F', fontSize: 13, fontWeight: '800', marginTop: 2 },
+  sosResponderView: { width: '100%', height: '100%', alignItems: 'center', padding: 12 },
+  sosAlertHeader: { alignItems: 'center', marginTop: 4 },
+  alertIconCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  sosAlertTitle: { color: '#FFF', fontSize: 18, fontWeight: '900', letterSpacing: 0.5 },
+  sosAlertSub: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '600' },
+  sosAlertHighlight: { color: '#FFD54F', fontSize: 11, fontWeight: '800', marginTop: 2 },
   victimCard: { 
     width: '94%', 
     backgroundColor: '#FFF', 
-    borderRadius: 20, 
-    padding: 12, 
-    marginTop: 15,
+    borderRadius: 16, 
+    padding: 10, 
+    marginTop: 8,
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 10
+    shadowRadius: 6,
+    elevation: 8
   },
   victimRow: { flexDirection: 'row', alignItems: 'center' },
-  victimAvatarBox: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  victimAvatarBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   victimInfo: { flex: 1 },
-  victimName: { fontSize: 16, fontWeight: '900', color: '#111' },
-  victimPhone: { fontSize: 12, fontWeight: '700', color: '#666', marginBottom: 2 },
+  victimName: { fontSize: 14, fontWeight: '900', color: '#111' },
+  victimPhone: { fontSize: 11, fontWeight: '700', color: '#666', marginBottom: 1 },
   victimTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  victimTypeText: { fontSize: 10, fontWeight: '900', color: '#D32F2F' },
+  victimTypeText: { fontSize: 9, fontWeight: '900', color: '#D32F2F' },
   victimLocRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-  victimLocText: { fontSize: 10, color: '#666', fontWeight: '600', flex: 1 },
-  communityCall: { flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 12 },
-  communityCallText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  responderActionRow: { flexDirection: 'row', gap: 10, width: '100%', justifyContent: 'center' },
-  responderBtn: { width: 85, height: 95, borderRadius: 12, justifyContent: 'center', alignItems: 'center', padding: 8 },
-  responderBtnText: { color: '#FFF', fontSize: 10, fontWeight: '900', textAlign: 'center', marginTop: 8 },
-  closeAlertX: { position: 'absolute', top: -10, right: -10, alignItems: 'center' },
-  closeXCircle: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', shadowOpacity: 0.1, shadowRadius: 5, elevation: 5 },
-  closeXText: { fontSize: 9, color: '#666', fontWeight: '700', marginTop: 4 }
+  victimLocText: { fontSize: 9, color: '#666', fontWeight: '600', flex: 1 },
+  communityCall: { flexDirection: 'row', alignItems: 'center', gap: 4, marginVertical: 6 },
+  communityCallText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+  responderActionRow: { flexDirection: 'row', gap: 8, width: '100%', justifyContent: 'center' },
+  responderBtn: { width: 80, height: 65, borderRadius: 10, justifyContent: 'center', alignItems: 'center', padding: 4 },
+  responderBtnText: { color: '#FFF', fontSize: 8, fontWeight: '900', textAlign: 'center', marginTop: 4 },
+  closeAlertX: { position: 'absolute', top: -4, right: -4, alignItems: 'center' },
+  closeXCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', shadowOpacity: 0.1, shadowRadius: 3, elevation: 3 },
+  closeXText: { fontSize: 8, color: '#666', fontWeight: '700', marginTop: 2 }
 });
 
 export default FloatingUtilityButton;

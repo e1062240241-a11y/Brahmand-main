@@ -18,12 +18,13 @@ import { useRouter } from 'expo-router';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { BORDER_RADIUS, COLORS, SPACING } from '../../src/constants/theme';
-import { getUserProfile, updateExtendedProfile } from '../../src/services/api';
+import { getUserProfile, updateExtendedProfile, deleteUserProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { updateUser } = useAuthStore();
+  const { updateUser, logout } = useAuthStore();
+  const [deleting, setDeleting] = useState(false);
   const handleBack = () => {
     router.back();
   };
@@ -81,6 +82,56 @@ export default function EditProfileScreen() {
       return 'Time of birth must be in HH:MM format';
     }
     return '';
+  };
+
+  const handleDeleteAccount = () => {
+    const performDeletion = async () => {
+      setDeleting(true);
+      try {
+        await deleteUserProfile();
+        Alert.alert(
+          'Account Deleted',
+          'Your account has been deleted successfully.',
+          [
+            {
+              text: 'OK',
+              onPress: async () => {
+                await logout();
+                router.replace('/');
+              },
+            },
+          ]
+        );
+      } catch (err: any) {
+        Alert.alert('Error', err?.response?.data?.detail || err?.message || 'Failed to delete account');
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (
+        window.confirm(
+          'WARNING: Are you sure you want to permanently delete your account? This action cannot be undone and all your data (posts, comments, profile information) will be completely removed.'
+        )
+      ) {
+        performDeletion();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete Account',
+      'WARNING: Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be completely removed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: performDeletion,
+        },
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -246,6 +297,31 @@ export default function EditProfileScreen() {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <Button title="Save Profile" onPress={handleSave} loading={saving} style={styles.saveButton} />
+
+            <View style={styles.dangerZoneSection}>
+              <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+              <View style={styles.dangerZoneCard}>
+                <Text style={styles.dangerZoneText}>
+                  Permanently delete your Brahmand account. This action is irreversible, and all your posts, comments, and profile data will be permanently wiped.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.deleteButton, deleting && styles.disabledBtn]}
+                  onPress={handleDeleteAccount}
+                  disabled={deleting}
+                  activeOpacity={0.8}
+                >
+                  {deleting ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="trash-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.deleteButtonText}>Delete Account</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={styles.bottomPadding} />
           </View>
         </ScrollView>
@@ -367,5 +443,45 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: SPACING.xl,
+  },
+  dangerZoneSection: {
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.md,
+  },
+  dangerZoneTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.error,
+    marginBottom: SPACING.sm,
+  },
+  dangerZoneCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: `${COLORS.error}33`,
+  },
+  dangerZoneText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: SPACING.md,
+  },
+  deleteButton: {
+    backgroundColor: COLORS.error,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  disabledBtn: {
+    opacity: 0.5,
   },
 });

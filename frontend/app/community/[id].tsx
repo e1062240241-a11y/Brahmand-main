@@ -1366,7 +1366,7 @@ export default function CommunityDetailScreen() {
 
       {/* Full Screen Create Post Modal */}
       <Modal visible={showCreateModal} animationType="slide" transparent={false}>
-        <SafeAreaView style={styles.createModalRoot}>
+        <View style={[styles.createModalRoot, { paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 40) : 0 }]}>
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
@@ -1472,7 +1472,7 @@ export default function CommunityDetailScreen() {
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
       </Modal>
 
       {/* Comment Modal */}

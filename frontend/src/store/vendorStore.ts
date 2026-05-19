@@ -112,7 +112,10 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   loading: false,
   
   fetchVendors: async (params) => {
-    set({ loading: true });
+    // Stale-While-Revalidate: Only show loading if we don't have cached data
+    if (get().vendors.length === 0) {
+      set({ loading: true });
+    }
     try {
       const response = await getVendors(params);
       set({ vendors: response?.data || [] });

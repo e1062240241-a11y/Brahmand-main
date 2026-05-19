@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -428,14 +429,12 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [setUnreadCount]);
 
-  const handleNotificationPress = async () => {
-    try {
-      await markAllNotificationsRead();
-      setUnreadCount(0);
-    } catch (err) {
-      console.log('Failed to mark notifications as read:', err);
-    }
+  const handleNotificationPress = () => {
     router.push('/notifications');
+    setUnreadCount(0);
+    markAllNotificationsRead().catch((err) => {
+      console.log('Failed to mark notifications as read in background:', err);
+    });
   };
 
   const [loadingHashtags, setLoadingHashtags] = useState(false);
@@ -683,6 +682,20 @@ export default function HomeScreen() {
   useEffect(() => {
     loadHomeRequests();
   }, [loadHomeRequests]);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadFeedPosts(0, false),
+        loadHomeRequests(),
+      ]);
+    } catch (error) {
+      console.warn('Failed to refresh home feed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadFeedPosts, loadHomeRequests]);
 
   const normalizeRequestText = (request: any) =>
     `${request?.title || ''} ${request?.description || ''} ${request?.support_needed || ''}`.toLowerCase();
@@ -1066,6 +1079,7 @@ export default function HomeScreen() {
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
+            overScrollMode="never"
             contentContainerStyle={[
               styles.content,
               {
@@ -1079,6 +1093,14 @@ export default function HomeScreen() {
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                colors={['#FF6600']}
+                tintColor="#FF6600"
+              />
+            }
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
@@ -1218,6 +1240,7 @@ export default function HomeScreen() {
                       </View>
                       <ScrollView
                         horizontal
+                        overScrollMode="never"
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.recentSearchList}
                       >
@@ -1240,6 +1263,7 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.topFeatureRow}>
+<<<<<<< HEAD
                   <ScrollView
                     ref={topFeaturesScrollRef}
                     horizontal
@@ -1248,6 +1272,9 @@ export default function HomeScreen() {
                     decelerationRate="fast"
                     contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
                   >
+=======
+                  <ScrollView horizontal overScrollMode="never" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}>
+>>>>>>> a1e2a59eecd675da60e56deacfde72dabc1d87b4
                     {quickAccess.map((item, idx) => {
                       let cardBg = '#FFFFFF';
                       let iconBg = '#FF8A3D';
@@ -1377,11 +1404,35 @@ export default function HomeScreen() {
                 style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
                 {/* Urgent Blood Request */}
+<<<<<<< HEAD
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <ImageBackground
                     source={require('../../assets/images/blood_card_bg_real.png')}
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFD6D6', overflow: 'hidden' }]}
                     imageStyle={{ borderRadius: 15 }}
+=======
+                <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
+                  <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                    <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>{bloodRequest ? 'Urgent Request' : 'Your Community'}</Text>
+                  </View>
+                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                    <View style={styles.cardIconRow}>
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                    </View>
+                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
+                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>{bloodRequest ? formatRequestLocation(bloodRequest) : 'No active request'}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
+                    onPress={() => {
+                      if (bloodRequest) {
+                        router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
+                      } else {
+                        setRequestType('Blood');
+                        setShowRequestModal(true);
+                      }
+                    }}
+>>>>>>> a1e2a59eecd675da60e56deacfde72dabc1d87b4
                   >
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                       <View style={styles.cardIconRow}>
@@ -1413,6 +1464,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Register Business */}
+<<<<<<< HEAD
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7' }]}>
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
@@ -1433,11 +1485,21 @@ export default function HomeScreen() {
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 42, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
                       <Text style={{ color: '#FF9500', fontSize: 7.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Free</Text>
+=======
+                <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
+                  <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                    <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
+                  </View>
+                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                    <View style={styles.cardIconRow}>
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+>>>>>>> a1e2a59eecd675da60e56deacfde72dabc1d87b4
                     </View>
                   </View>
                 </View>
 
                 {/* Verified Vendor */}
+<<<<<<< HEAD
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC' }]}>
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
@@ -1455,11 +1517,21 @@ export default function HomeScreen() {
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
                       <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Verified vendor</Text>
+=======
+                <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
+                  <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                    <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
+                  </View>
+                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                    <View style={styles.cardIconRow}>
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+>>>>>>> a1e2a59eecd675da60e56deacfde72dabc1d87b4
                     </View>
                   </View>
                 </View>
 
                 {/* Live Aarti */}
+<<<<<<< HEAD
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}>
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10, paddingHorizontal: 4 }]}>
@@ -1470,6 +1542,15 @@ export default function HomeScreen() {
                       <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center', marginTop: 3 }]} numberOfLines={4} adjustsFontSizeToFit>
                         <Ionicons name="notifications-outline" size={7.5} color="#5A5A5A" /> Notify me for the upcoming events
                       </Text>
+=======
+                <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
+                  <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                    <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
+                  </View>
+                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                    <View style={styles.cardIconRow}>
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+>>>>>>> a1e2a59eecd675da60e56deacfde72dabc1d87b4
                     </View>
                     <TouchableOpacity
                       style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}

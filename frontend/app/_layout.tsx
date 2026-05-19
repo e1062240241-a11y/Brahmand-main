@@ -14,6 +14,7 @@ import { useAdminStore } from '../src/store/adminStore';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { MuteProvider } from '../src/contexts/MuteContext';
+import { useNotificationStore } from '../src/store/notificationStore';
 
 // Intercept Android hardware back on community pages to avoid "GO_BACK not handled"
 function useAndroidBackHandler() {
@@ -245,6 +246,13 @@ function useMutedNotificationFilter() {
         if (data?.type === 'dm' && data?.chat_id && mutedRef.current.has(data.chat_id)) {
           const Notifications = await import('expo-notifications');
           await Notifications.dismissNotificationAsync(notification.request.identifier);
+        } else {
+          try {
+            const { unreadCount, setUnreadCount } = useNotificationStore.getState();
+            setUnreadCount(unreadCount + 1);
+          } catch (e) {
+            console.warn('[Push] Failed to increment unreadCount on message receive:', e);
+          }
         }
       });
     };
