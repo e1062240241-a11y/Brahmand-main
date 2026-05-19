@@ -176,20 +176,12 @@ export default function MessagesScreen() {
   };
 
   // Mock datasets matching Figma design exactly for fallback & rendering
-<<<<<<< HEAD
   const mockRequestsList = [
     { id: 'mock_1', title: 'O+ Blood Required urgently for operation', request_type: 'blood', description: 'Patient is admitted at Lifeline Hospital in ICU. Need 2 units of O+ blood as soon as possible. Any help would be highly appreciated.', contact_number: '+919876543210', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai', user_name: 'Rahul Joshi' },
     { id: 'mock_2', title: 'Baby Food Required for twins', request_type: 'food', description: 'Requiring starter formulas and baby foods for 6-month-old twin babies. Family in financial distress.', contact_number: '+919988776655', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai', user_name: 'Priya Sharma' },
     { id: 'mock_3', title: 'Elderly Care Support needed this weekend', request_type: 'care', description: 'Looking for a volunteer who can spend 2 hours with an elderly uncle on Sunday, help him go to temple and get groceries.', contact_number: '+918877665544', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai', user_name: 'Amit Patel' },
     { id: 'mock_4', title: 'Cow Seva - Straw & Fodder distribution help', request_type: 'gau', description: 'Volunteers required to distribute fodder and help clean cowsheds at our local Gaushala tomorrow morning.', contact_number: '+917766554433', urgency_level: 'low', created_at: new Date(Date.now() - 180 * 60000).toISOString(), status: 'active', location: 'Gau-shala, Ghatkopar', user_name: 'Gaurav Das' },
     { id: 'mock_5', title: 'Accident Emergency - Medicine assistance', request_type: 'emergency', description: 'Emergency medication needs to be collected and delivered to Saint Mary ICU. Immediate assistance required.', contact_number: '+919654321987', urgency_level: 'critical', created_at: new Date(Date.now() - 15 * 60000).toISOString(), status: 'active', location: 'Santacruz East, Mumbai', user_name: 'Vikram Malhotra' },
-=======
-  const requestsToRender = requests.length > 0 ? requests : [
-    { id: 'mock_1', user_id: 'user_1', title: 'O+Blood Required', request_type: 'blood', description: '', contact_number: '', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai' },
-    { id: 'mock_2', user_id: 'user_2', title: 'Baby Food Required', request_type: 'food', description: '', contact_number: '', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai' },
-    { id: 'mock_3', user_id: 'user_3', title: 'Elderly Care Suport', request_type: 'care', description: '', contact_number: '', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai' },
-    { id: 'mock_4', user_id: 'user_4', title: 'Cow Seva', request_type: 'gau', description: '', contact_number: '', urgency_level: 'low', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Gau-shala, Ghatkopar' },
->>>>>>> a1e2a59eecd675da60e56deacfde72dabc1d87b4
   ];
 
   const combinedRequests = [...requests, ...mockRequestsList];
@@ -199,11 +191,11 @@ export default function MessagesScreen() {
 
   const userGroupsToRender = userGroups;
 
-  const getRequestTheme = (item: CommunityRequest) => {
-    const title = (item.title || '').toLowerCase();
-    const desc = (item.description || '').toLowerCase();
-    const type = (item.request_type || '').toLowerCase();
-    const support = (item.support_needed || '').toLowerCase();
+  const getRequestTheme = (item: any) => {
+    const title = (item?.title || '').toLowerCase();
+    const desc = (item?.description || '').toLowerCase();
+    const type = (item?.request_type || '').toLowerCase();
+    const support = (item?.support_needed || '').toLowerCase();
 
     if (type === 'blood' || title.includes('blood') || desc.includes('blood') || support === 'blood') {
       return {
@@ -212,6 +204,7 @@ export default function MessagesScreen() {
         icon: 'water',
         iconColor: '#E53935',
         btnBorderColor: '#E53935',
+        label: 'Blood Request',
       };
     }
     if (title.includes('food') || desc.includes('food') || title.includes('baby') || desc.includes('baby') || support === 'food') {
@@ -221,6 +214,7 @@ export default function MessagesScreen() {
         icon: 'baby-face',
         iconColor: '#F57F17',
         btnBorderColor: '#F57F17',
+        label: 'Food Request',
       };
     }
     if (title.includes('cow') || desc.includes('cow') || title.includes('gau') || desc.includes('animal') || desc.includes('gau') || type === 'gau' || support === 'animal care') {
@@ -230,6 +224,7 @@ export default function MessagesScreen() {
         icon: 'cow',
         iconColor: '#6D4C41',
         btnBorderColor: '#6D4C41',
+        label: 'Cow Seva',
       };
     }
     return {
@@ -238,6 +233,7 @@ export default function MessagesScreen() {
       icon: 'wheelchair',
       iconColor: '#E65100',
       btnBorderColor: '#E65100',
+      label: 'Help Request',
     };
   };
 
@@ -461,7 +457,7 @@ export default function MessagesScreen() {
 
   // --- RENDERING COMPONENTS ---
 
-  const renderActiveRequestCard = (item: CommunityRequest) => {
+  const renderActiveRequestCard = (item: any) => {
     const theme = getRequestTheme(item);
 
     return (
