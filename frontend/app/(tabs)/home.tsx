@@ -1,3 +1,4 @@
+// Trigger watch rebuild
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -16,7 +17,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -439,12 +439,14 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [setUnreadCount]);
 
-  const handleNotificationPress = () => {
+  const handleNotificationPress = async () => {
+    try {
+      await markAllNotificationsRead();
+      setUnreadCount(0);
+    } catch (err) {
+      console.log('Failed to mark notifications as read:', err);
+    }
     router.push('/notifications');
-    setUnreadCount(0);
-    markAllNotificationsRead().catch((err) => {
-      console.log('Failed to mark notifications as read in background:', err);
-    });
   };
 
   const [loadingHashtags, setLoadingHashtags] = useState(false);
@@ -692,20 +694,6 @@ export default function HomeScreen() {
   useEffect(() => {
     loadHomeRequests();
   }, [loadHomeRequests]);
-
-  const onRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        loadFeedPosts(0, false),
-        loadHomeRequests(),
-      ]);
-    } catch (error) {
-      console.warn('Failed to refresh home feed:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [loadFeedPosts, loadHomeRequests]);
 
   const normalizeRequestText = (request: any) =>
     `${request?.title || ''} ${request?.description || ''} ${request?.support_needed || ''}`.toLowerCase();
@@ -1132,7 +1120,6 @@ export default function HomeScreen() {
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            overScrollMode="never"
             contentContainerStyle={[
               styles.content,
               {
@@ -1146,14 +1133,6 @@ export default function HomeScreen() {
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={onRefresh}
-                colors={['#FF6600']}
-                tintColor="#FF6600"
-              />
-            }
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
@@ -1293,7 +1272,6 @@ export default function HomeScreen() {
                       </View>
                       <ScrollView
                         horizontal
-                        overScrollMode="never"
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.recentSearchList}
                       >
