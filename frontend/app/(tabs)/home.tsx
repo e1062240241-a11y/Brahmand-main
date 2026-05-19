@@ -209,7 +209,6 @@ const quickAccess = [
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
   { label: 'Kundli', subtitle: 'Your Cosmic Blueprint', color: '#FFF', kundliIcon: true },
-  { label: 'Matchmaking', subtitle: 'Gun Milan', color: '#FFF', matchmakingIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -263,7 +262,7 @@ export default function HomeScreen() {
   // Horizontal auto-scroll interval for the top quickAccess cards (Panchang, My Krishna, SOS)
   useEffect(() => {
     let currentIndex = 0;
-    const totalCards = 5;
+    const totalCards = 4;
     const interval = setInterval(() => {
       if (topFeaturesScrollRef.current) {
         currentIndex = (currentIndex + 1) % totalCards;
@@ -625,8 +624,6 @@ export default function HomeScreen() {
     let maxVisible = 0;
     const viewportTop = y;
     const viewportBottom = y + SCREEN_HEIGHT;
-    const viewportCenter = viewportTop + SCREEN_HEIGHT / 2;
-    let closestDistance = Number.POSITIVE_INFINITY;
 
     for (const key of feedPostKeys) {
       const offset = postOffsets[key];
@@ -637,21 +634,14 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        const visibleRatio = height > 0 ? visibleAmount / height : 0;
-        const postCenter = postAbsoluteTop + height / 2;
-        const centerDistance = Math.abs(postCenter - viewportCenter);
-
-        // Autoplay if the post is at least 50% visible or covers half of screen height
-        if (visibleRatio >= 0.5 || visibleAmount >= SCREEN_HEIGHT * 0.5) {
-          if (centerDistance < closestDistance) {
-            closestDistance = centerDistance;
-            maxVisible = visibleAmount;
-            closestKey = key;
-          }
+        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
+        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
+          maxVisible = visibleAmount;
+          closestKey = key;
         }
       }
     }
-    setActivePostKey(closestKey); // If none reaches 50%, none are active.
+    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
 
     // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
@@ -1330,49 +1320,37 @@ export default function HomeScreen() {
                       return (
                          <TouchableOpacity
                           key={idx}
-                          style={[styles.featureCard, { backgroundColor: item.label === 'SOS' ? '#FFF' : 'transparent', overflow: 'hidden' }]}
+                          style={[styles.featureCard, { backgroundColor: '#FFF' }]}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
                             else if (item.label === 'Kundli') router.push('/kundli');
-                            else if (item.label === 'Matchmaking') router.push('/matchmaking');
                           }}
                         >
-                          {item.label === 'My Krishna' && (
-                            <Image 
-                              source={require('../../assets/images/peacock_feather_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
-                            />
-                          )}
-                          {item.label === 'Panchang' && (
-                            <Image 
-                              source={require('../../assets/images/panchang_calendar_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
-                            />
-                          )}
-                          {item.label === 'Kundli' && (
-                            <Image 
-                              source={require('../../assets/images/kundli_chart_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
-                            />
-                          )}
-                          {item.label === 'Matchmaking' && (
-                            <Image 
-                              source={require('../../assets/images/matchmaking_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
-                            />
-                          )}
-
                           {item.label === 'SOS' ? (
                             <View style={styles.featureIconWrap}>
                               <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
                                 <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
                               </View>
                             </View>
+                          ) : item.label === 'My Krishna' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
+                          ) : item.label === 'Panchang' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
+                          ) : item.label === 'Kundli' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/kundli_chart_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
                           ) : (
-                            <View style={{ width: 24 }} />
+                            <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                              <Ionicons name="calendar" size={14} color="#FFF" />
+                            </View>
                           )}
                           <View style={styles.featureTextContainer}>
                             <Text style={styles.featureTitle} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
@@ -1384,7 +1362,7 @@ export default function HomeScreen() {
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
-                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli' || item.label === 'Matchmaking') ? 7 : 6,
+                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli') ? 7 : 6,
                                 }
                               ]} 
                               numberOfLines={2} 
@@ -1540,6 +1518,7 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 </View>
+
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}>
@@ -3209,70 +3188,5 @@ const styles = StyleSheet.create({
   },
   modalBackgroundDismiss: {
     ...StyleSheet.absoluteFillObject,
-  },
-  liveDualContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: Math.min(375, SCREEN_WIDTH - 2 * PAGE_PADDING),
-    alignSelf: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  liveHalfCard: {
-    flex: 1,
-    height: 195,
-    borderRadius: 15,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  liveHalfContent: {
-    flex: 1,
-    padding: 12,
-    justifyContent: 'space-between',
-  },
-  liveHalfHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  liveHalfBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  liveHalfTitle: {
-    fontFamily: 'Outfit_700Bold',
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#FFF',
-    lineHeight: 18,
-    marginBottom: 4,
-  },
-  liveHalfSub: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 11,
-    color: '#DDD',
-    marginBottom: 8,
-  },
-  liveHalfButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF6A00',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    alignSelf: 'stretch',
-    gap: 4,
-  },
-  liveHalfButtonText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '900',
   },
 });

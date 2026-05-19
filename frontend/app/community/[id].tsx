@@ -390,8 +390,7 @@ export default function CommunityDetailScreen() {
           itemMap.set(r.id, { ...r, isRequestItem: true });
         }
       });
-      
-      const allItems = Array.from(itemMap.values());
+           const allItems = Array.from(itemMap.values());
       
       // Step 1: Sort ascending by ID (or fallback) to chronological order to find consecutive thread messages
       allItems.sort((a, b) => {
