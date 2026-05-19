@@ -51,6 +51,7 @@ from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
 from services.msg91_service import MSG91Service
+from services.upload_lock_service import get_user_upload_lock
 
 try:
     from google.cloud import vision
@@ -2071,6 +2072,18 @@ async def upload_post(
     file: UploadFile = File(...),
     token_data: dict = Depends(verify_token)
 ):
+    user_id = token_data['user_id']
+    lock = await get_user_upload_lock(user_id)
+    async with lock:
+        return await _upload_post_impl(caption, source, filter_name, file, token_data)
+
+async def _upload_post_impl(
+    caption: str,
+    source: str,
+    filter_name: Optional[str],
+    file: UploadFile,
+    token_data: dict
+):
     db = await get_db()
     user_id = token_data['user_id']
 
@@ -2258,6 +2271,15 @@ async def upload_chat_media(
     token_data: dict = Depends(verify_token),
 ):
     user_id = token_data['user_id']
+    lock = await get_user_upload_lock(user_id)
+    async with lock:
+        return await _upload_chat_media_impl(file, token_data)
+
+async def _upload_chat_media_impl(
+    file: UploadFile,
+    token_data: dict,
+):
+    user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
     if (not content_type or content_type == 'application/octet-stream') and file.filename:
         filename_lower = file.filename.lower()
@@ -2301,6 +2323,18 @@ async def upload_post_from_storage(
     source: str = Form('camera_roll'),
     filter_name: Optional[str] = Form(None),
     token_data: dict = Depends(verify_token),
+):
+    user_id = token_data['user_id']
+    lock = await get_user_upload_lock(user_id)
+    async with lock:
+        return await _upload_post_from_storage_impl(storage_path, caption, source, filter_name, token_data)
+
+async def _upload_post_from_storage_impl(
+    storage_path: str,
+    caption: str,
+    source: str,
+    filter_name: Optional[str],
+    token_data: dict,
 ):
     db = await get_db()
     user_id = token_data['user_id']
