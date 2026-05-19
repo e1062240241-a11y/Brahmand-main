@@ -17,6 +17,7 @@ import {
   ImageBackground,
   Animated,
   Dimensions,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +34,8 @@ import {
   getCulturalCommunities, 
   getUserCulturalCommunity, 
   updateUserCulturalCommunity, 
-  parseApiError 
+  parseApiError,
+  resolveCommunityRequest
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
@@ -123,14 +125,68 @@ export default function MessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<CommunityRequest | null>(null);
+
+  const getUrgencyBadgeStyle = (level: string) => {
+    const lvl = (level || '').toLowerCase();
+    if (lvl === 'critical' || lvl === 'urgent') {
+      return { bg: '#FEE2E2', text: '#EF4444', border: '#FCA5A5' };
+    }
+    if (lvl === 'high') {
+      return { bg: '#FFEDD5', text: '#F97316', border: '#FDBA74' };
+    }
+    if (lvl === 'medium') {
+      return { bg: '#FEF3C7', text: '#D97706', border: '#FDE68A' };
+    }
+    return { bg: '#ECFDF5', text: '#10B981', border: '#6EE7B7' };
+  };
+
+  const handleCall = (number: string) => {
+    if (!number) return;
+    const cleaned = number.replace(/[^\d+]/g, '');
+    Linking.openURL(`tel:${cleaned}`).catch(() => {
+      Alert.alert('Error', 'Unable to make phone call');
+    });
+  };
+
+  const handleWhatsApp = (number: string, title: string) => {
+    if (!number) return;
+    const formatted = number.replace(/\D/g, ''); // Official WhatsApp format must exclude '+' and other non-digits
+    const text = encodeURIComponent(`Hare Krishna! I saw your community request "${title}" on Brahmand App and would like to extend my help.`);
+    Linking.openURL(`https://wa.me/${formatted}?text=${text}`).catch(() => {
+      Alert.alert('Error', 'Unable to open WhatsApp');
+    });
+  };
+
+  const handleResolveRequest = async (requestId: string) => {
+    if (requestId.startsWith('mock_')) {
+      Alert.alert('Success', 'Request marked as fulfilled successfully!');
+      setSelectedRequest(null);
+      return;
+    }
+    try {
+      await resolveCommunityRequest(requestId);
+      Alert.alert('Success', 'Request marked as fulfilled successfully!');
+      setSelectedRequest(null);
+      fetchData();
+    } catch (err: any) {
+      Alert.alert('Error', parseApiError(err));
+    }
+  };
 
   // Mock datasets matching Figma design exactly for fallback & rendering
-  const requestsToRender = requests.length > 0 ? requests : [
-    { id: 'mock_1', title: 'O+Blood Required', request_type: 'blood', description: '', contact_number: '', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai' },
-    { id: 'mock_2', title: 'Baby Food Required', request_type: 'food', description: '', contact_number: '', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai' },
-    { id: 'mock_3', title: 'Elderly Care Suport', request_type: 'care', description: '', contact_number: '', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai' },
-    { id: 'mock_4', title: 'Cow Seva', request_type: 'gau', description: '', contact_number: '', urgency_level: 'low', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Gau-shala, Ghatkopar' },
+  const mockRequestsList = [
+    { id: 'mock_1', title: 'O+ Blood Required urgently for operation', request_type: 'blood', description: 'Patient is admitted at Lifeline Hospital in ICU. Need 2 units of O+ blood as soon as possible. Any help would be highly appreciated.', contact_number: '+919876543210', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai', user_name: 'Rahul Joshi' },
+    { id: 'mock_2', title: 'Baby Food Required for twins', request_type: 'food', description: 'Requiring starter formulas and baby foods for 6-month-old twin babies. Family in financial distress.', contact_number: '+919988776655', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai', user_name: 'Priya Sharma' },
+    { id: 'mock_3', title: 'Elderly Care Support needed this weekend', request_type: 'care', description: 'Looking for a volunteer who can spend 2 hours with an elderly uncle on Sunday, help him go to temple and get groceries.', contact_number: '+918877665544', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai', user_name: 'Amit Patel' },
+    { id: 'mock_4', title: 'Cow Seva - Straw & Fodder distribution help', request_type: 'gau', description: 'Volunteers required to distribute fodder and help clean cowsheds at our local Gaushala tomorrow morning.', contact_number: '+917766554433', urgency_level: 'low', created_at: new Date(Date.now() - 180 * 60000).toISOString(), status: 'active', location: 'Gau-shala, Ghatkopar', user_name: 'Gaurav Das' },
+    { id: 'mock_5', title: 'Accident Emergency - Medicine assistance', request_type: 'emergency', description: 'Emergency medication needs to be collected and delivered to Saint Mary ICU. Immediate assistance required.', contact_number: '+919654321987', urgency_level: 'critical', created_at: new Date(Date.now() - 15 * 60000).toISOString(), status: 'active', location: 'Santacruz East, Mumbai', user_name: 'Vikram Malhotra' },
   ];
+
+  const combinedRequests = [...requests, ...mockRequestsList];
+  const requestsToRender = combinedRequests.filter(
+    (v, i, a) => a.findIndex(t => t.id === v.id) === i
+  );
 
   const userGroupsToRender = userGroups;
 
@@ -393,7 +449,7 @@ export default function MessagesScreen() {
     return (
       <TouchableOpacity 
         key={item.id} 
-        onPress={() => router.push('/community-request/list')}
+        onPress={() => setSelectedRequest(item)}
         activeOpacity={0.9}
       >
         <LinearGradient
@@ -760,6 +816,100 @@ export default function MessagesScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Detailed Modal Bottom Sheet */}
+      {selectedRequest && (
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalDismiss}
+            activeOpacity={1}
+            onPress={() => setSelectedRequest(null)}
+          />
+          <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.sheetHandle} />
+            
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetTypeRow}>
+                <View style={[styles.sheetIconBg, { backgroundColor: getRequestTheme(selectedRequest).iconColor + '15' }]}>
+                  <MaterialCommunityIcons 
+                    name={getRequestTheme(selectedRequest).icon as any} 
+                    size={28} 
+                    color={getRequestTheme(selectedRequest).iconColor} 
+                  />
+                </View>
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={[styles.sheetTypeLabel, { color: getRequestTheme(selectedRequest).iconColor }]}>
+                    {(getRequestTheme(selectedRequest).label || selectedRequest.request_type || 'Help Request').toUpperCase()}
+                  </Text>
+                  <Text style={styles.sheetTime}>{getTimeAgo(selectedRequest.created_at)}</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.sheetCloseBtn}
+                  onPress={() => setSelectedRequest(null)}
+                >
+                  <Ionicons name="close-circle" size={26} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.sheetContent}>
+              <Text style={styles.sheetTitle}>{selectedRequest.title}</Text>
+              
+              <View style={styles.sheetMetaRow}>
+                <View style={[styles.urgencyBadgeSheet, { 
+                  backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg, 
+                  borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border 
+                }]}>
+                  <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
+                    {selectedRequest.urgency_level.toUpperCase()} URGENCY
+                  </Text>
+                </View>
+                <View style={styles.sheetLocBadge}>
+                  <Ionicons name="location" size={14} color="#64748B" />
+                  <Text style={styles.sheetLocText}>{selectedRequest.location || 'Mumbai'}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.sheetDescSectionTitle}>Details / Description</Text>
+              <Text style={styles.sheetDesc}>{selectedRequest.description || 'No description provided.'}</Text>
+
+              <View style={styles.requesterCard}>
+                <Ionicons name="person-circle" size={40} color="#E2E8F0" />
+                <View style={{ marginLeft: 10 }}>
+                  <Text style={styles.requesterName}>{selectedRequest.user_name || 'Verified Neighbor'}</Text>
+                  <Text style={styles.requesterLabel}>Community Member</Text>
+                </View>
+              </View>
+
+              <View style={styles.sheetActions}>
+                <TouchableOpacity 
+                  style={[styles.sheetBtn, styles.sheetCallBtn]}
+                  onPress={() => handleCall(selectedRequest.contact_number)}
+                >
+                  <Ionicons name="call" size={20} color="#FFF" />
+                  <Text style={styles.sheetCallBtnText}>Call Now</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.sheetBtn, styles.sheetWhatsAppBtn]}
+                  onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
+                >
+                  <MaterialCommunityIcons name="whatsapp" size={20} color="#FFF" />
+                  <Text style={styles.sheetWhatsAppBtnText}>WhatsApp</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.sheetBtn, styles.sheetFulfillBtn]}
+                  onPress={() => handleResolveRequest(selectedRequest.id)}
+                >
+                  <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
+                  <Text style={styles.sheetFulfillBtnText}>Fulfill Request</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -940,5 +1090,172 @@ const styles = StyleSheet.create({
   lockedBannerClose: {
     padding: 4,
     marginLeft: 8,
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'flex-end',
+    zIndex: 999,
+  },
+  modalDismiss: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bottomSheet: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    maxHeight: '85%',
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  sheetHeader: {
+    marginBottom: 16,
+  },
+  sheetTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sheetIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sheetTypeLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  sheetTime: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  sheetCloseBtn: {
+    padding: 4,
+  },
+  sheetContent: {},
+  sheetTitle: {
+    fontSize: 20,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+    fontWeight: '800',
+    lineHeight: 28,
+    marginBottom: 12,
+  },
+  sheetMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  urgencyBadgeSheet: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  urgencyTextSheet: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+    fontWeight: '800',
+  },
+  sheetLocBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    flex: 1,
+  },
+  sheetLocText: {
+    fontSize: 12,
+    color: '#475569',
+    marginLeft: 4,
+    flex: 1,
+  },
+  sheetDescSectionTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  sheetDesc: {
+    fontSize: 15,
+    color: '#334155',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  requesterCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    marginBottom: 24,
+  },
+  requesterName: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#1E293B',
+    fontWeight: '700',
+  },
+  requesterLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  sheetBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  sheetCallBtn: {
+    backgroundColor: '#6366F1',
+  },
+  sheetCallBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    fontWeight: '800',
+  },
+  sheetWhatsAppBtn: {
+    backgroundColor: '#10B981',
+  },
+  sheetWhatsAppBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    fontWeight: '800',
+  },
+  sheetFulfillBtn: {
+    backgroundColor: '#F59E0B',
+  },
+  sheetFulfillBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    fontWeight: '800',
   },
 });

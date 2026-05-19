@@ -8115,10 +8115,20 @@ async def get_community_requests(
     token_data: dict = Depends(verify_token)
 ):
     """Get community requests with filters"""
-    db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
+    # 1. Try fetching from cache first
+    cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{limit}"
+    cached_requests = await cache_manager.get(cache_key)
+    if cached_requests is not None:
+        logger.info(f"Cache HIT for community requests: {cache_key}")
+        return cached_requests
+        
+    db = await get_db()
+    user = await db.get_document('users', user_id)
+    if not user:
+        return []
+        
     filters = [('status', '==', status)]
     
     if type:
@@ -8159,6 +8169,10 @@ async def get_community_requests(
             visible_requests.append(req)
         elif visibility == 'area' and req.get('area') == location_area.get('area'):
             visible_requests.append(req)
+            
+    # 2. Store in cache with 30-second TTL
+    await cache_manager.set(cache_key, visible_requests, ttl=30)
+    logger.info(f"Cached community requests for: {cache_key}")
     
     return visible_requests
 
