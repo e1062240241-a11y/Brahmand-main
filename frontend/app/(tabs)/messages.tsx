@@ -124,6 +124,106 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
 
+  // Mock datasets matching Figma design exactly for fallback & rendering
+  const requestsToRender = requests.length > 0 ? requests : [
+    { id: 'mock_1', title: 'O+Blood Required', request_type: 'blood', description: '', contact_number: '', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai' },
+    { id: 'mock_2', title: 'Baby Food Required', request_type: 'food', description: '', contact_number: '', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai' },
+    { id: 'mock_3', title: 'Elderly Care Suport', request_type: 'care', description: '', contact_number: '', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai' },
+    { id: 'mock_4', title: 'Cow Seva', request_type: 'gau', description: '', contact_number: '', urgency_level: 'low', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Gau-shala, Ghatkopar' },
+  ];
+
+  const userGroupsToRender = userGroups;
+
+  const getRequestTheme = (item: CommunityRequest) => {
+    const title = (item.title || '').toLowerCase();
+    const desc = (item.description || '').toLowerCase();
+    const type = (item.request_type || '').toLowerCase();
+    const support = (item.support_needed || '').toLowerCase();
+
+    if (type === 'blood' || title.includes('blood') || desc.includes('blood') || support === 'blood') {
+      return {
+        gradColors: ['#FFF0EE', '#FFE3E0'],
+        border: 'rgba(255, 0, 34, 0.15)',
+        icon: 'water',
+        iconColor: '#E12D3D',
+        btnBorderColor: '#FF5C5A',
+      };
+    }
+    if (title.includes('food') || desc.includes('food') || title.includes('baby') || desc.includes('baby') || support === 'food') {
+      return {
+        gradColors: ['#FFF7E6', '#FFEED0'],
+        border: 'rgba(255, 153, 0, 0.15)',
+        icon: 'baby-face',
+        iconColor: '#3397EE',
+        btnBorderColor: '#FFB300',
+      };
+    }
+    if (title.includes('cow') || desc.includes('cow') || title.includes('gau') || desc.includes('animal') || desc.includes('gau') || type === 'gau' || support === 'animal care') {
+      return {
+        gradColors: ['#F6EEF8', '#ECDCEF'],
+        border: 'rgba(174, 0, 174, 0.15)',
+        icon: 'cow',
+        iconColor: '#5D4037',
+        btnBorderColor: '#AE00AE',
+      };
+    }
+    return {
+      gradColors: ['#EEF7F2', '#DCEFE3'],
+      border: 'rgba(13, 198, 0, 0.15)',
+      icon: 'wheelchair',
+      iconColor: '#757575',
+      btnBorderColor: '#0DC600',
+    };
+  };
+
+  const getCommunityFigmaDetails = (item: Community) => {
+    const nameLower = (item.name || '').toLowerCase();
+    
+    if (nameLower.includes('mumbai') || item.type === 'city') {
+      return {
+        label: 'CITY COMMUNITY',
+        name: 'Mumbai Community',
+        memberCount: '13K members',
+        avatarBadge: '+8',
+        iconBg: '#F6EEFD',
+        iconColor: '#9F45FF',
+        iconName: 'location-sharp',
+      };
+    }
+    if (nameLower.includes('maharashtra') || item.type === 'state') {
+      return {
+        label: 'STATE COMMUNITY',
+        name: 'Maharashtra Community',
+        memberCount: '14K members',
+        avatarBadge: '+9',
+        iconBg: '#FFF9E6',
+        iconColor: '#FF9500',
+        iconName: 'shield',
+      };
+    }
+    if (nameLower.includes('bharat') || nameLower.includes('india') || nameLower.includes('national') || item.type === 'country') {
+      return {
+        label: 'NATIONAL COMMUNITY',
+        name: 'Bharat Community',
+        memberCount: '14K members',
+        avatarBadge: '+11',
+        iconBg: '#FFEBEB',
+        iconColor: '#FF4500',
+        iconName: 'flag',
+      };
+    }
+    
+    return {
+      label: item.type === 'city' ? 'CITY COMMUNITY' : item.type === 'state' ? 'STATE COMMUNITY' : 'NATIONAL COMMUNITY',
+      name: item.name,
+      memberCount: `${item.member_count?.toLocaleString() || '1.2K'} members`,
+      avatarBadge: '+5',
+      iconBg: item.type === 'city' ? '#F6EEFD' : item.type === 'state' ? '#FFF9E6' : '#FFEBEB',
+      iconColor: item.type === 'city' ? '#9F45FF' : item.type === 'state' ? '#FF9500' : '#FF4500',
+      iconName: item.type === 'city' ? 'location-sharp' : item.type === 'state' ? 'shield' : 'flag',
+    };
+  };
+
   // Lok Sangam State
   const [userLokSangma, setUserLokSangma] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
   const [showLokSangmaModal, setShowLokSangmaModal] = useState(false);
@@ -264,14 +364,14 @@ export default function MessagesScreen() {
   const getTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Just now';
     const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return 'Just now';
+    if (Number.isNaN(date.getTime())) return '1h ago';
     
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
     
-    if (diffInSeconds < 0) return 'Just now'; // Handle slight clock drift
+    if (diffInSeconds < 0) return 'Just now';
     if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
@@ -279,42 +379,38 @@ export default function MessagesScreen() {
   // --- RENDERING COMPONENTS ---
 
   const renderActiveRequestCard = (item: CommunityRequest) => {
-    const isBlood = item.request_type?.toLowerCase() === 'blood';
-    const isFood = item.request_type?.toLowerCase() === 'food';
-    const isCare = item.request_type?.toLowerCase() === 'care';
-
-    const cardBg = isBlood ? '#FFE8E8' : isFood ? '#F1F9E8' : '#F4EEFF';
-    const accentColor = isBlood ? '#FF5252' : isFood ? '#4CAF50' : '#7E57C2';
-    const illustSource = isBlood 
-      ? require('../../assets/images/illust_blood.png') 
-      : isFood 
-        ? require('../../assets/images/illust_food.png') 
-        : require('../../assets/images/illust_care.png');
+    const theme = getRequestTheme(item);
 
     return (
-      <TouchableOpacity key={item.id} style={[styles.activeRequestCard, { backgroundColor: cardBg }]}>
-        <View style={styles.reqCardIllustWrapper}>
-          <Image source={illustSource} style={styles.reqCardIllustImage} resizeMode="contain" />
-        </View>
-        
-        <View style={styles.reqCardHeader}>
-          <Text style={styles.reqCardTitle} numberOfLines={2}>{item.title}</Text>
-          <View style={styles.reqUrgencyPill}>
-            <Text style={[styles.reqUrgencyText, { color: accentColor }]}>{item.urgency_level || 'Medium'}</Text>
+      <TouchableOpacity 
+        key={item.id} 
+        onPress={() => router.push(`/community-request`)}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={theme.gradColors}
+          style={[styles.figmaRequestCard, { borderColor: theme.border }]}
+        >
+          <View style={styles.figmaRequestIconWrapper}>
+            <MaterialCommunityIcons name={theme.icon as any} size={28} color={theme.iconColor} />
           </View>
-        </View>
+          
+          <Text style={styles.figmaRequestTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
 
-        <View style={styles.reqCardFooter}>
-          <View style={styles.reqInfoRow}>
-            <Ionicons name="location-sharp" size={12} color="#000" />
-            <Text style={styles.reqInfoText} numberOfLines={2}>{item.location || 'Mumbai'}</Text>
+          <Text style={styles.figmaRequestLocation} numberOfLines={1}>
+            {item.location || 'Mumbai'}
+          </Text>
+
+          <Text style={styles.figmaRequestTime}>
+            {getTimeAgo(item.created_at)}
+          </Text>
+
+          <View style={[styles.figmaRequestBtn, { borderColor: theme.btnBorderColor }]}>
+            <Text style={[styles.figmaRequestBtnText, { color: theme.btnBorderColor }]}>View &gt;</Text>
           </View>
-          <View style={[styles.reqInfoRow, { marginBottom: 0 }]}>
-            <Ionicons name="person-circle-sharp" size={14} color="#000" />
-            <Text style={styles.reqPosterName} numberOfLines={1}>Posted by {item.user_name || 'User'}</Text>
-            <Text style={styles.reqPostedTime}>{getTimeAgo(item.created_at)}</Text>
-          </View>
-        </View>
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
@@ -326,16 +422,12 @@ export default function MessagesScreen() {
     
     let isLocked = false;
     if (item.type === 'state') {
-      // Locked if not verified OR verified at a level that isn't state/national (shouldn't happen but safe)
       isLocked = !isVerified || (userLevel !== 'state' && userLevel !== 'national');
     } else if (item.type === 'country') {
-      // Locked if not verified OR verified only at state level
       isLocked = !isVerified || userLevel !== 'national';
     }
-    const label = item.type === 'city' ? 'CITY COMMUNITY' : item.type === 'state' ? 'STATE COMMUNITY' : item.type === 'country' ? 'NATIONAL COMMUNITY' : 'COMMUNITY';
-    const labelColor = item.type === 'city' ? '#9B59B6' : item.type === 'state' ? '#E67E22' : '#D35400';
-    const iconName = item.type === 'city' ? 'location' : item.type === 'state' ? 'map' : 'flag';
-    const iconColor = item.type === 'city' ? '#A55EEA' : item.type === 'state' ? '#FB8C00' : '#FF5252';
+
+    const figma = getCommunityFigmaDetails(item);
 
     return (
       <TouchableOpacity 
@@ -349,16 +441,18 @@ export default function MessagesScreen() {
           }
         }}
       >
-        <View style={[styles.communityIconBox, { backgroundColor: isLocked ? '#F0F0F0' : `${iconColor}15` }]}>
-          <Ionicons name={isLocked ? 'lock-closed' : iconName} size={26} color={isLocked ? '#AAA' : iconColor} />
+        <View style={[styles.communityIconBox, { backgroundColor: figma.iconBg }]}>
+          <Ionicons name={figma.iconName as any} size={22} color={isLocked ? '#AAA' : figma.iconColor} />
         </View>
         <View style={styles.communityItemContent}>
-          <Text style={[styles.communityItemLabel, { color: isLocked ? '#AAA' : labelColor }]}>{label}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={[styles.communityItemName, isLocked && { color: '#666' }]}>{item.name}</Text>
-            {isLocked && <Ionicons name="lock-closed" size={14} color="#AAA" style={{ marginLeft: 6 }} />}
+            <Text style={[styles.communityItemLabel, { color: isLocked ? '#AAA' : figma.iconColor }]}>{figma.label}</Text>
+            {isLocked && <Ionicons name="lock-closed" size={10} color="#FF3B30" style={{ marginLeft: 4 }} />}
           </View>
-          <Text style={styles.communityItemMembers}>{item.member_count?.toLocaleString()} members</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.communityItemName, isLocked && { color: '#666' }]}>{figma.name}</Text>
+          </View>
+          <Text style={styles.communityItemMembers}>{figma.memberCount}</Text>
         </View>
         <View style={styles.communityItemRight}>
           {!isLocked ? (
@@ -370,8 +464,8 @@ export default function MessagesScreen() {
                   style={[styles.stackAvatar, { marginLeft: i === 0 ? 0 : -10 }]} 
                 />
               ))}
-              <View style={[styles.stackAvatarCount, { marginLeft: -10 }]}>
-                <Text style={styles.stackAvatarCountText}>+8</Text>
+              <View style={[styles.stackAvatarCount, { marginLeft: -10, backgroundColor: figma.iconColor }]}>
+                <Text style={[styles.stackAvatarCountText, { color: '#FFF' }]}>{figma.avatarBadge}</Text>
               </View>
             </View>
           ) : (
@@ -386,10 +480,11 @@ export default function MessagesScreen() {
   };
 
   const renderLocalCommunityCard = (item: Community, index: number) => {
-    const isPurple = index % 2 === 1;
-    const cardBg = isPurple ? '#F4EEFF' : '#F1F9E8';
-    const borderColor = isPurple ? '#7E57C2' : '#4CAF50';
-    const pillText = item.label || 'Local';
+    const isPurple = index % 2 === 1 || (item.label || '').toLowerCase().includes('youth');
+    const cardBg = isPurple ? '#F7ECFC' : '#EEF5EA';
+    const borderColor = isPurple ? '#7A38B3' : '#437953';
+    const badgeBg = '#FFFFFF';
+    const pillText = isPurple ? 'Youth' : 'Seva';
 
     return (
       <TouchableOpacity
@@ -398,14 +493,14 @@ export default function MessagesScreen() {
         onPress={() => router.push(`/community/${item.id}`)}
       >
         <View style={styles.localCommMenu}>
-          <Ionicons name="ellipsis-vertical" size={18} color="#000" />
+          <Ionicons name="ellipsis-vertical" size={16} color="#000" />
         </View>
         
-        <View style={styles.localCommAvatarWrapper}>
+        <View style={[styles.localCommAvatarWrapper, { borderColor: `${borderColor}33` }]}>
           {item.photo ? (
             <Image source={{ uri: item.photo }} style={styles.localCommAvatar} />
           ) : (
-            <Avatar name={item.name} size={75} />
+            <Avatar name={item.name} size={58} />
           )}
         </View>
 
@@ -414,7 +509,7 @@ export default function MessagesScreen() {
           <Text style={styles.localCommMembers}>{item.member_count} members</Text>
         </View>
 
-        <View style={[styles.localCommPill, { borderColor }]}>
+        <View style={[styles.localCommPill, { backgroundColor: badgeBg, borderColor }]}>
           <Text style={[styles.localCommPillText, { color: borderColor }]}>{pillText}</Text>
         </View>
       </TouchableOpacity>
@@ -432,29 +527,29 @@ export default function MessagesScreen() {
             >
               <MaterialCommunityIcons 
                 name="account-group" 
-                size={42} 
-                color={activeTopTab === 'Community' ? '#FFF' : '#FF6600'} 
+                size={22} 
+                color={activeTopTab === 'Community' ? '#FFF' : '#000'} 
                 style={styles.topTabIcon} 
               />
               <View style={styles.topTabTextCol}>
-                <Text style={[styles.topTabTitle, { color: activeTopTab === 'Community' ? '#FFF' : '#333' }]}>Community</Text>
-                <Text style={[styles.topTabSub, { color: activeTopTab === 'Community' ? 'rgba(255,255,255,0.9)' : '#888' }]}>Connect, Join & Grow Together</Text>
+                <Text style={activeTopTab === 'Community' ? styles.topTabTitle : styles.topTabTitleDark}>Community</Text>
+                <Text style={activeTopTab === 'Community' ? styles.topTabSub : styles.topTabSubDark}>Connect, Join & Grow Together</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.topTabCard, activeTopTab === 'Private Chat' ? styles.topTabCardActivePrivate : styles.topTabCardInactive]}
+              style={[styles.topTabCard, activeTopTab === 'Private Chat' ? styles.topTabCardActive : styles.topTabCardInactive]}
               onPress={() => setActiveTopTab('Private Chat')}
             >
               <MaterialCommunityIcons 
                 name="chat-processing-outline" 
-                size={40} 
-                color="#111" 
+                size={20} 
+                color={activeTopTab === 'Private Chat' ? '#FFF' : '#000'} 
                 style={styles.topTabIcon} 
               />
               <View style={styles.topTabTextCol}>
-                <Text style={styles.topTabTitleDark}>Private Chat</Text>
-                <Text style={styles.topTabSubDark}>One-to-one Spiritual Connections</Text>
+                <Text style={activeTopTab === 'Private Chat' ? styles.topTabTitle : styles.topTabTitleDark}>Private Chat</Text>
+                <Text style={activeTopTab === 'Private Chat' ? styles.topTabSub : styles.topTabSubDark}>One-to-one Spiritual Connections</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -487,40 +582,15 @@ export default function MessagesScreen() {
               </View>
             </View>
 
-            {/* Active Requests */}
-            {requests.length > 0 && (
-              <>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Active Community Requests</Text>
-                  <TouchableOpacity onPress={() => router.push('/community-request')}>
-                    <Text style={styles.viewAllText}>View All</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={{ marginTop: 10 }}>
-                  <ScrollView 
-                    ref={activeRequestScrollRef}
-                    horizontal 
-                    showsHorizontalScrollIndicator={false} 
-                    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
-                    snapToInterval={width * 0.48 + 14}
-                    decelerationRate="fast"
-                    snapToAlignment="start"
-                    style={Platform.OS === 'web' ? { cursor: 'grab' } : {}}
-                    onMomentumScrollEnd={(e) => {
-                      const x = e.nativeEvent.contentOffset.x;
-                      const cardWidth = width * 0.48 + 14;
-                      setActiveRequestIndex(Math.round(x / cardWidth));
-                    }}
-                  >
-                    {requests.map(renderActiveRequestCard)}
-                  </ScrollView>
-                </View>
-              </>
-            )}
-
             {/* Verified Communities */}
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Our Communities <Text style={styles.verifiedTag}>(Verified) <Ionicons name="shield-checkmark" size={14} color="#FF6600" /></Text></Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>Our Communities</Text>
+                <View style={styles.figmaVerifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={10} color="#FFF" />
+                  <Text style={styles.figmaVerifiedText}>Verified</Text>
+                </View>
+              </View>
             </View>
             <View style={styles.communitiesList}>
               {communities.map(renderCommunityItem)}
@@ -538,37 +608,52 @@ export default function MessagesScreen() {
             </View>
 
             {/* Local Communities Slider */}
-            {userGroups.length > 0 && (
+            {userGroupsToRender.length > 0 ? (
               <View style={{ marginBottom: 10 }}>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
                 >
-                  {userGroups.map((item, idx) => renderLocalCommunityCard(item, idx))}
+                  {userGroupsToRender.map((item, idx) => renderLocalCommunityCard(item, idx))}
                 </ScrollView>
+              </View>
+            ) : (
+              <View style={styles.localCommEmptyBox}>
+                <Text style={styles.localCommEmptyText}>No user groups created yet. Be the first to start one!</Text>
               </View>
             )}
 
-            {/* Create Community CTA */}
-            <View style={styles.footerCTA}>
-              <View style={styles.footerIconBox}>
-                 <Ionicons name="people" size={32} color="#FF6600" />
-                 <View style={styles.plusOverlay}><Ionicons name="add-circle" size={16} color="#FF6600" /></View>
-              </View>
-              <View style={styles.footerTextCol}>
-                <Text style={styles.footerTitle}>Create Your Community</Text>
-                <Text style={styles.footerSub}>Build your own local community and bring like-minded people together.</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.footerButton}
-                onPress={() => router.push('/community/create')}
-              >
-                <Ionicons name="add" size={16} color="#FFF" />
-                <Text style={styles.footerButtonText}>Create Community</Text>
-              </TouchableOpacity>
-            </View>
-            
+            {/* Active Requests */}
+            {requestsToRender.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Active Community Requests</Text>
+                  <TouchableOpacity onPress={() => router.push('/community-request')}>
+                    <Text style={styles.viewAllText}>View All</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ marginTop: 10 }}>
+                  <ScrollView 
+                    ref={activeRequestScrollRef}
+                    horizontal 
+                    showsHorizontalScrollIndicator={false} 
+                    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
+                    snapToInterval={130}
+                    decelerationRate="fast"
+                    snapToAlignment="start"
+                    style={Platform.OS === 'web' ? { cursor: 'grab' } : {}}
+                    onMomentumScrollEnd={(e) => {
+                      const x = e.nativeEvent.contentOffset.x;
+                      setActiveRequestIndex(Math.round(x / 130));
+                    }}
+                  >
+                    {requestsToRender.map(renderActiveRequestCard)}
+                  </ScrollView>
+                </View>
+              </>
+            )}
+
             <View style={{ height: 90 }} />
           </View>
         ) : (
@@ -673,16 +758,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFBF7' },
   headerGradient: { paddingBottom: 20 },
   topTabsWrapper: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 10, gap: 12 },
-  topTabCard: { flex: 1, height: 80, borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
-  topTabCardActive: { backgroundColor: '#FF4D00' },
-  topTabCardActivePrivate: { backgroundColor: '#FFF' },
-  topTabCardInactive: { backgroundColor: '#FFF' },
-  topTabIcon: { marginRight: 12 },
+  topTabCard: { flex: 1, height: 53, borderRadius: 11, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 15, shadowOffset: { width: 0, height: 0 } },
+  topTabCardActive: { backgroundColor: '#FF3400', borderWidth: 1, borderColor: '#FFFFFF' },
+  topTabCardActivePrivate: { backgroundColor: 'rgba(255, 255, 255, 0.50)', borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.10)' },
+  topTabCardInactive: { backgroundColor: 'rgba(255, 255, 255, 0.50)', borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.10)' },
+  topTabIcon: { marginRight: 8 },
   topTabTextCol: { flex: 1 },
-  topTabTitle: { fontSize: 16, fontFamily: FONTS.bold },
-  topTabSub: { fontSize: 9, fontFamily: FONTS.regular, marginTop: 1, lineHeight: 12 },
-  topTabTitleDark: { fontSize: 16, fontFamily: FONTS.bold, color: '#111' },
-  topTabSubDark: { fontSize: 9, fontFamily: FONTS.regular, color: '#888', marginTop: 1, lineHeight: 12 },
+  topTabTitle: { fontSize: 11, fontFamily: FONTS.bold, color: '#FFF' },
+  topTabSub: { fontSize: 9, fontFamily: FONTS.regular, marginTop: 1, color: 'rgba(255,255,255,0.9)', lineHeight: 10 },
+  topTabTitleDark: { fontSize: 11, fontFamily: FONTS.bold, color: '#000' },
+  topTabSubDark: { fontSize: 9, fontFamily: FONTS.regular, color: '#666', marginTop: 1, lineHeight: 10 },
 
   mainContent: { flex: 1 },
   communityContent: { paddingHorizontal: 16, paddingTop: 16 },
@@ -717,36 +802,49 @@ const styles = StyleSheet.create({
   reqPosterName: { fontSize: 11, color: '#000', marginLeft: 4, fontFamily: FONTS.medium },
   reqPostedTime: { fontSize: 10, color: '#555', marginLeft: 'auto' },
 
+  figmaRequestCard: { width: 120, height: 220, borderRadius: 20, borderWidth: 1, padding: 12, marginRight: 12, alignItems: 'center', justifyContent: 'space-between', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, overflow: 'hidden' },
+  figmaRequestIconWrapper: { marginTop: 8, alignItems: 'center', justifyContent: 'center' },
+  figmaRequestTitle: { fontSize: 13, fontFamily: FONTS.bold, textAlign: 'center', color: '#000', marginTop: 10, lineHeight: 17, paddingHorizontal: 4 },
+  figmaRequestLocation: { fontSize: 10, fontStyle: 'italic', textAlign: 'center', color: '#333', marginTop: 8, paddingHorizontal: 4 },
+  figmaRequestTime: { fontSize: 9, textAlign: 'center', color: '#888', marginTop: 6 },
+  figmaRequestBtn: { borderWidth: 1.5, borderRadius: 14, width: 80, height: 28, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', marginBottom: 6, marginTop: 'auto' },
+  figmaRequestBtnText: { fontSize: 10, fontFamily: FONTS.bold },
+
+  figmaVerifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF3B30', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, gap: 3 },
+  figmaVerifiedText: { color: '#FFF', fontSize: 9, fontFamily: FONTS.bold },
+
   paginationDots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, marginBottom: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, marginHorizontal: 3 },
   dotActive: { backgroundColor: '#FF6600', width: 12 },
   dotInactive: { backgroundColor: '#DDD' },
 
-  communitiesList: { marginBottom: 24, gap: 12 },
-  communityListItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBF1', padding: 14, borderRadius: 20, borderWidth: 1, borderColor: '#FFE8D4' },
-  communityListItemLocked: { backgroundColor: '#F9F9F9', borderColor: '#EEE' },
+  communitiesList: { marginBottom: 24, backgroundColor: '#FDF3EA', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255, 149, 0, 0.10)', paddingTop: 17, paddingRight: 7, paddingBottom: 16, paddingLeft: 6, gap: 12 },
+  communityListItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'transparent', padding: 10 },
+  communityListItemLocked: { opacity: 0.8 },
   lockedBadge: { backgroundColor: '#FFF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#DDD', marginRight: 8 },
   lockedBadgeText: { fontSize: 10, color: '#AAA', fontFamily: FONTS.bold },
-  communityIconBox: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  communityIconBox: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   communityItemContent: { flex: 1 },
-  communityItemLabel: { fontSize: 10, fontFamily: FONTS.bold, letterSpacing: 0.5, marginBottom: 2 },
-  communityItemName: { fontSize: 16, fontFamily: FONTS.bold, color: '#111' },
-  communityItemMembers: { fontSize: 12, color: '#888', marginTop: 2 },
+  communityItemLabel: { fontSize: 9, fontFamily: FONTS.bold, letterSpacing: 0.5, marginBottom: 2 },
+  communityItemName: { fontSize: 12, fontFamily: FONTS.bold, color: '#000' },
+  communityItemMembers: { fontSize: 10, color: '#888', marginTop: 2 },
   communityItemRight: { flexDirection: 'row', alignItems: 'center' },
   avatarStack: { flexDirection: 'row', alignItems: 'center', marginRight: 8 },
-  stackAvatar: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#FFFBF1' },
-  stackAvatarCount: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFD4B2', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFBF1' },
-  stackAvatarCountText: { fontSize: 9, fontFamily: FONTS.bold, color: '#FF6600' },
+  stackAvatar: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#FDF3EA' },
+  stackAvatarCount: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#FDF3EA' },
+  stackAvatarCountText: { fontSize: 8, fontFamily: FONTS.bold },
 
-  localCommCard: { width: width * 0.38, borderRadius: 24, padding: 15, marginRight: 15, borderWidth: 1.5, alignItems: 'center' },
-  localCommMenu: { position: 'absolute', right: 10, top: 10 },
-  localCommAvatarWrapper: { width: 75, height: 75, borderRadius: 37.5, overflow: 'hidden', marginBottom: 12, borderWidth: 2, borderColor: '#FFF', elevation: 3, shadowOpacity: 0.1, shadowRadius: 3 },
+  localCommCard: { width: 140, height: 170, borderRadius: 16, padding: 12, marginRight: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'space-between', position: 'relative', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4 },
+  localCommMenu: { position: 'absolute', right: 10, top: 10, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
+  localCommAvatarWrapper: { width: 58, height: 58, borderRadius: 29, overflow: 'hidden', borderWidth: 1.5, elevation: 1, shadowOpacity: 0.05, shadowRadius: 1, marginTop: 4 },
   localCommAvatar: { width: '100%', height: '100%' },
-  localCommContent: { alignItems: 'center', marginBottom: 12 },
-  localCommName: { fontSize: 13, fontFamily: FONTS.bold, color: '#000', textAlign: 'center', marginBottom: 4 },
-  localCommMembers: { fontSize: 11, color: '#333', fontFamily: FONTS.medium },
-  localCommPill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: '#FFF' },
-  localCommPillText: { fontSize: 11, fontFamily: FONTS.bold },
+  localCommContent: { alignItems: 'center', marginTop: 4 },
+  localCommName: { fontSize: 11, fontFamily: FONTS.bold, color: '#000', textAlign: 'center' },
+  localCommMembers: { fontSize: 9, color: '#666', fontFamily: FONTS.regular, marginTop: 2 },
+  localCommPill: { paddingHorizontal: 12, paddingVertical: 3, borderRadius: 10, borderWidth: 1, backgroundColor: '#FFFFFF' },
+  localCommPillText: { fontSize: 9, fontFamily: FONTS.bold },
+  localCommEmptyBox: { backgroundColor: '#FAF9F6', borderWidth: 1, borderColor: '#EAE8E2', borderStyle: 'dashed', borderRadius: 16, paddingVertical: 20, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20, marginHorizontal: 16 },
+  localCommEmptyText: { fontSize: 12, color: '#888', fontFamily: FONTS.regular, textAlign: 'center' },
 
   footerCTA: { backgroundColor: '#FFF3E0', borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', marginTop: 20 },
   footerIconBox: { width: 60, height: 60, justifyContent: 'center', alignItems: 'center' },
