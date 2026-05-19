@@ -248,6 +248,16 @@ export default function HomeScreen() {
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
+  const likeDebounceRefs = useRef<{ [postId: string]: NodeJS.Timeout }>({});
+  const originalLikeStateRefs = useRef<{ [postId: string]: boolean }>({});
+
+  useEffect(() => {
+    return () => {
+      if (likeDebounceRefs.current) {
+        Object.values(likeDebounceRefs.current).forEach((timeout) => clearTimeout(timeout));
+      }
+    };
+  }, []);
 
   // Horizontal auto-scroll interval for the top quickAccess cards (Panchang, My Krishna, SOS)
   useEffect(() => {
@@ -786,30 +796,73 @@ export default function HomeScreen() {
     }
   };
 
-  const handleLikePost = useCallback(async (post: any) => {
+  const handleLikePost = useCallback((post: any) => {
     const postId = post?.id;
     if (!postId) return;
+    
+    // 1. Calculate the new toggled state
     const liked = !!post?.liked_by_me;
+    const newLikedState = !liked;
     const currentLikes = Number(post?.likes_count || 0);
+    
+    // 2. Perform optimistic UI update instantly
     const optimisticPost = {
       ...post,
-      liked_by_me: !liked,
-      likes_count: liked ? Math.max(0, currentLikes - 1) : currentLikes + 1,
+      liked_by_me: newLikedState,
+      likes_count: newLikedState ? currentLikes + 1 : Math.max(0, currentLikes - 1),
     };
-
     setFeedPosts((prev) => prev.map((item) => (item.id === postId ? optimisticPost : item)));
 
-    try {
-      const response = await togglePostLike(postId);
-      const updatedPost = response.data?.post;
-      if (updatedPost) {
-        setFeedPosts((prev) => prev.map((item) => (item.id === postId ? { ...item, ...updatedPost } : item)));
-      }
-    } catch (error) {
-      console.warn('Failed to like/unlike post:', error);
-      setFeedPosts((prev) => prev.map((item) => (item.id === postId ? post : item)));
-      alert('Could not update like. Please check your network.');
+    // 3. Track original server state if not already tracking
+    if (originalLikeStateRefs.current[postId] === undefined) {
+      originalLikeStateRefs.current[postId] = liked;
     }
+
+    // 4. Clear any existing timeout for this post
+    if (likeDebounceRefs.current[postId]) {
+      clearTimeout(likeDebounceRefs.current[postId]);
+    }
+
+    // 5. Set a new debounce timeout of 500ms
+    likeDebounceRefs.current[postId] = setTimeout(async () => {
+      const originalState = originalLikeStateRefs.current[postId];
+      // Cleanup tracking for this post
+      delete likeDebounceRefs.current[postId];
+      delete originalLikeStateRefs.current[postId];
+
+      // If final state equals original state, skip server update!
+      if (newLikedState === originalState) {
+        return;
+      }
+
+      // Otherwise, send the API call to toggle on the server
+      try {
+        const response = await togglePostLike(postId);
+        const updatedPost = response.data?.post;
+        if (updatedPost) {
+          setFeedPosts((prev) => 
+            prev.map((item) => (item.id === postId ? { ...item, ...updatedPost } : item))
+          );
+        }
+      } catch (error) {
+        console.warn('Failed to like/unlike post:', error);
+        // Rollback to original state on failure
+        setFeedPosts((prev) =>
+          prev.map((item) =>
+            item.id === postId
+              ? {
+                  ...item,
+                  liked_by_me: originalState,
+                  likes_count: originalState
+                    ? (item.liked_by_me ? item.likes_count : item.likes_count + 1)
+                    : (item.liked_by_me ? Math.max(0, item.likes_count - 1) : item.likes_count),
+                }
+              : item
+          )
+        );
+        alert('Could not update like. Please check your network.');
+      }
+    }, 500);
   }, []);
 
   const handleOpenComment = useCallback(async (post: any) => {
