@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getCommunityRequests } from '../../src/services/api';
+import { getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -70,26 +70,59 @@ export default function ActiveRequestsList() {
     fetchRequests();
   }, []);
 
+  const sortRequests = (list: CommunityRequest[]) => {
+    return [...list].sort((a, b) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  };
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const res = await getCommunityRequests({ status: 'active', limit: 50 });
-      const apiRequests = res.data || [];
+      const [activeRes, resolvedRes] = await Promise.all([
+        getCommunityRequests({ status: 'active', limit: 50 }),
+        getCommunityRequests({ status: 'resolved', limit: 50 })
+      ]);
+      const apiRequests = [...(activeRes.data || []), ...(resolvedRes.data || [])];
       
       // Merge Mock requests to ensure there is high-fidelity content even if DB is empty
       const combined = [...apiRequests, ...mockRequests];
       
-      // Deduplicate by ID
+      // Deduplicate by ID and filter out resolved requests older than 15 days
+      const fifteenDaysAgo = Date.now() - 15 * 24 * 60 * 60 * 1000;
       const uniqueRequests = combined.filter(
         (v, i, a) => a.findIndex(t => t.id === v.id) === i
-      );
+      ).filter(req => {
+        if (req.status === 'resolved') {
+          const createdAt = new Date(req.created_at).getTime();
+          return !Number.isNaN(createdAt) && createdAt >= fifteenDaysAgo;
+        }
+        return true;
+      });
       
-      setRequests(uniqueRequests);
+      setRequests(sortRequests(uniqueRequests));
     } catch (error) {
       console.log('Failed to fetch community requests:', error);
-      setRequests(mockRequests);
+      setRequests(sortRequests(mockRequests));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResolveRequest = async (requestId: string) => {
+    if (requestId.startsWith('mock_')) {
+      Alert.alert('Success', 'Request marked as fulfilled successfully!');
+      setRequests(prev => sortRequests(prev.map(req => req.id === requestId ? { ...req, status: 'resolved' } : req)));
+      setSelectedRequest(null);
+      return;
+    }
+    try {
+      await resolveCommunityRequest(requestId);
+      Alert.alert('Success', 'Request marked as fulfilled successfully!');
+      setRequests(prev => sortRequests(prev.map(req => req.id === requestId ? { ...req, status: 'resolved' } : req)));
+      setSelectedRequest(null);
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.detail || 'Unable to fulfill request');
     }
   };
 
@@ -169,20 +202,18 @@ export default function ActiveRequestsList() {
 
   const handleCall = (number: string) => {
     if (!number) return;
-    Linking.openURL(`tel:${number}`).catch(() => {
+    const cleaned = number.replace(/[^\d+]/g, '');
+    Linking.openURL(`tel:${cleaned}`).catch(() => {
       Alert.alert('Error', 'Unable to make phone call');
     });
   };
 
   const handleWhatsApp = (number: string, title: string) => {
     if (!number) return;
-    const formatted = number.replace(/[^\d+]/g, '');
+    const formatted = number.replace(/\D/g, ''); // Official WhatsApp format must exclude '+' and other non-digits
     const text = encodeURIComponent(`Hare Krishna! I saw your community request "${title}" on Brahmand App and would like to extend my help.`);
-    Linking.openURL(`whatsapp://send?phone=${formatted}&text=${text}`).catch(() => {
-      // Fallback to web link if WhatsApp client not installed
-      Linking.openURL(`https://wa.me/${formatted}?text=${text}`).catch(() => {
-        Alert.alert('Error', 'Unable to open WhatsApp');
-      });
+    Linking.openURL(`https://wa.me/${formatted}?text=${text}`).catch(() => {
+      Alert.alert('Error', 'Unable to open WhatsApp');
     });
   };
 
@@ -240,52 +271,99 @@ export default function ActiveRequestsList() {
   const renderRequestCard = ({ item }: { item: CommunityRequest }) => {
     const theme = getRequestTheme(item);
     const urgency = getUrgencyBadgeStyle(item.urgency_level);
+    const isResolved = item.status === 'resolved';
 
     return (
       <TouchableOpacity
-        style={[styles.requestCard, { borderColor: theme.border }]}
+        style={[
+          styles.requestCard, 
+          { borderColor: isResolved ? '#A7F3D0' : theme.border },
+          isResolved && { backgroundColor: '#F0FDF4' }
+        ]}
         activeOpacity={0.9}
         onPress={() => setSelectedRequest(item)}
       >
         <View style={styles.cardHeader}>
-          <View style={[styles.iconWrapper, { backgroundColor: theme.iconColor + '15' }]}>
-            <MaterialCommunityIcons name={theme.icon as any} size={22} color={theme.iconColor} />
+          <View style={[styles.iconWrapper, { backgroundColor: isResolved ? '#10B98115' : theme.iconColor + '15' }]}>
+            <MaterialCommunityIcons 
+              name={isResolved ? 'check-circle' : theme.icon as any} 
+              size={22} 
+              color={isResolved ? '#10B981' : theme.iconColor} 
+            />
           </View>
           <View style={styles.headerInfo}>
-            <Text style={[styles.cardTypeLabel, { color: theme.iconColor }]}>{theme.label}</Text>
+            <Text style={[styles.cardTypeLabel, { color: isResolved ? '#10B981' : theme.iconColor }]}>
+              {isResolved ? 'Help Completed' : theme.label}
+            </Text>
             <Text style={styles.timeAgo}>{getTimeAgo(item.created_at)}</Text>
           </View>
-          <View style={[styles.urgencyBadge, { backgroundColor: urgency.bg, borderColor: urgency.border }]}>
-            <Text style={[styles.urgencyText, { color: urgency.text }]}>{item.urgency_level.toUpperCase()}</Text>
-          </View>
+          {isResolved ? (
+            <View style={[styles.urgencyBadge, { backgroundColor: '#D1FAE5', borderColor: '#A7F3D0' }]}>
+              <Text style={[styles.urgencyText, { color: '#065F46' }]}>RESOLVED</Text>
+            </View>
+          ) : (
+            <View style={[styles.urgencyBadge, { backgroundColor: urgency.bg, borderColor: urgency.border }]}>
+              <Text style={[styles.urgencyText, { color: urgency.text }]}>{item.urgency_level.toUpperCase()}</Text>
+            </View>
+          )}
         </View>
 
-        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+        <Text style={[styles.cardTitle, isResolved && { color: '#065F46' }]} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <Text style={styles.cardDesc} numberOfLines={2}>
+          {item.description}
+        </Text>
+
+        <View style={[styles.locRow, { marginBottom: 12 }]}>
+          <Ionicons name="location" size={14} color="#6B7280" />
+          <Text style={styles.locText} numberOfLines={1}>{item.location}</Text>
+        </View>
 
         <View style={styles.divider} />
 
         <View style={styles.cardFooter}>
-          <View style={styles.locRow}>
-            <Ionicons name="location" size={14} color="#6B7280" />
-            <Text style={styles.locText} numberOfLines={1}>{item.location}</Text>
-          </View>
-          <View style={styles.actions}>
-            <TouchableOpacity 
-              style={[styles.actionBtn, styles.callBtn]} 
-              onPress={() => handleCall(item.contact_number)}
-            >
-              <Ionicons name="call" size={14} color="#FFF" />
-              <Text style={styles.actionBtnText}>Call</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionBtn, styles.waBtn]}
-              onPress={() => handleWhatsApp(item.contact_number, item.title)}
-            >
-              <FontAwesome5 name="whatsapp" size={14} color="#FFF" />
-              <Text style={styles.actionBtnText}>Help</Text>
-            </TouchableOpacity>
-          </View>
+          {isResolved ? (
+            <View style={styles.resolvedFooterRow}>
+              <TouchableOpacity 
+                style={[styles.actionBtn, styles.viewBtn]}
+                onPress={() => setSelectedRequest(item)}
+              >
+                <Ionicons name="eye" size={14} color="#6366F1" />
+                <Text style={styles.viewBtnText}>View</Text>
+              </TouchableOpacity>
+              <View style={styles.helpDoneBadge}>
+                <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                <Text style={styles.helpDoneBadgeText}>Help Done ✅</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.activeFooterRow}>
+              <TouchableOpacity 
+                style={[styles.actionBtn, styles.viewBtn]}
+                onPress={() => setSelectedRequest(item)}
+              >
+                <Ionicons name="eye" size={14} color="#6366F1" />
+                <Text style={styles.viewBtnText}>View</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionBtn, styles.waBtn]}
+                onPress={() => handleWhatsApp(item.contact_number, item.title)}
+              >
+                <FontAwesome5 name="whatsapp" size={14} color="#FFF" />
+                <Text style={styles.actionBtnText}>Offer Help</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionBtn, styles.fulfillBtn]}
+                onPress={() => handleResolveRequest(item.id)}
+              >
+                <Ionicons name="checkmark-done" size={14} color="#FFF" />
+                <Text style={styles.actionBtnText}>Fulfill</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -476,8 +554,23 @@ export default function ActiveRequestsList() {
                   onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
                 >
                   <FontAwesome5 name="whatsapp" size={20} color="#FFF" />
-                  <Text style={styles.sheetWhatsAppBtnText}>WhatsApp</Text>
+                  <Text style={styles.sheetWhatsAppBtnText}>Offer Help</Text>
                 </TouchableOpacity>
+
+                {selectedRequest.status === 'resolved' ? (
+                  <View style={[styles.sheetBtn, { backgroundColor: '#10B981', flex: 1.2 }]}>
+                    <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, fontWeight: '800' }}>Help Done</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity 
+                    style={[styles.sheetBtn, { backgroundColor: '#F59E0B', flex: 1.2 }]}
+                    onPress={() => handleResolveRequest(selectedRequest.id)}
+                  >
+                    <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, fontWeight: '800' }}>Fulfill</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
@@ -640,38 +733,72 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    width: '100%',
   },
   locRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
+    width: '100%',
   },
   locText: {
     fontSize: 13,
     color: '#64748B',
     marginLeft: 4,
+    flex: 1,
   },
-  actions: {
+  resolvedFooterRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  activeFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    width: '100%',
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 4,
+    flex: 1,
+  },
+  viewBtn: {
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
+    backgroundColor: '#FFF',
+  },
+  viewBtnText: {
+    color: '#6366F1',
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    fontWeight: '800',
+  },
+  waBtn: {
+    backgroundColor: '#10B981',
+  },
+  fulfillBtn: {
+    backgroundColor: '#F59E0B',
+  },
+  helpDoneBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     gap: 4,
   },
-  callBtn: {
-    backgroundColor: '#6366F1',
-  },
-  waBtn: {
-    backgroundColor: '#10B981',
+  helpDoneBadgeText: {
+    color: '#065F46',
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    fontWeight: '800',
   },
   actionBtnText: {
     color: '#FFF',
