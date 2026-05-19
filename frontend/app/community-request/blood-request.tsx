@@ -180,7 +180,7 @@ export default function BloodRequestScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)/messages');
+      router.replace('/community-request');
     }
   };
 

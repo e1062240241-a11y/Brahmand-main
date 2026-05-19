@@ -865,7 +865,12 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     callbacksRef.current.onClose?.();
   }, [sendWatchEventLocal]);
 
-  const viewabilityConfigRef = useRef({ itemVisiblePercentThreshold: 50 });
+  const viewabilityConfigRef = useRef({
+    itemVisiblePercentThreshold: 50,
+    viewAreaCoveragePercentThreshold: 50,
+    minimumViewTime: 50,
+    waitForInteraction: false,
+  });
 
   const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -887,6 +892,24 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       if (newIndex >= videosRef.current.length - 2 && hasMoreRef.current && !loadingRef.current) {
         loadMoreRef.current();
       }
+    }
+  }).current;
+
+  const handleReelScroll = useRef((event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const newIndex = Math.min(
+      Math.max(Math.round(offsetY / screenSize.height), 0),
+      videosRef.current.length - 1,
+    );
+    if (newIndex !== activeIndexRef.current) {
+      const prevPost = videosRef.current[activeIndexRef.current];
+      if (prevPost) {
+        const elapsed = Date.now() - watchStartRef.current;
+        sendWatchEventLocal(prevPost, elapsed);
+      }
+      setActiveIndex(newIndex);
+      activeIndexRef.current = newIndex;
+      watchStartRef.current = Date.now();
     }
   }).current;
 
@@ -955,6 +978,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             keyExtractor={(item, index) => `${item.id || index}`}
             pagingEnabled={true}
             showsVerticalScrollIndicator={false}
+            onScroll={handleReelScroll}
+            scrollEventThrottle={16}
             onMomentumScrollEnd={handleMomentumScrollEnd}
             onViewableItemsChanged={handleViewableItemsChanged}
             viewabilityConfig={viewabilityConfigRef.current}

@@ -12,6 +12,7 @@ import {
   Alert,
   Share,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -70,11 +71,25 @@ export default function ActiveRequestsList() {
     fetchRequests();
   }, []);
 
+<<<<<<< HEAD
+  useEffect(() => {
+    const onBackPress = () => {
+      if (selectedRequest) {
+        setSelectedRequest(null);
+        return true;
+      }
+      return false;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [selectedRequest]);
+=======
   const sortRequests = (list: CommunityRequest[]) => {
     return [...list].sort((a, b) => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   };
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
 
   const fetchRequests = async () => {
     try {

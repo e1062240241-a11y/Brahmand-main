@@ -109,7 +109,7 @@ export default function CommunityRequestBloodPage() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)/messages');
+      router.replace('/community-request');
     }
   };
 

@@ -625,6 +625,8 @@ export default function HomeScreen() {
     let maxVisible = 0;
     const viewportTop = y;
     const viewportBottom = y + SCREEN_HEIGHT;
+    const viewportCenter = viewportTop + SCREEN_HEIGHT / 2;
+    let closestDistance = Number.POSITIVE_INFINITY;
 
     for (const key of feedPostKeys) {
       const offset = postOffsets[key];
@@ -635,14 +637,21 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
-        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
-          maxVisible = visibleAmount;
-          closestKey = key;
+        const visibleRatio = height > 0 ? visibleAmount / height : 0;
+        const postCenter = postAbsoluteTop + height / 2;
+        const centerDistance = Math.abs(postCenter - viewportCenter);
+
+        // Autoplay if the post is at least 50% visible or covers half of screen height
+        if (visibleRatio >= 0.5 || visibleAmount >= SCREEN_HEIGHT * 0.5) {
+          if (centerDistance < closestDistance) {
+            closestDistance = centerDistance;
+            maxVisible = visibleAmount;
+            closestKey = key;
+          }
         }
       }
     }
-    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
+    setActivePostKey(closestKey); // If none reaches 50%, none are active.
 
     // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
@@ -1449,6 +1458,28 @@ export default function HomeScreen() {
                 contentContainerStyle={[styles.actionCardsScroll, { paddingTop: 14 }]}
                 style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
+<<<<<<< HEAD
+                {/* Community Help Requests */}
+                <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
+                  <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                    <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>Your community</Text>
+                  </View>
+                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                    <View style={styles.cardIconRow}>
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                    </View>
+                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Blood Request</Text>
+                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Blood, Emergency, Food</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
+                    onPress={() => router.push('/community-request/list')}
+                  >
+                    <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>View</Text>
+                    <Ionicons name="chevron-forward" size={10} color="#E53935" style={{ marginLeft: 2 }} />
+                  </TouchableOpacity>
+                </LinearGradient>
+=======
                 {/* Urgent Blood Request */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <ImageBackground
@@ -1484,6 +1515,7 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 </View>
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
 
                 {/* Register Business */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
@@ -1532,6 +1564,16 @@ export default function HomeScreen() {
                   </View>
                 </View>
 
+<<<<<<< HEAD
+                {/* Live Aarti / Temple */}
+                <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
+                  <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
+                    <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
+                  </View>
+                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                    <View style={styles.cardIconRow}>
+                      <Image source={require('../../assets/icons/horoicon/homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+=======
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}>
@@ -1543,6 +1585,7 @@ export default function HomeScreen() {
                       <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center', marginTop: 3 }]} numberOfLines={4} adjustsFontSizeToFit>
                         <Ionicons name="notifications-outline" size={7.5} color="#5A5A5A" /> Notify me for the upcoming events
                       </Text>
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
                     </View>
                     <TouchableOpacity
                       style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
@@ -1557,7 +1600,24 @@ export default function HomeScreen() {
                       <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Temple</Text>
                     </View>
                   </View>
+<<<<<<< HEAD
+                  <TouchableOpacity
+                    style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
+                    onPress={() => router.push({
+                      pathname: '/live-jaap-welcome',
+                      params: {
+                        mantraType: 'kedarnath',
+                        title: 'Kedarnath Aarti'
+                      }
+                    })}
+                  >
+                    <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch</Text>
+                    <Ionicons name="chevron-forward" size={10} color="#8C36DB" style={{ marginLeft: 2 }} />
+                  </TouchableOpacity>
+                </LinearGradient>
+=======
                 </View>
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
               </ScrollView>
 
               <View style={styles.twoButtonsRow}>
@@ -3195,5 +3255,70 @@ const styles = StyleSheet.create({
   },
   modalBackgroundDismiss: {
     ...StyleSheet.absoluteFillObject,
+  },
+  liveDualContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: Math.min(375, SCREEN_WIDTH - 2 * PAGE_PADDING),
+    alignSelf: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  liveHalfCard: {
+    flex: 1,
+    height: 195,
+    borderRadius: 15,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  liveHalfContent: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  liveHalfHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  liveHalfBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  liveHalfTitle: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FFF',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  liveHalfSub: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    color: '#DDD',
+    marginBottom: 8,
+  },
+  liveHalfButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6A00',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignSelf: 'stretch',
+    gap: 4,
+  },
+  liveHalfButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '900',
   },
 });
