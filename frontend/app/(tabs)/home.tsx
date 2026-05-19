@@ -625,6 +625,8 @@ export default function HomeScreen() {
     let maxVisible = 0;
     const viewportTop = y;
     const viewportBottom = y + SCREEN_HEIGHT;
+    const viewportCenter = viewportTop + SCREEN_HEIGHT / 2;
+    let closestDistance = Number.POSITIVE_INFINITY;
 
     for (const key of feedPostKeys) {
       const offset = postOffsets[key];
@@ -635,14 +637,21 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
-        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
-          maxVisible = visibleAmount;
-          closestKey = key;
+        const visibleRatio = height > 0 ? visibleAmount / height : 0;
+        const postCenter = postAbsoluteTop + height / 2;
+        const centerDistance = Math.abs(postCenter - viewportCenter);
+
+        // Autoplay if the post is at least 50% visible or covers half of screen height
+        if (visibleRatio >= 0.5 || visibleAmount >= SCREEN_HEIGHT * 0.5) {
+          if (centerDistance < closestDistance) {
+            closestDistance = centerDistance;
+            maxVisible = visibleAmount;
+            closestKey = key;
+          }
         }
       }
     }
-    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
+    setActivePostKey(closestKey); // If none reaches 50%, none are active.
 
     // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
