@@ -13,6 +13,7 @@ import {
   ScrollView,
   useWindowDimensions,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -198,21 +199,92 @@ export const PostFeedCard = memo(({
     prevIsActive.current = isActive;
   }, [isActive, post.id]);
 
-  const lastTap = useRef<number>(0);
+  const likedByMe = !!post?.liked_by_me;
 
-  const handleVideoPress = () => {
-    const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
-    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-      lastTap.current = 0;
-      setIsFullscreen(true);
-    } else {
-      lastTap.current = now;
-      setIsPausedByUser((prev) => !prev);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+  const swipeDetected = useRef<boolean>(false);
+  const lastTapRef = useRef<number>(0);
+
+  const heartScale = useRef(new Animated.Value(0)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
+
+  const animateHeart = () => {
+    heartScale.setValue(0.3);
+    heartOpacity.setValue(0);
+
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(heartScale, {
+          toValue: 1.2,
+          friction: 3,
+          useNativeDriver: true,
+        }),
+        Animated.timing(heartOpacity, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.delay(400),
+      Animated.parallel([
+        Animated.timing(heartScale, {
+          toValue: 1.5,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(heartOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  };
+
+  const handleDoubleTapLike = () => {
+    animateHeart();
+    if (!likedByMe) {
+      onLike?.(post);
     }
   };
 
-  const likedByMe = !!post?.liked_by_me;
+  const handleTouchStart = (e: any) => {
+    touchStartX.current = e.nativeEvent.pageX;
+    touchStartY.current = e.nativeEvent.pageY;
+    swipeDetected.current = false;
+  };
+
+  const handleTouchEnd = (e: any) => {
+    const deltaX = e.nativeEvent.pageX - touchStartX.current;
+    const deltaY = e.nativeEvent.pageY - touchStartY.current;
+
+    // Detect swipe (horizontal drag in either direction)
+    if (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 30) {
+      swipeDetected.current = true;
+      setIsFullscreen(true);
+    }
+  };
+
+  const handleMediaPress = () => {
+    if (swipeDetected.current) return;
+
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      lastTapRef.current = 0;
+      handleDoubleTapLike();
+    } else {
+      lastTapRef.current = now;
+      if (isVideo) {
+        setTimeout(() => {
+          if (Date.now() - lastTapRef.current >= DOUBLE_TAP_DELAY && lastTapRef.current !== 0) {
+            setIsPausedByUser((prev) => !prev);
+          }
+        }, DOUBLE_TAP_DELAY);
+      }
+    }
+  };
   const likesCount = Number(post?.likes_count || 0);
   const commentsCount = Number(post?.comments_count || 0);
   const viewsCount = Number(post?.views_count || 0);
@@ -345,7 +417,12 @@ export const PostFeedCard = memo(({
                   <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>Player unavailable</Text>
                 </View>
               )}
-              <Pressable style={styles.videoOverlay} onPress={handleVideoPress} />
+              <Pressable
+                style={styles.videoOverlay}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                onPress={handleMediaPress}
+              />
               <TouchableOpacity
                 style={styles.muteToggle}
                 onPress={toggleMute}
@@ -359,27 +436,34 @@ export const PostFeedCard = memo(({
               </TouchableOpacity>
             </View>
           ) : (
-            <Image
-              source={{ uri: mediaUrl }}
+            <Pressable
               style={styles.media}
-              contentFit="cover"
-              transition={300}
-              onLoadStart={() => setMediaLoading(true)}
-              onLoad={(e) => {
-                setMediaLoading(false);
-                if (!initialRawRatio) {
-                  const { width, height } = e.source;
-                  if (width && height) {
-                    setDynamicRatio(width / height);
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onPress={handleMediaPress}
+            >
+              <Image
+                source={{ uri: mediaUrl }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={300}
+                onLoadStart={() => setMediaLoading(true)}
+                onLoad={(e) => {
+                  setMediaLoading(false);
+                  if (!initialRawRatio) {
+                    const { width, height } = e.source;
+                    if (width && height) {
+                      setDynamicRatio(width / height);
+                    }
                   }
-                }
-              }}
-              onError={(e) => {
-                setMediaLoading(false);
-                setMediaError('Failed to load image');
-                console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', mediaUrl);
-              }}
-            />
+                }}
+                onError={(e) => {
+                  setMediaLoading(false);
+                  setMediaError('Failed to load image');
+                  console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', mediaUrl);
+                }}
+              />
+            </Pressable>
           )
         ) : (
           <View style={[styles.media, { backgroundColor: theme === 'light' ? '#FAFAFA' : '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
@@ -413,6 +497,20 @@ export const PostFeedCard = memo(({
             <Text style={{ color: '#FF4500', fontSize: 12, marginTop: 4 }}>{mediaError}</Text>
           </View>
         )}
+
+        {/* Animated Heart Overlay */}
+        <Animated.View
+          style={[
+            styles.heartOverlay,
+            {
+              transform: [{ scale: heartScale }],
+              opacity: heartOpacity,
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Ionicons name="heart" size={100} color="#FFF" style={styles.heartShadow} />
+        </Animated.View>
       </View>
 
       {/* Actions */}
@@ -499,7 +597,7 @@ export const PostFeedCard = memo(({
         </View>
       )}
 
-      {isVideo && isFullscreen && (
+      {isFullscreen && (
         <ReelViewer
           isVisible={isFullscreen}
           initialPost={post}
@@ -559,6 +657,21 @@ const styles = StyleSheet.create({
   actionTextLight: { color: '#333333' },
   actionTextActive: { color: COLORS.primary },
   viewsText: { color: 'rgba(255,255,255,0.95)', fontSize: 12, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '800' },
+  heartOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -50,
+    marginLeft: -50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99999,
+  },
+  heartShadow: {
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 6,
+  },
 });
 
 export default PostFeedCard;
