@@ -89,6 +89,7 @@ interface CommunityRequest {
   created_at: string;
   blood_group?: string;
   location?: string;
+  support_needed?: string;
 }
 
 interface DMConversation {
@@ -126,10 +127,10 @@ export default function MessagesScreen() {
 
   // Mock datasets matching Figma design exactly for fallback & rendering
   const requestsToRender = requests.length > 0 ? requests : [
-    { id: 'mock_1', title: 'O+Blood Required', request_type: 'blood', description: '', contact_number: '', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai' },
-    { id: 'mock_2', title: 'Baby Food Required', request_type: 'food', description: '', contact_number: '', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai' },
-    { id: 'mock_3', title: 'Elderly Care Suport', request_type: 'care', description: '', contact_number: '', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai' },
-    { id: 'mock_4', title: 'Cow Seva', request_type: 'gau', description: '', contact_number: '', urgency_level: 'low', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Gau-shala, Ghatkopar' },
+    { id: 'mock_1', user_id: 'user_1', title: 'O+Blood Required', request_type: 'blood', description: '', contact_number: '', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai' },
+    { id: 'mock_2', user_id: 'user_2', title: 'Baby Food Required', request_type: 'food', description: '', contact_number: '', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai' },
+    { id: 'mock_3', user_id: 'user_3', title: 'Elderly Care Suport', request_type: 'care', description: '', contact_number: '', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai' },
+    { id: 'mock_4', user_id: 'user_4', title: 'Cow Seva', request_type: 'gau', description: '', contact_number: '', urgency_level: 'low', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Gau-shala, Ghatkopar' },
   ];
 
   const userGroupsToRender = userGroups;
@@ -142,37 +143,37 @@ export default function MessagesScreen() {
 
     if (type === 'blood' || title.includes('blood') || desc.includes('blood') || support === 'blood') {
       return {
-        gradColors: ['#FFF0EE', '#FFE3E0'],
-        border: 'rgba(255, 0, 34, 0.15)',
+        gradColors: ['#FFF0F0', '#FFE8E8'] as const, // Warm light rose
+        border: 'rgba(255, 100, 100, 0.2)',
         icon: 'water',
-        iconColor: '#E12D3D',
-        btnBorderColor: '#FF5C5A',
+        iconColor: '#E53935',
+        btnBorderColor: '#E53935',
       };
     }
     if (title.includes('food') || desc.includes('food') || title.includes('baby') || desc.includes('baby') || support === 'food') {
       return {
-        gradColors: ['#FFF7E6', '#FFEED0'],
-        border: 'rgba(255, 153, 0, 0.15)',
+        gradColors: ['#FFFAF0', '#FFF3CC'] as const, // Warm light cream
+        border: 'rgba(255, 160, 0, 0.2)',
         icon: 'baby-face',
-        iconColor: '#3397EE',
-        btnBorderColor: '#FFB300',
+        iconColor: '#F57F17',
+        btnBorderColor: '#F57F17',
       };
     }
     if (title.includes('cow') || desc.includes('cow') || title.includes('gau') || desc.includes('animal') || desc.includes('gau') || type === 'gau' || support === 'animal care') {
       return {
-        gradColors: ['#F6EEF8', '#ECDCEF'],
-        border: 'rgba(174, 0, 174, 0.15)',
+        gradColors: ['#FDF8F5', '#F5EBE1'] as const, // Warm light beige
+        border: 'rgba(141, 110, 99, 0.2)',
         icon: 'cow',
-        iconColor: '#5D4037',
-        btnBorderColor: '#AE00AE',
+        iconColor: '#6D4C41',
+        btnBorderColor: '#6D4C41',
       };
     }
     return {
-      gradColors: ['#EEF7F2', '#DCEFE3'],
-      border: 'rgba(13, 198, 0, 0.15)',
+      gradColors: ['#FFF6F0', '#FFEBD6'] as const, // Warm light peach
+      border: 'rgba(230, 81, 0, 0.2)',
       icon: 'wheelchair',
-      iconColor: '#757575',
-      btnBorderColor: '#0DC600',
+      iconColor: '#E65100',
+      btnBorderColor: '#E65100',
     };
   };
 
@@ -235,13 +236,18 @@ export default function MessagesScreen() {
   const fetchData = useCallback(async () => {
     try {
       if (activeTopTab === 'Community') {
+        setLoading((prev) => {
+          // If we have existing data, don't show loading spinner (Stale-While-Revalidate)
+          if (communities.length > 0 && requests.length > 0) return false;
+          return true;
+        });
+
         const [communityRes, requestRes] = await Promise.all([
           getCommunities(),
           getCommunityRequests({ status: 'active', limit: 10 }),
         ]);
         
         const allComms = communityRes.data || [];
-        // Filter out very specific types if needed, but here we want to show groups
         const verifiedComms = allComms.filter(
           (item: Community) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural' && item.type !== 'user_group'
         );
@@ -254,6 +260,10 @@ export default function MessagesScreen() {
         setUserGroups(userGroupsList);
         setRequests(requestRes.data || []);
       } else {
+        setLoading((prev) => {
+          if (circles.length > 0) return false;
+          return true;
+        });
         const res = await getCircles();
         setCircles(res.data || []);
         fetchConversations();
@@ -271,7 +281,7 @@ export default function MessagesScreen() {
   }, []);
 
   const fetchConversations = async () => {
-    setLoadingConversations(true);
+    setLoadingConversations((prev) => conversations.length === 0 ? true : prev);
     try {
       const response = await getConversations();
       setConversations(response.data || []);
@@ -559,6 +569,7 @@ export default function MessagesScreen() {
       <ScrollView 
         style={styles.mainContent} 
         showsVerticalScrollIndicator={false}
+        overScrollMode="never"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
       >
         {activeTopTab === 'Community' ? (
@@ -643,7 +654,7 @@ export default function MessagesScreen() {
                     snapToInterval={130}
                     decelerationRate="fast"
                     snapToAlignment="start"
-                    style={Platform.OS === 'web' ? { cursor: 'grab' } : {}}
+                    style={Platform.OS === 'web' ? ({ cursor: 'grab' } as any) : {}}
                     onMomentumScrollEnd={(e) => {
                       const x = e.nativeEvent.contentOffset.x;
                       setActiveRequestIndex(Math.round(x / 130));
@@ -759,8 +770,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFBF7' },
   headerGradient: { paddingBottom: 20 },
   topTabsWrapper: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 10, gap: 12 },
-  topTabCard: { flex: 1, height: 53, borderRadius: 11, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 15, shadowOffset: { width: 0, height: 0 } },
-  topTabCardActive: { backgroundColor: '#FF3400', borderWidth: 1, borderColor: '#FFFFFF' },
+  topTabCard: { flex: 1, height: 53, borderRadius: 11, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' },
+  topTabCardActive: { backgroundColor: '#FF3400', borderWidth: 1, borderColor: '#FFFFFF', elevation: 8, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 15, shadowOffset: { width: 0, height: 0 } },
   topTabCardActivePrivate: { backgroundColor: 'rgba(255, 255, 255, 0.50)', borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.10)' },
   topTabCardInactive: { backgroundColor: 'rgba(255, 255, 255, 0.50)', borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.10)' },
   topTabIcon: { marginRight: 8 },

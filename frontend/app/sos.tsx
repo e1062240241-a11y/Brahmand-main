@@ -174,8 +174,10 @@ export default function SOSScreen() {
     try {
       await resolveMyActiveSOS('cancelled');
       setExistingSOS(null);
+      return true;
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to cancel SOS');
+      return false;
     } finally {
       setResolving(false);
     }
@@ -239,7 +241,7 @@ export default function SOSScreen() {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         emergency_type: emergencyType,
-        micro_location: microLocation || 'Emergency SOS Page',
+        micro_location: microLocation || '',
       });
       
       setStage('active');
@@ -369,10 +371,17 @@ export default function SOSScreen() {
             }}
           >
             <View style={styles.mapContainer}>
-              <SOSMap 
-                latitude={location?.coords.latitude || 28.6139} 
-                longitude={location?.coords.longitude || 77.2090} 
-              />
+              {location ? (
+                <SOSMap 
+                  latitude={location.coords.latitude} 
+                  longitude={location.coords.longitude} 
+                />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0F0F0' }]}>
+                  <ActivityIndicator size="large" color="#FF3B30" />
+                  <Text style={{ marginTop: 10, color: '#666' }}>Fetching your location...</Text>
+                </View>
+              )}
             </View>
 
             {location ? (
@@ -573,6 +582,26 @@ export default function SOSScreen() {
             </Text>
             <TouchableOpacity style={styles.primaryButtonBlack} onPress={handleBack}>
               <Text style={styles.primaryButtonText}>OK</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.primaryButton, { backgroundColor: '#FF3B30', marginTop: 16 }]} 
+              onPress={async () => {
+                const success = await handleCancelExistingSOS();
+                if (success) {
+                  Alert.alert('Cancelled', 'Your SOS request has been cancelled successfully.', [
+                    { text: 'OK', onPress: handleBack }
+                  ]);
+                }
+              }}
+              disabled={resolving}
+              activeOpacity={0.8}
+            >
+              {resolving ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>CANCEL SOS</Text>
+              )}
             </TouchableOpacity>
           </View>
         )}

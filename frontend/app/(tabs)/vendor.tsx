@@ -211,7 +211,7 @@ export default function VendorScreen() {
   }, [fetchVendors, fetchMyVendor, fetchCategories, hasHomeCoordinates, homeLatitude, homeLongitude]);
 
   const loadJobsData = useCallback(async () => {
-    setJobsLoading(true);
+    setJobsLoading((prev) => jobProfiles.length === 0 ? true : prev);
     try {
       const [profilesRes, myProfileRes] = await Promise.all([
         getJobProfiles({

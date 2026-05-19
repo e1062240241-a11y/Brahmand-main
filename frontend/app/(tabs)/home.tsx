@@ -266,14 +266,12 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [setUnreadCount]);
 
-  const handleNotificationPress = async () => {
-    try {
-      await markAllNotificationsRead();
-      setUnreadCount(0);
-    } catch (err) {
-      console.log('Failed to mark notifications as read:', err);
-    }
+  const handleNotificationPress = () => {
     router.push('/notifications');
+    setUnreadCount(0);
+    markAllNotificationsRead().catch((err) => {
+      console.log('Failed to mark notifications as read in background:', err);
+    });
   };
 
   const [loadingHashtags, setLoadingHashtags] = useState(false);
@@ -904,6 +902,7 @@ export default function HomeScreen() {
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
+            overScrollMode="never"
             contentContainerStyle={[
               styles.content,
               {
@@ -1056,6 +1055,7 @@ export default function HomeScreen() {
                       </View>
                       <ScrollView
                         horizontal
+                        overScrollMode="never"
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.recentSearchList}
                       >
@@ -1078,7 +1078,7 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.topFeatureRow}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}>
+                  <ScrollView horizontal overScrollMode="never" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}>
                     {quickAccess.map((item, idx) => {
                       let cardBg = '#FFFFFF';
                       let iconBg = '#FF8A3D';
