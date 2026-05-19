@@ -505,7 +505,7 @@ export default function MessagesScreen() {
                     snapToInterval={width * 0.48 + 14}
                     decelerationRate="fast"
                     snapToAlignment="start"
-                    style={Platform.OS === 'web' ? { cursor: 'grab' } : {}}
+                    style={Platform.OS === 'web' ? ({ cursor: 'grab' } as any) : undefined}
                     onMomentumScrollEnd={(e) => {
                       const x = e.nativeEvent.contentOffset.x;
                       const cardWidth = width * 0.48 + 14;

@@ -453,7 +453,7 @@ export default function SOSScreen() {
                       {Platform.OS === 'ios' ? (
                         <>
                           <Text style={styles.guideStep}>1. Tap 'Open Settings' button below.</Text>
-                          <Text style={styles.guideStep}>2. Go to Privacy & Security -> Location Services.</Text>
+                          <Text style={styles.guideStep}>2. Go to Privacy & Security &rarr; Location Services.</Text>
                           <Text style={styles.guideStep}>3. Toggle the switch to ON.</Text>
                         </>
                       ) : (
