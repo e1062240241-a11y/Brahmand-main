@@ -754,14 +754,7 @@ export const FloatingUtilityButton = () => {
             { transform: [{ scale: menuScale }, { translateY: menuScale.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] }
           ]}
         >
-          {/* Top-Right Close Button for Hub Wheel */}
-          <TouchableOpacity 
-            style={styles.hubCloseBtn} 
-            onPress={closeUtilityModal}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="close" size={20} color="#FFF" />
-          </TouchableOpacity>
+
 
           <View style={styles.hubContainer}>
             {/* Outer Circle Ring */}
@@ -1044,11 +1037,7 @@ const styles = StyleSheet.create({
   glassBackgroundClose: { backgroundColor: '#FF3B30' },
   redDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#E53935' },
   modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -1060,20 +1049,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  hubCloseBtn: {
-    position: 'absolute',
-    top: -45,
-    right: 15,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 101,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
+
   modalContent: {
     width: '100%',
     height: '100%',
