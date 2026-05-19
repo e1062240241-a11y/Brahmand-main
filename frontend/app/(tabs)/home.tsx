@@ -1473,28 +1473,6 @@ export default function HomeScreen() {
                 contentContainerStyle={[styles.actionCardsScroll, { paddingTop: 14 }]}
                 style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
-<<<<<<< HEAD
-                {/* Community Help Requests */}
-                <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>Your community</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon/homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                    </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Blood Request</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Blood, Emergency, Food</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
-                    onPress={() => router.push('/community-request/list')}
-                  >
-                    <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>View</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#E53935" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
-=======
                 {/* Urgent Blood Request */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <ImageBackground
@@ -1530,7 +1508,6 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 </View>
->>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
 
                 {/* Register Business */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
@@ -1579,16 +1556,6 @@ export default function HomeScreen() {
                   </View>
                 </View>
 
-<<<<<<< HEAD
-                {/* Live Aarti / Temple */}
-                <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon/homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-=======
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}>
@@ -1600,11 +1567,16 @@ export default function HomeScreen() {
                       <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center', marginTop: 3 }]} numberOfLines={4} adjustsFontSizeToFit>
                         <Ionicons name="notifications-outline" size={7.5} color="#5A5A5A" /> Notify me for the upcoming events
                       </Text>
->>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
                     </View>
                     <TouchableOpacity
                       style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
-                      onPress={() => router.push('/live-mantra')}
+                      onPress={() => router.push({
+                        pathname: '/live-jaap-welcome',
+                        params: {
+                          mantraType: 'kedarnath',
+                          title: 'Kedarnath Aarti'
+                        }
+                      })}
                     >
                       <Text style={{ color: '#8C36DB', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
                     </TouchableOpacity>
@@ -1615,24 +1587,7 @@ export default function HomeScreen() {
                       <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Temple</Text>
                     </View>
                   </View>
-<<<<<<< HEAD
-                  <TouchableOpacity
-                    style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
-                    onPress={() => router.push({
-                      pathname: '/live-jaap-welcome',
-                      params: {
-                        mantraType: 'kedarnath',
-                        title: 'Kedarnath Aarti'
-                      }
-                    })}
-                  >
-                    <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#8C36DB" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
-=======
                 </View>
->>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
               </ScrollView>
 
               <View style={styles.twoButtonsRow}>
