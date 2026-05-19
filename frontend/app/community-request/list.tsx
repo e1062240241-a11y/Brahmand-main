@@ -169,20 +169,18 @@ export default function ActiveRequestsList() {
 
   const handleCall = (number: string) => {
     if (!number) return;
-    Linking.openURL(`tel:${number}`).catch(() => {
+    const cleaned = number.replace(/[^\d+]/g, '');
+    Linking.openURL(`tel:${cleaned}`).catch(() => {
       Alert.alert('Error', 'Unable to make phone call');
     });
   };
 
   const handleWhatsApp = (number: string, title: string) => {
     if (!number) return;
-    const formatted = number.replace(/[^\d+]/g, '');
+    const formatted = number.replace(/\D/g, ''); // Official WhatsApp format must exclude '+' and other non-digits
     const text = encodeURIComponent(`Hare Krishna! I saw your community request "${title}" on Brahmand App and would like to extend my help.`);
-    Linking.openURL(`whatsapp://send?phone=${formatted}&text=${text}`).catch(() => {
-      // Fallback to web link if WhatsApp client not installed
-      Linking.openURL(`https://wa.me/${formatted}?text=${text}`).catch(() => {
-        Alert.alert('Error', 'Unable to open WhatsApp');
-      });
+    Linking.openURL(`https://wa.me/${formatted}?text=${text}`).catch(() => {
+      Alert.alert('Error', 'Unable to open WhatsApp');
     });
   };
 
