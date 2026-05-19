@@ -300,6 +300,54 @@ export default function CommunityDetailScreen() {
     return COMMUNITY_TABS;
   }, []);
 
+  const mostRecentRequest = useMemo(() => {
+    if (!requests || requests.length === 0) {
+      return {
+        id: 'mock_1',
+        title: 'O+ Blood Required urgently for operation',
+        request_type: 'blood',
+        description: 'Patient is admitted at Lifeline Hospital in ICU. Need 2 units of O+ blood as soon as possible. Any help would be highly appreciated.',
+        contact_number: '+919876543210',
+        urgency_level: 'critical',
+        created_at: new Date(Date.now() - 10 * 60000).toISOString(),
+        status: 'active',
+        location: 'Andheri West, Mumbai',
+        user_name: 'Rahul Joshi'
+      };
+    }
+    return [...requests].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+  }, [requests]);
+
+  const getUnixTimestamp = (item: any) => {
+    if (item.created_at) {
+      const d = new Date(item.created_at);
+      if (!Number.isNaN(d.getTime())) return d.getTime();
+    }
+    if (item.timestamp) {
+      const d = new Date(item.timestamp);
+      if (!Number.isNaN(d.getTime())) return d.getTime();
+      
+      const tsStr = String(item.timestamp).toLowerCase();
+      const now = Date.now();
+      if (tsStr.includes('just now') || tsStr.includes('now')) {
+        return now;
+      }
+      const match = tsStr.match(/^(\d+)\s*(m|h|d)\s*ago/);
+      if (match) {
+        const val = parseInt(match[1], 10);
+        const unit = match[2];
+        if (unit === 'm') return now - val * 60 * 1000;
+        if (unit === 'h') return now - val * 60 * 60 * 1000;
+        if (unit === 'd') return now - val * 24 * 60 * 60 * 1000;
+      }
+    }
+    if (item.start_time) {
+      const d = new Date(item.start_time);
+      if (!Number.isNaN(d.getTime())) return d.getTime();
+    }
+    return 0;
+  };
+
   const combinedData = useMemo(() => {
     if (activeTab === 'Requests') {
       return requests;
@@ -335,7 +383,15 @@ export default function CommunityDetailScreen() {
           itemMap.set(p.id, p);
         }
       });
+
+      // Also merge requests into the main feed!
+      requests.forEach(r => {
+        if (!itemMap.has(r.id)) {
+          itemMap.set(r.id, { ...r, isRequestItem: true });
+        }
+      });
       
+<<<<<<< HEAD
       const allItems = Array.from(itemMap.values());
       
       // Step 1: Sort ascending by ID (or fallback) to chronological order to find consecutive thread messages
@@ -445,6 +501,10 @@ export default function CommunityDetailScreen() {
       });
       
       return sortedResult;
+=======
+      // Sort everything chronologically by exact timestamp (latest first)
+      return Array.from(itemMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
     }
     
     // For other tabs (like Lost & Found, Seva, Temple Updates), they do not show chat messages either
@@ -1469,7 +1529,7 @@ export default function CommunityDetailScreen() {
               </View>
             );
           }
-          if (item.type === 'request_item') {
+          if (item.isRequestItem || item.type === 'request_item') {
             return renderRequestItem({ item });
           }
           if (activeTab === 'Requests') {
@@ -1487,6 +1547,57 @@ export default function CommunityDetailScreen() {
           <View>
             {renderHeader()}
             
+            {(activeTab === 'Feed' || activeTab === 'Requests') && mostRecentRequest && (
+              <View style={styles.recentRequestCard}>
+                <LinearGradient 
+                  colors={['#FFF5EE', '#FFFDFB']} 
+                  style={styles.recentRequestGradient}
+                >
+                  <View style={styles.recentRequestHeader}>
+                    <View style={styles.recentRequestTitleRow}>
+                      <MaterialCommunityIcons name="bullhorn" size={20} color="#F25C05" />
+                      <Text style={styles.recentRequestSectionTitle}>LATEST COMMUNITY REQUEST</Text>
+                    </View>
+                    <View style={[
+                      styles.recentRequestUrgencyBadge, 
+                      { backgroundColor: mostRecentRequest.urgency_level === 'critical' ? '#FEE2E2' : '#FEF3C7' }
+                    ]}>
+                      <Text style={[
+                        styles.recentRequestUrgencyText,
+                        { color: mostRecentRequest.urgency_level === 'critical' ? '#EF4444' : '#D97706' }
+                      ]}>
+                        {mostRecentRequest.urgency_level.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.recentRequestTitle} numberOfLines={1}>
+                    {mostRecentRequest.title}
+                  </Text>
+                  <Text style={styles.recentRequestDesc} numberOfLines={2}>
+                    {mostRecentRequest.description}
+                  </Text>
+
+                  <View style={styles.recentRequestFooter}>
+                    <View style={styles.recentRequestLocRow}>
+                      <Ionicons name="location" size={14} color="#64748B" />
+                      <Text style={styles.recentRequestLocText} numberOfLines={1}>
+                        {mostRecentRequest.location || 'Mumbai'}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity 
+                      style={styles.recentRequestViewBtn}
+                      onPress={() => router.push('/community-request/list')}
+                    >
+                      <Text style={styles.recentRequestViewBtnText}>View Details</Text>
+                      <Ionicons name="arrow-forward" size={14} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                </LinearGradient>
+              </View>
+            )}
+
             {activeTab === 'Feed' && (
               <>
                 <View style={styles.sectionHeader}>
@@ -1926,6 +2037,7 @@ export default function CommunityDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
+<<<<<<< HEAD
   twitterPostBtn: {
     backgroundColor: '#1D9BF0',
     paddingHorizontal: 16,
@@ -1938,6 +2050,92 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: 14,
+=======
+  recentRequestCard: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 5,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#FFE4E6',
+    elevation: 3,
+    shadowColor: '#F25C05',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+  },
+  recentRequestGradient: {
+    padding: 16,
+  },
+  recentRequestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recentRequestTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  recentRequestSectionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FF6600',
+    letterSpacing: 0.5,
+  },
+  recentRequestUrgencyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  recentRequestUrgencyText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  recentRequestTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  recentRequestDesc: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  recentRequestFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  recentRequestLocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    marginRight: 10,
+  },
+  recentRequestLocText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  recentRequestViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F25C05',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  recentRequestViewBtnText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
   },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   headerContainer: { backgroundColor: '#FFF' },

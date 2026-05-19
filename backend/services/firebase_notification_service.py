@@ -77,6 +77,7 @@ class FirebaseNotificationService:
                 "priority": "high" if is_sos else "default",
                 "channelId": "sos_alerts" if is_sos else "default",
                 "badge": 1 if is_sos else 0,
+                "categoryIdentifier": "SOS_ALERT" if is_sos else None,
                 "data": data or {}
             }
             payloads.append(payload)
@@ -168,9 +169,8 @@ class FirebaseNotificationService:
                         notification=fcm.AndroidNotification(
                             channel_id='sos_alerts',
                             sound='default',
-                            priority='high',
-                            notification_priority='PRIORITY_MAX',
-                            vibrate_timings=[0, 1000, 500, 1000, 500, 1000]
+                            priority='max',
+                            vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
                         )
                     )
                     apns_config = fcm.APNSConfig(
@@ -180,7 +180,8 @@ class FirebaseNotificationService:
                                 sound='default',
                                 badge=1,
                                 content_available=True,
-                                mutable_content=True
+                                mutable_content=True,
+                                category='SOS_ALERT'
                             )
                         )
                     )
@@ -285,9 +286,8 @@ class FirebaseNotificationService:
                                 notification=fcm.AndroidNotification(
                                     channel_id='sos_alerts',
                                     sound='default',
-                                    priority='high',
-                                    notification_priority='PRIORITY_MAX',
-                                    vibrate_timings=[0, 1000, 500, 1000, 500, 1000]
+                                    priority='max',
+                                    vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
                                 )
                             )
                             apns_config = fcm.APNSConfig(
@@ -297,7 +297,8 @@ class FirebaseNotificationService:
                                         sound='default',
                                         badge=1,
                                         content_available=True,
-                                        mutable_content=True
+                                        mutable_content=True,
+                                        category='SOS_ALERT'
                                     )
                                 )
                             )

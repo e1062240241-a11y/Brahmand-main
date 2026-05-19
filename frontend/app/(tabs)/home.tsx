@@ -1,3 +1,4 @@
+// Trigger watch rebuild
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -16,7 +17,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,6 +29,134 @@ import { useNotificationStore } from '../../src/store/notificationStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
+import Svg, { Path } from 'react-native-svg';
+
+function BloodDropIcon() {
+  return (
+    <Svg width={19.643} height={25} viewBox="0 0 20 25">
+      <Path d="M18.7486 15.1794C18.7486 17.5474 17.8078 19.8185 16.1335 21.493C14.459 23.1673 12.1879 24.1081 9.8199 24.1081C7.4519 24.1081 5.18084 23.1673 3.50638 21.493C1.83192 19.8185 0.891235 17.5474 0.891235 15.1794C0.891235 7.14361 9.8199 0.893555 9.8199 0.893555C9.8199 0.893555 18.7486 7.14361 18.7486 15.1794Z" fill="#FF0000" />
+      <Path d="M14.9556 4.43617C13.577 2.84402 12.0254 1.41031 10.3295 0.161581C10.1794 0.0564114 10.0005 0 9.81719 0C9.63392 0 9.45502 0.0564114 9.30491 0.161581C7.61214 1.41083 6.06349 2.84452 4.68767 4.43617C1.61956 7.95965 0.00012207 11.674 0.00012207 15.1785C0.00012207 17.7833 1.03489 20.2814 2.87678 22.1233C4.71867 23.9653 7.21683 25 9.82165 25C12.4265 25 14.9246 23.9653 16.7665 22.1233C18.6085 20.2814 19.6432 17.7833 19.6432 15.1785C19.6432 11.674 18.0237 7.95965 14.9556 4.43617ZM9.82165 23.2143C7.69116 23.2119 5.64858 22.3645 4.14209 20.858C2.63561 19.3515 1.78822 17.309 1.78586 15.1785C1.78586 8.79114 7.97676 3.4596 9.82165 2.0087C11.6665 3.4596 17.8574 8.7889 17.8574 15.1785C17.8551 17.309 17.0077 19.3515 15.5012 20.858C13.9947 22.3645 11.9521 23.2119 9.82165 23.2143ZM16.0594 16.2209C15.828 17.5141 15.2057 18.7053 14.2766 19.6342C13.3476 20.5631 12.1562 21.185 10.863 21.4163C10.8138 21.4241 10.7642 21.4282 10.7145 21.4285C10.4905 21.4284 10.2748 21.3443 10.11 21.1926C9.9452 21.0409 9.84352 20.8328 9.825 20.6096C9.80637 20.3863 9.87243 20.1644 10.0099 19.9876C10.1474 19.8108 10.3463 19.6921 10.5672 19.6551C12.4165 19.3437 13.9858 17.7745 14.2994 15.9218C14.339 15.6882 14.4698 15.48 14.663 15.3429C14.8562 15.2058 15.0959 15.1511 15.3295 15.1907C15.5631 15.2304 15.7713 15.3613 15.9084 15.5544C16.0455 15.7476 16.0991 15.9873 16.0594 16.2209Z" fill="#890000" />
+    </Svg>
+  );
+}
+
+function LotusIcon() {
+  return (
+    <Svg width={30} height={25} viewBox="0 0 24 24" fill="none">
+      {/* Flawless Kamal / Indian Lotus - symmetric geometric vector artwork */}
+      <Path
+        d="M12 3C12.8 6 15 7.5 18 7.5C16.5 10 14.5 11 12 14C9.5 11 7.5 10 6 7.5C9 7.5 11.2 6 12 3Z"
+        stroke="#00C781"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="#E6FFF0"
+      />
+      <Path
+        d="M12 8.5C13.8 9.3 15.6 8.9 17.4 8.1C16.1 10.8 14.3 11.7 12 13C9.7 11.7 7.9 10.8 6.6 8.1C8.4 8.9 10.2 9.3 12 8.5Z"
+        stroke="#00C781"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="#CCFFE6"
+      />
+      <Path
+        d="M12 12.5C14 13.5 16 13.2 18 12.1C16.5 15.1 14 15.9 12 17.1C10 15.9 7.5 15.1 6 12.1C8 13.2 10 13.5 12 12.5Z"
+        stroke="#00C781"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="#99FFCC"
+      />
+      <Path
+        d="M3 18C6 21 18 21 21 18"
+        stroke="#00C781"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+function TempleIcon() {
+  return (
+    <Svg width={25} height={25} viewBox="0 0 24 24" fill="none">
+      {/* Premium Hindu Temple dome, stairs, flag outline */}
+      <Path
+        d="M12 2V6M12 2H16L14.5 4L16 6H12"
+        stroke="#8C36DB"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M12 6C8 9.5 7.5 14.5 12 14.5C16.5 14.5 16 9.5 12 6Z"
+        stroke="#8C36DB"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="#8C36DB"
+        fillOpacity={0.15}
+      />
+      <Path
+        d="M4 22H20M5 18H19M6 14H18"
+        stroke="#8C36DB"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <Path
+        d="M6 14V22M18 14V22"
+        stroke="#8C36DB"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <Path
+        d="M10 22V18C10 16.9 10.9 16 12 16C13.1 16 14 16.9 14 18V22"
+        stroke="#8C36DB"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function ShopIcon() {
+  return (
+    <Svg width={25} height={25} viewBox="0 0 24 24" fill="none">
+      {/* Storefront/Shop building outline */}
+      <Path
+        d="M3 9L4.5 13H19.5L21 9M3 9H21M3 9L5.5 5H18.5L21 9"
+        stroke="#FF9500"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="#FF9500"
+        fillOpacity={0.08}
+      />
+      <Path
+        d="M4.5 13C5.5 13 6.25 13.5 7 13C7.75 13.5 8.5 13 9.5 13C10.5 13 11.25 13.5 12 13C12.75 13.5 13.5 13 14.5 13C15.5 13 16.25 13.5 17 13C17.75 13.5 18.5 13 19.5 13"
+        stroke="#FF9500"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <Path
+        d="M5.5 13V20C5.5 20.6 6 21 6.5 21H17.5C18 21 18.5 20.6 18.5 20V13"
+        stroke="#FF9500"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M9 21V17H15V21"
+        stroke="#FF9500"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
@@ -66,7 +194,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
 
-const shivaImage = require('../../assets/images/image temple/MahakalTemple.webp');
+const shivaImage = require('../../assets/images/image temple/SomnathTemple.jpg');
 const FEED_PAGE_SIZE = 7;
 
 let FileSystemModule: any = null;
@@ -77,9 +205,11 @@ try {
 }
 
 const quickAccess = [
-  { label: 'My Krishna', subtitle: 'Dharma AI', color: '#FFF' },
-  { label: 'SOS', subtitle: 'Emergency', color: '#FFF', urgent: true },
-  { label: 'Panchang', subtitle: 'Calendar', color: '#FFF', calendarIcon: true },
+  { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
+  { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
+  { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
+  { label: 'Kundli', subtitle: 'Your Cosmic Blueprint', color: '#FFF', kundliIcon: true },
+  { label: 'Matchmaking', subtitle: 'Gun Milan', color: '#FFF', matchmakingIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -117,6 +247,50 @@ export default function HomeScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+  const actionCardsScrollRef = useRef<ScrollView>(null);
+  const topFeaturesScrollRef = useRef<ScrollView>(null);
+  const likeDebounceRefs = useRef<{ [postId: string]: NodeJS.Timeout }>({});
+  const originalLikeStateRefs = useRef<{ [postId: string]: boolean }>({});
+
+  useEffect(() => {
+    return () => {
+      if (likeDebounceRefs.current) {
+        Object.values(likeDebounceRefs.current).forEach((timeout) => clearTimeout(timeout));
+      }
+    };
+  }, []);
+
+  // Horizontal auto-scroll interval for the top quickAccess cards (Panchang, My Krishna, SOS)
+  useEffect(() => {
+    let currentIndex = 0;
+    const totalCards = 5;
+    const interval = setInterval(() => {
+      if (topFeaturesScrollRef.current) {
+        currentIndex = (currentIndex + 1) % totalCards;
+        const targetOffset = currentIndex * 131; // cardSize: 121 + gap: 10
+        topFeaturesScrollRef.current.scrollTo({ x: targetOffset, animated: true });
+      }
+    }, 3000); // 3s interval
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Horizontal auto-scroll interval for the top action cards
+  useEffect(() => {
+    let currentIndex = 0;
+    const totalCards = 4;
+    const interval = setInterval(() => {
+      if (actionCardsScrollRef.current) {
+        currentIndex = (currentIndex + 1) % totalCards;
+        const cardSize = Platform.OS === 'ios' ? 104 : 84;
+        const gap = 10; // Exactly 10px spacing from card marginHorizontal: 5
+        const targetOffset = currentIndex * (cardSize + gap);
+        actionCardsScrollRef.current.scrollTo({ x: targetOffset, animated: true });
+      }
+    }, 3000); // dynamic 3s interval
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (user?.id) {
@@ -267,12 +441,14 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [setUnreadCount]);
 
-  const handleNotificationPress = () => {
+  const handleNotificationPress = async () => {
+    try {
+      await markAllNotificationsRead();
+      setUnreadCount(0);
+    } catch (err) {
+      console.log('Failed to mark notifications as read:', err);
+    }
     router.push('/notifications');
-    setUnreadCount(0);
-    markAllNotificationsRead().catch((err) => {
-      console.log('Failed to mark notifications as read in background:', err);
-    });
   };
 
   const [loadingHashtags, setLoadingHashtags] = useState(false);
@@ -521,20 +697,6 @@ export default function HomeScreen() {
     loadHomeRequests();
   }, [loadHomeRequests]);
 
-  const onRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        loadFeedPosts(0, false),
-        loadHomeRequests(),
-      ]);
-    } catch (error) {
-      console.warn('Failed to refresh home feed:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [loadFeedPosts, loadHomeRequests]);
-
   const normalizeRequestText = (request: any) =>
     `${request?.title || ''} ${request?.description || ''} ${request?.support_needed || ''}`.toLowerCase();
 
@@ -635,30 +797,73 @@ export default function HomeScreen() {
     }
   };
 
-  const handleLikePost = useCallback(async (post: any) => {
+  const handleLikePost = useCallback((post: any) => {
     const postId = post?.id;
     if (!postId) return;
+    
+    // 1. Calculate the new toggled state
     const liked = !!post?.liked_by_me;
+    const newLikedState = !liked;
     const currentLikes = Number(post?.likes_count || 0);
+    
+    // 2. Perform optimistic UI update instantly
     const optimisticPost = {
       ...post,
-      liked_by_me: !liked,
-      likes_count: liked ? Math.max(0, currentLikes - 1) : currentLikes + 1,
+      liked_by_me: newLikedState,
+      likes_count: newLikedState ? currentLikes + 1 : Math.max(0, currentLikes - 1),
     };
-
     setFeedPosts((prev) => prev.map((item) => (item.id === postId ? optimisticPost : item)));
 
-    try {
-      const response = await togglePostLike(postId);
-      const updatedPost = response.data?.post;
-      if (updatedPost) {
-        setFeedPosts((prev) => prev.map((item) => (item.id === postId ? { ...item, ...updatedPost } : item)));
-      }
-    } catch (error) {
-      console.warn('Failed to like/unlike post:', error);
-      setFeedPosts((prev) => prev.map((item) => (item.id === postId ? post : item)));
-      alert('Could not update like. Please check your network.');
+    // 3. Track original server state if not already tracking
+    if (originalLikeStateRefs.current[postId] === undefined) {
+      originalLikeStateRefs.current[postId] = liked;
     }
+
+    // 4. Clear any existing timeout for this post
+    if (likeDebounceRefs.current[postId]) {
+      clearTimeout(likeDebounceRefs.current[postId]);
+    }
+
+    // 5. Set a new debounce timeout of 500ms
+    likeDebounceRefs.current[postId] = setTimeout(async () => {
+      const originalState = originalLikeStateRefs.current[postId];
+      // Cleanup tracking for this post
+      delete likeDebounceRefs.current[postId];
+      delete originalLikeStateRefs.current[postId];
+
+      // If final state equals original state, skip server update!
+      if (newLikedState === originalState) {
+        return;
+      }
+
+      // Otherwise, send the API call to toggle on the server
+      try {
+        const response = await togglePostLike(postId);
+        const updatedPost = response.data?.post;
+        if (updatedPost) {
+          setFeedPosts((prev) => 
+            prev.map((item) => (item.id === postId ? { ...item, ...updatedPost } : item))
+          );
+        }
+      } catch (error) {
+        console.warn('Failed to like/unlike post:', error);
+        // Rollback to original state on failure
+        setFeedPosts((prev) =>
+          prev.map((item) =>
+            item.id === postId
+              ? {
+                  ...item,
+                  liked_by_me: originalState,
+                  likes_count: originalState
+                    ? (item.liked_by_me ? item.likes_count : item.likes_count + 1)
+                    : (item.liked_by_me ? Math.max(0, item.likes_count - 1) : item.likes_count),
+                }
+              : item
+          )
+        );
+        alert('Could not update like. Please check your network.');
+      }
+    }, 500);
   }, []);
 
   const handleOpenComment = useCallback(async (post: any) => {
@@ -917,7 +1122,6 @@ export default function HomeScreen() {
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            overScrollMode="never"
             contentContainerStyle={[
               styles.content,
               {
@@ -931,14 +1135,6 @@ export default function HomeScreen() {
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={onRefresh}
-                colors={['#FF6600']}
-                tintColor="#FF6600"
-              />
-            }
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
@@ -1078,7 +1274,6 @@ export default function HomeScreen() {
                       </View>
                       <ScrollView
                         horizontal
-                        overScrollMode="never"
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.recentSearchList}
                       >
@@ -1101,7 +1296,14 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.topFeatureRow}>
-                  <ScrollView horizontal overScrollMode="never" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}>
+                  <ScrollView
+                    ref={topFeaturesScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    snapToInterval={131}
+                    decelerationRate="fast"
+                    contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
+                  >
                     {quickAccess.map((item, idx) => {
                       let cardBg = '#FFFFFF';
                       let iconBg = '#FF8A3D';
@@ -1117,16 +1319,43 @@ export default function HomeScreen() {
                       }
 
                       return (
-                        <TouchableOpacity
+                         <TouchableOpacity
                           key={idx}
-                          style={[styles.featureCard, { backgroundColor: cardBg }]}
+                          style={[styles.featureCard, { backgroundColor: item.label === 'SOS' ? '#FFF' : 'transparent', overflow: 'hidden' }]}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
+                            else if (item.label === 'Kundli') router.push('/kundli');
+                            else if (item.label === 'Matchmaking') router.push('/matchmaking');
                           }}
                         >
+                          {item.label === 'My Krishna' && (
+                            <Image 
+                              source={require('../../assets/images/peacock_feather_icon.png')} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                            />
+                          )}
+                          {item.label === 'Panchang' && (
+                            <Image 
+                              source={require('../../assets/images/panchang_calendar_icon.png')} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                            />
+                          )}
+                          {item.label === 'Kundli' && (
+                            <Image 
+                              source={require('../../assets/images/kundli_chart_icon.png')} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                            />
+                          )}
+                          {item.label === 'Matchmaking' && (
+                            <Image 
+                              source={require('../../assets/images/matchmaking_icon.png')} 
+                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
+                            />
+                          )}
+
                           {item.label === 'SOS' ? (
                             <View style={styles.featureIconWrap}>
                               <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
@@ -1134,18 +1363,25 @@ export default function HomeScreen() {
                               </View>
                             </View>
                           ) : (
-                            <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
-                              {item.label === 'My Krishna' ? (
-                                <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>ॐ</Text>
-                              ) : (
-                                <Ionicons name="calendar" size={14} color="#FFF" />
-                              )}
-                            </View>
+                            <View style={{ width: 24 }} />
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle} numberOfLines={1}>{item.label}</Text>
-                            <Text style={styles.featureSubtitle} numberOfLines={1}>
-                              {item.subtitle.replace('\n', ' ')}
+                            <Text style={styles.featureTitle} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
+                            <Text 
+                              style={[
+                                styles.featureSubtitle, 
+                                {
+                                  color: '#000',
+                                  fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                                  fontStyle: 'normal',
+                                  fontWeight: '400',
+                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli' || item.label === 'Matchmaking') ? 7 : 6,
+                                }
+                              ]} 
+                              numberOfLines={2} 
+                              adjustsFontSizeToFit
+                            >
+                               {item.subtitle.replace('\n', ' ')}
                             </Text>
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
@@ -1159,7 +1395,7 @@ export default function HomeScreen() {
               <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push('/live-jaap-welcome')}>
                 <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                   {/* Cinematic Left-to-Right Horizontal Black Shade Layer */}
-                  <LinearGradient 
+                  <LinearGradient
                     colors={['rgba(0,0,0,0.95)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)', 'transparent']}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 0.8, y: 0.5 }}
@@ -1185,8 +1421,8 @@ export default function HomeScreen() {
                       </View>
 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <TouchableOpacity style={styles.joinJaapButton} onPress={() => router.push('/live-jaap-welcome')}>
-                          <Ionicons name="stats-chart" size={16} color="#FFF" style={{ transform: [{ rotate: '90deg' }] }} />
+                        <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push('/live-jaap-welcome')}>
+                          <Ionicons name="volume-medium" size={16} color="#FFF" />
                           <Text style={styles.joinJaapText}>Join Live Jaap</Text>
                           <Ionicons name="chevron-forward" size={18} color="#FFF" />
                         </TouchableOpacity>
@@ -1204,11 +1440,16 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <ScrollView
+                ref={actionCardsScrollRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.actionCardsScroll}
+                nestedScrollEnabled={true}
+                snapToInterval={Platform.OS === 'ios' ? 114 : 94}
+                decelerationRate="fast"
+                contentContainerStyle={[styles.actionCardsScroll, { paddingTop: 14 }]}
                 style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
+<<<<<<< HEAD
                 {/* Community Help Requests */}
                 <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
                   <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
@@ -1229,46 +1470,92 @@ export default function HomeScreen() {
                     <Ionicons name="chevron-forward" size={10} color="#E53935" style={{ marginLeft: 2 }} />
                   </TouchableOpacity>
                 </LinearGradient>
+=======
+                {/* Urgent Blood Request */}
+                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/blood_card_bg_real.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFD6D6', overflow: 'hidden' }]}
+                    imageStyle={{ borderRadius: 15 }}
+                  >
+                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                      <View style={styles.cardIconRow}>
+                        <Image source={require('../../assets/images/user_uploaded_blood_drop.png')} style={{ width: 28, height: 28, resizeMode: 'contain' }} />
+                      </View>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
+                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>{bloodRequest ? formatRequestLocation(bloodRequest) : 'XYZ Hospital, Mumbai'}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      onPress={() => {
+                        if (bloodRequest) {
+                          router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
+                        } else {
+                          setRequestType('Blood');
+                          setShowRequestModal(true);
+                        }
+                      }}
+                    >
+                      <Text style={{ color: '#FF0022', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                    </TouchableOpacity>
+                  </ImageBackground>
+                  {/* Badge rendered as sibling outside ImageBackground to prevent any iOS clipping */}
+                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                    <View style={{ width: 70, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
+                      <Text style={{ color: '#FF0000', fontSize: 6.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
+                    </View>
+                  </View>
+                </View>
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
 
                 {/* Register Business */}
-                <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFCC00', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#FF9500' }]}>Free</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon/homeicon/Free.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7' }]}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                      <View style={styles.cardIconRow}>
+                        <ShopIcon />
+                      </View>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Register Your Business</Text>
+                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>Become a verified sanatan vendor</Text>
                     </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Register Your Business</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Become a verified sanatan vendor</Text>
+                    <TouchableOpacity
+                      style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      onPress={() => router.push('/vendor/business-details')}
+                    >
+                      <Text style={{ color: '#FF9500', fontSize: 7.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Register Now</Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
+                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                    <View style={{ width: 42, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
+                      <Text style={{ color: '#FF9500', fontSize: 7.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Free</Text>
+                    </View>
                   </View>
-                  <TouchableOpacity
-                    style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
-                    onPress={() => router.push('/vendor/business-details')}
-                  >
-                    <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#FF9500" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
+                </View>
 
                 {/* Verified Vendor */}
-                <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#00C781' }]}>Verified vendor</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon/homeicon/Vendor.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC' }]}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                      <View style={styles.cardIconRow}>
+                        <LotusIcon />
+                      </View>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Sai Flower Decorator</Text>
+                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>Specialised in festival flower decor, Mumbai</Text>
                     </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Sai Flower Decorator</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Specialised in festival flower decor</Text>
+                    <TouchableOpacity style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
+                      <Text style={{ color: '#00C781', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
+                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                    <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Verified vendor</Text>
+                    </View>
                   </View>
-                  <TouchableOpacity style={[styles.cardButtonOutlineTeal, { backgroundColor: '#B7E4C7', borderColor: '#00C781', borderWidth: 1 }]}>
-                    <Text style={[styles.cardButtonTextDark, { color: '#00C781' }]}>View</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#00C781" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
+                </View>
 
+<<<<<<< HEAD
                 {/* Live Aarti / Temple */}
                 <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
                   <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
@@ -1277,13 +1564,34 @@ export default function HomeScreen() {
                   <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                     <View style={styles.cardIconRow}>
                       <Image source={require('../../assets/icons/horoicon/homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+=======
+                {/* Live Aarti */}
+                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10, paddingHorizontal: 4 }]}>
+                      <View style={styles.cardIconRow}>
+                        <TempleIcon />
+                      </View>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
+                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center', marginTop: 3 }]} numberOfLines={4} adjustsFontSizeToFit>
+                        <Ionicons name="notifications-outline" size={7.5} color="#5A5A5A" /> Notify me for the upcoming events
+                      </Text>
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
                     </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Live Kedarnath Aarti</Text>
-                    <View style={[styles.cardNotifyRow, { justifyContent: 'center' }]}>
-                      <Ionicons name="notifications-outline" size={12} color="#333" />
-                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Notify me</Text>
+                    <TouchableOpacity
+                      style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      onPress={() => router.push('/live-mantra')}
+                    >
+                      <Text style={{ color: '#8C36DB', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
+                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Temple</Text>
                     </View>
                   </View>
+<<<<<<< HEAD
                   <TouchableOpacity
                     style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
                     onPress={() => router.push({
@@ -1298,6 +1606,9 @@ export default function HomeScreen() {
                     <Ionicons name="chevron-forward" size={10} color="#8C36DB" style={{ marginLeft: 2 }} />
                   </TouchableOpacity>
                 </LinearGradient>
+=======
+                </View>
+>>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
               </ScrollView>
 
               <View style={styles.twoButtonsRow}>
@@ -1320,13 +1631,49 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <View style={styles.miniCardIconBox}>
-                        <Ionicons name="location" size={20} color="#8C36DB" />
-                      </View>
+                      <Image source={require('../../assets/images/mumbai_pin.png')} style={{ width: 36, height: 36, borderRadius: 8, marginRight: 8 }} />
                       <View style={styles.miniCardContent}>
-                        <Text style={styles.miniCardType}>CITY COMMUNITY</Text>
-                        <Text style={styles.miniCardTitle} numberOfLines={1}>{mumbaiComm?.name || 'Mumbai Community'}</Text>
-                        <Text style={styles.miniCardMembers}>{mumbaiComm?.member_count?.toLocaleString() || '12K'} members</Text>
+                        <Text
+                          style={[
+                            styles.miniCardType,
+                            {
+                              color: '#9F45FF',
+                              fontSize: 7,
+                              fontWeight: '510' as any,
+                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                              letterSpacing: 0,
+                            }
+                          ]}
+                        >
+                          CITY COMMUNITY
+                        </Text>
+                        <Text
+                          style={[
+                            styles.miniCardTitle,
+                            {
+                              color: '#000',
+                              fontSize: 9,
+                              fontWeight: '590' as any,
+                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                            }
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {mumbaiComm?.name || 'Mumbai Community'}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.miniCardMembers,
+                            {
+                              color: '#000',
+                              fontSize: 7,
+                              fontWeight: '400',
+                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                            }
+                          ]}
+                        >
+                          13 members
+                        </Text>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                     </TouchableOpacity>
@@ -1352,12 +1699,37 @@ export default function HomeScreen() {
                       }}
                     >
                       <View style={styles.miniCardImageBox}>
-                        <Image source={{ uri: 'https://images.unsplash.com/photo-1591604466107-ec97de577aff?w=200' }} style={styles.miniCardCircleImg} />
+                        <Image source={require('../../assets/images/food_sharing.png')} style={styles.miniCardCircleImg} />
                       </View>
                       <View style={styles.miniCardContent}>
-                        <Text style={styles.miniCardTitle} numberOfLines={1}>{localComm?.name || 'Local Community'}</Text>
+                        <Text
+                          style={[
+                            styles.miniCardTitle,
+                            {
+                              color: '#000',
+                              fontSize: 9,
+                              fontWeight: '590' as any,
+                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                            }
+                          ]}
+                          numberOfLines={1}
+                        >
+                          Pune Food Sharing Group
+                        </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text style={styles.miniCardMembers}>{localComm?.member_count?.toLocaleString() || '235'} members</Text>
+                          <Text
+                            style={[
+                              styles.miniCardMembers,
+                              {
+                                color: '#000',
+                                fontSize: 7,
+                                fontWeight: '400',
+                                fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                              }
+                            ]}
+                          >
+                            236 members
+                          </Text>
                           <View style={styles.sevaBadgeMini}>
                             <Text style={styles.sevaBadgeTextMini}>Seva</Text>
                           </View>
@@ -1367,12 +1739,6 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   );
                 })()}
-              </View>
-
-              <View style={styles.dots}>
-                <View style={styles.dot} />
-                <View style={styles.activeDot} />
-                <View style={styles.dot} />
               </View>
             </View>
 
@@ -1818,22 +2184,24 @@ const styles = StyleSheet.create({
   },
   topFeatureRow: {
     flexDirection: 'row',
-    marginBottom: 20,
+    marginBottom: 10,
     gap: 8,
     marginHorizontal: -PAGE_PADDING,
   },
   featureCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.10)',
     borderRadius: 15,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-    width: 113,
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 3,
+    width: 121,
     height: 70,
   },
   featureIconWrap: {
@@ -1874,11 +2242,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   featureTitle: {
-    fontFamily: 'Outfit_700Bold',
-    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 9,
     fontWeight: '700',
     color: '#000',
-    maxWidth: 70,
   },
   featureSubtitle: {
     fontFamily: 'Inter_500Medium',
@@ -1893,7 +2260,7 @@ const styles = StyleSheet.create({
     height: 235,
     borderRadius: 15,
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: 5,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -2078,16 +2445,18 @@ const styles = StyleSheet.create({
   },
   cardTitleLargeDark: {
     color: '#111111',
-    fontSize: 12,
+    fontSize: Platform.OS === 'ios' ? 10 : 8,
     fontWeight: '800',
-    maxWidth: Platform.OS === 'ios' ? 95 : 75,
+    maxWidth: '100%',
     marginBottom: 4,
+    lineHeight: Platform.OS === 'ios' ? 12 : 10.5,
   },
   cardSubtitleSmallDark: {
     color: '#5A5A5A',
-    fontSize: 9,
+    fontSize: Platform.OS === 'ios' ? 8.2 : 6.8,
     fontWeight: '600',
-    maxWidth: Platform.OS === 'ios' ? 90 : 70,
+    maxWidth: '100%',
+    lineHeight: Platform.OS === 'ios' ? 10 : 8.5,
   },
   cardLocationText: {
     color: '#666',
@@ -2275,17 +2644,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   sevaBadgeMini: {
-    borderWidth: 0.8,
-    borderColor: '#4CAF50',
-    borderRadius: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    width: 30,
+    height: 15,
+    borderRadius: 7.5,
+    borderWidth: 1,
+    borderColor: '#365F35',
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sevaBadgeTextMini: {
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontSize: 7,
-    fontWeight: '800',
-    color: '#4CAF50',
+    fontWeight: '590' as any,
+    color: '#397339',
   },
   stickyFeedTabsShell: {
     backgroundColor: '#FFF',

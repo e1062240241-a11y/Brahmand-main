@@ -68,7 +68,7 @@ export default function GauSevaRequestScreen() {
           const response = await forwardGeocode(location);
           setLocationSuggestions(response.data || []);
         } catch (error) {
-          console.error('Location search failed', error);
+          console.warn('Location search failed', error);
         } finally {
           setIsSearchingLocation(false);
         }

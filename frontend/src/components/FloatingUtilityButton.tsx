@@ -49,6 +49,7 @@ import { SOSFlowModal } from './SOSFlowModal';
 import { SOSResponderModal } from './SOSResponderModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const MENU_SIZE = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT) * 0.85;
 
 // Chapter and verses count for Bhagavad Gita (18 chapters)
 const CHAPTER_VERSES = [47, 72, 43, 42, 42, 29, 30, 28, 34, 42, 55, 20, 35, 27, 20, 24, 28, 20];
@@ -754,14 +755,7 @@ export const FloatingUtilityButton = () => {
             { transform: [{ scale: menuScale }, { translateY: menuScale.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] }
           ]}
         >
-          {/* Top-Right Close Button for Hub Wheel */}
-          <TouchableOpacity 
-            style={styles.hubCloseBtn} 
-            onPress={closeUtilityModal}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="close" size={20} color="#FFF" />
-          </TouchableOpacity>
+
 
           <View style={styles.hubContainer}>
             {/* Outer Circle Ring */}
@@ -1044,11 +1038,7 @@ const styles = StyleSheet.create({
   glassBackgroundClose: { backgroundColor: '#FF3B30' },
   redDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#E53935' },
   modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -1060,20 +1050,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  hubCloseBtn: {
-    position: 'absolute',
-    top: -45,
-    right: 15,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 101,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
+
   modalContent: {
     width: '100%',
     height: '100%',
@@ -1081,8 +1058,8 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   hubContainer: {
-    width: SCREEN_WIDTH * 0.88,
-    height: SCREEN_WIDTH * 0.88,
+    width: MENU_SIZE,
+    height: MENU_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1090,7 +1067,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
-    borderRadius: SCREEN_WIDTH * 0.47,
+    borderRadius: MENU_SIZE * 0.5,
     borderWidth: 8,
     borderColor: 'rgba(255, 145, 0, 0.4)',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -1098,7 +1075,7 @@ const styles = StyleSheet.create({
   mainMenuCircle: {
     width: '98%',
     height: '98%',
-    borderRadius: SCREEN_WIDTH * 0.46,
+    borderRadius: MENU_SIZE * 0.49,
     backgroundColor: 'rgba(255, 248, 225, 0.85)',
     borderWidth: 1.5,
     borderColor: '#FFD54F',
@@ -1110,7 +1087,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '62%',
     height: '62%',
-    borderRadius: SCREEN_WIDTH * 0.3,
+    borderRadius: MENU_SIZE * 0.31,
     borderWidth: 1.5,
     borderColor: '#FFD54F',
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
@@ -1437,7 +1414,7 @@ const styles = StyleSheet.create({
   centerGuruContainerSOS: { width: 80, height: 80, justifyContent: 'center', alignItems: 'center', marginVertical: 4 },
   guruImageWrapperSOS: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: '#FFD54F', backgroundColor: '#FFF8E1', overflow: 'hidden' },
   sosStatusCard: { 
-    width: SCREEN_WIDTH * 0.72, 
+    width: '82%', 
     backgroundColor: 'rgba(0,0,0,0.3)', 
     borderRadius: 20, 
     padding: 12, 

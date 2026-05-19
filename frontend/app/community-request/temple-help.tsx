@@ -69,7 +69,7 @@ export default function TempleHelpRequestScreen() {
           const response = await forwardGeocode(templeLocation);
           setLocationSuggestions(response.data || []);
         } catch (error) {
-          console.error('Location search failed', error);
+          console.warn('Location search failed', error);
         } finally {
           setIsSearchingLocation(false);
         }
