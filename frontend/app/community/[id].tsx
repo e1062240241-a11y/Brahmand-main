@@ -391,7 +391,6 @@ export default function CommunityDetailScreen() {
         }
       });
       
-<<<<<<< HEAD
       const allItems = Array.from(itemMap.values());
       
       // Step 1: Sort ascending by ID (or fallback) to chronological order to find consecutive thread messages
@@ -501,10 +500,6 @@ export default function CommunityDetailScreen() {
       });
       
       return sortedResult;
-=======
-      // Sort everything chronologically by exact timestamp (latest first)
-      return Array.from(itemMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
->>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
     }
     
     // For other tabs (like Lost & Found, Seva, Temple Updates), they do not show chat messages either
@@ -2037,7 +2032,6 @@ export default function CommunityDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
-<<<<<<< HEAD
   twitterPostBtn: {
     backgroundColor: '#1D9BF0',
     paddingHorizontal: 16,
@@ -2050,7 +2044,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: 14,
-=======
+  },
   recentRequestCard: {
     marginHorizontal: 20,
     marginTop: 20,
@@ -2135,7 +2129,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 11,
     fontWeight: '800',
->>>>>>> 3845706a95c3efed539ffbe7db44dda8b98d6051
   },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   headerContainer: { backgroundColor: '#FFF' },
