@@ -209,7 +209,6 @@ const quickAccess = [
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
   { label: 'Kundli', subtitle: 'Your Cosmic Blueprint', color: '#FFF', kundliIcon: true },
-  { label: 'Matchmaking', subtitle: 'Gun Milan', color: '#FFF', matchmakingIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -263,7 +262,7 @@ export default function HomeScreen() {
   // Horizontal auto-scroll interval for the top quickAccess cards (Panchang, My Krishna, SOS)
   useEffect(() => {
     let currentIndex = 0;
-    const totalCards = 5;
+    const totalCards = 4;
     const interval = setInterval(() => {
       if (topFeaturesScrollRef.current) {
         currentIndex = (currentIndex + 1) % totalCards;
@@ -625,8 +624,6 @@ export default function HomeScreen() {
     let maxVisible = 0;
     const viewportTop = y;
     const viewportBottom = y + SCREEN_HEIGHT;
-    const viewportCenter = viewportTop + SCREEN_HEIGHT / 2;
-    let closestDistance = Number.POSITIVE_INFINITY;
 
     for (const key of feedPostKeys) {
       const offset = postOffsets[key];
@@ -637,21 +634,14 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        const visibleRatio = height > 0 ? visibleAmount / height : 0;
-        const postCenter = postAbsoluteTop + height / 2;
-        const centerDistance = Math.abs(postCenter - viewportCenter);
-
-        // Autoplay if the post is at least 50% visible or covers half of screen height
-        if (visibleRatio >= 0.5 || visibleAmount >= SCREEN_HEIGHT * 0.5) {
-          if (centerDistance < closestDistance) {
-            closestDistance = centerDistance;
-            maxVisible = visibleAmount;
-            closestKey = key;
-          }
+        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
+        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
+          maxVisible = visibleAmount;
+          closestKey = key;
         }
       }
     }
-    setActivePostKey(closestKey); // If none reaches 50%, none are active.
+    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
 
     // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
@@ -1330,49 +1320,37 @@ export default function HomeScreen() {
                       return (
                          <TouchableOpacity
                           key={idx}
-                          style={[styles.featureCard, { backgroundColor: item.label === 'SOS' ? '#FFF' : 'transparent', overflow: 'hidden' }]}
+                          style={[styles.featureCard, { backgroundColor: '#FFF' }]}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
                             else if (item.label === 'Kundli') router.push('/kundli');
-                            else if (item.label === 'Matchmaking') router.push('/matchmaking');
                           }}
                         >
-                          {item.label === 'My Krishna' && (
-                            <Image 
-                              source={require('../../assets/images/peacock_feather_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
-                            />
-                          )}
-                          {item.label === 'Panchang' && (
-                            <Image 
-                              source={require('../../assets/images/panchang_calendar_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
-                            />
-                          )}
-                          {item.label === 'Kundli' && (
-                            <Image 
-                              source={require('../../assets/images/kundli_chart_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
-                            />
-                          )}
-                          {item.label === 'Matchmaking' && (
-                            <Image 
-                              source={require('../../assets/images/matchmaking_icon.png')} 
-                              style={{ position: 'absolute', top: 0, left: 0, width: 121, height: 70, resizeMode: 'cover', zIndex: -1 }} 
-                            />
-                          )}
-
                           {item.label === 'SOS' ? (
                             <View style={styles.featureIconWrap}>
                               <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
                                 <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
                               </View>
                             </View>
+                          ) : item.label === 'My Krishna' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
+                          ) : item.label === 'Panchang' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
+                          ) : item.label === 'Kundli' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/kundli_chart_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
                           ) : (
-                            <View style={{ width: 24 }} />
+                            <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                              <Ionicons name="calendar" size={14} color="#FFF" />
+                            </View>
                           )}
                           <View style={styles.featureTextContainer}>
                             <Text style={styles.featureTitle} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
@@ -1384,7 +1362,7 @@ export default function HomeScreen() {
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
-                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli' || item.label === 'Matchmaking') ? 7 : 6,
+                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli') ? 7 : 6,
                                 }
                               ]} 
                               numberOfLines={2} 
@@ -1458,26 +1436,41 @@ export default function HomeScreen() {
                 contentContainerStyle={[styles.actionCardsScroll, { paddingTop: 14 }]}
                 style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
-                {/* Community Help Requests */}
-                <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgeYellow, { borderColor: '#FFBABA', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#E53935' }]}>Your community</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon/homeicon/Blood.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                    </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Blood Request</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Blood, Emergency, Food</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.cardButtonOutline, { backgroundColor: '#FFEBEE', borderColor: '#E53935' }]}
-                    onPress={() => router.push('/community-request/list')}
+                {/* Urgent Blood Request */}
+                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/blood_card_bg_real.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFD6D6', overflow: 'hidden' }]}
+                    imageStyle={{ borderRadius: 15 }}
                   >
-                    <Text style={[styles.cardButtonTextDark, { color: '#E53935' }]}>View</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#E53935" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
+                      <View style={styles.cardIconRow}>
+                        <Image source={require('../../assets/images/user_uploaded_blood_drop.png')} style={{ width: 28, height: 28, resizeMode: 'contain' }} />
+                      </View>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
+                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>{bloodRequest ? formatRequestLocation(bloodRequest) : 'XYZ Hospital, Mumbai'}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      onPress={() => {
+                        if (bloodRequest) {
+                          router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
+                        } else {
+                          setRequestType('Blood');
+                          setShowRequestModal(true);
+                        }
+                      }}
+                    >
+                      <Text style={{ color: '#FF0022', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                    </TouchableOpacity>
+                  </ImageBackground>
+                  {/* Badge rendered as sibling outside ImageBackground to prevent any iOS clipping */}
+                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                    <View style={{ width: 70, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
+                      <Text style={{ color: '#FF0000', fontSize: 6.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
+                    </View>
+                  </View>
+                </View>
 
                 {/* Register Business */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
@@ -1526,33 +1519,32 @@ export default function HomeScreen() {
                   </View>
                 </View>
 
-                {/* Live Aarti / Temple */}
-                <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={styles.actionCard}>
-                  <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', position: 'absolute', top: -12, alignSelf: 'center' }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB' }]}>Temple</Text>
-                  </View>
-                  <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                    <View style={styles.cardIconRow}>
-                      <Image source={require('../../assets/icons/horoicon/homeicon/Temple.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                {/* Live Aarti */}
+                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10, paddingHorizontal: 4 }]}>
+                      <View style={styles.cardIconRow}>
+                        <TempleIcon />
+                      </View>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
+                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center', marginTop: 3 }]} numberOfLines={4} adjustsFontSizeToFit>
+                        <Ionicons name="notifications-outline" size={7.5} color="#5A5A5A" /> Notify me for the upcoming events
+                      </Text>
                     </View>
-                    <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={2}>Live Aarti</Text>
-                    <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={1}>Kedarnath, Badrinath</Text>
+                    <TouchableOpacity
+                      style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      onPress={() => router.push('/live-mantra')}
+                    >
+                      <Text style={{ color: '#8C36DB', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
+                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Temple</Text>
+                    </View>
                   </View>
-                  <TouchableOpacity
-                    style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
-                    onPress={() => router.push({
-                      pathname: '/live-jaap-welcome',
-                      params: {
-                        mantraType: 'kedarnath',
-                        title: 'Kedarnath Aarti'
-                      }
-                    })}
-                  >
-                    <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch</Text>
-                    <Ionicons name="chevron-forward" size={10} color="#8C36DB" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </LinearGradient>
-
+                </View>
               </ScrollView>
 
               <View style={styles.twoButtonsRow}>
@@ -3190,70 +3182,5 @@ const styles = StyleSheet.create({
   },
   modalBackgroundDismiss: {
     ...StyleSheet.absoluteFillObject,
-  },
-  liveDualContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: Math.min(375, SCREEN_WIDTH - 2 * PAGE_PADDING),
-    alignSelf: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  liveHalfCard: {
-    flex: 1,
-    height: 195,
-    borderRadius: 15,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  liveHalfContent: {
-    flex: 1,
-    padding: 12,
-    justifyContent: 'space-between',
-  },
-  liveHalfHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  liveHalfBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  liveHalfTitle: {
-    fontFamily: 'Outfit_700Bold',
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#FFF',
-    lineHeight: 18,
-    marginBottom: 4,
-  },
-  liveHalfSub: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 11,
-    color: '#DDD',
-    marginBottom: 8,
-  },
-  liveHalfButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF6A00',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    alignSelf: 'stretch',
-    gap: 4,
-  },
-  liveHalfButtonText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '900',
   },
 });
