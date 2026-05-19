@@ -404,6 +404,134 @@ async def _create_post_document(
     return post_doc
 
 
+def _extract_mention_handles(text: str) -> list[str]:
+    if not text:
+        return []
+    raw_matches = re.findall(r'@([A-Za-z0-9_+]+)', text)
+    normalized = []
+    for match in raw_matches:
+        handle = match.strip()
+        if handle and handle not in normalized:
+            normalized.append(handle)
+    return normalized
+
+async def _find_user_by_mention_key(db: FirestoreDB, key: str) -> Optional[Dict[str, Any]]:
+    if not key:
+        return None
+    if re.fullmatch(r'\+?\d+', key):
+        return await db.get_user_by_phone(key)
+    return await db.get_user_by_sl_id(key)
+
+async def _notify_mentioned_users(
+    db: FirestoreDB,
+    text: str,
+    actor_user: dict,
+    context_type: str,
+    context_data: dict,
+    skip_user_ids: list[str] | None = None,
+) -> list[str]:
+    if not text or not actor_user:
+        return []
+
+    mention_keys = _extract_mention_handles(text)
+    if not mention_keys:
+        return []
+
+    notified_user_ids: list[str] = []
+    actor_name = actor_user.get('name') or actor_user.get('sl_id') or 'Someone'
+    actor_id = actor_user.get('id')
+    if not actor_id:
+        return []
+
+    for mention_key in mention_keys:
+        target_user = await _find_user_by_mention_key(db, mention_key)
+        if not target_user:
+            continue
+        target_user_id = target_user.get('id')
+        if not target_user_id or target_user_id == actor_id:
+            continue
+        if skip_user_ids and target_user_id in skip_user_ids:
+            continue
+        if target_user_id in notified_user_ids:
+            continue
+
+        if context_type == 'post_caption':
+            title = 'You were mentioned in a post'
+            body = f'{actor_name} mentioned you in a post.'
+            notification_data = {
+                'post_id': str(context_data.get('post_id')),
+                'actor_user_id': str(actor_id),
+                'actor_name': actor_name,
+                'action': 'mention',
+                'context': 'post_caption',
+            }
+        elif context_type == 'community_message':
+            title = 'You were mentioned in a community chat'
+            body = f'{actor_name} mentioned you in a community conversation.'
+            notification_data = {
+                'community_id': str(context_data.get('community_id')),
+                'subgroup_type': str(context_data.get('subgroup_type')),
+                'message_id': str(context_data.get('message_id')),
+                'actor_user_id': str(actor_id),
+                'actor_name': actor_name,
+                'action': 'mention',
+                'context': 'community_message',
+            }
+        elif context_type == 'circle_message':
+            title = 'You were mentioned in a circle chat'
+            body = f'{actor_name} mentioned you in a circle conversation.'
+            notification_data = {
+                'circle_id': str(context_data.get('circle_id')),
+                'message_id': str(context_data.get('message_id')),
+                'actor_user_id': str(actor_id),
+                'actor_name': actor_name,
+                'action': 'mention',
+                'context': 'circle_message',
+            }
+        else:
+            title = 'You were mentioned in a comment'
+            body = f'{actor_name} mentioned you in a comment.'
+            notification_data = {
+                'post_id': str(context_data.get('post_id')),
+                'comment_id': str(context_data.get('comment_id')),
+                'actor_user_id': str(actor_id),
+                'actor_name': actor_name,
+                'action': 'mention',
+                'context': 'comment',
+            }
+
+        try:
+            await db.create_document('notifications', {
+                'user_id': target_user_id,
+                'title': title,
+                'body': body,
+                'notification_type': 'social',
+                'data': notification_data,
+                'is_read': False,
+            })
+            logger.info('Mention notification created for %s by %s', target_user_id, actor_id)
+
+            target_token = await push_service.get_user_fcm_token(target_user_id)
+            if target_token:
+                push_service.send_notification(
+                    token=target_token,
+                    title=title,
+                    body=body,
+                    data={
+                        'type': 'mention',
+                        **notification_data,
+                    },
+                    channel_id='messages',
+                )
+                logger.info('Mention push sent to %s', target_user_id)
+        except Exception as err:
+            logger.warning('Failed to create mention notification for %s: %s', target_user_id, err)
+
+        notified_user_ids.append(target_user_id)
+
+    return notified_user_ids
+
+
 async def _delete_post_with_dependencies(db: FirestoreDB, post_id: str) -> dict:
     post = await db.get_document('posts', post_id)
     if not post:
@@ -2051,7 +2179,7 @@ async def upload_post(
             'thumbnail_url': thumbnail_url,
         }
 
-    return await _create_post_document(
+    post_doc = await _create_post_document(
         db=db,
         user_id=user_id,
         user=user,
@@ -2064,6 +2192,19 @@ async def upload_post(
         filter_name=filter_name,
         metadata=video_metadata,
     )
+
+    try:
+        await _notify_mentioned_users(
+            db=db,
+            text=caption,
+            actor_user=user,
+            context_type='post_caption',
+            context_data={'post_id': post_doc.get('id')},
+        )
+    except Exception as mention_err:
+        logger.warning('Post mention notification failed for %s: %s', post_doc.get('id'), mention_err)
+
+    return post_doc
 
 
 @api_router.post('/media/upload')
@@ -2198,6 +2339,17 @@ async def upload_post_from_storage(
                 'duration_seconds': duration_seconds,
             },
         )
+
+        try:
+            await _notify_mentioned_users(
+                db=db,
+                text=caption,
+                actor_user=user,
+                context_type='post_caption',
+                context_data={'post_id': post_doc.get('id')},
+            )
+        except Exception as mention_err:
+            logger.warning('Post mention notification failed for %s: %s', post_doc.get('id'), mention_err)
 
         try:
             raw_blob.delete()
@@ -2934,6 +3086,18 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
                 logger.info(f"Comment notification created for post {post_id} but no FCM token found for owner {post_owner_id}")
         except Exception as notify_err:
             logger.warning(f"Post comment notification failed for post {post_id}: {notify_err}")
+
+    try:
+        await _notify_mentioned_users(
+            db=db,
+            text=text,
+            actor_user=user,
+            context_type='comment',
+            context_data={'post_id': post_id, 'comment_id': comment_id},
+            skip_user_ids=[post_owner_id] if post_owner_id else None,
+        )
+    except Exception as mention_err:
+        logger.warning('Comment mention notification failed for post %s: %s', post_id, mention_err)
 
     return {
         'message': 'Comment added',
@@ -4090,6 +4254,22 @@ async def send_community_message(
         response_data['media_url'] = message.media_url
     if message.category:
         response_data['category'] = message.category
+
+    # Notify mentioned users in this community message
+    try:
+        await _notify_mentioned_users(
+            db=db,
+            text=message.content,
+            actor_user=user,
+            context_type='community_message',
+            context_data={
+                'community_id': community_id,
+                'subgroup_type': subgroup_type,
+                'message_id': msg_id,
+            },
+        )
+    except Exception as mention_err:
+        logger.warning('Community message mention notification failed for %s: %s', msg_id, mention_err)
     
     # Emit via Socket.IO
     await sio.emit('new_message', response_data, room=chat_id)
@@ -5225,6 +5405,21 @@ async def send_circle_message(
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat()
     }
+
+    # Notify mentioned users in this circle message
+    try:
+        await _notify_mentioned_users(
+            db=db,
+            text=message.content,
+            actor_user=user,
+            context_type='circle_message',
+            context_data={
+                'circle_id': circle_id,
+                'message_id': msg_id,
+            },
+        )
+    except Exception as mention_err:
+        logger.warning('Circle message mention notification failed for %s: %s', msg_id, mention_err)
     
     # Emit via Socket.IO
     await sio.emit('new_message', response_data, room=chat_id)

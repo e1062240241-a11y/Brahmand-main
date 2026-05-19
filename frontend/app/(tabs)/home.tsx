@@ -54,6 +54,7 @@ import {
   getUnreadNotificationCount,
   markAllNotificationsRead,
   reverseGeocode,
+  markPostAsSeen,
 } from '../../src/services/api';
 import * as Location from 'expo-location';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
@@ -75,9 +76,9 @@ try {
 }
 
 const quickAccess = [
-  { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
-  { label: 'SOS', subtitle: 'Sanatan People Around You', color: '#FFF', urgent: true },
-  { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
+  { label: 'My Krishna', subtitle: 'Dharma AI', color: '#FFF' },
+  { label: 'SOS', subtitle: 'Emergency', color: '#FFF', urgent: true },
+  { label: 'Panchang', subtitle: 'Calendar', color: '#FFF', calendarIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -152,28 +153,9 @@ export default function HomeScreen() {
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || activeTab;
-    let hasCachedData = false;
-
-    if (!append && offset === 0) {
-      try {
-        const cacheKey = `home_feed_cache_${tabToLoad}`;
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setFeedPosts(parsed);
-            setFeedOffset(parsed.length);
-            hasCachedData = true;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to parse home feed cache', e);
-      }
-    }
-
     if (append) {
       setLoadingMoreFeed(true);
-    } else if (!hasCachedData) {
+    } else {
       setLoadingFeed(true);
     }
 
@@ -199,15 +181,13 @@ export default function HomeScreen() {
       } else {
         setFeedPosts(incomingItems);
         setFeedOffset(incomingItems.length);
-        const cacheKey = `home_feed_cache_${tabToLoad}`;
-        AsyncStorage.setItem(cacheKey, JSON.stringify(incomingItems)).catch(() => { });
       }
       setHasMoreFeed(nextHasMore && incomingItems.length > 0);
     } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
       if (append) {
         setHasMoreFeed(false); // Stop trying to load more if it's failing
-      } else if (!hasCachedData) {
+      } else {
         setFeedPosts([]);
       }
     } finally {
@@ -452,6 +432,11 @@ export default function HomeScreen() {
     [feedPosts],
   );
 
+  useEffect(() => {
+    if (activePostKey && activePostKey.length > 10) {
+      markPostAsSeen(activePostKey);
+    }
+  }, [activePostKey]);
 
   const lastScrollTimeRef = useRef(0);
 
@@ -1093,7 +1078,7 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.topFeatureRow}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 16 }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}>
                     {quickAccess.map((item, idx) => {
                       let cardBg = '#FFFFFF';
                       let iconBg = '#FF8A3D';
@@ -1150,7 +1135,14 @@ export default function HomeScreen() {
 
               <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push('/live-jaap-welcome')}>
                 <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
-                  <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.85)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
+                  {/* Cinematic Left-to-Right Horizontal Black Shade Layer */}
+                  <LinearGradient 
+                    colors={['rgba(0,0,0,0.95)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)', 'transparent']}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 0.8, y: 0.5 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                  <LinearGradient colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.6)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
@@ -1164,7 +1156,7 @@ export default function HomeScreen() {
 
                     <View style={styles.featuredLiveContent}>
                       <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 14 }}>
                         <Ionicons name="time-outline" size={14} color="#FFF" />
                         <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6 }]}>Live until 5:00 PM</Text>
                       </View>
@@ -1192,7 +1184,7 @@ export default function HomeScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.actionCardsScroll}
-                style={{ marginBottom: 20 }}
+                style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
                 {/* Urgent Blood Request */}
                 <LinearGradient colors={['#FFF5F5', '#FFE8E8']} style={styles.actionCard}>
@@ -1238,7 +1230,7 @@ export default function HomeScreen() {
                     style={[styles.cardButtonOutline, { backgroundColor: '#FFEBB7', borderColor: '#FF9500' }]}
                     onPress={() => router.push('/vendor/business-details')}
                   >
-                    <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register Now</Text>
+                    <Text style={[styles.cardButtonTextDark, { color: '#FF9500' }]}>Register</Text>
                     <Ionicons name="chevron-forward" size={10} color="#FF9500" style={{ marginLeft: 2 }} />
                   </TouchableOpacity>
                 </LinearGradient>
@@ -1280,7 +1272,7 @@ export default function HomeScreen() {
                     style={[styles.cardButtonOutlinePurple, { backgroundColor: '#E0C3FC', borderColor: '#8C36DB', borderWidth: 1 }]}
                     onPress={() => router.push('/live-mantra')}
                   >
-                    <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch now</Text>
+                    <Text style={[styles.cardButtonTextDark, { color: '#8C36DB' }]}>Watch</Text>
                     <Ionicons name="chevron-forward" size={10} color="#8C36DB" style={{ marginLeft: 2 }} />
                   </TouchableOpacity>
                 </LinearGradient>
@@ -1298,8 +1290,8 @@ export default function HomeScreen() {
                       onPress={() => {
                         if (mumbaiComm) {
                           router.push({
-                            pathname: `/community/${mumbaiComm.id}`,
-                            params: { subgroup: 'city', name: mumbaiComm.name }
+                            pathname: '/community/[id]',
+                            params: { id: mumbaiComm.id, subgroup: 'city', name: mumbaiComm.name }
                           });
                         } else {
                           router.push('/messages?tab=Community');
@@ -1329,8 +1321,8 @@ export default function HomeScreen() {
                       onPress={() => {
                         if (localComm) {
                           router.push({
-                            pathname: `/community/${localComm.id}`,
-                            params: { subgroup: 'city', name: localComm.name }
+                            pathname: '/community/[id]',
+                            params: { id: localComm.id, subgroup: 'city', name: localComm.name }
                           });
                         } else {
                           router.push('/messages?tab=Community');
@@ -1806,6 +1798,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 20,
     gap: 8,
+    marginHorizontal: -PAGE_PADDING,
   },
   featureCard: {
     backgroundColor: '#FFFFFF',
@@ -1859,12 +1852,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   featureTitle: {
-    fontSize: 11,
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 12,
     fontWeight: '700',
     color: '#000',
     maxWidth: 70,
   },
   featureSubtitle: {
+    fontFamily: 'Inter_500Medium',
     fontSize: 8,
     fontWeight: '600',
     color: '#666',
@@ -1919,6 +1914,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   featuredLiveTitle: {
+    fontFamily: 'Outfit_700Bold',
     fontSize: 22,
     fontWeight: '900',
     color: '#FFD700',
@@ -1927,12 +1923,15 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   featuredDevotees: {
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 15,
     fontWeight: '700',
     color: '#FFF',
-    marginTop: 5,
+    marginTop: 10,
+    marginBottom: 2,
   },
   featuredTime: {
+    fontFamily: 'Outfit_500Medium',
     fontSize: 14,
     fontWeight: '800',
     color: '#FFF',
@@ -1960,16 +1959,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
   },
+  actionCardsScrollView: {
+    marginHorizontal: -PAGE_PADDING,
+  },
   actionCardsScroll: {
-    paddingRight: 20,
+    paddingHorizontal: PAGE_PADDING,
     paddingTop: 25,
-    gap: 15,
+    paddingBottom: 5,
+    gap: Platform.OS === 'ios' ? 10 : 15,
   },
   actionCard: {
-    width: 84,
-    height: 157,
+    width: Platform.OS === 'ios' ? 104 : 84,
+    height: Platform.OS === 'ios' ? 165 : 157,
     borderRadius: 15,
-    padding: 12,
+    padding: Platform.OS === 'ios' ? 10 : 12,
     justifyContent: 'space-between',
     position: 'relative',
   },
@@ -1985,8 +1988,8 @@ const styles = StyleSheet.create({
   },
   cardHeaderBadgeYellow: {
     backgroundColor: '#FFF5E0',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
+    paddingVertical: Platform.OS === 'ios' ? 4 : 5,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
@@ -1996,8 +1999,8 @@ const styles = StyleSheet.create({
   },
   cardHeaderBadgeTeal: {
     backgroundColor: '#E8F5E9',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
+    paddingVertical: Platform.OS === 'ios' ? 4 : 5,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
@@ -2007,8 +2010,8 @@ const styles = StyleSheet.create({
   },
   cardHeaderBadgePurple: {
     backgroundColor: '#F3E5F5',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
+    paddingVertical: Platform.OS === 'ios' ? 4 : 5,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
@@ -2055,14 +2058,14 @@ const styles = StyleSheet.create({
     color: '#111111',
     fontSize: 12,
     fontWeight: '800',
-    maxWidth: 75,
+    maxWidth: Platform.OS === 'ios' ? 95 : 75,
     marginBottom: 4,
   },
   cardSubtitleSmallDark: {
     color: '#5A5A5A',
     fontSize: 9,
     fontWeight: '600',
-    maxWidth: 70,
+    maxWidth: Platform.OS === 'ios' ? 90 : 70,
   },
   cardLocationText: {
     color: '#666',
@@ -2095,7 +2098,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   cardButtonOutline: {
-    width: 60,
+    width: Platform.OS === 'ios' ? 76 : 60,
     height: 19,
     borderRadius: 6,
     flexDirection: 'row',
@@ -2105,7 +2108,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   cardButtonOutlineTeal: {
-    width: 60,
+    width: Platform.OS === 'ios' ? 76 : 60,
     height: 19,
     borderRadius: 6,
     flexDirection: 'row',
@@ -2115,7 +2118,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   cardButtonOutlinePurple: {
-    width: 60,
+    width: Platform.OS === 'ios' ? 76 : 60,
     height: 19,
     borderRadius: 6,
     flexDirection: 'row',
@@ -2153,6 +2156,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 20,
     gap: 12,
+    marginHorizontal: -PAGE_PADDING,
+    paddingHorizontal: PAGE_PADDING,
   },
   bigServiceButton: {
     width: 174,
@@ -2189,7 +2194,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -2221,6 +2226,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   miniCardType: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 7,
     fontWeight: '900',
     color: '#8C36DB',
@@ -2228,12 +2234,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   miniCardTitle: {
+    fontFamily: 'Outfit_700Bold',
     fontSize: 10,
     fontWeight: '800',
     color: '#111',
     lineHeight: 12,
   },
   miniCardMembers: {
+    fontFamily: 'Inter_500Medium',
     fontSize: 8,
     color: '#888',
     marginTop: 1,
@@ -2252,6 +2260,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   sevaBadgeTextMini: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 7,
     fontWeight: '800',
     color: '#4CAF50',

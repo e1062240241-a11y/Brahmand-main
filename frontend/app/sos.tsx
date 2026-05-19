@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView, Linking } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,7 +36,7 @@ const getLastKnownPositionWithTimeout = async (timeoutMs: number): Promise<Locat
 const reverseGeocodeWithTimeout = async (
   coords: { latitude: number; longitude: number },
   timeoutMs: number
-): Promise<Location.LocationGeocodedAddress[]> => {
+ ): Promise<Location.LocationGeocodedAddress[]> => {
   return Promise.race([
     Location.reverseGeocodeAsync(coords),
     new Promise<Location.LocationGeocodedAddress[]>((resolve) =>
@@ -58,18 +58,8 @@ export default function SOSScreen() {
   
   const [stage, setStage] = useState<'type' | 'location' | 'countdown' | 'activating' | 'active'>('type');
   const [emergencyType, setEmergencyType] = useState<string>('');
-  const [location, setLocation] = useState<Location.LocationObject | null>({
-    coords: {
-      latitude: 28.6139,
-      longitude: 77.2090,
-      altitude: null,
-      accuracy: 10,
-      altitudeAccuracy: null,
-      heading: null,
-      speed: null,
-    },
-    timestamp: Date.now(),
-  } as any);
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [gpsErrorType, setGpsErrorType] = useState<'permission' | 'disabled' | 'timeout' | null>(null);
   const [microLocation, setMicroLocation] = useState<string>('');
   const [countdown, setCountdown] = useState<number>(10);
   const [loadingText, setLoadingText] = useState<string>('Sending SOS Alert...');
@@ -88,63 +78,86 @@ export default function SOSScreen() {
     }
   };
 
-  useEffect(() => {
-    (async () => {
-      try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          return;
+  const fetchLiveLocation = async (showAlerts = true): Promise<boolean> => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setGpsErrorType('permission');
+        if (showAlerts) {
+          Alert.alert('Permission Denied', 'Location permissions are required to detect your real-time coordinates for SOS.');
         }
+        return false;
+      }
 
-        // Try getting the location
+      const enabled = await Location.hasServicesEnabledAsync();
+      if (!enabled) {
+        setGpsErrorType('disabled');
+        if (showAlerts) {
+          Alert.alert('GPS Disabled', 'Location services are disabled on your device. Please turn on GPS.');
+        }
+        return false;
+      }
+
+      let loc: Location.LocationObject | null = null;
+      try {
+        loc = await getCurrentPositionWithTimeout({
+          accuracy: Location.Accuracy.High,
+        }, 5000);
+      } catch (e1) {
+        console.warn('[SOS] Current position fetch timed out, trying balanced...');
         try {
-          const enabled = await Location.hasServicesEnabledAsync();
-          if (!enabled) {
-            return;
-          }
+          loc = await getCurrentPositionWithTimeout({
+            accuracy: Location.Accuracy.Balanced,
+          }, 3000);
+        } catch (e2) {}
+      }
 
-          setLoadingText('Updating live GPS...');
-          let loc: Location.LocationObject | null = null;
-          try {
-            loc = await getCurrentPositionWithTimeout({
-              accuracy: Location.Accuracy.Balanced,
-            }, 5000);
-          } catch (e1) {
-            console.warn('[SOS] Current position fetch timed out, trying last known...');
-          }
+      if (!loc) {
+        loc = await getLastKnownPositionWithTimeout(2000);
+      }
 
-          if (!loc) {
-            loc = await getLastKnownPositionWithTimeout(3000);
-          }
-
-          if (loc) {
-            setLocation(loc);
-            try {
-              const results = await reverseGeocodeWithTimeout({
-                latitude: loc.coords.latitude,
-                longitude: loc.coords.longitude
-              }, 3000);
-              
-              if (results.length > 0) {
-                const place = results[0] as any;
-                const parts = [
-                  place.name || place.street,
-                  place.subLocality || place.district,
-                  place.city,
-                ].filter(Boolean);
-                setMicroLocation(parts.join(', ') || '');
-              }
-            } catch (e) {
-              console.warn('[SOS] Reverse geocoding failed', e);
-            }
+      if (loc) {
+        setLocation(loc);
+        setGpsErrorType(null);
+        try {
+          const results = await reverseGeocodeWithTimeout({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude
+          }, 3000);
+          
+          if (results.length > 0) {
+            const place = results[0] as any;
+            const parts = [
+              place.name || place.street,
+              place.subLocality || place.district,
+              place.city,
+            ].filter(Boolean);
+            setMicroLocation(parts.join(', ') || '');
           }
         } catch (e) {
-          console.warn('Error fetching current location', e);
+          console.warn('[SOS] Reverse geocoding failed', e);
         }
-      } catch (err) {
-        console.warn('Location setup failed', err);
+        return true;
+      } else {
+        setGpsErrorType('timeout');
+        if (showAlerts) {
+          Alert.alert('GPS Timeout', 'Could not fetch a strong GPS signal. Please retry in an open area.');
+        }
+        return false;
       }
-    })();
+    } catch (err) {
+      console.warn('Location setup failed', err);
+      setGpsErrorType('timeout');
+      if (showAlerts) {
+        Alert.alert('GPS Error', 'An unexpected error occurred while fetching your location.');
+      }
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    // Attempt silent real-time location fetch on mount
+    fetchLiveLocation(false);
   }, []);
 
   useEffect(() => {
@@ -191,49 +204,15 @@ export default function SOSScreen() {
     setLoadingText('Detecting live location...');
     setStage('activating');
     
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const enabled = await Location.hasServicesEnabledAsync();
-        if (enabled) {
-          let loc: Location.LocationObject | null = null;
-          try {
-            loc = await getCurrentPositionWithTimeout({ 
-              accuracy: Location.Accuracy.Balanced,
-            }, 4000);
-          } catch (e1) {}
-
-          if (!loc) {
-            loc = await getLastKnownPositionWithTimeout(3000);
-          }
-
-          if (loc) {
-            setLocation(loc);
-            try {
-              const results = await reverseGeocodeWithTimeout({
-                latitude: loc.coords.latitude,
-                longitude: loc.coords.longitude
-              }, 3000);
-              
-              if (results.length > 0) {
-                const place = results[0] as any;
-                const parts = [
-                  place.name || place.street,
-                  place.subLocality || place.district,
-                  place.city,
-                ].filter(Boolean);
-                setMicroLocation(parts.join(', ') || '');
-              }
-            } catch (e) {
-              console.warn('[SOS] Geocode failed', e);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Error fetching GPS in continue:', e);
-    }
+    await fetchLiveLocation(true);
     
+    setStage('location');
+  };
+
+  const handleRetryLocation = async () => {
+    setLoadingText('Retrying GPS Detection...');
+    setStage('activating');
+    await fetchLiveLocation(true);
     setStage('location');
   };
 
@@ -391,22 +370,142 @@ export default function SOSScreen() {
           >
             <View style={styles.mapContainer}>
               <SOSMap 
-                latitude={location?.coords.latitude || 0} 
-                longitude={location?.coords.longitude || 0} 
+                latitude={location?.coords.latitude || 28.6139} 
+                longitude={location?.coords.longitude || 77.2090} 
               />
             </View>
 
-            <View style={styles.warningContainer}>
-              <View style={[styles.warningIconBg, { backgroundColor: '#E5F6EB', width: 60, height: 60, marginTop: 10 }]}>
-                <Ionicons name="location" size={30} color="#34C759" />
+            {location ? (
+              <View style={styles.warningContainer}>
+                <View style={[styles.warningIconBg, { backgroundColor: '#E5F6EB', width: 60, height: 60, marginTop: 10 }]}>
+                  <Ionicons name="location" size={30} color="#34C759" />
+                </View>
+                <Text style={styles.warningTitle}>Location Detected</Text>
+                {location.coords.accuracy && (
+                  <Text style={styles.warningText}>
+                    GPS Accuracy: {location.coords.accuracy.toFixed(1)}m
+                  </Text>
+                )}
+                
+                {/* Clickable Google Maps Link */}
+                <TouchableOpacity 
+                  style={styles.mapsLinkBtn} 
+                  onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.coords.latitude},${location.coords.longitude}`)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="map-outline" size={16} color="#FF3B30" />
+                  <Text style={styles.mapsLinkText}>
+                    View Live GPS Link ({location.coords.latitude.toFixed(5)}, {location.coords.longitude.toFixed(5)})
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.warningTitle}>Location Detected</Text>
-              {location?.coords.accuracy && (
-                <Text style={styles.warningText}>
-                  GPS Accuracy: {location.coords.accuracy.toFixed(1)}m
-                </Text>
-              )}
-            </View>
+            ) : (
+              <View style={styles.warningContainer}>
+                <View style={[styles.warningIconBg, { backgroundColor: '#FFF0F0', width: 60, height: 60, marginTop: 10 }]}>
+                  <Ionicons name="close-circle" size={30} color="#FF3B30" />
+                </View>
+                
+                {gpsErrorType === 'permission' && (
+                  <>
+                    <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>Permission Denied</Text>
+                    <Text style={styles.warningText}>
+                      Brahmand needs Location permission to fetch your real-time position during an emergency.
+                    </Text>
+                    
+                    <View style={styles.guideBox}>
+                      <Text style={styles.guideHeader}>How to enable permission:</Text>
+                      <Text style={styles.guideStep}>1. Tap 'Open Settings' button below.</Text>
+                      <Text style={styles.guideStep}>2. Tap 'Permissions' or 'Location'.</Text>
+                      <Text style={styles.guideStep}>3. Select 'Allow all the time' or 'While using the app'.</Text>
+                    </View>
+
+                    <View style={styles.errorBtnRow}>
+                      <TouchableOpacity 
+                        style={styles.actionSettingsBtn} 
+                        onPress={() => Linking.openSettings()}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="settings-outline" size={16} color="#FFF" />
+                        <Text style={styles.actionSettingsText}>Open Settings</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={styles.actionRetryBtn} 
+                        onPress={handleRetryLocation}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="refresh" size={16} color="#FF3B30" />
+                        <Text style={styles.actionRetryText}>Retry</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+                {gpsErrorType === 'disabled' && (
+                  <>
+                    <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>GPS/Location is OFF</Text>
+                    <Text style={styles.warningText}>
+                      Your device Location services are currently disabled. Real-time GPS is required to alert responders.
+                    </Text>
+                    
+                    <View style={styles.guideBox}>
+                      <Text style={styles.guideHeader}>How to turn on GPS:</Text>
+                      {Platform.OS === 'ios' ? (
+                        <>
+                          <Text style={styles.guideStep}>1. Tap 'Open Settings' button below.</Text>
+                          <Text style={styles.guideStep}>2. Go to Privacy & Security &rarr; Location Services.</Text>
+                          <Text style={styles.guideStep}>3. Toggle the switch to ON.</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={styles.guideStep}>1. Swipe down from the top of your screen to open Quick Panel.</Text>
+                          <Text style={styles.guideStep}>2. Locate and tap the 'Location' or 'GPS' toggle to turn it ON.</Text>
+                          <Text style={styles.guideStep}>3. Or tap 'Open Settings' below and toggle location services.</Text>
+                        </>
+                      )}
+                    </View>
+
+                    <View style={styles.errorBtnRow}>
+                      <TouchableOpacity 
+                        style={styles.actionSettingsBtn} 
+                        onPress={() => Linking.openSettings()}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="settings-outline" size={16} color="#FFF" />
+                        <Text style={styles.actionSettingsText}>Open Settings</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={styles.actionRetryBtn} 
+                        onPress={handleRetryLocation}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="refresh" size={16} color="#FF3B30" />
+                        <Text style={styles.actionRetryText}>Retry</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+                {(gpsErrorType === 'timeout' || !gpsErrorType) && (
+                  <>
+                    <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>GPS Signal Weak</Text>
+                    <Text style={styles.warningText}>
+                      We couldn't detect a strong real-time GPS signal. Please move to an open area and try again.
+                    </Text>
+                    
+                    <TouchableOpacity 
+                      style={styles.retryFetchBtn} 
+                      onPress={handleRetryLocation}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="refresh" size={16} color="#FFF" />
+                      <Text style={styles.retryFetchText}>Retry Fetching GPS</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            )}
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Add More Detail (Optional)</Text>
@@ -425,8 +524,9 @@ export default function SOSScreen() {
             <View style={{ flex: 1 }} />
 
             <TouchableOpacity 
-              style={styles.primaryButton} 
+              style={[styles.primaryButton, !location && styles.primaryButtonDisabled]} 
               onPress={handleStartCountdown}
+              disabled={!location}
               activeOpacity={0.8}
             >
               <Text style={styles.primaryButtonText}>CREATE SOS</Text>
@@ -693,5 +793,108 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FF3B30',
     marginVertical: 20,
+  },
+  mapsLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F0',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#FFC1C1',
+    gap: 8,
+  },
+  mapsLinkText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  retryFetchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    marginTop: 15,
+    gap: 8,
+    shadowColor: '#FF3B30',
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  retryFetchText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  guideBox: {
+    backgroundColor: '#FAF5F5',
+    borderWidth: 1,
+    borderColor: '#FFD1D1',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 15,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  guideHeader: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#D32F2F',
+    marginBottom: 6,
+  },
+  guideStep: {
+    fontSize: 11,
+    color: '#555',
+    fontWeight: '600',
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  errorBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 18,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  actionSettingsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    gap: 8,
+    shadowColor: '#FF3B30',
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  actionSettingsText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  actionRetryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    gap: 8,
+  },
+  actionRetryText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

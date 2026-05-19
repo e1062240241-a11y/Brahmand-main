@@ -56,6 +56,25 @@ export default function NotificationsScreen() {
     if (user?.id) loadNotifications();
   }, [user?.id]);
 
+  const getNotificationLink = (item: any) => {
+    if (!item) return undefined;
+    if (item.link) return item.link;
+
+    const itemData = typeof item.data === 'string'
+      ? (() => { try { return JSON.parse(item.data); } catch { return null; } })()
+      : item.data;
+
+    if (itemData?.actor_user_id) {
+      return `/profile/${itemData.actor_user_id}`;
+    }
+
+    if (itemData?.post_id) {
+      return `/post/${itemData.post_id}`;
+    }
+
+    return undefined;
+  };
+
   const handleNotificationPress = async (item: any) => {
     const notificationId = item?.id || item?._id;
     if (notificationId) {
@@ -72,8 +91,9 @@ export default function NotificationsScreen() {
       }
     }
 
-    if (item?.link) {
-      router.push(item.link);
+    const link = getNotificationLink(item);
+    if (link) {
+      router.push(link);
     }
   };
 
@@ -116,9 +136,16 @@ export default function NotificationsScreen() {
     }
   };
 
-  const getNotificationStyle = (type: string) => {
-    const key = type?.toLowerCase() || 'default';
-    return NOTIFICATION_ICONS[key] || NOTIFICATION_ICONS.default;
+  const getNotificationStyle = (item: any) => {
+    const typeKey = item?.type?.toLowerCase() || item?.notification_type?.toLowerCase() || 'default';
+    const itemData = typeof item?.data === 'string'
+      ? (() => { try { return JSON.parse(item.data); } catch { return null; } })()
+      : item?.data;
+
+    if (typeKey === 'social' && itemData?.action === 'follow') {
+      return NOTIFICATION_ICONS.follow;
+    }
+    return NOTIFICATION_ICONS[typeKey] || NOTIFICATION_ICONS.default;
   };
 
   return (
@@ -157,7 +184,7 @@ export default function NotificationsScreen() {
             </View>
           ) : (
             notifications.map((item) => {
-              const style = getNotificationStyle(item.type);
+              const style = getNotificationStyle(item);
               const isInvite = item.type === 'community_creation_invite';
               
               // Safely extract request_id from nested data payload

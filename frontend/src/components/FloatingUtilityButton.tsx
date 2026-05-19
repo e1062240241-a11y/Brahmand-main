@@ -269,9 +269,13 @@ export const FloatingUtilityButton = () => {
   const isDragging = useRef(false);
 
   const handleMainButtonPress = () => {
-    resetSOSFlow();
-    setModalVisible(true);
-    loadInitialUtilityData();
+    if (modalVisible) {
+      closeUtilityModal();
+    } else {
+      resetSOSFlow();
+      setModalVisible(true);
+      loadInitialUtilityData();
+    }
   };
 
   const panResponder = useRef(
@@ -713,12 +717,26 @@ export const FloatingUtilityButton = () => {
           { bottom: 90 + insets.bottom },
           isChatPage && { bottom: 150 + insets.bottom },
           { transform: [...pan.getTranslateTransform(), { scale: activeSOS ? pulseAnim : 1 }] },
-          { opacity: overlayFade.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }
+          { zIndex: 1000 }
         ]}
       >
-        <View style={[styles.floatingButton, activeSOS && styles.floatingButtonActiveSOS]}>
-          <View style={[styles.glassBackground, activeSOS && styles.glassBackgroundActiveSOS]}>
-            {activeSOS ? <Ionicons name="alert-circle" size={24} color="#FFFFFF" /> : <View style={styles.redDot} />}
+        <View style={[
+          styles.floatingButton, 
+          activeSOS && styles.floatingButtonActiveSOS,
+          modalVisible && styles.floatingButtonClose
+        ]}>
+          <View style={[
+            styles.glassBackground, 
+            activeSOS && styles.glassBackgroundActiveSOS,
+            modalVisible && styles.glassBackgroundClose
+          ]}>
+            {modalVisible ? (
+              <Ionicons name="close" size={26} color="#FFFFFF" />
+            ) : activeSOS ? (
+              <Ionicons name="alert-circle" size={24} color="#FFFFFF" />
+            ) : (
+              <View style={styles.redDot} />
+            )}
           </View>
         </View>
       </Animated.View>
@@ -736,6 +754,15 @@ export const FloatingUtilityButton = () => {
             { transform: [{ scale: menuScale }, { translateY: menuScale.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] }
           ]}
         >
+          {/* Top-Right Close Button for Hub Wheel */}
+          <TouchableOpacity 
+            style={styles.hubCloseBtn} 
+            onPress={closeUtilityModal}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={20} color="#FFF" />
+          </TouchableOpacity>
+
           <View style={styles.hubContainer}>
             {/* Outer Circle Ring */}
             <View style={[styles.outerCircleRing, activeSOS && styles.outerCircleRingSOS]} />
@@ -997,22 +1024,42 @@ const styles = StyleSheet.create({
   floatingButton: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 8 },
   floatingButtonEmergency: { shadowColor: '#E53935', shadowOpacity: 0.4 },
   floatingButtonActiveSOS: { shadowColor: '#E53935', shadowOpacity: 0.6 },
+  floatingButtonClose: { shadowColor: '#FF3B30', shadowOpacity: 0.4 },
   glassBackground: { width: '100%', height: '100%', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderRadius: 28 },
   glassBackgroundEmergency: { backgroundColor: '#FF3B30' },
   glassBackgroundActiveSOS: { backgroundColor: '#E53935' },
+  glassBackgroundClose: { backgroundColor: '#FF3B30' },
   redDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#E53935' },
   modalOverlay: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.75)'
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    zIndex: 999,
   },
   overlayBackground: { ...StyleSheet.absoluteFillObject },
   modalContentWrapper: {
-    width: '100%',
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  hubCloseBtn: {
+    position: 'absolute',
+    top: -45,
+    right: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 101,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   modalContent: {
     width: '100%',
@@ -1405,7 +1452,6 @@ const styles = StyleSheet.create({
   cancelSOSText: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
   itemTitleSOSSmall: { color: '#FFF', fontSize: 8, fontWeight: '800', textAlign: 'center', marginTop: 4 },
 
-  // RESPONDER SOS VIEW STYLES
   sosResponderView: { width: '100%', height: '100%', alignItems: 'center', padding: 15 },
   sosAlertHeader: { alignItems: 'center', marginTop: 5 },
   alertIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },

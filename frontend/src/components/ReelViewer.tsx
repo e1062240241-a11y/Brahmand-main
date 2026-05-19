@@ -20,6 +20,7 @@ import { BlurView } from 'expo-blur';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
 import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent } from '../services/api';
+import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { useRouter } from 'expo-router';
 import SharePostModal from './SharePostModal';
@@ -36,20 +37,6 @@ try {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const timeAgo = (date: any): string => {
-  if (!date) return '';
-  const now = Date.now();
-  const then = new Date(date).getTime();
-  if (isNaN(then)) return '';
-  const diff = Math.floor((now - then) / 1000);
-  if (diff < 60) return 'Just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
-  if (diff < 31536000) return `${Math.floor(diff / 2592000)}w ago`;
-  return `${Math.floor(diff / 31536000)}y ago`;
-};
 
 const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
   if (!ExpoVideoModule?.useVideoPlayer) return null;
@@ -90,6 +77,7 @@ const ReelVideoItem = React.memo(({
   const captionText = String(localPost?.caption || '');
   const captionWords = captionText.trim().split(/\s+/).filter(Boolean);
   const isLongCaption = captionWords.length > 4 || captionText.length > 45;
+  const reelPostTimeText = formatTimeAgo(localPost?.created_at || localPost?.createdAt || localPost?.createdAtUtc || null);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -436,7 +424,7 @@ const ReelVideoItem = React.memo(({
           paddingLeft: 16,
         }}
       >
-        <TouchableOpacity onPress={handleClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
+        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
           <Ionicons name="close" size={30} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -447,7 +435,7 @@ const ReelVideoItem = React.memo(({
           {...seekBarPan.panHandlers}
           style={{
             position: 'absolute',
-            bottom: Platform.OS === 'ios' ? 60 : 50,
+            bottom: Platform.OS === 'ios' ? 40 : 30,
             left: 16,
             right: 16,
             height: isScrubbing ? 40 : 20,
@@ -488,7 +476,7 @@ const ReelVideoItem = React.memo(({
         pointerEvents="box-none"
         style={{
           position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 120 : 100,
+          bottom: Platform.OS === 'ios' ? 95 : 75,
           left: 16,
           right: 90,
           zIndex: 20,
@@ -496,9 +484,14 @@ const ReelVideoItem = React.memo(({
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
           <Avatar photo={localPost?.user_photo} name={localPost?.username || 'User'} size={36} />
-          <Text style={{ color: '#fff', fontWeight: 'bold', marginLeft: 10, fontSize: 14 }}>
-            {localPost?.username || 'User'}
-          </Text>
+          <View style={{ marginLeft: 10 }}>
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
+              {localPost?.username || 'User'}
+            </Text>
+            <Text style={{ color: '#ccc', fontSize: 12, marginTop: 2 }}>
+              {reelPostTimeText}
+            </Text>
+          </View>
         </View>
         {localPost?.caption ? (
           <TouchableOpacity
@@ -532,6 +525,9 @@ const ReelVideoItem = React.memo(({
             >
               {captionText}
             </Text>
+            <Text style={{ color: '#ccc', fontSize: 12, marginTop: 6, fontWeight: '600' }}>
+              {formatTimeAgo(localPost?.created_at || localPost?.createdAt || localPost?.createdAtUtc || null)}
+            </Text>
             {isLongCaption ? (
               <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ color: '#ccc', fontSize: 13, fontWeight: '600' }}>
@@ -544,9 +540,9 @@ const ReelVideoItem = React.memo(({
       </View>
 
       {/* Right Side - Action Buttons + Speed */}
-      <View pointerEvents="box-none" style={{
+      <View style={{
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 120 : 100,
+        bottom: Platform.OS === 'ios' ? 75 : 65,
         right: 12,
         alignItems: 'center',
         zIndex: 20,
@@ -650,7 +646,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const [isShareVisible, setIsShareVisible] = useState(false);
   const [isCommentVisible, setIsCommentVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
-
   const [localComments, setLocalComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
@@ -1026,7 +1021,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                     <View style={{ marginLeft: 12, flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#111' }}>{item.username}</Text>
-                        <Text style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>{timeAgo(item.created_at)}</Text>
+                        <Text style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>{formatTimeAgo(item.created_at)}</Text>
                       </View>
                       <MentionText
                         text={item.text}
