@@ -1055,6 +1055,9 @@ export const updateExtendedProfile = (data: {
 }) =>
   api.put('/user/profile/extended', data);
 
+export const deleteUserProfile = () =>
+  api.delete('/user/profile');
+
 export const getProfileCompletion = () =>
   api.get('/user/profile-completion');
 
