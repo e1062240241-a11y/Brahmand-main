@@ -108,7 +108,7 @@ interface DMConversation {
 export default function MessagesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const insets = useSafeAreaInsets();
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
@@ -259,12 +259,15 @@ export default function MessagesScreen() {
         fetchConversations();
       }
     } catch (error: any) {
-      console.error('Error fetching data:', error);
+      console.warn('Error fetching data:', error.message || error);
+      if (error.response?.status === 401) {
+        logout();
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTopTab]);
+  }, [activeTopTab, logout]);
 
   useEffect(() => {
     getAllMutedConversations().then(setMutedConversations);
@@ -275,8 +278,11 @@ export default function MessagesScreen() {
     try {
       const response = await getConversations();
       setConversations(response.data || []);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
+    } catch (error: any) {
+      console.warn('Error fetching conversations:', error.message || error);
+      if (error.response?.status === 401) {
+        logout();
+      }
     } finally {
       setLoadingConversations(false);
     }
@@ -286,18 +292,21 @@ export default function MessagesScreen() {
     try {
       const res = await getUserCulturalCommunity();
       setUserLokSangma(res.data);
-    } catch (error) {
-      console.error('Error fetching Lok Sangam:', error);
+    } catch (error: any) {
+      console.warn('Error fetching Lok Sangam:', error.message || error);
+      if (error.response?.status === 401) {
+        logout();
+      }
     }
-  }, []);
+  }, [logout]);
 
   const loadLokSangmaOptions = async (search?: string) => {
     setLokSangmaLoading(true);
     try {
       const res = await getCulturalCommunities(search);
       setLokSangmaList(res.data || []);
-    } catch (error) {
-      console.error('Error loading Lok Sangam options:', error);
+    } catch (error: any) {
+      console.warn('Error loading Lok Sangam options:', error.message || error);
     } finally {
       setLokSangmaLoading(false);
     }
