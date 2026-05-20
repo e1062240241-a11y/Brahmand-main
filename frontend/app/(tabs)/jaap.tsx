@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageById } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
@@ -65,6 +66,7 @@ const UPCOMING_SESSIONS = [
 export default function JaapLandingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
 
@@ -75,9 +77,10 @@ export default function JaapLandingScreen() {
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Sacred'>('All');
 
   useEffect(() => {
+    if (!isFocused) return;
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isFocused]);
 
   const liveActive = isWithinGayatriMantraWindow(now);
   const liveEnd = getCurrentGayatriEnd(now);

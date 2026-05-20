@@ -22,6 +22,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
@@ -113,6 +114,7 @@ export default function MessagesScreen() {
   const params = useLocalSearchParams<{ tab?: string }>();
   const { user, logout } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
   const [activeRequestIndex, setActiveRequestIndex] = useState(0);
@@ -410,6 +412,7 @@ export default function MessagesScreen() {
   }, [fetchData]);
 
   useEffect(() => {
+    if (!isFocused) return;
     if (activeTopTab === 'Community') {
       const combinedCount = (requests?.length || 0) + 3; // Real + 3 mock cards
       const timer = setInterval(() => {
@@ -422,7 +425,7 @@ export default function MessagesScreen() {
       }, 4000); // Advance every 4 seconds
       return () => clearInterval(timer);
     }
-  }, [activeTopTab, requests?.length]);
+  }, [activeTopTab, requests?.length, isFocused]);
 
   useFocusEffect(
     useCallback(() => {
