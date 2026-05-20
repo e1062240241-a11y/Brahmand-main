@@ -221,7 +221,7 @@ function LibraryBookIcon() {
 
 function BloodDropIcon() {
   return (
-    <Svg width={26} height={33} viewBox="0 0 20 25">
+    <Svg width={34} height={42} viewBox="0 0 20 25">
       <Path d="M18.7486 15.1794C18.7486 17.5474 17.8078 19.8185 16.1335 21.493C14.459 23.1673 12.1879 24.1081 9.8199 24.1081C7.4519 24.1081 5.18084 23.1673 3.50638 21.493C1.83192 19.8185 0.891235 17.5474 0.891235 15.1794C0.891235 7.14361 9.8199 0.893555 9.8199 0.893555C9.8199 0.893555 18.7486 7.14361 18.7486 15.1794Z" fill="#FF0000" />
       <Path d="M14.9556 4.43617C13.577 2.84402 12.0254 1.41031 10.3295 0.161581C10.1794 0.0564114 10.0005 0 9.81719 0C9.63392 0 9.45502 0.0564114 9.30491 0.161581C7.61214 1.41083 6.06349 2.84452 4.68767 4.43617C1.61956 7.95965 0.00012207 11.674 0.00012207 15.1785C0.00012207 17.7833 1.03489 20.2814 2.87678 22.1233C4.71867 23.9653 7.21683 25 9.82165 25C12.4265 25 14.9246 23.9653 16.7665 22.1233C18.6085 20.2814 19.6432 17.7833 19.6432 15.1785C19.6432 11.674 18.0237 7.95965 14.9556 4.43617ZM9.82165 23.2143C7.69116 23.2119 5.64858 22.3645 4.14209 20.858C2.63561 19.3515 1.78822 17.309 1.78586 15.1785C1.78586 8.79114 7.97676 3.4596 9.82165 2.0087C11.6665 3.4596 17.8574 8.7889 17.8574 15.1785C17.8551 17.309 17.0077 19.3515 15.5012 20.858C13.9947 22.3645 11.9521 23.2119 9.82165 23.2143ZM16.0594 16.2209C15.828 17.5141 15.2057 18.7053 14.2766 19.6342C13.3476 20.5631 12.1562 21.185 10.863 21.4163C10.8138 21.4241 10.7642 21.4282 10.7145 21.4285C10.4905 21.4284 10.2748 21.3443 10.11 21.1926C9.9452 21.0409 9.84352 20.8328 9.825 20.6096C9.80637 20.3863 9.87243 20.1644 10.0099 19.9876C10.1474 19.8108 10.3463 19.6921 10.5672 19.6551C12.4165 19.3437 13.9858 17.7745 14.2994 15.9218C14.339 15.6882 14.4698 15.48 14.663 15.3429C14.8562 15.2058 15.0959 15.1511 15.3295 15.1907C15.5631 15.2304 15.7713 15.3613 15.9084 15.5544C16.0455 15.7476 16.0991 15.9873 16.0594 16.2209Z" fill="#890000" />
     </Svg>
@@ -230,7 +230,7 @@ function BloodDropIcon() {
 
 function LotusIcon() {
   return (
-    <Svg width={38} height={32} viewBox="0 0 24 24" fill="none">
+    <Svg width={46} height={40} viewBox="0 0 24 24" fill="none">
       {/* Flawless Kamal / Indian Lotus - symmetric geometric vector artwork */}
       <Path
         d="M12 3C12.8 6 15 7.5 18 7.5C16.5 10 14.5 11 12 14C9.5 11 7.5 10 6 7.5C9 7.5 11.2 6 12 3Z"
@@ -268,7 +268,7 @@ function LotusIcon() {
 
 function TempleIcon() {
   return (
-    <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
       {/* Premium Hindu Temple dome, stairs, flag outline */}
       <Path
         d="M12 2V6M12 2H16L14.5 4L16 6H12"
@@ -311,7 +311,7 @@ function TempleIcon() {
 
 function ShopIcon() {
   return (
-    <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
       {/* Storefront/Shop building outline */}
       <Path
         d="M3 9L4.5 13H19.5L21 9M3 9H21M3 9L5.5 5H18.5L21 9"
@@ -1709,32 +1709,47 @@ export default function HomeScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 nestedScrollEnabled={true}
-                snapToInterval={Platform.OS === 'ios' ? 114 : 94}
+                snapToInterval={Platform.OS === 'ios' ? 130 : 120}
                 decelerationRate="fast"
                 contentContainerStyle={[styles.actionCardsScroll, { paddingTop: 14 }]}
                 style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
                 {/* Urgent Blood Request */}
-                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <LinearGradient
-                    colors={['#FFF0F2', '#FFE5E9']}
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/blood_request_bg.png')}
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFC8CE' }]}
+                    imageStyle={{ borderRadius: 15 }}
                   >
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                       <View style={styles.cardIconRow}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 72, height: 23, borderRadius: 11.5, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{
+                        width: '85%',
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: '#FF0022',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        alignSelf: 'center',
+                        shadowColor: '#FF0022',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 3,
+                        elevation: 4,
+                        marginBottom: 6,
+                      }}
                       onPress={() => {
                         router.push('/community-request/list');
                       }}
                     >
-                      <Text style={{ color: '#FF0022', fontSize: 10.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                  </ImageBackground>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 70, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
@@ -1744,21 +1759,39 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Register Business */}
-                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7' }]}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/register_business_bg.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7' }]}
+                    imageStyle={{ borderRadius: 15 }}
+                  >
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                       <View style={styles.cardIconRow}>
                         <ShopIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Register Your Business</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900' }]} numberOfLines={3} adjustsFontSizeToFit>Register Your Business</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 80, height: 23, borderRadius: 11.5, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{
+                        width: '85%',
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: '#FF9500',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        alignSelf: 'center',
+                        shadowColor: '#FF9500',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 3,
+                        elevation: 4,
+                        marginBottom: 6,
+                      }}
                       onPress={() => router.push('/vendor/business-details')}
                     >
-                      <Text style={{ color: '#FF9500', fontSize: 10, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Register Now</Text>
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Register</Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                  </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 42, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
@@ -1768,18 +1801,38 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Verified Vendor */}
-                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC' }]}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/verified_vendor_bg.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC' }]}
+                    imageStyle={{ borderRadius: 15 }}
+                  >
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                       <View style={styles.cardIconRow}>
                         <LotusIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Sai Flower Decorator</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900' }]} numberOfLines={3} adjustsFontSizeToFit>Sai Flower Decorator</Text>
                     </View>
-                    <TouchableOpacity style={{ width: 72, height: 23, borderRadius: 11.5, borderWidth: 1, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#00C781', fontSize: 10.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                    <TouchableOpacity
+                      style={{
+                        width: '85%',
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: '#00C781',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        alignSelf: 'center',
+                        shadowColor: '#00C781',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 3,
+                        elevation: 4,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                  </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
@@ -1789,16 +1842,34 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Live Aarti */}
-                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/live_aarti_bg.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}
+                    imageStyle={{ borderRadius: 15 }}
+                  >
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10, paddingHorizontal: 4 }]}>
                       <View style={styles.cardIconRow}>
                         <TempleIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900' }]} numberOfLines={3} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 80, height: 23, borderRadius: 11.5, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{
+                        width: '85%',
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: '#8C36DB',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        alignSelf: 'center',
+                        shadowColor: '#8C36DB',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 3,
+                        elevation: 4,
+                        marginBottom: 6,
+                      }}
                       onPress={() => router.push({
                         pathname: '/live-jaap-welcome',
                         params: {
@@ -1807,9 +1878,9 @@ export default function HomeScreen() {
                         }
                       })}
                     >
-                      <Text style={{ color: '#8C36DB', fontSize: 10.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Watch</Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                  </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
@@ -2559,8 +2630,8 @@ const styles = StyleSheet.create({
     gap: Platform.OS === 'ios' ? 10 : 15,
   },
   actionCard: {
-    width: Platform.OS === 'ios' ? 104 : 84,
-    height: Platform.OS === 'ios' ? 165 : 157,
+    width: Platform.OS === 'ios' ? 120 : 110,
+    height: Platform.OS === 'ios' ? 180 : 172,
     borderRadius: 15,
     padding: Platform.OS === 'ios' ? 10 : 12,
     justifyContent: 'space-between',
