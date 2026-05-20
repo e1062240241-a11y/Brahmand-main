@@ -69,7 +69,7 @@ from models.schemas import (
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
-from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit
+from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit, upload_rate_limit
 from routes.bhagavad_gita_routes import router as bhagavad_gita_router
 from routes.ramcharitmanas_routes import router as ramcharitmanas_router
 from routes.atharvaved_routes import router as atharvaved_router
@@ -2071,7 +2071,8 @@ async def upload_post(
     source: str = Form('camera_roll'),
     filter_name: Optional[str] = Form(None),
     file: UploadFile = File(...),
-    token_data: dict = Depends(verify_token)
+    token_data: dict = Depends(verify_token),
+    _: bool = Depends(upload_rate_limit)
 ):
     user_id = token_data['user_id']
     user_lock = await get_user_upload_lock(user_id)
@@ -2273,6 +2274,7 @@ async def _upload_post_impl(
 async def upload_chat_media(
     file: UploadFile = File(...),
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(upload_rate_limit),
 ):
     user_id = token_data['user_id']
     user_lock = await get_user_upload_lock(user_id)
@@ -2329,6 +2331,7 @@ async def upload_post_from_storage(
     source: str = Form('camera_roll'),
     filter_name: Optional[str] = Form(None),
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(upload_rate_limit),
 ):
     user_id = token_data['user_id']
     lock = await get_user_upload_lock(user_id)
