@@ -1647,23 +1647,7 @@ export default function HomeScreen() {
                             </View>
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={[styles.featureTitle, item.label === 'Sacred Days' && { fontSize: 9, fontWeight: '700' }]} numberOfLines={(item.label === 'Sacred Days' || item.label === 'My Krishna') ? 1 : 2} adjustsFontSizeToFit>{item.label}</Text>
-                            <Text
-                              style={[
-                                styles.featureSubtitle,
-                                {
-                                  color: '#000',
-                                  fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-                                  fontStyle: 'normal',
-                                  fontWeight: '400',
-                                  fontSize: (item.label === 'Sacred Days' || item.label === 'Brahmand Library') ? 6 : 7.5,
-                                }
-                              ]}
-                              numberOfLines={2}
-                              adjustsFontSizeToFit
-                            >
-                              {item.subtitle.replace('\n', ' ')}
-                            </Text>
+                            <Text style={[styles.featureTitle, item.label === 'Sacred Days' && { fontSize: 11.5, fontWeight: '800' }]} numberOfLines={1} adjustsFontSizeToFit>{item.label}</Text>
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
@@ -1743,12 +1727,12 @@ export default function HomeScreen() {
                       <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{ width: 72, height: 23, borderRadius: 11.5, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
                       onPress={() => {
                         router.push('/community-request/list');
                       }}
                     >
-                      <Text style={{ color: '#FF0022', fontSize: 9.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                      <Text style={{ color: '#FF0022', fontSize: 10.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
@@ -1769,10 +1753,10 @@ export default function HomeScreen() {
                       <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Register Your Business</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{ width: 80, height: 23, borderRadius: 11.5, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
                       onPress={() => router.push('/vendor/business-details')}
                     >
-                      <Text style={{ color: '#FF9500', fontSize: 9, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Register Now</Text>
+                      <Text style={{ color: '#FF9500', fontSize: 10, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Register Now</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
@@ -1792,8 +1776,8 @@ export default function HomeScreen() {
                       </View>
                       <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Sai Flower Decorator</Text>
                     </View>
-                    <TouchableOpacity style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#00C781', fontSize: 9.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                    <TouchableOpacity style={{ width: 72, height: 23, borderRadius: 11.5, borderWidth: 1, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
+                      <Text style={{ color: '#00C781', fontSize: 10.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
@@ -1814,7 +1798,7 @@ export default function HomeScreen() {
                       <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{ width: 80, height: 23, borderRadius: 11.5, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
                       onPress={() => router.push({
                         pathname: '/live-jaap-welcome',
                         params: {
@@ -1823,7 +1807,7 @@ export default function HomeScreen() {
                         }
                       })}
                     >
-                      <Text style={{ color: '#8C36DB', fontSize: 9.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
+                      <Text style={{ color: '#8C36DB', fontSize: 10.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
@@ -2460,8 +2444,8 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 12.5,
+    fontWeight: '800',
     color: '#000',
   },
   featureSubtitle: {
