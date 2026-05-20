@@ -4371,6 +4371,20 @@ async def send_community_message(
     except Exception as mention_err:
         logger.warning('Community message mention notification failed for %s: %s', msg_id, mention_err)
     
+    # Send push notification to community members
+    try:
+        comm = await db.get_document('communities', community_id)
+        comm_name = comm.get('name', 'Community') if comm else 'Community'
+        await push_service.notify_community_message(
+            community_id=community_id,
+            community_name=comm_name,
+            sender_name=user['name'],
+            message_preview=message.content,
+            exclude_user_id=user['id']
+        )
+    except Exception as notify_err:
+        logger.warning(f"Failed to send community message push notification: {notify_err}")
+    
     # Emit via Socket.IO
     await sio.emit('new_message', response_data, room=chat_id)
     

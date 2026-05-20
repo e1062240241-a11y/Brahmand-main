@@ -14,6 +14,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from middleware.security import verify_token
+from middleware.rate_limiter import upload_rate_limit
 from services.upload_lock_service import get_user_upload_lock
 
 
@@ -259,6 +260,7 @@ def _upload_to_firebase_storage(user_id: str, output_path: str) -> tuple[str, st
 async def upload_and_compress_video(
     file: UploadFile = File(...),
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(upload_rate_limit),
 ):
     """Upload video with server-side ffmpeg compression before Firebase Storage."""
     user_id = token_data["user_id"]

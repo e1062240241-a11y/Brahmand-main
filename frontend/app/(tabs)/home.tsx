@@ -581,13 +581,6 @@ export default function HomeScreen() {
         });
       }
     } catch (error: any) {
-<<<<<<< HEAD
-      console.warn('[HomeFeed] Failed to load posts feed:', error);
-      if (append) {
-        setHasMoreFeed(false);
-      } else {
-        setFeedPosts([]);
-=======
       console.warn('Failed to load posts feed on home:', error);
       if (!append) {
         setTabFeed(tabToLoad, {
@@ -595,7 +588,6 @@ export default function HomeScreen() {
           offset: 0,
           hasMore: false,
         });
->>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
       }
     } finally {
       console.log(`[HomeFeed] loadFeedPosts finished for ${tabToLoad}`);
@@ -735,19 +727,13 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-<<<<<<< HEAD
-      // Just check unread count or similar, avoid full feed reload which causes "Loading feed..." hang
-      // loadFeedPosts(0, false); // Removed to prevent redundant loading
-    }, [])
-=======
       const cached = useFeedStore.getState().tabFeeds[activeTab];
       const nowTime = Date.now();
-      const isStale = !cached || (nowTime - cached.lastFetched > 120000); // 2 minutes
+      const isStale = !cached || (nowTime - (cached.lastFetched || 0) > 120000); // 2 minutes
       if (!cached || cached.posts.length === 0 || isStale) {
         loadFeedPosts(0, false);
       }
     }, [loadFeedPosts, activeTab])
->>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
   );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
@@ -876,7 +862,6 @@ export default function HomeScreen() {
     const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
       // If we are already on home tab, scroll to top
       if (navigation.isFocused()) {
-<<<<<<< HEAD
         const isAtTop = currentScrollY.current <= 10;
         if (isAtTop) {
           onRefresh();
@@ -887,15 +872,6 @@ export default function HomeScreen() {
     });
     return unsubscribe;
   }, [navigation, onRefresh]);
-=======
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        // Refresh feed on tab press when already focused
-        loadFeedPosts(0, false, activeTab);
-      }
-    });
-    return unsubscribe;
-  }, [navigation, activeTab, loadFeedPosts]);
->>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
 
   useEffect(() => {
     if (!isFocused) return;
@@ -913,14 +889,14 @@ export default function HomeScreen() {
   const snapOffsets = useMemo(() => {
     const offsets = [0, feedTabsY];
     feedPostKeys.forEach((key) => {
-      const offset = postOffsets[key];
+      const offset = postOffsetsRef.current[key];
       if (typeof offset === 'number') {
         // Snap so the post starts exactly below the sticky header tabs
         offsets.push(Math.round(feedTabsY + offset));
       }
     });
     return Array.from(new Set(offsets)).sort((a, b) => a - b);
-  }, [feedTabsY, feedPostKeys, postOffsets]);
+  }, [feedTabsY, feedPostKeys]);
 
   useEffect(() => {
     if (activePostKey && activePostKey.length > 10) {
@@ -984,47 +960,12 @@ export default function HomeScreen() {
         }
       }
     }
-<<<<<<< HEAD
-  }, [feedPostKeys, postOffsets, postHeights, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
-=======
   }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
-
-  const loadHomeRequests = useCallback(async () => {
-    setRequestsLoading(true);
-    try {
-      const [requestsRes, communitiesRes] = await Promise.all([
-        getCommunityRequests({ status: 'active', limit: 30 }),
-        getCommunities(),
-      ]);
-      const requestsData = Array.isArray(requestsRes.data)
-        ? requestsRes.data
-        : (requestsRes.data?.items || requestsRes.data || []);
-      const communitiesData = Array.isArray(communitiesRes.data)
-        ? communitiesRes.data
-        : (communitiesRes.data?.items || communitiesRes.data || []);
-      setCommunityRequests(requestsData);
-      setCommunities(communitiesData);
-    } catch (error) {
-      console.warn('Failed to load active home requests:', error);
-      setCommunityRequests([]);
-    } finally {
-      setRequestsLoading(false);
-    }
-  }, []);
->>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
 
   useEffect(() => {
     loadHomeRequests();
   }, [loadHomeRequests]);
 
-  const onRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    await Promise.all([
-      loadFeedPosts(0, false, activeTab),
-      loadHomeRequests()
-    ]);
-    setIsRefreshing(false);
-  }, [loadFeedPosts, activeTab, loadHomeRequests]);
 
   const normalizeRequestText = (request: any) =>
     `${request?.title || ''} ${request?.description || ''} ${request?.support_needed || ''}`.toLowerCase();
@@ -1491,20 +1432,9 @@ export default function HomeScreen() {
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
-<<<<<<< HEAD
             snapToOffsets={snapOffsets}
             snapToAlignment="start"
             disableIntervalMomentum={true}
-=======
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={onRefresh}
-                colors={['#FFD26C']}
-                tintColor="#FFD26C"
-              />
-            }
->>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>

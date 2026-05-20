@@ -1,5 +1,6 @@
 """Firestore Database Operations Layer using Sync Client"""
 import logging
+import copy
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 import asyncio
@@ -66,7 +67,7 @@ class FirestoreDB:
         cached_doc = await self._cache.get(cache_key)
         if cached_doc:
             logger.info(f"Cache HIT for {cache_key}")
-            return cached_doc
+            return copy.deepcopy(cached_doc)
             
         def _get():
             doc = self.client.collection(collection).document(doc_id).get()
@@ -79,7 +80,7 @@ class FirestoreDB:
         doc_data = await self._run_sync(_get)
         if doc_data:
             await self._cache.set(cache_key, doc_data)
-        return doc_data
+        return copy.deepcopy(doc_data) if doc_data else None
     
     async def update_document(self, collection: str, doc_id: str, data: Dict[str, Any]) -> bool:
         """Update a document and invalidate cache"""
@@ -329,7 +330,7 @@ class FirestoreDB:
         
         for i, doc in enumerate(cached_results):
             if doc:
-                results.append(doc)
+                results.append(copy.deepcopy(doc))
                 logger.debug(f"Batch Cache HIT for {cache_keys[i]}")
             else:
                 missing_ids.append(doc_ids[i])
@@ -355,7 +356,8 @@ class FirestoreDB:
         if fresh_docs:
             cache_mapping = {f"{collection}:{doc['id']}": doc for doc in fresh_docs}
             await self._cache.set_many(cache_mapping)
-            results.extend(fresh_docs)
+            for doc in fresh_docs:
+                results.append(copy.deepcopy(doc))
             
         return results
 
