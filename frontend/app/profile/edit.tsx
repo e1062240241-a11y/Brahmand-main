@@ -26,7 +26,7 @@ export default function EditProfileScreen() {
   const { updateUser, logout } = useAuthStore();
   const [deleting, setDeleting] = useState(false);
   const handleBack = () => {
-    router.replace('/profile');
+    router.replace('/(tabs)/profile');
   };
 
   const [loading, setLoading] = useState(true);

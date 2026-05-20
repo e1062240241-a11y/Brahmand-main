@@ -31,12 +31,13 @@ const MANTRA_PREVIEW: Record<string, string> = {
   krishna: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे । हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे...',
   shiva: 'ॐ नमः शिवाय । ॐ नमः शिवाय । नागेन्द्रहाराय त्रिलोचनाय भस्माङ्गरागाय महेश्वराय । नित्याय शुद्धाय दिगम्बराय तस्मै नकाराय नमः शिवाय...',
   mrityunjaya: 'ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात् । ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम्...',
+  kedarnath: 'जय केदार उदार शंकर, मन हरत छवि आपकी । ध्यान धरत सुर-नर-मुनि सब, जय हो केदारनाथ की ॥ जय शिव ओंकारा, जय हर शिव ओंकारा, ब्रह्मा विष्णु सदाशिव अर्द्धांगी धारा ॥ ॐ जय केदारनाथ देवा...',
 };
 
 export default function LiveJaapWelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { mantraType, title } = useLocalSearchParams<{ mantraType?: string, title?: string }>();
+  const { mantraType, title, fromHome } = useLocalSearchParams<{ mantraType?: string, title?: string, fromHome?: string }>();
   
   return (
     <View style={styles.container}>
@@ -52,11 +53,10 @@ export default function LiveJaapWelcomeScreen() {
         />
 
         <View style={[styles.mainContent, { paddingTop: insets.top + 5, paddingBottom: insets.bottom + 10 }]}>
-          {/* BACK BUTTON */}
           <TouchableOpacity 
             onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
+              if (mantraType === 'kedarnath' || fromHome === 'true') {
+                router.replace('/(tabs)/home');
               } else {
                 router.replace('/(tabs)/jaap');
               }
@@ -121,7 +121,8 @@ export default function LiveJaapWelcomeScreen() {
                   title: title || 'Gayatri Mantra',
                   // Ensure audio and written formats are correctly linked
                   hasAudio: 'true',
-                  hasText: 'true'
+                  hasText: 'true',
+                  fromHome: fromHome || 'false'
                 }
               })}
             >
@@ -131,7 +132,9 @@ export default function LiveJaapWelcomeScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.buttonGradient}
               >
-                <Text style={styles.buttonText}>Join Live Jaap Now</Text>
+                <Text style={styles.buttonText}>
+                  {mantraType === 'kedarnath' ? 'Watch Live Aarti Now' : 'Join Live Jaap Now'}
+                </Text>
                 <View style={styles.buttonOmCircle}>
                   <Text style={styles.buttonOmText}>ॐ</Text>
                 </View>

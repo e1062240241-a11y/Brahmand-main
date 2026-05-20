@@ -216,7 +216,7 @@ export default function KycSubmitScreen() {
         newStatus === 'verified'
           ? 'Your KYC is verified. You can now view CVs.'
           : 'Your KYC request is sent for admin approval. CV access unlocks after approval.',
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)/profile') }]
       );
     } catch (error: any) {
       const message = error?.response?.data?.detail || error?.message || 'Failed to submit KYC.';
@@ -229,7 +229,7 @@ export default function KycSubmitScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/profile')}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.title}>KYC Verification</Text>
@@ -249,7 +249,7 @@ export default function KycSubmitScreen() {
             </View>
 
             {kycStatus === 'verified' ? (
-              <Button title="Back" onPress={() => router.back()} style={styles.submitButton} />
+              <Button title="Back" onPress={() => router.replace('/(tabs)/profile')} style={styles.submitButton} />
             ) : (
               <>
                 <Text style={styles.label}>ID Type</Text>

@@ -209,7 +209,6 @@ const quickAccess = [
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
   { label: 'Kundli', subtitle: 'Your Cosmic Blueprint', color: '#FFF', kundliIcon: true },
-  { label: 'Matchmaking', subtitle: 'Gun Milan', color: '#FFF', matchmakingIcon: true },
 ];
 
 export default function HomeScreen() {
@@ -263,7 +262,7 @@ export default function HomeScreen() {
   // Horizontal auto-scroll interval for the top quickAccess cards (Panchang, My Krishna, SOS)
   useEffect(() => {
     let currentIndex = 0;
-    const totalCards = 5;
+    const totalCards = 4;
     const interval = setInterval(() => {
       if (topFeaturesScrollRef.current) {
         currentIndex = (currentIndex + 1) % totalCards;
@@ -625,8 +624,6 @@ export default function HomeScreen() {
     let maxVisible = 0;
     const viewportTop = y;
     const viewportBottom = y + SCREEN_HEIGHT;
-    const viewportCenter = viewportTop + SCREEN_HEIGHT / 2;
-    let closestDistance = Number.POSITIVE_INFINITY;
 
     for (const key of feedPostKeys) {
       const offset = postOffsets[key];
@@ -637,21 +634,14 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        const visibleRatio = height > 0 ? visibleAmount / height : 0;
-        const postCenter = postAbsoluteTop + height / 2;
-        const centerDistance = Math.abs(postCenter - viewportCenter);
-
-        // Autoplay if the post is at least 50% visible or covers half of screen height
-        if (visibleRatio >= 0.5 || visibleAmount >= SCREEN_HEIGHT * 0.5) {
-          if (centerDistance < closestDistance) {
-            closestDistance = centerDistance;
-            maxVisible = visibleAmount;
-            closestKey = key;
-          }
+        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
+        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
+          maxVisible = visibleAmount;
+          closestKey = key;
         }
       }
     }
-    setActivePostKey(closestKey); // If none reaches 50%, none are active.
+    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
 
     // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
     if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
@@ -1325,90 +1315,63 @@ export default function HomeScreen() {
                       } else if (item.label === 'SOS') {
                         cardBg = '#FFF5F5';
                         iconBg = '#FF3B30';
-                      } else if (item.label === 'Kundli') {
-                        cardBg = '#FFFDF5';
-                        iconBg = '#FF9500';
-                      } else if (item.label === 'Matchmaking') {
-                        cardBg = '#FFF2EB';
-                        iconBg = '#FF7A00';
                       }
 
                       return (
                          <TouchableOpacity
                           key={idx}
-                          style={[
-                            styles.featureCard, 
-                            { 
-                              backgroundColor: cardBg, 
-                              overflow: 'hidden',
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              alignItems: 'flex-start',
-                              paddingLeft: 10,
-                              paddingRight: 28,
-                              position: 'relative'
-                            }
-                          ]}
+                          style={[styles.featureCard, { backgroundColor: '#FFF' }]}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
                             else if (item.label === 'Kundli') router.push('/kundli');
-                            else if (item.label === 'Matchmaking') router.push('/matchmaking');
                           }}
                         >
-                          {item.label === 'My Krishna' && (
-                            <Image 
-                              source={require('../../assets/images/peacock_feather_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
-                            />
+                          {item.label === 'SOS' ? (
+                            <View style={styles.featureIconWrap}>
+                              <View style={[styles.sosRing, { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
+                                <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '900' }}>SOS</Text>
+                              </View>
+                            </View>
+                          ) : item.label === 'My Krishna' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
+                          ) : item.label === 'Panchang' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
+                          ) : item.label === 'Kundli' ? (
+                            <View style={styles.featureIconWrap}>
+                              <Image source={require('../../assets/images/kundli_chart_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                            </View>
+                          ) : (
+                            <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
+                              <Ionicons name="calendar" size={14} color="#FFF" />
+                            </View>
                           )}
-                          {item.label === 'Panchang' && (
-                            <Image 
-                              source={require('../../assets/images/panchang_calendar_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
-                            />
-                          )}
-                          {item.label === 'Kundli' && (
-                            <Image 
-                              source={require('../../assets/images/kundli_chart_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
-                            />
-                          )}
-                          {item.label === 'Matchmaking' && (
-                            <Image 
-                              source={require('../../assets/images/matchmaking_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
-                            />
-                          )}
-                          {item.label === 'SOS' && (
-                            <Image 
-                              source={require('../../assets/images/sos_siren_icon.png')} 
-                              style={{ position: 'absolute', right: -6, bottom: -6, width: 44, height: 44, resizeMode: 'contain' }} 
-                            />
-                          )}
-
-                          <View style={{ width: '100%' }}>
-                            <Text style={[styles.featureTitle, { fontSize: 9.5, fontWeight: '700', color: '#111', marginLeft: 0 }]} numberOfLines={1}>{item.label}</Text>
+                          <View style={styles.featureTextContainer}>
+                            <Text style={styles.featureTitle} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
                             <Text 
                               style={[
                                 styles.featureSubtitle, 
                                 {
-                                  color: '#555',
+                                  color: '#000',
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
-                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli' || item.label === 'Matchmaking') ? 7 : 6,
-                                  marginLeft: 0,
-                                  marginTop: 2
+                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli') ? 7 : 6,
                                 }
                               ]} 
                               numberOfLines={2} 
+                              adjustsFontSizeToFit
                             >
-                               {item.subtitle}
+                               {item.subtitle.replace('\n', ' ')}
                             </Text>
                           </View>
+                          <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
                       );
                     })}
@@ -1416,7 +1379,7 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push('/live-jaap-welcome')}>
+              <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true' } })}>
                 <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                   {/* Cinematic Left-to-Right Horizontal Black Shade Layer */}
                   <LinearGradient
@@ -1445,7 +1408,7 @@ export default function HomeScreen() {
                       </View>
 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push('/live-jaap-welcome')}>
+                        <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true' } })}>
                           <Ionicons name="volume-medium" size={16} color="#FFF" />
                           <Text style={styles.joinJaapText}>Join Live Jaap</Text>
                           <Ionicons name="chevron-forward" size={18} color="#FFF" />
@@ -1490,12 +1453,7 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
                       onPress={() => {
-                        if (bloodRequest) {
-                          router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
-                        } else {
-                          setRequestType('Blood');
-                          setShowRequestModal(true);
-                        }
+                        router.push('/community-request/list');
                       }}
                     >
                       <Text style={{ color: '#FF0022', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
@@ -1570,7 +1528,13 @@ export default function HomeScreen() {
                     </View>
                     <TouchableOpacity
                       style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
-                      onPress={() => router.push('/live-mantra')}
+                      onPress={() => router.push({
+                        pathname: '/live-jaap-welcome',
+                        params: {
+                          mantraType: 'kedarnath',
+                          title: 'Kedarnath Aarti'
+                        }
+                      })}
                     >
                       <Text style={{ color: '#8C36DB', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
                     </TouchableOpacity>

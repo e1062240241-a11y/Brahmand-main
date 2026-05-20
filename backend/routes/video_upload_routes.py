@@ -14,6 +14,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from middleware.security import verify_token
+from services.upload_lock_service import get_user_upload_lock
 
 
 logger = logging.getLogger(__name__)
@@ -260,6 +261,15 @@ async def upload_and_compress_video(
     token_data: dict = Depends(verify_token),
 ):
     """Upload video with server-side ffmpeg compression before Firebase Storage."""
+    user_id = token_data["user_id"]
+    lock = await get_user_upload_lock(user_id)
+    async with lock:
+        return await _upload_and_compress_video_impl(file, token_data)
+
+async def _upload_and_compress_video_impl(
+    file: UploadFile,
+    token_data: dict,
+):
     content_type = (file.content_type or "").lower()
     if not content_type and file.filename:
         filename_lower = file.filename.lower()

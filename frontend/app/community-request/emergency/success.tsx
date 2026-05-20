@@ -11,7 +11,7 @@ export default function CommunityRequestBloodSuccessPage() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/messages')}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/community-request/list')}>
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
       </View>
@@ -38,7 +38,7 @@ export default function CommunityRequestBloodSuccessPage() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={() => router.replace('/(tabs)/messages')} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => router.replace('/community-request/list')} activeOpacity={0.8}>
           <Text style={styles.primaryButtonText}>View My Request</Text>
         </TouchableOpacity>
 
@@ -46,7 +46,7 @@ export default function CommunityRequestBloodSuccessPage() {
           <Text style={styles.secondaryButtonText}>Share Externally</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linkButton} onPress={() => router.replace('/(tabs)/messages')} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.linkButton} onPress={() => router.replace('/community-request/list')} activeOpacity={0.8}>
           <Text style={styles.linkButtonText}>Go to Community</Text>
         </TouchableOpacity>
       </View>
