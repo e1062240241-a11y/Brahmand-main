@@ -35,6 +35,12 @@ const normalizeUserLocation = (location: any): LocationData | null => {
 export default function ChangeLocationScreen() {
   const router = useRouter();
   const handleBack = useCallback(() => {
+    // Try to go back in navigation stack; if unavailable, navigate to profile screen
+    // router.back() works for native navigation; fallback ensures user lands on profile
+    router.back?.();
+    // If back navigation didn't happen (e.g., on web where history may be empty), replace with profile
+    // Note: router.back() returns undefined; we use a short timeout to check navigation state if needed.
+    // For simplicity, also call replace as a safe fallback.
     router.replace('/profile');
   }, [router]);
 
