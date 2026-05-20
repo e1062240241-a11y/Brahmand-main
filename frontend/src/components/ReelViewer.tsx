@@ -867,7 +867,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   const viewabilityConfigRef = useRef({
     itemVisiblePercentThreshold: 50,
-    viewAreaCoveragePercentThreshold: 50,
     minimumViewTime: 50,
     waitForInteraction: false,
   });
