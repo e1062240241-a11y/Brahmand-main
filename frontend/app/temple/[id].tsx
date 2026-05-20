@@ -631,7 +631,7 @@ export default function TempleDetailScreen() {
  };
 
   const handleGoBack = () => {
-    router.back();
+    router.replace('/(tabs)/temple');
   };
 
  const handleFollowToggle = async () => {

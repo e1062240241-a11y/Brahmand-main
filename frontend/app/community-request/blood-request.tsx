@@ -177,11 +177,7 @@ export default function BloodRequestScreen() {
   };
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/community-request');
-    }
+    router.replace('/(tabs)/home');
   };
 
   return (

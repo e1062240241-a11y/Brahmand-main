@@ -1379,7 +1379,7 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push('/live-jaap-welcome')}>
+              <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true' } })}>
                 <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                   {/* Cinematic Left-to-Right Horizontal Black Shade Layer */}
                   <LinearGradient
@@ -1408,7 +1408,7 @@ export default function HomeScreen() {
                       </View>
 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push('/live-jaap-welcome')}>
+                        <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true' } })}>
                           <Ionicons name="volume-medium" size={16} color="#FFF" />
                           <Text style={styles.joinJaapText}>Join Live Jaap</Text>
                           <Ionicons name="chevron-forward" size={18} color="#FFF" />
@@ -1453,12 +1453,7 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
                       onPress={() => {
-                        if (bloodRequest) {
-                          router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
-                        } else {
-                          setRequestType('Blood');
-                          setShowRequestModal(true);
-                        }
+                        router.push('/community-request/list');
                       }}
                     >
                       <Text style={{ color: '#FF0022', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>

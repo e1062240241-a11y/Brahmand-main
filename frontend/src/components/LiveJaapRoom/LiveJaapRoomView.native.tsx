@@ -64,10 +64,11 @@ const MANTRA_BG_AUDIO: Record<string, any> = {
 
 export default function LiveJaapRoomView() {
   const router = useRouter();
-  const { initialMic, mantraType, title: roomTitle } = useLocalSearchParams<{ 
+  const { initialMic, mantraType, title: roomTitle, fromHome } = useLocalSearchParams<{ 
     initialMic?: string, 
     mantraType?: string,
-    title?: string 
+    title?: string,
+    fromHome?: string 
   }>();
   const insets = useSafeAreaInsets();
   const streamIdRef = useRef<number | null>(null);
@@ -324,7 +325,13 @@ export default function LiveJaapRoomView() {
         <LinearGradient colors={['rgba(5,5,5,0.7)', 'rgba(5,5,5,0.9)', 'rgba(47,18,0,0.85)']} style={StyleSheet.absoluteFill} />
         <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/(tabs)/jaap'); }} style={styles.headerBtn}>
+            <TouchableOpacity onPress={() => {
+              if (mantraType === 'kedarnath' || fromHome === 'true') {
+                router.replace('/(tabs)/home');
+              } else {
+                router.replace('/(tabs)/jaap');
+              }
+            }} style={styles.headerBtn}>
               <Ionicons name="close" size={24} color="#FFF" />
             </TouchableOpacity>
             <View style={styles.headerTitleBox}>
@@ -402,7 +409,13 @@ export default function LiveJaapRoomView() {
                 <TouchableOpacity onPress={toggleMic} style={styles.iconCircle}>
                   <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={22} color={isMicEnabled ? "#4CD964" : "#FFF"} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/(tabs)/jaap'); }} style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}>
+                <TouchableOpacity onPress={() => {
+                  if (mantraType === 'kedarnath' || fromHome === 'true') {
+                    router.replace('/(tabs)/home');
+                  } else {
+                    router.replace('/(tabs)/jaap');
+                  }
+                }} style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}>
                   <Ionicons name="call" size={20} color="#FFF" />
                 </TouchableOpacity>
               </View>
