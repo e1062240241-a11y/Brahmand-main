@@ -1375,11 +1375,10 @@ export default function HomeScreen() {
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   const insets = useSafeAreaInsets();
-
   return (
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.05, 0.25]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
