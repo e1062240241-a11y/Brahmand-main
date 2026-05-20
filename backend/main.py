@@ -51,7 +51,7 @@ from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
 from services.msg91_service import MSG91Service
-from services.upload_lock_service import get_user_upload_lock
+from services.upload_lock_service import get_user_upload_lock, get_global_upload_semaphore
 
 try:
     from google.cloud import vision
@@ -2074,9 +2074,11 @@ async def upload_post(
     token_data: dict = Depends(verify_token)
 ):
     user_id = token_data['user_id']
-    lock = await get_user_upload_lock(user_id)
-    async with lock:
-        return await _upload_post_impl(caption, source, filter_name, file, token_data)
+    user_lock = await get_user_upload_lock(user_id)
+    global_semaphore = get_global_upload_semaphore()
+    async with global_semaphore:
+        async with user_lock:
+            return await _upload_post_impl(caption, source, filter_name, file, token_data)
 
 async def _upload_post_impl(
     caption: str,
@@ -2273,9 +2275,11 @@ async def upload_chat_media(
     token_data: dict = Depends(verify_token),
 ):
     user_id = token_data['user_id']
-    lock = await get_user_upload_lock(user_id)
-    async with lock:
-        return await _upload_chat_media_impl(file, token_data)
+    user_lock = await get_user_upload_lock(user_id)
+    global_semaphore = get_global_upload_semaphore()
+    async with global_semaphore:
+        async with user_lock:
+            return await _upload_chat_media_impl(file, token_data)
 
 async def _upload_chat_media_impl(
     file: UploadFile,
