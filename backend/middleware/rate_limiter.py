@@ -110,3 +110,7 @@ async def auth_rate_limit(request: Request):
 async def messaging_rate_limit(request: Request):
     """Rate limit for messaging endpoints"""
     return await rate_limit_dependency(request, settings.RATE_LIMIT_MESSAGING, "messaging")
+
+async def upload_rate_limit(request: Request):
+    """Rate limit for file uploads (stricter to save bandwidth and server resources)"""
+    return await rate_limit_dependency(request, limit=5, key_prefix="upload")

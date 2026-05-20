@@ -441,7 +441,10 @@ export default function HomeScreen() {
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
+
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const currentScrollY = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
   const likeDebounceRefs = useRef<{ [postId: string]: NodeJS.Timeout }>({});
@@ -505,12 +508,15 @@ export default function HomeScreen() {
     }
 
     try {
-      console.log(`[Antigravity] Fetching home feed: limit=${FEED_PAGE_SIZE}, offset=${offset}, tab=${tabToLoad}`);
+      console.log(`[HomeFeed] Fetching from API: /posts/feed?tab=${tabToLoad}&offset=${offset}`);
       const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
+      console.log(`[HomeFeed] API response received for ${tabToLoad}`);
       const payload = response.data;
       const incomingItems = Array.isArray(payload)
         ? payload
         : (Array.isArray(payload?.items) ? payload.items : []);
+
+      console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
 
       const nextHasMore = typeof payload?.has_more === 'boolean'
         ? payload.has_more
@@ -535,6 +541,13 @@ export default function HomeScreen() {
         });
       }
     } catch (error: any) {
+<<<<<<< HEAD
+      console.warn('[HomeFeed] Failed to load posts feed:', error);
+      if (append) {
+        setHasMoreFeed(false);
+      } else {
+        setFeedPosts([]);
+=======
       console.warn('Failed to load posts feed on home:', error);
       if (!append) {
         setTabFeed(tabToLoad, {
@@ -542,12 +555,51 @@ export default function HomeScreen() {
           offset: 0,
           hasMore: false,
         });
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
       }
     } finally {
+      console.log(`[HomeFeed] loadFeedPosts finished for ${tabToLoad}`);
       setLoadingFeed(false);
       setLoadingMoreFeed(false);
     }
   }, [activeTab, setTabFeed, isRefreshing]);
+
+  const loadHomeRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    try {
+      const [requestsRes, communitiesRes] = await Promise.all([
+        getCommunityRequests({ status: 'active', limit: 30 }),
+        getCommunities(),
+      ]);
+      const requestsData = Array.isArray(requestsRes.data)
+        ? requestsRes.data
+        : (requestsRes.data?.items || requestsRes.data || []);
+      const communitiesData = Array.isArray(communitiesRes.data)
+        ? communitiesRes.data
+        : (communitiesRes.data?.items || communitiesRes.data || []);
+      setCommunityRequests(requestsData);
+      setCommunities(communitiesData);
+    } catch (error) {
+      console.warn('Failed to load active home requests:', error);
+      setCommunityRequests([]);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadFeedPosts(0, false),
+        loadHomeRequests(),
+      ]);
+    } catch (err) {
+      console.warn('Refresh failed:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }, [loadFeedPosts, loadHomeRequests]);
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -640,10 +692,14 @@ export default function HomeScreen() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [now, setNow] = useState(new Date());
-  const scrollViewRef = useRef<ScrollView | null>(null);
 
   useFocusEffect(
     useCallback(() => {
+<<<<<<< HEAD
+      // Just check unread count or similar, avoid full feed reload which causes "Loading feed..." hang
+      // loadFeedPosts(0, false); // Removed to prevent redundant loading
+    }, [])
+=======
       const cached = useFeedStore.getState().tabFeeds[activeTab];
       const nowTime = Date.now();
       const isStale = !cached || (nowTime - cached.lastFetched > 120000); // 2 minutes
@@ -651,6 +707,7 @@ export default function HomeScreen() {
         loadFeedPosts(0, false);
       }
     }, [loadFeedPosts, activeTab])
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
   );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
@@ -779,6 +836,18 @@ export default function HomeScreen() {
     const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
       // If we are already on home tab, scroll to top
       if (navigation.isFocused()) {
+<<<<<<< HEAD
+        const isAtTop = currentScrollY.current <= 10;
+        if (isAtTop) {
+          onRefresh();
+        } else {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      }
+    });
+    return unsubscribe;
+  }, [navigation, onRefresh]);
+=======
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         // Refresh feed on tab press when already focused
         loadFeedPosts(0, false, activeTab);
@@ -786,6 +855,7 @@ export default function HomeScreen() {
     });
     return unsubscribe;
   }, [navigation, activeTab, loadFeedPosts]);
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
 
   useEffect(() => {
     if (!isFocused) return;
@@ -800,6 +870,18 @@ export default function HomeScreen() {
     [feedPosts],
   );
 
+  const snapOffsets = useMemo(() => {
+    const offsets = [0, feedTabsY];
+    feedPostKeys.forEach((key) => {
+      const offset = postOffsets[key];
+      if (typeof offset === 'number') {
+        // Snap so the post starts exactly below the sticky header tabs
+        offsets.push(Math.round(feedTabsY + offset));
+      }
+    });
+    return Array.from(new Set(offsets)).sort((a, b) => a - b);
+  }, [feedTabsY, feedPostKeys, postOffsets]);
+
   useEffect(() => {
     if (activePostKey && activePostKey.length > 10) {
       markPostAsSeen(activePostKey);
@@ -810,6 +892,7 @@ export default function HomeScreen() {
 
   const handleHomeScroll = useCallback((event: any) => {
     const y = event.nativeEvent.contentOffset.y;
+    currentScrollY.current = y;
     const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
     setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
 
@@ -861,6 +944,9 @@ export default function HomeScreen() {
         }
       }
     }
+<<<<<<< HEAD
+  }, [feedPostKeys, postOffsets, postHeights, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
+=======
   }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
 
   const loadHomeRequests = useCallback(async () => {
@@ -885,6 +971,7 @@ export default function HomeScreen() {
       setRequestsLoading(false);
     }
   }, []);
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
 
   useEffect(() => {
     loadHomeRequests();
@@ -1350,12 +1437,25 @@ export default function HomeScreen() {
                 paddingBottom: 90
               }
             ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                tintColor="#FF6B00"
+                colors={['#FF6B00']}
+              />
+            }
             stickyHeaderIndices={[1]}
             onScroll={handleHomeScroll}
             onMomentumScrollEnd={handleHomeScroll}
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
+<<<<<<< HEAD
+            snapToOffsets={snapOffsets}
+            snapToAlignment="start"
+            disableIntervalMomentum={true}
+=======
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
@@ -1364,6 +1464,7 @@ export default function HomeScreen() {
                 tintColor="#FFD26C"
               />
             }
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
