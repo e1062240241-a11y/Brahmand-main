@@ -17,6 +17,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -245,7 +246,10 @@ export default function HomeScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
+
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const currentScrollY = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
   const likeDebounceRefs = useRef<{ [postId: string]: NodeJS.Timeout }>({});
@@ -327,19 +331,24 @@ export default function HomeScreen() {
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || activeTab;
+    console.log(`[HomeFeed] loadFeedPosts called: offset=${offset}, append=${append}, tab=${tabToLoad}`);
+    
     if (append) {
       setLoadingMoreFeed(true);
-    } else {
+    } else if (feedPosts.length === 0) {
       setLoadingFeed(true);
     }
 
     try {
-      console.log(`[Antigravity] Fetching home feed: limit=${FEED_PAGE_SIZE}, offset=${offset}, tab=${tabToLoad}`);
+      console.log(`[HomeFeed] Fetching from API: /posts/feed?tab=${tabToLoad}&offset=${offset}`);
       const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
+      console.log(`[HomeFeed] API response received for ${tabToLoad}`);
       const payload = response.data;
       const incomingItems = Array.isArray(payload)
         ? payload
         : (Array.isArray(payload?.items) ? payload.items : []);
+
+      console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
 
       const nextHasMore = typeof payload?.has_more === 'boolean'
         ? payload.has_more
@@ -358,17 +367,55 @@ export default function HomeScreen() {
       }
       setHasMoreFeed(nextHasMore && incomingItems.length > 0);
     } catch (error: any) {
-      console.warn('Failed to load posts feed on home:', error);
+      console.warn('[HomeFeed] Failed to load posts feed:', error);
       if (append) {
-        setHasMoreFeed(false); // Stop trying to load more if it's failing
+        setHasMoreFeed(false);
       } else {
         setFeedPosts([]);
       }
     } finally {
+      console.log(`[HomeFeed] loadFeedPosts finished for ${tabToLoad}`);
       setLoadingFeed(false);
       setLoadingMoreFeed(false);
     }
   }, [activeTab]);
+
+  const loadHomeRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    try {
+      const [requestsRes, communitiesRes] = await Promise.all([
+        getCommunityRequests({ status: 'active', limit: 30 }),
+        getCommunities(),
+      ]);
+      const requestsData = Array.isArray(requestsRes.data)
+        ? requestsRes.data
+        : (requestsRes.data?.items || requestsRes.data || []);
+      const communitiesData = Array.isArray(communitiesRes.data)
+        ? communitiesRes.data
+        : (communitiesRes.data?.items || communitiesRes.data || []);
+      setCommunityRequests(requestsData);
+      setCommunities(communitiesData);
+    } catch (error) {
+      console.warn('Failed to load active home requests:', error);
+      setCommunityRequests([]);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadFeedPosts(0, false),
+        loadHomeRequests(),
+      ]);
+    } catch (err) {
+      console.warn('Refresh failed:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }, [loadFeedPosts, loadHomeRequests]);
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -460,12 +507,12 @@ export default function HomeScreen() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [now, setNow] = useState(new Date());
-  const scrollViewRef = useRef<ScrollView | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      loadFeedPosts(0, false);
-    }, [loadFeedPosts])
+      // Just check unread count or similar, avoid full feed reload which causes "Loading feed..." hang
+      // loadFeedPosts(0, false); // Removed to prevent redundant loading
+    }, [])
   );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
@@ -588,11 +635,16 @@ export default function HomeScreen() {
     const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
       // If we are already on home tab, scroll to top
       if (navigation.isFocused()) {
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        const isAtTop = currentScrollY.current <= 10;
+        if (isAtTop) {
+          onRefresh();
+        } else {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
       }
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, onRefresh]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 15_000);
@@ -606,6 +658,18 @@ export default function HomeScreen() {
     [feedPosts],
   );
 
+  const snapOffsets = useMemo(() => {
+    const offsets = [0, feedTabsY];
+    feedPostKeys.forEach((key) => {
+      const offset = postOffsets[key];
+      if (typeof offset === 'number') {
+        // Snap so the post starts exactly below the sticky header tabs
+        offsets.push(Math.round(feedTabsY + offset));
+      }
+    });
+    return Array.from(new Set(offsets)).sort((a, b) => a - b);
+  }, [feedTabsY, feedPostKeys, postOffsets]);
+
   useEffect(() => {
     if (activePostKey && activePostKey.length > 10) {
       markPostAsSeen(activePostKey);
@@ -616,6 +680,7 @@ export default function HomeScreen() {
 
   const handleHomeScroll = useCallback((event: any) => {
     const y = event.nativeEvent.contentOffset.y;
+    currentScrollY.current = y;
     const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
     setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
 
@@ -667,30 +732,7 @@ export default function HomeScreen() {
         }
       }
     }
-  }, [feedPostKeys, postOffsets, postHeights]);
-
-  const loadHomeRequests = useCallback(async () => {
-    setRequestsLoading(true);
-    try {
-      const [requestsRes, communitiesRes] = await Promise.all([
-        getCommunityRequests({ status: 'active', limit: 30 }),
-        getCommunities(),
-      ]);
-      const requestsData = Array.isArray(requestsRes.data)
-        ? requestsRes.data
-        : (requestsRes.data?.items || requestsRes.data || []);
-      const communitiesData = Array.isArray(communitiesRes.data)
-        ? communitiesRes.data
-        : (communitiesRes.data?.items || communitiesRes.data || []);
-      setCommunityRequests(requestsData);
-      setCommunities(communitiesData);
-    } catch (error) {
-      console.warn('Failed to load active home requests:', error);
-      setCommunityRequests([]);
-    } finally {
-      setRequestsLoading(false);
-    }
-  }, []);
+  }, [feedPostKeys, postOffsets, postHeights, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
 
   useEffect(() => {
     loadHomeRequests();
@@ -1128,12 +1170,23 @@ export default function HomeScreen() {
                 paddingBottom: 90
               }
             ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                tintColor="#FF6B00"
+                colors={['#FF6B00']}
+              />
+            }
             stickyHeaderIndices={[1]}
             onScroll={handleHomeScroll}
             onMomentumScrollEnd={handleHomeScroll}
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
+            snapToOffsets={snapOffsets}
+            snapToAlignment="start"
+            disableIntervalMomentum={true}
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
@@ -1725,7 +1778,7 @@ export default function HomeScreen() {
                   </View>
                 </View>
               )}
-              {loadingFeed ? (
+              {loadingFeed && feedPosts.length === 0 ? (
                 <View style={styles.feedLoading}>
                   <ActivityIndicator color="#FFD26C" />
                   <Text style={styles.feedLoadingText}>Loading feed...</Text>

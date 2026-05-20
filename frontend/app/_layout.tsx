@@ -1,8 +1,9 @@
 import React, { useEffect, useCallback, useRef } from 'react';
-import { Slot, usePathname, useRouter } from 'expo-router';
+import { Slot, usePathname, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../src/store/authStore';
 import { startAuthStateListener } from '../src/services/firebase/authService';
 import { addNotificationResponseReceivedListener, addNotificationReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
@@ -16,20 +17,42 @@ import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold
 import { MuteProvider } from '../src/contexts/MuteContext';
 import { useNotificationStore } from '../src/store/notificationStore';
 
-// Intercept Android hardware back on community pages to avoid "GO_BACK not handled"
-function useAndroidBackHandler() {
+// Intercept hardware back on main pages to avoid accidental exit and crashes
+function useAppBackHandler() {
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
     const onBackPress = () => {
+      console.log('[BackHandler] Pathname:', pathname);
+      
+      // 1. If we are on a main tab screen, NEVER exit with a back gesture/button
+      const mainTabs = [
+        '/home', '/messages', '/jaap', '/jobs', '/profile', '/vendor', '/index',
+        '/(tabs)/home', '/(tabs)/messages', '/(tabs)/jaap', '/(tabs)/jobs', '/(tabs)/profile', '/(tabs)/vendor'
+      ];
+      
+      if (mainTabs.includes(pathname) || pathname === '/' || pathname === '') {
+        console.log('[BackHandler] Blocking exit at root-like path.');
+        return true; // Consume event, do nothing
+      }
+
+      // 2. Specific fix for community pages
       if (pathname.startsWith('/community/')) {
         router.replace('/(tabs)/messages');
         return true;
       }
-      return false;
+
+      // 3. Fallback: If we can go back, do it safely
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+
+      // 4. Default: Return true to prevent hard exit from common screens
+      return true;
     };
+
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, [pathname, router]);
@@ -302,7 +325,7 @@ export default function RootLayout() {
   });
   
   useDeepLinkHandler();
-  useAndroidBackHandler();
+  useAppBackHandler();
   useNotificationResponseHandler();
   useMutedNotificationFilter();
 
@@ -350,15 +373,38 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="auto" />
-      <View style={styles.root}>
-        <MuteProvider>
-          <Slot />
-          {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
-        </MuteProvider>
-      </View>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <View style={styles.root}>
+          <MuteProvider>
+            <Stack screenOptions={{ 
+              headerShown: false, 
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              gestureDirection: 'horizontal'
+            }}>
+              {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
+              <Stack.Screen 
+                name="(tabs)" 
+                options={{ 
+                  animation: 'fade',
+                  gestureEnabled: false 
+                }} 
+              />
+              <Stack.Screen 
+                name="index" 
+                options={{ 
+                  animation: 'fade',
+                  gestureEnabled: false
+                }} 
+              />
+            </Stack>
+            {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
+          </MuteProvider>
+        </View>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

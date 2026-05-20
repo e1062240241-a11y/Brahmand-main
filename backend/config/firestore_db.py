@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 import asyncio
+import time
 from functools import partial
 
 from utils.cache import cache_manager
@@ -38,9 +39,8 @@ class FirestoreDB:
         return self._loop
     
     async def _run_sync(self, func, *args, **kwargs):
-        """Run sync function in executor"""
-        loop = self._get_loop()
-        return await loop.run_in_executor(None, partial(func, *args, **kwargs))
+        """Run sync function directly to avoid gRPC multithreading deadlocks"""
+        return func(*args, **kwargs)
     
     # =================== GENERIC OPERATIONS ===================
     
@@ -131,7 +131,24 @@ class FirestoreDB:
             if limit:
                 query = query.limit(limit)
             
-            docs = query.stream()
+            def _stream_with_retry():
+                attempts = 2
+                for attempt in range(attempts):
+                    try:
+                        return list(query.stream())
+                    except Exception as exc:
+                        logger.warning(f"Firestore stream error, attempt {attempt + 1}/{attempts}: {exc}")
+                        if attempt + 1 == attempts:
+                            break
+                        time.sleep(0.5)
+                logger.warning("Firestore stream failed, falling back to query.get().")
+                try:
+                    return list(query.get())
+                except Exception as exc:
+                    logger.error(f"Firestore get() fallback failed: {exc}")
+                    raise
+            
+            docs = _stream_with_retry()
             
             result = []
             for doc in docs:
@@ -159,8 +176,24 @@ class FirestoreDB:
                 for field, op, value in filters:
                     query = query.where(filter=FieldFilter(field, op, value))
             
-            # Stream and count
-            return sum(1 for _ in query.stream())
+            def _count_with_retry():
+                attempts = 2
+                for attempt in range(attempts):
+                    try:
+                        return sum(1 for _ in query.stream())
+                    except Exception as exc:
+                        logger.warning(f"Firestore count error, attempt {attempt + 1}/{attempts}: {exc}")
+                        if attempt + 1 == attempts:
+                            break
+                        time.sleep(0.5)
+                logger.warning("Firestore count stream failed, falling back to query.get().")
+                try:
+                    return len(list(query.get()))
+                except Exception as exc:
+                    logger.error(f"Firestore count get() fallback failed: {exc}")
+                    raise
+            
+            return _count_with_retry()
         
         return await self._run_sync(_count)
     
