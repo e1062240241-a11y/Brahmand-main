@@ -1720,6 +1720,7 @@ export default function HomeScreen() {
                     source={require('../../assets/images/blood_request_bg.png')}
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFC8CE' }]}
                     imageStyle={{ borderRadius: 15 }}
+                    resizeMode="stretch"
                   >
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
@@ -1752,8 +1753,8 @@ export default function HomeScreen() {
                   </ImageBackground>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={{ width: 70, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#FF0000', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
+                    <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                      <Text style={{ color: '#FF0000', fontSize: 10, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
                     </View>
                   </View>
                 </View>
@@ -1764,6 +1765,7 @@ export default function HomeScreen() {
                     source={require('../../assets/images/register_business_bg.png')}
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7' }]}
                     imageStyle={{ borderRadius: 15 }}
+                    resizeMode="stretch"
                   >
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
@@ -1794,8 +1796,8 @@ export default function HomeScreen() {
                   </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={{ width: 42, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#FF9500', fontSize: 9, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Free</Text>
+                    <View style={{ width: 55, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                      <Text style={{ color: '#FF9500', fontSize: 10.5, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Free</Text>
                     </View>
                   </View>
                 </View>
@@ -1806,6 +1808,7 @@ export default function HomeScreen() {
                     source={require('../../assets/images/verified_vendor_bg.png')}
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC' }]}
                     imageStyle={{ borderRadius: 15 }}
+                    resizeMode="stretch"
                   >
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
@@ -1835,8 +1838,8 @@ export default function HomeScreen() {
                   </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 9.5, fontWeight: '700' }]} numberOfLines={1}>Verified vendor</Text>
+                    <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 10.5, fontWeight: '800' }]} numberOfLines={1}>Verified vendor</Text>
                     </View>
                   </View>
                 </View>
@@ -1847,6 +1850,7 @@ export default function HomeScreen() {
                     source={require('../../assets/images/live_aarti_bg.png')}
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}
                     imageStyle={{ borderRadius: 15 }}
+                    resizeMode="stretch"
                   >
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10, paddingHorizontal: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
@@ -1883,8 +1887,8 @@ export default function HomeScreen() {
                   </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 9.5, fontWeight: '700' }]} numberOfLines={1}>Temple</Text>
+                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 10.5, fontWeight: '800' }]} numberOfLines={1}>Temple</Text>
                     </View>
                   </View>
                 </View>
