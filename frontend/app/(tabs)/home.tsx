@@ -104,10 +104,10 @@ function PassportIcon() {
       <Circle cx="12" cy="12" r="11" fill="#0A1D37" />
       {/* Gold outer ring */}
       <Circle cx="12" cy="12" r="11" stroke="#FFC000" strokeWidth="1" />
-      
+
       {/* Gold circle in center */}
       <Circle cx="12" cy="9.8" r="3.2" stroke="#FFC000" strokeWidth="0.8" />
-      
+
       {/* Beautiful OM path */}
       <Path
         d="M11.2 8.8C11.6 8.5 12.2 8.5 12.5 8.9C12.8 9.3 12.7 9.8 12.3 10.1C12.7 10.4 12.9 10.9 12.7 11.4C12.5 11.9 11.9 12.1 11.4 11.8M12.8 10.1C13.3 10.4 13.6 11.0 13.2 11.6C12.8 12.2 12.0 12.4 11.4 12.0M12.0 8.0C12.3 8.1 12.5 8.3 12.4 8.6M12.8 7.5C13.2 7.7 13.5 8.0 13.6 8.4"
@@ -115,7 +115,7 @@ function PassportIcon() {
         strokeWidth="0.6"
         strokeLinecap="round"
       />
-      
+
       {/* Temple outline at bottom */}
       <Path
         d="M8.5 17H15.5M9.5 17V15L12 13L14.5 15V17M12 13V17M11 17V15.5H13V17"
@@ -187,7 +187,7 @@ function LibraryBookIcon() {
       <Circle cx="12" cy="12" r="11" fill="#FF5100" />
       {/* Light pinkish outer border */}
       <Circle cx="12" cy="12" r="11" stroke="#FFE6E0" strokeWidth="1.5" />
-      
+
       {/* Standing Book 1 */}
       <Rect
         x="7.5"
@@ -200,7 +200,7 @@ function LibraryBookIcon() {
       />
       {/* Horizontal lines on Standing Book spine */}
       <Path d="M7.5 9.5H11.5M7.5 14.5H11.5" stroke="#FFFFFF" strokeWidth="1.2" />
-      
+
       {/* Leaning Book 2 */}
       <G transform="rotate(12 12 12)">
         <Rect
@@ -221,7 +221,7 @@ function LibraryBookIcon() {
 
 function BloodDropIcon() {
   return (
-    <Svg width={19.643} height={25} viewBox="0 0 20 25">
+    <Svg width={34} height={42} viewBox="0 0 20 25">
       <Path d="M18.7486 15.1794C18.7486 17.5474 17.8078 19.8185 16.1335 21.493C14.459 23.1673 12.1879 24.1081 9.8199 24.1081C7.4519 24.1081 5.18084 23.1673 3.50638 21.493C1.83192 19.8185 0.891235 17.5474 0.891235 15.1794C0.891235 7.14361 9.8199 0.893555 9.8199 0.893555C9.8199 0.893555 18.7486 7.14361 18.7486 15.1794Z" fill="#FF0000" />
       <Path d="M14.9556 4.43617C13.577 2.84402 12.0254 1.41031 10.3295 0.161581C10.1794 0.0564114 10.0005 0 9.81719 0C9.63392 0 9.45502 0.0564114 9.30491 0.161581C7.61214 1.41083 6.06349 2.84452 4.68767 4.43617C1.61956 7.95965 0.00012207 11.674 0.00012207 15.1785C0.00012207 17.7833 1.03489 20.2814 2.87678 22.1233C4.71867 23.9653 7.21683 25 9.82165 25C12.4265 25 14.9246 23.9653 16.7665 22.1233C18.6085 20.2814 19.6432 17.7833 19.6432 15.1785C19.6432 11.674 18.0237 7.95965 14.9556 4.43617ZM9.82165 23.2143C7.69116 23.2119 5.64858 22.3645 4.14209 20.858C2.63561 19.3515 1.78822 17.309 1.78586 15.1785C1.78586 8.79114 7.97676 3.4596 9.82165 2.0087C11.6665 3.4596 17.8574 8.7889 17.8574 15.1785C17.8551 17.309 17.0077 19.3515 15.5012 20.858C13.9947 22.3645 11.9521 23.2119 9.82165 23.2143ZM16.0594 16.2209C15.828 17.5141 15.2057 18.7053 14.2766 19.6342C13.3476 20.5631 12.1562 21.185 10.863 21.4163C10.8138 21.4241 10.7642 21.4282 10.7145 21.4285C10.4905 21.4284 10.2748 21.3443 10.11 21.1926C9.9452 21.0409 9.84352 20.8328 9.825 20.6096C9.80637 20.3863 9.87243 20.1644 10.0099 19.9876C10.1474 19.8108 10.3463 19.6921 10.5672 19.6551C12.4165 19.3437 13.9858 17.7745 14.2994 15.9218C14.339 15.6882 14.4698 15.48 14.663 15.3429C14.8562 15.2058 15.0959 15.1511 15.3295 15.1907C15.5631 15.2304 15.7713 15.3613 15.9084 15.5544C16.0455 15.7476 16.0991 15.9873 16.0594 16.2209Z" fill="#890000" />
     </Svg>
@@ -230,7 +230,7 @@ function BloodDropIcon() {
 
 function LotusIcon() {
   return (
-    <Svg width={30} height={25} viewBox="0 0 24 24" fill="none">
+    <Svg width={46} height={40} viewBox="0 0 24 24" fill="none">
       {/* Flawless Kamal / Indian Lotus - symmetric geometric vector artwork */}
       <Path
         d="M12 3C12.8 6 15 7.5 18 7.5C16.5 10 14.5 11 12 14C9.5 11 7.5 10 6 7.5C9 7.5 11.2 6 12 3Z"
@@ -268,7 +268,7 @@ function LotusIcon() {
 
 function TempleIcon() {
   return (
-    <Svg width={25} height={25} viewBox="0 0 24 24" fill="none">
+    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
       {/* Premium Hindu Temple dome, stairs, flag outline */}
       <Path
         d="M12 2V6M12 2H16L14.5 4L16 6H12"
@@ -311,7 +311,7 @@ function TempleIcon() {
 
 function ShopIcon() {
   return (
-    <Svg width={25} height={25} viewBox="0 0 24 24" fill="none">
+    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
       {/* Storefront/Shop building outline */}
       <Path
         d="M3 9L4.5 13H19.5L21 9M3 9H21M3 9L5.5 5H18.5L21 9"
@@ -441,7 +441,10 @@ export default function HomeScreen() {
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
+
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const currentScrollY = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
   const likeDebounceRefs = useRef<{ [postId: string]: NodeJS.Timeout }>({});
@@ -545,12 +548,15 @@ export default function HomeScreen() {
     }
 
     try {
-      console.log(`[Antigravity] Fetching home feed: limit=${FEED_PAGE_SIZE}, offset=${offset}, tab=${tabToLoad}`);
+      console.log(`[HomeFeed] Fetching from API: /posts/feed?tab=${tabToLoad}&offset=${offset}`);
       const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
+      console.log(`[HomeFeed] API response received for ${tabToLoad}`);
       const payload = response.data;
       const incomingItems = Array.isArray(payload)
         ? payload
         : (Array.isArray(payload?.items) ? payload.items : []);
+
+      console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
 
       const nextHasMore = typeof payload?.has_more === 'boolean'
         ? payload.has_more
@@ -575,6 +581,13 @@ export default function HomeScreen() {
         });
       }
     } catch (error: any) {
+<<<<<<< HEAD
+      console.warn('[HomeFeed] Failed to load posts feed:', error);
+      if (append) {
+        setHasMoreFeed(false);
+      } else {
+        setFeedPosts([]);
+=======
       console.warn('Failed to load posts feed on home:', error);
       if (!append) {
         setTabFeed(tabToLoad, {
@@ -582,12 +595,51 @@ export default function HomeScreen() {
           offset: 0,
           hasMore: false,
         });
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
       }
     } finally {
+      console.log(`[HomeFeed] loadFeedPosts finished for ${tabToLoad}`);
       setLoadingFeed(false);
       setLoadingMoreFeed(false);
     }
   }, [activeTab, setTabFeed, isRefreshing]);
+
+  const loadHomeRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    try {
+      const [requestsRes, communitiesRes] = await Promise.all([
+        getCommunityRequests({ status: 'active', limit: 30 }),
+        getCommunities(),
+      ]);
+      const requestsData = Array.isArray(requestsRes.data)
+        ? requestsRes.data
+        : (requestsRes.data?.items || requestsRes.data || []);
+      const communitiesData = Array.isArray(communitiesRes.data)
+        ? communitiesRes.data
+        : (communitiesRes.data?.items || communitiesRes.data || []);
+      setCommunityRequests(requestsData);
+      setCommunities(communitiesData);
+    } catch (error) {
+      console.warn('Failed to load active home requests:', error);
+      setCommunityRequests([]);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadFeedPosts(0, false),
+        loadHomeRequests(),
+      ]);
+    } catch (err) {
+      console.warn('Refresh failed:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }, [loadFeedPosts, loadHomeRequests]);
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -680,10 +732,14 @@ export default function HomeScreen() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [now, setNow] = useState(new Date());
-  const scrollViewRef = useRef<ScrollView | null>(null);
 
   useFocusEffect(
     useCallback(() => {
+<<<<<<< HEAD
+      // Just check unread count or similar, avoid full feed reload which causes "Loading feed..." hang
+      // loadFeedPosts(0, false); // Removed to prevent redundant loading
+    }, [])
+=======
       const cached = useFeedStore.getState().tabFeeds[activeTab];
       const nowTime = Date.now();
       const isStale = !cached || (nowTime - cached.lastFetched > 120000); // 2 minutes
@@ -691,6 +747,7 @@ export default function HomeScreen() {
         loadFeedPosts(0, false);
       }
     }, [loadFeedPosts, activeTab])
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
   );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
@@ -819,6 +876,18 @@ export default function HomeScreen() {
     const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
       // If we are already on home tab, scroll to top
       if (navigation.isFocused()) {
+<<<<<<< HEAD
+        const isAtTop = currentScrollY.current <= 10;
+        if (isAtTop) {
+          onRefresh();
+        } else {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      }
+    });
+    return unsubscribe;
+  }, [navigation, onRefresh]);
+=======
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         // Refresh feed on tab press when already focused
         loadFeedPosts(0, false, activeTab);
@@ -826,6 +895,7 @@ export default function HomeScreen() {
     });
     return unsubscribe;
   }, [navigation, activeTab, loadFeedPosts]);
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
 
   useEffect(() => {
     if (!isFocused) return;
@@ -840,6 +910,18 @@ export default function HomeScreen() {
     [feedPosts],
   );
 
+  const snapOffsets = useMemo(() => {
+    const offsets = [0, feedTabsY];
+    feedPostKeys.forEach((key) => {
+      const offset = postOffsets[key];
+      if (typeof offset === 'number') {
+        // Snap so the post starts exactly below the sticky header tabs
+        offsets.push(Math.round(feedTabsY + offset));
+      }
+    });
+    return Array.from(new Set(offsets)).sort((a, b) => a - b);
+  }, [feedTabsY, feedPostKeys, postOffsets]);
+
   useEffect(() => {
     if (activePostKey && activePostKey.length > 10) {
       markPostAsSeen(activePostKey);
@@ -850,6 +932,7 @@ export default function HomeScreen() {
 
   const handleHomeScroll = useCallback((event: any) => {
     const y = event.nativeEvent.contentOffset.y;
+    currentScrollY.current = y;
     const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
     setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
 
@@ -901,6 +984,9 @@ export default function HomeScreen() {
         }
       }
     }
+<<<<<<< HEAD
+  }, [feedPostKeys, postOffsets, postHeights, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
+=======
   }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
 
   const loadHomeRequests = useCallback(async () => {
@@ -925,6 +1011,7 @@ export default function HomeScreen() {
       setRequestsLoading(false);
     }
   }, []);
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
 
   useEffect(() => {
     loadHomeRequests();
@@ -1042,12 +1129,12 @@ export default function HomeScreen() {
   const handleLikePost = useCallback((post: any) => {
     const postId = post?.id;
     if (!postId) return;
-    
+
     // 1. Calculate the new toggled state
     const liked = !!post?.liked_by_me;
     const newLikedState = !liked;
     const currentLikes = Number(post?.likes_count || 0);
-    
+
     // 2. Perform optimistic UI update instantly
     const optimisticPost = {
       ...post,
@@ -1099,12 +1186,12 @@ export default function HomeScreen() {
           posts: rollbackPosts.map((item) =>
             item.id === postId
               ? {
-                  ...item,
-                  liked_by_me: originalState,
-                  likes_count: originalState
-                    ? (item.liked_by_me ? item.likes_count : item.likes_count + 1)
-                    : (item.liked_by_me ? Math.max(0, item.likes_count - 1) : item.likes_count),
-                }
+                ...item,
+                liked_by_me: originalState,
+                likes_count: originalState
+                  ? (item.liked_by_me ? item.likes_count : item.likes_count + 1)
+                  : (item.liked_by_me ? Math.max(0, item.likes_count - 1) : item.likes_count),
+              }
               : item
           )
         });
@@ -1375,10 +1462,11 @@ export default function HomeScreen() {
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   const insets = useSafeAreaInsets();
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.05, 0.25]} style={styles.screen}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.22, 0.42]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -1389,12 +1477,25 @@ export default function HomeScreen() {
                 paddingBottom: 90
               }
             ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                tintColor="#FF6B00"
+                colors={['#FF6B00']}
+              />
+            }
             stickyHeaderIndices={[1]}
             onScroll={handleHomeScroll}
             onMomentumScrollEnd={handleHomeScroll}
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
+<<<<<<< HEAD
+            snapToOffsets={snapOffsets}
+            snapToAlignment="start"
+            disableIntervalMomentum={true}
+=======
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
@@ -1403,6 +1504,7 @@ export default function HomeScreen() {
                 tintColor="#FFD26C"
               />
             }
+>>>>>>> ed6f461afb232b91f667c8cfee11c27456519cf6
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
@@ -1587,7 +1689,7 @@ export default function HomeScreen() {
                       }
 
                       return (
-                         <TouchableOpacity
+                        <TouchableOpacity
                           key={idx}
                           style={[styles.featureCard, { backgroundColor: '#FFF' }]}
                           activeOpacity={0.9}
@@ -1646,23 +1748,7 @@ export default function HomeScreen() {
                             </View>
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={[styles.featureTitle, item.label === 'Sacred Days' && { fontSize: 9, fontWeight: '700' }]} numberOfLines={(item.label === 'Sacred Days' || item.label === 'My Krishna') ? 1 : 2} adjustsFontSizeToFit>{item.label}</Text>
-                            <Text 
-                              style={[
-                                styles.featureSubtitle, 
-                                {
-                                  color: '#000',
-                                  fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-                                  fontStyle: 'normal',
-                                  fontWeight: '400',
-                                   fontSize: (item.label === 'Sacred Days' || item.label === 'Brahmand Library') ? 6 : 7.5,
-                                }
-                              ]} 
-                              numberOfLines={2} 
-                              adjustsFontSizeToFit
-                            >
-                               {item.subtitle.replace('\n', ' ')}
-                            </Text>
+                            <Text style={[styles.featureTitle, item.label === 'Sacred Days' && { fontSize: 11.5, fontWeight: '800' }]} numberOfLines={1} adjustsFontSizeToFit>{item.label}</Text>
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
@@ -1724,102 +1810,171 @@ export default function HomeScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 nestedScrollEnabled={true}
-                snapToInterval={Platform.OS === 'ios' ? 114 : 94}
+                snapToInterval={Platform.OS === 'ios' ? 130 : 120}
                 decelerationRate="fast"
                 contentContainerStyle={[styles.actionCardsScroll, { paddingTop: 14 }]}
                 style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
               >
                 {/* Urgent Blood Request */}
-                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <LinearGradient
-                    colors={['#FFF0F2', '#FFE5E9']}
-                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFC8CE' }]}
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/blood_request_bg.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFC8CE', overflow: 'hidden' }]}
+                    imageStyle={{ borderRadius: 15 }}
+                    resizeMode="stretch"
                   >
-                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                      <View style={styles.cardIconRow}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
+                      <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
-                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>{bloodRequest ? formatRequestLocation(bloodRequest) : 'XYZ Hospital, Mumbai'}</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900', fontSize: Platform.OS === 'ios' ? 13.5 : 12, lineHeight: 16 }]} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{
+                        width: '85%',
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: '#FF0022',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        alignSelf: 'center',
+                        shadowColor: '#FF0022',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 3,
+                        elevation: 4,
+                        marginBottom: 6,
+                      }}
                       onPress={() => {
                         router.push('/community-request/list');
                       }}
                     >
-                      <Text style={{ color: '#FF0022', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                  </ImageBackground>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={{ width: 70, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#FF0000', fontSize: 6.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
+                    <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                      <Text style={{ color: '#FF0000', fontSize: 10, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
                     </View>
                   </View>
                 </View>
 
                 {/* Register Business */}
-                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <LinearGradient colors={['#FFF8E6', '#FFF0CC']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7' }]}>
-                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                      <View style={styles.cardIconRow}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/register_business_bg.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7', overflow: 'hidden' }]}
+                    imageStyle={{ borderRadius: 15 }}
+                    resizeMode="stretch"
+                  >
+                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
+                      <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
                         <ShopIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Register Your Business</Text>
-                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>Become a verified sanatan vendor</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900', fontSize: Platform.OS === 'ios' ? 13.5 : 12, lineHeight: 16 }]} numberOfLines={2} adjustsFontSizeToFit>Register Your Business</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{
+                        width: '85%',
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: '#FF9500',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        alignSelf: 'center',
+                        shadowColor: '#FF9500',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 3,
+                        elevation: 4,
+                        marginBottom: 6,
+                      }}
                       onPress={() => router.push('/vendor/business-details')}
                     >
-                      <Text style={{ color: '#FF9500', fontSize: 7.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Register Now</Text>
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Register</Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                  </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={{ width: 42, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#FF9500', fontSize: 7.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Free</Text>
+                    <View style={{ width: 55, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                      <Text style={{ color: '#FF9500', fontSize: 10.5, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Free</Text>
                     </View>
                   </View>
                 </View>
 
                 {/* Verified Vendor */}
-                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <LinearGradient colors={['#E6FFF0', '#CCFFE6']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC' }]}>
-                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                      <View style={styles.cardIconRow}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/verified_vendor_bg.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC', overflow: 'hidden' }]}
+                    imageStyle={{ borderRadius: 15 }}
+                    resizeMode="stretch"
+                  >
+                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
+                      <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
                         <LotusIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Sai Flower Decorator</Text>
-                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>Specialised in festival flower decor, Mumbai</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900', fontSize: Platform.OS === 'ios' ? 13.5 : 12, lineHeight: 16 }]} numberOfLines={2} adjustsFontSizeToFit>Sai Flower Decorator</Text>
                     </View>
-                    <TouchableOpacity style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#00C781', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                    <TouchableOpacity
+                      style={{
+                        width: '85%',
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: '#00C781',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        alignSelf: 'center',
+                        shadowColor: '#00C781',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 3,
+                        elevation: 4,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                  </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Verified vendor</Text>
+                    <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 10.5, fontWeight: '800' }]} numberOfLines={1}>Verified vendor</Text>
                     </View>
                   </View>
                 </View>
 
                 {/* Live Aarti */}
-                <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <LinearGradient colors={['#F8E6FF', '#F0CCFF']} style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}>
-                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10, paddingHorizontal: 4 }]}>
-                      <View style={styles.cardIconRow}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                  <ImageBackground
+                    source={require('../../assets/images/live_aarti_bg.png')}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF', overflow: 'hidden' }]}
+                    imageStyle={{ borderRadius: 15 }}
+                    resizeMode="stretch"
+                  >
+                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10, paddingHorizontal: 4 }]}>
+                      <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
                         <TempleIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
-                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center', marginTop: 3 }]} numberOfLines={4} adjustsFontSizeToFit>
-                        <Ionicons name="notifications-outline" size={7.5} color="#5A5A5A" /> Notify me for the upcoming events
-                      </Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900', fontSize: Platform.OS === 'ios' ? 13.5 : 12, lineHeight: 16 }]} numberOfLines={2} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
                     </View>
                     <TouchableOpacity
-                      style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
+                      style={{
+                        width: '85%',
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: '#8C36DB',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        alignSelf: 'center',
+                        shadowColor: '#8C36DB',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 3,
+                        elevation: 4,
+                        marginBottom: 6,
+                      }}
                       onPress={() => router.push({
                         pathname: '/live-jaap-welcome',
                         params: {
@@ -1828,13 +1983,13 @@ export default function HomeScreen() {
                         }
                       })}
                     >
-                      <Text style={{ color: '#8C36DB', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Watch</Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                  </ImageBackground>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Temple</Text>
+                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 10.5, fontWeight: '800' }]} numberOfLines={1}>Temple</Text>
                     </View>
                   </View>
                 </View>
@@ -1867,7 +2022,7 @@ export default function HomeScreen() {
                             styles.miniCardType,
                             {
                               color: '#9F45FF',
-                              fontSize: 7,
+                              fontSize: 8.5,
                               fontWeight: '510' as any,
                               fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                               letterSpacing: 0,
@@ -1881,7 +2036,7 @@ export default function HomeScreen() {
                             styles.miniCardTitle,
                             {
                               color: '#000',
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: '590' as any,
                               fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                             }
@@ -1895,7 +2050,7 @@ export default function HomeScreen() {
                             styles.miniCardMembers,
                             {
                               color: '#000',
-                              fontSize: 7,
+                              fontSize: 8.5,
                               fontWeight: '400',
                               fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                             }
@@ -1936,7 +2091,7 @@ export default function HomeScreen() {
                             styles.miniCardTitle,
                             {
                               color: '#000',
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: '590' as any,
                               fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                             }
@@ -1951,7 +2106,7 @@ export default function HomeScreen() {
                               styles.miniCardMembers,
                               {
                                 color: '#000',
-                                fontSize: 7,
+                                fontSize: 8.5,
                                 fontWeight: '400',
                                 fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                               }
@@ -2465,8 +2620,8 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 12.5,
+    fontWeight: '800',
     color: '#000',
   },
   featureSubtitle: {
@@ -2580,12 +2735,13 @@ const styles = StyleSheet.create({
     gap: Platform.OS === 'ios' ? 10 : 15,
   },
   actionCard: {
-    width: Platform.OS === 'ios' ? 104 : 84,
-    height: Platform.OS === 'ios' ? 165 : 157,
+    width: Platform.OS === 'ios' ? 120 : 110,
+    height: Platform.OS === 'ios' ? 180 : 172,
     borderRadius: 15,
     padding: Platform.OS === 'ios' ? 10 : 12,
     justifyContent: 'space-between',
     position: 'relative',
+    overflow: 'hidden',
   },
   cardHeaderBadge: {
     flexDirection: 'row',
@@ -2667,18 +2823,18 @@ const styles = StyleSheet.create({
   },
   cardTitleLargeDark: {
     color: '#111111',
-    fontSize: Platform.OS === 'ios' ? 10 : 8,
+    fontSize: Platform.OS === 'ios' ? 12 : 10,
     fontWeight: '800',
     maxWidth: '100%',
     marginBottom: 4,
-    lineHeight: Platform.OS === 'ios' ? 12 : 10.5,
+    lineHeight: Platform.OS === 'ios' ? 14 : 12,
   },
   cardSubtitleSmallDark: {
     color: '#5A5A5A',
-    fontSize: Platform.OS === 'ios' ? 8.2 : 6.8,
+    fontSize: Platform.OS === 'ios' ? 9.8 : 8.8,
     fontWeight: '600',
     maxWidth: '100%',
-    lineHeight: Platform.OS === 'ios' ? 10 : 8.5,
+    lineHeight: Platform.OS === 'ios' ? 12 : 10.5,
   },
   cardLocationText: {
     color: '#666',
@@ -2877,7 +3033,7 @@ const styles = StyleSheet.create({
   },
   sevaBadgeTextMini: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    fontSize: 7,
+    fontSize: 8.5,
     fontWeight: '590' as any,
     color: '#397339',
   },

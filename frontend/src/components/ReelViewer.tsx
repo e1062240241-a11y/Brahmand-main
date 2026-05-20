@@ -87,12 +87,41 @@ const ReelVideoItem = React.memo(({
   const seekIntervalRef = useRef<any>(null);
   const timeIntervalRef = useRef<any>(null);
   const durationRef = useRef(0);
+  const lastTapRef = useRef<number>(0);
+  const heartScale = useRef(new Animated.Value(0)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
+
+  const animateHeart = () => {
+    heartScale.setValue(0.3);
+    heartOpacity.setValue(0);
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(heartScale, { toValue: 1.2, friction: 3, useNativeDriver: true }),
+        Animated.timing(heartOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+      ]),
+      Animated.delay(400),
+      Animated.parallel([
+        Animated.timing(heartScale, { toValue: 1.5, duration: 150, useNativeDriver: true }),
+        Animated.timing(heartOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      ]),
+    ]).start();
+  };
+
+  const handleDoubleTapLike = () => {
+    animateHeart();
+    if (!likedByMe) {
+      handleLike();
+    }
+  };
 
   useEffect(() => {
     if (!isActive) setIsPaused(false);
   }, [isActive]);
 
   const mediaUrl = String(localPost?.media_url || localPost?.mediaUrl || '');
+  const posterUrl = String(
+    localPost?.thumbnail_url || localPost?.thumbnailUrl || localPost?.metadata?.thumbnail_url || localPost?.metadata?.thumbnailUrl || ''
+  );
   const mediaType = String(localPost?.media_type || localPost?.mediaType || '').toLowerCase();
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
   const mediaWidth = Number(localPost?.media_width || localPost?.mediaWidth || 0);
@@ -107,10 +136,10 @@ const ReelVideoItem = React.memo(({
     p.staysActiveInBackground = true;
     if (Platform.OS !== 'web') {
       p.bufferOptions = {
-        preferredForwardBufferDuration: 25, // Buffer 25s ahead for smooth reels
-        waitsToMinimizeStalling: true,
-        minBufferForPlayback: 6, // Wait for 6s buffer before starting for high quality
-        maxBufferBytes: 25 * 1024 * 1024, // Use 25MB for better caching
+        preferredForwardBufferDuration: 2, // Smaller look-ahead to prioritize start
+        waitsToMinimizeStalling: true,    
+        minBufferForPlayback: 0.3,        // Start faster (0.3s instead of 0.5s)
+        maxBufferBytes: 10 * 1024 * 1024,  // 10MB limit
         prioritizeTimeOverSizeThreshold: true,
       };
     }
@@ -123,8 +152,8 @@ const ReelVideoItem = React.memo(({
   useEffect(() => {
     let timer: any;
     if (isVideoLoading) {
-      // Faster delay for reels
-      timer = setTimeout(() => setShowSpinner(true), 300);
+      // Show thumbnail first, only show spinner if it takes more than 1s
+      timer = setTimeout(() => setShowSpinner(true), 1000);
     } else {
       setShowSpinner(false);
     }
@@ -241,13 +270,25 @@ const ReelVideoItem = React.memo(({
   })).current;
 
   const handleTapVideo = () => {
-    setIsPaused((prev: boolean) => !prev);
-    setShowPlayPause(true);
-    playPauseAnim.setValue(0.8);
-    Animated.sequence([
-      Animated.spring(playPauseAnim, { toValue: 1, useNativeDriver: true, friction: 4 }),
-      Animated.timing(playPauseAnim, { toValue: 0, duration: 600, delay: 200, useNativeDriver: true }),
-    ]).start(() => setShowPlayPause(false));
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      lastTapRef.current = 0;
+      handleDoubleTapLike();
+    } else {
+      lastTapRef.current = now;
+      setTimeout(() => {
+        if (Date.now() - lastTapRef.current >= DOUBLE_TAP_DELAY && lastTapRef.current !== 0) {
+          setIsPaused((prev: boolean) => !prev);
+          setShowPlayPause(true);
+          playPauseAnim.setValue(0.8);
+          Animated.sequence([
+            Animated.spring(playPauseAnim, { toValue: 1, useNativeDriver: true, friction: 4 }),
+            Animated.timing(playPauseAnim, { toValue: 0, duration: 600, delay: 200, useNativeDriver: true }),
+          ]).start(() => setShowPlayPause(false));
+        }
+      }, DOUBLE_TAP_DELAY);
+    }
   };
 
   const handleLike = () => {
@@ -284,33 +325,65 @@ const ReelVideoItem = React.memo(({
               transition={300}
             />
           ) : Platform.OS === 'web' ? (
-            <video
-              ref={videoRef}
-              src={mediaUrl}
-              preload="auto"
-              loop
-              muted={isMuted}
-              playsInline
-              autoPlay={isActive && !isPaused}
-              onLoadStart={() => setIsVideoLoading(true)}
-              onLoadedData={() => setIsVideoLoading(false)}
-              style={{ width: '100%', height: '100%', objectFit: contentFitMode }}
-            />
+            <>
+              <video
+                ref={videoRef}
+                src={mediaUrl}
+                preload="auto"
+                loop
+                muted={isMuted}
+                playsInline
+                autoPlay={isActive && !isPaused}
+                poster={posterUrl || undefined}
+                onLoadStart={() => setIsVideoLoading(true)}
+                onLoadedData={() => setIsVideoLoading(false)}
+                onCanPlay={() => setIsVideoLoading(false)}
+                onWaiting={() => setIsVideoLoading(true)}
+                onPlaying={() => setIsVideoLoading(false)}
+                style={{ width: '100%', height: '100%', objectFit: contentFitMode }}
+              />
+              {isVideoLoading && posterUrl && (
+                <Image
+                  source={{ uri: posterUrl }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  pointerEvents="none"
+                />
+              )}
+            </>
           ) : ExpoVideoModule?.VideoView && player ? (
-            <ExpoVideoModule.VideoView
-              player={player}
-              style={{ width: '100%', height: '100%' }}
-              contentFit={contentFitMode}
-              allowsPictureInPicture={false}
-              nativeControls={false}
-              useExoShutter={false}
-              playsInline={true}
-              onFirstFrameRender={() => setIsVideoLoading(false)}
-            />
+            <>
+              <ExpoVideoModule.VideoView
+                player={player}
+                style={{ width: '100%', height: '100%' }}
+                contentFit={contentFitMode}
+                allowsPictureInPicture={false}
+                nativeControls={false}
+                useExoShutter={false}
+                playsInline={true}
+                onFirstFrameRender={() => setIsVideoLoading(false)}
+              />
+              {isVideoLoading && posterUrl && (
+                <Image
+                  source={{ uri: posterUrl }}
+                  style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
+                  contentFit="cover"
+                  pointerEvents="none"
+                />
+              )}
+            </>
           ) : (
             <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />
           )}
         </View>
+
+        {/* Universal tap handler for images */}
+        {!isVideo && (
+          <Pressable
+            onPress={handleTapVideo}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
 
         {/* Left side - hold to rewind */}
         {isVideo && (
@@ -365,6 +438,7 @@ const ReelVideoItem = React.memo(({
             transform: [{ scale: playPauseAnim }],
             opacity: playPauseAnim,
             pointerEvents: 'none',
+            zIndex: 30,
           }}
         >
           <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
@@ -372,6 +446,34 @@ const ReelVideoItem = React.memo(({
           </View>
         </Animated.View>
       )}
+
+      {/* Animated Heart Overlay */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          marginTop: -50,
+          marginLeft: -50,
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999,
+          transform: [{ scale: heartScale }],
+          opacity: heartOpacity,
+        }}
+        pointerEvents="none"
+      >
+        <Ionicons 
+          name="heart" 
+          size={100} 
+          color="#FFF" 
+          style={{
+            textShadowColor: 'rgba(0, 0, 0, 0.3)',
+            textShadowOffset: { width: 0, height: 4 },
+            textShadowRadius: 6,
+          }} 
+        />
+      </Animated.View>
 
       {/* Speed badge */}
       {showSpeedBadge && isVideo && (
@@ -519,22 +621,26 @@ const ReelVideoItem = React.memo(({
                 textShadowColor: 'rgba(0, 0, 0, 0.8)',
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: 3,
+                fontWeight: '600',
               }}
               numberOfLines={isCaptionExpanded ? undefined : 1}
               ellipsizeMode="tail"
             >
+              <Text style={{ fontWeight: 'bold' }}>{localPost?.username || 'User'} </Text>
               {captionText}
             </Text>
-            <Text style={{ color: '#ccc', fontSize: 12, marginTop: 6, fontWeight: '600' }}>
-              {formatTimeAgo(localPost?.created_at || localPost?.createdAt || localPost?.createdAtUtc || null)}
-            </Text>
-            {isLongCaption ? (
+            {isLongCaption && !isCaptionExpanded && (
+              <Text style={{ color: '#ccc', fontSize: 13, fontWeight: '700', marginTop: 2 }}>
+                ...more
+              </Text>
+            )}
+            {isCaptionExpanded && (
               <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: '#ccc', fontSize: 13, fontWeight: '600' }}>
-                  {isCaptionExpanded ? 'Show less' : 'More'}
+                <Text style={{ color: '#ccc', fontSize: 13, fontWeight: '700' }}>
+                  Show less
                 </Text>
               </View>
-            ) : null}
+            )}
           </TouchableOpacity>
         ) : null}
       </View>
@@ -839,7 +945,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       loadingRef.current = false;
       hasMoreRef.current = true;
       watchStartRef.current = Date.now();
-      setTimeout(() => loadMoreReels(), 300);
+      // Increase delay to 2.5s to let the initial video load without API competition
+      setTimeout(() => loadMoreReels(), 2500);
     }
   }, [isVisible, initialPost, loadMoreReels]);
 
@@ -867,14 +974,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   const viewabilityConfigRef = useRef({
     itemVisiblePercentThreshold: 50,
-    viewAreaCoveragePercentThreshold: 50,
     minimumViewTime: 50,
     waitForInteraction: false,
   });
 
   const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      const newIndex = viewableItems[0].index;
+      const firstVisible = viewableItems[0];
+      const newIndex = firstVisible.index;
       const prevIndex = activeIndexRef.current;
 
       // Send watch event for the reel we're leaving
@@ -976,7 +1083,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             renderItem={renderItem}
             extraData={{ activeIndex, isMuted }}
             keyExtractor={(item, index) => `${item.id || index}`}
-            pagingEnabled={true}
+            pagingEnabled={Platform.OS !== 'web'}
             showsVerticalScrollIndicator={false}
             onScroll={handleReelScroll}
             scrollEventThrottle={16}
@@ -984,13 +1091,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             onViewableItemsChanged={handleViewableItemsChanged}
             viewabilityConfig={viewabilityConfigRef.current}
             getItemLayout={getItemLayout}
-            initialNumToRender={2}
-            maxToRenderPerBatch={3}
-            windowSize={3}
-            removeClippedSubviews={true}
+            initialNumToRender={1}
+            maxToRenderPerBatch={2}
+            windowSize={2}
+            removeClippedSubviews={Platform.OS !== 'web'}
             snapToInterval={screenSize.height}
             snapToAlignment="start"
             decelerationRate="fast"
+            disableIntervalMomentum={true}
             ListFooterComponent={
               loading ? (
                 <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
