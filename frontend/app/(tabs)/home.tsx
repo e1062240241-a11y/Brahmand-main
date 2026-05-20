@@ -1718,7 +1718,7 @@ export default function HomeScreen() {
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <ImageBackground
                     source={require('../../assets/images/blood_request_bg.png')}
-                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFC8CE' }]}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFC8CE', overflow: 'hidden' }]}
                     imageStyle={{ borderRadius: 15 }}
                     resizeMode="stretch"
                   >
@@ -1763,7 +1763,7 @@ export default function HomeScreen() {
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <ImageBackground
                     source={require('../../assets/images/register_business_bg.png')}
-                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7' }]}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7', overflow: 'hidden' }]}
                     imageStyle={{ borderRadius: 15 }}
                     resizeMode="stretch"
                   >
@@ -1806,7 +1806,7 @@ export default function HomeScreen() {
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <ImageBackground
                     source={require('../../assets/images/verified_vendor_bg.png')}
-                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC' }]}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC', overflow: 'hidden' }]}
                     imageStyle={{ borderRadius: 15 }}
                     resizeMode="stretch"
                   >
@@ -1848,7 +1848,7 @@ export default function HomeScreen() {
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <ImageBackground
                     source={require('../../assets/images/live_aarti_bg.png')}
-                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF', overflow: 'hidden' }]}
                     imageStyle={{ borderRadius: 15 }}
                     resizeMode="stretch"
                   >
@@ -2640,6 +2640,7 @@ const styles = StyleSheet.create({
     padding: Platform.OS === 'ios' ? 10 : 12,
     justifyContent: 'space-between',
     position: 'relative',
+    overflow: 'hidden',
   },
   cardHeaderBadge: {
     flexDirection: 'row',
