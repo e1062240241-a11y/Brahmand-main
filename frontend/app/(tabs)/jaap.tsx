@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,13 @@ import {
   ActivityIndicator,
   Modal,
   ImageBackground,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageById } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
@@ -53,11 +55,32 @@ const LIVE_JAAPS = [
     image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.png'),
     slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...'
   },
+  { 
+    id: '5', 
+    title: 'Ganesh\nMantra', 
+    devotees: '8.2K', 
+    image: require('../../assets/images/ganesh_jaap_card.png'),
+    slok: 'ॐ गं गणपतये नमः ॐ गं गणपतये नमः...'
+  },
+  { 
+    id: '6', 
+    title: 'Laxmi\nMantra', 
+    devotees: '6.1K', 
+    image: require('../../assets/images/laxmi_jaap_card.png'),
+    slok: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं...'
+  },
+  { 
+    id: '7', 
+    title: 'Krishna\nJaap', 
+    devotees: '7.2K', 
+    image: require('../../assets/images/krishna_jaap_card_v3.png'),
+    slok: 'राधे राधे राधे राधे श्याम मिलाए दे...'
+  },
 ];
 
 const UPCOMING_SESSIONS = [
   { id: '1', category: 'YOGA CLASS', title: 'Morning Yoga Flow', desc: 'Start your day with energy and positivity.', date: 'Tomorrow', time: '6:00 AM', going: '2.4K going', image: require('../../assets/images/yoga_session_img.png') },
-  { id: '2', category: 'GEETA PATH', title: 'Bhagavad Gita Chapter 2', desc: 'Dive deep into wisdom.', date: 'Tomorrow', time: '7:30 PM', going: '3.2K going', image: require('../../assets/images/geeta_session_v2_exact.png') },
+  { id: '2', category: 'GEETA PATH', title: 'Bhagavad Gita Chapter 2', desc: 'Dive deep into wisdom.', date: 'Tomorrow', time: '7:30 PM', going: '3.2K going', image: require('../../assets/images/geeta_session_v3.png') },
   { id: '3', category: 'SANSKRIT CLASS', title: 'Sanskrit Language Basics', desc: 'Learn. Chant. Connect.', date: '21 May', time: '6:30 PM', going: '1.9K going', image: require('../../assets/images/sanskrit_session_v2_exact.png') },
   { id: '4', category: 'MEDITATION', title: 'Breathing & Meditation', desc: 'Find calm within.', date: '22 May', time: '6:00 AM', going: '2.1K going', image: require('../../assets/images/yoga_session_img.png') },
 ];
@@ -65,8 +88,15 @@ const UPCOMING_SESSIONS = [
 export default function JaapLandingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
+
+  // Auto-scroll ref for More Live Jaaps
+  const jaapScrollRef = useRef<ScrollView>(null);
+  const jaapScrollOffset = useRef(0);
+  const jaapScrollDir = useRef(1); // 1 = forward, -1 = backward
+  const CARD_WIDTH = 250; // approx card + gap
 
   // Temple State
   const [temples, setTemples] = useState<any[]>([]);
@@ -75,8 +105,24 @@ export default function JaapLandingScreen() {
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Sacred'>('All');
 
   useEffect(() => {
+    if (!isFocused) return;
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
+  }, [isFocused]);
+
+  // Auto-scroll effect for More Live Jaaps
+  useEffect(() => {
+    const maxOffset = CARD_WIDTH * (LIVE_JAAPS.length - 2);
+    const autoScroll = setInterval(() => {
+      jaapScrollOffset.current += jaapScrollDir.current * CARD_WIDTH;
+      if (jaapScrollOffset.current >= maxOffset) {
+        jaapScrollDir.current = -1;
+      } else if (jaapScrollOffset.current <= 0) {
+        jaapScrollDir.current = 1;
+      }
+      jaapScrollRef.current?.scrollTo({ x: jaapScrollOffset.current, animated: true });
+    }, 2800);
+    return () => clearInterval(autoScroll);
   }, []);
 
   const liveActive = isWithinGayatriMantraWindow(now);
@@ -131,46 +177,64 @@ export default function JaapLandingScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={[styles.topTabsContainer, { paddingTop: 10 }]}>
+      <LinearGradient
+        colors={['#E59E7C', '#F2B496']}
+        style={styles.topTabsContainer}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <View style={styles.topTabsInner}>
-          <TouchableOpacity 
-            style={styles.jaapTabExact} 
+          <TouchableOpacity
+            style={[
+              styles.tabPill,
+              activeSection === 'jaap' && styles.tabPillActive,
+              activeSection === 'jaap' && {
+                shadowColor: '#000',
+                shadowOffset: { width: 5, height: 0 },
+                shadowOpacity: 0.18,
+                shadowRadius: 5,
+                elevation: 4,
+              }
+            ]}
             onPress={() => setActiveSection('jaap')}
-            activeOpacity={1}
+            activeOpacity={0.9}
           >
-            {activeSection === 'jaap' ? (
-              <LinearGradient colors={['#FF8D57', '#FF6600', '#E65C00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.5 }} style={styles.jaapGradientExact}>
-                <View style={styles.jaapContentRow}>
-                  <Text style={styles.omSymbolExact}>ॐ</Text>
-                  <Text style={styles.tabTitleExact}>Jaap</Text>
-                </View>
-              </LinearGradient>
-            ) : (
-              <View style={[styles.jaapContentRow, { justifyContent: 'center', flex: 1 }]}>
-                <Text style={[styles.omSymbolExact, { color: '#FF6600' }]}>ॐ</Text>
-                <Text style={[styles.tabTitleExact, { color: '#8B4513' }]}>Jaap</Text>
-              </View>
-            )}
+            <Text
+              style={[
+                styles.tabPillText,
+                activeSection === 'jaap' && styles.tabPillTextActive,
+              ]}
+            >
+              Jaap
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.templeTabExact, activeSection === 'temple' && { backgroundColor: '#FF6600' }]} 
-            onPress={() => setActiveSection('temple')} 
-            activeOpacity={0.8}
+          <TouchableOpacity
+            style={[
+              styles.tabPill,
+              activeSection === 'temple' && styles.tabPillActive,
+              activeSection === 'temple' && {
+                shadowColor: '#000',
+                shadowOffset: { width: -5, height: 0 },
+                shadowOpacity: 0.18,
+                shadowRadius: 5,
+                elevation: 4,
+              }
+            ]}
+            onPress={() => setActiveSection('temple')}
+            activeOpacity={0.9}
           >
-             <View style={styles.templeContentRow}>
-                <MaterialCommunityIcons 
-                  name="temple-hindu" 
-                  size={20} 
-                  color={activeSection === 'temple' ? '#FFF' : '#FF6600'} 
-                />
-                <Text style={[styles.templeTitleExact, { color: activeSection === 'temple' ? '#FFF' : '#FF6600' }]}>
-                  Temple
-                </Text>
-             </View>
+            <Text
+              style={[
+                styles.tabPillText,
+                activeSection === 'temple' && styles.tabPillTextActive,
+              ]}
+            >
+              Temple
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
@@ -262,24 +326,39 @@ export default function JaapLandingScreen() {
 
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>More Live Jaaps</Text>
-              <TouchableOpacity style={styles.viewAllBtnRefined}><Text style={styles.viewAllSaffronRefined}>View All</Text></TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push('/all-live-jaaps' as any)}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <Text style={styles.viewAllSaffronRefined}>View All</Text>
+                <Ionicons name="chevron-forward" size={18} color="#FF6600" />
+              </TouchableOpacity>
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.miniCardsRowPadding}>
+            <ScrollView
+              ref={jaapScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.miniCardsRowPadding}
+              scrollEventThrottle={16}
+              onScroll={(e) => {
+                jaapScrollOffset.current = e.nativeEvent.contentOffset.x;
+              }}
+            >
               {LIVE_JAAPS.map((jaap) => (
-                <TouchableOpacity 
-                  key={jaap.id} 
-                  style={[styles.jaapCardContainer, { width: 240, backgroundColor: '#1A0A00' }]} 
+                <TouchableOpacity
+                  key={jaap.id}
+                  style={[styles.jaapCardContainer, { width: 240, backgroundColor: '#1A0A00' }]}
                   onPress={() => router.push({
                     pathname: '/live-jaap-welcome',
-                    params: { 
-                      mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : 'gayatri',
+                    params: {
+                      mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
                       title: jaap.title.replace('\n', ' ')
                     }
                   })}
                 >
                   <Image
-                    key={`jaap_card_img_v2_${jaap.id}`}
                     source={jaap.image}
                     style={{ width: '100%', height: '100%', position: 'absolute' }}
                     resizeMode="cover"
@@ -297,12 +376,12 @@ export default function JaapLandingScreen() {
                     <View style={styles.jaapCardBottomArea}>
                       <Text style={styles.jaapCardTitleExact}>{jaap.title}</Text>
                       <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
-                      <TouchableOpacity 
-                        style={styles.exactJoinBtn} 
+                      <TouchableOpacity
+                        style={styles.exactJoinBtn}
                         onPress={() => router.push({
                           pathname: '/live-jaap-welcome',
-                          params: { 
-                            mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : 'gayatri',
+                          params: {
+                            mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
                             title: jaap.title.replace('\n', ' ')
                           }
                         })}
@@ -321,8 +400,8 @@ export default function JaapLandingScreen() {
             </ScrollView>
 
             <View style={styles.sectionHeaderParity}>
-              <Text style={styles.sectionTitleText}>Upcoming Spiritual Sessions</Text>
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[styles.sectionTitleText, { flexShrink: 1, marginRight: 12 }]}>Upcoming Spiritual Sessions</Text>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
                 <Text style={styles.viewAllSaffronRefined}>View All</Text>
                 <Ionicons name="chevron-forward" size={18} color="#FF6600" />
               </TouchableOpacity>
@@ -330,32 +409,30 @@ export default function JaapLandingScreen() {
 
             <View style={styles.sessionsColPadding}>
               {UPCOMING_SESSIONS.map((session) => (
-                <View key={session.id} style={styles.exactSessionItemCard}>
-                  <Image source={session.image} style={styles.exactSessionImg} resizeMode="cover" />
-                  <View style={styles.exactSessionMainInfo}>
-                    <Text style={styles.exactSessionCat}>{session.category}</Text>
-                    <Text style={styles.exactSessionTitle}>{session.title}</Text>
-                    <Text style={styles.exactSessionDesc}>{session.desc}</Text>
-                  </View>
-                  <View style={styles.exactSessionDateTimeCol}>
-                    <View style={styles.metaEntry}>
-                      <Ionicons name="calendar-outline" size={16} color="#8B4513" />
-                      <Text style={styles.metaEntryText}>{session.date}</Text>
-                    </View>
-                    <View style={styles.metaEntry}>
-                      <Ionicons name="time-outline" size={16} color="#8B4513" />
-                      <Text style={styles.metaEntryText}>{session.time}</Text>
+                <View key={session.id} style={styles.sessionCard}>
+                  {/* Image + Text row */}
+                  <View style={styles.sessionTopRow}>
+                    <Image source={session.image} style={styles.sessionImg} resizeMode="cover" />
+                    <View style={styles.sessionTextCol}>
+                      <Text style={styles.sessionCat}>{session.category}</Text>
+                      <Text style={styles.sessionTitle}>{session.title}</Text>
+                      <Text style={styles.sessionDesc}>{session.desc}</Text>
                     </View>
                   </View>
-                  <View style={styles.exactSessionGoingCol}>
-                    <View style={styles.metaEntry}>
-                      <FontAwesome5 name="users" size={14} color="#8B4513" />
-                      <Text style={styles.metaEntryText}>{session.going}</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity style={styles.exactSetReminderBtn}>
-                    <Ionicons name="notifications-outline" size={18} color="#FF6600" />
-                    <Text style={styles.exactReminderText}>Set Reminder</Text>
+                  {/* Reminder button */}
+                  <TouchableOpacity
+                    style={styles.reminderBtn}
+                    activeOpacity={0.8}
+                    onPress={() =>
+                      Alert.alert(
+                        '🔔 Reminder Set!',
+                        `You will be reminded for "${session.title}" on ${session.date} at ${session.time}.`,
+                        [{ text: 'OK', style: 'default' }]
+                      )
+                    }
+                  >
+                    <Ionicons name="notifications-outline" size={16} color="#FF6600" />
+                    <Text style={styles.reminderBtnText}>Reminder</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -466,8 +543,49 @@ export default function JaapLandingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFBF5' },
-  topTabsContainer: { paddingHorizontal: 16, backgroundColor: '#FFFBF5', paddingBottom: 10, zIndex: 1000 },
-  topTabsInner: { height: 54, backgroundColor: '#F0E5D8', borderRadius: 27, flexDirection: 'row', borderWidth: 1, borderColor: '#DBC7B0', overflow: 'hidden', elevation: 4, shadowColor: '#8B4513', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6 },
+  topTabsContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 12,
+    zIndex: 1000,
+  },
+  topTabsInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30,
+    padding: 4,
+    // iOS shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    // Android
+    elevation: 3,
+  },
+  tabPill: {
+    flex: 1,
+    height: '100%',
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  tabPillActive: {
+    backgroundColor: '#FF6600',
+    borderRadius: 28,
+  },
+  tabPillText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000000',
+  },
+  tabPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  // legacy (kept for other references)
   jaapTabExact: { flex: 1, height: '100%' },
   jaapGradientExact: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   jaapMandalaHeader: { display: 'none' },
@@ -515,6 +633,29 @@ const styles = StyleSheet.create({
   mockupWaveformBox: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row' },
   sectionHeaderParity: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginTop: 40, marginBottom: 20 },
   viewAllBtnRefined: { paddingHorizontal: 10, paddingVertical: 5 },
+  viewAllPillBtn: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+  },
+  viewAllPillGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  viewAllPillText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   sectionTitleText: { fontSize: 22, fontWeight: '900', color: '#2D1400' },
   viewAllSaffronRefined: { color: '#FF6600', fontSize: 16, fontWeight: '800' },
   miniCardsRowPadding: { paddingLeft: 25 },
@@ -532,6 +673,69 @@ const styles = StyleSheet.create({
   exactJoinText: { color: '#FF6600', fontSize: 18, fontWeight: '800' },
   waveformIconBox: { marginRight: 15 },
   sessionsColPadding: { paddingHorizontal: 20 },
+  // New session card matching provided design
+  sessionCard: {
+    backgroundColor: '#F5E6D3',
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 14,
+  },
+  sessionTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 12,
+  },
+  sessionImg: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    flexShrink: 0,
+  },
+  sessionTextCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  sessionCat: {
+    color: '#FF6600',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    textAlign: 'left',
+    marginBottom: 2,
+  },
+  sessionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2D1400',
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  sessionDesc: {
+    fontSize: 12,
+    color: '#8B4513',
+    fontWeight: '500',
+    opacity: 0.75,
+    lineHeight: 16,
+  },
+  reminderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#FF6600',
+    borderRadius: 30,
+    paddingVertical: 10,
+    backgroundColor: 'transparent',
+  },
+  reminderBtnText: {
+    color: '#FF6600',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  // legacy styles kept for other uses
   exactSessionItemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBF5', borderRadius: 24, padding: 15, marginBottom: 15, elevation: 5, shadowColor: '#8B4513', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.1, shadowRadius: 8, borderWidth: 1, borderColor: '#F5E0C3' },
   exactSessionImg: { width: 100, height: 100, borderRadius: 18, marginRight: 15 },
   exactSessionMainInfo: { flex: 2, gap: 4 },

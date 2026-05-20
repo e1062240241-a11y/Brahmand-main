@@ -51,7 +51,7 @@ from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
 from services.msg91_service import MSG91Service
-from services.upload_lock_service import get_user_upload_lock
+from services.upload_lock_service import get_user_upload_lock, get_global_upload_semaphore
 
 try:
     from google.cloud import vision
@@ -2003,16 +2003,17 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
         logger.info(f"Follow notification created for user {user_id} by {current_user_id}")
 
         try:
-            await FirebaseNotificationService.send_push_notification(
-                user_id=user_id,
-                title='New follower',
-                body=f'{follower_name} started following you.',
-                data={
+            await task_queue.enqueue(
+                FirebaseNotificationService.send_push_notification,
+                user_id,
+                'New follower',
+                f'{follower_name} started following you.',
+                {
                     'type': 'follow',
                     'actor_user_id': current_user_id,
                 }
             )
-            logger.info(f"Follow push sent to user {user_id} for follower {current_user_id}")
+            logger.info(f"Follow push queued to user {user_id} for follower {current_user_id}")
         except Exception as push_err:
             logger.warning(f"Followed user {user_id} but failed to send push: {push_err}")
     except Exception as notify_err:
@@ -2073,9 +2074,11 @@ async def upload_post(
     token_data: dict = Depends(verify_token)
 ):
     user_id = token_data['user_id']
-    lock = await get_user_upload_lock(user_id)
-    async with lock:
-        return await _upload_post_impl(caption, source, filter_name, file, token_data)
+    user_lock = await get_user_upload_lock(user_id)
+    global_semaphore = get_global_upload_semaphore()
+    async with global_semaphore:
+        async with user_lock:
+            return await _upload_post_impl(caption, source, filter_name, file, token_data)
 
 async def _upload_post_impl(
     caption: str,
@@ -2252,7 +2255,8 @@ async def _upload_post_impl(
     )
 
     try:
-        await _notify_mentioned_users(
+        await task_queue.enqueue(
+            _notify_mentioned_users,
             db=db,
             text=caption,
             actor_user=user,
@@ -2271,9 +2275,11 @@ async def upload_chat_media(
     token_data: dict = Depends(verify_token),
 ):
     user_id = token_data['user_id']
-    lock = await get_user_upload_lock(user_id)
-    async with lock:
-        return await _upload_chat_media_impl(file, token_data)
+    user_lock = await get_user_upload_lock(user_id)
+    global_semaphore = get_global_upload_semaphore()
+    async with global_semaphore:
+        async with user_lock:
+            return await _upload_chat_media_impl(file, token_data)
 
 async def _upload_chat_media_impl(
     file: UploadFile,
@@ -2982,17 +2988,18 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                 })
                 logger.info(f"Like notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
-                await FirebaseNotificationService.send_push_notification(
-                    user_id=post_owner_id,
-                    title='New like on your post',
-                    body=f'{actor_name} liked your post.',
-                    data={
+                await task_queue.enqueue(
+                    FirebaseNotificationService.send_push_notification,
+                    post_owner_id,
+                    'New like on your post',
+                    f'{actor_name} liked your post.',
+                    {
                         'type': 'post_like',
                         'post_id': str(post_id),
                         'actor_user_id': str(user_id),
                     }
                 )
-                logger.info(f"Like push sent to post owner {post_owner_id} for post {post_id}")
+                logger.info(f"Like push queued to post owner {post_owner_id} for post {post_id}")
             except Exception as notify_err:
                 logger.warning(f"Post like notification failed for post {post_id}: {notify_err}")
 
@@ -3396,7 +3403,8 @@ async def action_personality_verification(request_id: str, action: str = Body(..
         
         # Send Notification
         try:
-            await FirebaseNotificationService.create_notification(
+            await task_queue.enqueue(
+                FirebaseNotificationService.create_notification,
                 target_user_id,
                 "Personality Verified!",
                 f"Congratulations! Your {level} verification has been approved. You now have access to the {community_to_join if community_to_join else 'verified groups'}.",
@@ -3422,7 +3430,8 @@ async def action_personality_verification(request_id: str, action: str = Body(..
         await cache_manager.invalidate_user(target_user_id)
         
         try:
-            await FirebaseNotificationService.create_notification(
+            await task_queue.enqueue(
+                FirebaseNotificationService.create_notification,
                 target_user_id,
                 "Verification Rejected",
                 "Your personality verification request was not approved at this time. Please ensure your documents are clear and valid.",
@@ -5218,7 +5227,8 @@ async def approve_circle_request(circle_id: str, request_user_id: str, token_dat
     logger.info(f"User {request_user_id} approved to join circle {circle_id}")
     
     # Notify user
-    await FirebaseNotificationService.send_push_notification(
+    await task_queue.enqueue(
+        FirebaseNotificationService.send_push_notification,
         request_user_id,
         'Circle Joined!',
         f"Your request to join the circle '{circle.get('name', 'New Circle')}' has been approved.",
@@ -5321,7 +5331,8 @@ async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict 
     logger.info(f"User {target_user_id} invited to circle {circle_id}")
     
     # Notify user
-    await FirebaseNotificationService.send_push_notification(
+    await task_queue.enqueue(
+        FirebaseNotificationService.send_push_notification,
         target_user_id,
         'New Circle Invite',
         f"You have been added to the circle '{circle.get('name', 'New Circle')}' by an admin.",
@@ -8484,8 +8495,8 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
             'action_label_deny': 'Deny'
         }
         
-        await _send_sos_notifications(next_batch, title, body, notification_data)
-        asyncio.create_task(_save_bulk_notifications(db, next_batch, title, body, 'sos', notification_data))
+        await task_queue.enqueue(_send_sos_notifications, next_batch, title, body, notification_data)
+        await task_queue.enqueue(_save_bulk_notifications, db, next_batch, title, body, 'sos', notification_data)
         step += 1
 
 
@@ -8634,11 +8645,11 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
             'micro_location': sos_data['micro_location'] or '',
         }
         
-        await _send_sos_notifications(all_target_user_ids, title, body, notification_data)
-        logger.info(f"SOS: sent notification to {len(all_target_user_ids)} users")
+        await task_queue.enqueue(_send_sos_notifications, all_target_user_ids, title, body, notification_data)
+        logger.info(f"SOS: queued notification for {len(all_target_user_ids)} users")
         
         # Save notifications to database in background
-        asyncio.create_task(_save_bulk_notifications(db, all_target_user_ids, title, body, 'sos', notification_data))
+        await task_queue.enqueue(_save_bulk_notifications, db, all_target_user_ids, title, body, 'sos', notification_data)
 
     # Broadcast to community chat
     community_ids = user.get('communities', [])
@@ -8661,6 +8672,9 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     
     # Emit SOS alert via socket to nearby users
     await sio.emit('sos_alert', sos_data)
+    
+    # Start escalation process in background
+    await task_queue.enqueue(_escalate_sos_notifications, sos_id, all_target_user_ids)
     
     logger.info(f"SOS alert created by {user_id} at {area}, {city}")
     return sos_data
@@ -8745,7 +8759,8 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
                 continue
             try:
                 notification_data = {'type': 'sos_resolved', 'sos_id': sos_id}
-                await FirebaseNotificationService.send_push_notification(
+                await task_queue.enqueue(
+                    FirebaseNotificationService.send_push_notification,
                     responder_id,
                     'SOS Resolved',
                     f"{alert.get('user_name')} is safe now. Thank you for helping.",
@@ -8825,7 +8840,8 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
             'responder_name': user.get('name'),
             'response': response
         }
-        await FirebaseNotificationService.send_push_notification(
+        await task_queue.enqueue(
+            FirebaseNotificationService.send_push_notification,
             creator_user_id,
             f'{user.get("name")} is coming to help!',
             count_msg,
@@ -8897,7 +8913,8 @@ async def update_sos_responder_status(
 
     notification_data = {'type': 'sos_responder_status', 'sos_id': sos_id, 'status': status}
 
-    await FirebaseNotificationService.send_push_notification(
+    await task_queue.enqueue(
+        FirebaseNotificationService.send_push_notification,
         alert.get('user_id'),
         'SOS update',
         f"{user.get('name')} is now {status.replace('_', ' ')}.",

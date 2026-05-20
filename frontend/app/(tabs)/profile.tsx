@@ -138,8 +138,8 @@ export default function ProfileScreen() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editedCaption, setEditedCaption] = useState('');
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
-  const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
-  const [postHeights, setPostHeights] = useState<Record<string, number>>({});
+  const postOffsetsRef = useRef<Record<string, number>>({});
+  const postHeightsRef = useRef<Record<string, number>>({});
   const postListRef = useRef<FlatList>(null);
   const hasScrolledToPost = useRef(false);
   const [activeTab, setActiveTab] = useState('grid');
@@ -492,8 +492,8 @@ export default function ProfileScreen() {
     setEditedCaption(post?.caption || '');
     hasScrolledToPost.current = false;
     setActivePostKey(null);
-    setPostOffsets({});
-    setPostHeights({});
+    postOffsetsRef.current = {};
+    postHeightsRef.current = {};
     try {
       viewPost(post.id);
     } catch (e) { }
@@ -967,8 +967,8 @@ export default function ProfileScreen() {
                     onLayout={(event) => {
                       const y = event.nativeEvent.layout.y;
                       const h = event.nativeEvent.layout.height;
-                      setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
-                      setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
+                      postOffsetsRef.current[postKey] = y;
+                      postHeightsRef.current[postKey] = h;
                     }}
                   >
                     <PostFeedCard
@@ -1014,9 +1014,9 @@ export default function ProfileScreen() {
                 let closestKey: string | null = null;
                 let maxVisible = 0;
                 const screenH = Dimensions.get('window').height;
-                for (const key of Object.keys(postOffsets)) {
-                  const offset = postOffsets[key];
-                  const height = postHeights[key];
+                for (const key of Object.keys(postOffsetsRef.current)) {
+                  const offset = postOffsetsRef.current[key];
+                  const height = postHeightsRef.current[key];
                   if (typeof offset === 'number' && typeof height === 'number') {
                     const visibleTop = Math.max(0, offset - y);
                     const visibleBottom = Math.min(screenH, offset + height - y);

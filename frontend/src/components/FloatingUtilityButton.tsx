@@ -483,7 +483,7 @@ export const FloatingUtilityButton = () => {
     sosRefreshTimerRef.current = setInterval(() => {
       checkSOSStatus();
       fetchMyCommunityRequests();
-    }, 5000);
+    }, 60000);
 
     return () => {
       if (sosRefreshTimerRef.current) clearInterval(sosRefreshTimerRef.current);
