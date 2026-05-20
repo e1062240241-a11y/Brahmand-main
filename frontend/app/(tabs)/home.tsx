@@ -1749,13 +1749,13 @@ export default function HomeScreen() {
                         router.push('/community-request/list');
                       }}
                     >
-                      <Text style={{ color: '#FF0022', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                      <Text style={{ color: '#FF0022', fontSize: 9.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 70, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#FF0000', fontSize: 6.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
+                      <Text style={{ color: '#FF0000', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
                     </View>
                   </View>
                 </View>
@@ -1774,13 +1774,13 @@ export default function HomeScreen() {
                       style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
                       onPress={() => router.push('/vendor/business-details')}
                     >
-                      <Text style={{ color: '#FF9500', fontSize: 7.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Register Now</Text>
+                      <Text style={{ color: '#FF9500', fontSize: 9, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Register Now</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 42, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#FF9500', fontSize: 7.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Free</Text>
+                      <Text style={{ color: '#FF9500', fontSize: 9, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Free</Text>
                     </View>
                   </View>
                 </View>
@@ -1796,13 +1796,13 @@ export default function HomeScreen() {
                       <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>Specialised in festival flower decor, Mumbai</Text>
                     </View>
                     <TouchableOpacity style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
-                      <Text style={{ color: '#00C781', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
+                      <Text style={{ color: '#00C781', fontSize: 9.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Verified vendor</Text>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 9.5, fontWeight: '700' }]} numberOfLines={1}>Verified vendor</Text>
                     </View>
                   </View>
                 </View>
@@ -1829,13 +1829,13 @@ export default function HomeScreen() {
                         }
                       })}
                     >
-                      <Text style={{ color: '#8C36DB', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
+                      <Text style={{ color: '#8C36DB', fontSize: 9.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
                     </TouchableOpacity>
                   </LinearGradient>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'center', borderRadius: 10 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 8, fontWeight: '700' }]} numberOfLines={1}>Temple</Text>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 9.5, fontWeight: '700' }]} numberOfLines={1}>Temple</Text>
                     </View>
                   </View>
                 </View>
@@ -1868,7 +1868,7 @@ export default function HomeScreen() {
                             styles.miniCardType,
                             {
                               color: '#9F45FF',
-                              fontSize: 7,
+                              fontSize: 8.5,
                               fontWeight: '510' as any,
                               fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                               letterSpacing: 0,
@@ -1882,7 +1882,7 @@ export default function HomeScreen() {
                             styles.miniCardTitle,
                             {
                               color: '#000',
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: '590' as any,
                               fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                             }
@@ -1896,7 +1896,7 @@ export default function HomeScreen() {
                             styles.miniCardMembers,
                             {
                               color: '#000',
-                              fontSize: 7,
+                              fontSize: 8.5,
                               fontWeight: '400',
                               fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                             }
@@ -1937,7 +1937,7 @@ export default function HomeScreen() {
                             styles.miniCardTitle,
                             {
                               color: '#000',
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: '590' as any,
                               fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                             }
@@ -1952,7 +1952,7 @@ export default function HomeScreen() {
                               styles.miniCardMembers,
                               {
                                 color: '#000',
-                                fontSize: 7,
+                                fontSize: 8.5,
                                 fontWeight: '400',
                                 fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                               }
@@ -2668,18 +2668,18 @@ const styles = StyleSheet.create({
   },
   cardTitleLargeDark: {
     color: '#111111',
-    fontSize: Platform.OS === 'ios' ? 10 : 8,
+    fontSize: Platform.OS === 'ios' ? 12 : 10,
     fontWeight: '800',
     maxWidth: '100%',
     marginBottom: 4,
-    lineHeight: Platform.OS === 'ios' ? 12 : 10.5,
+    lineHeight: Platform.OS === 'ios' ? 14 : 12,
   },
   cardSubtitleSmallDark: {
     color: '#5A5A5A',
-    fontSize: Platform.OS === 'ios' ? 8.2 : 6.8,
+    fontSize: Platform.OS === 'ios' ? 9.8 : 8.8,
     fontWeight: '600',
     maxWidth: '100%',
-    lineHeight: Platform.OS === 'ios' ? 10 : 8.5,
+    lineHeight: Platform.OS === 'ios' ? 12 : 10.5,
   },
   cardLocationText: {
     color: '#666',
@@ -2878,7 +2878,7 @@ const styles = StyleSheet.create({
   },
   sevaBadgeTextMini: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    fontSize: 7,
+    fontSize: 8.5,
     fontWeight: '590' as any,
     color: '#397339',
   },
