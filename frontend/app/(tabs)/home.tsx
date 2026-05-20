@@ -1721,11 +1721,11 @@ export default function HomeScreen() {
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFC8CE' }]}
                     imageStyle={{ borderRadius: 15 }}
                   >
-                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                      <View style={styles.cardIconRow}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
+                      <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900', fontSize: Platform.OS === 'ios' ? 13.5 : 12, lineHeight: 16 }]} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1765,11 +1765,11 @@ export default function HomeScreen() {
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFEAA7' }]}
                     imageStyle={{ borderRadius: 15 }}
                   >
-                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                      <View style={styles.cardIconRow}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
+                      <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
                         <ShopIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900' }]} numberOfLines={3} adjustsFontSizeToFit>Register Your Business</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900', fontSize: Platform.OS === 'ios' ? 13.5 : 12, lineHeight: 16 }]} numberOfLines={2} adjustsFontSizeToFit>Register Your Business</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1807,11 +1807,11 @@ export default function HomeScreen() {
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#C7F9CC' }]}
                     imageStyle={{ borderRadius: 15 }}
                   >
-                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
-                      <View style={styles.cardIconRow}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10 }]}>
+                      <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
                         <LotusIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900' }]} numberOfLines={3} adjustsFontSizeToFit>Sai Flower Decorator</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900', fontSize: Platform.OS === 'ios' ? 13.5 : 12, lineHeight: 16 }]} numberOfLines={2} adjustsFontSizeToFit>Sai Flower Decorator</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1848,11 +1848,11 @@ export default function HomeScreen() {
                     style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#E8AEFF' }]}
                     imageStyle={{ borderRadius: 15 }}
                   >
-                    <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10, paddingHorizontal: 4 }]}>
-                      <View style={styles.cardIconRow}>
+                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 10, paddingHorizontal: 4 }]}>
+                      <View style={[styles.cardIconRow, { marginBottom: 8 }]}>
                         <TempleIcon />
                       </View>
-                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900' }]} numberOfLines={3} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center', fontWeight: '900', fontSize: Platform.OS === 'ios' ? 13.5 : 12, lineHeight: 16 }]} numberOfLines={2} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
                     </View>
                     <TouchableOpacity
                       style={{
