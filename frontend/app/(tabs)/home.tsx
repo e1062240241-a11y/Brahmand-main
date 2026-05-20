@@ -31,7 +31,193 @@ import { useFeedStore } from '../../src/store/feedStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
+
+function KundliSirenIcon() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {/* Orange-Red Circular Base */}
+      <Circle cx="12" cy="12" r="11" fill="#FF5100" />
+      {/* Light pinkish outer ring inside circle */}
+      <Circle cx="12" cy="12" r="11" stroke="#FFE6E0" strokeWidth="1" />
+      {/* Siren bell/dome */}
+      <Path
+        d="M12 8C10.3 8 9 9.3 9 11V13.5H15V11C15 9.3 13.7 8 12 8Z"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Siren base */}
+      <Path
+        d="M8 14H16"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Beams */}
+      <Path d="M12 5V6.5" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" />
+      <Path d="M8.5 6L9.5 7" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" />
+      <Path d="M15.5 6L14.5 7" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function CosmicMoonIcon() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {/* Orange circular base */}
+      <Circle cx="12" cy="12" r="11" fill="#FF5100" />
+      {/* Light pinkish outer border */}
+      <Circle cx="12" cy="12" r="11" stroke="#FFE6E0" strokeWidth="1.5" />
+      {/* Crescent Moon Outline (matching image exactly, pointing right/up) */}
+      <Path
+        d="M8.5 13.5C8.5 9.5 11.5 6.5 15 6.5C13.8 7.5 13 9.0 13 10.8C13 13.5 15 15.5 17.5 15.5C16.5 16.5 15 17 13.5 17C10.5 17 8.5 15 8.5 13.5Z"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Large Star Sparkle Cross (top right) */}
+      <Path
+        d="M15.5 5.5H18.5M17 4V7"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* Small Star Sparkle Cross (next to it) */}
+      <Path
+        d="M13 3.5H15M14 2.5V4.5"
+        stroke="#FFFFFF"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+function PassportIcon() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {/* Deep Blue Circular Base */}
+      <Circle cx="12" cy="12" r="11" fill="#0A1D37" />
+      {/* Gold outer ring */}
+      <Circle cx="12" cy="12" r="11" stroke="#FFC000" strokeWidth="1" />
+      
+      {/* Gold circle in center */}
+      <Circle cx="12" cy="9.8" r="3.2" stroke="#FFC000" strokeWidth="0.8" />
+      
+      {/* Beautiful OM path */}
+      <Path
+        d="M11.2 8.8C11.6 8.5 12.2 8.5 12.5 8.9C12.8 9.3 12.7 9.8 12.3 10.1C12.7 10.4 12.9 10.9 12.7 11.4C12.5 11.9 11.9 12.1 11.4 11.8M12.8 10.1C13.3 10.4 13.6 11.0 13.2 11.6C12.8 12.2 12.0 12.4 11.4 12.0M12.0 8.0C12.3 8.1 12.5 8.3 12.4 8.6M12.8 7.5C13.2 7.7 13.5 8.0 13.6 8.4"
+        stroke="#FFC000"
+        strokeWidth="0.6"
+        strokeLinecap="round"
+      />
+      
+      {/* Temple outline at bottom */}
+      <Path
+        d="M8.5 17H15.5M9.5 17V15L12 13L14.5 15V17M12 13V17M11 17V15.5H13V17"
+        stroke="#FFC000"
+        strokeWidth="0.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function SacredDaysIcon() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {/* Orange circular base */}
+      <Circle cx="12" cy="12" r="11" fill="#FF5100" />
+      {/* Light pinkish outer border */}
+      <Circle cx="12" cy="12" r="11" stroke="#FFE6E0" strokeWidth="1.5" />
+      {/* Calendar Outline */}
+      <Rect
+        x="6.5"
+        y="7.5"
+        width="11"
+        height="10"
+        rx="1.5"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+      />
+      {/* Calendar Binders */}
+      <Path
+        d="M9.5 5.5V7.5M14.5 5.5V7.5"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* Star in the center of calendar */}
+      <Path
+        d="M12 9.5L12.8 11.2L14.7 11.5L13.3 12.8L13.6 14.7L12 13.8L10.4 14.7L10.7 12.8L9.3 11.5L11.2 11.2Z"
+        fill="#FFFFFF"
+      />
+    </Svg>
+  );
+}
+
+function HoroscopeIcon() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {/* Purple circular base */}
+      <Circle cx="12" cy="12" r="11" fill="#7C4DFF" />
+      {/* Light border */}
+      <Circle cx="12" cy="12" r="11" stroke="#F0E6FF" strokeWidth="1.5" />
+      {/* Star outline */}
+      <Path
+        d="M12 6L13.8 9.7L17.8 10.3L14.9 13.1L15.6 17.1L12 15.2L8.4 17.1L9.1 13.1L6.2 10.3L10.2 9.7L12 6Z"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+function LibraryBookIcon() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {/* Orange circular base */}
+      <Circle cx="12" cy="12" r="11" fill="#FF5100" />
+      {/* Light pinkish outer border */}
+      <Circle cx="12" cy="12" r="11" stroke="#FFE6E0" strokeWidth="1.5" />
+      
+      {/* Standing Book 1 */}
+      <Rect
+        x="7.5"
+        y="6.5"
+        width="4"
+        height="11"
+        rx="1"
+        stroke="#FFFFFF"
+        strokeWidth="1.5"
+      />
+      {/* Horizontal lines on Standing Book spine */}
+      <Path d="M7.5 9.5H11.5M7.5 14.5H11.5" stroke="#FFFFFF" strokeWidth="1.2" />
+      
+      {/* Leaning Book 2 */}
+      <G transform="rotate(12 12 12)">
+        <Rect
+          x="11.5"
+          y="6.5"
+          width="4"
+          height="11"
+          rx="1"
+          stroke="#FFFFFF"
+          strokeWidth="1.5"
+        />
+        {/* Horizontal lines on Leaning Book spine */}
+        <Path d="M11.5 9.5H15.5M11.5 14.5H15.5" stroke="#FFFFFF" strokeWidth="1.2" />
+      </G>
+    </Svg>
+  );
+}
 
 function BloodDropIcon() {
   return (
@@ -209,8 +395,13 @@ try {
 const quickAccess = [
   { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
-  { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF', calendarIcon: true },
-  { label: 'Kundli', subtitle: 'Your Cosmic Blueprint', color: '#FFF', kundliIcon: true },
+  { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF' },
+  { label: 'Kundli', subtitle: 'Your Daily Vedic Energy', color: '#FFF' },
+  { label: 'Cosmic Guidance', subtitle: 'Your Cosmic Blueprint', color: '#FFF' },
+  { label: 'Brahmand Passport', subtitle: 'Your Temple Journey Record', color: '#FFF' },
+  { label: 'Sacred Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
+  { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
+  { label: 'Horoscope', subtitle: 'Daily Predictions', color: '#FFF' },
 ];
 
 export default function HomeScreen() {
@@ -268,14 +459,14 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!isFocused) return;
     let currentIndex = 0;
-    const totalCards = 4;
+    const totalCards = quickAccess.length;
     const interval = setInterval(() => {
       if (topFeaturesScrollRef.current) {
         currentIndex = (currentIndex + 1) % totalCards;
         const targetOffset = currentIndex * 131; // cardSize: 121 + gap: 10
         topFeaturesScrollRef.current.scrollTo({ x: targetOffset, animated: true });
       }
-    }, 3000); // 3s interval
+    }, 4500); // Staggered to 4.5s interval
 
     return () => clearInterval(interval);
   }, [isFocused]);
@@ -285,17 +476,25 @@ export default function HomeScreen() {
     if (!isFocused) return;
     let currentIndex = 0;
     const totalCards = 4;
-    const interval = setInterval(() => {
-      if (actionCardsScrollRef.current) {
-        currentIndex = (currentIndex + 1) % totalCards;
-        const cardSize = Platform.OS === 'ios' ? 104 : 84;
-        const gap = 10; // Exactly 10px spacing from card marginHorizontal: 5
-        const targetOffset = currentIndex * (cardSize + gap);
-        actionCardsScrollRef.current.scrollTo({ x: targetOffset, animated: true });
-      }
-    }, 3000); // dynamic 3s interval
+    let interval: NodeJS.Timeout;
 
-    return () => clearInterval(interval);
+    // Start with a 2.2s delay to fully stagger from top cards
+    const timeout = setTimeout(() => {
+      interval = setInterval(() => {
+        if (actionCardsScrollRef.current) {
+          currentIndex = (currentIndex + 1) % totalCards;
+          const cardSize = Platform.OS === 'ios' ? 104 : 84;
+          const gap = 10; // Exactly 10px spacing from card marginHorizontal: 5
+          const targetOffset = currentIndex * (cardSize + gap);
+          actionCardsScrollRef.current.scrollTo({ x: targetOffset, animated: true });
+        }
+      }, 6000); // Staggered 6.0s interval
+    }, 2200);
+
+    return () => {
+      clearTimeout(timeout);
+      if (interval) clearInterval(interval);
+    };
   }, [isFocused]);
 
   useEffect(() => {
@@ -1176,11 +1375,10 @@ export default function HomeScreen() {
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   const insets = useSafeAreaInsets();
-
   return (
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#FFFFFF']} locations={[0, 0.18, 0.45, 0.75]} style={styles.screen}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.05, 0.25]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -1397,7 +1595,11 @@ export default function HomeScreen() {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
-                            else if (item.label === 'Kundli') router.push('/kundli');
+                            else if (item.label === 'Kundli' || item.label === 'Cosmic Guidance') router.push('/kundli');
+                            else if (item.label === 'Brahmand Passport') router.push('/passport');
+                            else if (item.label === 'Sacred Days') router.push('/panchang');
+                            else if (item.label === 'Brahmand Library') router.push('/library');
+                            else if (item.label === 'Horoscope') router.push('/horoscope');
                           }}
                         >
                           {item.label === 'SOS' ? (
@@ -1416,7 +1618,27 @@ export default function HomeScreen() {
                             </View>
                           ) : item.label === 'Kundli' ? (
                             <View style={styles.featureIconWrap}>
-                              <Image source={require('../../assets/images/kundli_chart_icon.png')} style={{ width: 24, height: 24, borderRadius: 12 }} />
+                              <KundliSirenIcon />
+                            </View>
+                          ) : item.label === 'Cosmic Guidance' ? (
+                            <View style={styles.featureIconWrap}>
+                              <CosmicMoonIcon />
+                            </View>
+                          ) : item.label === 'Brahmand Passport' ? (
+                            <View style={styles.featureIconWrap}>
+                              <PassportIcon />
+                            </View>
+                          ) : item.label === 'Sacred Days' ? (
+                            <View style={styles.featureIconWrap}>
+                              <SacredDaysIcon />
+                            </View>
+                          ) : item.label === 'Brahmand Library' ? (
+                            <View style={styles.featureIconWrap}>
+                              <LibraryBookIcon />
+                            </View>
+                          ) : item.label === 'Horoscope' ? (
+                            <View style={styles.featureIconWrap}>
+                              <HoroscopeIcon />
                             </View>
                           ) : (
                             <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
@@ -1424,7 +1646,7 @@ export default function HomeScreen() {
                             </View>
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
+                            <Text style={[styles.featureTitle, item.label === 'Sacred Days' && { fontSize: 9, fontWeight: '700' }]} numberOfLines={(item.label === 'Sacred Days' || item.label === 'My Krishna') ? 1 : 2} adjustsFontSizeToFit>{item.label}</Text>
                             <Text 
                               style={[
                                 styles.featureSubtitle, 
@@ -1433,7 +1655,7 @@ export default function HomeScreen() {
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
-                                  fontSize: (item.label === 'Panchang' || item.label === 'Kundli') ? 7 : 6,
+                                   fontSize: (item.label === 'Sacred Days' || item.label === 'Brahmand Library') ? 6 : 7.5,
                                 }
                               ]} 
                               numberOfLines={2} 
@@ -1509,14 +1731,13 @@ export default function HomeScreen() {
               >
                 {/* Urgent Blood Request */}
                 <View style={{ width: Platform.OS === 'ios' ? 104 : 84, height: Platform.OS === 'ios' ? 165 : 157, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
-                  <ImageBackground
-                    source={require('../../assets/images/blood_card_bg_real.png')}
-                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFD6D6', overflow: 'hidden' }]}
-                    imageStyle={{ borderRadius: 15 }}
+                  <LinearGradient
+                    colors={['#FFF0F2', '#FFE5E9']}
+                    style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderWidth: 1, borderColor: '#FFC8CE' }]}
                   >
                     <View style={[styles.cardMainContent, { alignItems: 'center', marginTop: 10 }]}>
                       <View style={styles.cardIconRow}>
-                        <Image source={require('../../assets/images/user_uploaded_blood_drop.png')} style={{ width: 28, height: 28, resizeMode: 'contain' }} />
+                        <BloodDropIcon />
                       </View>
                       <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
                       <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>{bloodRequest ? formatRequestLocation(bloodRequest) : 'XYZ Hospital, Mumbai'}</Text>
@@ -1529,8 +1750,8 @@ export default function HomeScreen() {
                     >
                       <Text style={{ color: '#FF0022', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
                     </TouchableOpacity>
-                  </ImageBackground>
-                  {/* Badge rendered as sibling outside ImageBackground to prevent any iOS clipping */}
+                  </LinearGradient>
+                  {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 70, height: 13, borderRadius: 9, borderWidth: 1, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
                       <Text style={{ color: '#FF0000', fontSize: 6.5, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
@@ -2202,11 +2423,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#FFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 3,
     width: 121,
     height: 70,
   },
