@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, Share, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../../src/constants/theme';
 import { getPostsFeed, getPostById, getPostComments, addPostComment, repostPost } from '../../src/services/api';
 import { MentionInput } from '../../src/components/MentionInput';
@@ -16,6 +16,7 @@ const FEED_PAGE_SIZE = 7;
 const PostScreen = () => {
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const routePostId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [feedPosts, setFeedPosts] = useState<any[]>([]);
@@ -26,8 +27,8 @@ const PostScreen = () => {
   const [initialPostLoaded, setInitialPostLoaded] = useState(false);
 
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
-  const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
-  const [postHeights, setPostHeights] = useState<Record<string, number>>({});
+  const postOffsetsRef = useRef<Record<string, number>>({});
+  const postHeightsRef = useRef<Record<string, number>>({});
 
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentPost, setCommentPost] = useState<any>(null);
@@ -202,8 +203,8 @@ const PostScreen = () => {
         onLayout={(event) => {
           const y = event.nativeEvent.layout.y;
           const h = event.nativeEvent.layout.height;
-          setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
-          setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
+          postOffsetsRef.current[postKey] = y;
+          postHeightsRef.current[postKey] = h;
         }}
       >
         <PostFeedCard
@@ -234,8 +235,8 @@ const PostScreen = () => {
     let closestKey: string | null = null;
     let maxVisible = 0;
     for (const key of feedPostKeys) {
-      const offset = postOffsets[key];
-      const height = postHeights[key];
+      const offset = postOffsetsRef.current[key];
+      const height = postHeightsRef.current[key];
       if (typeof offset === 'number' && typeof height === 'number') {
         const visibleTop = Math.max(0, offset - y);
         const visibleBottom = Math.min(SCREEN_HEIGHT, offset + height - y);
@@ -247,7 +248,7 @@ const PostScreen = () => {
       }
     }
     setActivePostKey(prev => closestKey ?? prev);
-  }, [feedPostKeys, postOffsets, postHeights]);
+  }, [feedPostKeys]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

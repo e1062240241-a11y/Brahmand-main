@@ -14,7 +14,7 @@ class TaskQueue:
     In production, replace with Celery + Redis or similar.
     """
     
-    def __init__(self, max_workers: int = 4):
+    def __init__(self, max_workers: int = 10):
         self.max_workers = max_workers
         self.queue: deque = deque()
         self.workers: List[asyncio.Task] = []

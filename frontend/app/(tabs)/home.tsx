@@ -17,15 +17,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
+import { useFeedStore } from '../../src/store/feedStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
@@ -404,18 +406,22 @@ const quickAccess = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
   const currentUserId = (user as any)?.id;
   const [bioText, setBioText] = useState(user?.bio || 'Sanatan Lok Community');
   const [isEditingBio, setIsEditingBio] = useState(false);
-  const [feedPosts, setFeedPosts] = useState<any[]>([]);
+  const { activeTab, setActiveTab, tabFeeds, setTabFeed } = useFeedStore();
+  const currentFeed = tabFeeds[activeTab] || { posts: [], offset: 0, hasMore: true, lastFetched: 0 };
+  const feedPosts = currentFeed.posts;
+  const feedOffset = currentFeed.offset;
+  const hasMoreFeed = currentFeed.hasMore;
   const [loadingFeed, setLoadingFeed] = useState(false);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
-  const [activeTab, setActiveTab] = useState('for_you');
-  const [feedOffset, setFeedOffset] = useState(0);
-  const [hasMoreFeed, setHasMoreFeed] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedCommentPostId, setSelectedCommentPostId] = useState<string | null>(null);
   const [selectedCommentPost, setSelectedCommentPost] = useState<any | null>(null);
@@ -434,7 +440,6 @@ export default function HomeScreen() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
   const actionCardsScrollRef = useRef<ScrollView>(null);
@@ -452,6 +457,7 @@ export default function HomeScreen() {
 
   // Horizontal auto-scroll interval for the top quickAccess cards (Panchang, My Krishna, SOS)
   useEffect(() => {
+    if (!isFocused) return;
     let currentIndex = 0;
     const totalCards = quickAccess.length;
     const interval = setInterval(() => {
@@ -463,10 +469,11 @@ export default function HomeScreen() {
     }, 4500); // Staggered to 4.5s interval
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isFocused]);
 
   // Horizontal auto-scroll interval for the top action cards
   useEffect(() => {
+    if (!isFocused) return;
     let currentIndex = 0;
     const totalCards = 4;
     let interval: NodeJS.Timeout;
@@ -488,7 +495,7 @@ export default function HomeScreen() {
       clearTimeout(timeout);
       if (interval) clearInterval(interval);
     };
-  }, []);
+  }, [isFocused]);
 
   useEffect(() => {
     if (user?.id) {
@@ -526,10 +533,15 @@ export default function HomeScreen() {
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || activeTab;
+    const cached = useFeedStore.getState().tabFeeds[tabToLoad];
+    const hasCache = cached && cached.posts && cached.posts.length > 0;
+
     if (append) {
       setLoadingMoreFeed(true);
     } else {
-      setLoadingFeed(true);
+      if (!hasCache || isRefreshing) {
+        setLoadingFeed(true);
+      }
     }
 
     try {
@@ -545,29 +557,37 @@ export default function HomeScreen() {
         : incomingItems.length === FEED_PAGE_SIZE;
 
       if (append) {
-        setFeedPosts((prev) => {
-          const existingIds = new Set(prev.map((item) => item?.id));
-          const newItems = incomingItems.filter((item: any) => !existingIds.has(item?.id));
-          return [...prev, ...newItems];
+        const currentPosts = useFeedStore.getState().tabFeeds[tabToLoad]?.posts || [];
+        const existingIds = new Set(currentPosts.map((item) => item?.id));
+        const newItems = incomingItems.filter((item: any) => !existingIds.has(item?.id));
+        setTabFeed(tabToLoad, {
+          posts: [...currentPosts, ...newItems],
+          offset: offset + incomingItems.length,
+          hasMore: nextHasMore && incomingItems.length > 0,
+          lastFetched: Date.now(),
         });
-        setFeedOffset(offset + incomingItems.length);
       } else {
-        setFeedPosts(incomingItems);
-        setFeedOffset(incomingItems.length);
+        setTabFeed(tabToLoad, {
+          posts: incomingItems,
+          offset: incomingItems.length,
+          hasMore: nextHasMore && incomingItems.length > 0,
+          lastFetched: Date.now(),
+        });
       }
-      setHasMoreFeed(nextHasMore && incomingItems.length > 0);
     } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
-      if (append) {
-        setHasMoreFeed(false); // Stop trying to load more if it's failing
-      } else {
-        setFeedPosts([]);
+      if (!append) {
+        setTabFeed(tabToLoad, {
+          posts: [],
+          offset: 0,
+          hasMore: false,
+        });
       }
     } finally {
       setLoadingFeed(false);
       setLoadingMoreFeed(false);
     }
-  }, [activeTab]);
+  }, [activeTab, setTabFeed, isRefreshing]);
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -625,6 +645,7 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    if (!isFocused) return;
     const fetchUnreadCount = async () => {
       try {
         const res = await getUnreadNotificationCount();
@@ -637,7 +658,7 @@ export default function HomeScreen() {
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
     return () => clearInterval(interval);
-  }, [setUnreadCount]);
+  }, [setUnreadCount, isFocused]);
 
   const handleNotificationPress = async () => {
     try {
@@ -663,13 +684,18 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadFeedPosts(0, false);
-    }, [loadFeedPosts])
+      const cached = useFeedStore.getState().tabFeeds[activeTab];
+      const nowTime = Date.now();
+      const isStale = !cached || (nowTime - cached.lastFetched > 120000); // 2 minutes
+      if (!cached || cached.posts.length === 0 || isStale) {
+        loadFeedPosts(0, false);
+      }
+    }, [loadFeedPosts, activeTab])
   );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
-  const [postOffsets, setPostOffsets] = useState<Record<string, number>>({});
-  const [postHeights, setPostHeights] = useState<Record<string, number>>({});
+  const postOffsetsRef = useRef<Record<string, number>>({});
+  const postHeightsRef = useRef<Record<string, number>>({});
   const [postSnapEnabled, setPostSnapEnabled] = useState(false);
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const [backgroundUpload, setBackgroundUpload] = useState<{
@@ -708,7 +734,10 @@ export default function HomeScreen() {
       );
 
       if (response.data) {
-        setFeedPosts(prev => [response.data, ...prev]);
+        const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+        setTabFeed(activeTab, {
+          posts: [response.data, ...currentPosts]
+        });
       }
     } catch (error: any) {
       console.warn('[Home] Background upload failed:', error.message || error);
@@ -778,25 +807,31 @@ export default function HomeScreen() {
 
 
   useEffect(() => {
-    loadFeedPosts(0, false, activeTab);
+    const cached = tabFeeds[activeTab];
+    const nowTime = Date.now();
+    const isStale = !cached || (nowTime - cached.lastFetched > 120000); // 2 minutes stale
+    if (!cached || cached.posts.length === 0 || isStale) {
+      loadFeedPosts(0, false, activeTab);
+    }
   }, [loadFeedPosts, activeTab]);
-
-  const navigation = useNavigation();
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
       // If we are already on home tab, scroll to top
       if (navigation.isFocused()) {
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        // Refresh feed on tab press when already focused
+        loadFeedPosts(0, false, activeTab);
       }
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, activeTab, loadFeedPosts]);
 
   useEffect(() => {
+    if (!isFocused) return;
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isFocused]);
 
   const liveActive = isWithinGayatriMantraWindow(now);
   const liveEnd = getCurrentGayatriEnd(now);
@@ -825,8 +860,8 @@ export default function HomeScreen() {
     const viewportBottom = y + SCREEN_HEIGHT;
 
     for (const key of feedPostKeys) {
-      const offset = postOffsets[key];
-      const height = postHeights[key];
+      const offset = postOffsetsRef.current[key];
+      const height = postHeightsRef.current[key];
       if (typeof offset === 'number' && typeof height === 'number') {
         const postAbsoluteTop = offset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
         const postBottom = postAbsoluteTop + height;
@@ -852,7 +887,7 @@ export default function HomeScreen() {
       const targetIndex = Math.max(0, feedPosts.length - 2);
       const targetPost = feedPosts[targetIndex];
       const targetKey = String(targetPost?.id || targetPost?.media_url || targetIndex);
-      const targetOffset = postOffsets[targetKey];
+      const targetOffset = postOffsetsRef.current[targetKey];
 
       if (typeof targetOffset === 'number') {
         // If the target post's top is visible in the bottom portion of the screen
@@ -866,7 +901,7 @@ export default function HomeScreen() {
         }
       }
     }
-  }, [feedPostKeys, postOffsets, postHeights]);
+  }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
 
   const loadHomeRequests = useCallback(async () => {
     setRequestsLoading(true);
@@ -894,6 +929,15 @@ export default function HomeScreen() {
   useEffect(() => {
     loadHomeRequests();
   }, [loadHomeRequests]);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await Promise.all([
+      loadFeedPosts(0, false, activeTab),
+      loadHomeRequests()
+    ]);
+    setIsRefreshing(false);
+  }, [loadFeedPosts, activeTab, loadHomeRequests]);
 
   const normalizeRequestText = (request: any) =>
     `${request?.title || ''} ${request?.description || ''} ${request?.support_needed || ''}`.toLowerCase();
@@ -1010,7 +1054,10 @@ export default function HomeScreen() {
       liked_by_me: newLikedState,
       likes_count: newLikedState ? currentLikes + 1 : Math.max(0, currentLikes - 1),
     };
-    setFeedPosts((prev) => prev.map((item) => (item.id === postId ? optimisticPost : item)));
+    const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+    setTabFeed(activeTab, {
+      posts: currentPosts.map((item) => (item.id === postId ? optimisticPost : item))
+    });
 
     // 3. Track original server state if not already tracking
     if (originalLikeStateRefs.current[postId] === undefined) {
@@ -1039,15 +1086,17 @@ export default function HomeScreen() {
         const response = await togglePostLike(postId);
         const updatedPost = response.data?.post;
         if (updatedPost) {
-          setFeedPosts((prev) => 
-            prev.map((item) => (item.id === postId ? { ...item, ...updatedPost } : item))
-          );
+          const finalPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+          setTabFeed(activeTab, {
+            posts: finalPosts.map((item) => (item.id === postId ? { ...item, ...updatedPost } : item))
+          });
         }
       } catch (error) {
         console.warn('Failed to like/unlike post:', error);
         // Rollback to original state on failure
-        setFeedPosts((prev) =>
-          prev.map((item) =>
+        const rollbackPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+        setTabFeed(activeTab, {
+          posts: rollbackPosts.map((item) =>
             item.id === postId
               ? {
                   ...item,
@@ -1058,11 +1107,11 @@ export default function HomeScreen() {
                 }
               : item
           )
-        );
+        });
         alert('Could not update like. Please check your network.');
       }
     }, 500);
-  }, []);
+  }, [activeTab, setTabFeed]);
 
   const handleOpenComment = useCallback(async (post: any) => {
     const postId = post?.id;
@@ -1112,8 +1161,9 @@ export default function HomeScreen() {
       const serverComment = response.data?.comment;
 
       if (updatedPost) {
-        setFeedPosts((prev) =>
-          prev.map((item) => {
+        const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+        setTabFeed(activeTab, {
+          posts: currentPosts.map((item) => {
             if (item.id === selectedCommentPostId) {
               const currentTop = Array.isArray(item.top_comments) ? item.top_comments : [];
               return {
@@ -1125,7 +1175,7 @@ export default function HomeScreen() {
             }
             return item;
           })
-        );
+        });
         setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? {
           ...prev,
           ...updatedPost,
@@ -1187,7 +1237,10 @@ export default function HomeScreen() {
       const response = await repostPost(postId);
       const repostedPost = response.data?.post;
       if (repostedPost) {
-        setFeedPosts((prev) => [repostedPost, ...prev]);
+        const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+        setTabFeed(activeTab, {
+          posts: [repostedPost, ...currentPosts]
+        });
       } else {
         await loadFeedPosts();
       }
@@ -1196,14 +1249,17 @@ export default function HomeScreen() {
       console.warn('Failed to repost:', error);
       alert('Could not repost. Please try again.');
     }
-  }, [loadFeedPosts]);
+  }, [loadFeedPosts, activeTab, setTabFeed]);
 
   const handleDeletePost = useCallback(async (post: any) => {
     const postId = post?.id;
     if (!postId) return;
 
     const deletedPost = post;
-    setFeedPosts((prev) => prev.filter((item) => item.id !== postId));
+    const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+    setTabFeed(activeTab, {
+      posts: currentPosts.filter((item) => item.id !== postId)
+    });
     if (selectedCommentPostId === postId) {
       setCommentModalVisible(false);
       setSelectedCommentPostId(null);
@@ -1215,10 +1271,13 @@ export default function HomeScreen() {
       await deletePost(postId);
     } catch (error) {
       console.warn('Failed to delete post:', error);
-      setFeedPosts((prev) => (prev.some((item) => item.id === postId) ? prev : [deletedPost, ...prev]));
+      const rollbackPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+      setTabFeed(activeTab, {
+        posts: rollbackPosts.some((item) => item.id === postId) ? rollbackPosts : [deletedPost, ...rollbackPosts]
+      });
       alert('Could not delete post. Please try again.');
     }
-  }, [selectedCommentPostId]);
+  }, [selectedCommentPostId, activeTab, setTabFeed]);
 
   const handleReportPost = useCallback(async (post: any) => {
     const postId = post?.id;
@@ -1253,8 +1312,12 @@ export default function HomeScreen() {
   }, [router]);
 
   const handleUploadPostSuccess = (post: any) => {
-    setFeedPosts((prev) => [post, ...prev]);
-    setFeedOffset((prev) => prev + 1);
+    const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+    const currentOffset = useFeedStore.getState().tabFeeds[activeTab]?.offset || 0;
+    setTabFeed(activeTab, {
+      posts: [post, ...currentPosts],
+      offset: currentOffset + 1
+    });
   };
 
   const handleSubmitRequest = async (data: any) => {
@@ -1290,8 +1353,8 @@ export default function HomeScreen() {
         onLayout={(event) => {
           const y = event.nativeEvent.layout.y;
           const h = event.nativeEvent.layout.height;
-          setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
-          setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
+          postOffsetsRef.current[postKey] = y;
+          postHeightsRef.current[postKey] = h;
         }}
       >
         <PostFeedCard
@@ -1333,6 +1396,14 @@ export default function HomeScreen() {
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
             decelerationRate="fast"
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                colors={['#FFD26C']}
+                tintColor="#FFD26C"
+              />
+            }
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
@@ -1602,7 +1673,7 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push('/live-jaap-welcome')}>
+              <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true' } })}>
                 <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                   {/* Cinematic Left-to-Right Horizontal Black Shade Layer */}
                   <LinearGradient
@@ -1631,7 +1702,7 @@ export default function HomeScreen() {
                       </View>
 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push('/live-jaap-welcome')}>
+                        <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true' } })}>
                           <Ionicons name="volume-medium" size={16} color="#FFF" />
                           <Text style={styles.joinJaapText}>Join Live Jaap</Text>
                           <Ionicons name="chevron-forward" size={18} color="#FFF" />
@@ -1675,12 +1746,7 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       style={{ width: 60, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#FF0022', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
                       onPress={() => {
-                        if (bloodRequest) {
-                          router.push(`/community/${bloodRequest.community_id}?request_id=${bloodRequest.id}` as any);
-                        } else {
-                          setRequestType('Blood');
-                          setShowRequestModal(true);
-                        }
+                        router.push('/community-request/list');
                       }}
                     >
                       <Text style={{ color: '#FF0022', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>View</Text>
@@ -1755,7 +1821,13 @@ export default function HomeScreen() {
                     </View>
                     <TouchableOpacity
                       style={{ width: 69, height: 19, borderRadius: 10, borderWidth: 1, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.50)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}
-                      onPress={() => router.push('/live-mantra')}
+                      onPress={() => router.push({
+                        pathname: '/live-jaap-welcome',
+                        params: {
+                          mantraType: 'kedarnath',
+                          title: 'Kedarnath Aarti'
+                        }
+                      })}
                     >
                       <Text style={{ color: '#8C36DB', fontSize: 8, fontWeight: '700', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>Watch now</Text>
                     </TouchableOpacity>
@@ -1913,8 +1985,6 @@ export default function HomeScreen() {
                   activeTab={activeTab}
                   onTabChange={(tab) => {
                     setActiveTab(tab);
-                    setFeedPosts([]);
-                    loadFeedPosts(0, false, tab);
                   }}
                   onCreatePost={() => setShowUploadPostModal(true)}
                 />
@@ -1946,7 +2016,7 @@ export default function HomeScreen() {
                   </View>
                 </View>
               )}
-              {loadingFeed ? (
+              {loadingFeed && feedPosts.length === 0 ? (
                 <View style={styles.feedLoading}>
                   <ActivityIndicator color="#FFD26C" />
                   <Text style={styles.feedLoadingText}>Loading feed...</Text>
@@ -1961,8 +2031,8 @@ export default function HomeScreen() {
                         onLayout={(event) => {
                           const y = event.nativeEvent.layout.y;
                           const h = event.nativeEvent.layout.height;
-                          setPostOffsets((prev) => (prev[postKey] === y ? prev : { ...prev, [postKey]: y }));
-                          setPostHeights((prev) => (prev[postKey] === h ? prev : { ...prev, [postKey]: h }));
+                          postOffsetsRef.current[postKey] = y;
+                          postHeightsRef.current[postKey] = h;
                         }}
                       >
                         <PostFeedCard

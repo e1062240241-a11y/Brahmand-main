@@ -391,7 +391,13 @@ export default function ActiveRequestsList() {
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backBtn}
-            onPress={() => router.replace('/(tabs)/messages')}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/messages');
+              }
+            }}
           >
             <Ionicons name="chevron-back" size={24} color="#1E293B" />
           </TouchableOpacity>

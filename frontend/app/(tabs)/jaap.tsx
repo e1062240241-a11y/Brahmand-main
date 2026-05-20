@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageById } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
@@ -87,6 +88,7 @@ const UPCOMING_SESSIONS = [
 export default function JaapLandingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
 
@@ -103,9 +105,10 @@ export default function JaapLandingScreen() {
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Sacred'>('All');
 
   useEffect(() => {
+    if (!isFocused) return;
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isFocused]);
 
   // Auto-scroll effect for More Live Jaaps
   useEffect(() => {
@@ -174,12 +177,24 @@ export default function JaapLandingScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={styles.topTabsContainer}>
+      <LinearGradient
+        colors={['#E59E7C', '#F2B496']}
+        style={styles.topTabsContainer}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <View style={styles.topTabsInner}>
           <TouchableOpacity
             style={[
               styles.tabPill,
               activeSection === 'jaap' && styles.tabPillActive,
+              activeSection === 'jaap' && {
+                shadowColor: '#000',
+                shadowOffset: { width: 5, height: 0 },
+                shadowOpacity: 0.18,
+                shadowRadius: 5,
+                elevation: 4,
+              }
             ]}
             onPress={() => setActiveSection('jaap')}
             activeOpacity={0.9}
@@ -198,6 +213,13 @@ export default function JaapLandingScreen() {
             style={[
               styles.tabPill,
               activeSection === 'temple' && styles.tabPillActive,
+              activeSection === 'temple' && {
+                shadowColor: '#000',
+                shadowOffset: { width: -5, height: 0 },
+                shadowOpacity: 0.18,
+                shadowRadius: 5,
+                elevation: 4,
+              }
             ]}
             onPress={() => setActiveSection('temple')}
             activeOpacity={0.9}
@@ -212,7 +234,7 @@ export default function JaapLandingScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
@@ -525,7 +547,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 12,
-    backgroundColor: '#FFFBF5',
     zIndex: 1000,
   },
   topTabsInner: {
@@ -552,19 +573,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   tabPillActive: {
-    backgroundColor: '#FF7B00',
-    // iOS shadow (right-biased as per spec: 6px 0 10px)
-    shadowColor: 'rgba(0,0,0,0.25)',
-    shadowOffset: { width: 6, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    // Android
-    elevation: 6,
+    backgroundColor: '#FF6600',
+    borderRadius: 28,
   },
   tabPillText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#8B4513',
+    color: '#000000',
   },
   tabPillTextActive: {
     color: '#FFFFFF',

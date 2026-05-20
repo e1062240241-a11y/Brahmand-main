@@ -37,7 +37,7 @@ const MANTRA_PREVIEW: Record<string, string> = {
 export default function LiveJaapWelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { mantraType, title } = useLocalSearchParams<{ mantraType?: string, title?: string }>();
+  const { mantraType, title, fromHome } = useLocalSearchParams<{ mantraType?: string, title?: string, fromHome?: string }>();
   
   return (
     <View style={styles.container}>
@@ -53,11 +53,10 @@ export default function LiveJaapWelcomeScreen() {
         />
 
         <View style={[styles.mainContent, { paddingTop: insets.top + 5, paddingBottom: insets.bottom + 10 }]}>
-          {/* BACK BUTTON */}
           <TouchableOpacity 
             onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
+              if (mantraType === 'kedarnath' || fromHome === 'true') {
+                router.replace('/(tabs)/home');
               } else {
                 router.replace('/(tabs)/jaap');
               }
@@ -122,7 +121,8 @@ export default function LiveJaapWelcomeScreen() {
                   title: title || 'Gayatri Mantra',
                   // Ensure audio and written formats are correctly linked
                   hasAudio: 'true',
-                  hasText: 'true'
+                  hasText: 'true',
+                  fromHome: fromHome || 'false'
                 }
               })}
             >
