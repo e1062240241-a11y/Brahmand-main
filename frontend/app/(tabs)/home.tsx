@@ -104,10 +104,10 @@ function PassportIcon() {
       <Circle cx="12" cy="12" r="11" fill="#0A1D37" />
       {/* Gold outer ring */}
       <Circle cx="12" cy="12" r="11" stroke="#FFC000" strokeWidth="1" />
-      
+
       {/* Gold circle in center */}
       <Circle cx="12" cy="9.8" r="3.2" stroke="#FFC000" strokeWidth="0.8" />
-      
+
       {/* Beautiful OM path */}
       <Path
         d="M11.2 8.8C11.6 8.5 12.2 8.5 12.5 8.9C12.8 9.3 12.7 9.8 12.3 10.1C12.7 10.4 12.9 10.9 12.7 11.4C12.5 11.9 11.9 12.1 11.4 11.8M12.8 10.1C13.3 10.4 13.6 11.0 13.2 11.6C12.8 12.2 12.0 12.4 11.4 12.0M12.0 8.0C12.3 8.1 12.5 8.3 12.4 8.6M12.8 7.5C13.2 7.7 13.5 8.0 13.6 8.4"
@@ -115,7 +115,7 @@ function PassportIcon() {
         strokeWidth="0.6"
         strokeLinecap="round"
       />
-      
+
       {/* Temple outline at bottom */}
       <Path
         d="M8.5 17H15.5M9.5 17V15L12 13L14.5 15V17M12 13V17M11 17V15.5H13V17"
@@ -187,7 +187,7 @@ function LibraryBookIcon() {
       <Circle cx="12" cy="12" r="11" fill="#FF5100" />
       {/* Light pinkish outer border */}
       <Circle cx="12" cy="12" r="11" stroke="#FFE6E0" strokeWidth="1.5" />
-      
+
       {/* Standing Book 1 */}
       <Rect
         x="7.5"
@@ -200,7 +200,7 @@ function LibraryBookIcon() {
       />
       {/* Horizontal lines on Standing Book spine */}
       <Path d="M7.5 9.5H11.5M7.5 14.5H11.5" stroke="#FFFFFF" strokeWidth="1.2" />
-      
+
       {/* Leaning Book 2 */}
       <G transform="rotate(12 12 12)">
         <Rect
@@ -1042,12 +1042,12 @@ export default function HomeScreen() {
   const handleLikePost = useCallback((post: any) => {
     const postId = post?.id;
     if (!postId) return;
-    
+
     // 1. Calculate the new toggled state
     const liked = !!post?.liked_by_me;
     const newLikedState = !liked;
     const currentLikes = Number(post?.likes_count || 0);
-    
+
     // 2. Perform optimistic UI update instantly
     const optimisticPost = {
       ...post,
@@ -1099,12 +1099,12 @@ export default function HomeScreen() {
           posts: rollbackPosts.map((item) =>
             item.id === postId
               ? {
-                  ...item,
-                  liked_by_me: originalState,
-                  likes_count: originalState
-                    ? (item.liked_by_me ? item.likes_count : item.likes_count + 1)
-                    : (item.liked_by_me ? Math.max(0, item.likes_count - 1) : item.likes_count),
-                }
+                ...item,
+                liked_by_me: originalState,
+                likes_count: originalState
+                  ? (item.liked_by_me ? item.likes_count : item.likes_count + 1)
+                  : (item.liked_by_me ? Math.max(0, item.likes_count - 1) : item.likes_count),
+              }
               : item
           )
         });
@@ -1375,10 +1375,11 @@ export default function HomeScreen() {
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   const insets = useSafeAreaInsets();
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.05, 0.25]} style={styles.screen}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.22, 0.42]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -1587,7 +1588,7 @@ export default function HomeScreen() {
                       }
 
                       return (
-                         <TouchableOpacity
+                        <TouchableOpacity
                           key={idx}
                           style={[styles.featureCard, { backgroundColor: '#FFF' }]}
                           activeOpacity={0.9}
@@ -1647,21 +1648,21 @@ export default function HomeScreen() {
                           )}
                           <View style={styles.featureTextContainer}>
                             <Text style={[styles.featureTitle, item.label === 'Sacred Days' && { fontSize: 9, fontWeight: '700' }]} numberOfLines={(item.label === 'Sacred Days' || item.label === 'My Krishna') ? 1 : 2} adjustsFontSizeToFit>{item.label}</Text>
-                            <Text 
+                            <Text
                               style={[
-                                styles.featureSubtitle, 
+                                styles.featureSubtitle,
                                 {
                                   color: '#000',
                                   fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
                                   fontStyle: 'normal',
                                   fontWeight: '400',
-                                   fontSize: (item.label === 'Sacred Days' || item.label === 'Brahmand Library') ? 6 : 7.5,
+                                  fontSize: (item.label === 'Sacred Days' || item.label === 'Brahmand Library') ? 6 : 7.5,
                                 }
-                              ]} 
-                              numberOfLines={2} 
+                              ]}
+                              numberOfLines={2}
                               adjustsFontSizeToFit
                             >
-                               {item.subtitle.replace('\n', ' ')}
+                              {item.subtitle.replace('\n', ' ')}
                             </Text>
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
