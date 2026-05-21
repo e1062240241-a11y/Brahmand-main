@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useAudioPlayer } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useRouter } from 'expo-router';
 import {
   Animated,
@@ -16,6 +16,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
 const WORDS = MANTRA.split(' ');
+
+const WORD_TIMING_MS = [
+  0,    
+  1500, 
+  2800, 
+  4200, 
+  5800, 
+  7200, 
+  8800, 
+  10200, 
+  11800, 
+  13400, 
+  15200, 
+];
+
+const TOTAL_MANTRA_DURATION = 16500;
+
 const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
 
 export const LiveMantraRoom = () => {
@@ -27,20 +44,48 @@ export const LiveMantraRoom = () => {
   const [isMicEnabled, setIsMicEnabled] = useState(false);
 
   const bgPlayer = useAudioPlayer(BG_MUSIC);
+  const playerStatus = useAudioPlayerStatus(bgPlayer);
+  const syncStartTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (bgPlayer) {
       bgPlayer.loop = true;
       bgPlayer.volume = isMuted ? 0 : 0.4;
-      // Note: On some browsers, auto-play might still be blocked until user interacts.
-      // But since user clicks "Join" to reach this screen, it should work.
       try {
-        bgPlayer.play();
+        if (!bgPlayer.isPlaying) {
+          bgPlayer.play();
+          syncStartTimeRef.current = Date.now();
+        }
       } catch (e) {
         console.warn('Background player failed to auto-play on web:', e);
       }
     }
   }, [bgPlayer, isMuted]);
+
+  useEffect(() => {
+    if (bgPlayer) {
+      bgPlayer.volume = isMuted ? 0 : 0.4;
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (bgPlayer && playerStatus?.isPlaying && playerStatus.duration && playerStatus.duration > 0) {
+      const positionMs = playerStatus.position * 1000;
+      const positionInLoop = positionMs % TOTAL_MANTRA_DURATION;
+      
+      let newIndex = 0;
+      for (let i = WORD_TIMING_MS.length - 1; i >= 0; i--) {
+        if (positionInLoop >= WORD_TIMING_MS[i]) {
+          newIndex = i;
+          break;
+        }
+      }
+      
+      if (newIndex !== currentIndex && !isHolding) {
+        setCurrentIndex(newIndex);
+      }
+    }
+  }, [playerStatus?.position, playerStatus?.duration, currentIndex, isHolding]);
 
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
@@ -108,18 +153,27 @@ export const LiveMantraRoom = () => {
       timer = setTimeout(() => {
         setIsHolding(false);
         setCurrentIndex(0);
-      }, 5000);
+        syncStartTimeRef.current = Date.now();
+      }, 4000);
       return () => clearTimeout(timer);
     }
+
+    if (playerStatus?.isPlaying && playerStatus.duration) {
+      return;
+    }
+
+    const currentWord = WORDS[currentIndex] || '';
+    const wordDuration = currentWord.length > 7 ? 3000 : 1800;
+
     timer = setTimeout(() => {
       if (currentIndex < WORDS.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
         setIsHolding(true);
       }
-    }, 1800);
+    }, wordDuration);
     return () => clearTimeout(timer);
-  }, [currentIndex, isHolding]);
+  }, [currentIndex, isHolding, playerStatus?.isPlaying, playerStatus?.duration]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
