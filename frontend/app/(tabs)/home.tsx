@@ -556,42 +556,6 @@ export default function HomeScreen() {
     }
   }, [activeTab, setTabFeed, isRefreshing]);
 
-  const loadHomeRequests = useCallback(async () => {
-    setRequestsLoading(true);
-    try {
-      const [requestsRes, communitiesRes] = await Promise.all([
-        getCommunityRequests({ status: 'active', limit: 30 }),
-        getCommunities(),
-      ]);
-      const requestsData = Array.isArray(requestsRes.data)
-        ? requestsRes.data
-        : (requestsRes.data?.items || requestsRes.data || []);
-      const communitiesData = Array.isArray(communitiesRes.data)
-        ? communitiesRes.data
-        : (communitiesRes.data?.items || communitiesRes.data || []);
-      setCommunityRequests(requestsData);
-      setCommunities(communitiesData);
-    } catch (error) {
-      console.warn('Failed to load active home requests:', error);
-      setCommunityRequests([]);
-    } finally {
-      setRequestsLoading(false);
-    }
-  }, []);
-
-  const onRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        loadFeedPosts(0, false),
-        loadHomeRequests(),
-      ]);
-    } catch (err) {
-      console.warn('Refresh failed:', err);
-    } finally {
-      setTimeout(() => setIsRefreshing(false), 500);
-    }
-  }, [loadFeedPosts, loadHomeRequests]);
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -921,6 +885,29 @@ export default function HomeScreen() {
       }
     }
   }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
+
+  const loadHomeRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    try {
+      const [requestsRes, communitiesRes] = await Promise.all([
+        getCommunityRequests({ status: 'active', limit: 30 }),
+        getCommunities(),
+      ]);
+      const requestsData = Array.isArray(requestsRes.data)
+        ? requestsRes.data
+        : (requestsRes.data?.items || requestsRes.data || []);
+      const communitiesData = Array.isArray(communitiesRes.data)
+        ? communitiesRes.data
+        : (communitiesRes.data?.items || communitiesRes.data || []);
+      setCommunityRequests(requestsData);
+      setCommunities(communitiesData);
+    } catch (error) {
+      console.warn('Failed to load active home requests:', error);
+      setCommunityRequests([]);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadHomeRequests();
@@ -1597,7 +1584,7 @@ export default function HomeScreen() {
                           {item.label === 'SOS' ? (
                             <View style={styles.featureIconWrap}>
                               <View style={[styles.sosRing, { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
-                                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900' }}>SOS</Text>
+                                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900', fontFamily: 'Inter_700Bold' }}>SOS</Text>
                               </View>
                             </View>
                           ) : item.label === 'My Krishna' ? (
@@ -1650,9 +1637,9 @@ export default function HomeScreen() {
                             </View>
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={{ textAlign: 'left', fontWeight: '800', fontSize: 13, color: '#000', lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
+                            <Text style={{ textAlign: 'left', fontWeight: '800', fontSize: 13, color: '#000', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
                             {item.subtitle ? (
-                              <Text style={{ textAlign: 'left', fontWeight: '500', fontSize: 10, color: '#000', marginTop: 2, lineHeight: 12 }} numberOfLines={2} adjustsFontSizeToFit>{item.subtitle}</Text>
+                              <Text style={{ textAlign: 'left', fontWeight: '500', fontSize: 10, color: '#000', marginTop: 2, lineHeight: 12, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>{item.subtitle}</Text>
                             ) : null}
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
@@ -1733,8 +1720,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
-                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13 }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest?.hospital_name || 'XYZ Hospital'}{'\n'}{bloodRequest?.location || 'Chennai.'}</Text>
+                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
+                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest?.hospital_name || 'XYZ Hospital'}{'\n'}{bloodRequest?.location || 'Chennai.'}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1756,13 +1743,13 @@ export default function HomeScreen() {
                         router.push('/community-request/list');
                       }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>View</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
                   </View>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF0000', fontSize: 10, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
+                      <Text style={{ color: '#FF0000', fontSize: 10, fontWeight: '800', textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>Your Community</Text>
                     </View>
                   </View>
                 </View>
@@ -1780,8 +1767,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <ShopIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>Become a Verified</Text>
-                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13 }} numberOfLines={2} adjustsFontSizeToFit>Sanatan Vendor</Text>
+                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>Become a Verified</Text>
+                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>Sanatan Vendor</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1801,13 +1788,13 @@ export default function HomeScreen() {
                       }}
                       onPress={() => router.push('/vendor/business-details')}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Register</Text>
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Register</Text>
                     </TouchableOpacity>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 55, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF9500', fontSize: 10.5, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Free</Text>
+                      <Text style={{ color: '#FF9500', fontSize: 10.5, fontWeight: '800', textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>Free</Text>
                     </View>
                   </View>
                 </View>
@@ -1825,8 +1812,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <LotusIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>Sai Flower Decorator</Text>
-                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13 }} numberOfLines={2} adjustsFontSizeToFit>Flower Decor{'\n'}Andheri West</Text>
+                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>Sai Flower Decorator</Text>
+                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>Flower Decor{'\n'}Andheri West</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1845,13 +1832,13 @@ export default function HomeScreen() {
                         marginBottom: 6,
                       }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>View</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 10.5, fontWeight: '800' }]} numberOfLines={1}>Verified vendor</Text>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 10.5, fontWeight: '800', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Verified vendor</Text>
                     </View>
                   </View>
                 </View>
@@ -1869,11 +1856,11 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
+                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
                       <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 2, width: 95 }}>
-                        <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', lineHeight: 12 }}>Notify</Text>
+                        <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', lineHeight: 12, fontFamily: 'Inter_500Medium' }}>Notify</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', lineHeight: 12 }}>me</Text>
+                          <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', lineHeight: 12, fontFamily: 'Inter_500Medium' }}>me</Text>
                           <TouchableOpacity
                             onPress={() => Alert.alert('Notification Set', "We'll notify you when Kedarnath Aarti starts.")}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -1908,13 +1895,13 @@ export default function HomeScreen() {
                         }
                       })}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Watch</Text>
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Watch</Text>
                     </TouchableOpacity>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 10.5, fontWeight: '800' }]} numberOfLines={1}>Temple</Text>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 10.5, fontWeight: '800', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Temple</Text>
                     </View>
                   </View>
                 </View>
@@ -1949,7 +1936,7 @@ export default function HomeScreen() {
                               color: '#9F45FF',
                               fontSize: 10,
                               fontWeight: '600' as any,
-                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                              fontFamily: 'Inter_600SemiBold',
                               letterSpacing: 0,
                             }
                           ]}
@@ -1961,12 +1948,13 @@ export default function HomeScreen() {
                             styles.miniCardTitle,
                             {
                               color: '#000',
-                              fontSize: 14,
+                              fontSize: 12.5,
                               fontWeight: '600' as any,
-                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                              fontFamily: 'Inter_600SemiBold',
                             }
                           ]}
-                          numberOfLines={1}
+                          numberOfLines={2}
+                          adjustsFontSizeToFit
                         >
                           {mumbaiComm?.name || 'Mumbai Community'}
                         </Text>
@@ -1977,7 +1965,7 @@ export default function HomeScreen() {
                               color: '#000',
                               fontSize: 10,
                               fontWeight: '400',
-                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                              fontFamily: 'Inter_500Medium',
                             }
                           ]}
                         >
@@ -2016,12 +2004,13 @@ export default function HomeScreen() {
                             styles.miniCardTitle,
                             {
                               color: '#000',
-                              fontSize: 14,
+                              fontSize: 12.5,
                               fontWeight: '600' as any,
-                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                              fontFamily: 'Inter_600SemiBold',
                             }
                           ]}
-                          numberOfLines={1}
+                          numberOfLines={2}
+                          adjustsFontSizeToFit
                         >
                           Pune Food Sharing Group
                         </Text>
@@ -2033,7 +2022,7 @@ export default function HomeScreen() {
                                 color: '#000',
                                 fontSize: 10,
                                 fontWeight: '400',
-                                fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+                                fontFamily: 'Inter_500Medium',
                               }
                             ]}
                           >
@@ -2544,7 +2533,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   featureTitle: {
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontFamily: 'Inter_700Bold',
     fontSize: 12.5,
     fontWeight: '800',
     color: '#000',
@@ -2883,7 +2872,8 @@ const styles = StyleSheet.create({
   },
   communityCardMini: {
     flex: 1,
-    height: 70,
+    minHeight: 75,
+    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
     flexDirection: 'row',
@@ -2957,7 +2947,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sevaBadgeTextMini: {
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 8.5,
     fontWeight: '590' as any,
     color: '#397339',
