@@ -631,7 +631,7 @@ export default function HomeScreen() {
   const [feedTabsY, setFeedTabsY] = useState(0);
   const postOffsetsRef = useRef<Record<string, number>>({});
   const postHeightsRef = useRef<Record<string, number>>({});
-  const [postSnapEnabled, setPostSnapEnabled] = useState(false);
+
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const [backgroundUpload, setBackgroundUpload] = useState<{
     uploading: boolean;
@@ -786,8 +786,7 @@ export default function HomeScreen() {
   const handleHomeScroll = useCallback((event: any) => {
     const y = event.nativeEvent.contentOffset.y;
     currentScrollY.current = y;
-    const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
-    setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
+
 
     // Visibility tracking for video autoplay - find post with most area in viewport
     let closestKey = null;
@@ -1144,6 +1143,16 @@ export default function HomeScreen() {
           prev.map(c => c.id === tempId ? { ...serverComment, is_optimistic: false } : c)
         );
       }
+
+      // Background refresh to ensure persistence on next modal open
+      try {
+        const freshResponse = await getPostComments(selectedCommentPostId, 50);
+        if (Array.isArray(freshResponse.data)) {
+          setPostComments(freshResponse.data);
+        }
+      } catch {
+        // keep current state if refresh fails
+      }
     } catch (error: any) {
       // Rollback on error
       setPostComments(prev => prev.filter(c => c.id !== tempId));
@@ -1358,10 +1367,6 @@ export default function HomeScreen() {
             onMomentumScrollEnd={handleHomeScroll}
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
-            decelerationRate="fast"
-            snapToOffsets={snapOffsets}
-            snapToAlignment="start"
-            disableIntervalMomentum={true}
           >
             <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
@@ -2217,15 +2222,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {selectedCommentPost?.caption ? (
-                  <View style={styles.commentPostPreview}>
-                    <Avatar name={selectedCommentPost?.username || 'User'} photo={selectedCommentPost?.user_photo} size={32} />
-                    <View style={styles.commentPreviewTextWrap}>
-                      <Text style={styles.commentPreviewUser}>{selectedCommentPost?.username}</Text>
-                      <MentionText style={styles.commentPreviewCaption} numberOfLines={2} text={selectedCommentPost?.caption || ''} />
-                    </View>
-                  </View>
-                ) : null}
+
 
                 <View style={styles.commentListWrap}>
                   {commentsLoading ? (

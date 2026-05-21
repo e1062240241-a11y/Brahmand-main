@@ -669,17 +669,34 @@ export default function CommunityDetailScreen() {
         }
       }
 
-      const [reqResponse, eventResponse, msgResponse, stateMsgResponse, nationalMsgResponse, festResponse] = await Promise.all([
+      const promises: Promise<any>[] = [
         getCommunityRequests({ community_id: id as string }),
         getEvents(),
         getCommunityMessages(id as string, currentSubgroup),
         stateCommunityId ? getCommunityMessages(stateCommunityId, 'state').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         countryCommunityId ? getCommunityMessages(countryCommunityId, 'national').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         getFestivalList()
-      ]);
+      ];
+
+      if (nextCommunity.type === 'city') {
+        promises.push(getCommunityRequests({ status: 'active', limit: 50 }).catch(() => ({ data: [] })));
+      }
+
+      const results = await Promise.all(promises);
+      const reqResponse = results[0];
+      const eventResponse = results[1];
+      const msgResponse = results[2];
+      const stateMsgResponse = results[3];
+      const nationalMsgResponse = results[4];
+      const festResponse = results[5];
+      const globalReqResponse = nextCommunity.type === 'city' ? results[6] : null;
       
       console.log('[Community] Requests fetched:', reqResponse.data?.length);
-      const nextRequests = reqResponse.data || [];
+      let nextRequests = reqResponse.data || [];
+      if (globalReqResponse && globalReqResponse.data) {
+        const combined = [...nextRequests, ...globalReqResponse.data];
+        nextRequests = combined.filter((v: any, i: number, a: any[]) => a.findIndex((t: any) => t.id === v.id) === i);
+      }
       const nextEvents = eventResponse.data || [];
       setRequests(nextRequests);
       setEvents(nextEvents);
@@ -1844,7 +1861,7 @@ export default function CommunityDetailScreen() {
     setCommentText('');
 
     try {
-      const { addPostComment, addCommunityMessageComment } = require('../../src/services/api');
+      const { addPostComment, addCommunityMessageComment, getPostComments, getCommunityMessageComments } = require('../../src/services/api');
       if (showCommentModal.isCommunityMsg) {
         await addCommunityMessageComment(showCommentModal.communityId || id, showCommentModal.subgroupType || 'city', targetPostId, textToSend);
       } else {
@@ -1870,6 +1887,25 @@ export default function CommunityDetailScreen() {
         }
         return post;
       }));
+
+      // Re-fetch comments from server so they persist on next open
+      try {
+        let refreshedResponse;
+        if (showCommentModal.isCommunityMsg) {
+          refreshedResponse = await getCommunityMessageComments(showCommentModal.communityId || id, showCommentModal.subgroupType || 'city', targetPostId);
+        } else {
+          refreshedResponse = await getPostComments(targetPostId);
+        }
+        const refreshedComments = (refreshedResponse.data || []).map((c: any) => ({
+          id: c.id || String(Math.random()),
+          userName: c.username || c.sender_name || 'Anonymous',
+          text: c.text || c.content || '',
+          avatar: c.user_photo || c.sender_photo || null,
+        }));
+        setActiveComments(refreshedComments);
+      } catch {
+        // keep the optimistic comment if refresh fails
+      }
     } catch (error) {
       console.error('Failed to post comment:', error);
       // Rollback comment on error
@@ -2342,29 +2378,6 @@ export default function CommunityDetailScreen() {
             </View>
             
             <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
-              {showCommentModal && (
-                <View style={{ flexDirection: 'row', position: 'relative', paddingBottom: 16 }}>
-                  {/* Vertical thread connector line */}
-                  {activeComments.length > 0 && (
-                    <View style={{ position: 'absolute', left: 20, top: 44, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: -1 }} />
-                  )}
-                  
-                  <View style={{ marginRight: 12 }}>
-                    <Avatar name={showCommentModal.user.name} photo={showCommentModal.user.photo} size={40} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={{ fontWeight: '700', fontSize: 15, color: '#0F1419' }}>{showCommentModal.user.name}</Text>
-                      <Text style={{ fontSize: 14, color: '#536471', marginLeft: 4 }}>@{showCommentModal.user.name.replace(/\s+/g, '').toLowerCase()}</Text>
-                    </View>
-                    <Text selectable={true} style={{ fontSize: 15, color: '#0F1419', lineHeight: 20, marginTop: 4 }}>{showCommentModal.content}</Text>
-                    {showCommentModal.image && (
-                      <Image source={{ uri: showCommentModal.image }} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#EFF3F4' }} />
-                    )}
-                  </View>
-                </View>
-              )}
-
               {activeComments.length > 0 ? (
                 activeComments.map((comment, index) => (
                   <View key={comment.id} style={{ flexDirection: 'row', marginBottom: 20, position: 'relative' }}>

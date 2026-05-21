@@ -20,6 +20,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
+import { useAuthStore } from '../../src/store/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ interface CommunityRequest {
   location: string;
   user_name?: string;
   support_needed?: string;
+  user_id?: string;
 }
 
 const CATEGORIES = [
@@ -50,6 +52,7 @@ const CATEGORIES = [
 export default function ActiveRequestsList() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
   
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -368,13 +371,15 @@ export default function ActiveRequestsList() {
                 <Text style={styles.actionBtnText}>Offer Help</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.actionBtn, styles.fulfillBtn]}
-                onPress={() => handleResolveRequest(item.id)}
-              >
-                <Ionicons name="checkmark-done" size={14} color="#FFF" />
-                <Text style={styles.actionBtnText}>Fulfill</Text>
-              </TouchableOpacity>
+              {item.user_id === user?.id && (
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.fulfillBtn]}
+                  onPress={() => handleResolveRequest(item.id)}
+                >
+                  <Ionicons name="checkmark-done" size={14} color="#FFF" />
+                  <Text style={styles.actionBtnText}>Fulfill</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -581,7 +586,7 @@ export default function ActiveRequestsList() {
                     <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
                     <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, fontWeight: '800' }}>Help Done</Text>
                   </View>
-                ) : (
+                ) : selectedRequest.user_id === user?.id ? (
                   <TouchableOpacity 
                     style={[styles.sheetBtn, { backgroundColor: '#F59E0B', flex: 1.2 }]}
                     onPress={() => handleResolveRequest(selectedRequest.id)}
@@ -589,7 +594,7 @@ export default function ActiveRequestsList() {
                     <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
                     <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, fontWeight: '800' }}>Fulfill</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
             </View>
           </View>
