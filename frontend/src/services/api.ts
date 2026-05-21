@@ -1708,4 +1708,17 @@ export const transcribeAudio = async (audioBase64: string, languageCode: string 
   return response.data;
 };
 
+export const toggleCommunityMessageLike = (communityId: string, subgroupType: string, messageId: string) => {
+  return api.post(`/messages/community/${communityId}/${subgroupType}/${messageId}/like`);
+};
+
+export const addCommunityMessageComment = (communityId: string, subgroupType: string, messageId: string, text: string) => {
+  return api.post(`/messages/community/${communityId}/${subgroupType}/${messageId}/comments`, { text });
+};
+
+export const getCommunityMessageComments = (communityId: string, subgroupType: string, messageId: string) => {
+  return api.get(`/messages/community/${communityId}/${subgroupType}/${messageId}/comments`);
+};
+
 export default api;
+

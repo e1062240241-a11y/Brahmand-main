@@ -1520,4 +1520,17 @@ var transcribeAudio = function (audioBase64_1) {
     });
 };
 exports.transcribeAudio = transcribeAudio;
+var toggleCommunityMessageLike = function (communityId, subgroupType, messageId) {
+    return api.post("/messages/community/".concat(communityId, "/").concat(subgroupType, "/").concat(messageId, "/like"));
+};
+exports.toggleCommunityMessageLike = toggleCommunityMessageLike;
+var addCommunityMessageComment = function (communityId, subgroupType, messageId, text) {
+    return api.post("/messages/community/".concat(communityId, "/").concat(subgroupType, "/").concat(messageId, "/comments"), { text: text });
+};
+exports.addCommunityMessageComment = addCommunityMessageComment;
+var getCommunityMessageComments = function (communityId, subgroupType, messageId) {
+    return api.get("/messages/community/".concat(communityId, "/").concat(subgroupType, "/").concat(messageId, "/comments"));
+};
+exports.getCommunityMessageComments = getCommunityMessageComments;
 exports.default = api;
+

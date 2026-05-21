@@ -218,6 +218,9 @@ interface DiscussionPost {
   sender_id?: string;
   isStateAnnouncement?: boolean;
   isNationalAnnouncement?: boolean;
+  isCommunityMsg?: boolean;
+  communityId?: string;
+  subgroupType?: string;
 }
 
 const MOCK_DISCUSSION: DiscussionPost[] = [
@@ -274,6 +277,8 @@ export default function CommunityDetailScreen() {
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
+  const stateCommunityIdRef = useRef<string | null>(null);
+  const countryCommunityIdRef = useRef<string | null>(null);
   
   const cacheKey = `community_screen_${id}`;
 
@@ -604,8 +609,14 @@ export default function CommunityDetailScreen() {
           const stateCommunity = joinedList.find((c: any) => c.type === 'state');
           const countryCommunity = joinedList.find((c: any) => c.type === 'country' || c.type === 'national');
           
-          if (stateCommunity) stateCommunityId = stateCommunity.id;
-          if (countryCommunity) countryCommunityId = countryCommunity.id;
+          if (stateCommunity) {
+            stateCommunityId = stateCommunity.id;
+            stateCommunityIdRef.current = stateCommunity.id;
+          }
+          if (countryCommunity) {
+            countryCommunityId = countryCommunity.id;
+            countryCommunityIdRef.current = countryCommunity.id;
+          }
         } catch (e) {
           console.warn('[Community] Failed to fetch joined communities:', e);
         }
@@ -654,8 +665,12 @@ export default function CommunityDetailScreen() {
         shares: 0,
         reposts: 0,
         hideBadge: false,
+        liked: (msg.liked_by || []).includes(user?.id),
         category: getLocalCategory(msg.content) || msg.category || 'Feed',
         sender_id: msg.sender_id, // Map sender ID to check for delete ownership
+        isCommunityMsg: true,
+        subgroupType: currentSubgroup,
+        communityId: id as string,
       }));
 
       // Map State API messages
@@ -675,9 +690,13 @@ export default function CommunityDetailScreen() {
         shares: 0,
         reposts: 0,
         hideBadge: false,
+        liked: (msg.liked_by || []).includes(user?.id),
         category: getLocalCategory(msg.content) || msg.category || 'Feed',
         sender_id: msg.sender_id,
         isStateAnnouncement: true,
+        isCommunityMsg: true,
+        subgroupType: 'state',
+        communityId: stateCommunityId,
       }));
 
       // Map National API messages
@@ -697,10 +716,30 @@ export default function CommunityDetailScreen() {
         shares: 0,
         reposts: 0,
         hideBadge: false,
+        liked: (msg.liked_by || []).includes(user?.id),
         category: getLocalCategory(msg.content) || msg.category || 'Feed',
         sender_id: msg.sender_id,
         isNationalAnnouncement: true,
+        isCommunityMsg: true,
+        subgroupType: 'national',
+        communityId: countryCommunityId,
       }));
+
+      // Filter state & national announcements to only show posts from last 24 hours
+      const nowMs = Date.now();
+      const cutoffMs = nowMs - 24 * 60 * 60 * 1000;
+      const isWithin24Hours = (createdAtStr: string) => {
+        if (!createdAtStr || createdAtStr === 'Just now') return true;
+        try {
+          const msgTime = new Date(createdAtStr).getTime();
+          return !isNaN(msgTime) && msgTime >= cutoffMs;
+        } catch (e) {
+          return true;
+        }
+      };
+
+      const filteredStateMsgs = formattedStateMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
+      const filteredNationalMsgs = formattedNationalMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
 
       let finalPosts: any[] = [];
       setCommunityPosts((prev: any[]) => {
@@ -708,8 +747,8 @@ export default function CommunityDetailScreen() {
         const seenIds = new Set(localPosts.map((p: any) => p.id));
         
         const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id));
-        const uniqueStateMsgs = formattedStateMsgs.filter((p: any) => !seenIds.has(p.id));
-        const uniqueNationalMsgs = formattedNationalMsgs.filter((p: any) => !seenIds.has(p.id));
+        const uniqueStateMsgs = filteredStateMsgs.filter((p: any) => !seenIds.has(p.id));
+        const uniqueNationalMsgs = filteredNationalMsgs.filter((p: any) => !seenIds.has(p.id));
         
         finalPosts = [
           ...uniqueNationalMsgs,
@@ -761,8 +800,12 @@ export default function CommunityDetailScreen() {
         shares: 0,
         reposts: 0,
         hideBadge: false,
+        liked: (msg.liked_by || []).includes(user?.id),
         category: getLocalCategory(msg.content) || msg.category || 'Feed',
         sender_id: msg.sender_id, // Map sender ID to check for delete ownership
+        isCommunityMsg: true,
+        subgroupType: currentSubgroup,
+        communityId: id as string,
       }));
       
       if (newMsgs.length > 0) {
@@ -833,41 +876,6 @@ export default function CommunityDetailScreen() {
         hasNextThreadConnection && { paddingBottom: 0, borderBottomWidth: 0 },
         hasPrevThreadConnection && { paddingTop: 0 }
       ]}>
-        {item.isStateAnnouncement && (
-          <View style={{ 
-            flexDirection: 'row', 
-            alignItems: 'center', 
-            backgroundColor: '#FFF5EB', 
-            paddingHorizontal: 12, 
-            paddingVertical: 5, 
-            borderRadius: 8, 
-            marginBottom: 8, 
-            alignSelf: 'flex-start', 
-            borderWidth: 1, 
-            borderColor: '#FFD9B3' 
-          }}>
-            <Ionicons name="flag" size={13} color="#FF6600" style={{ marginRight: 6 }} />
-            <Text style={{ fontSize: 10, fontWeight: '800', color: '#FF6600', textTransform: 'uppercase', letterSpacing: 0.5 }}>State Level Announcement</Text>
-          </View>
-        )}
-        {item.isNationalAnnouncement && (
-          <View style={{ 
-            flexDirection: 'row', 
-            alignItems: 'center', 
-            backgroundColor: '#E0F2FE', 
-            paddingHorizontal: 12, 
-            paddingVertical: 5, 
-            borderRadius: 8, 
-            marginBottom: 8, 
-            alignSelf: 'flex-start', 
-            borderWidth: 1, 
-            borderColor: '#BAE6FD' 
-          }}>
-            <Ionicons name="globe" size={13} color="#0284C7" style={{ marginRight: 6 }} />
-            <Text style={{ fontSize: 10, fontWeight: '800', color: '#0284C7', textTransform: 'uppercase', letterSpacing: 0.5 }}>National Level Announcement</Text>
-          </View>
-        )}
-
         {item.isRepost && (
           <View style={styles.repostHeaderLabel}>
             <Ionicons name="repeat" size={14} color="#536471" />
@@ -1352,9 +1360,23 @@ export default function CommunityDetailScreen() {
     }));
 
     // Also check in communityPosts
+    let isCommunityMsg = false;
+    let targetSubgroup = 'city';
+    let targetCommunityId = id as string;
+
     setCommunityPosts(prev => {
       const updated = prev.map(post => {
         if (post.id === postId) {
+          isCommunityMsg = true;
+          if (post.isStateAnnouncement) {
+            targetSubgroup = 'state';
+          } else if (post.isNationalAnnouncement) {
+            targetSubgroup = 'national';
+          } else {
+            targetSubgroup = community?.type === 'state'
+              ? 'state'
+              : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
+          }
           const isLiked = post.liked;
           return {
             ...post,
@@ -1367,6 +1389,27 @@ export default function CommunityDetailScreen() {
       useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
       return updated;
     });
+
+    if (!postId.startsWith('post-')) {
+      (async () => {
+        try {
+          const { togglePostLike, toggleCommunityMessageLike } = require('../../src/services/api');
+          if (isCommunityMsg) {
+            let commId = targetCommunityId;
+            if (targetSubgroup === 'state' && stateCommunityIdRef.current) {
+              commId = stateCommunityIdRef.current;
+            } else if (targetSubgroup === 'national' && countryCommunityIdRef.current) {
+              commId = countryCommunityIdRef.current;
+            }
+            await toggleCommunityMessageLike(commId, targetSubgroup, postId);
+          } else {
+            await togglePostLike(postId);
+          }
+        } catch (error) {
+          console.error('Failed to toggle like on backend:', error);
+        }
+      })();
+    }
   };
 
   const handleRepost = (postId: string) => {
@@ -1584,13 +1627,18 @@ export default function CommunityDetailScreen() {
     setShowCommentModal(post);
     setCommentText('');
     try {
-      const { getPostComments } = require('../../src/services/api');
-      const response = await getPostComments(post.id);
+      const { getPostComments, getCommunityMessageComments } = require('../../src/services/api');
+      let response;
+      if (post.isCommunityMsg) {
+        response = await getCommunityMessageComments(post.communityId || id, post.subgroupType || 'city', post.id);
+      } else {
+        response = await getPostComments(post.id);
+      }
       const mappedComments = (response.data || []).map((c: any) => ({
         id: c.id || String(Math.random()),
-        userName: c.sender_name || 'Anonymous',
-        text: c.content || c.text || '',
-        avatar: c.sender_photo || null,
+        userName: c.username || c.sender_name || 'Anonymous',
+        text: c.text || c.content || '',
+        avatar: c.user_photo || c.sender_photo || null,
       }));
       setActiveComments(mappedComments);
     } catch (error) {
@@ -1615,8 +1663,12 @@ export default function CommunityDetailScreen() {
     setCommentText('');
 
     try {
-      const { addPostComment } = require('../../src/services/api');
-      await addPostComment(targetPostId, textToSend);
+      const { addPostComment, addCommunityMessageComment } = require('../../src/services/api');
+      if (showCommentModal.isCommunityMsg) {
+        await addCommunityMessageComment(showCommentModal.communityId || id, showCommentModal.subgroupType || 'city', targetPostId, textToSend);
+      } else {
+        await addPostComment(targetPostId, textToSend);
+      }
 
       // Update comment count on communityPosts and cache
       setCommunityPosts(prev => {
@@ -2083,11 +2135,7 @@ export default function CommunityDetailScreen() {
               borderTopColor: '#EFF3F4',
               backgroundColor: '#FFF'
             }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <TouchableOpacity onPress={handlePickImage} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name="image-outline" size={22} color="#FF6600" />
-                </TouchableOpacity>
-              </View>
+              <View />
               
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <CharacterProgressCircle textLength={newMessage.length} />
