@@ -48,27 +48,28 @@ export const secureStorage = {
     }
   },
 
-  /**
-   * Retrieves and decrypts a string value from AsyncStorage.
-   */
   getItem: async (key: string): Promise<string | null> => {
     try {
       const encryptedValue = await AsyncStorage.getItem(key);
       if (!encryptedValue) return null;
 
-      const encryptionKey = await getEncryptionKey();
-      const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, encryptionKey);
-      const decryptedValue = decryptedBytes.toString(CryptoJS.enc.Utf8);
-      
-      // If decryption fails or returns empty, check if it was stored unencrypted
-      if (!decryptedValue && encryptedValue) {
+      try {
+        const encryptionKey = await getEncryptionKey();
+        const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, encryptionKey);
+        const decryptedValue = decryptedBytes.toString(CryptoJS.enc.Utf8);
+        
+        // If decryption succeeds but yields empty, fallback to the original value
+        if (!decryptedValue) {
+          return encryptedValue;
+        }
+        return decryptedValue;
+      } catch (decryptError) {
+        // Fallback: return raw unencrypted value if decryption/decoding fails
         return encryptedValue;
       }
-      return decryptedValue;
     } catch (error) {
-      console.error(`[SecureStorage] Failed to get/decrypt item for key "${key}":`, error);
-      // Fallback: return raw value
-      return await AsyncStorage.getItem(key);
+      console.error(`[SecureStorage] Failed to get item for key "${key}":`, error);
+      return null;
     }
   },
 
