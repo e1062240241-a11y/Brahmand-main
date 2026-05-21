@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 import { initializePushNotifications } from '../services/pushNotifications';
 import { getFirebaseAuth } from '../services/firebase/config';
+
+import { secureStorage } from '../utils/secureStorage';
 
 interface AuthState {
   user: User | null;
@@ -33,8 +34,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   login: async (user, token) => {
-    await AsyncStorage.setItem('auth_token', token);
-    await AsyncStorage.setItem('user', JSON.stringify(user));
+    await secureStorage.setItem('auth_token', token);
+    await secureStorage.setItem('user', JSON.stringify(user));
     set({ user, token, isAuthenticated: true, isLoading: false });
     initializePushNotifications()
       .then((fcmToken) => {
@@ -57,15 +58,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.warn('[Auth] Firebase signOut failed (ignored):', error);
     }
 
-    await AsyncStorage.removeItem('auth_token');
-    await AsyncStorage.removeItem('user');
+    await secureStorage.removeItem('auth_token');
+    await secureStorage.removeItem('user');
     set({ user: null, token: null, isAuthenticated: false, fcmToken: null });
   },
 
   loadStoredAuth: async () => {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
-      const userStr = await AsyncStorage.getItem('user');
+      const token = await secureStorage.getItem('auth_token');
+      const userStr = await secureStorage.getItem('user');
       
       if (token && userStr) {
         const user = JSON.parse(userStr);
@@ -84,7 +85,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (currentUser) {
       const updatedUser = { ...currentUser, ...updates };
       set({ user: updatedUser });
-      AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      secureStorage.setItem('user', JSON.stringify(updatedUser));
     }
   },
   

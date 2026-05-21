@@ -95,7 +95,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
     const deviceToken = await Notifications.getDevicePushTokenAsync();
     if (deviceToken?.data) {
       token = deviceToken.data;
-      console.log('[Push] Device Push Token:', token);
+      console.log('[Push] Device Push Token retrieved successfully.');
     } else {
       // Fallback: Expo push token can work only with Expo push service.
       const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
@@ -157,7 +157,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 export async function saveFCMToken(token: string): Promise<boolean> {
   try {
     await api.post('/user/fcm-token', { fcm_token: token });
-    console.log('[Push] Notification token saved to backend:', token);
+    console.log('[Push] Notification token saved to backend successfully.');
     return true;
   } catch (error) {
     console.error('[Push] Error saving notification token:', error);

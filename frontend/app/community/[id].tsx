@@ -152,6 +152,7 @@ function splitTextIntoTweets(text: string, limit = 250): string[] {
 }
 
 const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
+const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 
 const MOCK_FESTIVALS = [
   { id: '1', name: 'Diwali', icon: 'flame-outline', events: 12, color: '#FFF5F0', iconColor: '#FF6B00' },
@@ -1334,8 +1335,8 @@ export default function CommunityDetailScreen() {
   const handleCreatePost = async () => {
     if (!newMessage.trim() && !selectedImage) return;
 
-    // Use activeTab as default category (but 'Feed' maps to 'Seva')
-    const finalCategory = (postCategory === 'Feed' || (!postCategory && activeTab === 'Feed')) ? 'Seva' : (postCategory || activeTab);
+    // Use activeTab as default category (but map 'Others' or empty to 'Feed')
+    const finalCategory = (postCategory === 'Others' || (!postCategory && activeTab === 'Feed') || !postCategory) ? 'Feed' : postCategory;
 
     // Split text into chunks of max 250 characters
     const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
@@ -1745,7 +1746,7 @@ export default function CommunityDetailScreen() {
                 }}
                 onPress={() => setShowTopCategoryDropdown(prev => !prev)}
               >
-                <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>{postCategory || activeTab}</Text>
+                <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>{postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)}</Text>
                 <Ionicons name="chevron-down" size={12} color="#1D9BF0" style={{ marginLeft: 4 }} />
               </TouchableOpacity>
 
@@ -1793,10 +1794,10 @@ export default function CommunityDetailScreen() {
                   elevation: 8,
                   paddingVertical: 6,
                 }}>
-                  {COMMUNITY_TABS.map(cat => {
-                    const isSelected = (postCategory || activeTab) === cat;
+                  {POST_CATEGORIES.map(cat => {
+                    const isSelected = (postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)) === cat;
                     let iconName = 'ellipse-outline';
-                    if (cat === 'Feed') iconName = 'globe-outline';
+                    if (cat === 'Others') iconName = 'options-outline';
                     else if (cat === 'Seva') iconName = 'heart-outline';
                     else if (cat === 'Requests') iconName = 'alert-circle-outline';
                     else if (cat === 'Events') iconName = 'calendar-outline';
@@ -1899,7 +1900,7 @@ export default function CommunityDetailScreen() {
                   onPress={() => setShowBodyCategoryDropdown(prev => !prev)}
                 >
                   <Text style={{ fontSize: 15, color: '#0F1419', fontWeight: '600' }}>
-                    {postCategory || activeTab}
+                    {postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>Change</Text>
@@ -1921,10 +1922,10 @@ export default function CommunityDetailScreen() {
                     elevation: 4,
                     paddingVertical: 6,
                   }}>
-                    {COMMUNITY_TABS.map(cat => {
-                      const isSelected = (postCategory || activeTab) === cat;
+                    {POST_CATEGORIES.map(cat => {
+                      const isSelected = (postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)) === cat;
                       let iconName = 'ellipse-outline';
-                      if (cat === 'Feed') iconName = 'globe-outline';
+                      if (cat === 'Others') iconName = 'options-outline';
                       else if (cat === 'Seva') iconName = 'heart-outline';
                       else if (cat === 'Requests') iconName = 'alert-circle-outline';
                       else if (cat === 'Events') iconName = 'calendar-outline';
@@ -2022,18 +2023,6 @@ export default function CommunityDetailScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TouchableOpacity onPress={handlePickImage} style={{ padding: 8 }}>
                   <Ionicons name="image-outline" size={22} color="#1D9BF0" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handlePaste} style={{ 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  backgroundColor: 'rgba(29,155,240,0.08)', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 6, 
-                  borderRadius: 16,
-                  gap: 4
-                }}>
-                  <Ionicons name="clipboard-outline" size={16} color="#1D9BF0" />
-                  <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>Paste</Text>
                 </TouchableOpacity>
               </View>
               

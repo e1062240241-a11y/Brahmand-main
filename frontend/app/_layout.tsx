@@ -16,6 +16,40 @@ import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_7
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { MuteProvider } from '../src/contexts/MuteContext';
 import { useNotificationStore } from '../src/store/notificationStore';
+import { ToastContainer } from '../src/components/ToastContainer';
+import { toast } from '../src/store/toastStore';
+import { Alert as RNAlert } from 'react-native';
+
+const originalAlert = RNAlert.alert;
+RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
+  const titleStr = typeof title === 'string' ? title : '';
+  const bodyStr = typeof message === 'string' ? message : '';
+  const displayMsg = titleStr && bodyStr && titleStr !== 'Success' && titleStr !== 'Error' && titleStr !== 'Info'
+    ? `${titleStr}: ${bodyStr}`
+    : (bodyStr || titleStr);
+    
+  const isError = titleStr.toLowerCase().includes('error') || titleStr.toLowerCase().includes('fail') || 
+                  displayMsg.toLowerCase().includes('error') || displayMsg.toLowerCase().includes('fail');
+  const isSuccess = titleStr.toLowerCase().includes('success') || titleStr.toLowerCase().includes('saved') || 
+                    titleStr.toLowerCase().includes('updated') || displayMsg.toLowerCase().includes('success');
+  
+  const mappedActions = buttons?.map(btn => ({
+    text: btn.text || 'OK',
+    style: btn.style,
+    onPress: btn.onPress || (() => {})
+  }));
+  
+  toast.show(displayMsg, isSuccess ? 'success' : (isError ? 'error' : 'info'), 10000, mappedActions);
+};
+
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  window.alert = (message: any) => {
+    const msgStr = String(message || '');
+    const isError = msgStr.toLowerCase().includes('error') || msgStr.toLowerCase().includes('fail');
+    const isSuccess = msgStr.toLowerCase().includes('success') || msgStr.toLowerCase().includes('saved') || msgStr.toLowerCase().includes('updated');
+    toast.show(msgStr, isSuccess ? 'success' : (isError ? 'error' : 'info'));
+  };
+}
 
 // Intercept hardware back on main pages to avoid accidental exit and crashes
 function useAppBackHandler() {
@@ -401,6 +435,7 @@ export default function RootLayout() {
               />
             </Stack>
             {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
+            <ToastContainer />
           </MuteProvider>
         </View>
       </SafeAreaProvider>

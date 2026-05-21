@@ -1450,13 +1450,12 @@ export const extractKycTextFromImage = async (vendorId: string, file: { uri: str
   console.log('[OCR API] Response status:', response.status, response.statusText);
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[OCR API] Error response:', response.status, errorText);
-    throw new Error(`OCR failed: ${response.status} - ${errorText}`);
+    console.error('[OCR API] Error response:', response.status);
+    throw new Error(`OCR failed: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('[OCR API] Response data:', JSON.stringify(data).substring(0, 500));
+  console.log('[OCR API] Response data received successfully.');
   return { data };
 };
 
@@ -1516,13 +1515,12 @@ export const extractUserKycTextFromImage = async (file: { uri: string; name: str
   console.log('[User OCR API] Response status:', response.status, response.statusText);
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[User OCR API] Error response:', response.status, errorText);
-    throw new Error(`OCR failed: ${response.status} - ${errorText}`);
+    console.error('[User OCR API] Error response:', response.status);
+    throw new Error(`OCR failed: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('[User OCR API] Response data:', JSON.stringify(data).substring(0, 500));
+  console.log('[User OCR API] Response data received successfully.');
   return { data };
 };
 

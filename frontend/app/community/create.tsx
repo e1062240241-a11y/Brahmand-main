@@ -440,38 +440,40 @@ export default function CreateCommunityScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.inputLabel}>Community Picture</Text>
-        <TouchableOpacity
-          style={styles.imageUploadBox}
-          onPress={() => pickImage('photo')}
-        >
-          {formData.photo ? (
-            <Image source={{ uri: formData.photo }} style={styles.previewImage} />
-          ) : (
-            <>
-              <View style={styles.uploadIconBox}>
-                 <Ionicons name="image-outline" size={32} color="#FF6600" />
-              </View>
-              <Text style={styles.uploadText}>Tap to upload{"\n"}JPG, PNG up to 5MB</Text>
-            </>
-          )}
-        </TouchableOpacity>
+         <TouchableOpacity
+           style={styles.imageUploadBox}
+           onPress={() => pickImage('photo')}
+         >
+           {formData.photo ? (
+             <Image source={{ uri: formData.photo }} style={styles.previewImage} />
+           ) : (
+             <>
+               <View style={styles.uploadIconBox}>
+                  <FontAwesome5 name="image" size={40} color="#FF6600" />
+               </View>
+               <Text style={styles.uploadText}>Tap to upload Community Photo{"\n"}JPG, PNG up to 5MB</Text>
+               <Text style={styles.uploadHint}>This is required</Text>
+             </>
+           )}
+         </TouchableOpacity>
 
-        <Text style={[styles.inputLabel, { marginTop: 24 }]}>Cover Photo (Optional)</Text>
-        <TouchableOpacity
-          style={styles.imageUploadBox}
-          onPress={() => pickImage('cover_photo')}
-        >
-          {formData.cover_photo ? (
-            <Image source={{ uri: formData.cover_photo }} style={styles.previewImageCover} />
-          ) : (
-            <>
-              <View style={styles.uploadIconBox}>
-                 <Ionicons name="image-outline" size={32} color="#FF6600" />
-              </View>
-              <Text style={styles.uploadText}>Tap to upload{"\n"}JPG, PNG up to 5MB</Text>
-            </>
-          )}
-        </TouchableOpacity>
+         <Text style={[styles.inputLabel, { marginTop: 24 }]}>Cover Photo (Optional)</Text>
+         <TouchableOpacity
+           style={styles.imageUploadBox}
+           onPress={() => pickImage('cover_photo')}
+         >
+           {formData.cover_photo ? (
+             <Image source={{ uri: formData.cover_photo }} style={styles.previewImageCover} />
+           ) : (
+             <>
+               <View style={styles.uploadIconBox}>
+                  <FontAwesome5 name="image" size={40} color="#FF6600" />
+               </View>
+               <Text style={styles.uploadText}>Tap to upload Cover Photo{"\n"}JPG, PNG up to 5MB</Text>
+               <Text style={styles.uploadHint}>Add a banner image</Text>
+             </>
+           )}
+         </TouchableOpacity>
 
         <View style={[styles.inputGroup, { marginTop: 24 }]}>
           <Text style={styles.inputLabel}>Community Category *</Text>
@@ -874,27 +876,37 @@ const styles = StyleSheet.create({
   selectorPlaceholder: { fontSize: 15, color: '#888' },
   disabledButton: { backgroundColor: '#FFCCB3' },
 
-  imageUploadBox: {
-    backgroundColor: '#FFF9F5',
-    borderWidth: 1,
-    borderColor: '#FFE8D4',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    borderStyle: 'dashed',
-  },
-  uploadIconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    elevation: 2,
-  },
-  uploadText: { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 18 },
-  previewImage: { width: 100, height: 100, borderRadius: 50 },
+   imageUploadBox: {
+     backgroundColor: '#FFF9F5',
+     borderWidth: 2,
+     borderColor: '#FF6600',
+     borderRadius: 20,
+     padding: 24,
+     alignItems: 'center',
+     borderStyle: 'dashed',
+     elevation: 3,
+     shadowColor: '#FF6600',
+     shadowOpacity: 0.1,
+     shadowRadius: 8,
+     shadowOffset: { width: 0, height: 2 },
+   },
+   uploadIconBox: {
+     width: 70,
+     height: 70,
+     borderRadius: 35,
+     backgroundColor: '#FFE8D4',
+     justifyContent: 'center',
+     alignItems: 'center',
+     marginBottom: 12,
+     elevation: 3,
+     shadowColor: '#FF6600',
+     shadowOpacity: 0.15,
+     shadowRadius: 8,
+     shadowOffset: { width: 0, height: 2 },
+   },
+   uploadText: { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 18 },
+   uploadHint: { fontSize: 11, color: '#FF6600', fontFamily: FONTS.semibold, textAlign: 'center', marginTop: 6 },
+   previewImage: { width: 100, height: 100, borderRadius: 50 },
   previewImageCover: { width: '100%', height: 120, borderRadius: 12 },
   dropdown: {
     backgroundColor: '#FFF',
