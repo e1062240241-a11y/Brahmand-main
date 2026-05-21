@@ -13,10 +13,12 @@ import {
     Platform,
     } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAudioPlayer } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { SPACING } from '../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { KaraokeSyncEngine, KaraokeData, KaraokeSection } from '../src/components/Karaoke';
+import hanumanChalisaData from '../assets/data/hanuman-chalisa-karaoke.json';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -90,12 +92,12 @@ const NAAM_JAAP_LIST: NaamJaap[] = [
     },
     {
         id: 'hanuman',
-        name: 'Hanuman Jaap',
-        mantra: 'Om Hanumate Namah',
-        hindi: 'ॐ हनुमते नमः',
+        name: 'Hanuman Chalisa',
+        hindi: 'श्री हनुमान चालीसा',
+        mantra: 'Jai Hanuman Gyan Gun Sagar',
         deity: 'Lord Hanuman',
-        color: '#F44336',
-        bgColor: '#FFEBEE',
+        color: '#FF6B00',
+        bgColor: '#FFF5EB',
         icon: 'body',
         iconBg: '#FFCDD2'
     },
@@ -136,6 +138,20 @@ const MUSIC_OPTIONS = [
     { id: 'nature', name: 'Birds & Waterfall', icon: 'sunny', file: require('../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3') },
 ];
 
+const HANUMAN_CHALISA_AUDIO = require('../assets/audio/audio ekant/Hanuman chalisa.mp3');
+const HANUMAN_CHALISA_KARAOKE: KaraokeData = hanumanChalisaData as unknown as KaraokeData;
+
+const getKaraokeDuration = (): number => {
+    const lastSection = HANUMAN_CHALISA_KARAOKE.structure[HANUMAN_CHALISA_KARAOKE.structure.length - 1];
+    return Math.ceil(lastSection.end);
+};
+
+const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins} min ${secs} sec`;
+};
+
 const EkantJaapPage = () => {
     const router = useRouter();
     const [selectedNaam, setSelectedNaam] = useState<NaamJaap | null>(null);
@@ -150,11 +166,19 @@ const EkantJaapPage = () => {
     const [isAudioEnabled, setIsAudioEnabled] = useState(false);
     const [chosenMusic, setChosenMusic] = useState<typeof MUSIC_OPTIONS[0] | null>(null);
     const [audioSource, setAudioSource] = useState<any | null>(null);
-    const player = useAudioPlayer(audioSource, { downloadFirst: true });
+    const player = useAudioPlayer(audioSource, { updateInterval: 100 });
+    const playerStatus = useAudioPlayerStatus(player);
+
+    const [isKaraokeMode, setIsKaraokeMode] = useState(false);
+    const [karaokeCurrentTime, setKaraokeCurrentTime] = useState(0);
+    const [karaokeSection, setKaraokeSection] = useState<KaraokeSection | null>(null);
+    const [karaokeDuration, setKaraokeDuration] = useState(0);
 
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const hasAutoPlayedRef = useRef(false);
+    const karaokeTimeRef = useRef(0);
+    const karaokeRunningRef = useRef(false);
 
-    // Animations for the new UI
     const swirlRotation = useRef(new Animated.Value(0)).current;
     const glowPulse = useRef(new Animated.Value(1)).current;
     const blobAnim1 = useRef(new Animated.Value(0)).current;
@@ -181,6 +205,17 @@ const EkantJaapPage = () => {
     const handleSelectNaam = (naam: NaamJaap) => {
         setSelectedNaam(naam);
         Vibration.vibrate(50);
+
+        if (naam.id === 'hanuman') {
+            hasAutoPlayedRef.current = false;
+            const duration = getKaraokeDuration();
+            setKaraokeDuration(duration);
+            setTimeLeft(duration);
+            setSelectedSlot({ id: 'karaoke', label: formatDuration(duration), seconds: duration, minutes: Math.ceil(duration / 60) });
+            setAudioSource(HANUMAN_CHALISA_AUDIO);
+            setIsKaraokeMode(true);
+            setChosenMusic({ id: 'hanuman-chalisa', name: 'Hanuman Chalisa', icon: 'book', file: HANUMAN_CHALISA_AUDIO });
+        }
     };
 
     const handleSelectSlot = (slot: typeof TIME_SLOTS[0]) => {
@@ -192,7 +227,7 @@ const EkantJaapPage = () => {
     };
 
     useEffect(() => {
-        if (isRunning) {
+        if (isRunning && !isKaraokeMode) {
             intervalRef.current = setInterval(() => {
                 setTimeLeft((prev) => {
                     if (prev <= 1) {
@@ -222,7 +257,7 @@ const EkantJaapPage = () => {
                 intervalRef.current = null;
             }
         };
-    }, [isRunning]);
+    }, [isRunning, isKaraokeMode]);
 
     const beginJaap = async (music: typeof MUSIC_OPTIONS[0]) => {
         setShowMusicDialog(false);
@@ -256,6 +291,13 @@ const EkantJaapPage = () => {
         setIsRunning(false);
         setIsComplete(false);
         setIsAudioEnabled(false);
+        setIsKaraokeMode(false);
+        setKaraokeCurrentTime(0);
+        setKaraokeSection(null);
+        setKaraokeDuration(0);
+        hasAutoPlayedRef.current = false;
+        karaokeTimeRef.current = 0;
+        karaokeRunningRef.current = false;
         setLastMinute(null);
         setChosenMusic(null);
         setAudioSource(null);
@@ -279,7 +321,13 @@ const EkantJaapPage = () => {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
-            if (selectedSlot) {
+            if (isKaraokeMode) {
+                setIsKaraokeMode(false);
+                setKaraokeDuration(0);
+                hasAutoPlayedRef.current = false;
+                setSelectedSlot(null);
+                setSelectedNaam(null);
+            } else if (selectedSlot) {
                 setSelectedSlot(null);
                 setTimeLeft(0);
             } else if (selectedNaam) {
@@ -299,13 +347,6 @@ const EkantJaapPage = () => {
     useEffect(() => {
         if (!player) return;
 
-        try {
-            player.loop = true;
-            player.volume = 0.5;
-        } catch (error) {
-            console.warn('Ekant Jaap audio init failed', error);
-        }
-
         if (isRunning && isAudioEnabled) {
             try {
                 player.play();
@@ -322,10 +363,60 @@ const EkantJaapPage = () => {
     }, [player, isRunning, isAudioEnabled]);
 
     useEffect(() => {
+        if (!player || !isKaraokeMode) return;
+        if (hasAutoPlayedRef.current) return;
+
+        player.loop = false;
+        player.volume = 0.5;
+
+        const attemptPlay = () => {
+            if (hasAutoPlayedRef.current) return;
+            try {
+                player.play();
+                hasAutoPlayedRef.current = true;
+                setIsAudioEnabled(true);
+                setIsRunning(true);
+            } catch {
+                // player not ready yet, will retry
+            }
+        };
+
+        attemptPlay();
+
+        const retryInterval = setInterval(() => {
+            if (!hasAutoPlayedRef.current) {
+                attemptPlay();
+            } else {
+                clearInterval(retryInterval);
+            }
+        }, 300);
+
+        setTimeout(() => clearInterval(retryInterval), 15000);
+
+        return () => clearInterval(retryInterval);
+    }, [isKaraokeMode, player]);
+
+    useEffect(() => {
+        if (!isKaraokeMode || !playerStatus || !playerStatus.isLoaded) return;
+
+        const currentPos = playerStatus.currentTime;
+        setKaraokeCurrentTime(currentPos);
+
+        if (isRunning && playerStatus.duration > 0) {
+            const remaining = Math.max(0, Math.ceil(playerStatus.duration - currentPos));
+            setTimeLeft(remaining);
+        }
+
+        if (isRunning && currentPos >= playerStatus.duration - 0.3 && playerStatus.duration > 1) {
+            setIsRunning(false);
+            setIsComplete(true);
+            Vibration.vibrate([0, 200, 100, 200, 100, 200]);
+        }
+    }, [playerStatus, isKaraokeMode, isRunning]);
+
+    useEffect(() => {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
-            // We don't manually pause here if managed by useAudioPlayer as it handles its own lifecycle
-            // But if we do, we must be extremely careful about released objects
         };
     }, []);
 
@@ -363,7 +454,14 @@ const EkantJaapPage = () => {
                                     <Text style={styles.naamHindi}>{naam.hindi}</Text>
                                     <Text style={styles.naamDeity}>{naam.deity}</Text>
                                 </View>
-                                <Ionicons name="chevron-forward" size={20} color={naam.color} />
+                                {naam.id === 'hanuman' ? (
+                                    <View style={styles.karaokeBadge}>
+                                        <Ionicons name="sparkles" size={12} color="#FF6B00" />
+                                        <Text style={styles.karaokeBadgeText}>Karaoke</Text>
+                                    </View>
+                                ) : (
+                                    <Ionicons name="chevron-forward" size={20} color={naam.color} />
+                                )}
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -436,11 +534,11 @@ const EkantJaapPage = () => {
             <View style={styles.jaapContainer}>
                 <View style={styles.jaapTopBar}>
                     <TouchableOpacity style={styles.jaapTopChip} onPress={() => setIsAudioEnabled(!isAudioEnabled)}>
-                        <Ionicons name="musical-notes" size={14} color="#555" />
-                        <Text style={styles.jaapTopChipText} numberOfLines={1}>
-                            {chosenMusic?.name || 'No Music'}
+                        <Ionicons name={isKaraokeMode ? "book" : "musical-notes"} size={14} color={isKaraokeMode ? "#FF6B00" : "#555"} />
+                        <Text style={[styles.jaapTopChipText, isKaraokeMode && { color: '#FF6B00' }]} numberOfLines={1}>
+                            {isKaraokeMode ? 'Hanuman Chalisa' : (chosenMusic?.name || 'No Music')}
                         </Text>
-                        <View style={styles.jaapTopChipIndicator} />
+                        {isKaraokeMode && <View style={[styles.jaapTopChipIndicator, { backgroundColor: '#FF6B00' }]} />}
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.jaapTopChip} onPress={handleGoBack}>
@@ -452,9 +550,15 @@ const EkantJaapPage = () => {
                 <View style={styles.jaapCenter}>
                     <View style={styles.focusHeader}>
                         <Text style={styles.focusTitle}>{selectedNaam.name}</Text>
-                        <Text style={styles.focusSubtitle}>
-                            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {new Date(Date.now() + timeLeft * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
+                        {isKaraokeMode ? (
+                            <Text style={styles.focusSubtitle}>
+                                {formatDuration(karaokeDuration)} • Auto-synced
+                            </Text>
+                        ) : (
+                            <Text style={styles.focusSubtitle}>
+                                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {new Date(Date.now() + timeLeft * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                        )}
                     </View>
 
                     <View style={styles.focusCircleRoot}>
@@ -464,7 +568,6 @@ const EkantJaapPage = () => {
                                 <Ionicons name={selectedNaam.icon as any} size={72} color="#F59E0B" />
                             </View>
                         </View>
-                        {/* Gradient Progress Ring */}
                         <View style={styles.progressContainer}>
                             <LinearGradient
                                 colors={['#F59E0B', '#EF4444']}
@@ -473,7 +576,6 @@ const EkantJaapPage = () => {
                                     opacity: 0.8
                                 }]}
                             />
-                            {/* Mask to create ring effect */}
                             <View style={styles.ringMask} />
                         </View>
                     </View>
@@ -484,7 +586,7 @@ const EkantJaapPage = () => {
                         <TouchableOpacity
                             style={styles.materialFab}
                             onPress={() => {
-                                if (!chosenMusic) {
+                                if (!chosenMusic && !isKaraokeMode) {
                                     setShowMusicDialog(true);
                                 } else {
                                     setIsRunning(!isRunning);
@@ -497,8 +599,20 @@ const EkantJaapPage = () => {
                 </View>
 
                 <View style={styles.mantraFooter}>
-                    <Text style={styles.footerMantraHindi}>{selectedNaam.hindi}</Text>
-                    <Text style={styles.footerMantraEnglish}>{selectedNaam.mantra}</Text>
+                    {isKaraokeMode ? (
+                        <KaraokeSyncEngine
+                            data={HANUMAN_CHALISA_KARAOKE}
+                            currentTime={karaokeCurrentTime}
+                            isPlaying={isRunning}
+                            onSectionChange={(section) => setKaraokeSection(section)}
+                            style={styles.karaokeContainer}
+                        />
+                    ) : (
+                        <>
+                            <Text style={styles.footerMantraHindi}>{selectedNaam.hindi}</Text>
+                            <Text style={styles.footerMantraEnglish}>{selectedNaam.mantra}</Text>
+                        </>
+                    )}
                 </View>
 
                 {showConfirmDialog && (
@@ -625,6 +739,20 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#B8860B',
         marginTop: 2,
+    },
+    karaokeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF5EB',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
+        gap: 4,
+    },
+    karaokeBadgeText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FF6B00',
     },
     naamBanner: {
         borderRadius: 20,
@@ -865,6 +993,11 @@ const styles = StyleSheet.create({
     mantraFooter: {
         paddingBottom: 20,
         alignItems: 'center',
+        minHeight: 120,
+    },
+    karaokeContainer: {
+        width: '100%',
+        minHeight: 120,
     },
     footerMantraHindi: {
         fontSize: 18,
@@ -1059,4 +1192,3 @@ const styles = StyleSheet.create({
 });
 
 export default EkantJaapPage;
-

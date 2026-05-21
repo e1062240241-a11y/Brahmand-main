@@ -1,4 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CryptoJS from 'crypto-js';
+import { Platform } from 'react-native';
+
 let SecureStore: any = null;
 try {
   if (Platform.OS !== 'web') {
@@ -7,8 +10,6 @@ try {
 } catch (e) {
   console.warn('[SecureStorage] expo-secure-store native module not found. Will use fallback key.');
 }
-import CryptoJS from 'crypto-js';
-import { Platform } from 'react-native';
 
 const ENCRYPTION_KEY_NAME = 'brahmand_secure_storage_key';
 let cachedKey: string | null = null;
@@ -58,6 +59,9 @@ export const secureStorage = {
     }
   },
 
+  /**
+   * Retrieves and decrypts a string value from AsyncStorage.
+   */
   getItem: async (key: string): Promise<string | null> => {
     try {
       const encryptedValue = await AsyncStorage.getItem(key);

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { requestRecordingPermissionsAsync, useAudioPlayer } from 'expo-audio';
+import { requestRecordingPermissionsAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,23 @@ declare const require: any;
 const ROOM_NAME = 'mantra-jaap-live-room';
 const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
 const WORDS = MANTRA.split(' ');
+
+const WORD_TIMING_MS = [
+  0,    // ॐ
+  1500, // भूर्भुवः
+  2800, // स्वः
+  4200, // तत्सवितुर्वरेण्यं
+  5800, // भर्गो
+  7200, // देवस्य
+  8800, // धीमहि
+  10200, // धियो
+  11800, // यो
+  13400, // नः
+  15200, // प्रचोदयात्
+];
+
+const TOTAL_MANTRA_DURATION = 16500;
+
 const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
 
 type VoiceTransport = 'sfu' | 'agora';
@@ -70,19 +87,48 @@ export const LiveMantraRoom = () => {
   const roomMutedRef = useRef(roomMuted);
 
   const bgPlayer = useAudioPlayer(BG_MUSIC);
+  const playerStatus = useAudioPlayerStatus(bgPlayer);
+  const syncStartTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (bgPlayer) {
       bgPlayer.loop = true;
       bgPlayer.volume = isMuted ? 0 : 0.4;
-      // Auto-play on native since user already interacted to reach this screen
       try {
-        bgPlayer.play();
+        if (!bgPlayer.isPlaying) {
+          bgPlayer.play();
+          syncStartTimeRef.current = Date.now();
+        }
       } catch (e) {
         console.warn('Background player failed to play:', e);
       }
     }
   }, [bgPlayer, isMuted]);
+
+  useEffect(() => {
+    if (bgPlayer) {
+      bgPlayer.volume = isMuted ? 0 : 0.4;
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (bgPlayer && playerStatus?.isPlaying && playerStatus.duration && playerStatus.duration > 0) {
+      const positionMs = playerStatus.position * 1000;
+      const positionInLoop = positionMs % TOTAL_MANTRA_DURATION;
+      
+      let newIndex = 0;
+      for (let i = WORD_TIMING_MS.length - 1; i >= 0; i--) {
+        if (positionInLoop >= WORD_TIMING_MS[i]) {
+          newIndex = i;
+          break;
+        }
+      }
+      
+      if (newIndex !== currentIndex && !isHolding) {
+        setCurrentIndex(newIndex);
+      }
+    }
+  }, [playerStatus?.position, playerStatus?.duration, currentIndex, isHolding]);
 
 
   const addRemoteSpeaker = (peerId: string) => {
@@ -412,11 +458,15 @@ export const LiveMantraRoom = () => {
       timer = setTimeout(() => {
         setIsHolding(false);
         setCurrentIndex(0);
-      }, 4000); // Faster reset
+        syncStartTimeRef.current = Date.now();
+      }, 4000);
       return () => clearTimeout(timer);
     }
 
-    // Adaptive word timing: Long words get 3s hold, others 1.2s
+    if (playerStatus?.isPlaying && playerStatus.duration) {
+      return;
+    }
+
     const currentWord = WORDS[currentIndex] || '';
     const wordDuration = currentWord.length > 7 ? 3000 : 1200;
 
@@ -429,7 +479,7 @@ export const LiveMantraRoom = () => {
     }, wordDuration);
 
     return () => clearTimeout(timer);
-  }, [currentIndex, isHolding]);
+  }, [currentIndex, isHolding, playerStatus?.isPlaying, playerStatus?.duration]);
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>

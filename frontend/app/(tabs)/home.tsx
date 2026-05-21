@@ -267,6 +267,7 @@ import {
   uploadUserPost,
   getUnreadNotificationCount,
   markAllNotificationsRead,
+  getNextFestival,
   reverseGeocode,
   markPostAsSeen,
 } from '../../src/services/api';
@@ -577,7 +578,18 @@ export default function HomeScreen() {
       }
     };
 
+    const fetchNextFestival = async () => {
+      try {
+        const res = await getNextFestival();
+        const festival = res.data;
+        setNextFestival(festival || null);
+      } catch (err) {
+        console.log('Failed to fetch next festival:', err);
+      }
+    };
+
     fetchUnreadCount();
+    fetchNextFestival();
     const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
     return () => clearInterval(interval);
   }, [setUnreadCount, isFocused]);
@@ -601,6 +613,7 @@ export default function HomeScreen() {
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
+  const [nextFestival, setNextFestival] = useState<any | null>(null);
   const [now, setNow] = useState(new Date());
 
   useFocusEffect(
@@ -1392,11 +1405,32 @@ export default function HomeScreen() {
                   >
                     <View>
                       <Ionicons name="notifications-outline" size={24} color="#000" />
-                      {unreadCount > 0 && <View style={styles.notificationDot} />}
+                      {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
                     </View>
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1) && (
+                <TouchableOpacity
+                  style={styles.festivalAlertCard}
+                  activeOpacity={0.9}
+                  onPress={() => router.push('/festivals')}
+                >
+                  <View style={styles.festivalAlertIcon}>
+                    <Ionicons name="notifications-outline" size={18} color="#FFF" />
+                  </View>
+                  <View style={styles.festivalAlertTextWrapper}>
+                    <Text style={styles.festivalAlertTitle}>Festival Reminder</Text>
+                    <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
+                      {nextFestival.days_until === 0
+                        ? `${nextFestival.name} is today! Click to see festival details.`
+                        : `${nextFestival.name} is tomorrow (${nextFestival.date}). Don't miss it!`}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#FFF" />
+                </TouchableOpacity>
+              )}
 
               {searchActive ? (
                 <View style={styles.searchPanel}>
@@ -2266,6 +2300,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6A00',
     borderWidth: 1,
     borderColor: '#FFF',
+  },
+  festivalAlertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFECD9',
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FFD6B0',
+  },
+  festivalAlertIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FF7A00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  festivalAlertTextWrapper: {
+    flex: 1,
+  },
+  festivalAlertTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#3B1D07',
+    marginBottom: 4,
+  },
+  festivalAlertSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#5A432B',
   },
   nameRow: {
     flexDirection: 'row',

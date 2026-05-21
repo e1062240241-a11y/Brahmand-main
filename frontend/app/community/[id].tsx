@@ -203,6 +203,8 @@ interface DiscussionPost {
     photo?: any;
     isVerified: boolean;
     verificationLabel: string;
+    handle?: string;
+    isFeatured?: boolean;
   };
   content: string;
   timestamp: string;
@@ -216,6 +218,7 @@ interface DiscussionPost {
   image?: string;
   hideBadge?: boolean;
   sender_id?: string;
+  sevaDetails?: string;
   isStateAnnouncement?: boolean;
   isNationalAnnouncement?: boolean;
   isCommunityMsg?: boolean;
@@ -227,9 +230,12 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
   {
     id: 'd1',
     user: {
-      name: 'Sadhvi Ritambhara Ji',
+      name: 'Sadhvi Ritambhara',
+      photo: require('../../assets/images/avatar_sadhvi.png'),
       isVerified: true,
       verificationLabel: 'Maharashtra Verified',
+      handle: '@sadhviritambharaji',
+      isFeatured: true,
     },
     content: "This Sunday, join the statewide Hanuman Chalisa Path across Maharashtra. Let's come together for Dharma, Devotion & Desh.",
     timestamp: '2h ago',
@@ -238,17 +244,20 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     reposts: 16,
     shares: 0,
     liked: false,
+    image: require('../../assets/images/hanuman_gathering.png'),
   },
   {
     id: 'd2',
     user: {
-      name: 'Swami Avimukteshwaranand',
+      name: 'Swami Avimukta',
+      photo: require('../../assets/images/avatar_swami.png'),
       isVerified: true,
       verificationLabel: 'Bharat Verified',
+      handle: '@swamiavimukt',
     },
-    content: "Dharma is not just prayer, it's action. Let's seva together for a stronger Bharat.",
+    content: "Dharma is not just prayer, it's action. Join our community service initiative this weekend to help those in need.",
     timestamp: '4h ago',
-    likes: 96,
+    likes: 89,
     comments: 18,
     reposts: 12,
     shares: 0,
@@ -258,14 +267,16 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     id: 'd3',
     user: {
       name: 'Dr. Chinmay Pandya',
+      photo: require('../../assets/images/avatar_drchinmay.png'),
       isVerified: true,
       verificationLabel: 'Maharashtra Verified',
+      handle: '@drchinmaypandya',
     },
     content: "Youth are the strength of our Bharat. Join the movement. Build values, build the future.",
     timestamp: '6h ago',
-    likes: 78,
-    comments: 14,
-    reposts: 9,
+    likes: 89,
+    comments: 18,
+    reposts: 12,
     shares: 0,
     liked: false,
   }
@@ -319,6 +330,7 @@ export default function CommunityDetailScreen() {
   const [showBodyCategoryDropdown, setShowBodyCategoryDropdown] = useState(false);
   const [postCategory, setPostCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [sevaDetails, setSevaDetails] = useState('');
   
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
   const [commentText, setCommentText] = useState('');
@@ -329,8 +341,40 @@ export default function CommunityDetailScreen() {
     return COMMUNITY_TABS;
   }, []);
 
+  const isSevaRequest = (item: any) => {
+    if (!item) return false;
+    const type = (item.request_type || '').toLowerCase();
+    const title = (item.title || '').toLowerCase();
+    const description = (item.description || '').toLowerCase();
+    const support = (item.support_needed || '').toLowerCase();
+
+    if (type === 'temple' || type === 'gau' || type === 'animal') {
+      return true;
+    }
+    if (type === 'help' && (title.includes('temple') || description.includes('temple') || title.includes('seva') || description.includes('seva') || title.includes('donate') || description.includes('donate') || title.includes('donation') || description.includes('donation') || title.includes('bhandara') || description.includes('bhandara') || support.includes('temple') || support.includes('seva') || support.includes('donate') || support.includes('donation')) ) {
+      return true;
+    }
+    if (title.includes('seva') || description.includes('seva') || title.includes('temple') || description.includes('temple') || title.includes('donate') || description.includes('donate') || title.includes('donation') || description.includes('donation')) {
+      return true;
+    }
+    return false;
+  };
+
+  const isSevaPost = (item: any) => {
+    return ((item.category || '').toLowerCase() === 'seva') || isSevaRequest(item);
+  };
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((item: any) => !isSevaRequest(item));
+  }, [requests]);
+
+  const filteredSevaRequests = useMemo(() => {
+    return requests.filter((item: any) => isSevaRequest(item));
+  }, [requests]);
+
   const mostRecentRequest = useMemo(() => {
-    if (!requests || requests.length === 0) {
+    const activeList = activeTab === 'Seva' ? filteredSevaRequests : activeTab === 'Requests' ? filteredRequests : requests;
+    if (!activeList || activeList.length === 0) {
       return {
         id: 'mock_1',
         title: 'O+ Blood Required urgently for operation',
@@ -344,8 +388,8 @@ export default function CommunityDetailScreen() {
         user_name: 'Rahul Joshi'
       };
     }
-    return [...requests].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-  }, [requests]);
+    return [...activeList].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+  }, [requests, activeTab, filteredRequests, filteredSevaRequests]);
 
   const getUnixTimestamp = (item: any) => {
     if (item.created_at) {
@@ -379,7 +423,7 @@ export default function CommunityDetailScreen() {
 
   const combinedData = useMemo(() => {
     if (activeTab === 'Requests') {
-      return requests;
+      return filteredRequests;
     }
     if (activeTab === 'Events') {
       return events;
@@ -392,6 +436,18 @@ export default function CommunityDetailScreen() {
         ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
         { id: 'fest-banner-footer', type: 'festival_banner' }
       ];
+    }
+    if (activeTab === 'Seva') {
+      // Only show posts explicitly created with 'Seva' category by the user (local posts, id starts with 'post-')
+      // API-fetched messages are EXCLUDED — their category tag via cache is unreliable
+      const sevaLocalPosts = communityPosts
+        .filter((p: any) =>
+          String(p.id).startsWith('post-') &&
+          (p.category || '').toLowerCase() === 'seva'
+        )
+        .map((p: any) => ({ ...p, isSevaPost: true }));
+
+      return sevaLocalPosts.sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
     }
     if (activeTab === 'Feed') {
       const itemMap = new Map();
@@ -413,13 +469,7 @@ export default function CommunityDetailScreen() {
         }
       });
 
-      // Also merge requests into the main feed!
-      requests.forEach(r => {
-        if (!itemMap.has(r.id)) {
-          itemMap.set(r.id, { ...r, isRequestItem: true });
-        }
-      });
-           const allItems = Array.from(itemMap.values());
+      const allItems = Array.from(itemMap.values());
       
       // Step 1: Sort ascending by ID (or fallback) to chronological order to find consecutive thread messages
       allItems.sort((a, b) => {
@@ -548,9 +598,12 @@ export default function CommunityDetailScreen() {
       return sortedResult;
     }
     
-    // For other tabs (like Lost & Found, Seva, Temple Updates), they do not show chat messages either
+    if (activeTab === 'Requests') {
+      return filteredRequests;
+    }
+    // For other tabs (like Lost & Found, Temple Updates), they do not show chat messages either
     return [];
-  }, [activeTab, requests, events, discussionPosts, communityPosts]);
+  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests]);
 
   useFocusEffect(
     useCallback(() => {
@@ -820,9 +873,44 @@ export default function CommunityDetailScreen() {
   }, []);
 
   const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <View style={{ height: 60 + insets.top }} />
+    <LinearGradient 
+      colors={['#FF8C3A', '#FFAD7D', '#FFD4AA', '#FFF1E8', '#FFFFFF']} 
+      locations={[0, 0.25, 0.55, 0.8, 1]}
+      style={[styles.headerGradientContainer, { paddingTop: insets.top }]}
+    >
+      {/* Top Row: Back Button, Title, and Create Button */}
+      <View style={styles.headerTopRow}>
+        <TouchableOpacity 
+          onPress={() => router.replace('/(tabs)/messages')}
+          style={styles.headerBackButton}
+        >
+          <Ionicons name="chevron-back" size={26} color="#000" />
+        </TouchableOpacity>
+        
+        <Text style={styles.headerTitleText} numberOfLines={1}>
+          {community?.name || 'Mumbai Group'}
+        </Text>
+        
+        <TouchableOpacity 
+          style={styles.headerCreateBtn} 
+          onPress={() => { setPostCategory(''); setShowCreateModal(true); }}
+        >
+          <Ionicons name="add" size={16} color="#FFF" />
+          <Text style={styles.headerCreateBtnText}>Create</Text>
+        </TouchableOpacity>
+      </View>
 
+      {/* Centered Member Count */}
+      <Text style={styles.headerMembersText}>
+        {community?.members_count || community?.member_count || '1.8K'} Members
+      </Text>
+
+      {/* Centered Description/Tagline */}
+      <Text style={styles.headerTaglineText}>
+        {community?.description || 'Connect with your local community.'}
+      </Text>
+
+      {/* Tabs list scroll */}
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false} 
@@ -839,7 +927,7 @@ export default function CommunityDetailScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
   const formatRelativeTime = (ts: string) => {
     if (!ts) return 'Just now';
@@ -897,11 +985,18 @@ export default function CommunityDetailScreen() {
             <View style={styles.postHeaderRow}>
               <View style={styles.postNameContainer}>
                 <Text style={styles.feedPostUserName} numberOfLines={1}>{item.user.name}</Text>
-                {item.user.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF3B30" style={{ marginLeft: 2 }} />}
-                <Text style={styles.postHandle} numberOfLines={1}> @{item.user.name.replace(/\s+/g, '').toLowerCase()}</Text>
+                {item.user.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF6B00" style={{ marginLeft: 2 }} />}
+                <Text style={styles.postHandle} numberOfLines={1}>
+                  {item.user.handle ? ` ${item.user.handle}` : ` @${item.user.name.replace(/\s+/g, '').toLowerCase()}`}
+                </Text>
                 <Text style={styles.postHandle} numberOfLines={1}> · {formatRelativeTime(item.timestamp)}</Text>
+                {item.user.isFeatured && (
+                  <View style={styles.featuredBadgeContainer}>
+                    <Text style={styles.featuredBadgeText}>Featured</Text>
+                  </View>
+                )}
               </View>
-              {(item.sender_id === user?.id || item.user.name === user?.name) && (
+              {(item.sender_id === user?.id || item.user.name === user?.name || String(item.id).startsWith('d')) && (
                 <TouchableOpacity 
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   onPress={() => handleDeletePost(item.id)}
@@ -917,9 +1012,20 @@ export default function CommunityDetailScreen() {
             >
               <Text selectable={true} style={styles.postContentText}>{displayText}</Text>
             </TouchableOpacity>
+
+            {item.sevaDetails ? (
+              <View style={styles.sevaInfoCard}>
+                <Text style={styles.sevaInfoLabel}>Seva</Text>
+                <Text style={styles.sevaInfoText}>{item.sevaDetails}</Text>
+              </View>
+            ) : null}
             
             {item.image && (
-              <Image source={{ uri: item.image }} style={styles.postMediaImage} resizeMode="cover" />
+              <Image 
+                source={typeof item.image === 'string' ? { uri: item.image } : item.image} 
+                style={styles.postMediaImage} 
+                resizeMode="cover" 
+              />
             )}
 
             <View style={styles.postActionRow}>
@@ -960,6 +1066,92 @@ export default function CommunityDetailScreen() {
     );
   };
 
+
+  const renderSevaItem = ({ item }: { item: any }) => {
+    return (
+      <View style={styles.sevaPremiumCard}>
+        <View style={styles.sevaPremiumHeader}>
+          <View style={styles.sevaPremiumUserRow}>
+            <Avatar name={item.user?.name || 'User'} photo={item.user?.photo} size={44} />
+            <View style={styles.sevaPremiumUserInfo}>
+              <View style={styles.sevaPremiumNameRow}>
+                <Text style={styles.sevaPremiumUserName}>{item.user?.name}</Text>
+                {item.user?.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={16} color="#007AFF" style={{marginLeft: 4}} />}
+              </View>
+              <Text style={styles.sevaPremiumTime}>{item.timestamp}</Text>
+            </View>
+          </View>
+          <View style={styles.sevaPremiumBadge}>
+            <Ionicons name="heart" size={12} color="#FFF" />
+            <Text style={styles.sevaPremiumBadgeText}>Seva</Text>
+          </View>
+        </View>
+
+        <View style={styles.sevaPremiumContent}>
+          <Text selectable={true} style={styles.sevaPremiumText}>{item.content}</Text>
+          
+          {item.image && (
+            <Image 
+              source={typeof item.image === 'string' ? { uri: item.image } : item.image} 
+              style={styles.sevaPremiumImage} 
+              resizeMode="cover" 
+            />
+          )}
+
+          {item.sevaDetails ? (
+            <View style={styles.sevaPremiumDetailsBox}>
+              <View style={styles.sevaDetailIconBg}>
+                <Ionicons name="information" size={18} color="#FF6B00" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.sevaDetailLabel}>Seva Details</Text>
+                <Text style={styles.sevaDetailText}>{item.sevaDetails}</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {item.contact ? (
+            <View style={styles.sevaPremiumContactBox}>
+              <View style={styles.sevaContactIconBg}>
+                <Ionicons name="call" size={16} color="#00BA7C" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.sevaContactLabel}>Contact Person</Text>
+                <Text style={styles.sevaContactText}>{item.contact}</Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.sevaPremiumFooter}>
+           <TouchableOpacity 
+             style={styles.sevaPrimaryBtn} 
+             onPress={() => {
+               if (item.contact) {
+                 const { Linking } = require('react-native');
+                 Linking.openURL(`tel:${item.contact}`);
+               } else {
+                 Alert.alert('Support Seva', 'You can offer support by sending a direct message to the user.');
+               }
+             }}
+           >
+             <Ionicons name="hand-right-outline" size={16} color="#FFF" />
+             <Text style={styles.sevaPrimaryBtnText}>Offer Support</Text>
+           </TouchableOpacity>
+           
+           <View style={styles.sevaActionRow}>
+             <TouchableOpacity style={styles.sevaActionBtn} onPress={() => handleLike(item.id)}>
+               <Ionicons name={item.liked ? "heart" : "heart-outline"} size={20} color={item.liked ? "#F91880" : "#536471"} />
+             </TouchableOpacity>
+             
+             <TouchableOpacity style={styles.sevaActionBtn} onPress={() => handleShare(item.id)}>
+               <Ionicons name="share-social-outline" size={20} color="#536471" />
+             </TouchableOpacity>
+           </View>
+        </View>
+      </View>
+    );
+  };
 
   const renderEventItem = ({ item }: { item: any }) => {
     // Basic date parsing for mock parity if data is real
@@ -1081,6 +1273,7 @@ export default function CommunityDetailScreen() {
 
   const renderRequestItem = ({ item }: { item: any }) => {
     const iconDetails = getRequestIconDetails(item);
+    const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     return (
       <View style={styles.eventCard}>
         <View style={styles.requestInterestedHeader}>
@@ -1088,7 +1281,9 @@ export default function CommunityDetailScreen() {
             <Ionicons name="heart" size={14} color="#FF3B30" />
             <Text style={styles.interestedText}>{item.interested_count || 0} Interested</Text>
           </View>
-          <Text style={styles.urgencyLabel}>{item.urgency_level || 'Normal'}</Text>
+          <View style={[styles.urgencyLabel, isFulfilled && { backgroundColor: '#DCFCE7' }]}>
+            <Text style={[styles.urgencyLabelText, isFulfilled && { color: '#166534' }]}> {isFulfilled ? 'Done' : (item.urgency_level || 'Normal').toUpperCase()} </Text>
+          </View>
         </View>
         
         <View style={styles.eventInfoRow}>
@@ -1117,6 +1312,10 @@ export default function CommunityDetailScreen() {
             <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#FF3B30' }]} onPress={() => handleDeleteRequest(item.id)}>
               <Text style={styles.helpBtnText}>Delete Request</Text>
             </TouchableOpacity>
+          ) : isFulfilled ? (
+            <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5' }]}>
+              <Text style={[styles.helpBtnText, { color: '#166534' }]}>Request Completed</Text>
+            </View>
           ) : (
             <TouchableOpacity style={styles.helpBtn} onPress={() => handleOfferHelp(item)}>
               <Text style={styles.helpBtnText}>Offer Help</Text>
@@ -1487,7 +1686,7 @@ export default function CommunityDetailScreen() {
     if (!newMessage.trim() && !selectedImage) return;
 
     // Use activeTab as default category (but map 'Others' or empty to 'Feed')
-    const finalCategory = (postCategory === 'Others' || (!postCategory && activeTab === 'Feed') || !postCategory) ? 'Feed' : postCategory;
+    const finalCategory = (postCategory === 'Others' || !postCategory) ? 'Feed' : postCategory;
 
     // Split text into chunks of max 250 characters
     const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
@@ -1517,6 +1716,7 @@ export default function CommunityDetailScreen() {
       liked: false,
       hideBadge: false,
       contact: index === 0 ? (contactNumber || undefined) : undefined,
+      sevaDetails: index === 0 ? (sevaDetails || undefined) : undefined,
       isUniversal: true, // Flag to show in general Feed
       sender_id: user?.id, // Track ownership of local posts
     }));
@@ -1575,6 +1775,7 @@ export default function CommunityDetailScreen() {
     setNewMessage('');
     setSelectedImage(null);
     setContactNumber('');
+    setSevaDetails('');
     setShowCreateModal(false);
     
     // No longer switching tabs automatically to keep the user in their current context
@@ -1693,32 +1894,6 @@ export default function CommunityDetailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
-      {/* Sticky Top Bar */}
-      <View style={[styles.stickyTopBar, { paddingTop: insets.top, height: 60 + insets.top }]}>
-        <TouchableOpacity 
-          onPress={() => router.replace('/(tabs)/messages')}
-          style={styles.backButtonContainer}
-        >
-          <Ionicons name="chevron-back" size={28} color="#000" />
-          {community && (
-            <View style={styles.headerCommunityInfo}>
-              <View style={styles.headerCommunityIconBg}>
-                <Ionicons name="people" size={18} color="#FFF" />
-              </View>
-              <Text style={styles.headerCommunityName} numberOfLines={1}>
-                {community.name}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <View style={styles.rightActions}>
-          <TouchableOpacity style={styles.createPill} onPress={() => { setPostCategory(''); setShowCreateModal(true); }}>
-            <Ionicons name="add" size={18} color="#FFF" />
-            <Text style={styles.createPillText}>Create</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <FlatList
         ref={listRef}
         data={combinedData}
@@ -1802,6 +1977,10 @@ export default function CommunityDetailScreen() {
           if (activeTab === 'Events') {
             return renderEventItem({ item });
           }
+          // Only render as seva card when explicitly in the Seva tab
+          if (activeTab === 'Seva' && (item.isRequestItem || item.isSevaPost)) {
+            return renderSevaItem({ item });
+          }
           return renderDiscussionItem({ item });
         }}
         onEndReached={activeTab === 'Feed' ? handleLoadMore : undefined}
@@ -1811,7 +1990,7 @@ export default function CommunityDetailScreen() {
           <View>
             {renderHeader()}
             
-            {(activeTab === 'Feed' || activeTab === 'Requests') && mostRecentRequest && (
+            {(activeTab === 'Requests') && mostRecentRequest && (
               <View style={styles.recentRequestCard}>
                 <LinearGradient 
                   colors={['#FFF5EE', '#FFFDFB']} 
@@ -1820,7 +1999,9 @@ export default function CommunityDetailScreen() {
                   <View style={styles.recentRequestHeader}>
                     <View style={styles.recentRequestTitleRow}>
                       <MaterialCommunityIcons name="bullhorn" size={20} color="#F25C05" />
-                      <Text style={styles.recentRequestSectionTitle}>LATEST COMMUNITY REQUEST</Text>
+                      <Text style={styles.recentRequestSectionTitle}>
+                        {activeTab === 'Seva' ? 'LATEST SEVA REQUEST' : 'LATEST COMMUNITY REQUEST'}
+                      </Text>
                     </View>
                     <View style={[
                       styles.recentRequestUrgencyBadge, 
@@ -2067,6 +2248,7 @@ export default function CommunityDetailScreen() {
                 </View>
               </View>
 
+
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
                 <Text style={styles.infoBoxText}>Your post will be visible in the selected category and in the general community discussion.</Text>
@@ -2089,6 +2271,19 @@ export default function CommunityDetailScreen() {
                   />
                 </View>
                 <Text style={styles.phoneSub}>Providing your number is optional. Others can contact you if you choose to share it.</Text>
+              </View>
+
+              <View style={styles.createSection}>
+                <Text style={styles.createSectionTitle}>Seva Details <Text style={{color: '#888'}}>(Optional)</Text></Text>
+                <TextInput
+                  style={[styles.phoneInput, { minHeight: 100, textAlignVertical: 'top' }]}
+                  placeholder="Who donated, what amount, or what service was performed"
+                  value={sevaDetails}
+                  onChangeText={setSevaDetails}
+                  multiline
+                  numberOfLines={4}
+                />
+                <Text style={styles.phoneSub}>Use this field to capture seva contributions such as donations, support, or service details.</Text>
               </View>
 
               <View style={styles.createDivider} />
@@ -2216,6 +2411,82 @@ export default function CommunityDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
+  headerGradientContainer: {
+    width: '100%',
+    paddingBottom: 4,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: 48,
+    marginTop: 8,
+    position: 'relative',
+  },
+  headerBackButton: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+    padding: 4,
+  },
+  headerTitleText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    maxWidth: '60%',
+  },
+  headerCreateBtn: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+    shadowColor: '#FF6B00',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  headerCreateBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  headerMembersText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  headerTaglineText: {
+    fontSize: 13,
+    color: '#475569',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 12,
+    paddingHorizontal: 24,
+    lineHeight: 18,
+  },
+  featuredBadgeContainer: {
+    backgroundColor: '#FFF0E6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  featuredBadgeText: {
+    color: '#FF6B00',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
   twitterPostBtn: {
     backgroundColor: '#1D9BF0',
     paddingHorizontal: 16,
@@ -2337,14 +2608,14 @@ const styles = StyleSheet.create({
   fabBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   fabBtnMore: { backgroundColor: 'rgba(61,40,29,0.9)' },
   
-  tabsContainer: { borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  tabsContainer: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,107,0,0.15)' },
   tabsContent: { paddingHorizontal: 20, paddingVertical: 15, gap: 25 },
   tabItem: { paddingBottom: 5 },
-  tabItemActive: { borderBottomWidth: 3, borderBottomColor: '#FF3B30' },
+  tabItemActive: { borderBottomWidth: 3, borderBottomColor: '#FF6B00' },
   goingText: { marginLeft: 6, fontSize: 13, color: '#888', fontFamily: FONTS.regular },
   timeAgoText: { fontSize: 11, color: '#AAA', fontFamily: FONTS.regular },
   tabText: { fontSize: 15, color: '#888', fontWeight: '600' },
-  tabTextActive: { color: '#FF3B30', fontWeight: '700' },
+  tabTextActive: { color: '#FF6B00', fontWeight: '700' },
 
   mainContent: { paddingBottom: 40 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 25, marginBottom: 15 },
@@ -2419,10 +2690,14 @@ const styles = StyleSheet.create({
   
   requestInterestedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   urgencyLabel: { fontSize: 11, fontWeight: '700', color: '#888', backgroundColor: '#F5F5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  urgencyLabelText: { fontSize: 11, fontWeight: '700', color: '#888' },
   requestIconCol: { marginRight: 15 },
   requestIconBg: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   helpBtn: { backgroundColor: '#F25C05', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12 },
   helpBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  sevaInfoCard: { backgroundColor: '#FFF7ED', borderRadius: 16, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#FDE3CE' },
+  sevaInfoLabel: { fontSize: 12, fontWeight: '800', color: '#C55D00', marginBottom: 6, textTransform: 'uppercase' },
+  sevaInfoText: { fontSize: 14, lineHeight: 20, color: '#4D2F00' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   commentModalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '70%', padding: 20 },
@@ -2543,4 +2818,30 @@ const styles = StyleSheet.create({
 
   createPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginRight: 8, gap: 4, shadowColor: '#FF6B00', shadowOpacity: 0.3, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   createPillText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+
+  sevaPremiumCard: { backgroundColor: '#FFF', marginHorizontal: 20, borderRadius: 24, marginBottom: 15, elevation: 4, shadowColor: '#FF6B00', shadowOpacity: 0.1, shadowRadius: 15, shadowOffset: { width: 0, height: 6 }, borderWidth: 1, borderColor: '#FFF0E6', overflow: 'hidden' },
+  sevaPremiumHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F8F9FA', backgroundColor: '#FFFAF7' },
+  sevaPremiumUserRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  sevaPremiumUserInfo: { marginLeft: 12, flex: 1 },
+  sevaPremiumNameRow: { flexDirection: 'row', alignItems: 'center' },
+  sevaPremiumUserName: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+  sevaPremiumTime: { fontSize: 12, color: '#64748B', marginTop: 2, fontWeight: '500' },
+  sevaPremiumBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF6B00', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, gap: 4 },
+  sevaPremiumBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  sevaPremiumContent: { padding: 16 },
+  sevaPremiumText: { fontSize: 15, color: '#334155', lineHeight: 24, marginBottom: 12 },
+  sevaPremiumImage: { width: '100%', aspectRatio: 16 / 9, borderRadius: 16, marginBottom: 12 },
+  sevaPremiumDetailsBox: { flexDirection: 'row', backgroundColor: '#FFF7ED', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#FFEDD5', marginBottom: 10, alignItems: 'center' },
+  sevaDetailIconBg: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFEDD5', justifyContent: 'center', alignItems: 'center' },
+  sevaDetailLabel: { fontSize: 12, fontWeight: '700', color: '#C2410C', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sevaDetailText: { fontSize: 14, color: '#9A3412', marginTop: 2, fontWeight: '500' },
+  sevaPremiumContactBox: { flexDirection: 'row', backgroundColor: '#ECFDF5', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#D1FAE5', marginBottom: 10, alignItems: 'center' },
+  sevaContactIconBg: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#D1FAE5', justifyContent: 'center', alignItems: 'center' },
+  sevaContactLabel: { fontSize: 12, fontWeight: '700', color: '#047857', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sevaContactText: { fontSize: 14, color: '#065F46', marginTop: 2, fontWeight: '600' },
+  sevaPremiumFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 0 },
+  sevaPrimaryBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF6B00', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, gap: 6 },
+  sevaPrimaryBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  sevaActionRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  sevaActionBtn: { padding: 8, backgroundColor: '#F8F9FA', borderRadius: 12 },
 });
