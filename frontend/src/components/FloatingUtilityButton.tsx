@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useHelpRequestStore } from '../store/helpRequestStore';
 import { useAuthStore } from '../store/authStore';
@@ -458,7 +459,7 @@ export const FloatingUtilityButton = () => {
   useEffect(() => {
     checkSOSStatus();
     fetchMyCommunityRequests();
-    
+
     // Listen for real-time SOS alerts via socket
     const handleSOSAlert = (data: any) => {
       console.log('[Socket] Real-time SOS alert:', data);
@@ -643,13 +644,13 @@ export const FloatingUtilityButton = () => {
     try {
       await respondToSOS(sosId, 'coming');
       setRespondedSOSIds(prev => new Set([...prev, sosId]));
-      
+
       // Auto-open map for directions when responding
       const sos = nearbySOSAlerts.find(s => s.id === sosId) || incomingSOS;
       if (sos) {
         openNearbySOSLocation(sos);
       }
-      
+
       Alert.alert('Dhanyawad!', 'The creator has been notified that you are on the way.');
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to respond to SOS');
@@ -722,36 +723,68 @@ export const FloatingUtilityButton = () => {
         ]}
       >
         <View style={[
-          styles.floatingButton, 
+          styles.floatingButton,
           activeSOS && styles.floatingButtonActiveSOS,
-          modalVisible && styles.floatingButtonClose
+          modalVisible && styles.floatingButtonOpen,
         ]}>
           <View style={[
-            styles.glassBackground, 
-            activeSOS && styles.glassBackgroundActiveSOS,
-            modalVisible && styles.glassBackgroundClose
-          ]}>
+            styles.fabRing,
+            activeSOS && styles.fabRingSOS,
+            modalVisible && styles.fabRingOpen,
+          ]} />
+          <LinearGradient
+            colors={
+              activeSOS
+                ? ['#FF5252', '#C62828']
+                : modalVisible
+                  ? ['#FFF8F0', '#FFE8CC']
+                  : ['#FF9A4D', '#FF6600', '#E85D04']
+            }
+            locations={activeSOS || modalVisible ? undefined : [0, 0.55, 1]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={styles.fabGradient}
+          >
             {modalVisible ? (
-              <Ionicons name="close" size={26} color="#FFFFFF" />
+              <Ionicons name="close" size={28} color={COLORS.primary} />
             ) : activeSOS ? (
-              <Ionicons name="alert-circle" size={24} color="#FFFFFF" />
+              <View style={styles.fabSOSIconWrap}>
+                <MaterialCommunityIcons name="alarm-light" size={28} color="#FFFFFF" />
+              </View>
             ) : (
-              <View style={styles.redDot} />
+              <View style={styles.fabDefaultContent}>
+                <View style={styles.fabAvatarRing}>
+                  <Image
+                    source={require('../../assets/images/krishna_guru.png')}
+                    style={styles.fabAvatar}
+                  />
+                </View>
+                <View style={styles.fabSparkBadge}>
+                  <Ionicons name="sparkles" size={11} color="#FFF8E1" />
+                </View>
+              </View>
             )}
-          </View>
+          </LinearGradient>
+          {!modalVisible && !activeSOS && nearbySOSCount > 0 && (
+            <View style={styles.fabAlertBadge}>
+              <Text style={styles.fabAlertBadgeText}>
+                {nearbySOSCount > 9 ? '9+' : nearbySOSCount}
+              </Text>
+            </View>
+          )}
         </View>
       </Animated.View>
 
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.modalOverlay, 
+          styles.modalOverlay,
           { opacity: overlayFade, pointerEvents: modalVisible ? 'auto' : 'none' }
         ]}
       >
         <TouchableOpacity style={styles.overlayBackground} activeOpacity={1} onPress={closeUtilityModal} />
-        <Animated.View 
+        <Animated.View
           style={[
-            styles.modalContentWrapper, 
+            styles.modalContentWrapper,
             { transform: [{ scale: menuScale }, { translateY: menuScale.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] }
           ]}
         >
@@ -760,10 +793,10 @@ export const FloatingUtilityButton = () => {
           <View style={styles.hubContainer}>
             {/* Outer Circle Ring */}
             <View style={[styles.outerCircleRing, activeSOS && styles.outerCircleRingSOS]} />
-            
+
             {/* Main Menu Circle */}
             <Animated.View style={[
-              styles.mainMenuCircle, 
+              styles.mainMenuCircle,
               { opacity: wheelAnim, transform: [{ scale: wheelAnim }] },
               activeSOS && styles.mainMenuCircleSOS
             ]}>
@@ -798,7 +831,7 @@ export const FloatingUtilityButton = () => {
                         </View>
                       </View>
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.receivedHelpBtn}
                       onPress={() => handleResolveActiveSOS('resolved')}
                     >
@@ -834,106 +867,106 @@ export const FloatingUtilityButton = () => {
                     <Ionicons name="calendar" size={20} color="#FFF" />
                     <Text style={styles.itemTitleSOSSmall}>Panchang</Text>
                   </View>
-                  
+
                   <View style={styles.arrowTop}><Ionicons name="chevron-up" size={24} color="#FFF" /></View>
                   <View style={styles.arrowBottom}><Ionicons name="chevron-down" size={24} color="#FFF" /></View>
                 </View>
               ) : nearbySOSAlerts.length > 0 ? (
                 /* 2. RESPONDER SOS ALERT VIEW (100% Replication of 2nd Image) */
                 <View style={[styles.sosResponderView, styles.mainMenuCircleSOS]}>
-                   <View style={styles.sosAlertHeader}>
-                      <View style={styles.alertIconCircle}>
-                         <MaterialCommunityIcons name="alarm-light" size={24} color="#D32F2F" />
-                      </View>
-                      <Text style={styles.sosAlertTitle}>SOS ALERT</Text>
-                      <Text style={styles.sosAlertSub}>Someone nearby needs help</Text>
-                      <Text style={styles.sosAlertHighlight}>You are the nearest to respond</Text>
-                   </View>
+                  <View style={styles.sosAlertHeader}>
+                    <View style={styles.alertIconCircle}>
+                      <MaterialCommunityIcons name="alarm-light" size={24} color="#D32F2F" />
+                    </View>
+                    <Text style={styles.sosAlertTitle}>SOS ALERT</Text>
+                    <Text style={styles.sosAlertSub}>Someone nearby needs help</Text>
+                    <Text style={styles.sosAlertHighlight}>You are the nearest to respond</Text>
+                  </View>
 
-                   <View style={styles.victimCard}>
-                      <View style={styles.victimRow}>
-                        <View style={styles.victimAvatarBox}>
-                           {nearbySOSAlerts[0].creator_image ? (
-                             <Image source={{ uri: nearbySOSAlerts[0].creator_image }} style={{ width: 44, height: 44, borderRadius: 22 }} />
-                           ) : (
-                             <Ionicons name="person" size={30} color="#DDD" />
-                           )}
+                  <View style={styles.victimCard}>
+                    <View style={styles.victimRow}>
+                      <View style={styles.victimAvatarBox}>
+                        {nearbySOSAlerts[0].creator_image ? (
+                          <Image source={{ uri: nearbySOSAlerts[0].creator_image }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                        ) : (
+                          <Ionicons name="person" size={30} color="#DDD" />
+                        )}
+                      </View>
+                      <View style={styles.victimInfo}>
+                        <Text style={styles.victimName}>{nearbySOSAlerts[0].creator_name || nearbySOSAlerts[0].user_name || 'Rahul Sharma'}</Text>
+                        <View style={styles.victimTypeRow}>
+                          <MaterialCommunityIcons name="medical-bag" size={14} color="#D32F2F" />
+                          <Text style={styles.victimTypeText}>{nearbySOSAlerts[0].emergency_type?.toUpperCase() || 'MEDICAL EMERGENCY'}</Text>
                         </View>
-                        <View style={styles.victimInfo}>
-                           <Text style={styles.victimName}>{nearbySOSAlerts[0].creator_name || nearbySOSAlerts[0].user_name || 'Rahul Sharma'}</Text>
-                           <View style={styles.victimTypeRow}>
-                              <MaterialCommunityIcons name="medical-bag" size={14} color="#D32F2F" />
-                              <Text style={styles.victimTypeText}>{nearbySOSAlerts[0].emergency_type?.toUpperCase() || 'MEDICAL EMERGENCY'}</Text>
-                           </View>
-                           <View style={styles.victimLocRow}>
-                              <Ionicons name="location-outline" size={12} color="#666" />
-                              <Text style={styles.victimLocText} numberOfLines={1}>{nearbySOSAlerts[0].micro_location || 'Sector 15, Noida, Uttar Pradesh'}</Text>
-                           </View>
-                           <View style={styles.victimLocRow}>
-                              <MaterialCommunityIcons name="target" size={12} color="#666" />
-                              <Text style={styles.victimLocText}>{nearbySOSAlerts[0].distance?.toFixed(2) || '0.04'} km away from you</Text>
-                           </View>
+                        <View style={styles.victimLocRow}>
+                          <Ionicons name="location-outline" size={12} color="#666" />
+                          <Text style={styles.victimLocText} numberOfLines={1}>{nearbySOSAlerts[0].micro_location || 'Sector 15, Noida, Uttar Pradesh'}</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color="#BBB" />
+                        <View style={styles.victimLocRow}>
+                          <MaterialCommunityIcons name="target" size={12} color="#666" />
+                          <Text style={styles.victimLocText}>{nearbySOSAlerts[0].distance?.toFixed(2) || '0.04'} km away from you</Text>
+                        </View>
                       </View>
-                   </View>
+                      <Ionicons name="chevron-forward" size={20} color="#BBB" />
+                    </View>
+                  </View>
 
-                   <View style={styles.communityCall}>
-                      <Ionicons name="people-outline" size={16} color="#FFF" />
-                      <Text style={styles.communityCallText}>Please help your community.</Text>
-                   </View>
+                  <View style={styles.communityCall}>
+                    <Ionicons name="people-outline" size={16} color="#FFF" />
+                    <Text style={styles.communityCallText}>Please help your community.</Text>
+                  </View>
 
-                   <View style={styles.responderActionRow}>
-                      <TouchableOpacity 
-                        style={[styles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
-                        onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
-                        disabled={isResponding}
-                      >
-                         {isResponding ? (
-                           <ActivityIndicator color="#FFF" size="small" />
-                         ) : (
-                           <>
-                             <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
-                             <Text style={styles.responderBtnText}>I'M ON{"\n"}MY WAY</Text>
-                           </>
-                         )}
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.responderBtn, { backgroundColor: '#FF9800' }]}
-                        onPress={() => {
-                          const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || nearbySOSAlerts[0].phone_number || '';
-                          if (!phone) {
-                            Alert.alert('Not Available', 'Phone number not provided.');
-                            return;
-                          }
-                          Alert.alert(
-                            'Emergency Contact',
-                            `Phone Number: ${phone}`,
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              { text: 'Call', onPress: () => Linking.openURL(`tel:${phone}`) }
-                            ]
-                          );
-                        }}
-                      >
-                         <Ionicons name="call" size={22} color="#FFF" />
-                         <Text style={styles.responderBtnText}>CALL</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.responderBtn, { backgroundColor: '#2196F3' }]}
-                        onPress={() => openNearbySOSLocation(nearbySOSAlerts[0])}
-                      >
-                         <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
-                         <Text style={styles.responderBtnText}>OPEN MAP</Text>
-                      </TouchableOpacity>
-                   </View>
+                  <View style={styles.responderActionRow}>
+                    <TouchableOpacity
+                      style={[styles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
+                      onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
+                      disabled={isResponding}
+                    >
+                      {isResponding ? (
+                        <ActivityIndicator color="#FFF" size="small" />
+                      ) : (
+                        <>
+                          <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
+                          <Text style={styles.responderBtnText}>I'M ON{"\n"}MY WAY</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.responderBtn, { backgroundColor: '#FF9800' }]}
+                      onPress={() => {
+                        const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || nearbySOSAlerts[0].phone_number || '';
+                        if (!phone) {
+                          Alert.alert('Not Available', 'Phone number not provided.');
+                          return;
+                        }
+                        Alert.alert(
+                          'Emergency Contact',
+                          `Phone Number: ${phone}`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Call', onPress: () => Linking.openURL(`tel:${phone}`) }
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="call" size={22} color="#FFF" />
+                      <Text style={styles.responderBtnText}>CALL</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.responderBtn, { backgroundColor: '#2196F3' }]}
+                      onPress={() => openNearbySOSLocation(nearbySOSAlerts[0])}
+                    >
+                      <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
+                      <Text style={styles.responderBtnText}>OPEN MAP</Text>
+                    </TouchableOpacity>
+                  </View>
 
-                   <TouchableOpacity style={styles.closeAlertX} onPress={closeUtilityModal}>
-                      <View style={styles.closeXCircle}>
-                         <Ionicons name="close" size={20} color="#333" />
-                      </View>
-                      <Text style={styles.closeXText}>Close Alert</Text>
-                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.closeAlertX} onPress={closeUtilityModal}>
+                    <View style={styles.closeXCircle}>
+                      <Ionicons name="close" size={20} color="#333" />
+                    </View>
+                    <Text style={styles.closeXText}>Close Alert</Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
                 /* DEFAULT CIRCULAR MENU */
@@ -941,7 +974,7 @@ export const FloatingUtilityButton = () => {
                   <View style={[styles.segmentLine, { transform: [{ rotate: '30deg' }] }]} />
                   <View style={[styles.segmentLine, { transform: [{ rotate: '90deg' }] }]} />
                   <View style={[styles.segmentLine, { transform: [{ rotate: '150deg' }] }]} />
-                  
+
                   <View style={styles.innerCircleBorder} />
 
                   <View style={styles.arrowTop}><Ionicons name="chevron-up" size={24} color="#FFF" /></View>
@@ -966,8 +999,8 @@ export const FloatingUtilityButton = () => {
                       <Text style={styles.itemSub}>Planet{"\n"}View</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
-                      style={[styles.menuItem, styles.posBottomRight]} 
+                    <TouchableOpacity
+                      style={[styles.menuItem, styles.posBottomRight]}
                       onPress={startSOSFlow}
                       onLongPress={startSOSFlow}
                     >
@@ -991,7 +1024,7 @@ export const FloatingUtilityButton = () => {
                     </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.centerGuruContainer}
                     activeOpacity={0.9}
                     onPress={() => { setModalVisible(false); router.push('/my-krishna'); }}
@@ -1000,13 +1033,13 @@ export const FloatingUtilityButton = () => {
                       <Image source={require('../../assets/images/krishna_guru.png')} style={styles.guruImage} />
                     </View>
                     <View style={styles.guruTitleBox}>
-                       <Ionicons name="leaf" size={16} color="#FFD54F" style={{ marginBottom: -2 }} />
-                       <Text style={styles.guruName}>my Krishna</Text>
-                       <View style={styles.guruSubLine}>
-                         <View style={styles.guruLine} />
-                         <Text style={styles.guruSubText}>AI Guru</Text>
-                         <View style={styles.guruLine} />
-                       </View>
+                      <Ionicons name="leaf" size={16} color="#FFD54F" style={{ marginBottom: -2 }} />
+                      <Text style={styles.guruName}>my Krishna</Text>
+                      <View style={styles.guruSubLine}>
+                        <View style={styles.guruLine} />
+                        <Text style={styles.guruSubText}>AI Guru</Text>
+                        <View style={styles.guruLine} />
+                      </View>
                     </View>
                   </TouchableOpacity>
                 </>
@@ -1028,15 +1061,115 @@ export const FloatingUtilityButton = () => {
 
 const styles = StyleSheet.create({
   floatingButtonContainer: { position: 'absolute', bottom: 90, right: 16, zIndex: 1000 },
-  floatingButton: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 8 },
-  floatingButtonEmergency: { shadowColor: '#E53935', shadowOpacity: 0.4 },
-  floatingButtonActiveSOS: { shadowColor: '#E53935', shadowOpacity: 0.6 },
-  floatingButtonClose: { shadowColor: '#FF3B30', shadowOpacity: 0.4 },
-  glassBackground: { width: '100%', height: '100%', backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderRadius: 28 },
-  glassBackgroundEmergency: { backgroundColor: '#FF3B30' },
-  glassBackgroundActiveSOS: { backgroundColor: '#E53935' },
-  glassBackgroundClose: { backgroundColor: '#FF3B30' },
-  redDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#E53935' },
+  floatingButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  floatingButtonActiveSOS: {
+    shadowColor: '#E53935',
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+  },
+  floatingButtonOpen: {
+    shadowColor: '#8D6E63',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  fabRing: {
+    position: 'absolute',
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 213, 79, 0.85)',
+    backgroundColor: 'rgba(255, 248, 240, 0.25)',
+  },
+  fabRingSOS: {
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 82, 82, 0.15)',
+  },
+  fabRingOpen: {
+    borderColor: 'rgba(255, 102, 0, 0.35)',
+    backgroundColor: 'rgba(255, 248, 240, 0.6)',
+  },
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  fabDefaultContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fabAvatarRing: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 248, 240, 0.9)',
+    backgroundColor: '#FFF8E1',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fabAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  fabSparkBadge: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(62, 39, 35, 0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 213, 79, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fabSOSIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fabAlertBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E53935',
+    borderWidth: 2,
+    borderColor: '#FFF8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  fabAlertBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -1413,12 +1546,12 @@ const styles = StyleSheet.create({
   sosActiveSub: { color: 'rgba(255,255,255,0.8)', fontSize: 10, textAlign: 'center', marginTop: 2, lineHeight: 14 },
   centerGuruContainerSOS: { width: 80, height: 80, justifyContent: 'center', alignItems: 'center', marginVertical: 4 },
   guruImageWrapperSOS: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: '#FFD54F', backgroundColor: '#FFF8E1', overflow: 'hidden' },
-  sosStatusCard: { 
-    width: '82%', 
-    backgroundColor: 'rgba(0,0,0,0.3)', 
-    borderRadius: 20, 
-    padding: 12, 
-    borderWidth: 1, 
+  sosStatusCard: {
+    width: '82%',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 20,
+    padding: 12,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
     marginTop: -8
   },
@@ -1428,13 +1561,13 @@ const styles = StyleSheet.create({
   sosStatusTitle: { color: '#FFF', fontSize: 12, fontWeight: '900', lineHeight: 15 },
   sosVerifiedRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 4 },
   sosVerifiedText: { color: 'rgba(255,255,255,0.7)', fontSize: 8, fontWeight: '600' },
-  receivedHelpBtn: { 
-    backgroundColor: '#FFF', 
-    borderRadius: 20, 
-    height: 38, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: 4 
+  receivedHelpBtn: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    height: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4
   },
   receivedHelpCheck: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFF', borderWidth: 2, borderColor: '#D32F2F', justifyContent: 'center', alignItems: 'center' },
   receivedHelpText: { flex: 1, textAlign: 'center', color: '#D32F2F', fontWeight: '900', fontSize: 11, marginRight: 14 },
@@ -1448,11 +1581,11 @@ const styles = StyleSheet.create({
   sosAlertTitle: { color: '#FFF', fontSize: 18, fontWeight: '900', letterSpacing: 0.5 },
   sosAlertSub: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '600' },
   sosAlertHighlight: { color: '#FFD54F', fontSize: 11, fontWeight: '800', marginTop: 2 },
-  victimCard: { 
-    width: '94%', 
-    backgroundColor: '#FFF', 
-    borderRadius: 16, 
-    padding: 10, 
+  victimCard: {
+    width: '94%',
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 10,
     marginTop: 8,
     shadowColor: '#000',
     shadowOpacity: 0.2,
