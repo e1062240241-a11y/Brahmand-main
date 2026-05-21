@@ -152,6 +152,7 @@ function splitTextIntoTweets(text: string, limit = 250): string[] {
 }
 
 const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
+const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 
 const MOCK_FESTIVALS = [
   { id: '1', name: 'Diwali', icon: 'flame-outline', events: 12, color: '#FFF5F0', iconColor: '#FF6B00' },
@@ -218,6 +219,8 @@ interface DiscussionPost {
   hideBadge?: boolean;
   sender_id?: string;
   sevaDetails?: string;
+  isStateAnnouncement?: boolean;
+  isNationalAnnouncement?: boolean;
 }
 
 const MOCK_DISCUSSION: DiscussionPost[] = [
@@ -531,8 +534,26 @@ export default function CommunityDetailScreen() {
         }
       });
       
-      // Step 4: Sort parent posts descending (newest first)
+      // Step 4: Sort parent posts descending (newest first), with announcements at the very top
       parents.sort((a, b) => {
+        const aIsAnn = a.isNationalAnnouncement || a.isStateAnnouncement;
+        const bIsAnn = b.isNationalAnnouncement || b.isStateAnnouncement;
+        
+        if (aIsAnn && !bIsAnn) return -1;
+        if (!aIsAnn && bIsAnn) return 1;
+        
+        if (aIsAnn && bIsAnn) {
+          // Both are announcements: national first, then state
+          if (a.isNationalAnnouncement && !b.isNationalAnnouncement) return -1;
+          if (!a.isNationalAnnouncement && b.isNationalAnnouncement) return 1;
+          
+          // If same type, sort by time (newest first)
+          const timeA = getUnixTimestamp(a);
+          const timeB = getUnixTimestamp(b);
+          if (timeA !== timeB) return timeB - timeA;
+          return String(b.id).localeCompare(String(a.id));
+        }
+        
         const aIsNew = String(a.id).startsWith('post-') || a.timestamp === 'Just now';
         const bIsNew = String(b.id).startsWith('post-') || b.timestamp === 'Just now';
         if (aIsNew && !bIsNew) return -1;
@@ -619,12 +640,36 @@ export default function CommunityDetailScreen() {
       const nextCommunity = response.data;
       setCommunity(nextCommunity);
       
-      const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList } = require('../../src/services/api');
+      const currentSubgroup = nextCommunity.type === 'state' 
+        ? 'state' 
+        : (nextCommunity.type === 'country' || nextCommunity.type === 'national' ? 'national' : 'city');
+
+      let stateCommunityId: string | null = null;
+      let countryCommunityId: string | null = null;
       
-      const [reqResponse, eventResponse, msgResponse, festResponse] = await Promise.all([
+      const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList, getCommunities } = require('../../src/services/api');
+      
+      if (nextCommunity.type === 'city') {
+        try {
+          const allJoinedRes = await getCommunities().catch(() => ({ data: [] }));
+          const joinedList = allJoinedRes.data || [];
+          
+          const stateCommunity = joinedList.find((c: any) => c.type === 'state');
+          const countryCommunity = joinedList.find((c: any) => c.type === 'country' || c.type === 'national');
+          
+          if (stateCommunity) stateCommunityId = stateCommunity.id;
+          if (countryCommunity) countryCommunityId = countryCommunity.id;
+        } catch (e) {
+          console.warn('[Community] Failed to fetch joined communities:', e);
+        }
+      }
+
+      const [reqResponse, eventResponse, msgResponse, stateMsgResponse, nationalMsgResponse, festResponse] = await Promise.all([
         getCommunityRequests({ community_id: id as string }),
         getEvents(),
-        getCommunityMessages(id as string, 'city'), // Assuming 'city' level for local posts
+        getCommunityMessages(id as string, currentSubgroup),
+        stateCommunityId ? getCommunityMessages(stateCommunityId, 'state').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        countryCommunityId ? getCommunityMessages(countryCommunityId, 'national').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         getFestivalList()
       ]);
       
@@ -661,25 +706,70 @@ export default function CommunityDetailScreen() {
         comments: msg.comments_count || 0,
         shares: 0,
         reposts: 0,
-        hideBadge: true,
+        hideBadge: false,
         category: getLocalCategory(msg.content) || msg.category || 'Feed',
         sender_id: msg.sender_id, // Map sender ID to check for delete ownership
+      }));
+
+      // Map State API messages
+      const formattedStateMsgs = (stateMsgResponse?.data || []).map((msg: any) => ({
+        id: msg.id || Math.random().toString(),
+        user: {
+          name: msg.sender_name || 'Anonymous',
+          photo: msg.sender_photo,
+          isVerified: true,
+          verificationLabel: 'State Verified',
+        },
+        content: msg.content,
+        image: msg.media_url || msg.mediaUrl || msg.image,
+        timestamp: msg.created_at || 'Just now',
+        likes: msg.likes_count || 0,
+        comments: msg.comments_count || 0,
+        shares: 0,
+        reposts: 0,
+        hideBadge: false,
+        category: getLocalCategory(msg.content) || msg.category || 'Feed',
+        sender_id: msg.sender_id,
+        isStateAnnouncement: true,
+      }));
+
+      // Map National API messages
+      const formattedNationalMsgs = (nationalMsgResponse?.data || []).map((msg: any) => ({
+        id: msg.id || Math.random().toString(),
+        user: {
+          name: msg.sender_name || 'Anonymous',
+          photo: msg.sender_photo,
+          isVerified: true,
+          verificationLabel: 'Bharat Verified',
+        },
+        content: msg.content,
+        image: msg.media_url || msg.mediaUrl || msg.image,
+        timestamp: msg.created_at || 'Just now',
+        likes: msg.likes_count || 0,
+        comments: msg.comments_count || 0,
+        shares: 0,
+        reposts: 0,
+        hideBadge: false,
+        category: getLocalCategory(msg.content) || msg.category || 'Feed',
+        sender_id: msg.sender_id,
+        isNationalAnnouncement: true,
       }));
 
       let finalPosts: any[] = [];
       setCommunityPosts((prev: any[]) => {
         const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
-        const apiById = new Map(formattedMsgs.map((p: any) => [p.id, p]));
-        for (const local of localPosts) {
-          const existing = apiById.get(local.id);
-          if (existing) {
-            Object.assign(existing, local);
-          } else {
-            apiById.set(local.id, local);
-          }
-        }
-        const seen = new Set(localPosts.map((p: any) => p.id));
-        finalPosts = [...localPosts, ...formattedMsgs.filter((p: any) => !seen.has(p.id))];
+        const seenIds = new Set(localPosts.map((p: any) => p.id));
+        
+        const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id));
+        const uniqueStateMsgs = formattedStateMsgs.filter((p: any) => !seenIds.has(p.id));
+        const uniqueNationalMsgs = formattedNationalMsgs.filter((p: any) => !seenIds.has(p.id));
+        
+        finalPosts = [
+          ...uniqueNationalMsgs,
+          ...uniqueStateMsgs,
+          ...localPosts,
+          ...uniqueCityMsgs
+        ];
         return finalPosts;
       });
 
@@ -703,8 +793,12 @@ export default function CommunityDetailScreen() {
     setLoadingMore(true);
     try {
       const { getCommunityMessages } = require('../../src/services/api');
-      const msgResponse = await getCommunityMessages(id as string, 'city', communityPosts.length + 20);
-      const newMsgs = (msgResponse.data || []).slice(communityPosts.length).map((msg: any) => ({
+      const currentSubgroup = community?.type === 'state' 
+        ? 'state' 
+        : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
+      const cityPostsCount = communityPosts.filter((p: any) => !p.isStateAnnouncement && !p.isNationalAnnouncement && !String(p.id).startsWith('post-')).length;
+      const msgResponse = await getCommunityMessages(id as string, currentSubgroup, cityPostsCount + 20);
+      const newMsgs = (msgResponse.data || []).slice(cityPostsCount).map((msg: any) => ({
         id: msg.id || Math.random().toString(),
         user: {
           name: msg.sender_name || 'Anonymous',
@@ -719,7 +813,7 @@ export default function CommunityDetailScreen() {
         comments: msg.comments_count || 0,
         shares: 0,
         reposts: 0,
-        hideBadge: true,
+        hideBadge: false,
         category: getLocalCategory(msg.content) || msg.category || 'Feed',
         sender_id: msg.sender_id, // Map sender ID to check for delete ownership
       }));
@@ -827,6 +921,41 @@ export default function CommunityDetailScreen() {
         hasNextThreadConnection && { paddingBottom: 0, borderBottomWidth: 0 },
         hasPrevThreadConnection && { paddingTop: 0 }
       ]}>
+        {item.isStateAnnouncement && (
+          <View style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            backgroundColor: '#FFF5EB', 
+            paddingHorizontal: 12, 
+            paddingVertical: 5, 
+            borderRadius: 8, 
+            marginBottom: 8, 
+            alignSelf: 'flex-start', 
+            borderWidth: 1, 
+            borderColor: '#FFD9B3' 
+          }}>
+            <Ionicons name="flag" size={13} color="#FF6600" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 10, fontWeight: '800', color: '#FF6600', textTransform: 'uppercase', letterSpacing: 0.5 }}>State Level Announcement</Text>
+          </View>
+        )}
+        {item.isNationalAnnouncement && (
+          <View style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            backgroundColor: '#E0F2FE', 
+            paddingHorizontal: 12, 
+            paddingVertical: 5, 
+            borderRadius: 8, 
+            marginBottom: 8, 
+            alignSelf: 'flex-start', 
+            borderWidth: 1, 
+            borderColor: '#BAE6FD' 
+          }}>
+            <Ionicons name="globe" size={13} color="#0284C7" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 10, fontWeight: '800', color: '#0284C7', textTransform: 'uppercase', letterSpacing: 0.5 }}>National Level Announcement</Text>
+          </View>
+        )}
+
         {item.isRepost && (
           <View style={styles.repostHeaderLabel}>
             <Ionicons name="repeat" size={14} color="#536471" />
@@ -1533,8 +1662,8 @@ export default function CommunityDetailScreen() {
   const handleCreatePost = async () => {
     if (!newMessage.trim() && !selectedImage) return;
 
-    // Use activeTab as default category
-    const finalCategory = postCategory || activeTab;
+    // Use activeTab as default category (but map 'Others' or empty to 'Feed')
+    const finalCategory = (postCategory === 'Others' || !postCategory) ? 'Feed' : postCategory;
 
     // Split text into chunks of max 250 characters
     const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
@@ -1562,7 +1691,7 @@ export default function CommunityDetailScreen() {
       shares: 0,
       reposts: 0,
       liked: false,
-      hideBadge: true,
+      hideBadge: false,
       contact: index === 0 ? (contactNumber || undefined) : undefined,
       sevaDetails: index === 0 ? (sevaDetails || undefined) : undefined,
       isUniversal: true, // Flag to show in general Feed
@@ -1602,12 +1731,16 @@ export default function CommunityDetailScreen() {
         }
       }
 
+      const currentSubgroup = community?.type === 'state' 
+        ? 'state' 
+        : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
+
       for (let i = 0; i < textChunks.length; i++) {
         const chunk = textChunks[i];
         if (chunk.trim() || (i === 0 && uploadedUrl)) {
           try {
             const { sendCommunityMessage } = require('../../src/services/api');
-            await sendCommunityMessage(id as string, 'city', chunk, 'text', finalCategory, i === 0 ? uploadedUrl : undefined);
+            await sendCommunityMessage(id as string, currentSubgroup, chunk, 'text', finalCategory, i === 0 ? uploadedUrl : undefined);
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
           } catch (error) {
             console.error('Failed to send real message chunk:', error);
@@ -1926,7 +2059,7 @@ export default function CommunityDetailScreen() {
                 }}
                 onPress={() => setShowTopCategoryDropdown(prev => !prev)}
               >
-                <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>{postCategory || activeTab}</Text>
+                <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>{postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)}</Text>
                 <Ionicons name="chevron-down" size={12} color="#1D9BF0" style={{ marginLeft: 4 }} />
               </TouchableOpacity>
 
@@ -1974,10 +2107,10 @@ export default function CommunityDetailScreen() {
                   elevation: 8,
                   paddingVertical: 6,
                 }}>
-                  {COMMUNITY_TABS.map(cat => {
-                    const isSelected = (postCategory || activeTab) === cat;
+                  {POST_CATEGORIES.map(cat => {
+                    const isSelected = (postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)) === cat;
                     let iconName = 'ellipse-outline';
-                    if (cat === 'Feed') iconName = 'globe-outline';
+                    if (cat === 'Others') iconName = 'options-outline';
                     else if (cat === 'Seva') iconName = 'heart-outline';
                     else if (cat === 'Requests') iconName = 'alert-circle-outline';
                     else if (cat === 'Events') iconName = 'calendar-outline';
@@ -2044,112 +2177,43 @@ export default function CommunityDetailScreen() {
                     }}
                     autoFocus
                   />
+                  
+                  {/* Add Photo option directly beneath the input box for better accessibility */}
+                  {!selectedImage ? (
+                    <TouchableOpacity
+                      onPress={handlePickImage}
+                      activeOpacity={0.7}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        alignSelf: 'flex-start',
+                        gap: 6,
+                        backgroundColor: 'rgba(255, 102, 0, 0.08)',
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        marginTop: 10,
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 102, 0, 0.2)',
+                      }}
+                    >
+                      <Ionicons name="image-outline" size={18} color="#FF6600" />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#FF6600', fontFamily: FONTS.bold }}>
+                        Add Photo
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={{ position: 'relative', marginTop: 10, borderRadius: 12, overflow: 'hidden', width: '100%', aspectRatio: 16 / 9 }}>
+                      <Image source={{ uri: selectedImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      <TouchableOpacity 
+                        style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }} 
+                        onPress={() => setSelectedImage(null)}
+                      >
+                        <Ionicons name="close" size={16} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
-              </View>
-
-              {selectedImage && (
-                <View style={{ position: 'relative', marginTop: 15, borderRadius: 16, overflow: 'hidden' }}>
-                  <Image source={{ uri: selectedImage }} style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 16 }} />
-                  <TouchableOpacity 
-                    style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }} 
-                    onPress={() => setSelectedImage(null)}
-                  >
-                    <Ionicons name="close" size={20} color="#FFF" />
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Auxiliary post info sections to keep all functionality intact */}
-              <View style={[styles.createDivider, { marginVertical: 20 }]} />
-
-              <View style={styles.createSection}>
-                <Text style={styles.createSectionTitle}>Selected Category</Text>
-                <TouchableOpacity 
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#F8F9FA',
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: '#EFF3F4',
-                    marginTop: 8
-                  }}
-                  onPress={() => setShowBodyCategoryDropdown(prev => !prev)}
-                >
-                  <Text style={{ fontSize: 15, color: '#0F1419', fontWeight: '600' }}>
-                    {postCategory || activeTab}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>Change</Text>
-                    <Ionicons name="chevron-down" size={16} color="#1D9BF0" />
-                  </View>
-                </TouchableOpacity>
-
-                {showBodyCategoryDropdown && (
-                  <View style={{
-                    backgroundColor: '#FFF',
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: '#EFF3F4',
-                    marginTop: 8,
-                    shadowColor: '#000',
-                    shadowOpacity: 0.08,
-                    shadowRadius: 8,
-                    shadowOffset: { width: 0, height: 3 },
-                    elevation: 4,
-                    paddingVertical: 6,
-                  }}>
-                    {COMMUNITY_TABS.map(cat => {
-                      const isSelected = (postCategory || activeTab) === cat;
-                      let iconName = 'ellipse-outline';
-                      if (cat === 'Feed') iconName = 'globe-outline';
-                      else if (cat === 'Seva') iconName = 'heart-outline';
-                      else if (cat === 'Requests') iconName = 'alert-circle-outline';
-                      else if (cat === 'Events') iconName = 'calendar-outline';
-                      else if (cat === 'Lost & Found') iconName = 'search-outline';
-                      else if (cat === 'Festivals') iconName = 'flame-outline';
-                      else if (cat === 'Temple Updates') iconName = 'home-outline';
-
-                      return (
-                        <TouchableOpacity
-                          key={cat}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            backgroundColor: isSelected ? 'rgba(29,155,240,0.06)' : '#FFF',
-                          }}
-                          onPress={() => {
-                            setPostCategory(cat);
-                            setShowBodyCategoryDropdown(false);
-                          }}
-                        >
-                          <Ionicons 
-                            name={iconName as any} 
-                            size={18} 
-                            color={isSelected ? '#1D9BF0' : '#536471'} 
-                            style={{ marginRight: 12 }}
-                          />
-                          <Text style={{
-                            flex: 1,
-                            fontSize: 14,
-                            fontWeight: isSelected ? 'bold' : '600',
-                            color: isSelected ? '#1D9BF0' : '#0F1419',
-                          }}>
-                            {cat}
-                          </Text>
-                          {isSelected && (
-                            <Ionicons name="checkmark" size={16} color="#1D9BF0" />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
               </View>
 
               <View style={styles.infoBox}>
@@ -2202,7 +2266,7 @@ export default function CommunityDetailScreen() {
               </View>
             </ScrollView>
 
-            {/* Keyboard-docked toolbar for image picker & circular progress bar */}
+            {/* Keyboard-docked toolbar with minimalist layout matching premium look */}
             <View style={{ 
               flexDirection: 'row', 
               justifyContent: 'space-between', 
@@ -2213,21 +2277,9 @@ export default function CommunityDetailScreen() {
               borderTopColor: '#EFF3F4',
               backgroundColor: '#FFF'
             }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <TouchableOpacity onPress={handlePickImage} style={{ padding: 8 }}>
-                  <Ionicons name="image-outline" size={22} color="#1D9BF0" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handlePaste} style={{ 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  backgroundColor: 'rgba(29,155,240,0.08)', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 6, 
-                  borderRadius: 16,
-                  gap: 4
-                }}>
-                  <Ionicons name="clipboard-outline" size={16} color="#1D9BF0" />
-                  <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>Paste</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={handlePickImage} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="image-outline" size={22} color="#FF6600" />
                 </TouchableOpacity>
               </View>
               

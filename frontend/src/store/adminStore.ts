@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureStorage } from '../utils/secureStorage';
 
 const ADMIN_TOKEN_KEY = 'admin_auth_token';
 const ADMIN_USER_KEY = 'admin_auth_user';
@@ -24,8 +24,8 @@ export const useAdminStore = create<AdminState>((set) => ({
     set({ isAdminLoading: true });
     try {
       const [token, userStr] = await Promise.all([
-        AsyncStorage.getItem(ADMIN_TOKEN_KEY),
-        AsyncStorage.getItem(ADMIN_USER_KEY),
+        secureStorage.getItem(ADMIN_TOKEN_KEY),
+        secureStorage.getItem(ADMIN_USER_KEY),
       ]);
 
       if (token && userStr) {
@@ -56,8 +56,8 @@ export const useAdminStore = create<AdminState>((set) => ({
   },
 
   setAdminSession: async (token, adminUser) => {
-    await AsyncStorage.setItem(ADMIN_TOKEN_KEY, token);
-    await AsyncStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
+    await secureStorage.setItem(ADMIN_TOKEN_KEY, token);
+    await secureStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
     set({
       adminToken: token,
       adminUser,
@@ -67,8 +67,8 @@ export const useAdminStore = create<AdminState>((set) => ({
   },
 
   adminLogout: async () => {
-    await AsyncStorage.removeItem(ADMIN_TOKEN_KEY);
-    await AsyncStorage.removeItem(ADMIN_USER_KEY);
+    await secureStorage.removeItem(ADMIN_TOKEN_KEY);
+    await secureStorage.removeItem(ADMIN_USER_KEY);
     set({
       adminToken: null,
       adminUser: null,
