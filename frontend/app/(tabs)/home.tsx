@@ -450,7 +450,7 @@ export default function HomeScreen() {
   };
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
-    const tabToLoad = tabOverride || activeTab;
+    const tabToLoad = tabOverride || useFeedStore.getState().activeTab;
     const cached = useFeedStore.getState().tabFeeds[tabToLoad];
     const hasCache = cached && cached.posts && cached.posts.length > 0;
 
@@ -509,7 +509,7 @@ export default function HomeScreen() {
       setLoadingFeed(false);
       setLoadingMoreFeed(false);
     }
-  }, [activeTab, setTabFeed, isRefreshing]);
+  }, [setTabFeed, isRefreshing]);
 
 
   useEffect(() => {
@@ -618,13 +618,14 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const cached = useFeedStore.getState().tabFeeds[activeTab];
+      const currentActiveTab = useFeedStore.getState().activeTab;
+      const cached = useFeedStore.getState().tabFeeds[currentActiveTab];
       const nowTime = Date.now();
       const isStale = !cached || (nowTime - (cached.lastFetched || 0) > 120000); // 2 minutes
       if (!cached || cached.posts.length === 0 || isStale) {
-        loadFeedPosts(0, false);
+        loadFeedPosts(0, false, currentActiveTab);
       }
-    }, [loadFeedPosts, activeTab])
+    }, [loadFeedPosts])
   );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
