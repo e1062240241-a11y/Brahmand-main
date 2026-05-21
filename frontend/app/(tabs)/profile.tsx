@@ -15,7 +15,8 @@ import {
   Alert,
   ScrollView,
   TextInput,
-  Animated
+  Animated,
+  Keyboard
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -222,21 +223,29 @@ export default function ProfileScreen() {
   }, []);
 
   const fetchProfile = useCallback(async (showLoading = true) => {
+    console.log('[Profile] fetchProfile called, userId:', userId);
     if (!userId) {
+      console.log('[Profile] no userId in fetchProfile');
       setLoading(false);
       return;
     }
     if (showLoading) setLoading(true);
     try {
+      console.log('[Profile] calling getUserProfile API');
       const res = await getUserProfile();
+      console.log('[Profile] getUserProfile success:', JSON.stringify(res.data).substring(0, 200));
       const nextProfile = res.data || {};
       setProfile(nextProfile);
       updateUser(nextProfile);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
+      console.error('Error status:', error?.response?.status);
+      console.error('Error data:', error?.response?.data);
+      console.error('Error message:', error?.message);
       setProfile(user || null);
-      showToast('Failed to load profile. Check backend at localhost:8002 or set EXPO_PUBLIC_BACKEND_URL_WEB.');
+      showToast('Profile error. Check backend port 8002.');
       if (error?.response?.status === 401 || error?.response?.status === 502) {
+        console.log('[Profile] auth error, logging out');
         await logout();
         router.replace('/');
       }
@@ -276,7 +285,11 @@ export default function ProfileScreen() {
   };
 
   const loadPosts = useCallback(async (reset = false) => {
-    if (!userId || (postsLoading && !reset)) return;
+    console.log('[Profile] loading posts for userId:', userId, 'reset:', reset);
+    if (!userId || (postsLoading && !reset)) {
+      console.log('[Profile] skip loadPosts:', { userId, postsLoading, reset });
+      return;
+    }
 
     const currentOffset = reset ? 0 : offset;
     if (reset) {
@@ -285,9 +298,12 @@ export default function ProfileScreen() {
     }
 
     try {
+      console.log('[Profile] calling getUserPosts with:', { userId, LIMIT, currentOffset });
       const response = await getUserPosts(userId, LIMIT, currentOffset);
       const payload = response.data;
+      console.log('[Profile] getUserPosts response payload:', JSON.stringify(payload).substring(0, 200));
       const items = Array.isArray(payload) ? payload : (payload?.items || []);
+      console.log('[Profile] items count:', items.length);
 
       if (reset) {
         setPosts(items);
@@ -555,15 +571,8 @@ export default function ProfileScreen() {
     }
   }, [selectedPost]);
 
-  const handleOpenComment = useCallback(async (post: any) => {
-    const postId = post?.id;
-    if (!postId) return;
-
-    setSelectedCommentPost(post);
-    setCommentText('');
-    setCommentModalVisible(true);
+  const loadComments = async (postId: string) => {
     setCommentsLoading(true);
-
     try {
       const response = await getPostComments(postId, 300);
       setPostComments(Array.isArray(response.data) ? response.data : []);
@@ -573,6 +582,16 @@ export default function ProfileScreen() {
     } finally {
       setCommentsLoading(false);
     }
+  };
+
+  const handleOpenComment = useCallback(async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+
+    setSelectedCommentPost(post);
+    setCommentText('');
+    setCommentModalVisible(true);
+    loadComments(postId);
   }, []);
 
   const handleSubmitComment = async () => {
@@ -581,7 +600,9 @@ export default function ProfileScreen() {
     setCommentSubmitting(true);
     try {
       const response = await addPostComment(selectedCommentPost.id, commentText.trim());
-      const updatedPost = response.data?.post;
+      const updatedPost = response.data?.post || response.data;
+      const serverComment = response.data?.comment;
+      
       if (updatedPost) {
         if (selectedPost?.id === selectedCommentPost.id) setSelectedPost((prev: any) => ({ ...prev, ...updatedPost }));
         setPosts((prev) =>
@@ -590,9 +611,9 @@ export default function ProfileScreen() {
         setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPost.id ? { ...prev, ...updatedPost } : prev));
       }
 
-      const commentsResponse = await getPostComments(selectedCommentPost.id, 300);
-      setPostComments(Array.isArray(commentsResponse.data) ? commentsResponse.data : []);
+      await loadComments(selectedCommentPost.id);
       setCommentText('');
+      Keyboard.dismiss();
     } catch (error) {
       console.warn('Failed to add comment:', error);
       Alert.alert('Error', 'Could not post comment.');
@@ -1048,6 +1069,71 @@ export default function ProfileScreen() {
               <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           )}
+
+          {/* Comment Modal nested inside Post Detail Modal */}
+          <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
+            <KeyboardAvoidingView 
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+              style={styles.sheetOverlay}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
+              <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
+              <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
+                <View style={styles.sheetHandle} />
+                <View style={styles.sheetHeader}>
+                  <Text style={styles.sheetTitle}>Comments</Text>
+                  <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
+                    <Ionicons name="close" size={24} color="#333" />
+                  </TouchableOpacity>
+                </View>
+
+              {commentsLoading ? (
+                <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+              ) : (
+                <FlatList
+                  data={postComments}
+                  keyExtractor={(item, index) => item.id || String(index)}
+                  renderItem={({ item }) => (
+                    <View style={styles.commentItem}>
+                      <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
+                      <View style={styles.commentContent}>
+                        <Text style={styles.commentUser}>{item.username || 'User'}</Text>
+                        <MentionText style={styles.commentText} text={item.text || ''} />
+                      </View>
+                    </View>
+                  )}
+                  ListEmptyComponent={
+                    <View style={styles.emptyComments}>
+                      <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
+                      <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
+                    </View>
+                  }
+                  contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
+                />
+              )}
+
+                <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                  <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
+                  <MentionInput
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    placeholder="Add a comment..."
+                    multiline
+                    inputStyle={styles.commentInput}
+                  />
+                  <TouchableOpacity
+                    onPress={handleSubmitComment}
+                    disabled={!commentText.trim() || commentSubmitting}
+                  >
+                    <Text style={[
+                      styles.commentPostButton,
+                      (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
+                    ]}>Post</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
         </View>
       </Modal>
 
@@ -1134,71 +1220,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-
-      {/* Comment Modal */}
-      <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          style={styles.sheetOverlay}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
-          <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
-          <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Comments</Text>
-              <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-          {commentsLoading ? (
-            <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-          ) : (
-            <FlatList
-              data={postComments}
-              keyExtractor={(item, index) => item.id || String(index)}
-              renderItem={({ item }) => (
-                <View style={styles.commentItem}>
-                  <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
-                  <View style={styles.commentContent}>
-                    <Text style={styles.commentUser}>{item.username || 'User'}</Text>
-                    <MentionText style={styles.commentText} text={item.text || ''} />
-                  </View>
-                </View>
-              )}
-              ListEmptyComponent={
-                <View style={styles.emptyComments}>
-                  <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-                  <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
-                </View>
-              }
-              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
-            />
-          )}
-
-            <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-              <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
-              <MentionInput
-                value={commentText}
-                onChangeText={setCommentText}
-                placeholder="Add a comment..."
-                multiline
-                inputStyle={styles.commentInput}
-              />
-              <TouchableOpacity
-                onPress={handleSubmitComment}
-                disabled={!commentText.trim() || commentSubmitting}
-              >
-                <Text style={[
-                  styles.commentPostButton,
-                  (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
-                ]}>Post</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       <SharePostModal
         visible={shareModalVisible}

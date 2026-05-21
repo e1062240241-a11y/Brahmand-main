@@ -225,14 +225,6 @@ export default function SOSScreen() {
     if (stage === 'countdown' && countdown > 0) {
       if (countdown === 10) {
         Vibration.vibrate([0, 500, 200, 500, 200], true);
-        Notifications.scheduleNotificationAsync({
-          content: {
-            title: '🚨 Emergency SOS Countdown Started',
-            body: `SOS will be sent automatically in 10 seconds. Tap cancel if this is a mistake.`,
-            sound: true,
-          },
-          trigger: null,
-        }).catch(() => {});
       }
       timer = setTimeout(() => {
         setCountdown((prev) => prev - 1);
@@ -294,14 +286,6 @@ export default function SOSScreen() {
       });
       
       Vibration.vibrate(1000);
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🚨 Emergency SOS Sent!',
-          body: `Nearby users and emergency contacts have been alerted.`,
-          sound: true,
-        },
-        trigger: null,
-      }).catch(() => {});
 
       setStage('active');
     } catch (e: any) {

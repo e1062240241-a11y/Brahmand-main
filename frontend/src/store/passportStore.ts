@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureStorage } from '../utils/secureStorage';
 import {
   PassportAnswer,
   PassportCertificate,
@@ -34,7 +34,7 @@ const generateJourneyStory = (journey: Omit<PassportJourney, 'id' | 'generated_s
 
 const persistPassportState = async (state: Omit<PassportState, 'loadPassport' | 'addJourney' | 'awardBadge' | 'addJaap' | 'completeBook'>) => {
   try {
-    await AsyncStorage.setItem(PASSPORT_STORAGE_KEY, JSON.stringify(state));
+    await secureStorage.setItem(PASSPORT_STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
     console.warn('[PassportStore] Failed to persist passport data:', error);
   }
@@ -49,7 +49,7 @@ export const usePassportStore = create<PassportState>((set, get) => ({
 
   loadPassport: async () => {
     try {
-      const raw = await AsyncStorage.getItem(PASSPORT_STORAGE_KEY);
+      const raw = await secureStorage.getItem(PASSPORT_STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw) as Omit<PassportState, 'loadPassport' | 'addJourney' | 'awardBadge' | 'addJaap' | 'completeBook'>;
       set(parsed);

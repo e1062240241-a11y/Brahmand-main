@@ -8378,7 +8378,6 @@ async def _get_nearest_users(
     candidates = []
     
     # Calculate 10 minutes ago
-    from datetime import datetime, timedelta
     ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
     
     for user in users:
@@ -8556,7 +8555,6 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     state = data.state or user.get('location_area', {}).get('state', 'Unknown')
     
     # Create SOS alert with 30 minute expiry
-    from datetime import timedelta
     expires_at = datetime.utcnow() + timedelta(minutes=30)
     
     sos_data = {
@@ -8601,7 +8599,6 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         logger.info("SOS: Few users found within 1km/10min, expanding search to 10km/24h")
         expanded_users = []
         users = await db.query_documents('users')
-        from datetime import datetime, timedelta
         one_day_ago = datetime.utcnow() - timedelta(hours=24)
         for u in users:
             uid = u.get('id')
@@ -9655,4 +9652,4 @@ app.mount("/socket.io", socket_app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)

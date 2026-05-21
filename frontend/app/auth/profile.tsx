@@ -959,6 +959,66 @@ export default function ProfileScreen() {
               <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           )}
+
+          {/* Comment Modal nested inside Post Detail Modal */}
+          <Modal visible={commentModalVisible} animationType="slide">
+            <SafeAreaView style={styles.commentModalContainer}>
+              <View style={styles.commentHeader}>
+                <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
+                  <Ionicons name="close" size={28} color={COLORS.text} />
+                </TouchableOpacity>
+                <Text style={styles.commentTitle}>Comments</Text>
+                <View style={{ width: 28 }} />
+              </View>
+
+              {commentsLoading ? (
+                <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+              ) : (
+                <FlatList
+                  data={postComments}
+                  keyExtractor={(item, index) => item.id || String(index)}
+                  renderItem={({ item }) => (
+                    <View style={styles.commentItem}>
+                      <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
+                      <View style={styles.commentContent}>
+                        <Text style={styles.commentUser}>{item.username || 'User'}</Text>
+                        <Text style={styles.commentText}>{item.text}</Text>
+                      </View>
+                    </View>
+                  )}
+                  ListEmptyComponent={
+                    <View style={styles.emptyComments}>
+                      <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
+                      <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
+                    </View>
+                  }
+                  contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
+                />
+              )}
+
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
+                <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                  <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder="Add a comment..."
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    onPress={handleSubmitComment}
+                    disabled={!commentText.trim() || commentSubmitting}
+                  >
+                    <Text style={[
+                      styles.commentPostButton,
+                      (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
+                    ]}>Post</Text>
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            </SafeAreaView>
+          </Modal>
         </View>
       </Modal>
 
@@ -1045,66 +1105,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-
-      {/* Comment Modal */}
-      <Modal visible={commentModalVisible} animationType="slide">
-        <SafeAreaView style={styles.commentModalContainer}>
-          <View style={styles.commentHeader}>
-            <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
-              <Ionicons name="close" size={28} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.commentTitle}>Comments</Text>
-            <View style={{ width: 28 }} />
-          </View>
-
-          {commentsLoading ? (
-            <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-          ) : (
-            <FlatList
-              data={postComments}
-              keyExtractor={(item, index) => item.id || String(index)}
-              renderItem={({ item }) => (
-                <View style={styles.commentItem}>
-                  <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
-                  <View style={styles.commentContent}>
-                    <Text style={styles.commentUser}>{item.username || 'User'}</Text>
-                    <Text style={styles.commentText}>{item.text}</Text>
-                  </View>
-                </View>
-              )}
-              ListEmptyComponent={
-                <View style={styles.emptyComments}>
-                  <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-                  <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
-                </View>
-              }
-              contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
-            />
-          )}
-
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
-            <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-              <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
-              <TextInput
-                style={styles.commentInput}
-                placeholder="Add a comment..."
-                value={commentText}
-                onChangeText={setCommentText}
-                multiline
-              />
-              <TouchableOpacity
-                onPress={handleSubmitComment}
-                disabled={!commentText.trim() || commentSubmitting}
-              >
-                <Text style={[
-                  styles.commentPostButton,
-                  (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
-                ]}>Post</Text>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </Modal>
 
       <SharePostModal
         visible={shareModalVisible}

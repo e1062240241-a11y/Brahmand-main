@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { API_URL } from './api';
+import { secureStorage } from '../utils/secureStorage';
 
 const SOCKET_URL = API_URL;
 
@@ -15,7 +16,7 @@ class SocketService {
     if (this.socket?.connected) return;
     if (this.connectPromise) return this.connectPromise;
 
-    const token = await AsyncStorage.getItem('auth_token');
+    const token = await secureStorage.getItem('auth_token');
 
     const isLocalTunnel = /^https:\/\/.*\.loca\.lt$/i.test(SOCKET_URL);
     const socketOptions: any = {

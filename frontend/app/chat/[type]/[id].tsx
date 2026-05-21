@@ -1376,12 +1376,14 @@ const ChatScreen = () => {
                   inputStyle={styles.input}
                 />
                 <TouchableOpacity
-                  style={styles.attachButton}
-                  onPress={toggleAttachmentOptions}
-                  disabled={uploadingMedia || sending}
-                >
-                  <Ionicons name="add-circle" size={28} color={COLORS.primary} />
-                </TouchableOpacity>
+                   style={styles.attachButton}
+                   onPress={toggleAttachmentOptions}
+                   disabled={uploadingMedia || sending}
+                 >
+                   <View style={styles.attachIconBadge}>
+                     <Ionicons name="image" size={18} color={COLORS.primary} />
+                   </View>
+                 </TouchableOpacity>
               </View>
               <TouchableOpacity
                 style={[
@@ -2133,11 +2135,21 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
   },
-  attachButton: {
-    padding: 4,
-    marginLeft: 4,
-  },
-  sendButton: {
+   attachButton: {
+     padding: 4,
+     marginLeft: 4,
+   },
+   attachIconBadge: {
+     width: 36,
+     height: 36,
+     borderRadius: 18,
+     backgroundColor: '#FFF5E6',
+     borderWidth: 1.5,
+     borderColor: COLORS.primary,
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,

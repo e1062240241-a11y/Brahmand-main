@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { ref, uploadBytesResumable } from 'firebase/storage';
+import { secureStorage } from '../utils/secureStorage';
 
 import { getFirebaseStorage } from './firebase/config';
 
@@ -198,7 +199,7 @@ const uploadLargeVideoViaFirebase = async (
 
 // Add auth token to requests
 api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('auth_token');
+  const token = await secureStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -501,7 +502,7 @@ export const updateCurrentLocation = async (location: { latitude: number; longit
   } catch (error: any) {
     if (error.response?.status === 404) {
       try {
-        const token = await AsyncStorage.getItem('auth_token');
+        const token = await secureStorage.getItem('auth_token');
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
@@ -551,7 +552,7 @@ export const aiChat = (messages: any[]) =>
   api.post('/ai/chat', { messages });
 
 const nativeMultipartPost = async (endpoint: string, formData: FormData) => {
-  const token = await AsyncStorage.getItem('auth_token');
+  const token = await secureStorage.getItem('auth_token');
   const headers: Record<string, string> = {};
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -616,7 +617,7 @@ export const uploadUserPost = (
         console.warn('[API] axios upload failed, retrying native fetch multipart upload', error);
       }
       if (Platform.OS !== 'web') {
-        const token = await AsyncStorage.getItem('auth_token');
+        const token = await secureStorage.getItem('auth_token');
         const headers: Record<string, string> = {};
         if (token) {
           headers.Authorization = `Bearer ${token}`;
@@ -652,7 +653,7 @@ export const uploadChatMedia = (file: { uri: string; name: string; type: string 
 
     if (Platform.OS !== 'web') {
       try {
-        const token = await AsyncStorage.getItem('auth_token');
+        const token = await secureStorage.getItem('auth_token');
         const headers: Record<string, string> = {};
         if (token) {
           headers.Authorization = `Bearer ${token}`;
@@ -1347,7 +1348,7 @@ export const uploadVendorBusinessImage = (
 
     if (Platform.OS !== 'web') {
       try {
-        const token = await AsyncStorage.getItem('auth_token');
+        const token = await secureStorage.getItem('auth_token');
         const url = `${API_URL}/api/vendors/${vendorId}/business/images/upload`;
         const headers: Record<string, string> = {};
         if (token) {
@@ -1394,7 +1395,7 @@ export const uploadVendorKycFile = (
 };
 
 export const extractKycTextFromImage = async (vendorId: string, file: { uri: string; name: string; type: string }) => {
-  const token = await AsyncStorage.getItem('auth_token');
+  const token = await secureStorage.getItem('auth_token');
 
   const formData = new FormData();
 
@@ -1450,18 +1451,17 @@ export const extractKycTextFromImage = async (vendorId: string, file: { uri: str
   console.log('[OCR API] Response status:', response.status, response.statusText);
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[OCR API] Error response:', response.status, errorText);
-    throw new Error(`OCR failed: ${response.status} - ${errorText}`);
+    console.error('[OCR API] Error response:', response.status);
+    throw new Error(`OCR failed: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('[OCR API] Response data:', JSON.stringify(data).substring(0, 500));
+  console.log('[OCR API] Response data received successfully.');
   return { data };
 };
 
 export const extractUserKycTextFromImage = async (file: { uri: string; name: string; type: string }) => {
-  const token = await AsyncStorage.getItem('auth_token');
+  const token = await secureStorage.getItem('auth_token');
 
   const formData = new FormData();
 
@@ -1516,13 +1516,12 @@ export const extractUserKycTextFromImage = async (file: { uri: string; name: str
   console.log('[User OCR API] Response status:', response.status, response.statusText);
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[User OCR API] Error response:', response.status, errorText);
-    throw new Error(`OCR failed: ${response.status} - ${errorText}`);
+    console.error('[User OCR API] Error response:', response.status);
+    throw new Error(`OCR failed: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('[User OCR API] Response data:', JSON.stringify(data).substring(0, 500));
+  console.log('[User OCR API] Response data received successfully.');
   return { data };
 };
 
