@@ -280,6 +280,50 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
 
+const HOME_CARD_TEXTURES = {
+  rose: require('../../assets/images/home_card_bg_rose.png'),
+  peach: require('../../assets/images/home_card_bg_peach.png'),
+  mint: require('../../assets/images/home_card_bg_mint.png'),
+  lavender: require('../../assets/images/home_card_bg_lavender.png'),
+} as const;
+
+type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
+
+const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, string]> = {
+  rose: ['rgba(255, 245, 245, 0.72)', 'rgba(255, 220, 220, 0.45)'],
+  peach: ['rgba(255, 250, 242, 0.74)', 'rgba(255, 232, 205, 0.48)'],
+  mint: ['rgba(242, 255, 248, 0.74)', 'rgba(210, 245, 225, 0.48)'],
+  lavender: ['rgba(248, 242, 255, 0.74)', 'rgba(225, 210, 245, 0.48)'],
+};
+
+function HomeCardTextureBg({
+  texture,
+  borderRadius = 15,
+  children,
+}: {
+  texture: HomeCardTextureKey;
+  borderRadius?: number;
+  children: React.ReactNode;
+}) {
+  const overlay = CARD_TEXTURE_OVERLAY[texture];
+  return (
+    <ImageBackground
+      source={HOME_CARD_TEXTURES[texture]}
+      style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+      imageStyle={{ borderRadius, resizeMode: 'cover' }}
+      resizeMode="cover"
+    >
+      <LinearGradient
+        colors={[...overlay]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+      />
+      <View style={styles.cardTextureContent}>{children}</View>
+    </ImageBackground>
+  );
+}
+
 const shivaImage = require('../../assets/images/image temple/SomnathTemple.jpg');
 const FEED_PAGE_SIZE = 7;
 
@@ -1289,7 +1333,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.22, 0.42]} style={styles.screen}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -1645,7 +1689,9 @@ export default function HomeScreen() {
                   </LinearGradient>
                 </ImageBackground>
               </TouchableOpacity>
+            </View>
 
+            <View style={styles.postBannerSection}>
               <ScrollView
                 ref={actionCardsScrollRef}
                 horizontal
@@ -1659,12 +1705,7 @@ export default function HomeScreen() {
                 {/* Urgent Blood Request */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={['#FFE0E0', '#FFBABA', '#FFA8A8']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={{ ...StyleSheet.absoluteFillObject }}
-                    />
+                    <HomeCardTextureBg texture="rose">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <BloodDropIcon />
@@ -1694,6 +1735,7 @@ export default function HomeScreen() {
                     >
                       <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
+                    </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
@@ -1706,12 +1748,7 @@ export default function HomeScreen() {
                 {/* Register Business */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={['#FFF3E0', '#FFE0B2', '#FFCC80']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={{ ...StyleSheet.absoluteFillObject }}
-                    />
+                    <HomeCardTextureBg texture="peach">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <ShopIcon />
@@ -1739,6 +1776,7 @@ export default function HomeScreen() {
                     >
                       <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Register</Text>
                     </TouchableOpacity>
+                    </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
@@ -1751,12 +1789,7 @@ export default function HomeScreen() {
                 {/* Verified Vendor */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={['#E8F5E9', '#C8E6C9', '#A5D6A7']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={{ ...StyleSheet.absoluteFillObject }}
-                    />
+                    <HomeCardTextureBg texture="mint">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <LotusIcon />
@@ -1783,6 +1816,7 @@ export default function HomeScreen() {
                     >
                       <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
+                    </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
@@ -1795,12 +1829,7 @@ export default function HomeScreen() {
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={['#F3E5F5', '#E1BEE7', '#CE93D8']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={{ ...StyleSheet.absoluteFillObject }}
-                    />
+                    <HomeCardTextureBg texture="lavender">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
@@ -1846,6 +1875,7 @@ export default function HomeScreen() {
                     >
                       <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Watch</Text>
                     </TouchableOpacity>
+                    </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
@@ -1876,41 +1906,13 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <Image source={require('../../assets/images/mumbai_pin.png')} style={{ width: 44, height: 44, borderRadius: 12, marginRight: 8 }} />
-                      <View style={[styles.miniCardContent, { marginTop: 6 }]}>
-                        <Text
-                          style={{
-                            color: '#9F45FF',
-                            fontSize: 10,
-                            fontFamily: 'Inter_600SemiBold',
-                            letterSpacing: 0,
-                            marginBottom: 2,
-                          }}
-                        >
-                          CITY COMMUNITY
-                        </Text>
-                        <Text
-                          style={{
-                            color: '#000',
-                            fontSize: 12.5,
-                            fontFamily: 'Inter_600SemiBold',
-                            lineHeight: 15,
-                          }}
-                          numberOfLines={2}
-                          adjustsFontSizeToFit
-                        >
+                      <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
+                      <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>CITY COMMUNITY</Text>
+                        <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                           {mumbaiComm?.name || 'Mumbai Community'}
                         </Text>
-                        <Text
-                          style={{
-                            color: '#000',
-                            fontSize: 10,
-                            fontFamily: 'Inter_500Medium',
-                            marginTop: 2,
-                          }}
-                        >
-                          13 members
-                        </Text>
+                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 members</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                     </TouchableOpacity>
@@ -1935,33 +1937,15 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <View style={styles.miniCardImageBox}>
-                        <Image source={require('../../assets/images/food_sharing.png')} style={styles.miniCardCircleImg} />
+                      <View style={styles.communityCardIconBox}>
+                        <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
                       </View>
-                      <View style={[styles.miniCardContent, { marginTop: 6 }]}>
-                        <Text
-                          style={{
-                            color: '#000',
-                            fontSize: 12.5,
-                            fontFamily: 'Inter_600SemiBold',
-                            lineHeight: 15,
-                          }}
-                          numberOfLines={2}
-                          adjustsFontSizeToFit
-                        >
+                      <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+                        <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                           Pune Food Sharing Group
                         </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text
-                            style={{
-                              color: '#000',
-                              fontSize: 10,
-                              fontFamily: 'Inter_500Medium',
-                              marginTop: 2,
-                            }}
-                          >
-                            236 members
-                          </Text>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>236 members</Text>
                           <View style={styles.sevaBadgeMini}>
                             <Text style={styles.sevaBadgeTextMini}>Seva</Text>
                           </View>
@@ -1972,7 +1956,6 @@ export default function HomeScreen() {
                   );
                 })()}
               </View>
-            </View>
 
             <View
               style={styles.stickyFeedTabsShell}
@@ -2064,6 +2047,7 @@ export default function HomeScreen() {
                   <Text style={styles.emptyFeedText}>No posts yet</Text>
                 </View>
               )}
+            </View>
             </View>
           </ScrollView>
 
@@ -2377,6 +2361,16 @@ const styles = StyleSheet.create({
   content: {},
   upperContentWrapper: {
     paddingHorizontal: PAGE_PADDING,
+  },
+  postBannerSection: {
+    width: '100%',
+    backgroundColor: '#F8EDE7',
+    paddingHorizontal: PAGE_PADDING,
+  },
+  cardTextureContent: {
+    flex: 1,
+    zIndex: 1,
+    justifyContent: 'space-between',
   },
   header: {
     flexDirection: 'row',
@@ -2882,9 +2876,29 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  communityCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  communityCardIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    marginRight: 8,
+    overflow: 'hidden',
+  },
+  communityCardIconRound: {
+    width: '100%',
+    height: '100%',
+  },
   miniCardContent: {
     flex: 1,
     justifyContent: 'center',
+  },
+  communityCardTextBlock: {
+    marginTop: 6,
   },
   miniCardType: {
     fontFamily: 'Inter_600SemiBold',
@@ -2893,17 +2907,34 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 2,
   },
+  communityCardLabel: {
+    color: '#9F45FF',
+    fontSize: 10,
+    letterSpacing: 0,
+    marginBottom: 2,
+  },
   miniCardTitle: {
     fontFamily: 'Outfit_700Bold',
     fontSize: 10,
     color: '#111',
     lineHeight: 12,
   },
+  communityCardTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12.5,
+    color: '#000',
+    lineHeight: 15,
+  },
   miniCardMembers: {
     fontFamily: 'Inter_500Medium',
     fontSize: 8,
     color: '#888',
     marginTop: 1,
+  },
+  communityCardMembers: {
+    fontSize: 10,
+    color: '#000',
+    marginTop: 2,
   },
   miniCardBottomRow: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,17 +14,28 @@ import {
   Modal,
   ImageBackground,
   Alert,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageById } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BANNER_H_MARGIN = 16;
+const BANNER_WIDTH = SCREEN_WIDTH - BANNER_H_MARGIN * 2;
+const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.62);
+const BANNER_RADIUS = 22;
+const HERO_DOT_COUNT = 4;
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const LIVE_JAAPS = [
   { 
@@ -91,6 +102,7 @@ export default function JaapLandingScreen() {
   const isFocused = useIsFocused();
   const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
+  const [heroBannerIndex, setHeroBannerIndex] = useState(0);
 
   // Auto-scroll ref for More Live Jaaps
   const jaapScrollRef = useRef<ScrollView>(null);
@@ -172,156 +184,154 @@ export default function JaapLandingScreen() {
     return matchesSearch && matchesCategory;
   });
 
+  const switchSection = useCallback((section: 'jaap' | 'temple') => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity)
+    );
+    setActiveSection(section);
+  }, []);
+
+  const renderTopTab = (section: 'jaap' | 'temple', label: string) => {
+    const isActive = activeSection === section;
+    return (
+      <TouchableOpacity
+        key={section}
+        style={styles.tabPill}
+        onPress={() => switchSection(section)}
+        activeOpacity={0.88}
+      >
+        {isActive ? (
+          <LinearGradient
+            colors={['#FF8C2E', '#FF6600', '#FF5500']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tabPillGradient}
+          >
+            <Text style={styles.tabPillTextActive}>{label}</Text>
+          </LinearGradient>
+        ) : (
+          <View style={styles.tabPillInactive}>
+            <Text style={styles.tabPillText}>{label}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const heroTitle = liveActive ? 'Mahamrityunjaya Mantra' : 'Evening Gayatri Chanting';
+  const heroTagline = liveActive
+    ? 'We chant. We heal. We rise together.'
+    : 'Connect with the divine light. Starting at 6:00 PM.';
+  const heroTimeLabel = liveActive
+    ? `Live until ${liveEnd ? formatTime(liveEnd) : '5:00 PM'}`
+    : 'Next Session: 6:00 PM Today';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      <LinearGradient
-        colors={['#E59E7C', '#F2B496']}
-        style={styles.topTabsContainer}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.topTabsInner}>
-          <TouchableOpacity
-            style={[
-              styles.tabPill,
-              activeSection === 'jaap' && styles.tabPillActive,
-              activeSection === 'jaap' && {
-                shadowColor: '#000',
-                shadowOffset: { width: 5, height: 0 },
-                shadowOpacity: 0.18,
-                shadowRadius: 5,
-                elevation: 4,
-              }
-            ]}
-            onPress={() => setActiveSection('jaap')}
-            activeOpacity={0.9}
-          >
-            <Text
-              style={[
-                styles.tabPillText,
-                activeSection === 'jaap' && styles.tabPillTextActive,
-              ]}
-            >
-              Jaap
-            </Text>
-          </TouchableOpacity>
+      <View style={[styles.stickyTopTabsWrap, { paddingTop: insets.top + 10 }]}>
+        <LinearGradient
+          colors={['#E59E7C', '#F0C4A8', '#FFFBF5']}
+          locations={[0, 0.5, 1]}
+          style={styles.topHeaderGradient}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        >
+          <View style={styles.topTabsContainer}>
+            <View style={styles.topTabsInner}>
+              {renderTopTab('jaap', 'Jaap')}
+              {renderTopTab('temple', 'Temple')}
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
 
-          <TouchableOpacity
-            style={[
-              styles.tabPill,
-              activeSection === 'temple' && styles.tabPillActive,
-              activeSection === 'temple' && {
-                shadowColor: '#000',
-                shadowOffset: { width: -5, height: 0 },
-                shadowOpacity: 0.18,
-                shadowRadius: 5,
-                elevation: 4,
-              }
-            ]}
-            onPress={() => setActiveSection('temple')}
-            activeOpacity={0.9}
-          >
-            <Text
-              style={[
-                styles.tabPillText,
-                activeSection === 'temple' && styles.tabPillTextActive,
-              ]}
-            >
-              Temple
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ 
-          paddingBottom: 90 
-        }}
+      <ScrollView
+        style={styles.mainScroll}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
+        bounces
       >
         {activeSection === 'jaap' ? (
           <>
-            <View style={styles.heroTitleSectionExact}>
-              <View style={styles.heroTextCol}>
-                <Text style={styles.liveJaapTag}>LIVE JAAP</Text>
-                <Text style={styles.heroMainTitleExact}>Join thousands of devotees in{"\n"}live collective chanting</Text>
-              </View>
-              <TouchableOpacity style={styles.viewAllPillRefined}>
-                <Text style={styles.viewAllTextRefined}>View All</Text>
-                <Ionicons name="chevron-forward" size={14} color="#FF6600" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.heroFixedContainer, { height: 500 }]}>
-              <Image
+            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT }]}>
+              <ImageBackground
                 source={require('../../assets/images/jaap_hero_shiva_final.png')}
-                style={{ position: 'absolute', width: '100%', height: '100%' }}
-                resizeMode="stretch"
-              />
+                style={styles.heroBannerFill}
+                imageStyle={styles.heroBannerImageStyle}
+                resizeMode="cover"
+              >
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
+                  locations={[0, 0.38, 1]}
+                  style={StyleSheet.absoluteFillObject}
+                />
 
-              <View style={styles.mockupTopRow}>
-                <View style={[styles.mockupLiveBadge, !liveActive && { backgroundColor: '#FF8800' }]}>
-                  <Ionicons name={liveActive ? "radio" : "calendar"} size={16} color="#FFF" />
-                  <Text style={styles.mockupLiveText}>{liveActive ? "LIVE NOW" : "SCHEDULED"}</Text>
-                </View>
-                <View style={styles.mockupDevoteeBadge}>
-                  <Ionicons name="people" size={16} color="#FFF" />
-                  <Text style={styles.mockupDevoteeText}>{liveActive ? "12.8K Devotees" : "Join Waitlist"}</Text>
-                </View>
-              </View>
-
-              <View style={styles.mockupContentArea}>
-                <Text style={styles.mockupMainTitle}>
-                  {liveActive ? "Maha\nMrityunjaya\nJaap" : "Evening\nGayatri\nChanting"}
-                </Text>
-                <Text style={styles.mockupTagline}>
-                  {liveActive 
-                    ? "We chant. We heal.\nWe rise together." 
-                    : "Connect with the divine light.\nStarting at 6:00 PM."}
-                </Text>
-
-                <View style={styles.mockupDevoteeRow}>
-                  <View style={styles.avatarStack}>
-                    <Image source={{ uri: 'https://i.pravatar.cc/100?u=1' }} style={styles.miniAvatar} />
-                    <Image source={{ uri: 'https://i.pravatar.cc/100?u=2' }} style={[styles.miniAvatar, { marginLeft: -12 }]} />
-                    <Image source={{ uri: 'https://i.pravatar.cc/100?u=3' }} style={[styles.miniAvatar, { marginLeft: -12 }]} />
-                  </View>
-                  <Text style={styles.mockupDevoteeCountSub}>
-                    {liveActive ? "12,842+ devotees chanting together" : "4,200+ devotees already joined"}
-                  </Text>
-                </View>
-
-                <TouchableOpacity 
-                  style={styles.mockupJoinNowBtn} 
-                  onPress={() => router.push({
-                    pathname: '/live-jaap-welcome',
-                    params: { 
-                      mantraType: liveActive ? 'mrityunjaya' : 'gayatri',
-                      title: liveActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra'
-                    }
-                  })}
-                >
-                  <LinearGradient
-                    colors={['#FF6B00', '#FF8800']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={styles.mockupJoinGradient}
-                  >
-                    <View style={[styles.buttonNotch, { left: -25 }]} />
-                    <View style={[styles.buttonNotch, { right: -25 }]} />
-
-                    <View style={styles.mockupJoinMainRow}>
-                      <Text style={styles.mockupJoinOm}>ॐ</Text>
-                      <Text style={styles.mockupJoinJaapText}>{liveActive ? "Join Jaap" : "Set Reminder"}</Text>
+                <View style={styles.bannerContent}>
+                  <View style={styles.bannerTopRow}>
+                    <View style={styles.bannerTopSpacer} />
+                    <View style={[styles.mockupLiveBadge, !liveActive && styles.mockupScheduledBadge]}>
+                      <View style={styles.liveDot} />
+                      <Text style={styles.mockupLiveText}>{liveActive ? 'LIVE' : 'SOON'}</Text>
                     </View>
-                    <Text style={styles.mockupJoinSubtext}>
-                      {liveActive ? `Live until ${liveEnd ? formatTime(liveEnd) : ''}` : "Next Session: 6:00 PM Today"}
+                  </View>
+
+                  <View style={styles.bannerTextBlock}>
+                    <Text style={styles.mockupMainTitle} numberOfLines={2}>
+                      {heroTitle}
                     </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+                    <Text style={styles.mockupTagline} numberOfLines={2}>
+                      {heroTagline}
+                    </Text>
+                    <View style={styles.bannerTimeRow}>
+                      <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.92)" />
+                      <Text style={styles.bannerTimeText}>{heroTimeLabel}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.bannerFooter}>
+                    <TouchableOpacity
+                      style={styles.mockupJoinNowBtn}
+                      activeOpacity={0.9}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/live-jaap-welcome',
+                          params: {
+                            mantraType: liveActive ? 'mrityunjaya' : 'gayatri',
+                            title: liveActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra',
+                          },
+                        })
+                      }
+                    >
+                      <LinearGradient
+                        colors={['#FF6B00', '#FF8800']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.mockupJoinGradient}
+                      >
+                        <MaterialCommunityIcons name="broadcast" size={17} color="#FFF" />
+                        <Text style={styles.mockupJoinJaapText}>
+                          {liveActive ? 'Join Live Jaap' : 'Set Reminder'}
+                        </Text>
+                        <Ionicons name="chevron-forward" size={15} color="#FFF" />
+                      </LinearGradient>
+                    </TouchableOpacity>
+
+                    <View style={styles.bannerDotsRow} pointerEvents="none">
+                      {Array.from({ length: HERO_DOT_COUNT }).map((_, index) => (
+                        <View
+                          key={`hero-dot-${index}`}
+                          style={[
+                            styles.bannerDot,
+                            index === heroBannerIndex && styles.bannerDotActive,
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </ImageBackground>
             </View>
 
             <View style={styles.sectionHeaderParity}>
@@ -537,53 +547,72 @@ export default function JaapLandingScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFBF5' },
+  stickyTopTabsWrap: {
+    zIndex: 100,
+    elevation: 10,
+    backgroundColor: 'transparent',
+  },
+  topHeaderGradient: {
+    paddingBottom: 14,
+  },
+  mainScroll: {
+    flex: 1,
+  },
   topTabsContainer: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 12,
-    zIndex: 1000,
   },
   topTabsInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 50,
+    height: 52,
     backgroundColor: '#FFFFFF',
     borderRadius: 30,
     padding: 4,
-    // iOS shadow
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    // Android
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   tabPill: {
     flex: 1,
     height: '100%',
-    borderRadius: 28,
+    borderRadius: 26,
+    overflow: 'hidden',
+  },
+  tabPillGradient: {
+    flex: 1,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  tabPillActive: {
-    backgroundColor: '#FF6600',
-    borderRadius: 28,
+  tabPillInactive: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
   },
   tabPillText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#000000',
+    color: '#2D1400',
   },
   tabPillTextActive: {
     color: '#FFFFFF',
     fontWeight: '900',
+    fontSize: 16,
   },
   // legacy (kept for other references)
   jaapTabExact: { flex: 1, height: '100%' },
@@ -607,31 +636,155 @@ const styles = StyleSheet.create({
   heroMainTitleExact: { fontSize: 26, fontWeight: '800', color: '#2D1400', lineHeight: 34, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' },
   viewAllPillRefined: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,102,0,0.1)', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, borderWidth: 1.2, borderColor: '#FF6600' },
   viewAllTextRefined: { color: '#FF6600', fontSize: 14, fontWeight: '900', marginRight: 2 },
-  heroFixedContainer: { width: SCREEN_WIDTH - 32, height: 500, overflow: 'hidden', position: 'relative', marginHorizontal: 16, borderRadius: 42, elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, marginTop: 25, backgroundColor: '#1A0A00' },
-  mockupTopRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 20 },
-  mockupLiveBadge: { backgroundColor: '#FF3B30', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  mockupLiveText: { color: '#FFF', fontSize: 12, fontWeight: '900', marginLeft: 6 },
-  mockupDevoteeBadge: { backgroundColor: 'rgba(0,0,0,0.5)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  mockupDevoteeText: { color: '#FFF', fontSize: 12, fontWeight: '700', marginLeft: 6 },
-  mockupContentArea: { paddingHorizontal: 25, marginTop: 10 },
-  mockupMainTitle: { color: '#FFF', fontSize: 44, fontWeight: '900', lineHeight: 52, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
-  mockupTagline: { color: 'rgba(255,255,255,0.9)', fontSize: 16, fontWeight: '700', marginTop: 15, lineHeight: 22 },
-  mockupDevoteeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 20 },
-  avatarStack: { flexDirection: 'row', alignItems: 'center' },
-  miniAvatar: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: '#FFF' },
-  mockupDevoteeCountSub: { color: '#FFF', fontSize: 12, fontWeight: '700', marginLeft: 15 },
-  mockupJoinNowBtn: { backgroundColor: '#FF6600', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 20, paddingRight: 4, height: 48, borderRadius: 24, marginTop: 25, width: 190, elevation: 10, shadowColor: '#FF6600', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.4, shadowRadius: 10 },
-  mockupJoinBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
-  mockupJoinGradient: { flex: 1, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 24 },
-  mockupJoinMainRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  mockupJoinOm: { color: '#FFF', fontSize: 24, fontWeight: 'bold' },
-  mockupJoinJaapText: { color: '#FFF', fontSize: 18, fontWeight: '900' },
-  mockupJoinSubtext: { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '700', marginTop: -2 },
-  buttonNotch: { position: 'absolute', width: 50, height: 50, backgroundColor: '#1A0A00', borderRadius: 25, top: -1 },
+  heroFixedContainer: {
+    width: BANNER_WIDTH,
+    overflow: 'hidden',
+    marginHorizontal: BANNER_H_MARGIN,
+    borderRadius: BANNER_RADIUS,
+    marginTop: 12,
+    backgroundColor: '#1A0A00',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+  },
+  heroBannerFill: {
+    width: '100%',
+    height: '100%',
+  },
+  heroBannerImageStyle: {
+    borderRadius: BANNER_RADIUS,
+  },
+  bannerContent: {
+    flex: 1,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 16,
+    justifyContent: 'space-between',
+    zIndex: 2,
+  },
+  bannerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+  },
+  bannerTopSpacer: {
+    flex: 1,
+  },
+  bannerTextBlock: {
+    flexShrink: 1,
+    paddingRight: 8,
+  },
+  mockupLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    zIndex: 3,
+  },
+  mockupScheduledBadge: {
+    backgroundColor: '#FF8800',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFF',
+    marginRight: 5,
+  },
+  mockupLiveText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  mockupMainTitle: {
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 28,
+    letterSpacing: -0.2,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  mockupTagline: {
+    color: 'rgba(255,255,255,0.94)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  bannerTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 5,
+  },
+  bannerTimeText: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  bannerFooter: {
+    minHeight: 56,
+    justifyContent: 'flex-end',
+    paddingBottom: 22,
+  },
+  mockupJoinNowBtn: {
+    alignSelf: 'flex-start',
+    borderRadius: 26,
+    overflow: 'hidden',
+    zIndex: 4,
+    maxWidth: '78%',
+    elevation: 8,
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  mockupJoinGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: 26,
+    gap: 8,
+  },
+  mockupJoinJaapText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
+    flexShrink: 1,
+  },
+  bannerDotsRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    zIndex: 2,
+  },
+  bannerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+  },
+  bannerDotActive: {
+    width: 18,
+    backgroundColor: '#FF6600',
+  },
   mockupOmCircle: { backgroundColor: 'rgba(255,255,255,0.2)', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   mockupOmIcon: { color: '#FFF', fontSize: 18, fontWeight: '900' },
   mockupWaveformBox: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row' },
-  sectionHeaderParity: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginTop: 40, marginBottom: 20 },
+  sectionHeaderParity: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginTop: 24, marginBottom: 16 },
   viewAllBtnRefined: { paddingHorizontal: 10, paddingVertical: 5 },
   viewAllPillBtn: {
     borderRadius: 20,

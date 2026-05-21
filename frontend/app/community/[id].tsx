@@ -1558,24 +1558,16 @@ export default function CommunityDetailScreen() {
       return post;
     }));
 
-    // Also check in communityPosts
-    let isCommunityMsg = false;
-    let targetSubgroup = 'city';
-    let targetCommunityId = id as string;
+    // Find the post first to resolve community and subgroup properties correctly
+    const matchedPost = communityPosts.find(p => p.id === postId);
+    const isCommunityMsg = matchedPost ? !!matchedPost.isCommunityMsg : false;
+    const targetSubgroup = matchedPost?.subgroupType || 'city';
+    const targetCommunityId = matchedPost?.communityId || (id as string);
 
+    // Also check in communityPosts
     setCommunityPosts(prev => {
       const updated = prev.map(post => {
         if (post.id === postId) {
-          isCommunityMsg = true;
-          if (post.isStateAnnouncement) {
-            targetSubgroup = 'state';
-          } else if (post.isNationalAnnouncement) {
-            targetSubgroup = 'national';
-          } else {
-            targetSubgroup = community?.type === 'state'
-              ? 'state'
-              : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
-          }
           const isLiked = post.liked;
           return {
             ...post,
@@ -1594,13 +1586,7 @@ export default function CommunityDetailScreen() {
         try {
           const { togglePostLike, toggleCommunityMessageLike } = require('../../src/services/api');
           if (isCommunityMsg) {
-            let commId = targetCommunityId;
-            if (targetSubgroup === 'state' && stateCommunityIdRef.current) {
-              commId = stateCommunityIdRef.current;
-            } else if (targetSubgroup === 'national' && countryCommunityIdRef.current) {
-              commId = countryCommunityIdRef.current;
-            }
-            await toggleCommunityMessageLike(commId, targetSubgroup, postId);
+            await toggleCommunityMessageLike(targetCommunityId, targetSubgroup, postId);
           } else {
             await togglePostLike(postId);
           }
@@ -2267,6 +2253,7 @@ export default function CommunityDetailScreen() {
                   )}
                 </View>
               </View>
+
 
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
