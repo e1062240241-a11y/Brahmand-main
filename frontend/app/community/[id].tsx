@@ -558,12 +558,6 @@ export default function CommunityDetailScreen() {
     }, [id])
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchCommunity();
-    }, [id])
-  );
-
   useEffect(() => {
     if (!loading && postId && communityPosts.length > 0) {
       const index = communityPosts.findIndex(p => p.id === postId);
