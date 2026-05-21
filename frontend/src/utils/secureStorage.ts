@@ -1,5 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
+let SecureStore: any = null;
+try {
+  if (Platform.OS !== 'web') {
+    SecureStore = require('expo-secure-store');
+  }
+} catch (e) {
+  console.warn('[SecureStorage] expo-secure-store native module not found. Will use fallback key.');
+}
 import CryptoJS from 'crypto-js';
 import { Platform } from 'react-native';
 
@@ -16,6 +23,9 @@ const getEncryptionKey = async (): Promise<string> => {
   if (cachedKey) return cachedKey;
 
   try {
+    if (!SecureStore || typeof SecureStore.getItemAsync !== 'function') {
+      throw new Error('SecureStore is not available (native module missing or web).');
+    }
     let key = await SecureStore.getItemAsync(ENCRYPTION_KEY_NAME);
     if (!key) {
       key = generateKey();
