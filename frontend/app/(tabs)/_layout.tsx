@@ -1,33 +1,13 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '../../src/constants/theme';
-import { LinearGradient } from 'expo-linear-gradient';
-
-const TabIcon = ({ IconComponent, name, color, focused, isCenter }: { IconComponent: any; name: any; color: string; focused?: boolean; isCenter?: boolean }) => {
-  if (isCenter) {
-    return (
-      <View style={styles.centerButtonWrapper}>
-        <LinearGradient
-          colors={['#FF8D57', '#FF6600']}
-          style={styles.centerButton}
-        >
-          <View style={styles.centerIconShadow}>
-            <Text style={styles.omSymbol}>ॐ</Text>
-          </View>
-        </LinearGradient>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.iconContainer}>
-      <IconComponent name={name} size={22} color={color} />
-    </View>
-  );
-};
+const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
+  <View style={styles.iconContainer}>
+    <IconComponent name={name} size={22} color={color} />
+  </View>
+);
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -65,7 +45,7 @@ export default function TabLayout() {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={Ionicons} name={focused ? "home" : "home-outline"} color={color} focused={focused} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "home" : "home-outline"} color={color} />
           ),
         }}
       />
@@ -76,24 +56,25 @@ export default function TabLayout() {
         options={{
           tabBarLabel: 'Community',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={Ionicons} name={focused ? "people" : "people-outline"} color={color} focused={focused} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "people" : "people-outline"} color={color} />
           ),
         }}
       />
 
-      {/* 3. Jaap (Center Highlighted) */}
+      {/* 3. Temple (jaap screen) */}
       <Tabs.Screen
         name="jaap"
         options={{
-          tabBarLabel: 'Jaap',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={FontAwesome5} name="pray" color={color} focused={focused} isCenter={true} />
+          tabBarLabel: 'Temple',
+          tabBarIcon: ({ color }) => (
+            <View style={styles.iconContainer}>
+              <Image
+                source={require('../../assets/images/jaap_tab_icon.png')}
+                style={[styles.jaapTabIcon, { tintColor: color }]}
+                resizeMode="contain"
+              />
+            </View>
           ),
-          tabBarLabelStyle: {
-            color: '#FF6600',
-            fontWeight: '700',
-            fontSize: 11,
-          }
         }}
       />
       
@@ -103,7 +84,7 @@ export default function TabLayout() {
         options={{
           tabBarLabel: 'Service',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={MaterialCommunityIcons} name={focused ? "hand-heart" : "hand-heart-outline"} color={color} focused={focused} />
+            <TabIcon IconComponent={MaterialCommunityIcons} name={focused ? "hand-heart" : "hand-heart-outline"} color={color} />
           ),
         }}
       />
@@ -114,7 +95,7 @@ export default function TabLayout() {
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={Ionicons} name={focused ? "person" : "person-outline"} color={color} focused={focused} />
+            <TabIcon IconComponent={Ionicons} name={focused ? "person" : "person-outline"} color={color} />
           ),
         }}
       />
@@ -136,33 +117,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  centerButtonWrapper: {
-    position: 'absolute',
-    top: -30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 60,
-    height: 60,
-  },
-  centerButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#FF6600',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  centerIconShadow: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  omSymbol: {
-    fontSize: 28,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  jaapTabIcon: {
+    width: 28,
+    height: 28,
   },
 });
