@@ -693,21 +693,6 @@ export default function HomeScreen() {
   }, [loadFeedPosts, activeTab]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
-      // If we are already on home tab, scroll to top
-      if (navigation.isFocused()) {
-        const isAtTop = currentScrollY.current <= 10;
-        if (isAtTop) {
-          onRefresh();
-        } else {
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }
-      }
-    });
-    return unsubscribe;
-  }, [navigation, onRefresh]);
-
-  useEffect(() => {
     if (!isFocused) return;
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
@@ -819,10 +804,37 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadFeedPosts(0, false),
+        loadHomeRequests(),
+      ]);
+    } catch (err) {
+      console.warn('Refresh failed:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }, [loadFeedPosts, loadHomeRequests]);
+
   useEffect(() => {
     loadHomeRequests();
   }, [loadHomeRequests]);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress' as any, () => {
+      if (navigation.isFocused()) {
+        const isAtTop = currentScrollY.current <= 10;
+        if (isAtTop) {
+          onRefresh();
+        } else {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      }
+    });
+    return unsubscribe;
+  }, [navigation, onRefresh]);
 
   const normalizeRequestText = (request: any) =>
     `${request?.title || ''} ${request?.description || ''} ${request?.support_needed || ''}`.toLowerCase();
