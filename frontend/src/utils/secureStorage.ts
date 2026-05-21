@@ -1,7 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import CryptoJS from 'crypto-js';
 import { Platform } from 'react-native';
+
+let SecureStore: any = null;
+try {
+  if (Platform.OS !== 'web') {
+    SecureStore = require('expo-secure-store');
+  }
+} catch (e) {
+  console.warn('[SecureStorage] expo-secure-store native module not found. Will use fallback key.');
+}
 
 const ENCRYPTION_KEY_NAME = 'brahmand_secure_storage_key';
 let cachedKey: string | null = null;
@@ -16,6 +24,9 @@ const getEncryptionKey = async (): Promise<string> => {
   if (cachedKey) return cachedKey;
 
   try {
+    if (!SecureStore || typeof SecureStore.getItemAsync !== 'function') {
+      throw new Error('SecureStore is not available (native module missing or web).');
+    }
     let key = await SecureStore.getItemAsync(ENCRYPTION_KEY_NAME);
     if (!key) {
       key = generateKey();
@@ -52,26 +63,27 @@ export const secureStorage = {
    * Retrieves and decrypts a string value from AsyncStorage.
    */
   getItem: async (key: string): Promise<string | null> => {
-    const encryptedValue = await AsyncStorage.getItem(key);
-    if (!encryptedValue) return null;
-
-    const encryptionKey = await getEncryptionKey();
     try {
-      const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, encryptionKey);
-      const decryptedValue = decryptedBytes.toString(CryptoJS.enc.Utf8);
-      
-      // If decryption results in empty string but input wasn't empty, it's likely a failure
-      if (!decryptedValue && encryptedValue) {
+      const encryptedValue = await AsyncStorage.getItem(key);
+      if (!encryptedValue) return null;
+
+      try {
+        const encryptionKey = await getEncryptionKey();
+        const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, encryptionKey);
+        const decryptedValue = decryptedBytes.toString(CryptoJS.enc.Utf8);
+        
+        // If decryption succeeds but yields empty, fallback to the original value
+        if (!decryptedValue) {
+          return encryptedValue;
+        }
+        return decryptedValue;
+      } catch (decryptError) {
+        // Fallback: return raw unencrypted value if decryption/decoding fails
         return encryptedValue;
       }
-      
-      return decryptedValue || null;
     } catch (error) {
-      console.warn(
-        `[SecureStorage] Decrypt failed for key "${key}"; returning raw stored value.`,
-        error
-      );
-      return encryptedValue;
+      console.error(`[SecureStorage] Failed to get item for key "${key}":`, error);
+      return null;
     }
   },
 

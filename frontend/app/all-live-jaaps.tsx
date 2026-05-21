@@ -222,9 +222,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '900',
     color: '#2D1400',
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontFamily: 'Outfit_800ExtraBold',
   },
   livePill: {
     flexDirection: 'row',
@@ -245,7 +244,7 @@ const styles = StyleSheet.create({
   liveText: {
     color: '#FFF',
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: 'Inter_700Bold',
   },
   bannerRow: {
     flexDirection: 'row',
@@ -264,11 +263,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: '#8B4513',
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   bannerBold: {
     color: '#FF6600',
-    fontWeight: '900',
+    fontFamily: 'Inter_800ExtraBold',
   },
   grid: {
     flexDirection: 'row',
@@ -318,7 +317,7 @@ const styles = StyleSheet.create({
   liveBadgeText: {
     color: '#FFF',
     fontSize: 9,
-    fontWeight: '900',
+    fontFamily: 'Inter_800ExtraBold',
   },
   countBadge: {
     backgroundColor: 'rgba(0,0,0,0.55)',
@@ -331,7 +330,7 @@ const styles = StyleSheet.create({
   countBadgeText: {
     color: '#FFF',
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   cardBottom: {
     width: '100%',
@@ -339,8 +338,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: '#FFF',
     fontSize: 20,
-    fontWeight: '900',
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontFamily: 'Outfit_800ExtraBold',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
@@ -349,7 +347,7 @@ const styles = StyleSheet.create({
   cardSlok: {
     color: 'rgba(255,255,255,0.85)',
     fontSize: 10,
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     fontStyle: 'italic',
     backgroundColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 8,
@@ -390,7 +388,7 @@ const styles = StyleSheet.create({
   joinBtnText: {
     color: '#FFF',
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 0.3,
   },
   joinWaveBox: {

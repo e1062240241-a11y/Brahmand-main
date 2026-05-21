@@ -161,25 +161,6 @@ function SacredDaysIcon() {
   );
 }
 
-function HoroscopeIcon() {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-      {/* Purple circular base */}
-      <Circle cx="12" cy="12" r="11" fill="#7C4DFF" />
-      {/* Light border */}
-      <Circle cx="12" cy="12" r="11" stroke="#F0E6FF" strokeWidth="1.5" />
-      {/* Star outline */}
-      <Path
-        d="M12 6L13.8 9.7L17.8 10.3L14.9 13.1L15.6 17.1L12 15.2L8.4 17.1L9.1 13.1L6.2 10.3L10.2 9.7L12 6Z"
-        stroke="#FFFFFF"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </Svg>
-  );
-}
-
 function LibraryBookIcon() {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -230,121 +211,37 @@ function BloodDropIcon() {
 
 function LotusIcon() {
   return (
-    <Svg width={46} height={40} viewBox="0 0 24 24" fill="none">
-      {/* Flawless Kamal / Indian Lotus - symmetric geometric vector artwork */}
-      <Path
-        d="M12 3C12.8 6 15 7.5 18 7.5C16.5 10 14.5 11 12 14C9.5 11 7.5 10 6 7.5C9 7.5 11.2 6 12 3Z"
-        stroke="#00C781"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="#E6FFF0"
-      />
-      <Path
-        d="M12 8.5C13.8 9.3 15.6 8.9 17.4 8.1C16.1 10.8 14.3 11.7 12 13C9.7 11.7 7.9 10.8 6.6 8.1C8.4 8.9 10.2 9.3 12 8.5Z"
-        stroke="#00C781"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="#CCFFE6"
-      />
-      <Path
-        d="M12 12.5C14 13.5 16 13.2 18 12.1C16.5 15.1 14 15.9 12 17.1C10 15.9 7.5 15.1 6 12.1C8 13.2 10 13.5 12 12.5Z"
-        stroke="#00C781"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="#99FFCC"
-      />
-      <Path
-        d="M3 18C6 21 18 21 21 18"
-        stroke="#00C781"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </Svg>
+    <Image
+      source={require('../../assets/images/sai_flower_lotus_icon.png')}
+      style={styles.saiLotusIcon}
+      resizeMode="contain"
+      accessibilityLabel="Lotus flower"
+    />
   );
 }
 
 function TempleIcon() {
   return (
-    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
-      {/* Premium Hindu Temple dome, stairs, flag outline */}
-      <Path
-        d="M12 2V6M12 2H16L14.5 4L16 6H12"
-        stroke="#8C36DB"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M12 6C8 9.5 7.5 14.5 12 14.5C16.5 14.5 16 9.5 12 6Z"
-        stroke="#8C36DB"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="#8C36DB"
-        fillOpacity={0.15}
-      />
-      <Path
-        d="M4 22H20M5 18H19M6 14H18"
-        stroke="#8C36DB"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <Path
-        d="M6 14V22M18 14V22"
-        stroke="#8C36DB"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <Path
-        d="M10 22V18C10 16.9 10.9 16 12 16C13.1 16 14 16.9 14 18V22"
-        stroke="#8C36DB"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
+    <Image
+      source={require('../../assets/images/home_temple_icon.png')}
+      style={styles.actionCardIcon}
+      resizeMode="contain"
+      accessibilityLabel="Temple"
+    />
   );
 }
 
 function ShopIcon() {
   return (
-    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
-      {/* Storefront/Shop building outline */}
-      <Path
-        d="M3 9L4.5 13H19.5L21 9M3 9H21M3 9L5.5 5H18.5L21 9"
-        stroke="#FF9500"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="#FF9500"
-        fillOpacity={0.08}
-      />
-      <Path
-        d="M4.5 13C5.5 13 6.25 13.5 7 13C7.75 13.5 8.5 13 9.5 13C10.5 13 11.25 13.5 12 13C12.75 13.5 13.5 13 14.5 13C15.5 13 16.25 13.5 17 13C17.75 13.5 18.5 13 19.5 13"
-        stroke="#FF9500"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <Path
-        d="M5.5 13V20C5.5 20.6 6 21 6.5 21H17.5C18 21 18.5 20.6 18.5 20V13"
-        stroke="#FF9500"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M9 21V17H15V21"
-        stroke="#FF9500"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
+    <Image
+      source={require('../../assets/images/home_shop_icon.png')}
+      style={styles.actionCardIcon}
+      resizeMode="contain"
+      accessibilityLabel="Shop"
+    />
   );
 }
+
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
@@ -382,6 +279,50 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
 
+const HOME_CARD_TEXTURES = {
+  rose: require('../../assets/images/home_card_bg_rose.png'),
+  peach: require('../../assets/images/home_card_bg_peach.png'),
+  mint: require('../../assets/images/home_card_bg_mint.png'),
+  lavender: require('../../assets/images/home_card_bg_lavender.png'),
+} as const;
+
+type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
+
+const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, string]> = {
+  rose: ['rgba(255, 245, 245, 0.72)', 'rgba(255, 220, 220, 0.45)'],
+  peach: ['rgba(255, 250, 242, 0.74)', 'rgba(255, 232, 205, 0.48)'],
+  mint: ['rgba(242, 255, 248, 0.74)', 'rgba(210, 245, 225, 0.48)'],
+  lavender: ['rgba(248, 242, 255, 0.74)', 'rgba(225, 210, 245, 0.48)'],
+};
+
+function HomeCardTextureBg({
+  texture,
+  borderRadius = 15,
+  children,
+}: {
+  texture: HomeCardTextureKey;
+  borderRadius?: number;
+  children: React.ReactNode;
+}) {
+  const overlay = CARD_TEXTURE_OVERLAY[texture];
+  return (
+    <ImageBackground
+      source={HOME_CARD_TEXTURES[texture]}
+      style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+      imageStyle={{ borderRadius, resizeMode: 'cover' }}
+      resizeMode="cover"
+    >
+      <LinearGradient
+        colors={[...overlay]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+      />
+      <View style={styles.cardTextureContent}>{children}</View>
+    </ImageBackground>
+  );
+}
+
 const shivaImage = require('../../assets/images/image temple/SomnathTemple.jpg');
 const FEED_PAGE_SIZE = 7;
 
@@ -401,7 +342,6 @@ const quickAccess = [
   { label: 'Brahmand Passport', subtitle: 'Your Temple Journey Record', color: '#FFF' },
   { label: 'Sacred Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
   { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
-  { label: 'Horoscope', subtitle: 'Daily Predictions', color: '#FFF' },
 ];
 
 export default function HomeScreen() {
@@ -458,7 +398,21 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Horizontal auto-scroll interval removed as per request
+  // Auto-scroll for quick access feature cards
+  const topFeaturesAutoScrollIndex = useRef(0);
+  useEffect(() => {
+    if (!isFocused) return;
+    const CARD_WIDTH = 185; // 175 card + 10 gap
+    const TOTAL_CARDS = quickAccess.length;
+    const interval = setInterval(() => {
+      topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
+      topFeaturesScrollRef.current?.scrollTo({
+        x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
+        animated: true,
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isFocused]);
 
   useEffect(() => {
     if (user?.id) {
@@ -556,42 +510,6 @@ export default function HomeScreen() {
     }
   }, [activeTab, setTabFeed, isRefreshing]);
 
-  const loadHomeRequests = useCallback(async () => {
-    setRequestsLoading(true);
-    try {
-      const [requestsRes, communitiesRes] = await Promise.all([
-        getCommunityRequests({ status: 'active', limit: 30 }),
-        getCommunities(),
-      ]);
-      const requestsData = Array.isArray(requestsRes.data)
-        ? requestsRes.data
-        : (requestsRes.data?.items || requestsRes.data || []);
-      const communitiesData = Array.isArray(communitiesRes.data)
-        ? communitiesRes.data
-        : (communitiesRes.data?.items || communitiesRes.data || []);
-      setCommunityRequests(requestsData);
-      setCommunities(communitiesData);
-    } catch (error) {
-      console.warn('Failed to load active home requests:', error);
-      setCommunityRequests([]);
-    } finally {
-      setRequestsLoading(false);
-    }
-  }, []);
-
-  const onRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        loadFeedPosts(0, false),
-        loadHomeRequests(),
-      ]);
-    } catch (err) {
-      console.warn('Refresh failed:', err);
-    } finally {
-      setTimeout(() => setIsRefreshing(false), 500);
-    }
-  }, [loadFeedPosts, loadHomeRequests]);
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -819,21 +737,6 @@ export default function HomeScreen() {
   }, [loadFeedPosts, activeTab]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
-      // If we are already on home tab, scroll to top
-      if (navigation.isFocused()) {
-        const isAtTop = currentScrollY.current <= 10;
-        if (isAtTop) {
-          onRefresh();
-        } else {
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }
-      }
-    });
-    return unsubscribe;
-  }, [navigation, onRefresh]);
-
-  useEffect(() => {
     if (!isFocused) return;
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
@@ -922,10 +825,60 @@ export default function HomeScreen() {
     }
   }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
 
+  const loadHomeRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    try {
+      const [requestsRes, communitiesRes] = await Promise.all([
+        getCommunityRequests({ status: 'active', limit: 30 }),
+        getCommunities(),
+      ]);
+      const requestsData = Array.isArray(requestsRes.data)
+        ? requestsRes.data
+        : (requestsRes.data?.items || requestsRes.data || []);
+      const communitiesData = Array.isArray(communitiesRes.data)
+        ? communitiesRes.data
+        : (communitiesRes.data?.items || communitiesRes.data || []);
+      setCommunityRequests(requestsData);
+      setCommunities(communitiesData);
+    } catch (error) {
+      console.warn('Failed to load active home requests:', error);
+      setCommunityRequests([]);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadFeedPosts(0, false),
+        loadHomeRequests(),
+      ]);
+    } catch (err) {
+      console.warn('Refresh failed:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }, [loadFeedPosts, loadHomeRequests]);
+
   useEffect(() => {
     loadHomeRequests();
   }, [loadHomeRequests]);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress' as any, () => {
+      if (navigation.isFocused()) {
+        const isAtTop = currentScrollY.current <= 10;
+        if (isAtTop) {
+          onRefresh();
+        } else {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      }
+    });
+    return unsubscribe;
+  }, [navigation, onRefresh]);
 
   const normalizeRequestText = (request: any) =>
     `${request?.title || ''} ${request?.description || ''} ${request?.support_needed || ''}`.toLowerCase();
@@ -1367,7 +1320,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.22, 0.42]} style={styles.screen}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -1581,23 +1534,22 @@ export default function HomeScreen() {
                       return (
                         <TouchableOpacity
                           key={idx}
-                          style={[styles.featureCard, { backgroundColor: '#FFF' }]}
+                          style={[styles.featureCard, { backgroundColor: cardBg }]}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
-                            else if (item.label === 'Kundli' || item.label === 'Cosmic Guidance') router.push('/kundli');
+                            else if (item.label === 'Kundli' || item.label === 'Cosmic Guidance') router.push('/kundli' as any);
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
                             else if (item.label === 'Sacred Days') router.push('/panchang');
                             else if (item.label === 'Brahmand Library') router.push('/library');
-                            else if (item.label === 'Horoscope') router.push('/horoscope');
                           }}
                         >
                           {item.label === 'SOS' ? (
                             <View style={styles.featureIconWrap}>
                               <View style={[styles.sosRing, { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
-                                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900' }}>SOS</Text>
+                                <Text style={{ color: '#FFF', fontSize: 11, fontFamily: 'Inter_700Bold' }}>SOS</Text>
                               </View>
                             </View>
                           ) : item.label === 'My Krishna' ? (
@@ -1638,21 +1590,15 @@ export default function HomeScreen() {
                                 <LibraryBookIcon />
                               </View>
                             </View>
-                          ) : item.label === 'Horoscope' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={{ transform: [{ scale: 1.8 }] }}>
-                                <HoroscopeIcon />
-                              </View>
-                            </View>
                           ) : (
                             <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
                               <Ionicons name="calendar" size={24} color="#FFF" />
                             </View>
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={{ textAlign: 'left', fontWeight: '800', fontSize: 13, color: '#000', lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>{item.label}</Text>
+                            <Text style={styles.featureTitle} numberOfLines={2}>{item.label}</Text>
                             {item.subtitle ? (
-                              <Text style={{ textAlign: 'left', fontWeight: '500', fontSize: 10, color: '#000', marginTop: 2, lineHeight: 12 }} numberOfLines={2} adjustsFontSizeToFit>{item.subtitle}</Text>
+                              <Text style={styles.featureSubtitle} numberOfLines={2}>{item.subtitle}</Text>
                             ) : null}
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
@@ -1709,7 +1655,9 @@ export default function HomeScreen() {
                   </LinearGradient>
                 </ImageBackground>
               </TouchableOpacity>
+            </View>
 
+            <View style={styles.postBannerSection}>
               <ScrollView
                 ref={actionCardsScrollRef}
                 horizontal
@@ -1723,18 +1671,13 @@ export default function HomeScreen() {
                 {/* Urgent Blood Request */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={['#FFE0E0', '#FFBABA', '#FFA8A8']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={{ ...StyleSheet.absoluteFillObject }}
-                    />
+                    <HomeCardTextureBg texture="rose">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
-                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13 }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest?.hospital_name || 'XYZ Hospital'}{'\n'}{bloodRequest?.location || 'Chennai.'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest?.hospital_name || 'XYZ Hospital'}{'\n'}{bloodRequest?.location || 'Chennai.'}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1756,13 +1699,14 @@ export default function HomeScreen() {
                         router.push('/community-request/list');
                       }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>View</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
+                    </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF0000', fontSize: 10, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Your Community</Text>
+                      <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>Your Community</Text>
                     </View>
                   </View>
                 </View>
@@ -1770,18 +1714,13 @@ export default function HomeScreen() {
                 {/* Register Business */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={['#FFF3E0', '#FFE0B2', '#FFCC80']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={{ ...StyleSheet.absoluteFillObject }}
-                    />
+                    <HomeCardTextureBg texture="peach">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <ShopIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>Become a Verified</Text>
-                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13 }} numberOfLines={2} adjustsFontSizeToFit>Sanatan Vendor</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Become a Verified</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>Sanatan Vendor</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1801,13 +1740,14 @@ export default function HomeScreen() {
                       }}
                       onPress={() => router.push('/vendor/business-details')}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Register</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Register</Text>
                     </TouchableOpacity>
+                    </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 55, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF9500', fontSize: 10.5, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Free</Text>
+                      <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>Free</Text>
                     </View>
                   </View>
                 </View>
@@ -1815,18 +1755,13 @@ export default function HomeScreen() {
                 {/* Verified Vendor */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={['#E8F5E9', '#C8E6C9', '#A5D6A7']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={{ ...StyleSheet.absoluteFillObject }}
-                    />
+                    <HomeCardTextureBg texture="mint">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <LotusIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>Sai Flower Decorator</Text>
-                      <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13 }} numberOfLines={2} adjustsFontSizeToFit>Flower Decor{'\n'}Andheri West</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Sai Flower Decorator</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>Flower Decor{'\n'}Andheri West</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1845,13 +1780,14 @@ export default function HomeScreen() {
                         marginBottom: 6,
                       }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>View</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
                     </TouchableOpacity>
+                    </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontSize: 10.5, fontWeight: '800' }]} numberOfLines={1}>Verified vendor</Text>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Verified vendor</Text>
                     </View>
                   </View>
                 </View>
@@ -1859,21 +1795,16 @@ export default function HomeScreen() {
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={['#F3E5F5', '#E1BEE7', '#CE93D8']}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={{ ...StyleSheet.absoluteFillObject }}
-                    />
+                    <HomeCardTextureBg texture="lavender">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', fontSize: 13, color: '#000', width: 85, lineHeight: 16 }} numberOfLines={2} adjustsFontSizeToFit>Live Kedarnath Aarti</Text>
-                      <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 2, width: 95 }}>
-                        <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', lineHeight: 12 }}>Notify</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Live Kedarnath Aarti</Text>
+                      <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
+                        <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>Notify</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ textAlign: 'center', fontWeight: '500', fontSize: 10, color: '#000', lineHeight: 12 }}>me</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>me</Text>
                           <TouchableOpacity
                             onPress={() => Alert.alert('Notification Set', "We'll notify you when Kedarnath Aarti starts.")}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -1908,13 +1839,14 @@ export default function HomeScreen() {
                         }
                       })}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>Watch</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Watch</Text>
                     </TouchableOpacity>
+                    </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontSize: 10.5, fontWeight: '800' }]} numberOfLines={1}>Temple</Text>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Temple</Text>
                     </View>
                   </View>
                 </View>
@@ -1940,49 +1872,13 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <Image source={require('../../assets/images/mumbai_pin.png')} style={{ width: 44, height: 44, borderRadius: 12, marginRight: 8 }} />
-                      <View style={styles.miniCardContent}>
-                        <Text
-                          style={[
-                            styles.miniCardType,
-                            {
-                              color: '#9F45FF',
-                              fontSize: 10,
-                              fontWeight: '600' as any,
-                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-                              letterSpacing: 0,
-                            }
-                          ]}
-                        >
-                          CITY COMMUNITY
-                        </Text>
-                        <Text
-                          style={[
-                            styles.miniCardTitle,
-                            {
-                              color: '#000',
-                              fontSize: 14,
-                              fontWeight: '600' as any,
-                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-                            }
-                          ]}
-                          numberOfLines={1}
-                        >
+                      <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
+                      <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>CITY COMMUNITY</Text>
+                        <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                           {mumbaiComm?.name || 'Mumbai Community'}
                         </Text>
-                        <Text
-                          style={[
-                            styles.miniCardMembers,
-                            {
-                              color: '#000',
-                              fontSize: 10,
-                              fontWeight: '400',
-                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-                            }
-                          ]}
-                        >
-                          13 members
-                        </Text>
+                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 members</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                     </TouchableOpacity>
@@ -2007,38 +1903,15 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <View style={styles.miniCardImageBox}>
-                        <Image source={require('../../assets/images/food_sharing.png')} style={styles.miniCardCircleImg} />
+                      <View style={styles.communityCardIconBox}>
+                        <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
                       </View>
-                      <View style={styles.miniCardContent}>
-                        <Text
-                          style={[
-                            styles.miniCardTitle,
-                            {
-                              color: '#000',
-                              fontSize: 14,
-                              fontWeight: '600' as any,
-                              fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-                            }
-                          ]}
-                          numberOfLines={1}
-                        >
+                      <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+                        <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                           Pune Food Sharing Group
                         </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text
-                            style={[
-                              styles.miniCardMembers,
-                              {
-                                color: '#000',
-                                fontSize: 10,
-                                fontWeight: '400',
-                                fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-                              }
-                            ]}
-                          >
-                            236 members
-                          </Text>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>236 members</Text>
                           <View style={styles.sevaBadgeMini}>
                             <Text style={styles.sevaBadgeTextMini}>Seva</Text>
                           </View>
@@ -2049,7 +1922,6 @@ export default function HomeScreen() {
                   );
                 })()}
               </View>
-            </View>
 
             <View
               style={styles.stickyFeedTabsShell}
@@ -2141,6 +2013,7 @@ export default function HomeScreen() {
                   <Text style={styles.emptyFeedText}>No posts yet</Text>
                 </View>
               )}
+            </View>
             </View>
           </ScrollView>
 
@@ -2422,6 +2295,16 @@ const styles = StyleSheet.create({
   upperContentWrapper: {
     paddingHorizontal: PAGE_PADDING,
   },
+  postBannerSection: {
+    width: '100%',
+    backgroundColor: '#F8EDE7',
+    paddingHorizontal: PAGE_PADDING,
+  },
+  cardTextureContent: {
+    flex: 1,
+    zIndex: 1,
+    justifyContent: 'space-between',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2544,18 +2427,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   featureTitle: {
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    fontSize: 12.5,
-    fontWeight: '800',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
     color: '#000',
+    lineHeight: 16,
   },
   featureSubtitle: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 8,
-    fontWeight: '600',
-    color: '#666',
-    marginTop: 1,
-    lineHeight: 10,
+    fontSize: 10,
+    color: '#000',
+    marginTop: 2,
+    lineHeight: 13,
   },
   featuredLiveCard: {
     width: Math.min(375, SCREEN_WIDTH - 2 * PAGE_PADDING),
@@ -2719,7 +2601,8 @@ const styles = StyleSheet.create({
   cardBadgeTextDark: {
     color: '#333',
     fontSize: 10,
-    fontWeight: '900',
+    fontFamily: 'Inter_600SemiBold',
+    textAlign: 'center',
   },
   cardMainContent: {
     flex: 1,
@@ -2731,6 +2614,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     marginBottom: 5,
+  },
+  actionCardIcon: {
+    width: 40,
+    height: 40,
+    alignSelf: 'center',
+  },
+  saiLotusIcon: {
+    width: 40,
+    height: 40,
+    alignSelf: 'center',
   },
   cardBadgeIcon: {
     marginRight: 4,
@@ -2883,7 +2776,8 @@ const styles = StyleSheet.create({
   },
   communityCardMini: {
     flex: 1,
-    height: 70,
+    minHeight: 75,
+    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
     flexDirection: 'row',
@@ -2915,24 +2809,54 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  communityCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  communityCardIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    marginRight: 8,
+    overflow: 'hidden',
+  },
+  communityCardIconRound: {
+    width: '100%',
+    height: '100%',
+  },
   miniCardContent: {
     flex: 1,
     justifyContent: 'center',
   },
+  communityCardTextBlock: {
+    marginTop: 6,
+  },
   miniCardType: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 7,
-    fontWeight: '900',
     color: '#8C36DB',
     letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  communityCardLabel: {
+    color: '#9F45FF',
+    fontSize: 10,
+    letterSpacing: 0,
     marginBottom: 2,
   },
   miniCardTitle: {
     fontFamily: 'Outfit_700Bold',
     fontSize: 10,
-    fontWeight: '800',
     color: '#111',
     lineHeight: 12,
+  },
+  communityCardTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12.5,
+    color: '#000',
+    lineHeight: 15,
   },
   miniCardMembers: {
     fontFamily: 'Inter_500Medium',
@@ -2940,11 +2864,16 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 1,
   },
+  communityCardMembers: {
+    fontSize: 10,
+    color: '#000',
+    marginTop: 2,
+  },
   miniCardBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: 6,
   },
   sevaBadgeMini: {
     width: 30,
@@ -2957,9 +2886,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sevaBadgeTextMini: {
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 8.5,
-    fontWeight: '590' as any,
     color: '#397339',
   },
   stickyFeedTabsShell: {

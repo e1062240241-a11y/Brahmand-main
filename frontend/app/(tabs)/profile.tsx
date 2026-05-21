@@ -16,12 +16,16 @@ import {
   ScrollView,
   TextInput,
   Animated,
-  Keyboard
+  Keyboard,
+  Pressable,
+  StatusBar
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
 import {
@@ -40,7 +44,8 @@ import {
   updateUserCulturalCommunity,
   uploadUserPost,
   updateProfile,
-  uploadChatMedia
+  uploadChatMedia,
+  setupDualLocation,
 } from '../../src/services/api';
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
@@ -53,7 +58,12 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 
 const { width } = Dimensions.get('window');
-const COLUMN_WIDTH = width / 3;
+const GRID_GAP = 2;
+const COLUMN_WIDTH = (width - GRID_GAP * 4) / 3;
+const AVATAR_SIZE = 100;
+const NAV_BAR_HEIGHT = 48;
+const DEFAULT_COVER =
+  'https://images.unsplash.com/photo-1604537466158-719b1972fb17?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
 
 let FileSystemModule: any = null;
 try {
@@ -82,7 +92,11 @@ export default function ProfileScreen() {
   const userId = user?.id;
   const scrollY = useRef(new Animated.Value(0)).current;
 
-
+  const navTitleOpacity = scrollY.interpolate({
+    inputRange: [100, 180],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
   useEffect(() => {
     if (section === 'personality_verification') {
@@ -166,6 +180,13 @@ export default function ProfileScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showBioModal, setShowBioModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [bioDraft, setBioDraft] = useState('');
+  const [locationDraft, setLocationDraft] = useState('');
+  const [savingProfileField, setSavingProfileField] = useState(false);
+  const [savedCount, setSavedCount] = useState(0);
+  const [gridImageLoading, setGridImageLoading] = useState<Record<string, boolean>>({});
   const [backgroundUpload, setBackgroundUpload] = useState<{
     uploading: boolean;
     progress: number;
@@ -255,32 +276,173 @@ export default function ProfileScreen() {
     }
   }, [logout, router, updateUser, userId]);
 
-  const handleUploadCoverPhoto = async () => {
+  useEffect(() => {
+    const loadSavedCount = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(`saved_posts_${userId}`);
+        const parsed = raw ? JSON.parse(raw) : [];
+        setSavedCount(Array.isArray(parsed) ? parsed.length : 0);
+      } catch {
+        setSavedCount(0);
+      }
+    };
+    if (userId) loadSavedCount();
+  }, [userId]);
+
+  const uploadProfileImage = async (
+    asset: ImagePicker.ImagePickerAsset,
+    field: 'photo' | 'cover_photo'
+  ) => {
+    showToast(field === 'photo' ? 'Uploading profile photo...' : 'Uploading cover photo...');
+    const file = {
+      uri: asset.uri,
+      name: asset.fileName || (field === 'photo' ? 'avatar.jpg' : 'cover.jpg'),
+      type: asset.mimeType || 'image/jpeg',
+    };
+    const uploadRes = await uploadChatMedia(file);
+    const url = uploadRes.data.url || uploadRes.data.mediaUrl;
+    if (!url) throw new Error('Upload failed');
+    await updateProfile({ [field]: url } as any);
+    await fetchProfile(false);
+    showToast(field === 'photo' ? 'Profile photo updated!' : 'Cover photo updated!');
+  };
+
+  const pickProfileImage = async (field: 'photo' | 'cover_photo', source: 'library' | 'camera') => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Permission needed', 'Allow camera access to take a photo.');
+          return;
+        }
+      }
+      const launcher =
+        source === 'camera'
+          ? ImagePicker.launchCameraAsync
+          : ImagePicker.launchImageLibraryAsync;
+      const result = await launcher({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [16, 9],
-        quality: 0.8,
+        aspect: field === 'photo' ? [1, 1] : [16, 9],
+        quality: 0.85,
       });
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        showToast('Uploading cover photo...');
-        const file = {
-          uri: result.assets[0].uri,
-          name: result.assets[0].fileName || 'cover.jpg',
-          type: result.assets[0].mimeType || 'image/jpeg'
-        };
-        const uploadRes = await uploadChatMedia(file);
-        const url = uploadRes.data.url || uploadRes.data.mediaUrl;
-        if (url) {
-          await updateProfile({ cover_photo: url } as any);
-          await fetchProfile(false);
-          showToast('Cover photo updated!');
-        }
+      if (!result.canceled && result.assets?.length) {
+        await uploadProfileImage(result.assets[0], field);
       }
     } catch (error) {
       console.error(error);
-      showToast('Failed to upload cover photo');
+      showToast('Failed to upload image');
+    }
+  };
+
+  const showImageSourcePicker = (field: 'photo' | 'cover_photo') => {
+    const title = field === 'photo' ? 'Profile photo' : 'Cover photo';
+    if (Platform.OS === 'web') {
+      pickProfileImage(field, 'library');
+      return;
+    }
+    Alert.alert(title, 'Choose a source', [
+      { text: 'Gallery', onPress: () => pickProfileImage(field, 'library') },
+      { text: 'Camera', onPress: () => pickProfileImage(field, 'camera') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleRemoveProfilePhoto = async () => {
+    try {
+      await updateProfile({ photo: '' } as any);
+      await fetchProfile(false);
+      showToast('Profile photo removed');
+    } catch {
+      showToast('Could not remove profile photo');
+    }
+  };
+
+  const showAvatarOptions = () => {
+    const hasPhoto = !!(profile?.photo || user?.photo);
+    if (Platform.OS === 'web') {
+      showImageSourcePicker('photo');
+      return;
+    }
+    Alert.alert('Profile photo', undefined, [
+      ...(hasPhoto
+        ? [{ text: 'View photo', onPress: () => setAvatarModalVisible(true) }]
+        : []),
+      { text: 'Choose from gallery', onPress: () => pickProfileImage('photo', 'library') },
+      { text: 'Take photo', onPress: () => pickProfileImage('photo', 'camera') },
+      ...(hasPhoto
+        ? [{ text: 'Remove photo', style: 'destructive' as const, onPress: handleRemoveProfilePhoto }]
+        : []),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  };
+
+  const handleShareProfile = async () => {
+    const username = profile?.sl_id || user?.sl_id || 'profile';
+    const displayName = profile?.name || user?.name || 'User';
+    const message = `Check out ${displayName} (@${username}) on Brahmand!`;
+    try {
+      await Share.share({
+        message,
+        url: `https://brahmand.app/profile/${userId}`,
+        title: `${displayName} on Brahmand`,
+      });
+    } catch (error: any) {
+      const msg = String(error?.message || '').toLowerCase();
+      if (!msg.includes('cancel') && !msg.includes('dismiss')) {
+        showToast('Could not share profile');
+      }
+    }
+  };
+
+  const openBioEditor = () => {
+    setBioDraft(profile?.bio || user?.bio || '');
+    setShowBioModal(true);
+  };
+
+  const openLocationEditor = () => {
+    const loc = profile?.home_location || user?.home_location;
+    setLocationDraft(loc ? `${loc.city || ''}, ${loc.state || ''}`.replace(/^,\s*|,\s*$/g, '') : '');
+    setShowLocationModal(true);
+  };
+
+  const saveBio = async () => {
+    setSavingProfileField(true);
+    try {
+      await updateProfile({ bio: bioDraft.trim() });
+      await fetchProfile(false);
+      setShowBioModal(false);
+      showToast('Bio updated');
+    } catch {
+      showToast('Failed to update bio');
+    } finally {
+      setSavingProfileField(false);
+    }
+  };
+
+  const saveLocation = async () => {
+    const parts = locationDraft.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length < 2) {
+      Alert.alert('Location', 'Enter location as City, State');
+      return;
+    }
+    setSavingProfileField(true);
+    try {
+      await setupDualLocation({
+        home_location: {
+          country: 'India',
+          city: parts[0],
+          state: parts[1],
+          area: parts[0],
+        },
+      });
+      await fetchProfile(false);
+      setShowLocationModal(false);
+      showToast('Location updated');
+    } catch {
+      showToast('Failed to update location');
+    } finally {
+      setSavingProfileField(false);
     }
   };
 
@@ -667,157 +829,225 @@ export default function ProfileScreen() {
 
   const renderPost = ({ item }: { item: any }) => {
     const rawUrl = item.media_url || item.mediaUrl || item.image_url || item.image || '';
-    const isVideo = (rawUrl.match(/\.(mp4|mov|m4v|webm|m3u8|avi|mkv|flv|wmv)(\?|$)/i) || false) ||
+    const isVideo =
+      !!rawUrl.match(/\.(mp4|mov|m4v|webm|m3u8|avi|mkv|flv|wmv)(\?|$)/i) ||
       item.media_type === 'video' ||
       item.is_video ||
-      item.isVideo ||
-      (rawUrl.includes('firebasestorage.googleapis.com') && (
-        rawUrl.toLowerCase().includes('%2fvideo') ||
-        rawUrl.toLowerCase().includes('/video') ||
-        rawUrl.toLowerCase().includes('.mp4') ||
-        rawUrl.toLowerCase().includes('.m3u8') ||
-        rawUrl.toLowerCase().includes('%2fposts%2f')
-      ));
+      item.isVideo;
     const displayUrl = item.thumbnail_url || item.thumbnailUrl || item.image_url || item.image || rawUrl;
-    const views = item.views_count || 0;
+    const postKey = String(item.id || displayUrl);
+    const isGallery = !isVideo && (item.media_count > 1 || item.is_carousel || item.carousel);
+    const isLoading = gridImageLoading[postKey] === true;
 
     return (
-      <TouchableOpacity
-        style={[styles.gridItem, { position: 'relative' }]}
-        activeOpacity={0.9}
+      <Pressable
+        style={({ pressed }) => [styles.gridItem, pressed && styles.gridItemPressed]}
         onPress={() => openPostModal(item)}
       >
         {displayUrl ? (
-          <Image source={{ uri: displayUrl }} style={styles.gridImage} />
+          <>
+            {isLoading ? (
+              <View style={styles.gridImageLoader}>
+                <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
+              </View>
+            ) : null}
+            <Image
+              source={{ uri: displayUrl }}
+              style={styles.gridImage}
+              onLoadStart={() =>
+                setGridImageLoading((prev) => ({ ...prev, [postKey]: true }))
+              }
+              onLoadEnd={() =>
+                setGridImageLoading((prev) => ({ ...prev, [postKey]: false }))
+              }
+              onError={() =>
+                setGridImageLoading((prev) => ({ ...prev, [postKey]: false }))
+              }
+            />
+          </>
         ) : (
           <View style={styles.gridPlaceholder}>
-            <Ionicons name={isVideo ? "videocam" : "image-outline"} size={24} color={COLORS.textLight} />
+            <Ionicons name={isVideo ? 'videocam' : 'image-outline'} size={24} color={COLORS.textLight} />
           </View>
         )}
 
-        {/* View Count Overlay */}
-        <View style={styles.gridOverlay}>
-          <View style={styles.viewCountBadge}>
-            <Ionicons name="play" size={10} color="#FFF" />
-            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views / 1000).toFixed(1)}K` : views}</Text>
-          </View>
+        <View style={styles.mediaTypeBadge}>
+          <Ionicons
+            name={isVideo ? 'videocam' : isGallery ? 'images' : 'image'}
+            size={14}
+            color="#FFF"
+          />
         </View>
-
-        {isVideo && (
-          <View style={styles.videoBadge}>
-            <Ionicons name="videocam" size={14} color="#FFF" />
-          </View>
-        )}
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
-  const ListHeader = () => (
-    <View style={styles.headerContent}>
-      {/* Cover Photo */}
-      <TouchableOpacity activeOpacity={0.9} onPress={handleUploadCoverPhoto}>
+  const formatStat = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+    return String(value);
+  };
+
+  const followersCount =
+    profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0);
+  const followingCount =
+    profile?.following_count ?? (Array.isArray(profile?.following) ? profile.following.length : 0);
+  const locationLabel = (() => {
+    const loc = profile?.home_location || user?.home_location;
+    if (!loc) return null;
+    const city = loc.city || '';
+    const state = loc.state || '';
+    return [city, state].filter(Boolean).join(', ');
+  })();
+
+  const renderStatCell = (
+    icon: string,
+    value: number,
+    label: string,
+    onPress?: () => void
+  ) => {
+    const content = (
+      <>
+        <Ionicons name={icon as any} size={16} color="rgba(255,255,255,0.85)" />
+        <Text style={styles.glassStatValue}>{formatStat(value)}</Text>
+        <Text style={styles.glassStatLabel}>{label}</Text>
+      </>
+    );
+    if (onPress) {
+      return (
+        <TouchableOpacity style={styles.glassStatCell} activeOpacity={0.8} onPress={onPress}>
+          {content}
+        </TouchableOpacity>
+      );
+    }
+    return <View style={styles.glassStatCell}>{content}</View>;
+  };
+
+  const ListHeader = () => {
+    const coverUri = profile?.cover_photo || user?.cover_photo || DEFAULT_COVER;
+    const navSpacerHeight = insets.top + NAV_BAR_HEIGHT;
+
+    return (
+      <View style={styles.headerContent}>
         <ImageBackground
-          source={{ uri: profile?.cover_photo || user?.cover_photo || 'https://images.unsplash.com/photo-1604537466158-719b1972fb17?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' }}
-          style={styles.coverPhoto}
+          source={{ uri: coverUri }}
+          style={styles.heroBackdrop}
+          imageStyle={styles.heroBackdropImage}
         >
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.6)']}
-            style={styles.coverGradient}
+            colors={[
+              'rgba(0,0,0,0.28)',
+              'rgba(0,0,0,0.18)',
+              'rgba(0,0,0,0.42)',
+              'rgba(0,0,0,0.72)',
+            ]}
+            locations={[0, 0.22, 0.62, 1]}
+            style={styles.heroBackdropGradient}
+          />
+
+          <Pressable
+            style={styles.heroBackdropTap}
+            onPress={() => showImageSourcePicker('cover_photo')}
+          />
+
+          <TouchableOpacity
+            style={[styles.coverEditBadge, { top: navSpacerHeight - 40 }]}
+            onPress={() => showImageSourcePicker('cover_photo')}
+          >
+            <Ionicons name="camera" size={14} color="#FFF" />
+          </TouchableOpacity>
+
+          {/* Image continues behind status bar + nav; content starts below nav */}
+          <View style={{ height: navSpacerHeight }} />
+
+          <View style={styles.heroProfileBlock}>
+            <Pressable style={styles.avatarWrap} onPress={showAvatarOptions}>
+              <View style={styles.avatarRing}>
+                <Avatar
+                  name={profile?.name || user?.name || 'User'}
+                  photo={profile?.photo || user?.photo}
+                  size={AVATAR_SIZE}
+                />
+              </View>
+              <View style={styles.onlineDot} />
+            </Pressable>
+
+            <View style={styles.heroNameRow}>
+              <Text style={styles.heroDisplayName}>{profile?.name || user?.name || 'User'}</Text>
+              {(profile?.is_verified ||
+                user?.is_verified ||
+                user?.personality_verification_status === 'approved') && (
+                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+              )}
+            </View>
+
+            <TouchableOpacity activeOpacity={0.85} onPress={openBioEditor}>
+              <Text style={styles.heroBioText}>
+                {profile?.bio || user?.bio || 'Tap to add bio'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.heroLocationRow} activeOpacity={0.85} onPress={openLocationEditor}>
+              <Ionicons name="location-sharp" size={14} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.heroLocationText}>
+                {locationLabel || 'Tap to add location'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.glassStatsCard}>
+              {Platform.OS !== 'web' ? (
+                <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFillObject} />
+              ) : null}
+              <View style={styles.glassStatsOverlay}>
+                {renderStatCell('trending-up', followersCount, 'Followers', () =>
+                  router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })
+                )}
+                <View style={styles.glassStatDivider} />
+                {renderStatCell('people', followingCount, 'Following', () =>
+                  router.push({ pathname: '/follow-connections', params: { tab: 'following' } })
+                )}
+                <View style={styles.glassStatDivider} />
+                {renderStatCell('grid-outline', postsCount, 'Posts')}
+                <View style={styles.glassStatDivider} />
+                {renderStatCell('bookmark', savedCount, 'Saved', () =>
+                  showToast('Saved posts coming soon')
+                )}
+              </View>
+            </View>
+          </View>
+
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.5)', '#000000']}
+            locations={[0, 0.7, 1]}
+            style={styles.heroBottomFade}
+            pointerEvents="none"
           />
         </ImageBackground>
-      </TouchableOpacity>
 
-      <View style={styles.profileInfoSection}>
-        {/* Avatar and Stats Row (Insta Style) */}
-        <View style={styles.mainInfoRow}>
-          <TouchableOpacity
-            onPress={() => (profile?.photo || user?.photo) && setAvatarModalVisible(true)}
-            activeOpacity={0.8}
-            style={styles.avatarContainer}
-          >
-            <Avatar
-              name={profile?.name || user?.name || 'User'}
-              photo={profile?.photo || user?.photo}
-              size={80}
-            />
-            <View style={styles.onlineDot} />
-          </TouchableOpacity>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{postsCount}</Text>
-              <Text style={styles.statLabel}>Posts</Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.statItem} 
-              onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })}
+        <View style={styles.heroActionsBelow}>
+          <View style={styles.actionButtonsRow}>
+            <Pressable
+              style={({ pressed }) => [styles.addPostButton, pressed && styles.actionPressed]}
+              onPress={() => setShowUploadModal(true)}
             >
-              <Text style={styles.statValue}>{profile?.followers_count ?? (Array.isArray(profile?.followers) ? profile.followers.length : 0)}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.statItem} 
-              onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following' } })}
+              <Ionicons name="add" size={20} color="#FFF" />
+              <Text style={styles.addPostButtonText}>Add Post</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.shareProfileButton, pressed && styles.actionPressed]}
+              onPress={handleShareProfile}
             >
-              <Text style={styles.statValue}>{profile?.following_count ?? (Array.isArray(profile?.following) ? profile.following.length : 0)}</Text>
-              <Text style={styles.statLabel}>Following</Text>
-            </TouchableOpacity>
+              <Ionicons name="share-social-outline" size={20} color="#FFF" />
+            </Pressable>
           </View>
-        </View>
-
-        {/* Name and Bio Section */}
-        <View style={styles.bioSection}>
-          <View style={styles.nameRow}>
-            <Text style={styles.displayName}>{profile?.name || user?.name || 'User'}</Text>
-            {(profile?.is_verified || user?.is_verified) && (
-              <Ionicons name="checkmark-circle" size={16} color="#3897f0" style={{ marginLeft: 4 }} />
-            )}
-          </View>
-          
-          {(profile?.bio || user?.bio) ? (
-            <Text style={styles.bioText}>{profile?.bio || user?.bio}</Text>
-          ) : null}
-
-          {(profile?.home_location || user?.home_location) && (
-            <View style={styles.locationContainer}>
-              <Ionicons name="location-outline" size={12} color="#8E8E93" />
-              <Text style={styles.locationText}>
-                {(profile?.home_location || user?.home_location).city}, {(profile?.home_location || user?.home_location).state}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Action Buttons Row */}
-        <View style={styles.actionButtonsRow}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => setShowUploadModal(true)}
-          >
-            <Ionicons name="add" size={18} color="#FFF" style={{ marginRight: 4 }} />
-            <Text style={styles.actionButtonText}>Add Post</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push('/profile/edit')}
-          >
-            <Text style={styles.actionButtonText}>Edit Profile</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.iconActionButton}
-            onPress={() => handleShareExternal(null)}
-          >
-            <Ionicons name="share-social-outline" size={18} color="#FFF" />
-          </TouchableOpacity>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={styles.container}>
       {/* Background Upload Status */}
       {backgroundUpload.uploading && (
@@ -842,22 +1072,22 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-      {/* Custom Header Bar (Instagram Style) */}
-      <View style={[styles.navBar, { paddingTop: insets.top, height: 54 + insets.top }]}>
+      <Animated.View
+        pointerEvents="box-none"
+        style={[styles.stickyNav, { paddingTop: insets.top, height: insets.top + NAV_BAR_HEIGHT }]}
+      >
         <TouchableOpacity style={styles.navLeft} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>
-        
-        <View style={styles.navCenter}>
+        <Animated.View style={[styles.navCenter, { opacity: navTitleOpacity }]}>
           <Text style={styles.navTitle} numberOfLines={1}>
             {profile?.sl_id || user?.sl_id || 'Profile'}
           </Text>
-        </View>
-
+        </Animated.View>
         <TouchableOpacity style={styles.navRight} onPress={() => setShowSettingsModal(true)}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#FFF" />
+          <Ionicons name="menu" size={24} color="#FFF" />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       <Animated.FlatList
         data={posts}
@@ -1237,6 +1467,54 @@ export default function ProfileScreen() {
           loadPosts(true);
         }}
       />
+
+      <Modal visible={showBioModal} transparent animationType="fade">
+        <View style={styles.editFieldOverlay}>
+          <View style={styles.editFieldCard}>
+            <Text style={styles.editFieldTitle}>Edit bio</Text>
+            <TextInput
+              value={bioDraft}
+              onChangeText={setBioDraft}
+              style={styles.editFieldInput}
+              placeholder="Write something about you..."
+              placeholderTextColor="#888"
+              multiline
+              maxLength={500}
+            />
+            <View style={styles.editFieldActions}>
+              <TouchableOpacity onPress={() => setShowBioModal(false)}>
+                <Text style={styles.editFieldCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={saveBio} disabled={savingProfileField}>
+                <Text style={styles.editFieldSave}>{savingProfileField ? 'Saving...' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showLocationModal} transparent animationType="fade">
+        <View style={styles.editFieldOverlay}>
+          <View style={styles.editFieldCard}>
+            <Text style={styles.editFieldTitle}>Edit location</Text>
+            <TextInput
+              value={locationDraft}
+              onChangeText={setLocationDraft}
+              style={styles.editFieldInputSingle}
+              placeholder="Mumbai, Maharashtra"
+              placeholderTextColor="#888"
+            />
+            <View style={styles.editFieldActions}>
+              <TouchableOpacity onPress={() => setShowLocationModal(false)}>
+                <Text style={styles.editFieldCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={saveLocation} disabled={savingProfileField}>
+                <Text style={styles.editFieldSave}>{savingProfileField ? 'Saving...' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       </View>
     </View>
   );
@@ -1288,14 +1566,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000',
   },
-  navBar: {
-    height: 54,
+  stickyNav: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: '#000000',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#1A1A1A',
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
   },
   navLeft: {
     width: 40,
@@ -1305,9 +1585,9 @@ const styles = StyleSheet.create({
   },
   navCenter: {
     flex: 1,
-    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 8,
   },
   navRight: {
     width: 40,
@@ -1321,151 +1601,200 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   headerContent: {
-    paddingBottom: 16,
+    overflow: 'hidden',
   },
-  coverPhoto: {
+  heroBackdrop: {
     width: '100%',
-    height: 120, // Reduced height for more focus on profile
+    overflow: 'hidden',
   },
-  coverGradient: {
+  heroBackdropImage: {
+    resizeMode: 'cover',
+  },
+  heroBackdropGradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  profileInfoSection: {
+  heroBackdropTap: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  heroBottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 72,
+  },
+  heroActionsBelow: {
     paddingHorizontal: 16,
-    marginTop: -30, // Slight overlap with cover photo
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#000000',
   },
-  mainInfoRow: {
-    flexDirection: 'row',
+  coverEditBadge: {
+    position: 'absolute',
+    right: 14,
+    zIndex: 3,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
-  avatarContainer: {
+  heroProfileBlock: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  avatarWrap: {
     position: 'relative',
-    borderWidth: 4,
-    borderColor: '#000000',
-    borderRadius: 50,
+    marginBottom: 10,
+  },
+  avatarRing: {
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: AVATAR_SIZE / 2 + 4,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   onlineDot: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    bottom: 6,
+    right: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#22C55E',
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#000000',
   },
-  statsRow: {
-    flex: 1,
+  heroNameRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginLeft: 20,
-  },
-  statItem: {
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
+  heroDisplayName: {
+    fontSize: 22,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginTop: 2,
+  heroBioText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.92)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 6,
   },
-  bioSection: {
-    marginTop: 12,
+  heroLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 14,
+  },
+  heroLocationText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.88)',
+    fontWeight: '500',
+  },
+  glassStatsCard: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 14,
+  },
+  glassStatsOverlay: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    paddingVertical: 12,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+  },
+  glassStatCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
     paddingHorizontal: 4,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  displayName: {
-    fontSize: 15,
-    fontWeight: '700',
+  glassStatValue: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#FFFFFF',
+    marginTop: 2,
   },
-  bioText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    lineHeight: 18,
-    marginBottom: 4,
+  glassStatLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.72)',
+    fontWeight: '500',
   },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginLeft: 4,
+  glassStatDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    marginVertical: 6,
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    marginTop: 16,
-    gap: 8,
+    width: '100%',
+    gap: 10,
+    marginBottom: 8,
   },
-  actionButton: {
+  addPostButton: {
     flex: 1,
     flexDirection: 'row',
-    height: 34,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
+    height: 44,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
-  actionButtonText: {
+  addPostButtonText: {
     color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 13,
+    fontWeight: '700',
+    fontSize: 15,
   },
-  iconActionButton: {
-    width: 34,
-    height: 34,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
+  shareProfileButton: {
+    width: 48,
+    height: 44,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  actionPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
   },
   gridItem: {
     width: COLUMN_WIDTH,
-    height: COLUMN_WIDTH * 1.2,
-    padding: 1,
+    height: COLUMN_WIDTH,
+    margin: GRID_GAP / 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#141414',
   },
-  gridOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    justifyContent: 'flex-end',
-    padding: 6,
-  },
-  viewCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    gap: 4,
-  },
-  viewCountText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: 'bold',
+  gridItemPressed: {
+    opacity: 0.88,
   },
   gridImage: {
     width: '100%',
     height: '100%',
     backgroundColor: '#1A1A1A',
+  },
+  gridImageLoader: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#141414',
+    zIndex: 1,
   },
   gridPlaceholder: {
     width: '100%',
@@ -1474,10 +1803,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  videoBadge: {
+  mediaTypeBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 6,
+    padding: 4,
+  },
+  editFieldOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  editFieldCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  editFieldTitle: {
+    color: '#FFF',
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  editFieldInput: {
+    minHeight: 100,
+    color: '#FFF',
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    padding: 12,
+    textAlignVertical: 'top',
+  },
+  editFieldInputSingle: {
+    height: 46,
+    color: '#FFF',
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  editFieldActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 20,
+    marginTop: 16,
+  },
+  editFieldCancel: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  editFieldSave: {
+    color: '#FF9E00',
+    fontSize: 15,
+    fontWeight: '700',
   },
   footerLoader: {
     paddingVertical: 20,
