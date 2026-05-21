@@ -115,9 +115,9 @@ const resolvedWebApiUrl =
       ? configuredWebApiUrl
       : configuredApiUrl;
 
-export const API_URL = Platform.OS === 'web'
-  ? (resolvedWebApiUrl || 'http://localhost:8002')
-  : (configuredApiUrl || 'http://localhost:8002');
+export const API_URL = (Platform.OS === 'web'
+  ? (resolvedWebApiUrl || 'http://127.0.0.1:8002')
+  : (configuredApiUrl || 'http://127.0.0.1:8002')).replace('localhost', '127.0.0.1');
 const isTunnelApiUrl = /\.loca\.lt$/i.test((API_URL || '').replace(/^https?:\/\//i, '').split('/')[0] || '');
 
 const defaultHeaders: Record<string, string> = {
@@ -722,7 +722,8 @@ export const getPostsFeed = async (limit: number = 20, offset: number = 0, tab: 
     if (savedSeen) {
       const parsed = JSON.parse(savedSeen);
       if (Array.isArray(parsed)) {
-        localSeenIds = parsed.slice(-300).join(',');
+        // Reduced from 100 to 50 for faster query performance on home feed
+        localSeenIds = parsed.slice(-50).join(',');
       }
     }
     const combinedSeen = [seen_ids, localSeenIds].filter(Boolean).join(',');

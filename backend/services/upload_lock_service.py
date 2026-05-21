@@ -11,3 +11,10 @@ async def get_user_upload_lock(user_id: str) -> asyncio.Lock:
         if user_id not in _user_locks:
             _user_locks[user_id] = asyncio.Lock()
         return _user_locks[user_id]
+
+# Global semaphore to limit total concurrent uploads across all users (e.g., max 10)
+_global_upload_semaphore = asyncio.Semaphore(10)
+
+def get_global_upload_semaphore() -> asyncio.Semaphore:
+    """Returns the global semaphore to limit concurrent uploads and prevent server OOM crashes."""
+    return _global_upload_semaphore

@@ -110,6 +110,9 @@ export const PostFeedCard = memo(({
     post?.thumbnail_url ||
     post?.thumbnailUrl;
 
+  const posterUrl = String(
+    post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || ''
+  );
   const mediaUrl = rawMediaUrl ? String(rawMediaUrl) : '';
 
   const rawMediaType =
@@ -129,7 +132,7 @@ export const PostFeedCard = memo(({
   const feedHeight = SCREEN_WIDTH / displayRatio;
 
   const isFocused = useIsFocused();
-  const shouldPlay = isFocused && isActive && !isPausedByUser;
+  const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen;
   const videoRef = useRef<any>(null);
 
   const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
@@ -139,10 +142,10 @@ export const PostFeedCard = memo(({
       p.muted = isMuted;
       if (Platform.OS !== 'web') {
         p.bufferOptions = {
-          preferredForwardBufferDuration: 20, // Pre-load 20 seconds ahead
+          preferredForwardBufferDuration: 4, 
           waitsToMinimizeStalling: true,
-          minBufferForPlayback: 5, // Wait for 5s of buffer before starting
-          maxBufferBytes: 20 * 1024 * 1024, // Use more memory for smoother reels
+          minBufferForPlayback: 0.5, 
+          maxBufferBytes: 15 * 1024 * 1024,
         };
       }
     }
@@ -276,13 +279,12 @@ export const PostFeedCard = memo(({
       handleDoubleTapLike();
     } else {
       lastTapRef.current = now;
-      if (isVideo) {
-        setTimeout(() => {
-          if (Date.now() - lastTapRef.current >= DOUBLE_TAP_DELAY && lastTapRef.current !== 0) {
-            setIsPausedByUser((prev) => !prev);
-          }
-        }, DOUBLE_TAP_DELAY);
-      }
+      // Single tap: open full screen
+      setTimeout(() => {
+        if (Date.now() - lastTapRef.current >= DOUBLE_TAP_DELAY && lastTapRef.current !== 0) {
+          setIsFullscreen(true);
+        }
+      }, DOUBLE_TAP_DELAY);
     }
   };
   const likesCount = Number(post?.likes_count || 0);
@@ -365,12 +367,15 @@ export const PostFeedCard = memo(({
                   <video
                     ref={videoRef as any}
                     src={mediaUrl}
+                    preload="auto"
                     loop
                     muted={isMuted}
                     autoPlay={isActive && !isPausedByUser}
                     playsInline
                     crossOrigin="anonymous"
+                    onLoadStart={() => setMediaLoading(true)}
                     onLoadedData={() => setMediaLoading(false)}
+                    onCanPlay={() => setMediaLoading(false)}
                     onWaiting={() => {
                       // Only show loader if we haven't started playing or if it stays stuck
                       if (videoRef.current && videoRef.current.currentTime === 0) {
@@ -391,7 +396,7 @@ export const PostFeedCard = memo(({
                       console.warn('[PostFeedCard] Web Video Load Error:', e);
                     }}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    poster={post?.thumbnail_url || post?.metadata?.thumbnail_url || ''}
+                    poster={posterUrl || undefined}
                   />
                   {mediaLoading && (
                     <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }]}>
@@ -400,17 +405,27 @@ export const PostFeedCard = memo(({
                   )}
                 </>
               ) : ExpoVideoModule?.VideoView && player ? (
-                <ExpoVideoModule.VideoView
-                  player={player}
-                  style={styles.videoBackground}
-                  contentFit="cover"
-                  nativeControls={false}
-                  onFirstFrameRender={() => setMediaLoading(false)}
-                  onError={(e: any) => {
-                    setMediaLoading(false);
-                    setMediaError('Video player error');
-                  }}
-                />
+                <>
+                  <ExpoVideoModule.VideoView
+                    player={player}
+                    style={styles.videoBackground}
+                    contentFit="cover"
+                    nativeControls={false}
+                    onFirstFrameRender={() => setMediaLoading(false)}
+                    onError={(e: any) => {
+                      setMediaLoading(false);
+                      setMediaError('Video player error');
+                    }}
+                  />
+                  {mediaLoading && posterUrl ? (
+                    <Image
+                      source={{ uri: posterUrl }}
+                      style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
+                      contentFit="cover"
+                      pointerEvents="none"
+                    />
+                  ) : null}
+                </>
               ) : (
                 <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
                   <Ionicons name="alert-circle-outline" size={32} color="#444" />

@@ -24,6 +24,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityRequest, sendDirectMessage, getUserProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { useChatStore } from '../../src/store/chatStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
@@ -282,14 +283,34 @@ export default function CommunityDetailScreen() {
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
   
-  const [community, setCommunity] = useState<any>(null);
+  const cacheKey = `community_screen_${id}`;
+
+  const [community, setCommunity] = useState<any>(() => {
+    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
+    return cachedData?.community || null;
+  });
   const [activeTab, setActiveTab] = useState('Feed');
-  const [requests, setRequests] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>(() => {
+    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
+    return cachedData?.requests || [];
+  });
+  const [events, setEvents] = useState<any[]>(() => {
+    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
+    return cachedData?.events || [];
+  });
   const [discussionPosts, setDiscussionPosts] = useState<DiscussionPost[]>(MOCK_DISCUSSION);
-  const [communityPosts, setCommunityPosts] = useState<any[]>([]);
-  const [allFestivals, setAllFestivals] = useState<any[]>(MOCK_FESTIVALS);
-  const [loading, setLoading] = useState(true);
+  const [communityPosts, setCommunityPosts] = useState<any[]>(() => {
+    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
+    return cachedData?.communityPosts || [];
+  });
+  const [allFestivals, setAllFestivals] = useState<any[]>(() => {
+    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
+    return cachedData?.allFestivals || MOCK_FESTIVALS;
+  });
+  const [loading, setLoading] = useState(() => {
+    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
+    return !cachedData;
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
@@ -585,11 +606,18 @@ export default function CommunityDetailScreen() {
     }
   }, [loading, postId, communityPosts, combinedData]);
 
-  const fetchCommunity = async () => {
+  const fetchCommunity = async (force = false) => {
     try {
+      const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
+      if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 30000) {
+        console.log('[Community] Using fresh cache, skipping fetchCommunity');
+        setLoading(false);
+        return;
+      }
       setHasMorePosts(true);
       const response = await getCommunity(id as string);
-      setCommunity(response.data);
+      const nextCommunity = response.data;
+      setCommunity(nextCommunity);
       
       const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList } = require('../../src/services/api');
       
@@ -601,16 +629,20 @@ export default function CommunityDetailScreen() {
       ]);
       
       console.log('[Community] Requests fetched:', reqResponse.data?.length);
-      setRequests(reqResponse.data || []);
-      setEvents(eventResponse.data || []);
+      const nextRequests = reqResponse.data || [];
+      const nextEvents = eventResponse.data || [];
+      setRequests(nextRequests);
+      setEvents(nextEvents);
       
+      let nextFestivals = allFestivals;
       if (festResponse.data && festResponse.data.length > 0) {
-        setAllFestivals(festResponse.data.map((f: any) => ({
+        nextFestivals = festResponse.data.map((f: any) => ({
           ...f,
           icon: 'flower-outline',
           color: '#F0F9FF',
           iconColor: '#00A3FF'
-        })));
+        }));
+        setAllFestivals(nextFestivals);
       }
       
       // Map API messages to Twitter format
@@ -634,6 +666,7 @@ export default function CommunityDetailScreen() {
         sender_id: msg.sender_id, // Map sender ID to check for delete ownership
       }));
 
+      let finalPosts: any[] = [];
       setCommunityPosts((prev: any[]) => {
         const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
         const apiById = new Map(formattedMsgs.map((p: any) => [p.id, p]));
@@ -646,7 +679,17 @@ export default function CommunityDetailScreen() {
           }
         }
         const seen = new Set(localPosts.map((p: any) => p.id));
-        return [...localPosts, ...formattedMsgs.filter((p: any) => !seen.has(p.id))];
+        finalPosts = [...localPosts, ...formattedMsgs.filter((p: any) => !seen.has(p.id))];
+        return finalPosts;
+      });
+
+      useChatStore.getState().setCommunityScreenCache(cacheKey, {
+        community: nextCommunity,
+        requests: nextRequests,
+        events: nextEvents,
+        allFestivals: nextFestivals,
+        communityPosts: finalPosts,
+        lastFetched: Date.now()
       });
     } catch (error) {
       console.error('Error fetching community data:', error);
@@ -695,7 +738,7 @@ export default function CommunityDetailScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchCommunity().then(() => setRefreshing(false));
+    fetchCommunity(true).then(() => setRefreshing(false));
   }, []);
 
   const renderHeader = () => (
@@ -755,6 +798,14 @@ export default function CommunityDetailScreen() {
       </ScrollView>
     </LinearGradient>
   );
+  const formatRelativeTime = (ts: string) => {
+    if (!ts) return 'Just now';
+    if (ts.toLowerCase().includes('ago') || ts.toLowerCase().includes('now')) {
+      return ts;
+    }
+    return getTimeAgo(ts);
+  };
+
   const renderDiscussionItem = ({ item }: { item: DiscussionPost }) => {
     const index = combinedData.findIndex(p => p.id === item.id);
     const nextItem = index !== -1 && index < combinedData.length - 1 ? combinedData[index + 1] : null;
@@ -807,6 +858,7 @@ export default function CommunityDetailScreen() {
                 <Text style={styles.postHandle} numberOfLines={1}>
                   {item.user.handle ? ` ${item.user.handle}` : ` @${item.user.name.replace(/\s+/g, '').toLowerCase()}`}
                 </Text>
+                <Text style={styles.postHandle} numberOfLines={1}> · {formatRelativeTime(item.timestamp)}</Text>
                 {item.user.isFeatured && (
                   <View style={styles.featuredBadgeContainer}>
                     <Text style={styles.featuredBadgeText}>Featured</Text>
@@ -824,10 +876,7 @@ export default function CommunityDetailScreen() {
             </View>
 
             <TouchableOpacity 
-              onPress={() => {
-                setActiveComments([]); // Clear old comments
-                setShowCommentModal(item);
-              }}
+              onPress={() => handleOpenCommentModal(item)}
               activeOpacity={0.8}
             >
               <Text selectable={true} style={styles.postContentText}>{displayText}</Text>
@@ -851,10 +900,7 @@ export default function CommunityDetailScreen() {
             <View style={styles.postActionRow}>
               <TouchableOpacity 
                 style={styles.postActionBtn}
-                onPress={() => {
-                  setActiveComments([]); // Clear old comments
-                  setShowCommentModal(item);
-                }}
+                onPress={() => handleOpenCommentModal(item)}
               >
                 <Ionicons name="chatbubble-outline" size={18} color="#536471" />
                 <Text style={styles.postActionCount}>{item.comments > 0 ? item.comments : ''}</Text>
@@ -1175,7 +1221,7 @@ export default function CommunityDetailScreen() {
           try {
             await deleteCommunityRequest(requestId);
             window.alert('Request deleted successfully!');
-            fetchCommunity(); // Reload requests list!
+            fetchCommunity(true); // Reload requests list!
           } catch (error: any) {
             const { parseApiError } = require('../../src/services/api');
             window.alert(parseApiError(error));
@@ -1197,7 +1243,7 @@ export default function CommunityDetailScreen() {
             try {
               await deleteCommunityRequest(requestId);
               Alert.alert('Success', 'Request deleted successfully!');
-              fetchCommunity(); // Reload requests list!
+              fetchCommunity(true); // Reload requests list!
             } catch (error: any) {
               const { parseApiError } = require('../../src/services/api');
               Alert.alert('Error', parseApiError(error));
@@ -1376,17 +1422,21 @@ export default function CommunityDetailScreen() {
     }));
 
     // Also check in communityPosts
-    setCommunityPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        const isLiked = post.liked;
-        return {
-          ...post,
-          liked: !isLiked,
-          likes: isLiked ? Math.max(0, post.likes - 1) : post.likes + 1
-        };
-      }
-      return post;
-    }));
+    setCommunityPosts(prev => {
+      const updated = prev.map(post => {
+        if (post.id === postId) {
+          const isLiked = post.liked;
+          return {
+            ...post,
+            liked: !isLiked,
+            likes: isLiked ? Math.max(0, post.likes - 1) : post.likes + 1
+          };
+        }
+        return post;
+      });
+      useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+      return updated;
+    });
   };
 
   const handleRepost = (postId: string) => {
@@ -1432,7 +1482,11 @@ export default function CommunityDetailScreen() {
       const confirmDelete = window.confirm('Are you sure you want to delete this post from the community?');
       if (confirmDelete) {
         setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
-        setCommunityPosts(prev => prev.filter(post => post.id !== postId));
+        setCommunityPosts(prev => {
+          const updated = prev.filter(post => post.id !== postId);
+          useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+          return updated;
+        });
         
         try {
           const { deletePost } = require('../../src/services/api');
@@ -1456,13 +1510,17 @@ export default function CommunityDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
-            setCommunityPosts(prev => prev.filter(post => post.id !== postId));
+            setCommunityPosts(prev => {
+              const updated = prev.filter(post => post.id !== postId);
+              useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+              return updated;
+            });
             
             try {
               const { deletePost } = require('../../src/services/api');
               await deletePost(postId);
             } catch (error) {
-              console.log('[Community] Post delete API error (safe to ignore for local/mock posts):', error);
+               console.log('[Community] Post delete API error (safe to ignore for local/mock posts):', error);
             }
             
             Alert.alert('Success', 'Post has been deleted successfully!');
@@ -1511,7 +1569,11 @@ export default function CommunityDetailScreen() {
       sender_id: user?.id, // Track ownership of local posts
     }));
 
-    setCommunityPosts(prev => [...newPosts, ...prev]);
+    setCommunityPosts(prev => {
+      const updated = [...newPosts, ...prev];
+      useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+      return updated;
+    });
 
     // Save category so it survives refetch even if API doesn't return it
     textChunks.forEach(chunk => {
@@ -1585,27 +1647,70 @@ export default function CommunityDetailScreen() {
     }
   };
 
-  const handleAddComment = () => {
+  const handleOpenCommentModal = async (post: any) => {
+    setActiveComments([]);
+    setShowCommentModal(post);
+    setCommentText('');
+    try {
+      const { getPostComments } = require('../../src/services/api');
+      const response = await getPostComments(post.id);
+      const mappedComments = (response.data || []).map((c: any) => ({
+        id: c.id || String(Math.random()),
+        userName: c.sender_name || 'Anonymous',
+        text: c.content || c.text || '',
+        avatar: c.sender_photo || null,
+      }));
+      setActiveComments(mappedComments);
+    } catch (error) {
+      console.warn('Failed to load comments:', error);
+    }
+  };
+
+  const handleAddComment = async () => {
     if (!commentText.trim() || !showCommentModal) return;
+    
+    const textToSend = commentText.trim();
+    const targetPostId = showCommentModal.id;
     
     const newComment = {
       id: `comment-${Date.now()}`,
       userName: user?.name || 'You',
-      text: commentText,
+      text: textToSend,
       avatar: user?.photo
     };
 
     setActiveComments(prev => [...prev, newComment]);
-
-    setDiscussionPosts(prev => prev.map(post => {
-      if (post.id === showCommentModal.id) {
-        return { ...post, comments: (post.comments || 0) + 1 };
-      }
-      return post;
-    }));
-    
     setCommentText('');
-    // Alert removed for smoother experience, comment appears immediately
+
+    try {
+      const { addPostComment } = require('../../src/services/api');
+      await addPostComment(targetPostId, textToSend);
+
+      // Update comment count on communityPosts and cache
+      setCommunityPosts(prev => {
+        const updated = prev.map(post => {
+          if (post.id === targetPostId) {
+            return { ...post, comments: (post.comments || 0) + 1 };
+          }
+          return post;
+        });
+        useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+        return updated;
+      });
+
+      // Update discussionPosts
+      setDiscussionPosts(prev => prev.map(post => {
+        if (post.id === targetPostId) {
+          return { ...post, comments: (post.comments || 0) + 1 };
+        }
+        return post;
+      }));
+    } catch (error) {
+      console.error('Failed to post comment:', error);
+      // Rollback comment on error
+      setActiveComments(prev => prev.filter(c => c.id !== newComment.id));
+      Alert.alert('Error', 'Failed to add comment. Please try again.');
+    }
   };
 
 

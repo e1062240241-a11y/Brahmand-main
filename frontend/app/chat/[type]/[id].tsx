@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCommunityMessages, sendCommunityMessage, getCircleMessages, sendCircleMessage, getVerificationStatus, getCommunity, getCircle, updateCircle, leaveCircle, removeCircleMember, getAllUsers, inviteToCircle, transferCircleAdmin, uploadChatMedia, uploadCompressedVideo } from '../../../src/services/api';
 import { socketService } from '../../../src/services/socket';
 import { useAuthStore } from '../../../src/store/authStore';
+import { useChatStore } from '../../../src/store/chatStore';
 import { Message } from '../../../src/types';
 import { Avatar } from '../../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
@@ -77,6 +78,23 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
   return <View style={[style, { backgroundColor: '#000' }]} />;
 };
 
+const getTimeAgo = (dateString?: string) => {
+  if (!dateString) return 'Just now';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Just now';
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (diffInSeconds < 0) return 'Just now';
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  } catch (e) {
+    return 'Just now';
+  }
+};
+
 type ChatMessageItemProps = {
   item: Message;
   index: number;
@@ -112,9 +130,14 @@ const ChatMessageItem = React.memo(({
           <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
         )}
         <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
-          {!isOwnMessage && (
-            <Text style={styles.senderName}>{item.sender_name}</Text>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+            <Text style={[styles.senderName, { marginBottom: 0 }, isOwnMessage && { color: COLORS.surface }]}>
+              {isOwnMessage ? 'You' : item.sender_name}
+            </Text>
+            <Text style={{ fontSize: 10, color: isOwnMessage ? 'rgba(255,255,255,0.7)' : COLORS.textSecondary, marginLeft: 4 }}>
+              · {getTimeAgo(item.created_at)}
+            </Text>
+          </View>
           {renderMessageContent(item)}
           <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
             {formatTime(item.created_at)}
@@ -163,9 +186,17 @@ const ChatScreen = () => {
   const insets = useSafeAreaInsets();
 
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const roomKey = type === 'community' ? `community_${id}_${subgroup}` : `circle_${id}`;
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const cachedData = useChatStore.getState().caches[roomKey];
+    return cachedData?.messages || [];
+  });
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const cachedData = useChatStore.getState().caches[roomKey];
+    return !cachedData;
+  });
   const [sending, setSending] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<{
@@ -176,7 +207,10 @@ const ChatScreen = () => {
   } | null>(null);
   const [fullScreenMedia, setFullScreenMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [isVerified, setIsVerified] = useState(false);
-  const [circleInfo, setCircleInfo] = useState<any>(null);
+  const [circleInfo, setCircleInfo] = useState<any>(() => {
+    const cachedData = useChatStore.getState().caches[roomKey];
+    return cachedData?.circleInfo || null;
+  });
   const [showCircleOptions, setShowCircleOptions] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
@@ -190,7 +224,10 @@ const ChatScreen = () => {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sharingContact, setSharingContact] = useState(false);
   const attachmentAnim = useRef(new Animated.Value(0)).current;
-  const [communityInfo, setCommunityInfo] = useState<any>(null);
+  const [communityInfo, setCommunityInfo] = useState<any>(() => {
+    const cachedData = useChatStore.getState().caches[roomKey];
+    return cachedData?.communityInfo || null;
+  });
   const [showAddUsers, setShowAddUsers] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   const [loadingAvailableUsers, setLoadingAvailableUsers] = useState(false);
@@ -257,11 +294,19 @@ const ChatScreen = () => {
       });
 
       if (exists) return prev;
-      return [...prev, normalized];
+      const updated = [...prev, normalized];
+      useChatStore.getState().setChatCache(roomKey, { messages: updated });
+      return updated;
     });
-  }, [type, id, subgroup, clearedAtMs]);
+  }, [type, id, subgroup, clearedAtMs, roomKey]);
 
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (force = false) => {
+    const cachedData = useChatStore.getState().caches[roomKey];
+    if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 30000) {
+      console.log('[Chat] Using fresh cache, skipping fetchMessages');
+      setLoading(false);
+      return;
+    }
     try {
       let response;
       if (type === 'community') {
@@ -272,13 +317,15 @@ const ChatScreen = () => {
         response = await getCircleMessages(id!);
         setIsVerified(true); // Circles don't require verification
       }
-      setMessages(applyClientClearFilter(response.data || []));
+      const fetchedMsgs = applyClientClearFilter(response.data || []);
+      setMessages(fetchedMsgs);
+      useChatStore.getState().setChatCache(roomKey, { messages: response.data || [], lastFetched: Date.now() });
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
     }
-  }, [type, id, subgroup, applyClientClearFilter]);
+  }, [type, id, subgroup, applyClientClearFilter, roomKey]);
 
   const fetchCircleInfo = useCallback(async () => {
     if (type !== 'circle' || !id) return;
@@ -288,20 +335,22 @@ const ChatScreen = () => {
       setCircleInfo(details);
       setEditedGroupName(details?.name || '');
       setEditedGroupDescription(details?.description || '');
+      useChatStore.getState().setChatCache(roomKey, { circleInfo: details });
     } catch (error) {
       console.error('Error fetching circle info:', error);
     }
-  }, [type, id]);
+  }, [type, id, roomKey]);
 
   const fetchCommunityInfo = useCallback(async () => {
     if (type !== 'community' || !id) return;
     try {
       const response = await getCommunity(id);
       setCommunityInfo(response.data);
+      useChatStore.getState().setChatCache(roomKey, { communityInfo: response.data });
     } catch (error) {
       console.error('Error fetching community info:', error);
     }
-  }, [type, id]);
+  }, [type, id, roomKey]);
 
   useEffect(() => {
     let pollingInterval: NodeJS.Timeout | null = null;
@@ -313,7 +362,7 @@ const ChatScreen = () => {
         const stored = await AsyncStorage.getItem(clearChatStorageKey);
         setClearedAtMs(stored ? Number(stored) || 0 : 0);
       }
-      await fetchMessages();
+      await fetchMessages(false);
       await fetchCircleInfo();
       await fetchCommunityInfo();
     };
@@ -327,7 +376,7 @@ const ChatScreen = () => {
         console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
         if (!pollingInterval) {
           pollingInterval = setInterval(() => {
-            fetchMessages();
+            fetchMessages(true);
           }, 3000);
         }
       }
@@ -338,7 +387,7 @@ const ChatScreen = () => {
     if (Platform.OS === 'web') {
       // Web uses polling only for group/community chat; socket transport is unreliable in this setup.
       pollingInterval = setInterval(() => {
-        fetchMessages();
+        fetchMessages(true);
       }, 3000);
     } else {
       setupSocket();
@@ -388,7 +437,7 @@ const ChatScreen = () => {
         setSelectedMedia(null);
         setNewMessage('');
         setTimeout(async () => {
-          await fetchMessages();
+          await fetchMessages(true);
         }, 500);
       } catch (error: any) {
         Alert.alert('Upload failed', error?.response?.data?.detail || error?.message || 'Failed to send media.');
@@ -414,7 +463,11 @@ const ChatScreen = () => {
     };
 
     // Optimistically show message instantly
-    setMessages((prev) => [...prev, tempMessage]);
+    setMessages((prev) => {
+      const updated = [...prev, tempMessage];
+      useChatStore.getState().setChatCache(roomKey, { messages: updated });
+      return updated;
+    });
     setNewMessage('');
 
     setSending(true);
@@ -430,11 +483,15 @@ const ChatScreen = () => {
       setTimeout(async () => {
         if (!tempMessage.id) return;
         // in case socket hasn't echoed yet, force-refresh the list
-        await fetchMessages();
+        await fetchMessages(true);
       }, 1200);
     } catch (error: any) {
       // rollback optimistic message
-      setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
+      setMessages((prev) => {
+        const updated = prev.filter((m) => m.id !== tempMessage.id);
+        useChatStore.getState().setChatCache(roomKey, { messages: updated });
+        return updated;
+      });
       Alert.alert('Error', error.response?.data?.detail || 'Failed to send message');
     } finally {
       setSending(false);
@@ -447,6 +504,7 @@ const ChatScreen = () => {
     await AsyncStorage.setItem(clearChatStorageKey, String(nowMs));
     setClearedAtMs(nowMs);
     setMessages([]);
+    useChatStore.getState().setChatCache(roomKey, { messages: [] });
     Alert.alert('Chat Cleared', 'This chat is cleared on this device only.');
   };
 
@@ -688,6 +746,7 @@ const ChatScreen = () => {
         Alert.alert('Left Group', 'You have left the group.');
         setCircleInfo(null);
         setMessages([]);
+        useChatStore.getState().setChatCache(roomKey, { messages: [], circleInfo: null });
         navigateToPrivateChatTab();
       } catch (error: any) {
         console.error('[Chat] leaveCircle error', error);
@@ -1055,7 +1114,7 @@ const ChatScreen = () => {
       setShowContactModal(false);
       setContactShareName('');
       setContactSharePhone('');
-      fetchMessages();
+      fetchMessages(true);
     } catch (error: any) {
       Alert.alert('Share failed', error?.response?.data?.detail || error?.message || 'Failed to share contact.');
     } finally {

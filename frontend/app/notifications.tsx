@@ -262,8 +262,8 @@ export default function NotificationsScreen() {
       : item.data;
     
     const actorId = itemData?.actor_user_id;
-    const actorName = itemData?.actor_name || item.title?.replace('New like on ', '')?.replace('New comment on ', '') || '';
     const actorUser = actorId ? actorsMap[actorId] : null;
+    const actorName = actorUser?.name || itemData?.actor_name || item.title?.replace('New like on ', '')?.replace('New comment on ', '') || 'Someone';
     const actorPhoto = actorUser?.photo;
     
     const actionBadge = getActionBadge(item);
@@ -300,12 +300,12 @@ export default function NotificationsScreen() {
             </View>
           )}
         </View>
-
+ 
         {/* Middle Side: Content */}
         <View style={styles.notificationContent}>
           <Text style={styles.notificationText}>
-            <Text style={styles.boldText}>{actorName || 'Someone'}</Text>{' '}
-            {item.body ? item.body.replace(actorName, '').trim() : 'sent a notification.'}{' '}
+            <Text style={styles.boldText}>{actorName}</Text>{' '}
+            {item.body ? item.body.replace(itemData?.actor_name || actorName || '', '').trim() : 'sent a notification.'}{' '}
             <Text style={styles.timeText}>{getTimeAgo(item.time || item.created_at)}</Text>
           </Text>
           

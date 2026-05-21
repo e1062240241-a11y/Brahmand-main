@@ -191,13 +191,15 @@ export default function TempleHelpRequestScreen() {
           <View style={styles.cardContainer}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               
-              <View style={styles.headerBar}>
-                <LinearGradient colors={['#FFF3E0', '#FFE0B2']} style={styles.iconCircle}>
-                  <MaterialCommunityIcons name="temple-hindu" size={28} color="#FB8C00" />
-                </LinearGradient>
-                <View style={styles.headerTextCol}>
-                  <Text style={styles.title}>Request Details</Text>
-                  <Text style={styles.subtitle}>Fill in every small detail below</Text>
+              <View style={styles.bannerContainer}>
+                <View style={styles.headerBar}>
+                  <LinearGradient colors={['#FFF3E0', '#FFE0B2']} style={styles.iconCircle}>
+                    <MaterialCommunityIcons name="temple-hindu" size={28} color="#FB8C00" />
+                  </LinearGradient>
+                  <View style={styles.headerTextCol}>
+                    <Text style={styles.title}>Request Details</Text>
+                    <Text style={styles.subtitle}>Fill in every small detail below</Text>
+                  </View>
                 </View>
               </View>
 
@@ -335,12 +337,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   content: { padding: 24 },
-  headerBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
+  headerBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   backButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F8F9FA', justifyContent: 'center', alignItems: 'center' },
-  iconCircle: { width: 54, height: 54, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginHorizontal: 14 },
+  iconCircle: { width: 64, height: 64, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginHorizontal: 12 },
   headerTextCol: { flex: 1 },
   title: { fontSize: 20, fontFamily: FONTS.bold, color: '#111' },
   subtitle: { fontSize: 13, fontFamily: FONTS.regular, color: '#999', marginTop: 2 },
+  bannerContainer: { backgroundColor: '#FFF', borderRadius: 20, padding: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
   
   fieldSection: { marginBottom: 22 },
   fieldLabel: { fontSize: 14, fontFamily: FONTS.bold, color: '#333', marginBottom: 10, marginLeft: 4 },
