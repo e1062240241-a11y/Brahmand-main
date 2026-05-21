@@ -236,21 +236,23 @@ export default function LiveJaapRoomView() {
   const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri);
   const audioStatus = useAudioPlayerStatus(bgPlayer);
 
+
   // Get active line and highlighted index
   const getActiveKaraokeState = () => {
     if (mantraType === 'hanuman') {
       const time = audioStatus?.currentTime || 0;
       
-      let seg = HANUMAN_CHALISA_SEGMENTS[0];
-      for (const s of HANUMAN_CHALISA_SEGMENTS) {
-        if (time >= s.startTime && time < s.endTime) {
-          seg = s;
+      let segIndex = 0;
+      for (let i = 0; i < HANUMAN_CHALISA_SEGMENTS.length; i++) {
+        if (time >= HANUMAN_CHALISA_SEGMENTS[i].startTime && time < HANUMAN_CHALISA_SEGMENTS[i].endTime) {
+          segIndex = i;
           break;
         }
       }
       if (time >= HANUMAN_CHALISA_SEGMENTS[HANUMAN_CHALISA_SEGMENTS.length - 1].endTime) {
-        seg = HANUMAN_CHALISA_SEGMENTS[HANUMAN_CHALISA_SEGMENTS.length - 1];
+        segIndex = HANUMAN_CHALISA_SEGMENTS.length - 1;
       }
+      const seg = HANUMAN_CHALISA_SEGMENTS[segIndex];
       
       const duration = seg.endTime - seg.startTime;
       const progress = Math.max(0, Math.min(1, (time - seg.startTime) / duration));
@@ -264,27 +266,56 @@ export default function LiveJaapRoomView() {
       const highlightedIdx = itemIndex % 4;
       const isMusic = seg.type === 'music';
       
+      // Calculate previous line text
+      let previousLineText = '';
+      const prevLineStartIndex = (lineIndex - 1) * 4;
+      if (prevLineStartIndex >= 0) {
+        previousLineText = seg.items.slice(prevLineStartIndex, prevLineStartIndex + 4).join(' ');
+      } else if (segIndex - 1 >= 0) {
+        const prevSeg = HANUMAN_CHALISA_SEGMENTS[segIndex - 1];
+        const prevSegLastLineIndex = Math.floor((prevSeg.items.length - 1) / 4);
+        previousLineText = prevSeg.items.slice(prevSegLastLineIndex * 4, prevSegLastLineIndex * 4 + 4).join(' ');
+      }
+      
+      // Calculate next line text
+      let nextLineText = '';
+      const nextLineStartIndex = (lineIndex + 1) * 4;
+      if (nextLineStartIndex < seg.items.length) {
+        nextLineText = seg.items.slice(nextLineStartIndex, nextLineStartIndex + 4).join(' ');
+      } else if (segIndex + 1 < HANUMAN_CHALISA_SEGMENTS.length) {
+        nextLineText = HANUMAN_CHALISA_SEGMENTS[segIndex + 1].items.slice(0, 4).join(' ');
+      } else {
+        nextLineText = HANUMAN_CHALISA_SEGMENTS[0].items.slice(0, 4).join(' ');
+      }
+      
       return {
         lineItems,
         highlightedIdx,
         isMusic,
         key: `hanuman-${seg.startTime}-${lineIndex}`,
+        previousLineText,
+        nextLineText,
       };
     } else {
       const lineIndex = Math.floor(currentIndex / 4);
       const lineItems = MANTRA_LINES[lineIndex] ? MANTRA_LINES[lineIndex].split(' ') : [];
       const highlightedIdx = currentIndex % 4;
       
+      const previousLineText = lineIndex - 1 >= 0 ? MANTRA_LINES[lineIndex - 1] : '';
+      const nextLineText = MANTRA_LINES[lineIndex + 1] || MANTRA_LINES[0] || '';
+      
       return {
         lineItems,
         highlightedIdx,
         isMusic: false,
         key: `other-${lineIndex}`,
+        previousLineText,
+        nextLineText,
       };
     }
   };
 
-  const { lineItems, highlightedIdx, isMusic, key: activeLineKey } = getActiveKaraokeState();
+  const { lineItems, highlightedIdx, isMusic, key: activeLineKey, previousLineText, nextLineText } = getActiveKaraokeState();
 
   // Upcoming line text
   const getUpcomingLineText = () => {
@@ -330,8 +361,8 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (mantraType !== 'hanuman') return;
     
-    // Entry animation
-    soloMoveAnim.setValue(50);
+    // Entry animation (slides down from -35)
+    soloMoveAnim.setValue(-35);
     soloFadeAnim.setValue(0);
     Animated.parallel([
       Animated.timing(soloMoveAnim, { toValue: 0, duration: 250, easing: Easing.out(Easing.quad), useNativeDriver: true }),
@@ -374,23 +405,21 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (mantraType === 'hanuman') return;
 
-    const isHanuman = mantraType === 'hanuman';
     const WORDS_PER_LINE = 4;
     const isNewLine = currentIndex % WORDS_PER_LINE === 0;
 
     if (isNewLine) {
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(soloMoveAnim, { toValue: 0, duration: isHanuman ? 250 : 400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(soloFadeAnim, { toValue: 1, duration: isHanuman ? 200 : 300, useNativeDriver: true }),
-        ]),
-        Animated.delay(isHanuman ? 50 : 100),
+      soloMoveAnim.setValue(-35);
+      soloFadeAnim.setValue(0);
+      Animated.parallel([
+        Animated.timing(soloMoveAnim, { toValue: 0, duration: 400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(soloFadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]).start();
     }
 
     Animated.timing(activeIndexAnim, {
       toValue: currentIndex,
-      duration: isHanuman ? 300 : 500,
+      duration: 500,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
     }).start();
@@ -398,10 +427,10 @@ export default function LiveJaapRoomView() {
     return () => {
       if ((currentIndex + 1) % WORDS_PER_LINE === 0) {
          Animated.parallel([
-           Animated.timing(soloMoveAnim, { toValue: -100, duration: isHanuman ? 200 : 300, easing: Easing.in(Easing.ease), useNativeDriver: true }),
-           Animated.timing(soloFadeAnim, { toValue: 0, duration: isHanuman ? 150 : 250, useNativeDriver: true }),
+           Animated.timing(soloMoveAnim, { toValue: 35, duration: 300, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+           Animated.timing(soloFadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
          ]).start(() => {
-           soloMoveAnim.setValue(100);
+           soloMoveAnim.setValue(-35);
          });
       }
     };
@@ -590,26 +619,49 @@ export default function LiveJaapRoomView() {
           <View style={[styles.scrollContainer, { justifyContent: 'center', flex: 1 }]}>
             {activeTab === 'chant' ? (
               <View style={styles.soloFocusContainer}>
-                  <Animated.View key={activeLineKey} style={[styles.soloWordBox, { opacity: soloFadeAnim, transform: [{ translateY: soloMoveAnim }] }]}>
-                    <LinearGradient colors={['rgba(255,138,0,0.15)', 'rgba(255,138,0,0)']} style={styles.soloGlow} />
-                    <View style={styles.soloLineWordsRow}>
-                      {lineItems.map((word, idx) => {
-                        const isHighlighted = highlightedIdx === idx;
-                        return (
-                          <Text 
-                            key={`${word}-${idx}`} 
-                            style={[
-                              styles.soloWordText, 
-                              isHighlighted ? styles.soloWordHighlighted : styles.soloWordDimmed,
-                              isMusic && { fontSize: 32, marginHorizontal: 8 }
-                            ]}
-                          >
-                            {word}{' '}
-                          </Text>
-                        );
-                      })}
+                 <Animated.View 
+                    key={activeLineKey} 
+                    style={[
+                      styles.verticalLyricsContainer, 
+                      { opacity: soloFadeAnim, transform: [{ translateY: soloMoveAnim }] }
+                    ]}
+                 >
+                    {/* Next Line (Top, Dimmed) */}
+                    <View style={styles.sideLineContainer}>
+                      <Text style={[styles.sideLineText, styles.nextLineText]}>
+                        {nextLineText || ' '}
+                      </Text>
                     </View>
-                    <View style={styles.soloOrnateUnderline} />
+
+                    {/* Current Line (Middle, Active) */}
+                    <View style={styles.soloWordBox}>
+                      <LinearGradient colors={['rgba(255,138,0,0.15)', 'rgba(255,138,0,0)']} style={styles.soloGlow} />
+                      <View style={styles.soloLineWordsRow}>
+                        {lineItems.map((word, idx) => {
+                          const isHighlighted = highlightedIdx === idx;
+                          return (
+                            <Text 
+                              key={`${word}-${idx}`} 
+                              style={[
+                                styles.soloWordText, 
+                                isHighlighted ? styles.soloWordHighlighted : styles.soloWordDimmed,
+                                isMusic && { fontSize: 32, marginHorizontal: 8 }
+                              ]}
+                            >
+                              {word}{' '}
+                            </Text>
+                          );
+                        })}
+                      </View>
+                      <View style={styles.soloOrnateUnderline} />
+                    </View>
+
+                    {/* Previous Line (Bottom, Dimmed) */}
+                    <View style={styles.sideLineContainer}>
+                      <Text style={[styles.sideLineText, styles.previousLineText]}>
+                        {previousLineText || ' '}
+                      </Text>
+                    </View>
                  </Animated.View>
               </View>
             ) : (
@@ -687,13 +739,43 @@ const styles = StyleSheet.create({
   tabText: { color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: '700' },
   tabTextActive: { color: '#FFEBB5' },
   soloFocusContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', width: SCREEN_WIDTH },
-  soloWordBox: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  soloWordBox: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginVertical: 10 },
   soloLineWordsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: SCREEN_WIDTH - 40 },
   soloWordText: { fontSize: 44, fontWeight: '900', textAlign: 'center' },
   soloWordHighlighted: { color: '#FFF', textShadowColor: '#FF8A00', textShadowRadius: 15, transform: [{ scale: 1.05 }] },
   soloWordDimmed: { color: 'rgba(255,255,255,0.3)' },
   soloGlow: { position: 'absolute', width: 280, height: 120, borderRadius: 60, zIndex: -1 },
   soloOrnateUnderline: { width: 80, height: 2, backgroundColor: '#FF8A00', marginTop: 10, borderRadius: 1, opacity: 0.6 },
+  verticalLyricsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingVertical: 10,
+  },
+  sideLineText: {
+    fontSize: 22,
+    fontWeight: '600',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+  },
+  nextLineText: {
+    color: 'rgba(255, 235, 181, 0.4)', // Warm gold/yellow with 0.4 opacity
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  previousLineText: {
+    color: 'rgba(255, 235, 181, 0.2)', // More faded warm gold
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  sideLineContainer: {
+    paddingVertical: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: SCREEN_WIDTH - 40,
+  },
   fullShlokaBox: { marginTop: 40, backgroundColor: 'rgba(255,255,255,0.06)', padding: 24, borderRadius: 32, width: '92%', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)' },
   scrollHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(255,235,181,0.2)', paddingBottom: 10 },
   scrollHeaderText: { color: '#FFEBB5', fontSize: 14, fontWeight: '800' },
