@@ -4442,6 +4442,99 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
     return await db.get_chat_messages(chat_id, limit)
 
 
+@api_router.post("/messages/community/{community_id}/{subgroup_type}/{message_id}/like")
+async def toggle_community_message_like(
+    community_id: str, subgroup_type: str, message_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    db = await get_db()
+    user_id = token_data['user_id']
+    chat_id = f"community_{community_id}_{subgroup_type}"
+    
+    messages = await db.get_chat_messages(chat_id, 100)
+    msg = next((m for m in messages if m.get('id') == message_id), None)
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+        
+    liked_by = msg.get('liked_by', []) or []
+    liked = user_id in liked_by
+    
+    if liked:
+        liked_by.remove(user_id)
+    else:
+        liked_by.append(user_id)
+        
+    await db.update_chat_message(chat_id, message_id, {
+        'liked_by': liked_by,
+        'likes_count': len(liked_by)
+    })
+    
+    return {
+        'message': 'Message unliked' if liked else 'Message liked',
+        'liked': not liked,
+        'likes_count': len(liked_by)
+    }
+
+
+@api_router.post("/messages/community/{community_id}/{subgroup_type}/{message_id}/comments")
+async def add_community_message_comment(
+    community_id: str, subgroup_type: str, message_id: str,
+    data: dict = Body(...), token_data: dict = Depends(verify_token)
+):
+    db = await get_db()
+    user_id = token_data['user_id']
+    chat_id = f"community_{community_id}_{subgroup_type}"
+    
+    messages = await db.get_chat_messages(chat_id, 100)
+    msg = next((m for m in messages if m.get('id') == message_id), None)
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+        
+    text = str(data.get('text') or '').strip()
+    if not text:
+        raise HTTPException(status_code=400, detail='Comment text is required')
+        
+    user = await db.get_document('users', user_id)
+    comment_doc = {
+        'post_id': message_id,
+        'user_id': user_id,
+        'username': user.get('name') or user.get('sl_id') or 'User',
+        'user_photo': user.get('photo'),
+        'text': text,
+        'created_at': datetime.utcnow().isoformat(),
+    }
+    
+    comment_id = await db.create_document('post_comments', comment_doc)
+    comment_doc['id'] = comment_id
+    
+    comments_count = await db.count_documents('post_comments', filters=[('post_id', '==', message_id)])
+    await db.update_chat_message(chat_id, message_id, {'comments_count': comments_count})
+    
+    return {
+        'status': 'success',
+        'data': [comment_doc] # Return wrapped in data to match expectations
+    }
+
+
+@api_router.get("/messages/community/{community_id}/{subgroup_type}/{message_id}/comments")
+async def get_community_message_comments(
+    community_id: str, subgroup_type: str, message_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    db = await get_db()
+    comments = await db.query_documents(
+        'post_comments',
+        filters=[('post_id', '==', message_id)]
+    )
+    def _sort_key(c):
+        return c.get('created_at', '')
+    comments.sort(key=_sort_key, reverse=True)
+    return {
+        'status': 'success',
+        'data': comments
+    }
+
+
 @api_router.post("/dm")
 async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verify_token)):
     """
