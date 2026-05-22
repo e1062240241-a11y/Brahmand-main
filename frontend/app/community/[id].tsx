@@ -748,8 +748,20 @@ export default function CommunityDetailScreen() {
       const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
       if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 30000) {
         console.log('[Community] Using fresh cache, skipping fetchCommunity');
+        setCommunity(cachedData.community);
+        setRequests(cachedData.requests || []);
+        setEvents(cachedData.events || []);
+        setAllFestivals(cachedData.allFestivals || []);
+        setCommunityPosts(cachedData.communityPosts || []);
         setLoading(false);
         return;
+      }
+      if (!cachedData) {
+        setCommunity(null);
+        setRequests([]);
+        setEvents([]);
+        setCommunityPosts([]);
+        setLoading(true);
       }
       setHasMorePosts(true);
       const response = await getCommunity(id as string);
