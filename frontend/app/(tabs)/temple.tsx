@@ -15,7 +15,7 @@ import {
  Dimensions,
  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Link } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTemples } from '../../src/services/api';
@@ -119,15 +119,15 @@ export default function TempleScreen() {
         <View style={styles.topTabsInner}>
           <TouchableOpacity 
             style={styles.topTabButton}
-            onPress={() => router.push('/vendor')}
+            onPress={() => router.push('/jaap' as any)}
           >
-            <Text style={styles.topTabText}>Vendor</Text>
+            <Text style={styles.topTabText}>Jaap</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.topTabButton, selectedTempleSection === 'Jyotirling' && styles.topTabButtonActive]}
-            onPress={() => setSelectedTempleSection('Jyotirling')}
+            style={[styles.topTabButton, styles.topTabButtonActive]}
+            activeOpacity={1}
           >
-            <Text style={[styles.topTabText, selectedTempleSection === 'Jyotirling' && styles.topTabTextActive]}>Temple</Text>
+            <Text style={[styles.topTabText, styles.topTabTextActive]}>Temple</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -241,29 +241,30 @@ export default function TempleScreen() {
             <ActivityIndicator size="large" color="#FF6600" style={{ marginTop: 40 }} />
           ) : filteredTempleList.length > 0 ? (
             filteredTempleList.map((item) => (
-              <TouchableOpacity 
-                key={item.id} 
-                style={styles.templeItemCard}
-                onPress={() => openTempleDetails(item)}
-              >
-                <Image 
-                  source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} 
-                  style={styles.templeItemImage} 
-                />
-                <View style={styles.templeItemInfo}>
-                  <Text style={styles.templeItemName}>{getTempleDisplayName(item)}</Text>
-                  <View style={styles.templeItemLocRow}>
-                    <Ionicons name="location" size={14} color="#888" />
-                    <Text style={styles.templeItemLocText}>{getTempleLocation(item)}</Text>
+              <Link href={`/temple/${encodeURIComponent(String(item.id))}`} asChild key={item.id}>
+                <TouchableOpacity 
+                  style={styles.templeItemCard}
+                  activeOpacity={0.7}
+                >
+                  <Image 
+                    source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} 
+                    style={styles.templeItemImage} 
+                  />
+                  <View style={styles.templeItemInfo}>
+                    <Text style={styles.templeItemName}>{getTempleDisplayName(item)}</Text>
+                    <View style={styles.templeItemLocRow}>
+                      <Ionicons name="location" size={14} color="#888" />
+                      <Text style={styles.templeItemLocText}>{getTempleLocation(item)}</Text>
+                    </View>
+                    <Text style={styles.templeItemDeity}>Dedicated to {getTempleDeityLabel(item)}</Text>
+                    <View style={styles.templeItemTag}>
+                      <Ionicons name="sparkles" size={12} color="#D35400" />
+                      <Text style={styles.templeItemTagText}>{item.category || 'Sacred'}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.templeItemDeity}>Dedicated to {getTempleDeityLabel(item)}</Text>
-                  <View style={styles.templeItemTag}>
-                    <Ionicons name="sparkles" size={12} color="#D35400" />
-                    <Text style={styles.templeItemTagText}>{item.category || 'Sacred'}</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#BBB" />
-              </TouchableOpacity>
+                  <Ionicons name="chevron-forward" size={20} color="#BBB" />
+                </TouchableOpacity>
+              </Link>
             ))
           ) : (
             <View style={{ alignItems: 'center', marginTop: 40 }}>
@@ -344,10 +345,10 @@ const styles = StyleSheet.create({
   topTabButtonActive: { 
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 2, height: 0 },
+    elevation: 5,
   },
   topTabText: { fontSize: 14, fontFamily: FONTS.bold, color: '#8E8E93' },
   topTabTextActive: { color: '#EA4C0F' },

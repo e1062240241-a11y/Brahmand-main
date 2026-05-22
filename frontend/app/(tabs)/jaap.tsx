@@ -196,24 +196,13 @@ export default function JaapLandingScreen() {
     return (
       <TouchableOpacity
         key={section}
-        style={styles.tabPill}
+        style={[styles.topTabButton, isActive && styles.topTabButtonActive]}
         onPress={() => switchSection(section)}
-        activeOpacity={0.88}
+        activeOpacity={1}
       >
-        {isActive ? (
-          <LinearGradient
-            colors={['#FF8C2E', '#FF6600', '#FF5500']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.tabPillGradient}
-          >
-            <Text style={styles.tabPillTextActive}>{label}</Text>
-          </LinearGradient>
-        ) : (
-          <View style={styles.tabPillInactive}>
-            <Text style={styles.tabPillText}>{label}</Text>
-          </View>
-        )}
+        <Text style={[styles.topTabText, isActive && styles.topTabTextActive]}>
+          {label}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -227,24 +216,21 @@ export default function JaapLandingScreen() {
     : 'Next Session: 6:00 PM Today';
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFFFFF']}
+      locations={[0, 0.0481, 0.2404]}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" />
 
       <View style={[styles.stickyTopTabsWrap, { paddingTop: insets.top + 10 }]}>
-        <LinearGradient
-          colors={['#E59E7C', '#F0C4A8', '#FFFBF5']}
-          locations={[0, 0.5, 1]}
-          style={styles.topHeaderGradient}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-        >
-          <View style={styles.topTabsContainer}>
-            <View style={styles.topTabsInner}>
-              {renderTopTab('jaap', 'Jaap')}
-              {renderTopTab('temple', 'Temple')}
-            </View>
+        <View style={styles.topTabsContainer}>
+          <View style={styles.topTabsInner}>
+            {renderTopTab('jaap', 'Jaap')}
+            {renderTopTab('temple', 'Temple')}
           </View>
-        </LinearGradient>
+        </View>
       </View>
 
       <ScrollView
@@ -566,19 +552,18 @@ export default function JaapLandingScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFBF5' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   stickyTopTabsWrap: {
     zIndex: 100,
     elevation: 10,
     backgroundColor: 'transparent',
-  },
-  topHeaderGradient: {
-    paddingBottom: 14,
+    paddingBottom: 10,
   },
   mainScroll: {
     flex: 1,
@@ -589,49 +574,34 @@ const styles = StyleSheet.create({
   topTabsInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 52,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 30,
+    backgroundColor: 'rgba(243, 244, 246, 0.50)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 231, 235, 0.50)',
     padding: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  tabPill: {
+  topTabButton: {
     flex: 1,
-    height: '100%',
-    borderRadius: 26,
-    overflow: 'hidden',
-  },
-  tabPillGradient: {
-    flex: 1,
-    borderRadius: 26,
-    justifyContent: 'center',
+    height: 34,
+    borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#FF6600',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
+    justifyContent: 'center',
+  },
+  topTabButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 2, height: 0 },
     elevation: 5,
   },
-  tabPillInactive: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 26,
-    backgroundColor: '#FFFFFF',
+  topTabText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#8E8E93',
   },
-  tabPillText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#2D1400',
-  },
-  tabPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 16,
+  topTabTextActive: {
+    color: '#FF6600',
   },
   // legacy (kept for other references)
   jaapTabExact: { flex: 1, height: '100%' },

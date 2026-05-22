@@ -50,7 +50,11 @@ export const secureStorage = {
   setItem: async (key: string, value: string): Promise<void> => {
     try {
       const encryptionKey = await getEncryptionKey();
-      const encryptedValue = CryptoJS.AES.encrypt(value, encryptionKey).toString();
+      // Generate raw key and IV to bypass CryptoJS internal random salt generation
+      const rawKey = CryptoJS.SHA256(encryptionKey);
+      const rawIv = CryptoJS.MD5(encryptionKey);
+      
+      const encryptedValue = CryptoJS.AES.encrypt(value, rawKey, { iv: rawIv }).toString();
       await AsyncStorage.setItem(key, encryptedValue);
     } catch (error) {
       console.error(`[SecureStorage] Failed to set encrypted item for key "${key}":`, error);
@@ -69,7 +73,10 @@ export const secureStorage = {
 
       try {
         const encryptionKey = await getEncryptionKey();
-        const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, encryptionKey);
+        const rawKey = CryptoJS.SHA256(encryptionKey);
+        const rawIv = CryptoJS.MD5(encryptionKey);
+        
+        const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, rawKey, { iv: rawIv });
         const decryptedValue = decryptedBytes.toString(CryptoJS.enc.Utf8);
         
         // If decryption succeeds but yields empty, fallback to the original value

@@ -631,7 +631,11 @@ export default function TempleDetailScreen() {
  };
 
   const handleGoBack = () => {
-    router.replace('/(tabs)/temple');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/temple');
+    }
   };
 
  const handleFollowToggle = async () => {
@@ -658,10 +662,8 @@ export default function TempleDetailScreen() {
 if (!temple) {
     return (
       <SafeAreaView style={styles.container}>
-      <View style={styles.backButtonOverlay}>
-      </View>
       <View style={styles.errorContainer}>
-      <Ionicons name="alert-circle" size={48} color={COLORS.textLight} />
+      <Ionicons name="alert-circle" size={48} color="#999" />
       <Text style={styles.errorText}>Temple not found</Text>
       </View>
       </SafeAreaView>
@@ -732,31 +734,22 @@ if (!temple) {
  const templeDescription = getTempleDescription();
  const templeGuidance = getTempleGuidance();
  return (
- <SafeAreaView style={styles.container}>
- <View style={styles.backButtonOverlay}>
- <TouchableOpacity onPress={handleGoBack} style={styles.backButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
- <Ionicons name="arrow-back" size={24} color={COLORS.text} />
- </TouchableOpacity>
- </View>
- {/* Header */}
- <View style={styles.header}>
- <Text style={styles.headerTitle} numberOfLines={1}>{displayName}</Text>
- <TouchableOpacity onPress={handleFollowToggle}>
- <Ionicons 
- name={isFollowing ? "notifications" : "notifications-outline"} 
- size={24} 
- color={isFollowing ? COLORS.primary : COLORS.text} 
- />
- </TouchableOpacity>
- </View>
+  <View style={styles.container}>
+    <ImageBackground 
+      source={require('../../assets/images/temple_detail_bg.png')} 
+      style={StyleSheet.absoluteFill}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        {/* Floating Back Button */}
+        <View style={styles.floatingBackButtonContainer}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.floatingBackButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="arrow-back" size={24} color="#111" />
+          </TouchableOpacity>
+        </View>
 
- <ImageBackground 
-    source={require('../../assets/images/temple_detail_bg.png')} 
-    style={StyleSheet.absoluteFill}
-    resizeMode="cover"
-  >
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
- {/* Temple Info Card */}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {/* Temple Info Card */}
  <View style={styles.infoCard}>
  <View style={styles.templeIconLarge}>
  <Image source={templeImageSource} style={styles.templeIconLargeImage} resizeMode="cover" />
@@ -893,6 +886,7 @@ if (!temple) {
  )}
 
     </ScrollView>
+    </SafeAreaView>
   </ImageBackground>
 
   <Modal
@@ -975,137 +969,133 @@ if (!temple) {
  </View>
  </View>
  </Modal>
- </SafeAreaView>
+  </View>
  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F9FF', // Light sky blue fallback
+    backgroundColor: '#F0F9FF',
   },
   scrollContent: {
     paddingBottom: 40,
   },
- loadingContainer: {
- flex: 1,
- justifyContent: 'center',
- alignItems: 'center',
- backgroundColor: COLORS.background,
- },
- errorContainer: {
- flex: 1,
- justifyContent: 'center',
- alignItems: 'center',
- },
- errorText: {
- fontSize: 16,
- color: COLORS.textSecondary,
- marginTop: SPACING.md,
- },
- header: {
- flexDirection: 'row',
- alignItems: 'center',
- justifyContent: 'space-between',
- padding: SPACING.md,
- paddingLeft: SPACING.md + 60,
- backgroundColor: COLORS.surface,
- borderBottomWidth: 1,
- borderBottomColor: COLORS.divider,
- },
- headerTitle: {
- flex: 1,
- fontSize: 18,
- fontWeight: '600',
- color: COLORS.text,
- marginHorizontal: SPACING.md,
- textAlign: 'center',
- },
- backButtonOverlay: {
-   position: 'absolute',
-   top: Platform.OS === 'ios' ? SPACING.lg : SPACING.md,
-   left: SPACING.md,
-   zIndex: 20,
-   elevation: 20,
- },
- backButton: {
-   width: 44,
-   height: 44,
-   borderRadius: 22,
-   backgroundColor: 'transparent',
-   justifyContent: 'center',
-   alignItems: 'center',
-   shadowColor: 'transparent',
-   shadowOffset: { width: 0, height: 0 },
-   shadowOpacity: 0,
-   shadowRadius: 0,
-   elevation: 0,
- },
-  infoCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    margin: 16,
-    padding: 20,
-    borderRadius: 24,
+  floatingBackButtonContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 5,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    zIndex: 100,
+  },
+  floatingBackButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
- templeIconLarge: {
- width: 80,
- height: 80,
- borderRadius: 40,
- backgroundColor: `${COLORS.primary}15`,
- justifyContent: 'center',
- alignItems: 'center',
- marginBottom: SPACING.md,
- overflow: 'hidden',
- },
- templeIconLargeImage: {
- width: '100%',
- height: '100%',
- },
- templeName: {
- fontSize: 22,
- fontWeight: '700',
- color: COLORS.text,
- textAlign: 'center',
- },
- templeDeity: {
- fontSize: 14,
- color: COLORS.textSecondary,
- marginTop: SPACING.xs,
- },
- locationCard: {
- backgroundColor: COLORS.surface,
- borderRadius: BORDER_RADIUS.md,
- padding: SPACING.md,
- marginTop: SPACING.sm,
- borderWidth: 1,
- borderColor: COLORS.border,
- },
- locationRow: {
- flexDirection: 'row',
- alignItems: 'center',
- },
- locationText: {
- fontSize: 14,
- color: COLORS.textSecondary,
- marginLeft: SPACING.xs,
- },
- verifiedBadge: {
- flexDirection: 'row',
- alignItems: 'center',
- backgroundColor: `${COLORS.success}15`,
- paddingHorizontal: SPACING.md,
- paddingVertical: SPACING.xs,
- borderRadius: 20,
- marginTop: SPACING.md,
- },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+  },
+  infoCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 20,
+    padding: 28,
+    borderRadius: 32,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  templeIconLarge: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#FFF5F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  templeIconLargeImage: {
+    width: '100%',
+    height: '100%',
+  },
+  templeName: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#1F2937',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  templeDeity: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FF6600',
+    marginTop: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  locationCard: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 30,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginLeft: 6,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 16,
+  },
  verifiedText: {
  fontSize: 12,
  color: COLORS.success,
@@ -1113,20 +1103,26 @@ const styles = StyleSheet.create({
  marginLeft: SPACING.xs,
  },
   section: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    margin: 16,
-    marginTop: 0,
-    padding: 20,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 24,
+    borderRadius: 32,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
   },
- sectionTitle: {
- fontSize: 16,
- fontWeight: '600',
- color: COLORS.text,
- marginBottom: SPACING.md,
- },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
  timingRow: {
  flexDirection: 'row',
  justifyContent: 'space-between',
@@ -1144,35 +1140,42 @@ const styles = StyleSheet.create({
  fontWeight: '500',
  },
  aartiGrid: {
- flexDirection: 'row',
- flexWrap: 'wrap',
- marginHorizontal: -SPACING.sm / 2,
- },
- aartiCard: {
- width: '48%',
- backgroundColor: COLORS.background,
- borderRadius: BORDER_RADIUS.md,
- padding: SPACING.md,
- margin: SPACING.sm / 2,
- borderWidth: 1,
- borderColor: COLORS.border,
- },
- aartiLabel: {
- fontSize: 14,
- color: COLORS.textSecondary,
- marginBottom: SPACING.xs,
- textTransform: 'capitalize',
- },
- aartiTime: {
- fontSize: 16,
- color: COLORS.text,
- fontWeight: '700',
- },
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  aartiCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  aartiLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '700',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  aartiTime: {
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '800',
+  },
  youtubeLinkButton: {
  marginTop: SPACING.sm,
  paddingVertical: SPACING.sm,
  paddingHorizontal: SPACING.md,
- borderRadius: BORDER_RADIUS.md,
+ borderRadius: 20,
  backgroundColor: `${COLORS.primary}12`,
  alignSelf: 'flex-start',
  },
@@ -1213,11 +1216,12 @@ const styles = StyleSheet.create({
  marginTop: SPACING.xs,
  textAlign: 'left',
  },
- descriptionText: {
- fontSize: 14,
- color: COLORS.textSecondary,
- lineHeight: 22,
- },
+  descriptionText: {
+    fontSize: 15,
+    color: '#4B5563',
+    lineHeight: 24,
+    fontWeight: '500',
+  },
  mapSection: {
  marginHorizontal: SPACING.md,
  marginBottom: SPACING.md,
@@ -1248,45 +1252,52 @@ const styles = StyleSheet.create({
  color: COLORS.textSecondary,
  textAlign: 'center',
  },
- modalBackdrop: {
- flex: 1,
- backgroundColor: 'rgba(0,0,0,0.45)',
- justifyContent: 'center',
- padding: SPACING.md,
- },
- modalCard: {
- backgroundColor: COLORS.surface,
- borderRadius: BORDER_RADIUS.lg,
- overflow: 'hidden',
- },
- modalHeader: {
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    zIndex: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
   },
- modalTitle: {
- fontSize: 16,
- fontWeight: '600',
- color: COLORS.text,
- flex: 1,
- },
- modalClose: {
- padding: SPACING.xs,
- marginLeft: SPACING.sm,
- },
- modalMapWrapper: {
- width: '100%',
- height: 260,
- },
- modalMap: {
- width: '100%',
- height: '100%',
- backgroundColor: COLORS.background,
- },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111111',
+    flex: 1,
+  },
+  modalClose: {
+    padding: 6,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+  },
+  modalMapWrapper: {
+    width: '100%',
+    height: 320,
+  },
+  modalMap: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F9F9F9',
+  },
   youtubeModalBody: {
     width: '100%',
     height: 300,
@@ -1297,20 +1308,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   modalActions: {
-    padding: SPACING.md,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
   },
- primaryButton: {
- backgroundColor: COLORS.primary,
- borderRadius: BORDER_RADIUS.md,
- alignItems: 'center',
- justifyContent: 'center',
- paddingVertical: SPACING.sm,
- },
- primaryButtonText: {
- color: COLORS.surface,
- fontSize: 14,
- fontWeight: '700',
- },
+  primaryButton: {
+    backgroundColor: '#FF6600',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
  noPostsText: {
  fontSize: 14,
  color: COLORS.textLight,
