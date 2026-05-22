@@ -72,13 +72,20 @@ const KaraokeSyncEngine: React.FC<KaraokeSyncEngineProps> = ({
     let activeSectionIndex = -1;
     for (let i = 0; i < data.structure.length; i++) {
       const section = data.structure[i];
-      if (currentTime >= section.start && currentTime < section.end) {
+      const start = section.type === 'music' ? section.start : (section.words[0]?.start ?? 0);
+      const end = section.type === 'music' ? section.end : (section.words[section.words.length - 1]?.end ?? 0);
+      if (currentTime >= start && currentTime < end) {
         activeSectionIndex = i;
         break;
       }
     }
 
-    if (activeSectionIndex === -1 && currentTime >= data.structure[data.structure.length - 1]?.end) {
+    const lastSection = data.structure[data.structure.length - 1];
+    const lastSectionEnd = lastSection
+      ? (lastSection.type === 'music' ? lastSection.end : (lastSection.words[lastSection.words.length - 1]?.end ?? 0))
+      : 0;
+
+    if (activeSectionIndex === -1 && currentTime >= lastSectionEnd) {
       activeSectionIndex = data.structure.length - 1;
     }
 

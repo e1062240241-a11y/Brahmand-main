@@ -13,7 +13,7 @@ import {
     Platform,
     } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { SPACING } from '../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -143,7 +143,8 @@ const HANUMAN_CHALISA_KARAOKE: KaraokeData = hanumanChalisaData as unknown as Ka
 
 const getKaraokeDuration = (): number => {
     const lastSection = HANUMAN_CHALISA_KARAOKE.structure[HANUMAN_CHALISA_KARAOKE.structure.length - 1];
-    return Math.ceil(lastSection.end);
+    const end = lastSection ? (lastSection.type === 'music' ? lastSection.end : (lastSection.words[lastSection.words.length - 1]?.end ?? 0)) : 0;
+    return Math.ceil(end);
 };
 
 const formatDuration = (seconds: number): string => {
@@ -168,6 +169,21 @@ const EkantJaapPage = () => {
     const [audioSource, setAudioSource] = useState<any | null>(null);
     const player = useAudioPlayer(audioSource, { updateInterval: 100 });
     const playerStatus = useAudioPlayerStatus(player);
+
+    useEffect(() => {
+        const initAudioMode = async () => {
+            try {
+                await setAudioModeAsync({
+                    playsInSilentMode: true,
+                    interruptionMode: 'doNotMix',
+                    shouldRouteThroughEarpiece: false,
+                });
+            } catch (error) {
+                console.warn('Failed to set audio mode in Ekant Jaap:', error);
+            }
+        };
+        initAudioMode();
+    }, []);
 
     const [isKaraokeMode, setIsKaraokeMode] = useState(false);
     const [karaokeCurrentTime, setKaraokeCurrentTime] = useState(0);
@@ -349,6 +365,7 @@ const EkantJaapPage = () => {
 
         if (isRunning && isAudioEnabled) {
             try {
+                player.volume = 1.0;
                 player.play();
             } catch (error) {
                 console.warn('Ekant Jaap audio play failed', error);
@@ -367,7 +384,7 @@ const EkantJaapPage = () => {
         if (hasAutoPlayedRef.current) return;
 
         player.loop = false;
-        player.volume = 0.5;
+        player.volume = 1.0;
 
         const attemptPlay = () => {
             if (hasAutoPlayedRef.current) return;

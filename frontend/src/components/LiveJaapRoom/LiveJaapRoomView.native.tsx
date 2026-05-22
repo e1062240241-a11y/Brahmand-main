@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createAgoraRtcEngine,
@@ -390,7 +390,7 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (bgPlayer) {
       bgPlayer.loop = true;
-      bgPlayer.volume = isMuted ? 0 : 0.02;
+      bgPlayer.volume = isMuted ? 0 : 0.9;
       try {
         bgPlayer.play();
       } catch (e) {
@@ -400,6 +400,19 @@ export default function LiveJaapRoomView() {
   }, [bgPlayer, isMuted]);
 
   useEffect(() => {
+    const initAudioMode = async () => {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          interruptionMode: 'doNotMix',
+          shouldRouteThroughEarpiece: false,
+        });
+      } catch (error) {
+        console.warn('Failed to set audio mode in LiveJaapRoom:', error);
+      }
+    };
+    initAudioMode();
+
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowOpacity, { toValue: 0.9, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
