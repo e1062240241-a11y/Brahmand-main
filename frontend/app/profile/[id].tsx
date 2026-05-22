@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Platform,
   Alert,
+  Share,
   TextInput,
   Animated,
   KeyboardAvoidingView,
@@ -22,13 +23,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment } from '../../src/services/api';
+import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
-import { PostFeedCard } from '../../src/components/PostFeedCard';
+import PostFeedCard from '../../src/components/PostFeedCard';
+import SharePostModal from '../../src/components/SharePostModal';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
+
+let FileSystemModule: any = null;
+try {
+  FileSystemModule = require('expo-file-system');
+} catch (error) {
+  console.warn('expo-file-system unavailable for media sharing:', error);
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const COLUMN_WIDTH = SCREEN_WIDTH / 3;
@@ -90,6 +99,8 @@ const UserProfileScreen = () => {
   const [commentText, setCommentText] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [totalPosts, setTotalPosts] = useState(0);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState('grid');
   const [userMenuVisible, setUserMenuVisible] = useState(false);
 
@@ -247,10 +258,10 @@ const UserProfileScreen = () => {
       ? [...currentFollowers, currentUserId]
       : currentFollowers.filter((id: string) => id !== currentUserId);
 
-    setProfile(prev => ({
+    setProfile((prev: any) => ({
       ...prev,
       followers: nextFollowers,
-      followers_count: (prev.followers_count || 0) + (isNowFollowing ? 1 : -1)
+      followers_count: (prev?.followers_count || 0) + (isNowFollowing ? 1 : -1)
     }));
 
     try {
@@ -289,6 +300,77 @@ const UserProfileScreen = () => {
         },
       ]
     );
+  };
+
+  const handleLikePost = useCallback(async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+    const liked = !!post?.liked_by_me;
+    const currentLikes = Number(post?.likes_count || 0);
+    const optimisticPost = {
+      ...post,
+      liked_by_me: !liked,
+      likes_count: liked ? Math.max(0, currentLikes - 1) : currentLikes + 1,
+    };
+
+    if (selectedPost?.id === postId) setSelectedPost(optimisticPost);
+    setPosts((prev) => prev.map((item) => (item.id === postId ? optimisticPost : item)));
+
+    try {
+      const response = await togglePostLike(postId);
+      const updatedPost = response.data?.post;
+      if (updatedPost) {
+        if (selectedPost?.id === postId) setSelectedPost((prev: any) => ({ ...prev, ...updatedPost }));
+        setPosts((prev) => prev.map((item) => (item.id === postId ? { ...item, ...updatedPost } : item)));
+      }
+    } catch (error) {
+      console.warn('Failed to like post:', error);
+      if (selectedPost?.id === postId) setSelectedPost(post);
+      setPosts((prev) => prev.map((item) => (item.id === postId ? post : item)));
+    }
+  }, [selectedPost]);
+
+  const handleSharePost = useCallback((post: any) => {
+    setSelectedSharePost(post);
+    setShareModalVisible(true);
+  }, []);
+
+  const handleRepost = useCallback(async (post: any) => {
+    const postId = post?.id;
+    if (!postId) return;
+
+    try {
+      await repostPost(postId);
+      Alert.alert('Success', 'Reposted to your feed');
+      loadPosts(true); // Refresh grid
+    } catch (error) {
+      console.warn('Failed to repost:', error);
+      Alert.alert('Error', 'Could not repost.');
+    }
+  }, [loadPosts]);
+
+  const handleShareExternal = async (post: any) => {
+    const appLink = 'https://brahmand.app';
+    const mediaUrl = post?.media_url || '';
+    const caption = post?.caption ? `\nCaption: ${post.caption}` : '';
+    const message = `Check this post on Brahmand!${caption}\nApp: brahmand.app\n${appLink}`;
+
+    try {
+      if (FileSystemModule?.cacheDirectory && FileSystemModule?.downloadAsync && mediaUrl) {
+        const inferredExt = post?.media_type === 'video' ? 'mp4' : 'jpg';
+        const localPath = `${FileSystemModule.cacheDirectory}share-${Date.now()}.${inferredExt}`;
+        const downloadRes = await FileSystemModule.downloadAsync(mediaUrl, localPath);
+        if (downloadRes?.uri) {
+          await Share.share({ message, url: downloadRes.uri, title: 'Share via Brahmand' });
+          return;
+        }
+      }
+      await Share.share({ message: `${message}\n${mediaUrl}`, url: mediaUrl || appLink, title: 'Share via Brahmand' });
+    } catch (error: any) {
+      const msg = String(error?.message || error || '').toLowerCase();
+      if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
+      console.warn('Failed to open share sheet:', error);
+    }
   };
 
   const openPrivateChat = () => {
@@ -586,7 +668,10 @@ const UserProfileScreen = () => {
               <PostFeedCard
                 post={item}
                 isActive={postModalVisible && viewablePostId === item.id}
+                onLike={handleLikePost}
                 onComment={handleOpenComment}
+                onShare={handleSharePost}
+                onRepost={handleRepost}
                 openCommentsOnCaptionPress
                 onUserPress={() => setPostModalVisible(false)}
                 postMenuType={profile?.id === currentUserId ? 'delete' : undefined}
@@ -604,79 +689,79 @@ const UserProfileScreen = () => {
             maxToRenderPerBatch={2}
             removeClippedSubviews={Platform.OS === 'android'}
           />
-        </View>
-      </Modal>
 
-      <Modal 
-        visible={commentModalVisible} 
-        transparent 
-        animationType="slide" 
-        onRequestClose={() => setCommentModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          style={styles.commentModalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
-        >
-          <TouchableOpacity 
-            style={styles.modalBackgroundDismiss} 
-            activeOpacity={1} 
-            onPress={() => setCommentModalVisible(false)} 
-          />
-          <View style={[styles.commentModalSheet, { paddingBottom: insets.bottom + 10 }]}>
-            <View style={styles.bottomSheetHandle} />
-            <View style={styles.commentModalHeader}>
-              <Text style={styles.commentModalTitle}>Comments</Text>
-              <TouchableOpacity onPress={() => setCommentModalVisible(false)} style={styles.commentCloseBtn}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.commentList}>
-              {commentsLoading ? (
-                <View style={styles.commentLoadingContainer}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                </View>
-              ) : postComments.length === 0 ? (
-                <View style={styles.emptyCommentsContainer}>
-                  <Ionicons name="chatbubble-outline" size={48} color="#DDD" />
-                  <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={postComments}
-                  keyExtractor={(item, index) => item.id ? `comment-${item.id}` : `comment-${index}`}
-                  renderItem={({ item }) => (
-                    <View style={styles.commentItem}>
-                      <View style={styles.commentItemHeader}>
-                        <Avatar photo={item.user_photo} name={item.username || 'User'} size={24} />
-                        <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                      </View>
-                      <MentionText style={styles.commentItemText} text={item?.text || ''} />
-                    </View>
-                  )}
-                  showsVerticalScrollIndicator={false}
-                />
-              )}
-            </View>
-            <View style={styles.commentInputRow}>
-              <MentionInput
-                value={commentText}
-                onChangeText={setCommentText}
-                placeholder="Add a comment..."
-                placeholderTextColor={COLORS.textSecondary}
-                inputStyle={styles.commentTextInput}
-                multiline
-              />
+          <Modal 
+            visible={commentModalVisible} 
+            transparent 
+            animationType="slide" 
+            onRequestClose={() => setCommentModalVisible(false)}
+          >
+            <KeyboardAvoidingView
+              style={styles.commentModalOverlay}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={0}
+            >
               <TouchableOpacity 
-                onPress={handleSubmitComment} 
-                style={[styles.commentSubmitBtn, (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }]} 
-                disabled={!commentText.trim() || commentSubmitting}
-              >
-                <Text style={styles.commentSubmitText}>{commentSubmitting ? '...' : 'Post'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
+                style={styles.modalBackgroundDismiss} 
+                activeOpacity={1} 
+                onPress={() => setCommentModalVisible(false)} 
+              />
+              <View style={[styles.commentModalSheet, { paddingBottom: insets.bottom + 10 }]}>
+                <View style={styles.bottomSheetHandle} />
+                <View style={styles.commentModalHeader}>
+                  <Text style={styles.commentModalTitle}>Comments</Text>
+                  <TouchableOpacity onPress={() => setCommentModalVisible(false)} style={styles.commentCloseBtn}>
+                    <Ionicons name="close" size={24} color={COLORS.text} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.commentList}>
+                  {commentsLoading ? (
+                    <View style={styles.commentLoadingContainer}>
+                      <ActivityIndicator size="large" color={COLORS.primary} />
+                    </View>
+                  ) : postComments.length === 0 ? (
+                    <View style={styles.emptyCommentsContainer}>
+                      <Ionicons name="chatbubble-outline" size={48} color="#DDD" />
+                      <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
+                    </View>
+                  ) : (
+                    <FlatList
+                      data={postComments}
+                      keyExtractor={(item, index) => item.id ? `comment-${item.id}` : `comment-${index}`}
+                      renderItem={({ item }) => (
+                        <View style={styles.commentItem}>
+                          <View style={styles.commentItemHeader}>
+                            <Avatar photo={item.user_photo} name={item.username || 'User'} size={24} />
+                            <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                          </View>
+                          <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                        </View>
+                      )}
+                      showsVerticalScrollIndicator={false}
+                    />
+                  )}
+                </View>
+                <View style={styles.commentInputRow}>
+                  <MentionInput
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    placeholder="Add a comment..."
+                    placeholderTextColor={COLORS.textSecondary}
+                    inputStyle={styles.commentTextInput}
+                    multiline
+                  />
+                  <TouchableOpacity 
+                    onPress={handleSubmitComment} 
+                    style={[styles.commentSubmitBtn, (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }]} 
+                    disabled={!commentText.trim() || commentSubmitting}
+                  >
+                    <Text style={styles.commentSubmitText}>{commentSubmitting ? '...' : 'Post'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
+        </View>
       </Modal>
 
       {/* User Options Modal */}
@@ -719,6 +804,13 @@ const UserProfileScreen = () => {
           </View>
         </View>
       </Modal>
+
+      <SharePostModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        post={selectedSharePost}
+        onShareExternal={handleShareExternal}
+      />
     </SafeAreaView>
   );
 };
@@ -1003,7 +1095,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 16,
-    maxHeight: '80%',
+    height: '80%', // Fixed height to prevent collapse
   },
   commentModalHeader: {
     flexDirection: 'row',
@@ -1075,6 +1167,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 10,
     zIndex: 100,
+    backgroundColor: '#FFF', // Ensure visibility
   },
   commentTextInput: {
     flex: 1,
@@ -1140,6 +1233,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
     marginLeft: 15,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

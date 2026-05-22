@@ -3940,10 +3940,13 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     communities = []
     default_community_ids = set(user.get('default_communities', []))
     
-    user_comm_ids = user.get('communities', [])
+    user_comm_ids = set(user.get('communities', []) or [])
+    seen_ids = set()
+    missing_user_comm_ids = []
+
     if user_comm_ids:
         try:
-            fetched_comms = await db.get_documents_batch('communities', list(set(user_comm_ids)))
+            fetched_comms = await db.get_documents_batch('communities', list(user_comm_ids))
             for comm in fetched_comms:
                 if comm:
                     comm_type = comm.get('type', 'other')
@@ -3960,8 +3963,39 @@ async def get_communities(token_data: dict = Depends(verify_token)):
                         "is_default": comm['id'] in default_community_ids or comm.get('is_default', False),
                         "sort_order": comm.get('sort_order') or TYPE_ORDER.get(comm_type, 99)
                     })
+                    seen_ids.add(comm['id'])
         except Exception as e:
             logger.error("Error batch fetching communities: %s", e)
+
+    try:
+        # Fallback: include communities where the user is a member but the user's communities list is stale.
+        member_comms = await db.query_documents('communities', filters=[('members', 'array_contains', user['id'])])
+        missing_ids_to_sync = []
+        for comm in member_comms:
+            if not comm or comm.get('id') in seen_ids:
+                continue
+            comm_type = comm.get('type', 'other')
+            if comm_type in ['home_area', 'area']:
+                continue
+            communities.append({
+                "id": comm['id'],
+                "name": comm.get('name', 'Unknown'),
+                "type": comm_type,
+                "label": comm.get('label') or TYPE_LABELS.get(comm_type, ''),
+                "code": comm.get('code', ''),
+                "member_count": len(comm.get('members', [])),
+                "subgroups": comm.get('subgroups', []),
+                "is_default": comm['id'] in default_community_ids or comm.get('is_default', False),
+                "sort_order": comm.get('sort_order') or TYPE_ORDER.get(comm_type, 99)
+            })
+            seen_ids.add(comm['id'])
+            if comm['id'] not in user_comm_ids:
+                missing_ids_to_sync.append(comm['id'])
+
+        if missing_ids_to_sync:
+            await db.array_union_update('users', token_data["user_id"], 'communities', missing_ids_to_sync)
+    except Exception as e:
+        logger.error("Error querying fallback community membership: %s", e)
     
     # Sort by sort_order
     communities.sort(key=lambda x: x.get('sort_order', 99))
@@ -4397,8 +4431,12 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
     db = await get_db()
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
-    
-    if community_id not in user.get('communities', []):
+    community = await db.get_document('communities', community_id)
+
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    if community_id not in user.get('communities', []) and user_id not in community.get('members', []):
         raise HTTPException(status_code=403, detail="Not authorized to view this chat")
         
     chat_id = f"community_{community_id}_{subgroup_type}"
@@ -9746,4 +9784,4 @@ app.mount("/socket.io", socket_app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)

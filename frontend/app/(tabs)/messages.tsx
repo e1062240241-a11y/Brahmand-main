@@ -1182,13 +1182,15 @@ export default function MessagesScreen() {
                   <Text style={styles.sheetWhatsAppBtnText}>WhatsApp</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.sheetBtn, styles.sheetFulfillBtn]}
-                  onPress={() => handleResolveRequest(selectedRequest.id)}
-                >
-                  <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
-                  <Text style={styles.sheetFulfillBtnText}>Fulfill Request</Text>
-                </TouchableOpacity>
+                {selectedRequest.user_id === user?.id && (
+                  <TouchableOpacity 
+                    style={[styles.sheetBtn, styles.sheetFulfillBtn]}
+                    onPress={() => handleResolveRequest(selectedRequest.id)}
+                  >
+                    <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
+                    <Text style={styles.sheetFulfillBtnText}>Fulfill Request</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>

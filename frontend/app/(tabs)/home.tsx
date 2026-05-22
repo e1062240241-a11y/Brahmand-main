@@ -267,6 +267,7 @@ import {
   uploadUserPost,
   getUnreadNotificationCount,
   markAllNotificationsRead,
+  getNextFestival,
   reverseGeocode,
   markPostAsSeen,
 } from '../../src/services/api';
@@ -449,7 +450,7 @@ export default function HomeScreen() {
   };
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
-    const tabToLoad = tabOverride || activeTab;
+    const tabToLoad = tabOverride || useFeedStore.getState().activeTab;
     const cached = useFeedStore.getState().tabFeeds[tabToLoad];
     const hasCache = cached && cached.posts && cached.posts.length > 0;
 
@@ -508,7 +509,7 @@ export default function HomeScreen() {
       setLoadingFeed(false);
       setLoadingMoreFeed(false);
     }
-  }, [activeTab, setTabFeed, isRefreshing]);
+  }, [setTabFeed, isRefreshing]);
 
 
   useEffect(() => {
@@ -577,7 +578,18 @@ export default function HomeScreen() {
       }
     };
 
+    const fetchNextFestival = async () => {
+      try {
+        const res = await getNextFestival();
+        const festival = res.data;
+        setNextFestival(festival || null);
+      } catch (err) {
+        console.log('Failed to fetch next festival:', err);
+      }
+    };
+
     fetchUnreadCount();
+    fetchNextFestival();
     const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
     return () => clearInterval(interval);
   }, [setUnreadCount, isFocused]);
@@ -601,23 +613,25 @@ export default function HomeScreen() {
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
+  const [nextFestival, setNextFestival] = useState<any | null>(null);
   const [now, setNow] = useState(new Date());
 
   useFocusEffect(
     useCallback(() => {
-      const cached = useFeedStore.getState().tabFeeds[activeTab];
+      const currentActiveTab = useFeedStore.getState().activeTab;
+      const cached = useFeedStore.getState().tabFeeds[currentActiveTab];
       const nowTime = Date.now();
       const isStale = !cached || (nowTime - (cached.lastFetched || 0) > 120000); // 2 minutes
       if (!cached || cached.posts.length === 0 || isStale) {
-        loadFeedPosts(0, false);
+        loadFeedPosts(0, false, currentActiveTab);
       }
-    }, [loadFeedPosts, activeTab])
+    }, [loadFeedPosts])
   );
   const feedTabsYRef = useRef(0);
   const [feedTabsY, setFeedTabsY] = useState(0);
   const postOffsetsRef = useRef<Record<string, number>>({});
   const postHeightsRef = useRef<Record<string, number>>({});
-  const [postSnapEnabled, setPostSnapEnabled] = useState(false);
+
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const [backgroundUpload, setBackgroundUpload] = useState<{
     uploading: boolean;
@@ -772,8 +786,7 @@ export default function HomeScreen() {
   const handleHomeScroll = useCallback((event: any) => {
     const y = event.nativeEvent.contentOffset.y;
     currentScrollY.current = y;
-    const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
-    setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
+
 
     // Visibility tracking for video autoplay - find post with most area in viewport
     let closestKey = null;
@@ -1130,6 +1143,16 @@ export default function HomeScreen() {
           prev.map(c => c.id === tempId ? { ...serverComment, is_optimistic: false } : c)
         );
       }
+
+      // Background refresh to ensure persistence on next modal open
+      try {
+        const freshResponse = await getPostComments(selectedCommentPostId, 50);
+        if (Array.isArray(freshResponse.data)) {
+          setPostComments(freshResponse.data);
+        }
+      } catch {
+        // keep current state if refresh fails
+      }
     } catch (error: any) {
       // Rollback on error
       setPostComments(prev => prev.filter(c => c.id !== tempId));
@@ -1394,11 +1417,32 @@ export default function HomeScreen() {
                   >
                     <View>
                       <Ionicons name="notifications-outline" size={24} color="#000" />
-                      {unreadCount > 0 && <View style={styles.notificationDot} />}
+                      {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
                     </View>
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1) && (
+                <TouchableOpacity
+                  style={styles.festivalAlertCard}
+                  activeOpacity={0.9}
+                  onPress={() => router.push('/festivals')}
+                >
+                  <View style={styles.festivalAlertIcon}>
+                    <Ionicons name="notifications-outline" size={18} color="#FFF" />
+                  </View>
+                  <View style={styles.festivalAlertTextWrapper}>
+                    <Text style={styles.festivalAlertTitle}>Festival Reminder</Text>
+                    <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
+                      {nextFestival.days_until === 0
+                        ? `${nextFestival.name} is today! Click to see festival details.`
+                        : `${nextFestival.name} is tomorrow (${nextFestival.date}). Don't miss it!`}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#FFF" />
+                </TouchableOpacity>
+              )}
 
               {searchActive ? (
                 <View style={styles.searchPanel}>
@@ -2178,15 +2222,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {selectedCommentPost?.caption ? (
-                  <View style={styles.commentPostPreview}>
-                    <Avatar name={selectedCommentPost?.username || 'User'} photo={selectedCommentPost?.user_photo} size={32} />
-                    <View style={styles.commentPreviewTextWrap}>
-                      <Text style={styles.commentPreviewUser}>{selectedCommentPost?.username}</Text>
-                      <MentionText style={styles.commentPreviewCaption} numberOfLines={2} text={selectedCommentPost?.caption || ''} />
-                    </View>
-                  </View>
-                ) : null}
+
 
                 <View style={styles.commentListWrap}>
                   {commentsLoading ? (
@@ -2261,6 +2297,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6A00',
     borderWidth: 1,
     borderColor: '#FFF',
+  },
+  festivalAlertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFECD9',
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FFD6B0',
+  },
+  festivalAlertIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FF7A00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  festivalAlertTextWrapper: {
+    flex: 1,
+  },
+  festivalAlertTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#3B1D07',
+    marginBottom: 4,
+  },
+  festivalAlertSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#5A432B',
   },
   nameRow: {
     flexDirection: 'row',

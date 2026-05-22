@@ -186,6 +186,21 @@ export const FloatingUtilityButton = () => {
   const [nearbySOSCount, setNearbySOSCount] = useState(0);
   const [nearbySOSAlerts, setNearbySOSAlerts] = useState<any[]>([]);
   const [respondedSOSIds, setRespondedSOSIds] = useState<Set<string>>(new Set());
+  const [dismissedSOSIds, setDismissedSOSIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const loadDismissed = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(`dismissed_sos_${user?.id || 'anon'}`);
+        if (saved) {
+          setDismissedSOSIds(new Set(JSON.parse(saved)));
+        }
+      } catch (e) {
+        console.warn('Failed to load dismissed SOS alerts:', e);
+      }
+    };
+    loadDismissed();
+  }, [user?.id]);
   const [microLocation, setMicroLocation] = useState('');
   const [microLocationLoading, setMicroLocationLoading] = useState(false);
   const [locationFetched, setLocationFetched] = useState(false);
@@ -435,11 +450,34 @@ export const FloatingUtilityButton = () => {
         await updateCurrentLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
         const nearbyRes = await getActiveSOSAlerts({ lat: location.coords.latitude, lng: location.coords.longitude, radius: 10000 });
         const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== mySOSRes.data?.id);
-        setNearbySOSCount(otherSOS.length);
-        setNearbySOSAlerts(otherSOS);
+        
+        // Filter out dismissed alerts
+        const visibleSOS = otherSOS.filter((s: any) => s.id && !dismissedSOSIds.has(s.id));
+        setNearbySOSCount(visibleSOS.length);
+        setNearbySOSAlerts(visibleSOS);
       }
     } catch (error) { }
-  }, []);
+  }, [dismissedSOSIds]);
+
+  const handleDismissNearbySOS = async () => {
+    const nextDismissed = new Set(dismissedSOSIds);
+    nearbySOSAlerts.forEach((s: any) => {
+      if (s.id) {
+        nextDismissed.add(s.id);
+      }
+    });
+    setDismissedSOSIds(nextDismissed);
+    setNearbySOSCount(0);
+    setNearbySOSAlerts([]);
+    try {
+      await AsyncStorage.setItem(
+        `dismissed_sos_${user?.id || 'anon'}`,
+        JSON.stringify(Array.from(nextDismissed))
+      );
+    } catch (e) {
+      console.warn('Failed to save dismissed SOS alerts:', e);
+    }
+  };
 
   const loadInitialUtilityData = async () => {
     fetchMyCommunityRequests();
@@ -773,6 +811,15 @@ export const FloatingUtilityButton = () => {
             </View>
           )}
         </View>
+        {!modalVisible && !activeSOS && nearbySOSCount > 0 && (
+          <TouchableOpacity 
+            style={styles.fabDismissBtn}
+            onPress={handleDismissNearbySOS}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={14} color="#666" />
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       <Animated.View
@@ -1052,7 +1099,18 @@ export const FloatingUtilityButton = () => {
       <SOSResponderModal
         visible={sosResponderModalVisible}
         sosData={incomingSOS}
-        onClose={() => setSosResponderModalVisible(false)}
+        onClose={() => {
+          setSosResponderModalVisible(false);
+          if (incomingSOS?.sos_id || incomingSOS?.id) {
+            const idToDismiss = incomingSOS.sos_id || incomingSOS.id;
+            setDismissedSOSIds(prev => {
+              const next = new Set(prev);
+              next.add(idToDismiss);
+              AsyncStorage.setItem(`dismissed_sos_${user?.id || 'anon'}`, JSON.stringify(Array.from(next)));
+              return next;
+            });
+          }
+        }}
         onRespond={handleRespondToSOS}
       />
     </View>
@@ -1608,7 +1666,24 @@ const styles = StyleSheet.create({
   responderBtnText: { color: '#FFF', fontSize: 8, fontWeight: '900', textAlign: 'center', marginTop: 4 },
   closeAlertX: { position: 'absolute', top: -4, right: -4, alignItems: 'center' },
   closeXCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', shadowOpacity: 0.1, shadowRadius: 3, elevation: 3 },
-  closeXText: { fontSize: 8, color: '#666', fontWeight: '700', marginTop: 2 }
+  closeXText: { fontSize: 8, color: '#666', fontWeight: '700', marginTop: 2 },
+  fabDismissBtn: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+    zIndex: 1005,
+  },
 });
 
 export default FloatingUtilityButton;

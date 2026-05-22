@@ -159,6 +159,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 12,
     overflow: 'hidden',
+    zIndex: 9999, // Ensure it's on top
     ...Platform.select({
       ios: {
         shadowColor: '#000',
