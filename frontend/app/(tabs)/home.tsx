@@ -2030,7 +2030,14 @@ export default function HomeScreen() {
 
                 {/* Local Community Card */}
                 {(() => {
-                  const localComm = communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area');
+                  const mumbaiId = communities.find(c => c.type === 'city' && c.name?.toLowerCase().includes('mumbai'))?.id;
+                  const localComm = communities.find(c => c.name?.toLowerCase().includes('hdnddk'))
+                    || communities.find(c => c.type === 'user_group')
+                    || communities.find(c => c.type === 'home_area')
+                    || communities.find(c => c.is_default)
+                    || communities.find(c => c.id !== mumbaiId);
+                  const displayName = localComm?.name || 'Local Community';
+                  const displayMembers = localComm?.member_count || localComm?.members_count || '0';
                   return (
                     <TouchableOpacity
                       style={styles.communityCardMini}
@@ -2039,7 +2046,7 @@ export default function HomeScreen() {
                         if (localComm) {
                           router.push({
                             pathname: '/community/[id]',
-                            params: { id: localComm.id, subgroup: 'city', name: localComm.name }
+                            params: { id: localComm.id, subgroup: localComm.type || 'city', name: localComm.name }
                           });
                         } else {
                           router.push('/messages?tab=Community');
@@ -2051,13 +2058,10 @@ export default function HomeScreen() {
                       </View>
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                          Pune Food Sharing Group
+                          {displayName}
                         </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>236 members</Text>
-                          <View style={styles.sevaBadgeMini}>
-                            <Text style={styles.sevaBadgeTextMini}>Seva</Text>
-                          </View>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{displayMembers} members</Text>
                         </View>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />

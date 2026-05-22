@@ -2124,16 +2124,20 @@ export default function CommunityDetailScreen() {
     try {
       const { getPostComments, getCommunityMessageComments } = require('../../src/services/api');
       let response;
+      let commentsData;
       if (post.isCommunityMsg) {
         response = await getCommunityMessageComments(post.communityId || id, post.subgroupType || 'city', post.id);
+        commentsData = response.data?.data || [];
       } else {
         response = await getPostComments(post.id);
+        commentsData = response.data || [];
       }
-      const mappedComments = (response.data || []).map((c: any) => ({
+      const mappedComments = commentsData.map((c: any) => ({
         id: c.id || String(Math.random()),
         userName: c.username || c.sender_name || 'Anonymous',
         text: c.text || c.content || '',
         avatar: c.user_photo || c.sender_photo || null,
+        userId: c.user_id,
       }));
       setActiveComments(mappedComments);
     } catch (error) {
@@ -2147,22 +2151,41 @@ export default function CommunityDetailScreen() {
     const textToSend = commentText.trim();
     const targetPostId = showCommentModal.id;
     
-    const newComment = {
-      id: `comment-${Date.now()}`,
+    const tempId = `comment-${Date.now()}`;
+    const optimisticComment = {
+      id: tempId,
       userName: user?.name || 'You',
       text: textToSend,
-      avatar: user?.photo
+      avatar: user?.photo,
     };
 
-    setActiveComments(prev => [...prev, newComment]);
+    setActiveComments(prev => [...prev, optimisticComment]);
     setCommentText('');
 
     try {
-      const { addPostComment, addCommunityMessageComment, getPostComments, getCommunityMessageComments } = require('../../src/services/api');
+      const { addPostComment, addCommunityMessageComment } = require('../../src/services/api');
+      let response;
       if (showCommentModal.isCommunityMsg) {
-        await addCommunityMessageComment(showCommentModal.communityId || id, showCommentModal.subgroupType || 'city', targetPostId, textToSend);
+        response = await addCommunityMessageComment(showCommentModal.communityId || id, showCommentModal.subgroupType || 'city', targetPostId, textToSend);
       } else {
-        await addPostComment(targetPostId, textToSend);
+        response = await addPostComment(targetPostId, textToSend);
+      }
+
+      // Replace optimistic comment with server-returned comment (has real id, userId etc.)
+      const serverComment = showCommentModal.isCommunityMsg
+        ? response.data?.data?.[0]
+        : response.data?.comment;
+
+      if (serverComment) {
+        setActiveComments(prev => prev.map(c =>
+          c.id === tempId ? {
+            id: serverComment.id || tempId,
+            userName: serverComment.username || serverComment.sender_name || user?.name || 'You',
+            text: serverComment.text || serverComment.content || textToSend,
+            avatar: serverComment.user_photo || serverComment.sender_photo || user?.photo,
+            userId: serverComment.user_id,
+          } : c
+        ));
       }
 
       // Update comment count on communityPosts and cache
@@ -2184,33 +2207,95 @@ export default function CommunityDetailScreen() {
         }
         return post;
       }));
-
-      // Re-fetch comments from server so they persist on next open
-      try {
-        let refreshedResponse;
-        if (showCommentModal.isCommunityMsg) {
-          refreshedResponse = await getCommunityMessageComments(showCommentModal.communityId || id, showCommentModal.subgroupType || 'city', targetPostId);
-        } else {
-          refreshedResponse = await getPostComments(targetPostId);
-        }
-        const refreshedComments = (refreshedResponse.data || []).map((c: any) => ({
-          id: c.id || String(Math.random()),
-          userName: c.username || c.sender_name || 'Anonymous',
-          text: c.text || c.content || '',
-          avatar: c.user_photo || c.sender_photo || null,
-        }));
-        setActiveComments(refreshedComments);
-      } catch {
-        // keep the optimistic comment if refresh fails
-      }
     } catch (error) {
       console.error('Failed to post comment:', error);
       // Rollback comment on error
-      setActiveComments(prev => prev.filter(c => c.id !== newComment.id));
+      setActiveComments(prev => prev.filter(c => c.id !== tempId));
       Alert.alert('Error', 'Failed to add comment. Please try again.');
     }
   };
 
+  const handleDeleteComment = (commentId: string) => {
+    const commentToDelete = activeComments.find(c => c.id === commentId);
+    if (!commentToDelete) return;
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Delete this comment?');
+      if (confirmed) {
+        setActiveComments(prev => prev.filter(c => c.id !== commentId));
+
+        const targetPostId = showCommentModal?.id;
+        if (targetPostId) {
+          setCommunityPosts(prev => {
+            const updated = prev.map(post => {
+              if (post.id === targetPostId) {
+                return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
+              }
+              return post;
+            });
+            useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+            return updated;
+          });
+          setDiscussionPosts(prev => prev.map(post => {
+            if (post.id === targetPostId) {
+              return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
+            }
+            return post;
+          }));
+        }
+
+        try {
+          const { deleteComment: deleteCommentApi } = require('../../src/services/api');
+          deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
+        } catch (error) {
+          console.log('[Community] Comment delete API error:', error);
+        }
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setActiveComments(prev => prev.filter(c => c.id !== commentId));
+
+            const targetPostId = showCommentModal?.id;
+            if (targetPostId) {
+              setCommunityPosts(prev => {
+                const updated = prev.map(post => {
+                  if (post.id === targetPostId) {
+                    return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
+                  }
+                  return post;
+                });
+                useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+                return updated;
+              });
+              setDiscussionPosts(prev => prev.map(post => {
+                if (post.id === targetPostId) {
+                  return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
+                }
+                return post;
+              }));
+            }
+
+            try {
+              const { deleteComment: deleteCommentApi } = require('../../src/services/api');
+              deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
+            } catch (error) {
+              console.log('[Community] Comment delete API error:', error);
+            }
+          }
+        }
+      ]
+    );
+  };
 
 
   if (loading) {
@@ -2688,7 +2773,17 @@ export default function CommunityDetailScreen() {
                       <Avatar name={comment.userName} photo={comment.avatar} size={32} />
                     </View>
                     <View style={{ flex: 1, backgroundColor: '#F7F9F9', padding: 12, borderRadius: 16 }}>
-                      <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419' }}>{comment.userName}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419' }}>{comment.userName}</Text>
+                        {comment.userId === user?.id && (
+                          <TouchableOpacity
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            onPress={() => handleDeleteComment(comment.id)}
+                          >
+                            <Ionicons name="ellipsis-horizontal" size={14} color="#536471" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                       <Text selectable={true} style={{ fontSize: 14, color: '#536471', marginTop: 4, lineHeight: 18 }}>{comment.text}</Text>
                     </View>
                   </View>

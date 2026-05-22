@@ -1724,5 +1724,9 @@ export const getCommunityMessageComments = (communityId: string, subgroupType: s
   return api.get(`/messages/community/${communityId}/${subgroupType}/${messageId}/comments`);
 };
 
+export const deleteComment = (commentId: string) => {
+  return api.delete(`/comments/${commentId}`);
+};
+
 export default api;
 

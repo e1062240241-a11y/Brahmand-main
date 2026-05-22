@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { useNotificationStore } from '../src/store/notificationStore';
+import { socketService } from '../src/services/socket';
 import { 
   getUserNotifications, 
   getUnreadNotificationCount, 
@@ -69,8 +70,8 @@ export default function NotificationsScreen() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const { unreadCount, setUnreadCount } = useNotificationStore();
 
-  const loadNotifications = async () => {
-    setLoading(true);
+  const loadNotifications = async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       const [countRes, notificationsRes] = await Promise.all([
         getUnreadNotificationCount().catch(() => ({ data: 0 })),
@@ -82,7 +83,17 @@ export default function NotificationsScreen() {
         : Number(countRes.data?.unread_count ?? 0);
       setUnreadCount(countValue || 0);
       
-      const notificationsList = Array.isArray(notificationsRes.data) ? notificationsRes.data : [];
+      let notificationsList = Array.isArray(notificationsRes.data) ? notificationsRes.data : [];
+      // Deduplicate by actor + action
+      const seen = new Set<string>();
+      notificationsList = notificationsList.filter(n => {
+        const itemData = typeof n.data === 'string' ? (() => { try { return JSON.parse(n.data); } catch { return null; } })() : n.data;
+        const key = `${itemData?.action || n.type}_${itemData?.actor_user_id}`;
+        if (!key || key === '_undefined') return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       setNotifications(notificationsList);
 
       // Batch fetch actor details
@@ -123,10 +134,30 @@ export default function NotificationsScreen() {
     }
   };
 
-  useEffect(() => {
-    dismissBadge();
-    if (user?.id) loadNotifications();
-  }, [user?.id]);
+  const notifRefreshRef = useRef<NodeJS.Timeout | null>(null);
+  const loadNotifsRef = useRef(loadNotifications);
+  loadNotifsRef.current = loadNotifications;
+
+  const refreshNotifications = useCallback(() => {
+    loadNotifsRef.current(false);
+    setUnreadCount(0);
+  }, [setUnreadCount]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id) return;
+      dismissBadge();
+      loadNotifsRef.current(true);
+      notifRefreshRef.current = setInterval(refreshNotifications, 5000);
+
+      socketService.onEvent('new_notification', refreshNotifications);
+
+      return () => {
+        if (notifRefreshRef.current) clearInterval(notifRefreshRef.current);
+        socketService.offEvent('new_notification', refreshNotifications);
+      };
+    }, [user?.id, refreshNotifications])
+  );
 
   useEffect(() => {
     if (user?.following && Array.isArray(user.following)) {
@@ -224,11 +255,7 @@ export default function NotificationsScreen() {
   };
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)/home');
-    }
+    router.replace('/(tabs)/home');
   };
 
   const handleMarkAllRead = async () => {
@@ -241,10 +268,29 @@ export default function NotificationsScreen() {
     }
   };
 
+  const getDayGroup = (dateStr?: string): string => {
+    if (!dateStr) return 'Earlier';
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return 'Earlier';
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.floor((startOfDay.getTime() - date.getTime()) / 86400000);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays <= 7) return 'This Week';
+    if (diffDays <= 30) return 'This Month';
+    return 'Earlier';
+  };
+
   const getGroupedNotifications = () => {
-    const unread = notifications.filter(n => !n.is_read && n.unread !== false);
-    const read = notifications.filter(n => n.is_read || n.unread === false);
-    return { unread, read };
+    const groups: Record<string, any[]> = {};
+    notifications.forEach(n => {
+      const group = getDayGroup(n.time || n.created_at);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(n);
+    });
+    const order = ['Today', 'Yesterday', 'This Week', 'This Month', 'Earlier'];
+    return order.filter(g => groups[g]?.length > 0).map(g => ({ title: g, data: groups[g] }));
   };
 
   const renderSectionHeader = (title: string) => (
@@ -362,7 +408,7 @@ export default function NotificationsScreen() {
     );
   };
 
-  const { unread, read } = getGroupedNotifications();
+  const groupedData = getGroupedNotifications();
 
   return (
     <View style={styles.container}>
@@ -397,18 +443,12 @@ export default function NotificationsScreen() {
             </View>
           ) : (
             <View style={{ backgroundColor: '#FFF' }}>
-              {unread.length > 0 && (
-                <>
-                  {renderSectionHeader('New')}
-                  {unread.map((item) => renderNotificationItem(item))}
-                </>
-              )}
-              {read.length > 0 && (
-                <>
-                  {renderSectionHeader('Earlier')}
-                  {read.map((item) => renderNotificationItem(item))}
-                </>
-              )}
+              {groupedData.map((section) => (
+                <View key={section.title}>
+                  {renderSectionHeader(section.title)}
+                  {section.data.map((item) => renderNotificationItem(item))}
+                </View>
+              ))}
             </View>
           )}
         </ScrollView>

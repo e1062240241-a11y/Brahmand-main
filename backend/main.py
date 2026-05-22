@@ -4646,6 +4646,33 @@ async def get_community_message_comments(
     }
 
 
+@api_router.delete("/comments/{comment_id}")
+async def delete_comment(comment_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    comment = await db.get_document('post_comments', comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    if comment.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail="You can only delete your own comments")
+
+    post_id = comment.get('post_id')
+    await db.delete_document('post_comments', comment_id)
+
+    if post_id:
+        try:
+            new_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
+            post = await db.get_document('posts', post_id)
+            if post:
+                await db.update_document('posts', post_id, {'comments_count': new_count})
+        except Exception:
+            pass
+
+    return {'status': 'success', 'message': 'Comment deleted'}
+
+
 @api_router.post("/dm")
 async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verify_token)):
     """
