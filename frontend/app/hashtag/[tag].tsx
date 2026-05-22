@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { searchByHashtag, getPostComments, addPostComment } from '../../src/services/api';
+import { searchByHashtag, getPostComments, addPostComment, deletePostComment } from '../../src/services/api';
+import { useAuthStore } from '../../src/store/authStore';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING } from '../../src/constants/theme';
@@ -14,6 +15,7 @@ import { formatTimeAgo } from '../../src/utils/dateUtils';
 const HashtagPage = () => {
   const { tag } = useLocalSearchParams<{ tag: string | string[] }>();
   const router = useRouter();
+  const { user } = useAuthStore();
   const rawTag = Array.isArray(tag) ? tag[0] : tag;
   const normalizedTag = rawTag ? decodeURIComponent(rawTag) : rawTag;
   const [posts, setPosts] = useState<any[]>([]);
@@ -29,6 +31,7 @@ const HashtagPage = () => {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
 
 
   const loadHashtagPosts = useCallback(async (pageOffset: number = 0) => {
@@ -129,6 +132,78 @@ const HashtagPage = () => {
     }
   };
 
+  const handleDeleteComment = async (comment: any) => {
+    const commentId = comment?.id;
+    if (!commentId || !selectedCommentPostId) return;
+
+    const originalComments = [...postComments];
+    const originalPost = { ...selectedCommentPost };
+
+    setPostComments(prev => prev.filter(c => c.id !== commentId));
+
+    setPosts(prev => prev.map(p => {
+      if (p.id === selectedCommentPostId) {
+        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
+        return {
+          ...p,
+          comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
+          top_comments: currentTop.filter((c: any) => c.id !== commentId),
+        };
+      }
+      return p;
+    }));
+
+    setSelectedCommentPost((prev: any) => {
+      if (prev?.id === selectedCommentPostId) {
+        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
+        return {
+          ...prev,
+          comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
+          top_comments: currentTop.filter((c: any) => c.id !== commentId),
+        };
+      }
+      return prev;
+    });
+
+    try {
+      const response = await deletePostComment(selectedCommentPostId, commentId);
+      const updatedPostFromServer = response.data?.post;
+
+      if (updatedPostFromServer) {
+        setPosts(prev => prev.map(p => {
+          if (p.id === selectedCommentPostId) {
+            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
+            return {
+              ...p,
+              ...updatedPostFromServer,
+              top_comments: currentTop.slice(0, 2),
+            };
+          }
+          return p;
+        }));
+
+        setSelectedCommentPost((prev: any) => {
+          if (prev?.id === selectedCommentPostId) {
+            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
+            return {
+              ...prev,
+              ...updatedPostFromServer,
+              top_comments: currentTop.slice(0, 2),
+            };
+          }
+          return prev;
+        });
+      }
+    } catch (error: any) {
+      console.warn('Failed to delete comment:', error);
+      setPostComments(originalComments);
+      setSelectedCommentPost(originalPost);
+      setPosts(prev => prev.map(p => p.id === selectedCommentPostId ? originalPost : p));
+      const detail = error.response?.data?.detail || error.message;
+      Alert.alert('Error', detail || 'Could not delete comment. Please try again.');
+    }
+  };
+
   const handleOpenPostUserProfile = (post: any) => {
     const userId = post?.user_id || post?.user?.id;
     if (!userId) return;
@@ -216,6 +291,13 @@ const HashtagPage = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.bottomSheet}>
+            {activeCommentMenuId !== null && (
+              <TouchableOpacity
+                style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]}
+                activeOpacity={1}
+                onPress={() => setActiveCommentMenuId(null)}
+              />
+            )}
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentSheetHeader}>
               <Text style={styles.bottomSheetTitle}>Comments</Text>
@@ -225,6 +307,7 @@ const HashtagPage = () => {
                   setSelectedCommentPostId(null);
                   setSelectedCommentPost(null);
                   setPostComments([]);
+                  setActiveCommentMenuId(null);
                 }}
                 style={styles.commentCloseBtn}
               >
@@ -247,19 +330,48 @@ const HashtagPage = () => {
                 <Text style={styles.commentEmptyText}>Loading comments...</Text>
               ) : postComments.length > 0 ? (
                 <ScrollView showsVerticalScrollIndicator={false}>
-                  {postComments.map((comment) => (
-                    <View key={comment.id || `${comment.user_id}-${comment.created_at}-${comment.text}`} style={styles.commentItem}>
-                      <Avatar name={comment?.username || 'User'} photo={comment?.user_photo} size={32} />
-                      <View style={styles.commentBubble}>
-                        <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
-                        <Text style={styles.commentItemText}>{comment?.text || ''}</Text>
-                        <Text style={styles.commentTime}>{formatTimeAgo(comment?.created_at)}</Text>
+                  {postComments.map((comment) => {
+                    const canDelete = comment.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                    return (
+                      <View key={comment.id || `${comment.user_id}-${comment.created_at}-${comment.text}`} style={[styles.commentItem, { zIndex: activeCommentMenuId === comment.id ? 100 : 1 }]}>
+                        <Avatar name={comment?.username || 'User'} photo={comment?.user_photo} size={32} />
+                        <View style={styles.commentBubble}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
+                            {canDelete && (
+                              <View style={{ position: 'relative', zIndex: 20 }}>
+                                <TouchableOpacity
+                                  style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                  onPress={() => {
+                                    setActiveCommentMenuId(activeCommentMenuId === comment.id ? null : comment.id);
+                                  }}
+                                >
+                                  <Ionicons name="ellipsis-vertical" size={16} color="#8A7B89" />
+                                </TouchableOpacity>
+                                {activeCommentMenuId === comment.id && (
+                                  <TouchableOpacity
+                                    style={styles.inlineDeletePopover}
+                                    onPress={() => {
+                                      setActiveCommentMenuId(null);
+                                      handleDeleteComment(comment);
+                                    }}
+                                  >
+                                    <Ionicons name="trash-outline" size={14} color={COLORS.error || '#FF3B30'} />
+                                    <Text style={styles.inlineDeleteText}>Delete</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.commentItemText}>{comment?.text || ''}</Text>
+                          <Text style={styles.commentTime}>{formatTimeAgo(comment?.created_at)}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.commentLikeBtn}>
+                          <Ionicons name="heart-outline" size={16} color={COLORS.textSecondary} />
+                        </TouchableOpacity>
                       </View>
-                      <TouchableOpacity style={styles.commentLikeBtn}>
-                        <Ionicons name="heart-outline" size={16} color={COLORS.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </ScrollView>
               ) : (
                 <View style={styles.commentEmptyState}>
@@ -294,6 +406,8 @@ const HashtagPage = () => {
           </View>
         </View>
       </Modal>
+
+
     </SafeAreaView>
   );
 }
@@ -443,6 +557,32 @@ const styles = StyleSheet.create({
   },
   commentSubmitDisabled: {
     backgroundColor: COLORS.border,
+  },
+  inlineDeletePopover: {
+    position: 'absolute',
+    right: 0,
+    top: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+    minWidth: 80,
+    zIndex: 999,
+  },
+  inlineDeleteText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });
 export default HashtagPage;

@@ -30,6 +30,7 @@ import {
   updatePost,
   togglePostLike,
   getPostComments,
+  deletePostComment,
   addPostComment,
   repostPost,
   reportPost,
@@ -140,6 +141,7 @@ export default function ProfileScreen() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
   const [selectedCommentPost, setSelectedCommentPost] = useState<any | null>(null);
+  const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
 
   // Toast states
   const [toastVisible, setToastVisible] = useState(false);
@@ -560,6 +562,98 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleDeleteComment = async (comment: any) => {
+    const commentId = comment?.id;
+    if (!commentId || !selectedCommentPost?.id) return;
+
+    const originalComments = [...postComments];
+    const originalPost = { ...selectedCommentPost };
+
+    setPostComments(prev => prev.filter(c => c.id !== commentId));
+
+    const targetPostId = selectedCommentPost.id;
+    setPosts(prev => prev.map(p => {
+      if (p.id === targetPostId) {
+        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
+        return {
+          ...p,
+          comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
+          top_comments: currentTop.filter((c: any) => c.id !== commentId),
+        };
+      }
+      return p;
+    }));
+
+    if (selectedPost?.id === targetPostId) {
+      setSelectedPost((prev: any) => {
+        if (prev) {
+          const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
+          return {
+            ...prev,
+            comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
+            top_comments: currentTop.filter((c: any) => c.id !== commentId),
+          };
+        }
+        return prev;
+      });
+    }
+
+    setSelectedCommentPost((prev: any) => {
+      if (prev?.id === targetPostId) {
+        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
+        return {
+          ...prev,
+          comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
+          top_comments: currentTop.filter((c: any) => c.id !== commentId),
+        };
+      }
+      return prev;
+    });
+
+    try {
+      const response = await deletePostComment(String(targetPostId), commentId);
+      const updatedPostFromServer = response.data?.post;
+
+      if (updatedPostFromServer) {
+        setPosts(prev => prev.map(p => {
+          if (p.id === targetPostId) {
+            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
+            return {
+              ...p,
+              ...updatedPostFromServer,
+              top_comments: currentTop.slice(0, 2),
+            };
+          }
+          return p;
+        }));
+
+        if (selectedPost?.id === targetPostId) {
+          setSelectedPost((prev: any) => prev ? { ...prev, ...updatedPostFromServer, top_comments: (Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : []).slice(0, 2) } : prev);
+        }
+
+        setSelectedCommentPost((prev: any) => {
+          if (prev?.id === targetPostId) {
+            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
+            return {
+              ...prev,
+              ...updatedPostFromServer,
+              top_comments: currentTop.slice(0, 2),
+            };
+          }
+          return prev;
+        });
+      }
+    } catch (error: any) {
+      console.warn('Failed to delete comment:', error);
+      setPostComments(originalComments);
+      setSelectedCommentPost(originalPost);
+      setPosts(prev => prev.map(p => p.id === targetPostId ? originalPost : p));
+      if (selectedPost?.id === targetPostId) setSelectedPost(originalPost);
+      const detail = error.response?.data?.detail || error.message;
+      Alert.alert('Error', detail || 'Could not delete comment. Please try again.');
+    }
+  };
+
   const handleSharePost = useCallback((post: any) => {
     setSelectedSharePost(post);
     setShareModalVisible(true);
@@ -963,8 +1057,15 @@ export default function ProfileScreen() {
           {/* Comment Modal nested inside Post Detail Modal */}
           <Modal visible={commentModalVisible} animationType="slide">
             <SafeAreaView style={styles.commentModalContainer}>
+              {activeCommentMenuId !== null && (
+                <TouchableOpacity
+                  style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]}
+                  activeOpacity={1}
+                  onPress={() => setActiveCommentMenuId(null)}
+                />
+              )}
               <View style={styles.commentHeader}>
-                <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
+                <TouchableOpacity onPress={() => { setCommentModalVisible(false); setActiveCommentMenuId(null); }}>
                   <Ionicons name="close" size={28} color={COLORS.text} />
                 </TouchableOpacity>
                 <Text style={styles.commentTitle}>Comments</Text>
@@ -977,15 +1078,44 @@ export default function ProfileScreen() {
                 <FlatList
                   data={postComments}
                   keyExtractor={(item, index) => item.id || String(index)}
-                  renderItem={({ item }) => (
-                    <View style={styles.commentItem}>
-                      <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
-                      <View style={styles.commentContent}>
-                        <Text style={styles.commentUser}>{item.username || 'User'}</Text>
-                        <Text style={styles.commentText}>{item.text}</Text>
+                  renderItem={({ item }) => {
+                    const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                    return (
+                      <View style={[styles.commentItem, { zIndex: activeCommentMenuId === item.id ? 100 : 1 }]}>
+                        <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
+                        <View style={styles.commentContent}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={styles.commentUser}>{item.username || 'User'}</Text>
+                            {canDelete && (
+                              <View style={{ position: 'relative', zIndex: 20 }}>
+                                <TouchableOpacity
+                                  style={{ padding: 4, marginRight: -4 }}
+                                  onPress={() => {
+                                    setActiveCommentMenuId(activeCommentMenuId === item.id ? null : item.id);
+                                  }}
+                                >
+                                  <Ionicons name="ellipsis-vertical" size={16} color={COLORS.textSecondary || '#888'} />
+                                </TouchableOpacity>
+                                {activeCommentMenuId === item.id && (
+                                  <TouchableOpacity
+                                    style={styles.inlineDeletePopover}
+                                    onPress={() => {
+                                      setActiveCommentMenuId(null);
+                                      handleDeleteComment(item);
+                                    }}
+                                  >
+                                    <Ionicons name="trash-outline" size={14} color={COLORS.error || '#FF3B30'} />
+                                    <Text style={styles.inlineDeleteText}>Delete</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.commentText}>{item.text}</Text>
+                        </View>
                       </View>
-                    </View>
-                  )}
+                    );
+                  }}
                   ListEmptyComponent={
                     <View style={styles.emptyComments}>
                       <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
@@ -1119,6 +1249,8 @@ export default function ProfileScreen() {
         onUploadStart={handleUploadStart}
         onUploadSuccess={handleUploadPostSuccess}
       />
+
+
     </SafeAreaView>
   );
 }
@@ -1740,5 +1872,31 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
+  },
+  inlineDeletePopover: {
+    position: 'absolute',
+    right: 0,
+    top: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+    minWidth: 80,
+    zIndex: 999,
+  },
+  inlineDeleteText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });

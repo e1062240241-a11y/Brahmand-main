@@ -3233,6 +3233,71 @@ async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = D
     return comments[:safe_limit]
 
 
+@api_router.delete('/posts/{post_id}/comments/{comment_id}')
+async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    comment = await db.get_document('post_comments', comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail='Comment not found')
+
+    if comment.get('post_id') != post_id:
+        raise HTTPException(status_code=400, detail='Comment does not belong to this post')
+
+    # Check authorization: comment owner OR post owner
+    if comment.get('user_id') != user_id and post.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail='Unauthorized to delete this comment')
+
+    await db.delete_document('post_comments', comment_id)
+
+    # Recalculate comments_count
+    comments_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
+
+    # Recalculate top_comments
+    top_comments = await db.query_documents(
+        'post_comments',
+        filters=[('post_id', '==', post_id)],
+        limit=200,
+    )
+
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
+
+    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+
+    await db.update_document('posts', post_id, {
+        'comments_count': comments_count,
+        'top_comments': top_comments[:5]
+    })
+
+    updated_post = await db.get_document('posts', post_id)
+    updated_post['comments_count'] = comments_count
+    updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
+    updated_post['top_comments'] = top_comments[:5]
+
+    return {
+        'message': 'Comment deleted',
+        'comments_count': comments_count,
+        'post': updated_post,
+    }
+
+
+
+
+
 @api_router.post('/posts/{post_id}/report')
 async def report_post(post_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
     db = await get_db()

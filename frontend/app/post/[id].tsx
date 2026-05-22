@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Share, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { View, Text, Share, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../../src/constants/theme';
-import { getPostsFeed, getPostById, getPostComments, addPostComment, repostPost } from '../../src/services/api';
+import { getPostsFeed, getPostById, getPostComments, addPostComment, repostPost, deletePostComment } from '../../src/services/api';
+import { useAuthStore } from '../../src/store/authStore';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
@@ -18,6 +19,7 @@ const PostScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const routePostId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const { user } = useAuthStore();
 
   const [feedPosts, setFeedPosts] = useState<any[]>([]);
   const [loadingFeed, setLoadingFeed] = useState(true);
@@ -38,6 +40,7 @@ const PostScreen = () => {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
+  const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
 
   const listRef = useRef<FlatList>(null);
   const hasScrolled = useRef(false);
@@ -129,6 +132,79 @@ const PostScreen = () => {
       setCommentSubmitting(false);
     }
   }, [commentText, loadComments, commentPost]);
+
+  const handleDeleteComment = useCallback(async (comment: any) => {
+    const commentId = comment?.id;
+    if (!commentId || !commentPost?.id) return;
+
+    const originalComments = [...postComments];
+    const originalPost = { ...commentPost };
+
+    setPostComments(prev => prev.filter(c => c.id !== commentId));
+
+    const targetPostId = commentPost.id;
+    setFeedPosts(prev => prev.map(p => {
+      if (p.id === targetPostId) {
+        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
+        return {
+          ...p,
+          comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
+          top_comments: currentTop.filter((c: any) => c.id !== commentId),
+        };
+      }
+      return p;
+    }));
+
+    setCommentPost((prev: any) => {
+      if (prev?.id === targetPostId) {
+        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
+        return {
+          ...prev,
+          comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
+          top_comments: currentTop.filter((c: any) => c.id !== commentId),
+        };
+      }
+      return prev;
+    });
+
+    try {
+      const response = await deletePostComment(String(targetPostId), commentId);
+      const updatedPostFromServer = response.data?.post;
+
+      if (updatedPostFromServer) {
+        setFeedPosts(prev => prev.map(p => {
+          if (p.id === targetPostId) {
+            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
+            return {
+              ...p,
+              ...updatedPostFromServer,
+              top_comments: currentTop.slice(0, 2),
+            };
+          }
+          return p;
+        }));
+
+        setCommentPost((prev: any) => {
+          if (prev?.id === targetPostId) {
+            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
+            return {
+              ...prev,
+              ...updatedPostFromServer,
+              top_comments: currentTop.slice(0, 2),
+            };
+          }
+          return prev;
+        });
+      }
+    } catch (error: any) {
+      console.warn('Failed to delete comment:', error);
+      setPostComments(originalComments);
+      setCommentPost(originalPost);
+      setFeedPosts(prev => prev.map(p => p.id === targetPostId ? originalPost : p));
+      const detail = error.response?.data?.detail || error.message;
+      alert(detail || 'Could not delete comment. Please try again.');
+    }
+  }, [postComments, commentPost]);
 
   const handleShareExternal = useCallback(async (post: any) => {
     if (!post) return;
@@ -292,9 +368,16 @@ const PostScreen = () => {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
         >
           <View style={styles.commentModalSheet}>
+            {activeCommentMenuId !== null && (
+              <TouchableOpacity
+                style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]}
+                activeOpacity={1}
+                onPress={() => setActiveCommentMenuId(null)}
+              />
+            )}
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments</Text>
-              <TouchableOpacity onPress={() => setCommentModalVisible(false)} style={styles.commentCloseBtn}>
+              <TouchableOpacity onPress={() => { setCommentModalVisible(false); setActiveCommentMenuId(null); }} style={styles.commentCloseBtn}>
                 <Ionicons name="close" size={20} color={COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -310,12 +393,41 @@ const PostScreen = () => {
                 <FlatList
                   data={postComments}
                   keyExtractor={(item, idx) => String(item.id || idx)}
-                  renderItem={({ item }) => (
-                    <View style={styles.commentItem}>
-                      <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                      <MentionText style={styles.commentItemText} text={item?.text || ''} />
-                    </View>
-                  )}
+                  renderItem={({ item }) => {
+                    const canDelete = item.user_id === user?.id || commentPost?.user_id === user?.id;
+                    return (
+                      <View style={[styles.commentItem, { zIndex: activeCommentMenuId === item.id ? 100 : 1 }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                          {canDelete && (
+                            <View style={{ position: 'relative', zIndex: 20 }}>
+                              <TouchableOpacity
+                                style={{ padding: 4, marginRight: -4 }}
+                                onPress={() => {
+                                  setActiveCommentMenuId(activeCommentMenuId === item.id ? null : item.id);
+                                }}
+                              >
+                                <Ionicons name="ellipsis-vertical" size={16} color={COLORS.textSecondary} />
+                              </TouchableOpacity>
+                              {activeCommentMenuId === item.id && (
+                                <TouchableOpacity
+                                  style={styles.inlineDeletePopover}
+                                  onPress={() => {
+                                    setActiveCommentMenuId(null);
+                                    handleDeleteComment(item);
+                                  }}
+                                >
+                                  <Ionicons name="trash-outline" size={14} color={COLORS.error || '#FF3B30'} />
+                                  <Text style={styles.inlineDeleteText}>Delete</Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          )}
+                        </View>
+                        <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                      </View>
+                    );
+                  }}
                 />
               )}
             </View>
@@ -344,6 +456,8 @@ const PostScreen = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+
 
       <SharePostModal
         visible={shareModalVisible}
@@ -470,6 +584,32 @@ const styles = StyleSheet.create({
   },
   commentSubmitDisabled: {
     backgroundColor: COLORS.divider,
+  },
+  inlineDeletePopover: {
+    position: 'absolute',
+    right: 0,
+    top: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+    minWidth: 80,
+    zIndex: 999,
+  },
+  inlineDeleteText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });
 
