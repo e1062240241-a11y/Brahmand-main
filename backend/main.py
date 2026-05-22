@@ -7,6 +7,10 @@ Full Firebase backend with Firestore database, Firebase Auth, and FCM.
 import logging
 import sys
 import os
+
+from dotenv import load_dotenv
+load_dotenv()
+
 import asyncio
 import re
 import json
@@ -33,9 +37,6 @@ import socketio
 
 # Add backend directory to path
 sys.path.insert(0, str(Path(__file__).parent))
-
-from dotenv import load_dotenv
-load_dotenv()
 
 from config.settings import settings
 from config.firebase_config import (

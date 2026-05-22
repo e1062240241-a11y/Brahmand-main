@@ -108,7 +108,12 @@ export default function TempleScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFFFFF']}
+      locations={[0, 0.0481, 0.2404]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
       {/* Top Tab Switcher */}
       <View style={styles.topTabsContainer}>
         <View style={styles.topTabsInner}>
@@ -306,21 +311,22 @@ export default function TempleScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFAF3' },
+  container: { flex: 1 },
   contentScroll: { flex: 1 },
-  topTabsContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5, backgroundColor: '#FFF' },
+  topTabsContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5 },
   topTabsInner: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 28, padding: 4, elevation: 4, shadowOpacity: 0.08, shadowRadius: 10 },
   topTabButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 22 },
   topTabButtonActive: { backgroundColor: '#FF6600' },
   topTabText: { fontSize: 16, fontFamily: FONTS.bold, color: '#2D1B13' },
   topTabTextActive: { color: '#FFF' },
 
-  heroRowLayout: { flexDirection: 'row', width: '100%', marginBottom: 20, backgroundColor: '#FFFCEB', paddingBottom: 25 },
+  heroRowLayout: { flexDirection: 'row', width: '100%', marginBottom: 20, paddingBottom: 25 },
   heroLeftContent: { flex: 1, paddingLeft: 20, paddingTop: 15, justifyContent: 'center' },
   heroRightImageContainer: { width: '50%', height: 345, position: 'relative', overflow: 'hidden' },
   heroSideImage: { width: '100%', height: '100%', transform: [{ scale: 1.6 }] },
