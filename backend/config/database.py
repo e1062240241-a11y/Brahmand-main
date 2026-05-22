@@ -42,9 +42,14 @@ class InMemoryCache:
         for key, value in mapping.items():
             await self.set(key, value, ex)
     
-    async def delete(self, key: str):
-        self._cache.pop(key, None)
-        self._expiry.pop(key, None)
+    async def delete(self, *keys: str):
+        for key in keys:
+            self._cache.pop(key, None)
+            self._expiry.pop(key, None)
+            
+    async def keys(self, pattern: str) -> List[str]:
+        import fnmatch
+        return fnmatch.filter(self._cache.keys(), pattern)
     
     async def ping(self):
         return True

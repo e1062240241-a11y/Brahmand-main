@@ -22,7 +22,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityRequest, sendDirectMessage, getUserProfile } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
@@ -421,12 +421,122 @@ export default function CommunityDetailScreen() {
     return 0;
   };
 
+  const isLostFoundRequest = (item: any) => {
+    if (!item) return false;
+    const type = (item.request_type || '').toLowerCase();
+    const title = (item.title || '').toLowerCase();
+    const description = (item.description || '').toLowerCase();
+    const support = (item.support_needed || '').toLowerCase();
+    const cat = (item.category || '').toLowerCase();
+
+    return type === 'lost_found' || type === 'lost' || type === 'found' ||
+           cat === 'lost_found' || cat === 'lost' || cat === 'found' ||
+           title.includes('lost') || description.includes('lost') || support.includes('lost') ||
+           title.includes('found') || description.includes('found') || support.includes('found');
+  };
+
+  const isTempleUpdateRequest = (item: any) => {
+    if (!item) return false;
+    const type = (item.request_type || '').toLowerCase();
+    const title = (item.title || '').toLowerCase();
+    const description = (item.description || '').toLowerCase();
+    const support = (item.support_needed || '').toLowerCase();
+    const cat = (item.category || '').toLowerCase();
+
+    return type === 'temple_update' || cat === 'temple_update' ||
+           ((title.includes('temple') || description.includes('temple') || support.includes('temple')) &&
+            (title.includes('update') || description.includes('update') || title.includes('renovation') || description.includes('renovation')));
+  };
+
+  const createDummyItem = (tabName: string) => {
+    const now = new Date().toISOString();
+    if (tabName === 'Requests') {
+      return {
+        id: 'dummy-request-item',
+        isRequestItem: true,
+        title: 'Mock Help Request: Blood Donation Needed',
+        description: 'B+ blood needed urgently at City General Hospital for an elderly patient. Please contact Rahul if you can donate.',
+        request_type: 'blood',
+        support_needed: 'Blood Donation',
+        urgency_level: 'critical',
+        user_name: 'Rahul Sharma (Mock)',
+        contact_number: '+919876543210',
+        created_at: now,
+        status: 'pending',
+        interested_count: 3
+      };
+    }
+    if (tabName === 'Events') {
+      return {
+        id: 'dummy-event-item',
+        title: 'Mock Event: Community Meetup & Bhajan Sandhya',
+        location: 'Community Hall, Sector 4',
+        start_time: now,
+        attendee_count: 24,
+        contact_number: '+919876543210',
+        created_at: now,
+        status: 'pending',
+        image_url: 'https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=500'
+      };
+    }
+    if (tabName === 'Lost & Found') {
+      return {
+        id: 'dummy-lost-found-item',
+        isRequestItem: true,
+        title: 'Mock Lost & Found: Gold Ring Found near Temple Entrance',
+        description: 'Found a gold ring with initials "S.J." near the main temple steps yesterday evening. Owner can claim by providing verification.',
+        request_type: 'lost_found',
+        support_needed: 'Lost & Found Alert',
+        urgency_level: 'normal',
+        user_name: 'Aarti Jain (Mock)',
+        contact_number: '+919876543210',
+        created_at: now,
+        status: 'pending',
+        interested_count: 1
+      };
+    }
+    if (tabName === 'Seva') {
+      return {
+        id: 'dummy-seva-item',
+        isRequestItem: true,
+        isSevaPost: true,
+        user_name: 'Gau Seva Samiti (Mock)',
+        user: { name: 'Gau Seva Samiti (Mock)', isVerified: true },
+        content: 'Mock Seva: Volunteers Needed for Sunday Goshala Cleaning & Feeding Drive',
+        description: 'Join us this Sunday morning from 8 AM to 11 AM at the local Goshala. Breakfast and refreshments will be provided.',
+        contact: '+919876543210',
+        created_at: now,
+        status: 'pending',
+        sevaDetails: 'Bring comfortable clothes. Tools will be provided.',
+        liked: false
+      };
+    }
+    if (tabName === 'Temple Updates') {
+      return {
+        id: 'dummy-temple-update-item',
+        isRequestItem: true,
+        title: 'Mock Temple Update: Reconstruction of Inner Sanctum',
+        description: 'The reconstruction of the main Shikhar and Garbhagriha is underway. Daily darshan timings are adjusted to 6 AM - 10 AM and 4 PM - 8 PM.',
+        request_type: 'temple_update',
+        support_needed: 'temple',
+        urgency_level: 'normal',
+        user_name: 'Temple Trustee Board (Mock)',
+        contact_number: '+919876543210',
+        created_at: now,
+        status: 'pending',
+        interested_count: 5
+      };
+    }
+    return null;
+  };
+
   const combinedData = useMemo(() => {
     if (activeTab === 'Requests') {
-      return filteredRequests;
+      const list = filteredRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
+      return list.length > 0 ? list : [createDummyItem('Requests')];
     }
     if (activeTab === 'Events') {
-      return events;
+      return events.length > 0 ? events : [createDummyItem('Events')];
     }
     if (activeTab === 'Festivals') {
       return [
@@ -437,17 +547,28 @@ export default function CommunityDetailScreen() {
         { id: 'fest-banner-footer', type: 'festival_banner' }
       ];
     }
+    if (activeTab === 'Lost & Found') {
+      const list = requests.filter((item: any) => isLostFoundRequest(item));
+      return list.length > 0 ? list : [createDummyItem('Lost & Found')];
+    }
+    if (activeTab === 'Temple Updates') {
+      const list = requests.filter((item: any) => isTempleUpdateRequest(item));
+      return list.length > 0 ? list : [createDummyItem('Temple Updates')];
+    }
     if (activeTab === 'Seva') {
-      // Only show posts explicitly created with 'Seva' category by the user (local posts, id starts with 'post-')
-      // API-fetched messages are EXCLUDED — their category tag via cache is unreliable
-      const sevaLocalPosts = communityPosts
-        .filter((p: any) =>
-          String(p.id).startsWith('post-') &&
-          (p.category || '').toLowerCase() === 'seva'
-        )
-        .map((p: any) => ({ ...p, isSevaPost: true }));
+      const apiSeva = filteredSevaRequests.map((r: any) => ({ ...r, isSevaPost: true, isRequestItem: true }));
+      const localSeva = communityPosts
+        .filter((p: any) => (p.category || '').toLowerCase() === 'seva')
+        .map((p: any) => ({ ...p, isSevaPost: true, isRequestItem: true }));
 
-      return sevaLocalPosts.sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
+      const sevaMap = new Map();
+      apiSeva.forEach(s => sevaMap.set(s.id, s));
+      localSeva.forEach(s => sevaMap.set(s.id, s));
+
+      const mergedSeva = Array.from(sevaMap.values());
+      const sortedSeva = mergedSeva.sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
+      
+      return sortedSeva.length > 0 ? sortedSeva : [createDummyItem('Seva')];
     }
     if (activeTab === 'Feed') {
       const itemMap = new Map();
@@ -598,10 +719,6 @@ export default function CommunityDetailScreen() {
       return sortedResult;
     }
     
-    if (activeTab === 'Requests') {
-      return filteredRequests;
-    }
-    // For other tabs (like Lost & Found, Temple Updates), they do not show chat messages either
     return [];
   }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests]);
 
@@ -1083,19 +1200,73 @@ export default function CommunityDetailScreen() {
     );
   };
 
+  const handleCallPress = (phone: any) => {
+    const phoneStr = typeof phone === 'string' ? phone : '';
+    if (!phoneStr) {
+      Alert.alert('Not Available', 'No contact phone number is available.');
+      return;
+    }
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Call ${phoneStr}?`);
+      if (confirmed) {
+        const { Linking } = require('react-native');
+        Linking.openURL(`tel:${phoneStr}`);
+      }
+      return;
+    }
+    Alert.alert(
+      'Confirm Call',
+      `Are you sure you want to call ${phoneStr}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Call', 
+          onPress: () => {
+            const { Linking } = require('react-native');
+            Linking.openURL(`tel:${phoneStr}`);
+          }
+        }
+      ]
+    );
+  };
+
+  const handleWhatsAppPress = (phone: any, title: string) => {
+    const phoneStr = typeof phone === 'string' ? phone : '';
+    if (!phoneStr) {
+      Alert.alert('Not Available', 'No contact phone number is available.');
+      return;
+    }
+    const cleanPhone = phoneStr.replace(/[^0-9+]/g, '');
+    const message = `Jai Jinendra! I saw your post "${title || 'Help Needed'}" on Brahmand. Let me know how I can help.`;
+    const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+    
+    const { Linking } = require('react-native');
+    Linking.canOpenURL(url).then((supported: boolean) => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        const webUrl = `https://wa.me/${cleanPhone.replace('+', '')}?text=${encodeURIComponent(message)}`;
+        Linking.openURL(webUrl);
+      }
+    }).catch(() => {
+      Alert.alert('Error', 'Could not open WhatsApp.');
+    });
+  };
 
   const renderSevaItem = ({ item }: { item: any }) => {
+    const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
+    const phone = item.contact || item.contact_number || item.user_phone;
     return (
       <View style={styles.sevaPremiumCard}>
         <View style={styles.sevaPremiumHeader}>
           <View style={styles.sevaPremiumUserRow}>
-            <Avatar name={item.user?.name || 'User'} photo={item.user?.photo} size={44} />
+            <Avatar name={item.user?.name || item.user_name || 'User'} photo={item.user?.photo} size={44} />
             <View style={styles.sevaPremiumUserInfo}>
               <View style={styles.sevaPremiumNameRow}>
-                <Text style={styles.sevaPremiumUserName}>{item.user?.name}</Text>
+                <Text style={styles.sevaPremiumUserName}>{item.user?.name || item.user_name}</Text>
                 {item.user?.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={16} color="#007AFF" style={{marginLeft: 4}} />}
               </View>
-              <Text style={styles.sevaPremiumTime}>{item.timestamp}</Text>
+              <Text style={styles.sevaPremiumTime}>{item.timestamp || getTimeAgo(item.created_at)}</Text>
             </View>
           </View>
           <View style={styles.sevaPremiumBadge}>
@@ -1105,7 +1276,7 @@ export default function CommunityDetailScreen() {
         </View>
 
         <View style={styles.sevaPremiumContent}>
-          <Text selectable={true} style={styles.sevaPremiumText}>{item.content}</Text>
+          <Text selectable={true} style={styles.sevaPremiumText}>{item.content || item.description}</Text>
           
           {item.image && (
             <Image 
@@ -1127,54 +1298,72 @@ export default function CommunityDetailScreen() {
             </View>
           ) : null}
 
-          {item.contact ? (
+          {phone ? (
             <View style={styles.sevaPremiumContactBox}>
               <View style={styles.sevaContactIconBg}>
                 <Ionicons name="call" size={16} color="#00BA7C" />
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={styles.sevaContactLabel}>Contact Person</Text>
-                <Text style={styles.sevaContactText}>{item.contact}</Text>
+                <Text style={styles.sevaContactText}>{phone}</Text>
               </View>
             </View>
           ) : null}
         </View>
 
-        <View style={styles.sevaPremiumFooter}>
-           <TouchableOpacity 
-             style={styles.sevaPrimaryBtn} 
-             onPress={() => {
-               if (item.contact) {
-                 const { Linking } = require('react-native');
-                 Linking.openURL(`tel:${item.contact}`);
-               } else {
-                 Alert.alert('Support Seva', 'You can offer support by sending a direct message to the user.');
-               }
-             }}
-           >
-             <Ionicons name="hand-right-outline" size={16} color="#FFF" />
-             <Text style={styles.sevaPrimaryBtnText}>Offer Support</Text>
-           </TouchableOpacity>
-           
-           <View style={styles.sevaActionRow}>
-             <TouchableOpacity style={styles.sevaActionBtn} onPress={() => handleLike(item.id)}>
-               <Ionicons name={item.liked ? "heart" : "heart-outline"} size={20} color={item.liked ? "#F91880" : "#536471"} />
-             </TouchableOpacity>
-             
-             <TouchableOpacity style={styles.sevaActionBtn} onPress={() => handleShare(item.id)}>
-               <Ionicons name="share-social-outline" size={20} color="#536471" />
-             </TouchableOpacity>
-           </View>
+        <View style={styles.eventActionRow}>
+          {/* Call button */}
+          <TouchableOpacity 
+            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]} 
+            onPress={() => handleCallPress(phone)}
+          >
+            <Ionicons name="call" size={18} color="#16A34A" />
+          </TouchableOpacity>
+
+          {/* WhatsApp button */}
+          <TouchableOpacity 
+            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]} 
+            onPress={() => handleWhatsAppPress(phone, item.title || item.content || item.description)}
+          >
+            <FontAwesome5 name="whatsapp" size={18} color="#059669" />
+          </TouchableOpacity>
+
+          {/* Fulfill / Help Button */}
+          <View style={{ flex: 1, marginHorizontal: 8 }}>
+            {item.user_id === user?.id || item.sender_id === user?.id ? (
+              !isFulfilled && (
+                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item.id)}>
+                  <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
+                </TouchableOpacity>
+              )
+            ) : null}
+
+            {isFulfilled ? (
+              <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
+                <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
+              </View>
+            ) : (!item.user_id || item.user_id !== user?.id) && (item.sender_id !== user?.id) ? (
+              <TouchableOpacity style={[styles.helpBtn, { width: '100%' }]} onPress={() => handleOfferHelp(item)}>
+                <Text style={styles.helpBtnText}>Offer Help</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Share button */}
+          <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
+            <Ionicons name="share-social-outline" size={18} color="#888" />
+          </TouchableOpacity>
         </View>
       </View>
     );
   };
 
   const renderEventItem = ({ item }: { item: any }) => {
-    // Basic date parsing for mock parity if data is real
     const eventDate = item.start_time ? new Date(item.start_time) : new Date();
     const dateNum = eventDate.getDate().toString();
     const month = eventDate.toLocaleString('default', { month: 'short' }).toUpperCase();
+    const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
+    const phone = item.contact_number || item.contact || item.user_phone;
 
     return (
       <View style={styles.eventCard}>
@@ -1193,13 +1382,48 @@ export default function CommunityDetailScreen() {
           </View>
           {item.image_url && <Image source={{ uri: item.image_url }} style={styles.eventImage} />}
         </View>
+        
         <View style={styles.eventActionRow}>
-          <View style={styles.interestedBadge}>
-            <Ionicons name="heart" size={14} color="#FF3B30" />
-            <Text style={styles.interestedText}>{item.interested_count || 0} Interested</Text>
+          {/* Call button */}
+          <TouchableOpacity 
+            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]} 
+            onPress={() => handleCallPress(phone)}
+          >
+            <Ionicons name="call" size={18} color="#16A34A" />
+          </TouchableOpacity>
+
+          {/* WhatsApp button */}
+          <TouchableOpacity 
+            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]} 
+            onPress={() => handleWhatsAppPress(phone, item.title)}
+          >
+            <FontAwesome5 name="whatsapp" size={18} color="#059669" />
+          </TouchableOpacity>
+
+          {/* Fulfill / Help Button */}
+          <View style={{ flex: 1, marginHorizontal: 8 }}>
+            {item.user_id === user?.id || item.sender_id === user?.id ? (
+              !isFulfilled && (
+                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item.id)}>
+                  <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
+                </TouchableOpacity>
+              )
+            ) : null}
+
+            {isFulfilled ? (
+              <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
+                <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
+              </View>
+            ) : (!item.user_id || item.user_id !== user?.id) && (item.sender_id !== user?.id) ? (
+              <TouchableOpacity style={[styles.helpBtn, { width: '100%' }]} onPress={() => handleOfferHelp(item)}>
+                <Text style={styles.helpBtnText}>Offer Help</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
-          <TouchableOpacity>
-            <Ionicons name="bookmark-outline" size={20} color="#888" />
+
+          {/* Share button */}
+          <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
+            <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
         </View>
       </View>
@@ -1285,12 +1509,16 @@ export default function CommunityDetailScreen() {
     if (support.toLowerCase().includes('temple') || support.toLowerCase().includes('volunteer')) {
       return { name: 'home', color: '#FF9800', bg: '#FFF3E0' };
     }
+    if (type === 'lost_found' || type === 'lost' || type === 'found' || support.toLowerCase().includes('lost') || support.toLowerCase().includes('found')) {
+      return { name: 'search', color: '#8E24AA', bg: '#F3E5F5' };
+    }
     return { name: 'help-circle', color: '#00796B', bg: '#E0F2F1' };
   };
 
   const renderRequestItem = ({ item }: { item: any }) => {
     const iconDetails = getRequestIconDetails(item);
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
+    const phone = item.contact_number || item.contact || item.user_phone;
     return (
       <View style={styles.eventCard}>
         <View style={styles.requestInterestedHeader}>
@@ -1325,26 +1553,52 @@ export default function CommunityDetailScreen() {
           </View>
         </View>
         <View style={styles.eventActionRow}>
-          {item.user_id === user?.id ? (
-            <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#FF3B30' }]} onPress={() => handleDeleteRequest(item.id)}>
-              <Text style={styles.helpBtnText}>Delete Request</Text>
-            </TouchableOpacity>
-          ) : isFulfilled ? (
-            <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5' }]}>
-              <Text style={[styles.helpBtnText, { color: '#166534' }]}>Request Completed</Text>
-            </View>
-          ) : (
-            <TouchableOpacity style={styles.helpBtn} onPress={() => handleOfferHelp(item)}>
-              <Text style={styles.helpBtnText}>Offer Help</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity>
-            <Ionicons name="share-social-outline" size={20} color="#888" />
+          {/* Call button */}
+          <TouchableOpacity 
+            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]} 
+            onPress={() => handleCallPress(phone)}
+          >
+            <Ionicons name="call" size={18} color="#16A34A" />
+          </TouchableOpacity>
+
+          {/* WhatsApp button */}
+          <TouchableOpacity 
+            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]} 
+            onPress={() => handleWhatsAppPress(phone, item.title || item.content)}
+          >
+            <FontAwesome5 name="whatsapp" size={18} color="#059669" />
+          </TouchableOpacity>
+
+          {/* Fulfill / Help Button */}
+          <View style={{ flex: 1, marginHorizontal: 8 }}>
+            {item.user_id === user?.id || item.sender_id === user?.id ? (
+              !isFulfilled && (
+                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item.id)}>
+                  <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
+                </TouchableOpacity>
+              )
+            ) : null}
+
+            {isFulfilled ? (
+              <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
+                <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
+              </View>
+            ) : (!item.user_id || item.user_id !== user?.id) && (item.sender_id !== user?.id) ? (
+              <TouchableOpacity style={[styles.helpBtn, { width: '100%' }]} onPress={() => handleOfferHelp(item)}>
+                <Text style={styles.helpBtnText}>Offer Help</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Share button */}
+          <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
+            <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
         </View>
       </View>
     );
   };
+
 
   const getTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Just now';
@@ -1361,14 +1615,14 @@ export default function CommunityDetailScreen() {
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
-  const handleDeleteRequest = (requestId: string) => {
+  const handleResolveRequest = (requestId: string) => {
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Are you sure you want to permanently delete this request?');
+      const confirmed = window.confirm('Are you sure you want to mark this request as fulfilled?');
       if (confirmed) {
         (async () => {
           try {
-            await deleteCommunityRequest(requestId);
-            window.alert('Request deleted successfully!');
+            await resolveCommunityRequest(requestId);
+            window.alert('Request marked as fulfilled successfully!');
             fetchCommunity(true); // Reload requests list!
           } catch (error: any) {
             const { parseApiError } = require('../../src/services/api');
@@ -1380,17 +1634,17 @@ export default function CommunityDetailScreen() {
     }
 
     Alert.alert(
-      'Delete Request',
-      'Are you sure you want to permanently delete this request?',
+      'Fulfill Request',
+      'Are you sure you want to mark this request as fulfilled?',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Delete', 
-          style: 'destructive',
+          text: 'Fulfill', 
+          style: 'default',
           onPress: async () => {
             try {
-              await deleteCommunityRequest(requestId);
-              Alert.alert('Success', 'Request deleted successfully!');
+              await resolveCommunityRequest(requestId);
+              Alert.alert('Success', 'Request marked as fulfilled successfully!');
               fetchCommunity(true); // Reload requests list!
             } catch (error: any) {
               const { parseApiError } = require('../../src/services/api');
@@ -1400,6 +1654,20 @@ export default function CommunityDetailScreen() {
         }
       ]
     );
+  };
+
+  const handleShareRequest = async (item: any) => {
+    try {
+      const deepLink = `sanatanlok://community-request/list?requestId=${item.id}`;
+      const typeLabel = (item.request_type || 'Help').toUpperCase();
+      
+      await Share.share({
+        title: item.title,
+        message: `📢 *Brahmand Community Request*\n\n[${typeLabel}]\n*${item.title}*\n📍 Location: ${item.location || 'Not specified'}\n⚠️ Urgency: ${(item.urgency_level || 'Normal').toUpperCase()}\n\n💬 Description:\n"${item.description || 'See details in app'}"\n\n📞 Contact number: ${item.contact_number || 'Available in app'}\n\nTap the link below to open in Brahmand App and offer help:\n${deepLink}`,
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+    }
   };
 
   const handleOfferHelp = async (item: any) => {
@@ -2004,6 +2272,12 @@ export default function CommunityDetailScreen() {
               </View>
             );
           }
+          if (activeTab === 'Seva') {
+            return renderSevaItem({ item });
+          }
+          if (activeTab === 'Lost & Found' || activeTab === 'Temple Updates') {
+            return renderRequestItem({ item });
+          }
           if (item.isRequestItem || item.type === 'request_item') {
             return renderRequestItem({ item });
           }
@@ -2012,10 +2286,6 @@ export default function CommunityDetailScreen() {
           }
           if (activeTab === 'Events') {
             return renderEventItem({ item });
-          }
-          // Only render as seva card when explicitly in the Seva tab
-          if (activeTab === 'Seva' && (item.isRequestItem || item.isSevaPost)) {
-            return renderSevaItem({ item });
           }
           return renderDiscussionItem({ item });
         }}
@@ -2036,34 +2306,34 @@ export default function CommunityDetailScreen() {
                     <View style={styles.recentRequestTitleRow}>
                       <MaterialCommunityIcons name="bullhorn" size={20} color="#F25C05" />
                       <Text style={styles.recentRequestSectionTitle}>
-                        {activeTab === 'Seva' ? 'LATEST SEVA REQUEST' : 'LATEST COMMUNITY REQUEST'}
+                        LATEST COMMUNITY REQUEST
                       </Text>
                     </View>
                     <View style={[
                       styles.recentRequestUrgencyBadge, 
-                      { backgroundColor: mostRecentRequest.urgency_level === 'critical' ? '#FEE2E2' : '#FEF3C7' }
+                      { backgroundColor: (mostRecentRequest?.urgency_level || 'normal') === 'critical' ? '#FEE2E2' : '#FEF3C7' }
                     ]}>
                       <Text style={[
                         styles.recentRequestUrgencyText,
-                        { color: mostRecentRequest.urgency_level === 'critical' ? '#EF4444' : '#D97706' }
+                        { color: (mostRecentRequest?.urgency_level || 'normal') === 'critical' ? '#EF4444' : '#D97706' }
                       ]}>
-                        {mostRecentRequest.urgency_level.toUpperCase()}
+                        {(mostRecentRequest?.urgency_level || 'normal').toUpperCase()}
                       </Text>
                     </View>
                   </View>
                   
                   <Text style={styles.recentRequestTitle} numberOfLines={1}>
-                    {mostRecentRequest.title}
+                    {mostRecentRequest?.title}
                   </Text>
                   <Text style={styles.recentRequestDesc} numberOfLines={2}>
-                    {mostRecentRequest.description}
+                    {mostRecentRequest?.description}
                   </Text>
 
                   <View style={styles.recentRequestFooter}>
                     <View style={styles.recentRequestLocRow}>
                       <Ionicons name="location" size={14} color="#64748B" />
                       <Text style={styles.recentRequestLocText} numberOfLines={1}>
-                        {mostRecentRequest.location || 'Mumbai'}
+                        {mostRecentRequest?.location || 'Mumbai'}
                       </Text>
                     </View>
 
@@ -2651,6 +2921,7 @@ const styles = StyleSheet.create({
   eventImage: { width: 60, height: 100, borderRadius: 12 },
   
   eventActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
+  actionIconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
   interestedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   interestedText: { fontSize: 13, color: '#FF3B30', fontWeight: '700' },
   

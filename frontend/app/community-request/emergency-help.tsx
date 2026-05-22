@@ -45,6 +45,7 @@ export default function EmergencyHelpScreen() {
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [contactPref, setContactPref] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,6 +110,7 @@ export default function EmergencyHelpScreen() {
     if (!location) return showAlert('Error', 'Please provide location');
     if (!description.trim()) return showAlert('Error', 'Please describe the situation');
     if (description.trim().length < 10) return showAlert('Error', 'Please describe the situation in at least 10 characters');
+    if (!phoneNumber.trim()) return showAlert('Error', 'Please enter your contact number');
     if (!contactPref) return showAlert('Error', 'Please select contact preference');
 
     setIsSubmitting(true);
@@ -117,7 +119,7 @@ export default function EmergencyHelpScreen() {
         request_type: 'help',
         title: `EMERGENCY: ${emergencyType}`,
         description: description,
-        contact_number: contactPref,
+        contact_number: phoneNumber.trim(),
         urgency_level: 'critical',
         location: location,
         support_needed: 'Emergency Help',
@@ -259,6 +261,22 @@ export default function EmergencyHelpScreen() {
                     value={description}
                     onChangeText={setDescription}
                     multiline
+                  />
+                </View>
+              </View>
+
+              <View style={styles.fieldSection}>
+                <Text style={styles.fieldLabel}>Contact Phone Number <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="call" size={18} color="#FB8C00" style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Enter mobile number (e.g. +919876543210)"
+                    placeholderTextColor="#BBB"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    maxLength={15}
                   />
                 </View>
               </View>

@@ -4468,6 +4468,51 @@ async def toggle_community_message_like(
         'liked_by': liked_by,
         'likes_count': len(liked_by)
     })
+
+    if not liked:
+        # Send notification to the message owner
+        msg_owner_id = msg.get('sender_id')
+        if msg_owner_id and msg_owner_id != user_id:
+            try:
+                community = await db.get_document('communities', community_id)
+                comm_name = community.get('name', 'Community') if community else 'Community'
+                actor_user = await db.get_document('users', user_id)
+                actor_name = actor_user.get('name') or actor_user.get('sl_id') or 'Someone'
+                
+                # Create notification doc
+                await db.create_document('notifications', {
+                    'user_id': msg_owner_id,
+                    'title': 'New like on your post',
+                    'body': f'{actor_name} liked your post in {comm_name}.',
+                    'notification_type': 'social',
+                    'data': {
+                        'community_id': community_id,
+                        'subgroup_type': subgroup_type,
+                        'message_id': message_id,
+                        'actor_user_id': user_id,
+                        'actor_name': actor_name,
+                        'action': 'like',
+                    },
+                    'is_read': False,
+                    'created_at': datetime.utcnow().isoformat(),
+                })
+                
+                # Send push
+                await task_queue.enqueue(
+                    FirebaseNotificationService.send_push_notification,
+                    msg_owner_id,
+                    'New like on your post',
+                    f'{actor_name} liked your post in {comm_name}.',
+                    {
+                        'type': 'community_like',
+                        'community_id': str(community_id),
+                        'subgroup_type': str(subgroup_type),
+                        'message_id': str(message_id),
+                        'actor_user_id': str(user_id),
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send like notification for community msg: {e}")
     
     return {
         'message': 'Message unliked' if liked else 'Message liked',
@@ -8358,6 +8403,48 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     request_id = await db.create_document('community_requests', request_data)
     request_data['id'] = request_id
     
+    # Send notifications to community members
+    try:
+        community = await db.get_document('communities', resolved_community_id)
+        if community:
+            comm_name = community.get('name', 'Community')
+            member_ids = community.get('members', [])
+            target_ids = [uid for uid in member_ids if uid != user_id]
+            if target_ids:
+                title = f"New request in {comm_name}"
+                body = f"[{data.request_type.value.upper()}] {data.title}"
+                notification_data = {
+                    'type': 'community_request',
+                    'requestId': str(request_id),
+                    'community_id': str(resolved_community_id),
+                }
+                # Enqueue multicast notifications and database saves
+                await task_queue.enqueue(
+                    FirebaseNotificationService.send_multicast,
+                    target_ids,
+                    title,
+                    body,
+                    notification_data
+                )
+                await task_queue.enqueue(
+                    _save_bulk_notifications,
+                    db,
+                    target_ids,
+                    title,
+                    body,
+                    'community_request',
+                    notification_data
+                )
+                logger.info(f"Queued notifications for new request {request_id} to {len(target_ids)} members")
+    except Exception as notify_err:
+        logger.warning(f"Failed to notify members for community request {request_id}: {notify_err}")
+
+    # Invalidate cached community requests
+    try:
+        await cache_manager.invalidate_community_requests()
+    except Exception as e:
+        logger.warning(f"Failed to invalidate requests cache: {e}")
+        
     logger.info(f"Community request created by {user_id}: {data.request_type.value} - {data.title}")
     
     return request_data
@@ -8428,11 +8515,25 @@ async def get_community_requests(
         elif visibility == 'area' and req.get('area') == location_area.get('area'):
             visible_requests.append(req)
             
+    # Filter out obvious garbage / test data
+    filtered_clean_requests = []
+    for req in visible_requests:
+        desc = req.get('description', '')
+        title = req.get('title', '')
+        if (
+            'GHDTYGFTYTY' in desc or 
+            'GHDTYGFTYTY' in title or 
+            desc == 'Phone Call' or 
+            desc == 'WhatsApp'
+        ):
+            continue
+        filtered_clean_requests.append(req)
+            
     # 2. Store in cache with 30-second TTL
-    await cache_manager.set(cache_key, visible_requests, ttl=30)
+    await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)
     logger.info(f"Cached community requests for: {cache_key}")
     
-    return visible_requests
+    return filtered_clean_requests
 
 
 @api_router.get("/community-requests/my")
@@ -8462,6 +8563,12 @@ async def resolve_community_request(request_id: str, token_data: dict = Depends(
         raise HTTPException(status_code=403, detail="Only the creator can resolve this request")
     
     await db.update_document('community_requests', request_id, {'status': 'resolved'})
+    
+    try:
+        await cache_manager.invalidate_community_requests()
+    except Exception as e:
+        logger.warning(f"Failed to invalidate requests cache: {e}")
+        
     logger.info(f"Community request {request_id} resolved by {user_id}")
     
     return {"message": "Request resolved successfully"}
@@ -8481,6 +8588,12 @@ async def delete_community_request(request_id: str, token_data: dict = Depends(v
         raise HTTPException(status_code=403, detail="Only the creator can delete this request")
     
     await db.delete_document('community_requests', request_id)
+    
+    try:
+        await cache_manager.invalidate_community_requests()
+    except Exception as e:
+        logger.warning(f"Failed to invalidate requests cache: {e}")
+        
     logger.info(f"Community request {request_id} deleted by {user_id}")
     
     return {"message": "Request deleted successfully"}

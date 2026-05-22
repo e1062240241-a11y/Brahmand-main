@@ -15,8 +15,9 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
-import { getCommunities } from '../../src/services/api';
+import { discoverCommunities } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 
 const { width } = Dimensions.get('window');
@@ -31,6 +32,9 @@ interface Community {
   is_default?: boolean;
 }
 
+const CACHE_KEY = 'discover_communities_cache';
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export default function DiscoverCommunitiesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -40,9 +44,25 @@ export default function DiscoverCommunitiesScreen() {
   const [filteredGroups, setFilteredGroups] = useState<Community[]>([]);
 
   const fetchCommunities = useCallback(async () => {
-    setLoading(true);
+    // 1. Load cached data first (stale-while-revalidate)
     try {
-      const response = await getCommunities();
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        if (Array.isArray(data) && data.length > 0) {
+          setCreatedGroups(data);
+          setFilteredGroups(data);
+          setLoading(false);
+          // If cache is still fresh, skip network fetch
+          if (age < CACHE_TTL_MS) return;
+        }
+      }
+    } catch { /* ignore cache errors */ }
+
+    // 2. Fetch fresh data from network
+    try {
+      const response = await discoverCommunities();
       const allComms = response.data || [];
       // Filter exclusively for created local communities
       const userGroupsList = allComms.filter(
@@ -50,6 +70,8 @@ export default function DiscoverCommunitiesScreen() {
       );
       setCreatedGroups(userGroupsList);
       setFilteredGroups(userGroupsList);
+      // Save to cache
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: userGroupsList, timestamp: Date.now() }));
     } catch (error) {
       console.error('Error fetching communities for discovery:', error);
     } finally {
