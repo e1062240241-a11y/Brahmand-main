@@ -44,7 +44,7 @@ const CATEGORIES = [
   { id: 'blood', name: 'Blood Requests', icon: 'water', color: '#EF4444', bg: '#FEF2F2' },
   { id: 'emergency', name: 'Emergency', icon: 'alert-circle', color: '#F97316', bg: '#FFF7ED' },
   { id: 'food', name: 'Food / Grocery', icon: 'basket', color: '#F25C05', bg: '#FFF4EE' },
-  { id: 'gau', name: 'Gau Seva / Animal', icon: 'cow', color: '#10B981', bg: '#ECFDF5' },
+  { id: 'gau', name: 'Gau Seva / Animal', icon: 'paw', color: '#10B981', bg: '#ECFDF5' },
   { id: 'temple', name: 'Temple Support', icon: 'home', color: '#D97706', bg: '#FEF3C7' },
   { id: 'other', name: 'Others', icon: 'help-circle', color: '#6B7280', bg: '#F9FAFB' },
 ];

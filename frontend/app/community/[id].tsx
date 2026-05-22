@@ -1291,55 +1291,95 @@ export default function CommunityDetailScreen() {
   const renderRequestItem = ({ item }: { item: any }) => {
     const iconDetails = getRequestIconDetails(item);
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
+    
     return (
-      <View style={styles.eventCard}>
-        <View style={styles.requestInterestedHeader}>
-          <View style={styles.interestedBadge}>
-            <Ionicons name="heart" size={14} color="#FF3B30" />
-            <Text style={styles.interestedText}>{item.interested_count || 0} Interested</Text>
+      <View style={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 16,
+        marginHorizontal: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.04)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
+      }}>
+        {/* Header Row: Icon + Title + Urgency */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+          <View style={{
+            width: 48,
+            height: 48,
+            borderRadius: 16,
+            backgroundColor: iconDetails.bg,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12
+          }}>
+            <Ionicons name={iconDetails.name as any} size={24} color={iconDetails.color} />
           </View>
-          <View style={[styles.urgencyLabel, isFulfilled && { backgroundColor: '#DCFCE7' }]}>
-            <Text style={[styles.urgencyLabelText, isFulfilled && { color: '#166534' }]}> {isFulfilled ? 'Done' : (item.urgency_level || 'Normal').toUpperCase()} </Text>
-          </View>
-        </View>
-        
-        <View style={styles.eventInfoRow}>
-          <View style={styles.requestIconCol}>
-             <View style={[styles.requestIconBg, { backgroundColor: iconDetails.bg }]}>
-               <Ionicons 
-                 name={iconDetails.name as any} 
-                 size={24} 
-                 color={iconDetails.color} 
-               />
-             </View>
-          </View>
-          <View style={styles.eventTextCol}>
-            <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
-            <View style={styles.goingRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <Ionicons name="person" size={12} color="#888" />
-                <Text style={styles.goingText2}>Requested by {item.user_name || 'Anonymous'}</Text>
+          
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Text style={{ fontSize: 16, fontFamily: FONTS.bold, color: '#111', flex: 1, marginRight: 8, lineHeight: 22 }} numberOfLines={2}>
+                {item.title}
+              </Text>
+              <View style={{
+                backgroundColor: isFulfilled ? '#DCFCE7' : (item.urgency_level === 'high' ? '#FEE2E2' : '#F3F4F6'),
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}>
+                <Text style={{
+                  fontSize: 10,
+                  fontFamily: FONTS.bold,
+                  color: isFulfilled ? '#166534' : (item.urgency_level === 'high' ? '#DC2626' : '#4B5563')
+                }}>
+                  {isFulfilled ? 'DONE' : (item.urgency_level || 'NORMAL').toUpperCase()}
+                </Text>
               </View>
-              <Text style={styles.timeAgoText}>{getTimeAgo(item.created_at)}</Text>
             </View>
+            <Text style={{ fontSize: 12, fontFamily: FONTS.medium, color: '#6B7280', marginTop: 4 }}>
+              Requested by {item.user_name || 'Anonymous'} • {getTimeAgo(item.created_at)}
+            </Text>
           </View>
         </View>
-        <View style={styles.eventActionRow}>
+
+        {/* Support Stats Row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 10, borderRadius: 12, marginBottom: 16 }}>
+          <Ionicons name="heart" size={16} color="#FF3B30" />
+          <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#374151', marginLeft: 6 }}>
+            {item.interested_count || 0} Devotees Interested
+          </Text>
+        </View>
+
+        {/* Action Row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           {item.user_id === user?.id ? (
-            <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#FF3B30' }]} onPress={() => handleDeleteRequest(item.id)}>
-              <Text style={styles.helpBtnText}>Delete Request</Text>
+            <TouchableOpacity 
+              style={{ flex: 1, backgroundColor: '#FEF2F2', paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginRight: 8 }}
+              onPress={() => handleDeleteRequest(item.id)}
+            >
+              <Text style={{ color: '#DC2626', fontFamily: FONTS.bold, fontSize: 14 }}>Delete Request</Text>
             </TouchableOpacity>
           ) : isFulfilled ? (
-            <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5' }]}>
-              <Text style={[styles.helpBtnText, { color: '#166534' }]}>Request Completed</Text>
+            <View style={{ flex: 1, backgroundColor: '#F0FDF4', paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginRight: 8 }}>
+              <Text style={{ color: '#166534', fontFamily: FONTS.bold, fontSize: 14 }}>Request Completed</Text>
             </View>
           ) : (
-            <TouchableOpacity style={styles.helpBtn} onPress={() => handleOfferHelp(item)}>
-              <Text style={styles.helpBtnText}>Offer Help</Text>
+            <TouchableOpacity 
+              style={{ flex: 1, backgroundColor: '#FF6B00', paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginRight: 8, flexDirection: 'row', justifyContent: 'center' }}
+              onPress={() => handleOfferHelp(item)}
+            >
+              <Ionicons name="hand-right-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={{ color: '#FFF', fontFamily: FONTS.bold, fontSize: 14 }}>Offer Help</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity>
-            <Ionicons name="share-social-outline" size={20} color="#888" />
+          
+          <TouchableOpacity style={{ width: 44, height: 44, backgroundColor: '#F3F4F6', borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
+            <Ionicons name="share-social-outline" size={20} color="#4B5563" />
           </TouchableOpacity>
         </View>
       </View>

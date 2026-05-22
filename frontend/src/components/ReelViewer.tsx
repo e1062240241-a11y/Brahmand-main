@@ -17,6 +17,8 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
 import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent } from '../services/api';
@@ -513,6 +515,22 @@ const ReelVideoItem = React.memo(({
         </View>
       )}
 
+      {/* Top Gradient Overlay for Status Bar Readability */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)', 'transparent']}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: Platform.OS === 'ios' ? 140 : 100,
+          zIndex: 10,
+        }}
+        pointerEvents="none"
+      />
+
+      <StatusBar style="light" hidden={false} />
+
       {/* Top Left - Close button */}
       <View
         pointerEvents="box-none"
@@ -522,7 +540,7 @@ const ReelVideoItem = React.memo(({
           left: 0,
           right: 0,
           zIndex: 20,
-          paddingTop: Platform.OS === 'ios' ? 54 : 24,
+          paddingTop: Platform.OS === 'ios' ? 56 : 32,
           paddingLeft: 16,
         }}
       >
@@ -572,6 +590,20 @@ const ReelVideoItem = React.memo(({
           )}
         </View>
       )}
+
+      {/* Bottom Gradient Overlay for caption readability */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.85)']}
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 250,
+          zIndex: 10,
+        }}
+        pointerEvents="none"
+      />
 
       {/* Bottom Left - User Info + Caption */}
       <View
@@ -648,7 +680,7 @@ const ReelVideoItem = React.memo(({
       {/* Right Side - Action Buttons + Speed */}
       <View style={{
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 75 : 65,
+        bottom: '22%', // Moved up closer to upper-middle/right
         right: 12,
         alignItems: 'center',
         zIndex: 20,
@@ -658,16 +690,16 @@ const ReelVideoItem = React.memo(({
           <TouchableOpacity
             style={{
               alignItems: 'center',
-              marginBottom: 18,
+              marginBottom: 24,
               paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 12,
-              backgroundColor: 'rgba(255,255,255,0.2)',
+              paddingVertical: 6,
+              borderRadius: 14,
+              backgroundColor: 'rgba(0,0,0,0.4)',
             }}
             onPress={cycleSpeed}
-            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>{playbackSpeed}x</Text>
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>{playbackSpeed}x</Text>
           </TouchableOpacity>
         )}
 
@@ -675,40 +707,63 @@ const ReelVideoItem = React.memo(({
         <TouchableOpacity
           style={{
             alignItems: 'center',
-            marginBottom: 18,
+            marginBottom: 24,
             padding: 10,
             borderRadius: 30,
             backgroundColor: 'rgba(0,0,0,0.4)',
           }}
           onPress={toggleMute}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
         >
-          <Ionicons name={isMuted ? 'volume-mute' : 'volume-medium'} size={28} color="#FFF" />
+          <Ionicons name={isMuted ? 'volume-mute' : 'volume-medium'} size={26} color="#FFF" />
         </TouchableOpacity>
 
         {/* Like */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleLike}>
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleLike}>
           <Ionicons
             name={likedByMe ? 'heart' : 'heart-outline'}
-            size={32}
+            size={34}
             color={likedByMe ? '#FF2D55' : '#FFF'}
+            style={{
+              textShadowColor: 'rgba(0, 0, 0, 0.4)',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 4,
+            }}
           />
-          <Text style={{ color: '#fff', marginTop: 4, fontSize: 12, fontWeight: '600' }}>
+          <Text style={{ color: '#fff', marginTop: 4, fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }}>
             {likesCount > 0 ? likesCount : ''}
           </Text>
         </TouchableOpacity>
 
         {/* Comment */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleComment}>
-          <Ionicons name="chatbubble" size={30} color="#FFF" />
-          <Text style={{ color: '#fff', marginTop: 4, fontSize: 12, fontWeight: '600' }}>
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleComment}>
+          <Ionicons 
+            name="chatbubble" 
+            size={32} 
+            color="#FFF" 
+            style={{
+              textShadowColor: 'rgba(0, 0, 0, 0.4)',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 4,
+            }}
+          />
+          <Text style={{ color: '#fff', marginTop: 4, fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }}>
             {commentsCount > 0 ? commentsCount : ''}
           </Text>
         </TouchableOpacity>
 
         {/* Share */}
         <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleShare}>
-          <Ionicons name="paper-plane" size={30} color="#FFF" />
+          <Ionicons 
+            name="paper-plane" 
+            size={32} 
+            color="#FFF"
+            style={{
+              textShadowColor: 'rgba(0, 0, 0, 0.4)',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 4,
+            }}
+          />
         </TouchableOpacity>
       </View>
     </View>
