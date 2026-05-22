@@ -342,7 +342,7 @@ const quickAccess = [
   { label: 'Kundli', subtitle: 'Your Daily Vedic Energy', color: '#FFF' },
   { label: 'Cosmic Guidance', subtitle: 'Your Cosmic Blueprint', color: '#FFF' },
   { label: 'Brahmand Passport', subtitle: 'Your Temple Journey Record', color: '#FFF' },
-  { label: 'Sacred Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
+  { label: 'Festival Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
   { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
 ];
 
@@ -633,7 +633,7 @@ export default function HomeScreen() {
   const [feedTabsY, setFeedTabsY] = useState(0);
   const postOffsetsRef = useRef<Record<string, number>>({});
   const postHeightsRef = useRef<Record<string, number>>({});
-  const [postSnapEnabled, setPostSnapEnabled] = useState(false);
+
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const [backgroundUpload, setBackgroundUpload] = useState<{
     uploading: boolean;
@@ -788,8 +788,7 @@ export default function HomeScreen() {
   const handleHomeScroll = useCallback((event: any) => {
     const y = event.nativeEvent.contentOffset.y;
     currentScrollY.current = y;
-    const shouldSnapPosts = y >= Math.max(0, feedTabsYRef.current - 4);
-    setPostSnapEnabled((prev) => (prev === shouldSnapPosts ? prev : shouldSnapPosts));
+
 
     // Visibility tracking for video autoplay - find post with most area in viewport
     let closestKey = null;
@@ -1146,6 +1145,16 @@ export default function HomeScreen() {
           prev.map(c => c.id === tempId ? { ...serverComment, is_optimistic: false } : c)
         );
       }
+
+      // Background refresh to ensure persistence on next modal open
+      try {
+        const freshResponse = await getPostComments(selectedCommentPostId, 50);
+        if (Array.isArray(freshResponse.data)) {
+          setPostComments(freshResponse.data);
+        }
+      } catch {
+        // keep current state if refresh fails
+      }
     } catch (error: any) {
       // Rollback on error
       setPostComments(prev => prev.filter(c => c.id !== tempId));
@@ -1449,17 +1458,20 @@ export default function HomeScreen() {
                 colors={['#FF6B00']}
               />
             }
-            stickyHeaderIndices={[1]}
+            stickyHeaderIndices={[]}
             onScroll={handleHomeScroll}
             onMomentumScrollEnd={handleHomeScroll}
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
-            decelerationRate="fast"
-            snapToOffsets={snapOffsets}
-            snapToAlignment="start"
-            disableIntervalMomentum={true}
           >
-            <View style={styles.upperContentWrapper}>
+            <View
+              style={styles.upperContentWrapper}
+              onLayout={(event) => {
+                const h = event.nativeEvent.layout.height;
+                feedTabsYRef.current = h;
+                setFeedTabsY(h);
+              }}
+            >
               <View style={styles.header}>
                 <View style={styles.headerLeft}>
                   <TouchableOpacity
@@ -1673,7 +1685,7 @@ export default function HomeScreen() {
                             else if (item.label === 'SOS') router.push('/sos');
                             else if (item.label === 'Kundli' || item.label === 'Cosmic Guidance') router.push('/kundli' as any);
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
-                            else if (item.label === 'Sacred Days') router.push('/panchang');
+                            else if (item.label === 'Festival Days') router.push('/panchang');
                             else if (item.label === 'Brahmand Library') router.push('/library');
                           }}
                         >
@@ -1709,7 +1721,7 @@ export default function HomeScreen() {
                                 <PassportIcon />
                               </View>
                             </View>
-                          ) : item.label === 'Sacred Days' ? (
+                          ) : item.label === 'Festival Days' ? (
                             <View style={styles.featureIconWrap}>
                               <View style={{ transform: [{ scale: 1.8 }] }}>
                                 <SacredDaysIcon />
@@ -1763,7 +1775,7 @@ export default function HomeScreen() {
 
                     <View style={styles.featuredLiveContent}>
                       <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 14 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
                         <Ionicons name="time-outline" size={14} color="#FFF" />
                         <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6 }]}>Live until 5:00 PM</Text>
                       </View>
@@ -1796,11 +1808,11 @@ export default function HomeScreen() {
                 nestedScrollEnabled={true}
                 snapToInterval={Platform.OS === 'ios' ? 130 : 120}
                 decelerationRate="fast"
-                contentContainerStyle={[styles.actionCardsScroll, { paddingTop: 14 }]}
-                style={[styles.actionCardsScrollView, { marginBottom: 20 }]}
+                contentContainerStyle={styles.actionCardsScroll}
+                style={[styles.actionCardsScrollView, { marginBottom: 8 }]}
               >
                 {/* Urgent Blood Request */}
-                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                     <HomeCardTextureBg texture="rose">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -1843,7 +1855,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Register Business */}
-                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                     <HomeCardTextureBg texture="peach">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -1884,7 +1896,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Verified Vendor */}
-                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                     <HomeCardTextureBg texture="mint">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -1924,7 +1936,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Live Aarti */}
-                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 5 }}>
+                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                     <HomeCardTextureBg texture="lavender">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
@@ -2053,15 +2065,9 @@ export default function HomeScreen() {
                   );
                 })()}
               </View>
+            </View>
 
-            <View
-              style={styles.stickyFeedTabsShell}
-              onLayout={(event) => {
-                const y = event.nativeEvent.layout.y;
-                feedTabsYRef.current = y;
-                setFeedTabsY(y);
-              }}
-            >
+            <View style={styles.stickyFeedTabsShell}>
               <View style={styles.stickyFeedTabs}>
                 <HomeFeedTabs
                   activeTab={activeTab}
@@ -2144,7 +2150,6 @@ export default function HomeScreen() {
                   <Text style={styles.emptyFeedText}>No posts yet</Text>
                 </View>
               )}
-            </View>
             </View>
           </ScrollView>
 
@@ -2325,15 +2330,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {selectedCommentPost?.caption ? (
-                  <View style={styles.commentPostPreview}>
-                    <Avatar name={selectedCommentPost?.username || 'User'} photo={selectedCommentPost?.user_photo} size={32} />
-                    <View style={styles.commentPreviewTextWrap}>
-                      <Text style={styles.commentPreviewUser}>{selectedCommentPost?.username}</Text>
-                      <MentionText style={styles.commentPreviewCaption} numberOfLines={2} text={selectedCommentPost?.caption || ''} />
-                    </View>
-                  </View>
-                ) : null}
+
 
                 <View style={styles.commentListWrap}>
                   {commentsLoading ? (
@@ -2514,8 +2511,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
-    marginTop: 10,
+    marginBottom: 10,
+    marginTop: 5,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -2579,7 +2576,7 @@ const styles = StyleSheet.create({
   },
   topFeatureRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 8,
     gap: 8,
     marginHorizontal: -PAGE_PADDING,
   },
@@ -2646,7 +2643,7 @@ const styles = StyleSheet.create({
   },
   featuredLiveCard: {
     width: Math.min(375, SCREEN_WIDTH - 2 * PAGE_PADDING),
-    height: 235,
+    height: 160,
     borderRadius: 15,
     overflow: 'hidden',
     marginBottom: 5,
@@ -2719,7 +2716,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FF6A00',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderRadius: 999,
     alignSelf: 'flex-start',
     gap: 8,
@@ -2744,7 +2741,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: PAGE_PADDING,
     paddingTop: 25,
     paddingBottom: 5,
-    gap: Platform.OS === 'ios' ? 10 : 15,
+    gap: Platform.OS === 'ios' ? 8 : 10,
   },
   actionCard: {
     width: Platform.OS === 'ios' ? 120 : 110,

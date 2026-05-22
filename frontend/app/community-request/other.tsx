@@ -48,6 +48,7 @@ export default function OtherRequestScreen() {
   const [description, setDescription] = useState('');
   const [urgency, setUrgency] = useState('Urgent');
   const [contactPref, setContactPref] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,6 +103,7 @@ export default function OtherRequestScreen() {
     if (!helpType) return Alert.alert('Error', 'Please select or enter type of help');
     if (!location) return Alert.alert('Error', 'Please provide a location');
     if (!description.trim()) return Alert.alert('Error', 'Please describe the help you need');
+    if (!phoneNumber.trim()) return Alert.alert('Error', 'Please enter your contact number');
     if (!contactPref) return Alert.alert('Error', 'Please select a contact preference');
 
     setIsSubmitting(true);
@@ -110,7 +112,7 @@ export default function OtherRequestScreen() {
         request_type: 'help',
         title: `Community Request: ${helpType}`,
         description: description,
-        contact_number: contactPref,
+        contact_number: phoneNumber.trim(),
         urgency_level: (urgency === 'Urgent' ? 'critical' : urgency.toLowerCase()) as any,
         location: location,
         support_needed: 'General',
@@ -252,6 +254,22 @@ export default function OtherRequestScreen() {
                       <Text style={[styles.segmentButtonText, urgency === item && (item === 'Urgent' ? styles.segmentButtonTextSelectedUrgent : styles.segmentButtonTextSelected)]}>{item}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+              </View>
+
+              <View style={styles.fieldSection}>
+                <Text style={styles.fieldLabel}>Contact Phone Number <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="call" size={18} color="#00796B" style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Enter mobile number (e.g. +919876543210)"
+                    placeholderTextColor="#BBB"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                  />
                 </View>
               </View>
 

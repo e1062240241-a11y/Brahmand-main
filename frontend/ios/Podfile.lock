@@ -312,6 +312,8 @@ PODS:
   - ExpoRouter (55.0.13):
     - ExpoModulesCore
     - RNScreens
+  - ExpoSecureStore (55.0.14):
+    - ExpoModulesCore
   - ExpoSharing (55.0.18):
     - ExpoModulesCore
   - ExpoSpeechRecognition (3.1.3):
@@ -3421,7 +3423,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNSVG (15.15.5):
+  - RNSVG (15.15.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -3447,10 +3449,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNSVG/common (= 15.15.5)
+    - RNSVG/common (= 15.15.3)
     - SocketRocket
     - Yoga
-  - RNSVG/common (15.15.5):
+  - RNSVG/common (15.15.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -3619,6 +3621,7 @@ DEPENDENCIES:
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
   - ExpoNotifications (from `../node_modules/expo-notifications/ios`)
   - ExpoRouter (from `../node_modules/expo-router/ios`)
+  - ExpoSecureStore (from `../node_modules/expo-secure-store/ios`)
   - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSpeechRecognition (from `../node_modules/expo-speech-recognition/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
@@ -3823,6 +3826,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-notifications/ios"
   ExpoRouter:
     :path: "../node_modules/expo-router/ios"
+  ExpoSecureStore:
+    :path: "../node_modules/expo-secure-store/ios"
   ExpoSharing:
     :path: "../node_modules/expo-sharing/ios"
   ExpoSpeechRecognition:
@@ -4061,6 +4066,7 @@ SPEC CHECKSUMS:
   ExpoModulesJSI: 4f6e665f2801be06fecf7a912946ed33d64d15fc
   ExpoNotifications: b37f0275df4aa42f29b9f72b65a3ae091168eef2
   ExpoRouter: 73e97e4468c4435576be4c4b72ff4b5276854a1a
+  ExpoSecureStore: 49c8b5e467e359051eee6fb67a8988f93476df2b
   ExpoSharing: 7bc7b17aaaab37a933a012a14aa776562999feaa
   ExpoSpeechRecognition: fd574043a94289bc4d3505b7135bdf0acb385c8f
   ExpoSplashScreen: a137dbb4409ae5bf56de4dc6e6990fc9fa8c716b
@@ -4174,7 +4180,7 @@ SPEC CHECKSUMS:
   RNGestureHandler: e7f3de6bb187705b88b64286e32ecb55d4804da0
   RNReanimated: 0a23a0a9721f450580f0fdf04b9ae928cd22915a
   RNScreens: 7eb2406957e1a73627de17a6cc1d0f4490f3ab65
-  RNSVG: 94f3b1de85239beff9f355f92c5e57f5707e230a
+  RNSVG: 4d484ec4a8cb484c1c0e33972670724e194dba09
   RNWorklets: 79252e2fa12db14970f4e881168ce82a4d1fe823
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57

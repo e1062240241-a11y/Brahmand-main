@@ -15,11 +15,12 @@ import {
   BackHandler,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
+import { useAuthStore } from '../../src/store/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ interface CommunityRequest {
   location: string;
   user_name?: string;
   support_needed?: string;
+  user_id?: string;
 }
 
 const CATEGORIES = [
@@ -50,6 +52,7 @@ const CATEGORIES = [
 export default function ActiveRequestsList() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
   
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,19 +60,22 @@ export default function ActiveRequestsList() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRequest, setSelectedRequest] = useState<CommunityRequest | null>(null);
 
-  // Mock fallbacks exactly matching the design
-  const mockRequests: CommunityRequest[] = [
-    { id: 'mock_1', title: 'O+ Blood Required urgently for operation', request_type: 'blood', description: 'Patient is admitted at Lifeline Hospital in ICU. Need 2 units of O+ blood as soon as possible. Any help would be highly appreciated.', contact_number: '+919876543210', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai', user_name: 'Rahul Joshi' },
-    { id: 'mock_2', title: 'Baby Food Required for twins', request_type: 'food', description: 'Requiring starter formulas and baby foods for 6-month-old twin babies. Family in financial distress.', contact_number: '+919988776655', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai', user_name: 'Priya Sharma' },
-    { id: 'mock_3', title: 'Elderly Care Support needed this weekend', request_type: 'care', description: 'Looking for a volunteer who can spend 2 hours with an elderly uncle on Sunday, help him go to temple and get groceries.', contact_number: '+918877665544', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai', user_name: 'Amit Patel' },
-    { id: 'mock_4', title: 'Cow Seva - Straw & Fodder distribution help', request_type: 'gau', description: 'Volunteers required to distribute fodder and help clean cowsheds at our local Gaushala tomorrow morning.', contact_number: '+917766554433', urgency_level: 'low', created_at: new Date(Date.now() - 180 * 60000).toISOString(), status: 'active', location: 'Gau-shala, Ghatkopar', user_name: 'Gaurav Das' },
-    { id: 'mock_5', title: 'Accident Emergency - Medicine assistance', request_type: 'emergency', description: 'Emergency medication needs to be collected and delivered to Saint Mary ICU. Immediate assistance required.', contact_number: '+919654321987', urgency_level: 'critical', created_at: new Date(Date.now() - 15 * 60000).toISOString(), status: 'active', location: 'Santacruz East, Mumbai', user_name: 'Vikram Malhotra' },
-    { id: 'mock_6', title: 'Temple cleanup and Bhandara volunteers', request_type: 'temple', description: 'Need 5 volunteers to clean the Shiva temple premises and serve food during the Saturday Bhandara.', contact_number: '+919123456789', urgency_level: 'low', created_at: new Date(Date.now() - 300 * 60000).toISOString(), status: 'active', location: 'Shiva Mandir, Borivali', user_name: 'Suresh Mehta' }
-  ];
+  const params = useLocalSearchParams();
+  const [initialRouteHandled, setInitialRouteHandled] = useState(false);
 
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  useEffect(() => {
+    if (!loading && requests.length > 0 && params.requestId && !initialRouteHandled) {
+      const found = requests.find(r => r.id === params.requestId);
+      if (found) {
+        setSelectedRequest(found);
+      }
+      setInitialRouteHandled(true);
+    }
+  }, [loading, requests, params.requestId, initialRouteHandled]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -98,14 +104,19 @@ export default function ActiveRequestsList() {
       ]);
       const apiRequests = [...(activeRes.data || []), ...(resolvedRes.data || [])];
       
-      // Merge Mock requests to ensure there is high-fidelity content even if DB is empty
-      const combined = [...apiRequests, ...mockRequests];
-      
-      // Deduplicate by ID and filter out resolved requests older than 15 days
+      // Filter out resolved requests older than 15 days and garbage data
       const fifteenDaysAgo = Date.now() - 15 * 24 * 60 * 60 * 1000;
-      const uniqueRequests = combined.filter(
-        (v, i, a) => a.findIndex(t => t.id === v.id) === i
-      ).filter(req => {
+      const filtered = apiRequests.filter(req => {
+        // Filter out obvious garbage data
+        if (
+          req.description?.includes('GHDTYGFTYTY') ||
+          req.title?.includes('GHDTYGFTYTY') ||
+          req.description === 'Phone Call' || 
+          req.description === 'WhatsApp'
+        ) {
+          return false;
+        }
+
         if (req.status === 'resolved') {
           const createdAt = new Date(req.created_at).getTime();
           return !Number.isNaN(createdAt) && createdAt >= fifteenDaysAgo;
@@ -113,22 +124,16 @@ export default function ActiveRequestsList() {
         return true;
       });
       
-      setRequests(sortRequests(uniqueRequests));
+      setRequests(sortRequests(filtered));
     } catch (error) {
       console.log('Failed to fetch community requests:', error);
-      setRequests(sortRequests(mockRequests));
+      setRequests([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleResolveRequest = async (requestId: string) => {
-    if (requestId.startsWith('mock_')) {
-      Alert.alert('Success', 'Request marked as fulfilled successfully!');
-      setRequests(prev => sortRequests(prev.map(req => req.id === requestId ? { ...req, status: 'resolved' } : req)));
-      setSelectedRequest(null);
-      return;
-    }
     try {
       await resolveCommunityRequest(requestId);
       Alert.alert('Success', 'Request marked as fulfilled successfully!');
@@ -216,9 +221,21 @@ export default function ActiveRequestsList() {
   const handleCall = (number: string) => {
     if (!number) return;
     const cleaned = number.replace(/[^\d+]/g, '');
-    Linking.openURL(`tel:${cleaned}`).catch(() => {
-      Alert.alert('Error', 'Unable to make phone call');
-    });
+    Alert.alert(
+      'Contact Number',
+      `Phone Number: ${number}\nDo you want to call this number?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Call', 
+          onPress: () => {
+            Linking.openURL(`tel:${cleaned}`).catch(() => {
+              Alert.alert('Error', 'Unable to make phone call');
+            });
+          }
+        }
+      ]
+    );
   };
 
   const handleWhatsApp = (number: string, title: string) => {
@@ -232,9 +249,13 @@ export default function ActiveRequestsList() {
 
   const handleShare = async (request: CommunityRequest) => {
     try {
+      // Create a deep link using the app scheme targeting the list page with the request ID
+      const deepLink = `sanatanlok://community-request/list?requestId=${request.id}`;
+      const typeLabel = getRequestTheme(request).label.toUpperCase();
+      
       await Share.share({
         title: request.title,
-        message: `📢 *Brahmand Community Request*\n\n*${request.title}*\n📍 Location: ${request.location}\n⚠️ Urgency: ${request.urgency_level.toUpperCase()}\n\n💬 Description:\n"${request.description}"\n\n📞 Contact number: ${request.contact_number}\n\nJoin Brahmand App to support your neighbors and help our community grow.`,
+        message: `📢 *Brahmand Community Request*\n\n[${typeLabel}]\n*${request.title}*\n📍 Location: ${request.location}\n⚠️ Urgency: ${request.urgency_level.toUpperCase()}\n\n💬 Description:\n"${request.description}"\n\n📞 Contact number: ${request.contact_number}\n\nTap the link below to open in Brahmand App and offer help:\n${deepLink}`,
       });
     } catch (error) {
       console.log('Share error:', error);
@@ -368,13 +389,15 @@ export default function ActiveRequestsList() {
                 <Text style={styles.actionBtnText}>Offer Help</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.actionBtn, styles.fulfillBtn]}
-                onPress={() => handleResolveRequest(item.id)}
-              >
-                <Ionicons name="checkmark-done" size={14} color="#FFF" />
-                <Text style={styles.actionBtnText}>Fulfill</Text>
-              </TouchableOpacity>
+              {item.user_id === user?.id && (
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.fulfillBtn]}
+                  onPress={() => handleResolveRequest(item.id)}
+                >
+                  <Ionicons name="checkmark-done" size={14} color="#FFF" />
+                  <Text style={styles.actionBtnText}>Fulfill</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -581,7 +604,7 @@ export default function ActiveRequestsList() {
                     <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
                     <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, fontWeight: '800' }}>Help Done</Text>
                   </View>
-                ) : (
+                ) : selectedRequest.user_id === user?.id ? (
                   <TouchableOpacity 
                     style={[styles.sheetBtn, { backgroundColor: '#F59E0B', flex: 1.2 }]}
                     onPress={() => handleResolveRequest(selectedRequest.id)}
@@ -589,7 +612,7 @@ export default function ActiveRequestsList() {
                     <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
                     <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, fontWeight: '800' }}>Fulfill</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
             </View>
           </View>

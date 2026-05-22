@@ -933,7 +933,7 @@ export const unmuteConversation = (conversationId: string) =>
 
 // Discover APIs
 export const discoverCommunities = () =>
-  api.get('/discover/communities');
+  api.get('/communities/discover');
 
 // Wisdom & Panchang APIs
 export const getTodaysWisdom = () =>

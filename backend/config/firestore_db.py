@@ -47,8 +47,11 @@ class FirestoreDB:
     
     async def create_document(self, collection: str, data: Dict[str, Any], doc_id: str = None) -> str:
         """Create a document in a collection"""
-        data['created_at'] = datetime.utcnow()
-        data['updated_at'] = datetime.utcnow()
+        now_iso = datetime.utcnow().isoformat()
+        if 'created_at' not in data:
+            data['created_at'] = now_iso
+        if 'updated_at' not in data:
+            data['updated_at'] = now_iso
         
         def _create():
             coll = self.client.collection(collection)
@@ -248,8 +251,11 @@ class FirestoreDB:
     
     async def set_document(self, collection: str, doc_id: str, data: Dict[str, Any]):
         """Set a document with specific ID"""
-        data['created_at'] = datetime.utcnow()
-        data['updated_at'] = datetime.utcnow()
+        now_iso = datetime.utcnow().isoformat()
+        if 'created_at' not in data:
+            data['created_at'] = now_iso
+        if 'updated_at' not in data:
+            data['updated_at'] = now_iso
         
         def _set():
             self.client.collection(collection).document(doc_id).set(data)
@@ -271,7 +277,7 @@ class FirestoreDB:
         """Add a message to chat's messages subcollection"""
         from google.cloud import firestore
         
-        message_data['created_at'] = datetime.utcnow()
+        message_data['created_at'] = datetime.utcnow().isoformat()
         message_data['timestamp'] = firestore.SERVER_TIMESTAMP
         
         def _add():

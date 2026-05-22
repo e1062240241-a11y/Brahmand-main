@@ -48,6 +48,7 @@ export default function FoodRequestScreen() {
   const [noOfPeople, setNoOfPeople] = useState('');
   const [urgency, setUrgency] = useState('Urgent');
   const [contactPref, setContactPref] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,6 +105,7 @@ export default function FoodRequestScreen() {
     if (!location) return Alert.alert('Error', 'Please provide a delivery location');
     if (!itemsNeeded.trim()) return Alert.alert('Error', 'Please list the items needed');
     if (!noOfPeople) return Alert.alert('Error', 'Please specify number of people');
+    if (!phoneNumber.trim()) return Alert.alert('Error', 'Please enter your contact number');
     if (!contactPref) return Alert.alert('Error', 'Please select a contact preference');
 
     setIsSubmitting(true);
@@ -119,7 +121,7 @@ export default function FoodRequestScreen() {
         request_type: 'help',
         title: `Food Help: ${helpType}`,
         description: finalDesc,
-        contact_number: contactPref,
+        contact_number: phoneNumber.trim(),
         urgency_level: mappedUrgency as any,
         location: location,
         support_needed: 'Food',
@@ -288,6 +290,23 @@ export default function FoodRequestScreen() {
                       <Text style={[styles.segmentButtonText, urgency === item && (item === 'Urgent' ? styles.segmentButtonTextSelectedUrgent : styles.segmentButtonTextSelected)]}>{item}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+              </View>
+
+              {/* Contact Phone Number */}
+              <View style={styles.fieldSection}>
+                <Text style={styles.fieldLabel}>Contact Phone Number <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="call" size={18} color="#F25C05" style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Enter mobile number (e.g. +919876543210)"
+                    placeholderTextColor="#BBB"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                  />
                 </View>
               </View>
 
