@@ -145,6 +145,8 @@ function useNotificationResponseHandler() {
       const sosId = data?.sos_id;
       const postId = data?.post_id;
       const actorUserId = data?.actor_user_id;
+      const messageId = data?.message_id;
+      const requestId = data?.requestId;
       if (chatId) {
         return `${chatId}:${actionId}`;
       }
@@ -156,6 +158,12 @@ function useNotificationResponseHandler() {
       }
       if (type === 'follow' && actorUserId) {
         return `follow:${actorUserId}:${actionId}`;
+      }
+      if (type === 'community_like' && messageId) {
+        return `comm_like:${messageId}:${actionId}`;
+      }
+      if (type === 'community_request' && requestId) {
+        return `comm_req:${requestId}:${actionId}`;
       }
       return null;
     };
@@ -198,6 +206,16 @@ function useNotificationResponseHandler() {
 
       if (data.type === 'follow' && data.actor_user_id) {
         navigateToProfile(String(data.actor_user_id));
+        return;
+      }
+
+      if (data.type === 'community_like' && data.community_id && data.message_id) {
+        router.push(`/community/${data.community_id}?postId=${data.message_id}`);
+        return;
+      }
+
+      if (data.type === 'community_request' && data.requestId) {
+        router.push(`/community-request/list?requestId=${data.requestId}`);
         return;
       }
 

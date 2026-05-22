@@ -162,6 +162,10 @@ class CacheManager:
     async def set_community_stats(self, community_id: str, stats: dict):
         await self.set(f"{self.STATS_PREFIX}:community:{community_id}", stats, ttl=60)
 
+    async def invalidate_community_requests(self):
+        """Invalidate all cached community requests"""
+        await self.delete_pattern("user_requests:*")
+
 
 # Global cache manager instance
 cache_manager = CacheManager()

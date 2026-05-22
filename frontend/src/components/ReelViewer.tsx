@@ -21,7 +21,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
-import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent } from '../services/api';
+import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment } from '../services/api';
+import { useAuthStore } from '../store/authStore';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { useRouter } from 'expo-router';
@@ -75,6 +76,10 @@ const ReelVideoItem = React.memo(({
   const [showSpinner, setShowSpinner] = useState(false);
   const playPauseAnim = useRef(new Animated.Value(0)).current;
   const [localPost, setLocalPost] = useState(post);
+
+  useEffect(() => {
+    setLocalPost(post);
+  }, [post]);
   const videoRef = useRef<any>(null);
   const captionText = String(localPost?.caption || '');
   const captionWords = captionText.trim().split(/\s+/).filter(Boolean);
@@ -772,6 +777,7 @@ const ReelVideoItem = React.memo(({
 
 export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [videos, setVideos] = useState<any[]>([initialPost]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -811,6 +817,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
 
   const handleShareLocal = useCallback((post: any) => {
     setSelectedPost(post);
@@ -845,6 +852,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       user_photo: currentUser?.photo || '',
       created_at: new Date().toISOString(),
       is_optimistic: true,
+      user_id: user?.id,
     };
 
     // Add to UI immediately
@@ -857,6 +865,21 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const res = await addPostComment(selectedPost.id, textToPost);
       // Replace temporary comment with real one from server
       setLocalComments(prev => prev.map(c => c.id === tempId ? res.data : c));
+
+      // Update comment count on post
+      setSelectedPost((prev: any) => prev ? {
+        ...prev,
+        comments_count: (Number(prev.comments_count) || 0) + 1,
+      } : null);
+      setVideos(prev => prev.map(v => {
+        if (v.id === selectedPost.id) {
+          return {
+            ...v,
+            comments_count: (Number(v.comments_count) || 0) + 1,
+          };
+        }
+        return v;
+      }));
     } catch (e) {
       // Rollback on failure
       setLocalComments(prev => prev.filter(c => c.id !== tempId));
@@ -865,6 +888,47 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       setIsSubmittingComment(false);
     }
   };
+
+  const handleDeleteComment = useCallback(async (comment: any) => {
+    const commentId = comment?.id;
+    if (!commentId || !selectedPost?.id) return;
+
+    const originalComments = [...localComments];
+    const originalSelectedPost = { ...selectedPost };
+    const originalVideos = [...videos];
+
+    // Optimistic update
+    setLocalComments(prev => prev.filter(c => c.id !== commentId));
+    setSelectedPost((prev: any) => prev ? {
+      ...prev,
+      comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
+    } : null);
+    setVideos(prev => prev.map(v => {
+      if (v.id === selectedPost.id) {
+        return {
+          ...v,
+          comments_count: Math.max(0, (Number(v.comments_count) || 0) - 1),
+        };
+      }
+      return v;
+    }));
+
+    try {
+      const res = await deletePostComment(selectedPost.id, commentId);
+      const updatedPost = res.data?.post || res.data;
+      if (updatedPost) {
+        setSelectedPost((prev: any) => prev ? { ...prev, ...updatedPost } : null);
+        setVideos(prev => prev.map(v => v.id === selectedPost.id ? { ...v, ...updatedPost } : v));
+      }
+    } catch (error: any) {
+      console.warn('Failed to delete comment:', error);
+      setLocalComments(originalComments);
+      setSelectedPost(originalSelectedPost);
+      setVideos(originalVideos);
+      const detail = error.response?.data?.detail || error.message;
+      Alert.alert('Error', detail || 'Could not delete comment. Please try again.');
+    }
+  }, [localComments, selectedPost, videos]);
 
   const handleCopyLink = async () => {
     const postId = selectedPost?.id;
@@ -1180,12 +1244,18 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           visible={isCommentVisible}
           transparent
           animationType="slide"
-          onRequestClose={() => setIsCommentVisible(false)}
+          onRequestClose={() => {
+            setIsCommentVisible(false);
+            setActiveCommentMenuId(null);
+          }}
         >
           <TouchableOpacity
             style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
             activeOpacity={1}
-            onPress={() => setIsCommentVisible(false)}
+            onPress={() => {
+              setIsCommentVisible(false);
+              setActiveCommentMenuId(null);
+            }}
           >
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -1203,21 +1273,72 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
               <FlatList
                 data={localComments}
                 keyExtractor={(item) => String(item.id)}
-                renderItem={({ item }) => (
-                  <View style={{ flexDirection: 'row', padding: 15, borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0' }}>
-                    <Avatar photo={item.user_photo} name={item.username} size={36} />
-                    <View style={{ marginLeft: 12, flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#111' }}>{item.username}</Text>
-                        <Text style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>{formatTimeAgo(item.created_at)}</Text>
+                renderItem={({ item }) => {
+                  const canDelete = item.user_id === user?.id || selectedPost?.user_id === user?.id;
+                  return (
+                    <View style={{
+                      flexDirection: 'row',
+                      padding: 15,
+                      borderBottomWidth: 0.5,
+                      borderBottomColor: '#F0F0F0',
+                      alignItems: 'flex-start',
+                      zIndex: activeCommentMenuId === item.id ? 100 : 1,
+                    }}>
+                      <Avatar photo={item.user_photo} name={item.username} size={36} />
+                      <View style={{ marginLeft: 12, flex: 1 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#111' }}>{item.username}</Text>
+                            <Text style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>{formatTimeAgo(item.created_at)}</Text>
+                          </View>
+                          {canDelete && (
+                            <View style={{ position: 'relative', zIndex: 20 }}>
+                              <TouchableOpacity
+                                style={{ padding: 4, marginRight: -4 }}
+                                onPress={() => {
+                                  setActiveCommentMenuId(activeCommentMenuId === item.id ? null : item.id);
+                                }}
+                              >
+                                <Ionicons name="ellipsis-vertical" size={16} color="#888" />
+                              </TouchableOpacity>
+                              {activeCommentMenuId === item.id && (
+                                <>
+                                  <TouchableOpacity
+                                    style={{
+                                      position: 'absolute',
+                                      top: -2000,
+                                      bottom: -2000,
+                                      left: -2000,
+                                      right: -2000,
+                                      backgroundColor: 'transparent',
+                                      zIndex: 1,
+                                    }}
+                                    activeOpacity={1}
+                                    onPress={() => setActiveCommentMenuId(null)}
+                                  />
+                                  <TouchableOpacity
+                                    style={[styles.inlineDeletePopover, { zIndex: 2 }]}
+                                    onPress={() => {
+                                      setActiveCommentMenuId(null);
+                                      handleDeleteComment(item);
+                                    }}
+                                  >
+                                    <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                    <Text style={styles.inlineDeleteText}>Delete</Text>
+                                  </TouchableOpacity>
+                                </>
+                              )}
+                            </View>
+                          )}
+                        </View>
+                        <MentionText
+                          text={item.text}
+                          style={{ fontSize: 14, color: '#333', marginTop: 4, lineHeight: 18 }}
+                        />
                       </View>
-                      <MentionText
-                        text={item.text}
-                        style={{ fontSize: 14, color: '#333', marginTop: 4, lineHeight: 18 }}
-                      />
                     </View>
-                  </View>
-                )}
+                  );
+                }}
                 ListEmptyComponent={
                   commentsLoading ? (
                     <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
@@ -1257,8 +1378,36 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             </KeyboardAvoidingView>
           </TouchableOpacity>
         </Modal>
-
       </View>
     </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  inlineDeletePopover: {
+    position: 'absolute',
+    right: 0,
+    top: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+    minWidth: 80,
+    zIndex: 999,
+  },
+  inlineDeleteText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+});

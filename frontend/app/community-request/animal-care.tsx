@@ -58,6 +58,7 @@ export default function AnimalCareRequestScreen() {
   const [description, setDescription] = useState('');
   const [urgency, setUrgency] = useState('Urgent');
   const [contactPref, setContactPref] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,6 +115,7 @@ export default function AnimalCareRequestScreen() {
     if (!animalType) return Alert.alert('Error', 'Please select animal type');
     if (!location) return Alert.alert('Error', 'Please provide a location');
     if (!description.trim()) return Alert.alert('Error', 'Please describe the situation');
+    if (!phoneNumber.trim()) return Alert.alert('Error', 'Please enter your contact number');
     if (!contactPref) return Alert.alert('Error', 'Please select a contact preference');
 
     setIsSubmitting(true);
@@ -122,7 +124,7 @@ export default function AnimalCareRequestScreen() {
         request_type: 'help',
         title: `Animal Care: ${animalType} - ${helpType}`,
         description: description,
-        contact_number: contactPref,
+        contact_number: phoneNumber.trim(),
         urgency_level: (urgency === 'Urgent' ? 'critical' : urgency.toLowerCase()) as any,
         location: location,
         support_needed: 'Animal Care',
@@ -273,6 +275,22 @@ export default function AnimalCareRequestScreen() {
                       <Text style={[styles.segmentButtonText, urgency === item && (item === 'Urgent' ? styles.segmentButtonTextSelectedUrgent : styles.segmentButtonTextSelected)]}>{item}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+              </View>
+
+              <View style={styles.fieldSection}>
+                <Text style={styles.fieldLabel}>Contact Phone Number <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="call" size={18} color="#EF6C00" style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Enter mobile number (e.g. +919876543210)"
+                    placeholderTextColor="#BBB"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                  />
                 </View>
               </View>
 

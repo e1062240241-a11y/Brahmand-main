@@ -36,7 +36,8 @@ import {
   getUserCulturalCommunity,
   updateUserCulturalCommunity,
   parseApiError,
-  resolveCommunityRequest
+  resolveCommunityRequest,
+  discoverCommunities,
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
@@ -44,6 +45,8 @@ import { getAllMutedConversations } from '../../src/services/mutedChats';
 const { width } = Dimensions.get('window');
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
 const COMMUNITIES_CACHE_KEY = 'communities_cache';
+const USER_GROUPS_CACHE_KEY = 'user_groups_discover_cache';
+const USER_GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Cache helpers
 const getCachedData = async (key: string) => {
@@ -165,11 +168,6 @@ export default function MessagesScreen() {
   };
 
   const handleResolveRequest = async (requestId: string) => {
-    if (requestId.startsWith('mock_')) {
-      Alert.alert('Success', 'Request marked as fulfilled successfully!');
-      setSelectedRequest(null);
-      return;
-    }
     try {
       await resolveCommunityRequest(requestId);
       Alert.alert('Success', 'Request marked as fulfilled successfully!');
@@ -180,19 +178,8 @@ export default function MessagesScreen() {
     }
   };
 
-  // Mock datasets matching Figma design exactly for fallback & rendering
-  const mockRequestsList = [
-    { id: 'mock_1', title: 'O+ Blood Required', request_type: 'blood', description: 'Patient is admitted at Lifeline Hospital in ICU. Need 2 units of O+ blood as soon as possible. Any help would be highly appreciated.', contact_number: '+919876543210', urgency_level: 'critical', created_at: new Date(Date.now() - 10 * 60000).toISOString(), status: 'active', location: 'Andheri West, Mumbai', user_name: 'Rahul Joshi' },
-    { id: 'mock_2', title: 'Baby Food Required', request_type: 'food', description: 'Requiring starter formulas and baby foods for 6-month-old twin babies. Family in financial distress.', contact_number: '+919988776655', urgency_level: 'high', created_at: new Date(Date.now() - 60 * 60000).toISOString(), status: 'active', location: 'Bandra West, Mumbai', user_name: 'Priya Sharma' },
-    { id: 'mock_3', title: 'Elderly Care Support', request_type: 'care', description: 'Looking for a volunteer who can spend 2 hours with an elderly uncle on Sunday, help him go to temple and get groceries.', contact_number: '+918877665544', urgency_level: 'medium', created_at: new Date(Date.now() - 120 * 60000).toISOString(), status: 'active', location: 'Powai, Mumbai', user_name: 'Amit Patel' },
-    { id: 'mock_4', title: 'Cow Seva', request_type: 'gau', description: 'Volunteers required to distribute fodder and help clean cowsheds at our local Gaushala tomorrow morning.', contact_number: '+917766554433', urgency_level: 'low', created_at: new Date(Date.now() - 180 * 60000).toISOString(), status: 'active', location: 'Gau shala, Ghatkopar', user_name: 'Gaurav Das' },
-    { id: 'mock_5', title: 'Accident Emergency - Medicine assistance', request_type: 'emergency', description: 'Emergency medication needs to be collected and delivered to Saint Mary ICU. Immediate assistance required.', contact_number: '+919654321987', urgency_level: 'critical', created_at: new Date(Date.now() - 15 * 60000).toISOString(), status: 'active', location: 'Santacruz East, Mumbai', user_name: 'Vikram Malhotra' },
-  ];
-
-  const combinedRequests = [...requests, ...mockRequestsList];
-  const requestsToRender = combinedRequests.filter(
-    (v, i, a) => a.findIndex(t => t.id === v.id) === i
-  );
+  // Only show real requests from the database
+  const requestsToRender = requests;
 
   const userGroupsToRender = userGroups;
 
@@ -673,13 +660,47 @@ export default function MessagesScreen() {
         const verifiedComms = allComms.filter(
           (item: Community) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural' && item.type !== 'user_group'
         );
-
         const userGroupsList = allComms.filter(
           (item: Community) => item.type === 'user_group'
         );
 
         setCommunities(verifiedComms);
-        setUserGroups(userGroupsList);
+
+        // Fetch ALL user_group communities — load from cache first, then refresh
+        try {
+          // Show cached user groups immediately
+          const cachedGroups = await AsyncStorage.getItem(USER_GROUPS_CACHE_KEY);
+          if (cachedGroups) {
+            const { data: cachedData, timestamp } = JSON.parse(cachedGroups);
+            if (Array.isArray(cachedData) && cachedData.length > 0) {
+              setUserGroups(cachedData);
+              // Skip network if cache is fresh
+              if (Date.now() - timestamp < USER_GROUPS_CACHE_TTL) {
+                setRequests(requestRes.data || []);
+                return;
+              }
+            }
+          }
+          // Fetch fresh from discover endpoint
+          const discoverRes = await discoverCommunities();
+          const allDiscovered = discoverRes.data || [];
+          const allUserGroups = allDiscovered.filter(
+            (item: Community) => item.type === 'user_group'
+          );
+          // Also include any user_group the current user is a member of (from getCommunities)
+          const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group');
+          // Merge and deduplicate by id
+          const merged = [...allUserGroups, ...myUserGroups];
+          const unique = merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+          setUserGroups(unique);
+          // Persist to cache
+          await AsyncStorage.setItem(USER_GROUPS_CACHE_KEY, JSON.stringify({ data: unique, timestamp: Date.now() }));
+        } catch {
+          // Fallback to just my user_groups if discover fails
+          const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group');
+          setUserGroups(myUserGroups);
+        }
+
         setRequests(requestRes.data || []);
       } else {
         setLoading((prev) => {
@@ -773,19 +794,19 @@ export default function MessagesScreen() {
 
   useEffect(() => {
     if (!isFocused) return;
-    if (activeTopTab === 'Community') {
-      const combinedCount = (requests?.length || 0) + 3; // Real + 3 mock cards
+    if (activeTopTab === 'Community' && requests.length > 0) {
+      const totalCount = requests.length;
       const timer = setInterval(() => {
         setActiveRequestIndex((prev) => {
-          const nextIndex = (prev + 1) % combinedCount;
-          const cardWidth = width * 0.48 + 14;
+          const nextIndex = (prev + 1) % totalCount;
+          const cardWidth = 132; // actual layout card width (120) + margin (12)
           activeRequestScrollRef.current?.scrollTo({ x: nextIndex * cardWidth, animated: true });
           return nextIndex;
         });
       }, 4000); // Advance every 4 seconds
       return () => clearInterval(timer);
     }
-  }, [activeTopTab, requests?.length, isFocused]);
+  }, [activeTopTab, requests.length, isFocused]);
 
   useFocusEffect(
     useCallback(() => {
@@ -989,13 +1010,13 @@ export default function MessagesScreen() {
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
-                    snapToInterval={130}
+                    snapToInterval={132}
                     decelerationRate="fast"
                     snapToAlignment="start"
                     style={Platform.OS === 'web' ? ({ cursor: 'grab' } as any) : {}}
                     onMomentumScrollEnd={(e) => {
                       const x = e.nativeEvent.contentOffset.x;
-                      setActiveRequestIndex(Math.round(x / 130));
+                      setActiveRequestIndex(Math.round(x / 132));
                     }}
                   >
                     {requestsToRender.map(renderActiveRequestCard)}

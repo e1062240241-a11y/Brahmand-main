@@ -252,6 +252,7 @@ import {
   addPostComment,
   createCommunityRequest,
   deletePost,
+  deletePostComment,
   followUser,
   getAllUsers,
   getCommunities,
@@ -372,6 +373,7 @@ export default function HomeScreen() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
+  const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
   const [showUploadPostModal, setShowUploadPostModal] = useState(false);
   const [showProfileActions, setShowProfileActions] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -1242,6 +1244,100 @@ export default function HomeScreen() {
       alert('Could not delete post. Please try again.');
     }
   }, [selectedCommentPostId, activeTab, setTabFeed]);
+
+  const handleDeleteComment = useCallback(async (comment: any) => {
+    const commentId = comment?.id;
+    if (!commentId || !selectedCommentPostId) return;
+
+    const originalComments = [...postComments];
+    const originalPost = { ...selectedCommentPost };
+
+    setPostComments(prev => prev.filter(c => c.id !== commentId));
+
+    const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+    const postToUpdate = currentPosts.find(p => p.id === selectedCommentPostId);
+    
+    let originalPostInFeed: any = null;
+    if (postToUpdate) {
+      originalPostInFeed = { ...postToUpdate };
+      const currentTop = Array.isArray(postToUpdate.top_comments) ? postToUpdate.top_comments : [];
+      const updatedTop = currentTop.filter((c: any) => c.id !== commentId);
+      setTabFeed(activeTab, {
+        posts: currentPosts.map((item) => {
+          if (item.id === selectedCommentPostId) {
+            return {
+              ...item,
+              comments_count: Math.max(0, (Number(item.comments_count) || 0) - 1),
+              top_comments: updatedTop,
+            };
+          }
+          return item;
+        })
+      });
+    }
+
+    if (selectedCommentPost) {
+      setSelectedCommentPost((prev: any) => {
+        if (prev?.id === selectedCommentPostId) {
+          const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
+          return {
+            ...prev,
+            comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
+            top_comments: currentTop.filter((c: any) => c.id !== commentId),
+          };
+        }
+        return prev;
+      });
+    }
+
+    try {
+      const response = await deletePostComment(selectedCommentPostId, commentId);
+      const updatedPostFromServer = response.data?.post;
+      
+      if (updatedPostFromServer) {
+        const refreshedPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+        setTabFeed(activeTab, {
+          posts: refreshedPosts.map((item) => {
+            if (item.id === selectedCommentPostId) {
+              const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
+              return {
+                ...item,
+                ...updatedPostFromServer,
+                top_comments: currentTop.slice(0, 2),
+              };
+            }
+            return item;
+          })
+        });
+        
+        setSelectedCommentPost((prev: any) => {
+          if (prev?.id === selectedCommentPostId) {
+            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
+            return {
+              ...prev,
+              ...updatedPostFromServer,
+              top_comments: currentTop.slice(0, 2),
+            };
+          }
+          return prev;
+        });
+      }
+    } catch (error: any) {
+      console.warn('Failed to delete comment:', error);
+      setPostComments(originalComments);
+      if (originalPostInFeed) {
+        const refreshedPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+        setTabFeed(activeTab, {
+          posts: refreshedPosts.map(p => p.id === selectedCommentPostId ? originalPostInFeed : p)
+        });
+      }
+      if (originalPost) {
+        setSelectedCommentPost(originalPost);
+      }
+      const detail = error.response?.data?.detail || error.message;
+      Alert.alert('Error', detail || 'Could not delete comment. Please try again.');
+    }
+  }, [postComments, selectedCommentPostId, selectedCommentPost, activeTab, setTabFeed]);
 
   const handleReportPost = useCallback(async (post: any) => {
     const postId = post?.id;
@@ -2146,6 +2242,8 @@ export default function HomeScreen() {
             onSubmit={handleSubmitRequest}
           />
 
+
+
           <SharePostModal
             visible={shareModalVisible}
             post={selectedSharePost}
@@ -2188,6 +2286,7 @@ export default function HomeScreen() {
               setSelectedCommentPostId(null);
               setSelectedCommentPost(null);
               setPostComments([]);
+              setActiveCommentMenuId(null);
             }}
           >
             <KeyboardAvoidingView
@@ -2203,9 +2302,17 @@ export default function HomeScreen() {
                   setSelectedCommentPostId(null);
                   setSelectedCommentPost(null);
                   setPostComments([]);
+                  setActiveCommentMenuId(null);
                 }}
               />
               <View style={styles.commentSheet}>
+                {activeCommentMenuId !== null && (
+                  <TouchableOpacity
+                    style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]}
+                    activeOpacity={1}
+                    onPress={() => setActiveCommentMenuId(null)}
+                  />
+                )}
                 <View style={styles.bottomSheetHandle} />
                 <View style={styles.commentSheetHeader}>
                   <Text style={styles.commentTitle}>Comments</Text>
@@ -2215,6 +2322,7 @@ export default function HomeScreen() {
                       setSelectedCommentPostId(null);
                       setSelectedCommentPost(null);
                       setPostComments([]);
+                      setActiveCommentMenuId(null);
                     }}
                     style={styles.commentCloseBtn}
                   >
@@ -2234,16 +2342,45 @@ export default function HomeScreen() {
                     <FlatList
                       data={postComments}
                       keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
-                      renderItem={({ item }) => (
-                        <View style={styles.commentItem}>
-                          <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
-                          <View style={styles.commentBubble}>
-                            <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                            <MentionText style={styles.commentItemText} text={item?.text || ''} />
-                            <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
+                      renderItem={({ item }) => {
+                        const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                        return (
+                          <View style={[styles.commentItem, { zIndex: activeCommentMenuId === item.id ? 100 : 1 }]}>
+                            <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
+                            <View style={styles.commentBubble}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                                {canDelete && (
+                                  <View style={{ position: 'relative', zIndex: 20 }}>
+                                    <TouchableOpacity
+                                      style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                      onPress={() => {
+                                        setActiveCommentMenuId(activeCommentMenuId === item.id ? null : item.id);
+                                      }}
+                                    >
+                                      <Ionicons name="ellipsis-vertical" size={16} color="#8A7B89" />
+                                    </TouchableOpacity>
+                                    {activeCommentMenuId === item.id && (
+                                      <TouchableOpacity
+                                        style={styles.inlineDeletePopover}
+                                        onPress={() => {
+                                          setActiveCommentMenuId(null);
+                                          handleDeleteComment(item);
+                                        }}
+                                      >
+                                        <Ionicons name="trash-outline" size={14} color={COLORS.error || '#FF3B30'} />
+                                        <Text style={styles.inlineDeleteText}>Delete</Text>
+                                      </TouchableOpacity>
+                                    )}
+                                  </View>
+                                )}
+                              </View>
+                              <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                              <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
+                            </View>
                           </View>
-                        </View>
-                      )}
+                        );
+                      }}
                       showsVerticalScrollIndicator={false}
                       contentContainerStyle={{ paddingBottom: 20 }}
                     />
@@ -3151,6 +3288,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
     padding: 10,
+  },
+  inlineDeletePopover: {
+    position: 'absolute',
+    right: 0,
+    top: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+    minWidth: 80,
+    zIndex: 999,
+  },
+  inlineDeleteText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   commentItemUser: {
     color: '#22142E',

@@ -753,6 +753,9 @@ export const repostPost = (postId: string) =>
 export const deletePost = (postId: string) =>
   api.delete(`/posts/${postId}`);
 
+export const deletePostComment = (postId: string, commentId: string) =>
+  api.delete(`/posts/${postId}/comments/${commentId}`);
+
 export const reportPost = (postId: string, category: string = 'other', description: string = '') =>
   api.post(`/posts/${postId}/report`, { category, description });
 
@@ -930,7 +933,7 @@ export const unmuteConversation = (conversationId: string) =>
 
 // Discover APIs
 export const discoverCommunities = () =>
-  api.get('/discover/communities');
+  api.get('/communities/discover');
 
 // Wisdom & Panchang APIs
 export const getTodaysWisdom = () =>
