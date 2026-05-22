@@ -27,14 +27,14 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
-import { 
-  getCircles, 
-  getCommunities, 
-  getCommunityRequests, 
-  getConversations, 
-  getCulturalCommunities, 
-  getUserCulturalCommunity, 
-  updateUserCulturalCommunity, 
+import {
+  getCircles,
+  getCommunities,
+  getCommunityRequests,
+  getConversations,
+  getCulturalCommunities,
+  getUserCulturalCommunity,
+  updateUserCulturalCommunity,
   parseApiError,
   resolveCommunityRequest
 } from '../../src/services/api';
@@ -249,7 +249,7 @@ export default function MessagesScreen() {
 
   const getCommunityFigmaDetails = (item: Community) => {
     const nameLower = (item.name || '').toLowerCase();
-    
+
     if (nameLower.includes('mumbai') || item.type === 'city') {
       return {
         label: 'CITY COMMUNITY',
@@ -285,7 +285,7 @@ export default function MessagesScreen() {
         iconName: 'medal',
       };
     }
-    
+
     return {
       label: item.type === 'city' ? 'CITY COMMUNITY' : item.type === 'state' ? 'STATE COMMUNITY' : 'NATIONAL COMMUNITY',
       name: item.name,
@@ -570,6 +570,41 @@ export default function MessagesScreen() {
     );
   };
 
+  const renderCommunityBanner = () => (
+    <View style={styles.heroBanner}>
+      <LinearGradient
+        colors={['#FFFFFF', '#FFF8F2', '#FFF3E8']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={styles.heroBannerContent}>
+        {/* Foreground Content */}
+        <View style={styles.heroTextCol}>
+          <Text style={styles.heroTitle}>Help your community</Text>
+          <Text style={styles.heroSubtitle}>Together we can make a difference</Text>
+        </View>
+
+        {/* Centered Background Illustration */}
+        <Image
+          source={require('../../assets/images/community_banner_heart.png')}
+          style={styles.heroImageDeco}
+          resizeMode="contain"
+        />
+
+        <View style={styles.heroActionCol}>
+          <TouchableOpacity
+            style={styles.heroButton}
+            activeOpacity={0.9}
+            onPress={() => router.push('/community-request')}
+          >
+            <Text style={styles.heroButtonText}>+ Create Request</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
   const renderOurCommunitiesSection = () => {
     const { city, state, national, others } = partitionVerifiedCommunities();
     const fallbackCity: Community = {
@@ -598,11 +633,10 @@ export default function MessagesScreen() {
       <View style={styles.ourCommunitiesBlock}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Our Communities</Text>
-            <View style={styles.figmaVerifiedBadge}>
-              <Ionicons name="shield-checkmark" size={11} color="#FFF" />
-              <Text style={styles.figmaVerifiedText}>Verified</Text>
-            </View>
+            <Ionicons name="shield-checkmark" size={18} color="#FF6600" />
+            <Text style={styles.sectionTitle}>
+              Our Communities <Text style={styles.verifiedInline}>(Verified)</Text>
+            </Text>
           </View>
         </View>
 
@@ -634,12 +668,12 @@ export default function MessagesScreen() {
           getCommunities(),
           getCommunityRequests({ status: 'active', limit: 10 }),
         ]);
-        
+
         const allComms = communityRes.data || [];
         const verifiedComms = allComms.filter(
           (item: Community) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural' && item.type !== 'user_group'
         );
-        
+
         const userGroupsList = allComms.filter(
           (item: Community) => item.type === 'user_group'
         );
@@ -773,10 +807,10 @@ export default function MessagesScreen() {
     if (!dateString) return 'Just now';
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return '1h ago';
-    
+
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (diffInSeconds < 0) return 'Just now';
     if (diffInSeconds < 60) return 'Just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
@@ -790,8 +824,8 @@ export default function MessagesScreen() {
     const theme = getRequestTheme(item);
 
     return (
-      <TouchableOpacity 
-        key={item.id} 
+      <TouchableOpacity
+        key={item.id}
         onPress={() => setSelectedRequest(item)}
         activeOpacity={0.9}
       >
@@ -802,7 +836,7 @@ export default function MessagesScreen() {
           <View style={styles.figmaRequestIconWrapper}>
             <MaterialCommunityIcons name={theme.icon as any} size={28} color={theme.iconColor} />
           </View>
-          
+
           <Text style={styles.figmaRequestTitle} numberOfLines={2}>
             {item.title}
           </Text>
@@ -858,45 +892,57 @@ export default function MessagesScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#FF9A4D', '#FFEBD6', '#FFFFFF']} locations={[0, 0.35, 0.7]} style={styles.headerGradient}>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFFFFF']}
+      locations={[0, 0.0481, 0.2404]}
+      style={styles.container}
+    >
+      <View style={styles.headerPadding}>
         <SafeAreaView edges={['top']}>
-          <View style={styles.topTabsWrapper}>
-            <TouchableOpacity 
-              style={[styles.topTabCard, activeTopTab === 'Community' ? styles.topTabCardActive : styles.topTabCardInactive]}
+          <View style={styles.segmentedTrack}>
+            <TouchableOpacity
+              style={[styles.segmentPill, activeTopTab === 'Community' && styles.segmentPillActive]}
               onPress={() => setActiveTopTab('Community')}
+              activeOpacity={0.9}
             >
-              <MaterialCommunityIcons 
-                name="account-group" 
-                size={24} 
-                color={activeTopTab === 'Community' ? '#FFF' : '#333'} 
-              />
-              <Text style={activeTopTab === 'Community' ? styles.topTabTitle : styles.topTabTitleDark}>Community</Text>
+              <Text
+                style={[
+                  styles.segmentText,
+                  activeTopTab === 'Community' && styles.segmentTextActive,
+                ]}
+              >
+                Community
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.topTabCard, activeTopTab === 'Private Chat' ? styles.topTabCardActive : styles.topTabCardInactive]}
+            <TouchableOpacity
+              style={[styles.segmentPill, activeTopTab === 'Private Chat' && styles.segmentPillActive]}
               onPress={() => setActiveTopTab('Private Chat')}
+              activeOpacity={0.9}
             >
-              <MaterialCommunityIcons 
-                name="chat-outline" 
-                size={22} 
-                color={activeTopTab === 'Private Chat' ? '#FFF' : '#333'} 
-              />
-              <Text style={activeTopTab === 'Private Chat' ? styles.topTabTitle : styles.topTabTitleDark}>Private Chat</Text>
+              <Text
+                style={[
+                  styles.segmentText,
+                  activeTopTab === 'Private Chat' && styles.segmentTextActive,
+                ]}
+              >
+                Private Chat
+              </Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
-      <ScrollView 
-        style={styles.mainContent} 
+      <ScrollView
+        style={styles.mainContent}
+        contentContainerStyle={styles.mainContentContainer}
         showsVerticalScrollIndicator={false}
         overScrollMode="never"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
       >
         {activeTopTab === 'Community' ? (
           <View style={styles.communityContent}>
+            {renderCommunityBanner()}
             {renderOurCommunitiesSection()}
 
             <View style={styles.sectionHeader}>
@@ -938,10 +984,10 @@ export default function MessagesScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={{ marginTop: 10 }}>
-                  <ScrollView 
+                  <ScrollView
                     ref={activeRequestScrollRef}
-                    horizontal 
-                    showsHorizontalScrollIndicator={false} 
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
                     snapToInterval={130}
                     decelerationRate="fast"
@@ -962,79 +1008,79 @@ export default function MessagesScreen() {
           </View>
         ) : (
           <View style={styles.chatContent}>
-              <View style={styles.chatSectionHeader}>
-                 <Text style={styles.chatSectionTitle}>Groups & Circles</Text>
-                 <TouchableOpacity 
-                   onPress={() => router.push('/dm/new')}
-                   style={styles.newChatHeaderButton}
-                 >
-                   <Ionicons name="chatbubbles-outline" size={16} color="#FF6600" />
-                   <Text style={styles.newChatHeaderText}>New Chat</Text>
-                 </TouchableOpacity>
+            <View style={styles.chatSectionHeader}>
+              <Text style={styles.chatSectionTitle}>Groups & Circles</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/dm/new')}
+                style={styles.newChatHeaderButton}
+              >
+                <Ionicons name="chatbubbles-outline" size={16} color="#FF6600" />
+                <Text style={styles.newChatHeaderText}>New Chat</Text>
+              </TouchableOpacity>
+            </View>
+            {circles.length > 0 ? (
+              circles.map(circle => (
+                <TouchableOpacity
+                  key={circle.id}
+                  style={styles.chatItem}
+                  onPress={() => router.push(`/chat/circle/${circle.id}`)}
+                >
+                  <Avatar name={circle.name} photo={circle.photo} size={50} />
+                  <View style={styles.chatItemInfo}>
+                    <Text style={styles.chatItemName}>{circle.name}</Text>
+                    <Text style={styles.chatItemLastMsg} numberOfLines={1}>{circle.last_message || 'Start a conversation'}</Text>
+                  </View>
+                  <View style={styles.chatItemRight}>
+                    <Text style={styles.chatItemTime}>{circle.last_message_time || ''}</Text>
+                    {circle.member_count > 0 && <View style={styles.chatBadge}><Text style={styles.chatBadgeText}>{circle.member_count}</Text></View>}
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyChat}>
+                <Text style={styles.emptyChatText}>No group chats yet</Text>
               </View>
-             {circles.length > 0 ? (
-                circles.map(circle => (
-                  <TouchableOpacity 
-                    key={circle.id} 
+            )}
+
+            <View style={styles.chatSectionHeader}>
+              <Text style={styles.chatSectionTitle}>Direct Messages</Text>
+            </View>
+            {conversations.length > 0 ? (
+              conversations.map(conv => {
+                const conversationId = conv.conversation_id || conv.id;
+                const isMuted = conversationId ? mutedConversations.has(conversationId) : false;
+                return (
+                  <TouchableOpacity
+                    key={conversationId}
                     style={styles.chatItem}
-                    onPress={() => router.push(`/chat/circle/${circle.id}`)}
+                    onPress={() => router.push(`/dm/${conversationId}`)}
                   >
-                    <Avatar name={circle.name} photo={circle.photo} size={50} />
+                    <Avatar name={conv.user?.name || '?'} photo={conv.user?.photo} size={50} />
                     <View style={styles.chatItemInfo}>
-                      <Text style={styles.chatItemName}>{circle.name}</Text>
-                      <Text style={styles.chatItemLastMsg} numberOfLines={1}>{circle.last_message || 'Start a conversation'}</Text>
+                      <Text style={styles.chatItemName}>{conv.user?.name}</Text>
+                      <Text style={[styles.chatItemLastMsg, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>{conv.last_message || 'Send a message'}</Text>
                     </View>
                     <View style={styles.chatItemRight}>
-                      <Text style={styles.chatItemTime}>{circle.last_message_time || ''}</Text>
-                      {circle.member_count > 0 && <View style={styles.chatBadge}><Text style={styles.chatBadgeText}>{circle.member_count}</Text></View>}
+                      <Text style={styles.chatItemTime}>{formatTime(conv.last_message_at)}</Text>
+                      {isMuted && <Ionicons name="notifications-off" size={14} color={COLORS.textLight} style={{ marginTop: 4 }} />}
                     </View>
                   </TouchableOpacity>
-                ))
-             ) : (
-                <View style={styles.emptyChat}>
-                  <Text style={styles.emptyChatText}>No group chats yet</Text>
-                </View>
-             )}
+                );
+              })
+            ) : (
+              <View style={styles.emptyChat}>
+                <Text style={styles.emptyChatText}>No private messages yet</Text>
+              </View>
+            )}
 
-             <View style={styles.chatSectionHeader}>
-                <Text style={styles.chatSectionTitle}>Direct Messages</Text>
-             </View>
-              {conversations.length > 0 ? (
-                 conversations.map(conv => {
-                   const conversationId = conv.conversation_id || conv.id;
-                   const isMuted = conversationId ? mutedConversations.has(conversationId) : false;
-                   return (
-                   <TouchableOpacity 
-                     key={conversationId} 
-                     style={styles.chatItem}
-                     onPress={() => router.push(`/dm/${conversationId}`)}
-                   >
-                     <Avatar name={conv.user?.name || '?'} photo={conv.user?.photo} size={50} />
-                     <View style={styles.chatItemInfo}>
-                       <Text style={styles.chatItemName}>{conv.user?.name}</Text>
-                       <Text style={[styles.chatItemLastMsg, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>{conv.last_message || 'Send a message'}</Text>
-                     </View>
-                     <View style={styles.chatItemRight}>
-                       <Text style={styles.chatItemTime}>{formatTime(conv.last_message_at)}</Text>
-                       {isMuted && <Ionicons name="notifications-off" size={14} color={COLORS.textLight} style={{ marginTop: 4 }} />}
-                     </View>
-                   </TouchableOpacity>
-                   );
-                 })
-              ) : (
-                <View style={styles.emptyChat}>
-                  <Text style={styles.emptyChatText}>No private messages yet</Text>
-                </View>
-              )}
-             
-             <View style={{ height: 90 }} />
+            <View style={{ height: 90 }} />
           </View>
         )}
       </ScrollView>
       {/* Locked Group Banner */}
       {showLockedBanner && (
         <View style={[styles.lockedBannerContainer, { bottom: 90 }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.lockedBannerContent}
             onPress={() => {
               setShowLockedBanner(null);
@@ -1058,21 +1104,21 @@ export default function MessagesScreen() {
       {/* Detailed Modal Bottom Sheet */}
       {selectedRequest && (
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalDismiss}
             activeOpacity={1}
             onPress={() => setSelectedRequest(null)}
           />
           <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.sheetHandle} />
-            
+
             <View style={styles.sheetHeader}>
               <View style={styles.sheetTypeRow}>
                 <View style={[styles.sheetIconBg, { backgroundColor: getRequestTheme(selectedRequest).iconColor + '15' }]}>
-                  <MaterialCommunityIcons 
-                    name={getRequestTheme(selectedRequest).icon as any} 
-                    size={28} 
-                    color={getRequestTheme(selectedRequest).iconColor} 
+                  <MaterialCommunityIcons
+                    name={getRequestTheme(selectedRequest).icon as any}
+                    size={28}
+                    color={getRequestTheme(selectedRequest).iconColor}
                   />
                 </View>
                 <View style={{ marginLeft: 12, flex: 1 }}>
@@ -1081,7 +1127,7 @@ export default function MessagesScreen() {
                   </Text>
                   <Text style={styles.sheetTime}>{getTimeAgo(selectedRequest.created_at)}</Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.sheetCloseBtn}
                   onPress={() => setSelectedRequest(null)}
                 >
@@ -1092,11 +1138,11 @@ export default function MessagesScreen() {
 
             <View style={styles.sheetContent}>
               <Text style={styles.sheetTitle}>{selectedRequest.title}</Text>
-              
+
               <View style={styles.sheetMetaRow}>
-                <View style={[styles.urgencyBadgeSheet, { 
-                  backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg, 
-                  borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border 
+                <View style={[styles.urgencyBadgeSheet, {
+                  backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg,
+                  borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border
                 }]}>
                   <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
                     {selectedRequest.urgency_level.toUpperCase()} URGENCY
@@ -1120,7 +1166,7 @@ export default function MessagesScreen() {
               </View>
 
               <View style={styles.sheetActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.sheetBtn, styles.sheetCallBtn]}
                   onPress={() => handleCall(selectedRequest.contact_number)}
                 >
@@ -1128,7 +1174,7 @@ export default function MessagesScreen() {
                   <Text style={styles.sheetCallBtnText}>Call Now</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.sheetBtn, styles.sheetWhatsAppBtn]}
                   onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
                 >
@@ -1136,7 +1182,7 @@ export default function MessagesScreen() {
                   <Text style={styles.sheetWhatsAppBtnText}>WhatsApp</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.sheetBtn, styles.sheetFulfillBtn]}
                   onPress={() => handleResolveRequest(selectedRequest.id)}
                 >
@@ -1148,45 +1194,56 @@ export default function MessagesScreen() {
           </View>
         </View>
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  headerGradient: { paddingBottom: 14 },
-  topTabsWrapper: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 8, gap: 10 },
-  topTabCard: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    paddingHorizontal: 14,
+  container: { flex: 1 },
+  headerPadding: { paddingBottom: 12 },
+  segmentedTrack: {
     flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingTop: 5,
+    paddingRight: 7.5,
+    paddingBottom: 4,
+    paddingLeft: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 231, 235, 0.5)',
+    backgroundColor: 'rgba(243, 244, 246, 0.5)',
+  },
+  segmentPill: {
+    flex: 1,
+    height: 34,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
   },
-  topTabCardActive: {
-    backgroundColor: '#FF3400',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    shadowColor: '#FF3400',
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+  segmentPillActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  topTabCardActivePrivate: { backgroundColor: 'rgba(255, 255, 255, 0.50)', borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.10)' },
-  topTabCardInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
+  segmentText: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#8E8E93',
   },
-  topTabTitle: { fontSize: 14, fontFamily: FONTS.bold, color: '#FFF' },
-  topTabTitleDark: { fontSize: 14, fontFamily: FONTS.bold, color: '#333' },
+  segmentTextActive: {
+    color: '#EA4C0F',
+  },
 
-  mainContent: { flex: 1, backgroundColor: '#FFFFFF' },
-  communityContent: { paddingHorizontal: 16, paddingTop: 8 },
+  mainContent: { flex: 1, backgroundColor: 'transparent' },
+  mainContentContainer: { paddingBottom: 24 },
+  communityContent: { paddingHorizontal: 16, paddingTop: 12 },
   ourCommunitiesBlock: { marginBottom: 20 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   hierarchyModule: {
@@ -1288,15 +1345,82 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   communityLabelRow: { flexDirection: 'row', alignItems: 'center' },
-  
-  heroBanner: { backgroundColor: '#FFF9F5', borderRadius: 24, marginBottom: 24, overflow: 'hidden', height: 160, flexDirection: 'row', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 15, shadowOffset: { width: 0, height: 5 } },
-  heroTextCol: { flex: 1.5, paddingLeft: 20 },
-  heroTitle: { fontSize: 26, fontFamily: FONTS.bold, color: '#111', fontWeight: '900' },
-  heroSubtitle: { fontSize: 14, fontFamily: FONTS.regular, color: '#333', marginTop: 6, lineHeight: 20 },
-  heroButton: { backgroundColor: '#FF6600', alignSelf: 'flex-start', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 14, flexDirection: 'row', alignItems: 'center', marginTop: 15, elevation: 4 },
-  heroButtonText: { color: '#FFF', fontSize: 14, fontFamily: FONTS.bold, marginLeft: 6 },
-  heroImageContainer: { flex: 1, height: '100%', justifyContent: 'center', alignItems: 'flex-end' },
-  heroImageHalf: { width: '100%', height: '100%', opacity: 0.95 },
+
+  heroBanner: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginBottom: 20,
+    overflow: 'hidden',
+    minHeight: 132,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 149, 0, 0.08)',
+    shadowColor: '#C98B4E',
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  heroBannerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    minHeight: 110,
+    position: 'relative',
+  },
+  heroImageDeco: {
+    position: 'absolute',
+    left: '50%',
+    bottom: -12,
+    width: 207,
+    height: 75,
+    aspectRatio: 69 / 25,
+    marginLeft: -103.5,
+    zIndex: 0,
+    opacity: 1,
+    transform: [{ scaleX: 2.15 }, { scaleY: 2.6 }],
+  },
+  heroTextCol: {
+    flex: 1,
+    zIndex: 2,
+    justifyContent: 'center',
+  },
+  heroTitle: {
+    fontSize: 15,
+    fontFamily: FONTS.bold,
+    color: '#000000',
+    marginBottom: 4,
+  },
+  heroSubtitle: {
+    width: 135,
+    height: 32,
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    color: '#000000',
+  },
+  heroActionCol: {
+    zIndex: 2,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    marginRight: -6,
+    marginTop: 16,
+  },
+  heroButton: {
+    backgroundColor: '#EA4C0F',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: FONTS.bold
+  },
+  verifiedInline: { color: '#888', fontSize: 14, fontFamily: FONTS.regular },
   bloodCardBgIllust: { position: 'absolute', right: -10, top: 20, opacity: 0.3 },
 
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, marginTop: 4 },
@@ -1415,7 +1539,7 @@ const styles = StyleSheet.create({
   },
   emptyChat: { padding: 20, alignItems: 'center' },
   emptyChatText: { color: '#AAA', fontSize: 14 },
-  
+
   lockedBannerContainer: {
     position: 'absolute',
     // bottom: handled dynamically

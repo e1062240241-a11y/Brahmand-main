@@ -22,14 +22,14 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { getTempleImageById } from '../../src/constants/templeImages';
+import { getTempleImageByName } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
 const BANNER_WIDTH = SCREEN_WIDTH - BANNER_H_MARGIN * 2;
-const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.62);
+const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.48);
 const BANNER_RADIUS = 22;
 const HERO_DOT_COUNT = 4;
 
@@ -449,54 +449,73 @@ export default function JaapLandingScreen() {
             </View>
           </>
         ) : (
-          <View style={styles.templeViewContainer}>
-            <View style={styles.heroRowLayoutExact}>
-              <View style={styles.heroLeftContentExact}>
-                <Text style={styles.heroDiscoverText}>Discover</Text>
-                <Text style={styles.heroSacredText}>Sacred</Text>
-                <Text style={styles.heroSacredText}>Temples</Text>
-                
-                <View style={styles.ornateDividerExact}>
-                  <View style={styles.ornateLine} />
-                  <View style={styles.ornateDiamondSmall}>
-                    <View style={styles.diamondInnerSmall} />
-                  </View>
-                  <View style={styles.ornateLine} />
-                </View>
-
-                <Text style={styles.heroSubtitleExact}>
-                  Explore divine places, seek blessings{"\n"}and connect with spirituality.
-                </Text>
-              </View>
-
-              <View style={styles.heroRightImageContainerExact}>
-                <Image 
-                  source={require('../../assets/images/image temple/SomnathTemple.jpg')} 
-                  style={styles.heroSideImageExact} 
-                  resizeMode="cover"
-                />
+          <View style={[styles.templeViewContainer, { paddingTop: 0 }]}>
+            {/* Hero Banner (Same structure as Jaap tab banner) */}
+            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 12 }]}>
+              <ImageBackground
+                source={require('../../assets/images/image temple/SomnathTemple.jpg')}
+                style={styles.heroBannerFill}
+                imageStyle={styles.heroBannerImageStyle}
+                resizeMode="cover"
+              >
                 <LinearGradient
-                  colors={['#FFFBF5', 'rgba(255, 251, 245, 0)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.heroLeftMaskExact}
+                  colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
+                  locations={[0, 0.38, 1]}
+                  style={StyleSheet.absoluteFillObject}
                 />
-              </View>
+                <View style={styles.bannerContent}>
+                  <View style={styles.bannerTopRow}>
+                    <View style={styles.bannerTopSpacer} />
+                    <View style={styles.mockupLiveBadge}>
+                      <View style={styles.liveDot} />
+                      <Text style={styles.mockupLiveText}>LIVE</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.bannerTextBlock, { marginBottom: 15 }]}>
+                    <Text style={styles.mockupMainTitle} numberOfLines={2}>Somnath Mandir</Text>
+                    <Text style={styles.mockupTagline} numberOfLines={1}>1,248 devotees are chanting</Text>
+                    <View style={styles.bannerTimeRow}>
+                      <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.92)" />
+                      <Text style={styles.bannerTimeText}>Live until 5:00 PM</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.bannerFooter, { paddingBottom: 0 }]}>
+                    <TouchableOpacity style={styles.mockupJoinNowBtn} activeOpacity={0.9}>
+                      <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
+                        <MaterialCommunityIcons name="waveform" size={17} color="#FFF" />
+                        <Text style={styles.mockupJoinJaapText}>Join Live Aarti</Text>
+                        <Ionicons name="chevron-forward" size={15} color="#FFF" />
+                      </LinearGradient>
+                    </TouchableOpacity>
+                    <View style={[styles.bannerDotsRow, { bottom: 6 }]} pointerEvents="none">
+                       <View style={[styles.bannerDot, styles.bannerDotActive]} />
+                       <View style={styles.bannerDot} />
+                       <View style={styles.bannerDot} />
+                       <View style={styles.bannerDot} />
+                    </View>
+                  </View>
+                </View>
+              </ImageBackground>
             </View>
 
-            <View style={styles.templeSearchSection}>
-              <View style={styles.templeSearchBarWrapper}>
-                <Ionicons name="search-outline" size={20} color="#8B4513" style={{ marginRight: 10 }} />
+            {/* Search Bar matching image */}
+            <View style={styles.newTempleSearchSection}>
+              <View style={styles.newTempleSearchBarWrapper}>
+                <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 10 }} />
                 <TextInput 
-                  placeholder="Search sacred temples..."
-                  style={styles.templeSearchInputField}
+                  placeholder="Search Mandir"
+                  style={styles.newTempleSearchInput}
                   value={templeSearch}
                   onChangeText={setTempleSearch}
-                  placeholderTextColor="#A1887F"
+                  placeholderTextColor="#999"
                 />
               </View>
+              <TouchableOpacity style={styles.filterIconBtn}>
+                <MaterialCommunityIcons name="text-search" size={28} color="#FF6600" />
+              </TouchableOpacity>
             </View>
 
+            {/* Temple Category Pills (Restored) */}
             <View style={styles.templeCatPillsRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
                 {(['All', 'Jyotirlinga', 'Sacred'] as const).map((cat) => (
@@ -511,31 +530,31 @@ export default function JaapLandingScreen() {
               </ScrollView>
             </View>
 
-            <View style={styles.templeListPadding}>
+            {/* Temple List */}
+            <View style={styles.newTempleListPadding}>
               {loadingTemples ? (
                 <ActivityIndicator size="large" color="#FF6600" />
               ) : filteredTemples.length > 0 ? (
-                filteredTemples.map((item) => (
-                  <TouchableOpacity 
-                    key={item.id} 
-                    style={styles.templeCardItem}
-                    onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}
-                  >
-                    <Image source={getTempleImageById(item.id)} style={styles.templeCardImg} />
-                    <View style={styles.templeCardInfo}>
-                      <Text style={styles.templeCardName}>{item.name}</Text>
-                      <View style={styles.templeCardLocRow}>
-                        <Ionicons name="location-outline" size={12} color="#8B4513" />
-                        <Text style={styles.templeCardLocText}>{getTempleLocation(item)}</Text>
+                filteredTemples.map((item, idx) => (
+                  <View key={item.id} style={styles.newTempleCard}>
+                    {/* Hardcoded Badge for 2nd item matching design */}
+                    {idx === 1 && (
+                      <View style={styles.blueBadge}>
+                        <Text style={styles.blueBadgeText}># भगवद गीता अध्याय 2</Text>
                       </View>
-                      <Text style={styles.templeCardDeity}>{item.deity}</Text>
-                      <View style={styles.templeCardTag}>
-                        <FontAwesome5 name="om" size={10} color="#FFF" />
-                        <Text style={styles.templeCardTagText}>{item.category}</Text>
+                    )}
+                    <Image source={getTempleImageByName(item.name)} style={styles.newTempleCardImg} resizeMode="cover" />
+                    <View style={styles.newTempleCardInfo}>
+                      <View>
+                        <Text style={styles.newTempleCardDeity}>{item.deity || 'LORD SHIVA'}</Text>
+                        <Text style={styles.newTempleCardName}>{item.name}</Text>
+                        <Text style={styles.newTempleCardLoc}>{getTempleLocation(item)}</Text>
                       </View>
+                      <TouchableOpacity style={styles.newTempleOpenBtn} onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}>
+                        <Text style={styles.newTempleOpenBtnText}>Open in Maps</Text>
+                      </TouchableOpacity>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#F5E0C3" />
-                  </TouchableOpacity>
+                  </View>
                 ))
               ) : (
                 <View style={styles.noTemplesFound}>
@@ -675,6 +694,7 @@ const styles = StyleSheet.create({
   bannerTextBlock: {
     flexShrink: 1,
     paddingRight: 8,
+    marginBottom: 35, // Pushes the text block even further upwards
   },
   mockupLiveBadge: {
     flexDirection: 'row',
@@ -732,7 +752,7 @@ const styles = StyleSheet.create({
   bannerFooter: {
     minHeight: 56,
     justifyContent: 'flex-end',
-    paddingBottom: 22,
+    paddingBottom: 0, // reduced to 0 to push button to bottom edge
   },
   mockupJoinNowBtn: {
     alignSelf: 'flex-start',
@@ -764,7 +784,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 14,
+    bottom: 6, // Moved dots lower
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -925,17 +945,19 @@ const styles = StyleSheet.create({
   noTemplesFound: { alignItems: 'center', marginTop: 60, gap: 15 },
   noTemplesText: { fontSize: 16, color: '#8B4513', fontWeight: '700', opacity: 0.5 },
 
-  // Epic Temple Hero Styles
-  heroRowLayoutExact: { flexDirection: 'row', width: '100%', marginBottom: 25, backgroundColor: '#FFFBF5', paddingBottom: 10 },
-  heroLeftContentExact: { flex: 1.1, paddingLeft: 20, paddingTop: 10, justifyContent: 'center' },
-  heroDiscoverText: { fontSize: 38, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: 'bold', color: '#2D1B13', letterSpacing: -0.5 },
-  heroSacredText: { fontSize: 38, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: 'bold', color: '#FF6600', marginTop: -8, letterSpacing: -0.5 },
-  ornateDividerExact: { flexDirection: 'row', alignItems: 'center', marginVertical: 12, width: '90%' },
-  ornateLine: { flex: 1, height: 1.2, backgroundColor: '#FF6600', opacity: 0.3 },
-  ornateDiamondSmall: { width: 10, height: 10, marginHorizontal: 5, justifyContent: 'center', alignItems: 'center' },
-  diamondInnerSmall: { width: 5, height: 5, backgroundColor: '#FF6600', transform: [{ rotate: '45deg' }] },
-  heroSubtitleExact: { fontSize: 13, color: '#4E342E', fontWeight: '600', lineHeight: 18, opacity: 0.8 },
-  heroRightImageContainerExact: { width: '45%', height: 260, position: 'relative', overflow: 'hidden', borderBottomLeftRadius: 100 },
-  heroSideImageExact: { width: '100%', height: '100%', transform: [{ scale: 1.4 }] },
-  heroLeftMaskExact: { position: 'absolute', left: 0, top: 0, width: '40%', height: '100%', zIndex: 2 },
+  newTempleSearchSection: { paddingHorizontal: 16, marginTop: 20, marginBottom: 15, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  newTempleSearchBarWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 25, paddingHorizontal: 16, height: 46, borderWidth: 1, borderColor: '#CCC' },
+  newTempleSearchInput: { flex: 1, fontSize: 14, color: '#333', fontFamily: 'Inter_500Medium' },
+  filterIconBtn: { padding: 4 },
+  newTempleListPadding: { paddingHorizontal: 16, paddingBottom: 20 },
+  newTempleCard: { backgroundColor: '#FDF5EC', borderRadius: 16, padding: 12, marginBottom: 16, flexDirection: 'row', position: 'relative' },
+  newTempleCardImg: { width: 100, height: 120, borderRadius: 12 },
+  newTempleCardInfo: { flex: 1, marginLeft: 16, justifyContent: 'space-between', paddingVertical: 2 },
+  newTempleCardDeity: { color: '#FF6600', fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 },
+  newTempleCardName: { color: '#000', fontSize: 16, fontFamily: 'Inter_700Bold', marginBottom: 4 },
+  newTempleCardLoc: { color: '#555', fontSize: 11, fontFamily: 'Inter_500Medium', marginBottom: 12 },
+  newTempleOpenBtn: { borderWidth: 1.5, borderColor: '#FF6600', borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
+  newTempleOpenBtnText: { color: '#FF6600', fontSize: 13, fontFamily: 'Inter_700Bold' },
+  blueBadge: { position: 'absolute', top: -8, left: 12, backgroundColor: '#0084FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, zIndex: 10 },
+  blueBadgeText: { color: '#FFF', fontSize: 9, fontFamily: 'Inter_700Bold' },
 });
