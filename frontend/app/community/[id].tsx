@@ -22,10 +22,12 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
+import { useVendorStore } from '../../src/store/vendorStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
+import { VendorKYCModal } from '../../src/components/VendorKYCModal';
 import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import * as ImagePicker from 'expo-image-picker';
@@ -285,7 +287,8 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
 export default function CommunityDetailScreen() {
   const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
+  const { myVendor, fetchMyVendor } = useVendorStore();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
   const stateCommunityIdRef = useRef<string | null>(null);
@@ -328,9 +331,18 @@ export default function CommunityDetailScreen() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTopCategoryDropdown, setShowTopCategoryDropdown] = useState(false);
   const [showBodyCategoryDropdown, setShowBodyCategoryDropdown] = useState(false);
+  const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [postCategory, setPostCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [sevaDetails, setSevaDetails] = useState('');
+  const [showKycModal, setShowKycModal] = useState(false);
+  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
+  const [pendingPostAfterKyc, setPendingPostAfterKyc] = useState(false);
+
+  const isKycVerified =
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified';
 
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
   const [commentText, setCommentText] = useState('');
@@ -2019,11 +2031,58 @@ export default function CommunityDetailScreen() {
     );
   };
 
-  const handleCreatePost = async () => {
+  const handlePostButtonPress = () => {
+    if (!newMessage.trim() && !selectedImage) return;
+    // Show category selector bottom sheet instead of posting directly
+    setShowCategorySelector(true);
+  };
+
+  const handleCategorySelectedAndPost = async (selectedCategory: string) => {
+    setShowCategorySelector(false);
+    setPostCategory(selectedCategory);
+
+    // If user selected Events or Requests, check KYC
+    if ((selectedCategory === 'Events' || selectedCategory === 'Requests') && !isKycVerified) {
+      // Need KYC verification for Events and Requests
+      let vendorId = myVendor?.id || null;
+      if (!vendorId) {
+        await fetchMyVendor();
+        vendorId = useVendorStore.getState().myVendor?.id || null;
+      }
+      setKycModalVendorId(vendorId || '');
+      setPendingPostAfterKyc(true);
+      setShowKycModal(true);
+      return;
+    }
+
+    // Proceed to create the post
+    await executeCreatePost(selectedCategory);
+  };
+
+  const handleKycSuccess = async () => {
+    setShowKycModal(false);
+    try {
+      const response = await getKYCStatus();
+      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      updateUser({
+        kyc_status: serverStatus,
+        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+      } as any);
+    } catch (error) {
+      console.warn('Failed to refresh KYC status:', error);
+    }
+
+    if (pendingPostAfterKyc) {
+      setPendingPostAfterKyc(false);
+      await executeCreatePost(postCategory || 'Events');
+    }
+  };
+
+  const executeCreatePost = async (categoryOverride?: string) => {
     if (!newMessage.trim() && !selectedImage) return;
 
     // Use activeTab as default category (but map 'Others' or empty to 'Feed')
-    const finalCategory = (postCategory === 'Others' || !postCategory) ? 'Feed' : postCategory;
+    const finalCategory = (categoryOverride === 'Others' || !categoryOverride) ? 'Feed' : categoryOverride;
 
     // Split text into chunks of max 250 characters
     const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
@@ -2525,116 +2584,19 @@ export default function CommunityDetailScreen() {
                 <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(29,155,240,0.1)',
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: 'rgba(29,155,240,0.2)'
-                }}
-                onPress={() => setShowTopCategoryDropdown(prev => !prev)}
-              >
-                <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>{postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)}</Text>
-                <Ionicons name="chevron-down" size={12} color="#1D9BF0" style={{ marginLeft: 4 }} />
-              </TouchableOpacity>
+              <Text style={{ fontSize: 15, color: '#0F1419', fontWeight: '700', fontFamily: FONTS.bold }}>Create Post</Text>
 
               <TouchableOpacity
                 style={[
                   styles.twitterPostBtn,
                   (!newMessage.trim() && !selectedImage) && { opacity: 0.5 }
                 ]}
-                onPress={handleCreatePost}
+                onPress={handlePostButtonPress}
                 disabled={!newMessage.trim() && !selectedImage}
               >
                 <Text style={styles.twitterPostBtnText}>Post</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Twitter-style inline popover dropdown */}
-            {showTopCategoryDropdown && (
-              <>
-                <TouchableOpacity
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 99998,
-                  }}
-                  activeOpacity={1}
-                  onPress={() => setShowTopCategoryDropdown(false)}
-                />
-                <View style={{
-                  position: 'absolute',
-                  top: 52, // Align directly below the header row
-                  left: (SCREEN_WIDTH - 220) / 2, // Centered under the category picker pill
-                  width: 220,
-                  backgroundColor: '#FFF',
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: '#EFF3F4',
-                  zIndex: 99999,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.12,
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 4 },
-                  elevation: 8,
-                  paddingVertical: 6,
-                }}>
-                  {POST_CATEGORIES.map(cat => {
-                    const isSelected = (postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)) === cat;
-                    let iconName = 'ellipse-outline';
-                    if (cat === 'Others') iconName = 'options-outline';
-                    else if (cat === 'Seva') iconName = 'heart-outline';
-                    else if (cat === 'Requests') iconName = 'alert-circle-outline';
-                    else if (cat === 'Events') iconName = 'calendar-outline';
-                    else if (cat === 'Lost & Found') iconName = 'search-outline';
-                    else if (cat === 'Festivals') iconName = 'flame-outline';
-                    else if (cat === 'Temple Updates') iconName = 'home-outline';
-
-                    return (
-                      <TouchableOpacity
-                        key={cat}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingHorizontal: 16,
-                          paddingVertical: 10,
-                          backgroundColor: isSelected ? 'rgba(29,155,240,0.06)' : '#FFF',
-                        }}
-                        onPress={() => {
-                          setPostCategory(cat);
-                          setShowTopCategoryDropdown(false);
-                        }}
-                      >
-                        <Ionicons
-                          name={iconName as any}
-                          size={18}
-                          color={isSelected ? '#1D9BF0' : '#536471'}
-                          style={{ marginRight: 12 }}
-                        />
-                        <Text style={{
-                          flex: 1,
-                          fontSize: 14,
-                          fontWeight: isSelected ? 'bold' : '600',
-                          color: isSelected ? '#1D9BF0' : '#0F1419',
-                        }}>
-                          {cat}
-                        </Text>
-                        {isSelected && (
-                          <Ionicons name="checkmark" size={16} color="#1D9BF0" />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </>
-            )}
 
             <ScrollView style={{ flex: 1, backgroundColor: '#FFF', paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
               <View style={{ flexDirection: 'row', marginTop: 15 }}>
@@ -2698,7 +2660,7 @@ export default function CommunityDetailScreen() {
 
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
-                <Text style={styles.infoBoxText}>Your post will be visible in the selected category and in the general community discussion.</Text>
+                <Text style={styles.infoBoxText}>When you tap Post, you'll choose a category for your post. It will appear in that category and the general feed.</Text>
               </View>
 
               <View style={styles.createSection}>
@@ -2767,6 +2729,151 @@ export default function CommunityDetailScreen() {
         </View>
       </Modal>
 
+      {/* Category Selector Bottom Sheet — shown when Post is tapped */}
+      <Modal
+        visible={showCategorySelector}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategorySelector(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowCategorySelector(false)}
+        >
+          <View
+            style={{
+              backgroundColor: '#FFF',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingTop: 12,
+              paddingBottom: Math.max(insets.bottom, 24),
+              shadowColor: '#000',
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              shadowOffset: { width: 0, height: -4 },
+              elevation: 12,
+            }}
+            onStartShouldSetResponder={() => true}
+          >
+            {/* Handle bar */}
+            <View style={{ alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#DDD' }} />
+            </View>
+
+            <Text style={{
+              fontSize: 17,
+              fontWeight: '700',
+              color: '#0F1419',
+              textAlign: 'center',
+              marginBottom: 16,
+              fontFamily: FONTS.bold,
+            }}>
+              Choose a Category
+            </Text>
+
+            <ScrollView
+              style={{ maxHeight: 400, paddingHorizontal: 16 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {POST_CATEGORIES.map(cat => {
+                let iconName: any = 'ellipse-outline';
+                let iconColor = '#536471';
+                let desc = '';
+                if (cat === 'Others') { iconName = 'chatbubble-ellipses-outline'; iconColor = '#1D9BF0'; desc = 'General community discussion'; }
+                else if (cat === 'Seva') { iconName = 'heart-outline'; iconColor = '#E91E63'; desc = 'Seva, donations & volunteer work'; }
+                else if (cat === 'Requests') { iconName = 'alert-circle-outline'; iconColor = '#FF6B00'; desc = 'Help requests, blood needs, etc.'; }
+                else if (cat === 'Events') { iconName = 'calendar-outline'; iconColor = '#00C853'; desc = 'Community events & gatherings'; }
+                else if (cat === 'Lost & Found') { iconName = 'search-outline'; iconColor = '#9C27B0'; desc = 'Lost or found items'; }
+                else if (cat === 'Festivals') { iconName = 'flame-outline'; iconColor = '#FF9800'; desc = 'Festival celebrations & updates'; }
+                else if (cat === 'Temple Updates') { iconName = 'home-outline'; iconColor = '#795548'; desc = 'Temple news & renovations'; }
+
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 14,
+                      paddingHorizontal: 12,
+                      borderRadius: 16,
+                      marginBottom: 6,
+                      backgroundColor: '#FAFAFA',
+                      borderWidth: 1,
+                      borderColor: '#F0F0F0',
+                    }}
+                    onPress={() => handleCategorySelectedAndPost(cat)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      backgroundColor: `${iconColor}15`,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 14,
+                    }}>
+                      <Ionicons name={iconName} size={22} color={iconColor} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{
+                          fontSize: 15,
+                          fontWeight: '700',
+                          color: '#0F1419',
+                        }}>
+                          {cat}
+                        </Text>
+                        {(cat === 'Events' || cat === 'Requests') && !isKycVerified && (
+                          <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#FFF3E0',
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 8,
+                            marginLeft: 8,
+                          }}>
+                            <Ionicons name="shield-checkmark" size={12} color="#FF6B00" />
+                            <Text style={{ fontSize: 10, color: '#FF6B00', fontWeight: '700', marginLeft: 3 }}>KYC Required</Text>
+                          </View>
+                        )}
+                      </View>
+                      {desc ? (
+                        <Text style={{
+                          fontSize: 12,
+                          color: '#536471',
+                          marginTop: 2,
+                        }}>
+                          {desc}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* KYC Modal for Events verification */}
+      <VendorKYCModal
+        visible={showKycModal}
+        vendorId={kycModalVendorId || ''}
+        allowUserKycFallback
+        onClose={() => {
+          setShowKycModal(false);
+          setPendingPostAfterKyc(false);
+        }}
+        onKycUpdated={handleKycSuccess}
+      />
 
       {/* Comment Modal */}
       <Modal

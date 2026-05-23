@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,14 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuthStore } from '../src/store/authStore';
+import { useVendorStore } from '../src/store/vendorStore';
+import { VendorKYCModal } from '../src/components/VendorKYCModal';
+import { getKYCStatus } from '../src/services/api';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
@@ -31,8 +35,20 @@ const CATEGORIES = [
 export default function CommunityRequestHub() {
   const router = useRouter();
   const { community_id } = useLocalSearchParams<{ community_id?: string }>();
+  
+  const { user, updateUser } = useAuthStore();
+  const { myVendor, fetchMyVendor } = useVendorStore();
+  
+  const [showKycModal, setShowKycModal] = useState(false);
+  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
+  const [pendingCategory, setPendingCategory] = useState<string | null>(null);
 
-  const handleSelectCategory = (categoryId: string) => {
+  const isKycVerified =
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified';
+
+  const navigateToCategory = (categoryId: string) => {
     const params = community_id ? { community_id } : {};
     switch (categoryId) {
       case 'blood': router.push({ pathname: '/community-request/blood-request', params }); break;
@@ -44,6 +60,42 @@ export default function CommunityRequestHub() {
       case 'temple': router.push({ pathname: '/community-request/temple-help', params }); break;
       case 'other': router.push({ pathname: '/community-request/other', params }); break;
       default: break;
+    }
+  };
+
+  const handleSelectCategory = async (categoryId: string) => {
+    if (!isKycVerified) {
+      let vendorId = myVendor?.id || null;
+      if (!vendorId) {
+        await fetchMyVendor();
+        vendorId = useVendorStore.getState().myVendor?.id || null;
+      }
+      setKycModalVendorId(vendorId || '');
+      setPendingCategory(categoryId);
+      setShowKycModal(true);
+      return;
+    }
+    
+    navigateToCategory(categoryId);
+  };
+
+  const handleKycSuccess = async () => {
+    setShowKycModal(false);
+    try {
+      const response = await getKYCStatus();
+      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      updateUser({
+        kyc_status: serverStatus,
+        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+      } as any);
+    } catch (error) {
+      console.warn('Failed to refresh KYC status:', error);
+    }
+
+    if (pendingCategory) {
+      const cat = pendingCategory;
+      setPendingCategory(null);
+      navigateToCategory(cat);
     }
   };
 
@@ -108,6 +160,18 @@ export default function CommunityRequestHub() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* KYC Modal for Community Request verification */}
+      <VendorKYCModal
+        visible={showKycModal}
+        vendorId={kycModalVendorId || ''}
+        allowUserKycFallback
+        onClose={() => {
+          setShowKycModal(false);
+          setPendingCategory(null);
+        }}
+        onKycUpdated={handleKycSuccess}
+      />
     </View>
   );
 }
