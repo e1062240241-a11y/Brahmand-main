@@ -590,6 +590,17 @@ export default function CommunityDetailScreen() {
         }
       });
 
+      // Include Community Requests in Feed
+      requests.forEach(req => {
+        if (!itemMap.has(req.id)) {
+          itemMap.set(req.id, {
+            ...req,
+            type: 'request_item',
+            isRequestInFeed: true,
+          });
+        }
+      });
+
       const allItems = Array.from(itemMap.values());
       
       // Step 1: Sort ascending by ID (or fallback) to chronological order to find consecutive thread messages
@@ -2088,11 +2099,16 @@ export default function CommunityDetailScreen() {
         const chunk = textChunks[i];
         if (chunk.trim() || (i === 0 && uploadedUrl)) {
           try {
-            const { sendCommunityMessage } = require('../../src/services/api');
+            const { sendCommunityMessage, parseApiError } = require('../../src/services/api');
             await sendCommunityMessage(id as string, currentSubgroup, chunk, 'text', finalCategory, i === 0 ? uploadedUrl : undefined);
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
           } catch (error) {
             console.error('Failed to send real message chunk:', error);
+            const errMsg = parseApiError(error);
+            Alert.alert('Post Failed', errMsg);
+            // Remove the optimistic post on failure
+            setCommunityPosts(prev => prev.filter(p => !newPosts.some(np => np.id === p.id)));
+            break;
           }
         }
       }
@@ -2465,7 +2481,7 @@ export default function CommunityDetailScreen() {
 
                     <TouchableOpacity 
                       style={styles.recentRequestViewBtn}
-                      onPress={() => router.push('/community-request/list')}
+            onPress={() => router.push({ pathname: '/community-request/list', params: { community_id: id } })}
                     >
                       <Text style={styles.recentRequestViewBtnText}>View Details</Text>
                       <Ionicons name="arrow-forward" size={14} color="#FFF" />

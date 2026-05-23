@@ -15,7 +15,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
@@ -41,6 +41,7 @@ const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
 
 export default function OtherRequestScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ community_id?: string }>();
   
   // Form State
   const [helpType, setHelpType] = useState('');
@@ -109,6 +110,7 @@ export default function OtherRequestScreen() {
     setIsSubmitting(true);
     try {
       await createCommunityRequest({
+        community_id: params.community_id,
         request_type: 'help',
         title: `Community Request: ${helpType}`,
         description: description,
