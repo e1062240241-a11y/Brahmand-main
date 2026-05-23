@@ -574,7 +574,7 @@ export default function MessagesScreen() {
 
         {/* Centered Background Illustration */}
         <Image
-          source={require('../../assets/images/community_banner_heart.png')}
+          source={require('../../assets/images/community_banner_heart.jpg')}
           style={styles.heroImageDeco}
           resizeMode="contain"
         />

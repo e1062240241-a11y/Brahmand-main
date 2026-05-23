@@ -233,7 +233,7 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     id: 'd1',
     user: {
       name: 'Sadhvi Ritambhara',
-      photo: require('../../assets/images/avatar_sadhvi.png'),
+      photo: require('../../assets/images/avatar_sadhvi.jpg'),
       isVerified: true,
       verificationLabel: 'Maharashtra Verified',
       handle: '@sadhviritambharaji',
@@ -246,13 +246,13 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     reposts: 16,
     shares: 0,
     liked: false,
-    image: require('../../assets/images/hanuman_gathering.png'),
+    image: require('../../assets/images/hanuman_gathering.jpg'),
   },
   {
     id: 'd2',
     user: {
       name: 'Swami Avimukta',
-      photo: require('../../assets/images/avatar_swami.png'),
+      photo: require('../../assets/images/avatar_swami.jpg'),
       isVerified: true,
       verificationLabel: 'Bharat Verified',
       handle: '@swamiavimukt',
@@ -269,7 +269,7 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     id: 'd3',
     user: {
       name: 'Dr. Chinmay Pandya',
-      photo: require('../../assets/images/avatar_drchinmay.png'),
+      photo: require('../../assets/images/avatar_drchinmay.jpg'),
       isVerified: true,
       verificationLabel: 'Maharashtra Verified',
       handle: '@drchinmaypandya',
@@ -2530,12 +2530,6 @@ export default function CommunityDetailScreen() {
         ListFooterComponent={() => (activeTab === 'Feed' && loadingMore) ? <ActivityIndicator size="small" color="#FF3B30" style={{ padding: 20 }} /> : null}
         ListHeaderComponent={() => (
           <View>
-<<<<<<< HEAD
-            
-=======
-            {renderHeader()}
-
->>>>>>> a4ab97af45b8afb2b910b96328c6e93812c96c3d
             {(activeTab === 'Requests') && mostRecentRequest && (
               <View style={styles.recentRequestCard}>
                 <LinearGradient

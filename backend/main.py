@@ -28,6 +28,7 @@ from zoneinfo import ZoneInfo
 import base64
 import math
 import requests
+import aiohttp
 import jwt
 from google.api_core.exceptions import FailedPrecondition
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form
@@ -243,15 +244,41 @@ def _get_post_storage_bucket():
     return firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
 
 
-async def _upload_post_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
+def _get_extension_from_content_type(content_type: str) -> str:
     extension_map = {
         'image/jpeg': 'jpg',
         'image/jpg': 'jpg',
         'image/png': 'png',
+        'image/heic': 'heic',
+        'image/heif': 'heif',
+        'image/webp': 'webp',
+        'image/gif': 'gif',
+        'image/bmp': 'bmp',
+        'image/tiff': 'tiff',
         'video/mp4': 'mp4',
         'video/quicktime': 'mov',
+        'video/webm': 'webm',
+        'video/x-matroska': 'mkv',
     }
-    extension = extension_map.get(content_type, 'bin')
+    extension = extension_map.get(content_type)
+    if not extension:
+        if content_type.startswith('image/'):
+            extension = content_type.split('/')[-1]
+            if extension.startswith('x-'):
+                extension = extension[2:]
+            elif extension.startswith('vnd.'):
+                extension = extension.split('.')[-1]
+        elif content_type.startswith('video/'):
+            extension = content_type.split('/')[-1]
+            if extension.startswith('x-'):
+                extension = extension[2:]
+        else:
+            extension = 'bin'
+    return extension
+
+
+async def _upload_post_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
+    extension = _get_extension_from_content_type(content_type)
 
     bucket = _get_post_storage_bucket()
 
@@ -267,16 +294,7 @@ async def _upload_post_media_to_storage(user_id: str, file_bytes: bytes, content
 
 
 def _upload_post_media_file_to_storage(user_id: str, file_path: str, content_type: str) -> tuple[str, str]:
-    extension_map = {
-        'image/jpeg': 'jpg',
-        'image/jpg': 'jpg',
-        'image/png': 'png',
-        'video/mp4': 'mp4',
-        'video/quicktime': 'mov',
-        'video/webm': 'webm',
-        'video/x-matroska': 'mkv',
-    }
-    extension = extension_map.get(content_type, 'bin')
+    extension = _get_extension_from_content_type(content_type)
 
     bucket = _get_post_storage_bucket()
 
@@ -293,13 +311,38 @@ def _upload_post_media_file_to_storage(user_id: str, file_path: str, content_typ
     return media_url, object_path
 
 
-async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
-    extension_map = {
-        'image/jpeg': 'jpg',
-        'image/jpg': 'jpg',
-        'image/png': 'png',
+async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_type: str, base_url: str) -> tuple[str, str]:
+    extension = _get_extension_from_content_type(content_type)
+    filename = f"{uuid4().hex}.{extension}"
+    object_path = f"posts/{user_id}/{filename}"
+    
+    bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
+    bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+    headers = {
+        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
+        "Content-Type": content_type
     }
-    extension = extension_map.get(content_type, 'bin')
+    
+    logger.info(f"Uploading file of size {len(file_bytes)} to Bunny.net: {bunny_url}")
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=60) as resp:
+            if resp.status not in (200, 201):
+                resp_text = await resp.text()
+                raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
+                
+    base_url = base_url.rstrip('/')
+    media_url = f"{base_url}/api/bunny-media/{object_path}"
+    return media_url, object_path
+
+
+async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content_type: str, base_url: str) -> tuple[str, str]:
+    with open(file_path, 'rb') as f:
+        file_bytes = f.read()
+    return await _upload_post_media_to_bunny(user_id, file_bytes, content_type, base_url)
+
+
+async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
+    extension = _get_extension_from_content_type(content_type)
 
     bucket = _get_post_storage_bucket()
 
@@ -2064,10 +2107,55 @@ async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     return {'message': 'View recorded', 'views_count': current_views + 1}
 
 
+@api_router.get("/bunny-media/{filepath:path}")
+async def get_bunny_media(filepath: str):
+    """Proxy route to fetch and stream files from Bunny.net storage using credentials"""
+    bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
+    bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{filepath}"
+    headers = {
+        "AccessKey": os.getenv("BUNNY_READ_ACCESS_KEY") or "bb3aebf9-f52b-4224-bc824e379f94-5e76-4b3d"  # Use read-only key for GET requests
+    }
+    
+    ext = filepath.split('.')[-1].lower()
+    content_type = "application/octet-stream"
+    if ext in ('jpg', 'jpeg'):
+        content_type = "image/jpeg"
+    elif ext == 'png':
+        content_type = "image/png"
+    elif ext == 'mp4':
+        content_type = "video/mp4"
+    elif ext == 'mov':
+        content_type = "video/quicktime"
+        
+    from fastapi.responses import StreamingResponse
+    
+    async def file_sender():
+        try:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+                async with session.get(bunny_url, headers=headers) as resp:
+                    if resp.status == 200:
+                        async for chunk in resp.content.iter_chunked(65536):
+                            yield chunk
+                    else:
+                        logger.error(f"Failed to fetch media from Bunny.net: {resp.status}")
+        except Exception as e:
+            logger.error(f"Error in file_sender streaming: {e}")
+            
+    return StreamingResponse(
+        file_sender(),
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=31536000",
+            "Content-Type": content_type
+        }
+    )
+
+
 # =================== SOCIAL POSTS ===================
 
 @api_router.post('/posts/upload')
 async def upload_post(
+    request: Request,
     caption: str = Form(''),
     source: str = Form('camera_roll'),
     filter_name: Optional[str] = Form(None),
@@ -2080,14 +2168,15 @@ async def upload_post(
     global_semaphore = get_global_upload_semaphore()
     async with global_semaphore:
         async with user_lock:
-            return await _upload_post_impl(caption, source, filter_name, file, token_data)
+            return await _upload_post_impl(caption, source, filter_name, file, token_data, request)
 
 async def _upload_post_impl(
     caption: str,
     source: str,
     filter_name: Optional[str],
     file: UploadFile,
-    token_data: dict
+    token_data: dict,
+    request: Request
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2119,13 +2208,27 @@ async def _upload_post_impl(
                 content_type = 'image/jpeg'
             elif filename_lower.endswith('.png'):
                 content_type = 'image/png'
+            elif filename_lower.endswith(('.heic', '.heif')):
+                content_type = 'image/heic'
+            elif filename_lower.endswith('.webp'):
+                content_type = 'image/webp'
+            elif filename_lower.endswith('.gif'):
+                content_type = 'image/gif'
+            elif filename_lower.endswith('.bmp'):
+                content_type = 'image/bmp'
+            elif filename_lower.endswith(('.tiff', '.tif')):
+                content_type = 'image/tiff'
 
-    allowed_content_types = {
-        'image/jpeg', 'image/jpg', 'image/png',
+    is_valid_image = content_type.startswith('image/')
+    is_valid_video = content_type.startswith('video/') or content_type in {
         'video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska'
     }
-    if content_type not in allowed_content_types:
-        raise HTTPException(status_code=400, detail='Unsupported media type. Use jpg, png, mp4, mov, webm, or mkv')
+
+    if not (is_valid_image or is_valid_video):
+        raise HTTPException(
+            status_code=400,
+            detail='Unsupported media type. Use standard image (jpg, png, heic, webp, gif, etc.) or video (mp4, mov, webm, mkv)'
+        )
 
     file_bytes = b''
     temp_input_path = None
@@ -2179,28 +2282,49 @@ async def _upload_post_impl(
                 raise HTTPException(status_code=500, detail='Compressed video is empty')
 
             content_type = 'video/mp4'
+            base_url = str(request.base_url)
             try:
-                media_url, object_path = await asyncio.to_thread(
-                    _upload_post_media_file_to_storage,
-                    user_id,
-                    temp_output_file.name,
-                    content_type,
-                )
+                # Try Bunny.net upload first
+                try:
+                    media_url, object_path = await _upload_post_media_file_to_bunny(
+                        user_id,
+                        temp_output_file.name,
+                        content_type,
+                        base_url
+                    )
+                    logger.info("Uploaded video to Bunny.net successfully")
+                except Exception as bunny_exc:
+                    logger.warning(f"Bunny.net video upload failed ({bunny_exc}), falling back to Firebase...")
+                    media_url, object_path = await asyncio.to_thread(
+                        _upload_post_media_file_to_storage,
+                        user_id,
+                        temp_output_file.name,
+                        content_type,
+                    )
                 
                 # Upload thumbnail
                 if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
                     try:
-                        thumbnail_url, _ = await asyncio.to_thread(
-                            _upload_post_media_file_to_storage,
-                            user_id,
-                            temp_thumb_file.name,
-                            'image/jpeg',
-                        )
+                        try:
+                            thumbnail_url, _ = await _upload_post_media_file_to_bunny(
+                                user_id,
+                                temp_thumb_file.name,
+                                'image/jpeg',
+                                base_url
+                            )
+                        except Exception as bunny_exc:
+                            logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc}), falling back to Firebase...")
+                            thumbnail_url, _ = await asyncio.to_thread(
+                                _upload_post_media_file_to_storage,
+                                user_id,
+                                temp_thumb_file.name,
+                                'image/jpeg',
+                            )
                     except Exception:
                         logger.warning("Failed to upload video thumbnail")
             except Exception as exc:
-                logger.exception('Post video upload to Firebase failed for user_id=%s', user_id)
-                raise HTTPException(status_code=500, detail=f'Firebase Storage upload failed: {str(exc)}')
+                logger.exception('Post video upload failed for user_id=%s', user_id)
+                raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
         else:
             file_bytes = await file.read()
             if not file_bytes:
@@ -2224,11 +2348,17 @@ async def _upload_post_impl(
             os.unlink(temp_thumb_file.name)
 
     if media_url is None or object_path is None:
+        base_url = str(request.base_url)
         try:
-            media_url, object_path = await _upload_post_media_to_storage(user_id, file_bytes, content_type)
+            try:
+                media_url, object_path = await _upload_post_media_to_bunny(user_id, file_bytes, content_type, base_url)
+                logger.info("Uploaded image to Bunny.net successfully")
+            except Exception as bunny_exc:
+                logger.warning(f"Bunny.net media upload failed ({bunny_exc}), falling back to Firebase...")
+                media_url, object_path = await _upload_post_media_to_storage(user_id, file_bytes, content_type)
         except Exception as exc:
-            logger.exception('Post media upload to Firebase failed for user_id=%s', user_id)
-            raise HTTPException(status_code=500, detail=f'Firebase Storage upload failed: {str(exc)}')
+            logger.exception('Post media upload failed for user_id=%s', user_id)
+            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
     media_type = 'video' if content_type.startswith('video/') else 'image'
 
     video_metadata = None
@@ -3694,7 +3824,7 @@ async def reverse_geocode(request: dict):
             "language": "en"
         }
         
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=10)) as session:
             async with session.get(url, params=params) as resp:
                 if resp.status == 200:
                     data = await resp.json()
@@ -3713,16 +3843,37 @@ async def reverse_geocode(request: dict):
                                 country = comp.get("long_name", "").replace("India", "Bharat")
                             if "administrative_area_level_1" in types:
                                 state = comp.get("long_name", "")
-                            if "locality" in types or "administrative_area_level_2" in types:
+                            # Try locality first, then administrative_area_level_2 or administrative_area_level_3 as city
+                            if "locality" in types:
                                 city = comp.get("long_name", "")
-                            if "sublocality" in types or "neighborhood" in types:
+                            elif "administrative_area_level_2" in types and not city:
+                                city = comp.get("long_name", "")
+                            elif "administrative_area_level_3" in types and not city:
+                                city = comp.get("long_name", "")
+                            
+                            # Sublocality / neighborhood for area
+                            if "sublocality" in types or "sublocality_level_1" in types or "neighborhood" in types:
                                 area = comp.get("long_name", "")
                                 
+                        # Final fallback checks for city and area if still empty
+                        if not city:
+                            for comp in addr_components:
+                                types = comp.get("types", [])
+                                if "administrative_area_level_3" in types:
+                                    city = comp.get("long_name", "")
+                                    break
+                        if not area:
+                            for comp in addr_components:
+                                types = comp.get("types", [])
+                                if "sublocality_level_2" in types:
+                                    area = comp.get("long_name", "")
+                                    break
+
                         return {
                             "country": country or "Bharat",
-                            "state": state or "Maharashtra",
-                            "city": city or "Mumbai",
-                            "area": area or "Unknown",
+                            "state": state or "Unknown State",
+                            "city": city or "Unknown City",
+                            "area": area or "Unknown Area",
                             "display_name": result.get("formatted_address", "")
                         }
                     else:
@@ -3771,7 +3922,7 @@ async def forward_geocode(request: dict):
             "components": "country:in"
         }
 
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=10)) as session:
             async with session.get(url, params=params) as resp:
                 if resp.status == 200:
                     data = await resp.json()
@@ -3861,7 +4012,7 @@ async def search_hospitals(request: dict):
             "key": api_key,
             "language": "en",
             "components": "country:in",
-            "types": "establishment",
+            "types": "hospital",
         }
 
         autocomplete_response = await asyncio.to_thread(

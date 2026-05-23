@@ -284,8 +284,8 @@ const CARD_RADIUS = 18;
 const HOME_CARD_TEXTURES = {
   rose: require('../../assets/images/home_card_bg_rose.png'),
   peach: require('../../assets/images/home_card_bg_peach.png'),
-  mint: require('../../assets/images/home_card_bg_mint.png'),
-  lavender: require('../../assets/images/home_card_bg_lavender.png'),
+  mint: require('../../assets/images/home_card_bg_mint.jpg'),
+  lavender: require('../../assets/images/home_card_bg_lavender.jpg'),
 } as const;
 
 type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
