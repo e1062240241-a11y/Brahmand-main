@@ -54,11 +54,11 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return <Ionicons name="checkmark-circle-outline" size={22} color="#34C759" />;
+        return <Ionicons name="checkmark-circle" size={24} color="#34C759" />;
       case 'error':
-        return <Ionicons name="alert-circle-outline" size={22} color="#FF3B30" />;
+        return <Ionicons name="alert-circle" size={24} color="#FF3B30" />;
       default:
-        return <Ionicons name="information-circle-outline" size={22} color="#007AFF" />;
+        return <Ionicons name="information-circle" size={24} color={COLORS.primary} />;
     }
   };
 
@@ -78,7 +78,7 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
           <Text style={styles.messageText}>{toast.message}</Text>
           {(!toast.actions || toast.actions.length === 0) && (
             <TouchableOpacity onPress={dismiss} style={styles.closeButton}>
-              <Ionicons name="close" size={18} color="#AEAEB2" />
+              <Ionicons name="close" size={24} color={COLORS.textLight || "#AEAEB2"} />
             </TouchableOpacity>
           )}
         </View>
@@ -118,12 +118,11 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
 
 export const ToastContainer = () => {
   const { toasts } = useToastStore();
-  const insets = useSafeAreaInsets();
 
   if (toasts.length === 0) return null;
 
   return (
-    <View style={[styles.container, { bottom: insets.bottom + 20 }]}>
+    <View style={styles.container} pointerEvents="box-none">
       {toasts.map((item) => (
         <ToastItem key={item.id} toast={item} />
       ))}
@@ -134,27 +133,29 @@ export const ToastContainer = () => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
+    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
     zIndex: 999999,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    pointerEvents: 'box-none',
   },
   toastItem: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: COLORS.card || '#FFF5EB', // Beige color
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 10,
     width: '100%',
     maxWidth: 420,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#E5E7EB',
   },
   contentContainer: {
     width: '100%',
@@ -169,14 +170,14 @@ const styles = StyleSheet.create({
   },
   messageText: {
     flex: 1,
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
+    fontSize: 15,
+    color: COLORS.text || '#1A1A1A',
+    fontWeight: '600',
     fontFamily: 'System',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   closeButton: {
-    padding: 2,
+    padding: 6,
     marginLeft: 10,
   },
   actionsContainer: {
@@ -190,29 +191,32 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     backgroundColor: COLORS.primary || '#FF6600',
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 80,
   },
   actionBtnDestructive: {
     backgroundColor: '#FF3B30',
   },
   actionBtnCancel: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#F2F2F7',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
   actionText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     fontFamily: 'System',
   },
   actionTextDestructive: {
     color: '#FFFFFF',
   },
   actionTextCancel: {
-    color: '#E5E5EA',
+    color: '#8E8E93',
   },
 });
