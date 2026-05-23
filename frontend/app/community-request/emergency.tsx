@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, BORDER_RADIUS } from '../../src/constants/theme';
 import { searchHospitals } from '../../src/services/api';
@@ -13,6 +13,7 @@ const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform Only'];
 
 export default function CommunityRequestEmergencyPage() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ community_id?: string }>();
   const { user } = useAuthStore();
   
   const [loading, setLoading] = useState(false);
@@ -95,7 +96,7 @@ export default function CommunityRequestEmergencyPage() {
 
     router.push({
       pathname: '/community-request/emergency/review',
-      params: {
+      params: { community_id: params.community_id,
         emergencyType,
         hospitalName,
         location: location || 'Auto-detected',

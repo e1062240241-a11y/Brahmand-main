@@ -8479,10 +8479,10 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         "contact_number": data.contact_number,
         "urgency_level": "critical" if data.urgency_level.value == "urgent" else data.urgency_level.value,
         "status": "active",
-        # Location data for filtering
-        "area": location_area.get('area') if location_area else None,
-        "city": location_area.get('city') if location_area else None,
-        "state": location_area.get('state') if location_area else None,
+        # Location data for filtering (normalized)
+        "area": str(location_area.get('area') or "").strip().title() if location_area else None,
+        "city": str(location_area.get('city') or "").strip().title() if location_area else None,
+        "state": str(location_area.get('state') or "").strip().title() if location_area else None,
         # Optional fields
         "blood_group": data.blood_group,
         "hospital_name": data.hospital_name,
@@ -8590,7 +8590,14 @@ async def get_community_requests(
     # Filter requests based on visibility level
     visible_requests = []
     for req in requests:
+        # If user is the creator, always visible
         if req.get('user_id') == user_id:
+            visible_requests.append(req)
+            continue
+
+        # If community_id was specifically requested and matches, bypass location filtering
+        # as the query already narrowed it down to this community's scope.
+        if community_id and req.get('community_id') == community_id:
             visible_requests.append(req)
             continue
 
@@ -8599,27 +8606,33 @@ async def get_community_requests(
         if visibility_level and visibility != visibility_level:
             continue
 
+        # Case-insensitive and trimmed location matching
+        def is_match(req_field, user_field):
+            r_val = str(req.get(req_field) or "").strip().lower()
+            u_val = str(location_area.get(user_field) or "").strip().lower()
+            return r_val == u_val and r_val != ""
+
         if visibility == 'national':
             visible_requests.append(req)
-        elif visibility == 'state' and req.get('state') == location_area.get('state'):
+        elif visibility == 'state' and is_match('state', 'state'):
             visible_requests.append(req)
-        elif visibility == 'city' and req.get('city') == location_area.get('city'):
+        elif visibility == 'city' and is_match('city', 'city'):
             visible_requests.append(req)
-        elif visibility == 'area' and req.get('area') == location_area.get('area'):
+        elif visibility == 'area' and is_match('area', 'area'):
             visible_requests.append(req)
             
     # Filter out obvious garbage / test data
     filtered_clean_requests = []
     for req in visible_requests:
-        desc = req.get('description', '')
-        title = req.get('title', '')
-        if (
-            'GHDTYGFTYTY' in desc or 
-            'GHDTYGFTYTY' in title or 
-            desc == 'Phone Call' or 
-            desc == 'WhatsApp'
-        ):
+        desc = (req.get('description') or "").strip()
+        title = (req.get('title') or "").strip()
+        if 'GHDTYGFTYTY' in desc or 'GHDTYGFTYTY' in title:
             continue
+
+        # Legitimate requests might have short descriptions but should have content
+        if len(desc) < 2 and len(title) < 5:
+            continue
+
         filtered_clean_requests.append(req)
             
     # 2. Store in cache with 30-second TTL

@@ -8,7 +8,7 @@ import { useAuthStore } from '../../../src/store/authStore';
 
 export default function CommunityRequestBloodVerifyPage() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
+  const params = useLocalSearchParams<{ community_id?: string,
     bloodGroup?: string;
     hospitalName?: string;
     location?: string;
@@ -29,7 +29,7 @@ export default function CommunityRequestBloodVerifyPage() {
     }
     router.push({
       pathname: '/community-request/blood/otp',
-      params: {
+      params: { community_id: params.community_id,
         phone: phoneNumber.replace(/[^0-9]/g, ''),
         bloodGroup: params.bloodGroup,
         hospitalName: params.hospitalName,
@@ -49,7 +49,7 @@ export default function CommunityRequestBloodVerifyPage() {
   const handleContinue = () => {
     router.push({
       pathname: '/community-request/blood/review',
-      params: {
+      params: { community_id: params.community_id,
         bloodGroup: params.bloodGroup,
         hospitalName: params.hospitalName,
         location: params.location,
