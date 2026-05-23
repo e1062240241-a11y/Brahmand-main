@@ -1683,9 +1683,10 @@ export default function HomeScreen() {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
-                            else if (item.label === 'Kundli' || item.label === 'Cosmic Guidance') router.push('/kundli' as any);
+                            else if (item.label === 'Kundli') router.push('/astrology' as any);
+                            else if (item.label === 'Cosmic Guidance') router.push('/horoscope');
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
-                            else if (item.label === 'Festival Days') router.push('/panchang');
+                            else if (item.label === 'Festival Days') router.push('/festivals');
                             else if (item.label === 'Brahmand Library') router.push('/library');
                           }}
                         >
@@ -1819,8 +1820,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest?.hospital_name || 'XYZ Hospital'}{'\n'}{bloodRequest?.location || 'Chennai.'}</Text>
+                      <Text style={[styles.cardTitleLargeDark, { textAlign: 'center' }]} numberOfLines={3} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
+                      <Text style={[styles.cardSubtitleSmallDark, { textAlign: 'center' }]} numberOfLines={4} adjustsFontSizeToFit>{bloodRequest ? formatRequestLocation(bloodRequest) : 'XYZ Hospital, Mumbai'}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -2030,27 +2031,16 @@ export default function HomeScreen() {
 
                 {/* Local Community Card */}
                 {(() => {
-                  const mumbaiId = communities.find(c => c.type === 'city' && c.name?.toLowerCase().includes('mumbai'))?.id;
-                  const localComm = communities.find(c => c.name?.toLowerCase().includes('hdnddk'))
-                    || communities.find(c => c.type === 'user_group')
-                    || communities.find(c => c.type === 'home_area')
-                    || communities.find(c => c.is_default)
-                    || communities.find(c => c.id !== mumbaiId);
-                  const displayName = localComm?.name || 'Local Community';
-                  const displayMembers = localComm?.member_count || localComm?.members_count || '0';
+                  const localComm = communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area');
                   return (
                     <TouchableOpacity
                       style={styles.communityCardMini}
                       activeOpacity={0.9}
                       onPress={() => {
-                        if (localComm) {
-                          router.push({
-                            pathname: '/community/[id]',
-                            params: { id: localComm.id, subgroup: localComm.type || 'city', name: localComm.name }
-                          });
-                        } else {
-                          router.push('/messages?tab=Community');
-                        }
+                        router.push({
+                          pathname: '/community/[id]',
+                          params: { id: 'food_pune', subgroup: 'city', name: 'Pune Food Sharing Group' }
+                        });
                       }}
                     >
                       <View style={styles.communityCardIconBox}>
@@ -2058,10 +2048,13 @@ export default function HomeScreen() {
                       </View>
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                          {displayName}
+                          Pune Food Sharing Group
                         </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{displayMembers} members</Text>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>236 members</Text>
+                          <View style={styles.sevaBadgeMini}>
+                            <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                          </View>
                         </View>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />

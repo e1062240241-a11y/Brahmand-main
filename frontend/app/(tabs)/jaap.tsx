@@ -233,15 +233,16 @@ export default function JaapLandingScreen() {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.mainScroll}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
-        bounces
-      >
-        {activeSection === 'jaap' ? (
-          <>
-            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT }]}>
+      {activeSection === 'jaap' ? (
+        <ScrollView
+          style={styles.mainScroll}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
+          bounces
+          stickyHeaderIndices={[0]}
+        >
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
+            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
                 source={require('../../assets/images/jaap_hero_shiva_final.png')}
                 style={styles.heroBannerFill}
@@ -319,6 +320,7 @@ export default function JaapLandingScreen() {
                 </View>
               </ImageBackground>
             </View>
+          </View>
 
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>More Live Jaaps</Text>
@@ -433,11 +435,18 @@ export default function JaapLandingScreen() {
                 </View>
               ))}
             </View>
-          </>
-        ) : (
-          <View style={[styles.templeViewContainer, { paddingTop: 0 }]}>
-            {/* Hero Banner (Same structure as Jaap tab banner) */}
-            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 12 }]}>
+        </ScrollView>
+      ) : (
+        <ScrollView
+          style={styles.mainScroll}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
+          bounces
+          stickyHeaderIndices={[0]}
+        >
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
+              {/* Hero Banner (Same structure as Jaap tab banner) */}
+              <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
                 source={require('../../assets/images/image temple/SomnathTemple.jpg')}
                 style={styles.heroBannerFill}
@@ -515,20 +524,16 @@ export default function JaapLandingScreen() {
                 ))}
               </ScrollView>
             </View>
+          </View>
 
-            {/* Temple List */}
+          {/* Temple List */}
             <View style={styles.newTempleListPadding}>
               {loadingTemples ? (
                 <ActivityIndicator size="large" color="#FF6600" />
               ) : filteredTemples.length > 0 ? (
                 filteredTemples.map((item, idx) => (
                   <View key={item.id} style={styles.newTempleCard}>
-                    {/* Hardcoded Badge for 2nd item matching design */}
-                    {idx === 1 && (
-                      <View style={styles.blueBadge}>
-                        <Text style={styles.blueBadgeText}># भगवद गीता अध्याय 2</Text>
-                      </View>
-                    )}
+
                     <Image source={getTempleImageByName(item.name)} style={styles.newTempleCardImg} resizeMode="cover" />
                     <View style={styles.newTempleCardInfo}>
                       <View>
@@ -549,9 +554,8 @@ export default function JaapLandingScreen() {
                 </View>
               )}
             </View>
-          </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      )}
       </View>
     </LinearGradient>
   );
@@ -897,7 +901,7 @@ const styles = StyleSheet.create({
   templeSearchSection: { paddingHorizontal: 20, marginBottom: 15 },
   templeSearchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF8F0', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1, borderColor: '#F5E0C3' },
   templeSearchInputField: { flex: 1, fontSize: 14, color: '#2D1400', fontWeight: '600' },
-  templeCatPillsRow: { marginBottom: 20 },
+  templeCatPillsRow: { marginBottom: 15 },
   templeCatPill: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#FFF', marginRight: 10, borderWidth: 1, borderColor: '#F5E0C3' },
   templeCatPillActive: { backgroundColor: '#FF6600', borderColor: '#FF6600' },
   templeCatPillText: { fontSize: 13, fontWeight: '700', color: '#8B4513' },

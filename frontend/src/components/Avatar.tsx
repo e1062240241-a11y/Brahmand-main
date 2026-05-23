@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { View, Text, StyleSheet, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, BORDER_RADIUS } from '../constants/theme';
 
 interface AvatarProps {
@@ -63,9 +64,14 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
   }
 
   return (
-    <View style={[styles.placeholder, { width: size, height: size, borderRadius }]}>
+    <LinearGradient
+      colors={['#FF8D57', '#FF5500']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.placeholderGradient, { width: size, height: size, borderRadius }]}
+    >
       <Text style={[styles.initials, { fontSize: size * 0.4 }]}>{initials}</Text>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -73,13 +79,14 @@ const styles = StyleSheet.create({
   image: {
     backgroundColor: 'transparent',
   },
-  placeholder: {
-    backgroundColor: COLORS.primary,
+  placeholderGradient: {
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   initials: {
     color: COLORS.textWhite,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

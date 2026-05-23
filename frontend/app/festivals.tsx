@@ -11,6 +11,7 @@ import {
   Platform,
   ImageBackground,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
@@ -93,7 +94,7 @@ const FestivalPage = () => {
   }
 
   return (
-    <View style={styles.page}>
+    <SafeAreaView style={styles.page} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
@@ -165,7 +166,7 @@ const FestivalPage = () => {
           );
         })}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -179,8 +180,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
+    paddingVertical: 12,
   },
   headerIcon: {
     width: 44,

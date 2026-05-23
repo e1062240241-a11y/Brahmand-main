@@ -1179,6 +1179,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </Animated.View>
 
+      {renderHeader()}
       <Animated.FlatList
         data={posts}
         renderItem={renderPost}
@@ -1189,7 +1190,6 @@ export default function ProfileScreen() {
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
-        ListHeaderComponent={renderHeader()}
         ListFooterComponent={
           postsLoading ? (
             <View style={styles.footerLoader}>
