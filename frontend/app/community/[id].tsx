@@ -2498,12 +2498,6 @@ export default function CommunityDetailScreen() {
         ListFooterComponent={() => (activeTab === 'Feed' && loadingMore) ? <ActivityIndicator size="small" color="#FF3B30" style={{ padding: 20 }} /> : null}
         ListHeaderComponent={() => (
           <View>
-<<<<<<< HEAD
-            
-=======
-            {renderHeader()}
-
->>>>>>> a4ab97af45b8afb2b910b96328c6e93812c96c3d
             {(activeTab === 'Requests') && mostRecentRequest && (
               <View style={styles.recentRequestCard}>
                 <LinearGradient
