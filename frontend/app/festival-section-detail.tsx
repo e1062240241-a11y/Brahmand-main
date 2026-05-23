@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCard';
@@ -59,13 +61,20 @@ const FestivalSectionDetailPage = () => {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <FestivalSectionDetailCard
-        festival={festival}
-        section={decodeURIComponent(section)}
-        onBack={() => router.back()}
-      />
-    </ScrollView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#000000" />
+        </TouchableOpacity>
+      </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        <FestivalSectionDetailCard
+          festival={festival}
+          section={decodeURIComponent(section)}
+          onBack={() => router.back()}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -85,6 +94,19 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     fontSize: 14,
     textAlign: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  backButton: {
+    padding: SPACING.xs,
   },
 });
 

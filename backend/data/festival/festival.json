@@ -46,7 +46,8 @@
     "purpose": "To worship Lord Shiva and seek spiritual awakening and liberation (moksha).",
     "importance": "Promotes meditation, inner peace, self-control, and transformation of consciousness.",
     "celebration": "Devotees observe night-long fasting, perform Shiva puja every three hours, chant 'Om Namah Shivaya', and offer milk, honey, and bael leaves to Shiva Lingam.",
-    "summary": "A sacred night of devotion and meditation dedicated to Lord Shiva."
+    "summary": "A sacred night of devotion and meditation dedicated to Lord Shiva.",
+    "mantra": "Om Namah Shivaya"
   },
   {
     "festival_name": "Holika Dahan",
@@ -270,7 +271,8 @@
     "purpose": "Divine joy.",
     "importance": "Wisdom.",
     "celebration": "Dahi Handi.",
-    "summary": "Festival celebrating the birth of Lord Krishna."
+    "summary": "Festival celebrating the birth of Lord Krishna.",
+    "mantra": "Om Namo Bhagavate Vasudevaya"
   },
   {
     "festival_name": "Ganesh Chaturthi",
@@ -288,7 +290,8 @@
     "purpose": "Remove obstacles.",
     "importance": "Wisdom.",
     "celebration": "Idols, visarjan.",
-    "summary": "Festival of Lord Ganesha’s birth and grand public celebration."
+    "summary": "Festival of Lord Ganesha’s birth and grand public celebration.",
+    "mantra": "Om Gam Ganapataye Namaha"
   },
 {
     "festival_name": "Vishwakarma Puja",
@@ -511,7 +514,8 @@
     "purpose": "Light over dark.",
     "importance": "Hope.",
     "celebration": "Diyas, sweets.",
-    "summary": "Festival of lights symbolizing victory of good over evil."
+    "summary": "Festival of lights symbolizing victory of good over evil.",
+    "mantra": "Om Shreem Hreem Shreem Kamale Kamalalaye Praseed Praseed Shreem Hreem Shreem Om Mahalakshmaye Namah"
   },
   {
     "festival_name": "Govardhan Puja",

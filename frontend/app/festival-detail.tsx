@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
@@ -105,17 +107,34 @@ const FestivalDetailPage = () => {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <FestivalDetailCard
-        festival={{ ...festival, reminderEnabled, onToggleReminder: handleToggleReminder }}
-        onBack={() => router.back()}
-        onGuidePress={(section) =>
-          router.push(
-            `/festival-section-detail?index=${festivalIndex}&section=${encodeURIComponent(section)}`
-          )
-        }
-      />
-    </ScrollView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#000000" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.notificationButton} 
+          onPress={handleToggleReminder}
+        >
+          <Ionicons 
+            name={reminderEnabled ? "notifications" : "notifications-outline"} 
+            size={22} 
+            color={reminderEnabled ? COLORS.primary : "#000000"} 
+          />
+        </TouchableOpacity>
+      </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        <FestivalDetailCard
+          festival={{ ...festival, reminderEnabled, onToggleReminder: handleToggleReminder }}
+          onBack={() => router.back()}
+          onGuidePress={(section: any) =>
+            router.push(
+              `/festival-section-detail?index=${festivalIndex}&section=${encodeURIComponent(section)}`
+            )
+          }
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -135,6 +154,22 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     fontSize: 14,
     textAlign: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  backButton: {
+    padding: SPACING.xs,
+  },
+  notificationButton: {
+    padding: SPACING.xs,
   },
 });
 
