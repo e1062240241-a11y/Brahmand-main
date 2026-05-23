@@ -35,8 +35,10 @@ try {
 }
 
 const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
-  if (!ExpoVideoModule?.useVideoPlayer || !source) return null;
-  return ExpoVideoModule.useVideoPlayer(source, setup);
+  if (!ExpoVideoModule?.useVideoPlayer) return null;
+  // DO NOT early return based on `source`. It breaks React Hook order when `source` changes.
+  // expo-video's useVideoPlayer explicitly supports `null` as a source.
+  return ExpoVideoModule.useVideoPlayer(source || null, setup);
 };
 
 type PostFeedCardProps = {
@@ -137,7 +139,7 @@ export const PostFeedCard = memo(({
 
   // CRITICAL OPTIMIZATION: Only pass the media source to the native player if the post is active.
   // This prevents 50+ off-screen AVPlayers from hoarding memory and heating up the phone!
-  const playerSource = (Platform.OS === 'web' || !isVideo || !isActive) ? null : mediaUrl;
+  const playerSource = (Platform.OS === 'web' || !isVideo || !isActive || !mediaUrl) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {
     if (p) {
       p.loop = true;

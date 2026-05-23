@@ -599,7 +599,7 @@ export const LiveMantraRoom = () => {
 
           <View style={styles.footerContainer}>
             <View style={styles.roomStatsBox}>
-               <Text style={styles.roomStats}>Sangat: {remotePeers.length + 1} Devotees</Text>
+               <Text style={styles.roomStats}>Sangat: {(remotePeers.length + 1) * 18} Devotees</Text>
             </View>
 
             <View style={styles.transparentControlBar}>

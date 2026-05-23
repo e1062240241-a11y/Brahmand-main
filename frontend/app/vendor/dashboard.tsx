@@ -58,9 +58,13 @@ export default function VendorDashboardScreen() {
   const [editCategories, setEditCategories] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState('');
 
+  const [isInitializing, setIsInitializing] = useState(true);
+
   useEffect(() => {
     // Refresh myVendor on mount and when this component re-renders.
-    fetchMyVendor().catch((e) => console.warn('fetchMyVendor failed', e));
+    fetchMyVendor()
+      .catch((e) => console.warn('fetchMyVendor failed', e))
+      .finally(() => setIsInitializing(false));
   }, [fetchMyVendor]);
 
   const handleBack = () => {
@@ -84,7 +88,7 @@ export default function VendorDashboardScreen() {
     };
   }, [router]);
 
-  if (authLoading || !myVendor) {
+  if (authLoading || isInitializing) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
