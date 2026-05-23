@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedIndex } from '../../features/live-mantra/schedule';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -36,6 +38,18 @@ hanuman: {
   shiva: {
     text: 'ॐ नमः शिवाय ॐ नमः शिवाय ॐ नमः शिवाय',
     bg: require('../../../assets/images/shiva_jaap_card_v2.png'),
+  },
+  mrityunjaya: {
+    text: 'ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्',
+    bg: require('../../../assets/images/jaap_hero_shiva_final.png'),
+  },
+  ganesh: {
+    text: 'ॐ गं गणपतये नमः ॐ गं गणपतये नमः ॐ गं गणपतये नमः ॐ गं गणपतये नमः',
+    bg: require('../../../assets/images/ganesh_jaap_card.png'),
+  },
+  laxmi: {
+    text: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं महालक्ष्म्यै नमः',
+    bg: require('../../../assets/images/laxmi_jaap_card.png'),
   },
 };
 
@@ -186,6 +200,9 @@ const MANTRA_AUDIO: Record<string, any> = {
   gayatri: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
   krishna: require('../../../assets/audio/audio ekant/leberch-yoga-509709.mp3'),
   shiva: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
+  mrityunjaya: require('../../../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
+  ganesh: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
+  laxmi: require('../../../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
 };
 
 const MANTRA_BG_AUDIO_URLS: Record<string, string> = {
@@ -193,6 +210,9 @@ const MANTRA_BG_AUDIO_URLS: Record<string, string> = {
   gayatri: 'https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3',
   krishna: 'https://cdn.pixabay.com/audio/2022/01/18/audio_0a4c9a6b2f.mp3',
   shiva: 'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1532c.mp3',
+  mrityunjaya: 'https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3',
+  ganesh: 'https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3',
+  laxmi: 'https://cdn.pixabay.com/audio/2022/01/18/audio_0a4c9a6b2f.mp3',
 };
 
 export default function LiveJaapRoomView() {
@@ -203,17 +223,54 @@ export default function LiveJaapRoomView() {
     fromHome?: string 
   }>();
   
+  const [now, setNow] = useState(new Date());
+  const [personalCount, setPersonalCount] = useState(0);
+  const lastTimeRef = useRef(0);
+  const accumulatedTimeRef = useRef(0);
+
+  // Load personal count and accumulated progress from AsyncStorage
+  useEffect(() => {
+    const key = mantraType === 'hanuman' 
+      ? '@hanuman_jaap_personal_count' 
+      : `@jaap_personal_count_${mantraType}`;
+    const accKey = mantraType === 'hanuman'
+      ? '@hanuman_jaap_accumulated_seconds'
+      : `@jaap_accumulated_seconds_${mantraType}`;
+
+    AsyncStorage.getItem(key).then(val => {
+      if (val) setPersonalCount(parseInt(val, 10));
+      else setPersonalCount(0);
+    });
+    AsyncStorage.getItem(accKey).then(val => {
+      if (val) accumulatedTimeRef.current = parseFloat(val);
+      else accumulatedTimeRef.current = 0;
+    });
+  }, [mantraType]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hanumanStatus = getCurrentHanumanStatus(now);
+  const otherStatus = getCurrentOtherJaapStatus(now);
+
+  const isHanuman = mantraType === 'hanuman';
+  const isKedarnath = mantraType === 'kedarnath';
+  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya');
+
+  const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
+
   const selectedMantra = MANTRA_DATA[mantraType || 'gayatri'] || MANTRA_DATA.gayatri;
-  const WORDS = selectedMantra.text.split(' ');
+  const WORDS = useMemo(() => selectedMantra.text.split(' '), [selectedMantra.text]);
   
-  const getLines = () => {
+  const MANTRA_LINES = useMemo(() => {
     const lines = [];
     for (let i = 0; i < WORDS.length; i += 4) {
       lines.push(WORDS.slice(i, i + 4).join(' '));
     }
     return lines;
-  };
-  const MANTRA_LINES = getLines();
+  }, [WORDS]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentTimeState, setCurrentTimeState] = useState(0);
@@ -234,6 +291,17 @@ export default function LiveJaapRoomView() {
   // Get active line and highlighted index
   const getActiveKaraokeState = () => {
     if (mantraType === 'hanuman') {
+      if (hanumanStatus.isActive && 'isBreak' in hanumanStatus && hanumanStatus.isBreak) {
+        return {
+          lineItems: ['Have a deep breath'],
+          highlightedIdx: 0,
+          isMusic: false,
+          key: 'hanuman-break',
+          previousLineText: '',
+          nextLineText: '',
+        };
+      }
+
       const time = currentTimeState;
       
       let segIndex = 0;
@@ -314,6 +382,10 @@ export default function LiveJaapRoomView() {
   // Upcoming line text
   const getUpcomingLineText = () => {
     if (mantraType === 'hanuman') {
+      if (hanumanStatus.isActive && 'isBreak' in hanumanStatus && hanumanStatus.isBreak) {
+        return 'Prepare to chant next round';
+      }
+
       const time = currentTimeState;
       let segIndex = 0;
       for (let i = 0; i < HANUMAN_CHALISA_SEGMENTS.length; i++) {
@@ -378,18 +450,64 @@ export default function LiveJaapRoomView() {
 
       const audio = new Audio(url);
       audio.loop = true;
-      audio.volume = isMuted ? 0 : 0.9;
+      audio.volume = isMuted ? 0 : (mantraType === 'hanuman' ? 0.3 : 0.9);
       audioRef.current = audio;
       
       const handleTimeUpdate = () => {
-        if (mantraType === 'hanuman') {
-          setCurrentTimeState(audio.currentTime);
+        const newTime = audio.currentTime;
+        setCurrentTimeState(newTime);
+        
+        const lastTime = lastTimeRef.current;
+        const diff = newTime - lastTime;
+        
+        const wordDurations = WORDS.map(w => (w.length > 7 ? 3.0 : 1.2));
+        const totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
+
+        if (diff > 0 && diff < 2.0) {
+          accumulatedTimeRef.current += diff;
+          const accKey = mantraType === 'hanuman'
+            ? '@hanuman_jaap_accumulated_seconds'
+            : `@jaap_accumulated_seconds_${mantraType}`;
+          const key = mantraType === 'hanuman' 
+            ? '@hanuman_jaap_personal_count' 
+            : `@jaap_personal_count_${mantraType}`;
+
+          if (Math.floor(accumulatedTimeRef.current) % 10 === 0) {
+            AsyncStorage.setItem(accKey, accumulatedTimeRef.current.toString());
+          }
+          const threshold = isHanuman ? 961.39 : totalDuration;
+          if (accumulatedTimeRef.current >= threshold) {
+            accumulatedTimeRef.current = Math.max(0, accumulatedTimeRef.current - threshold);
+            AsyncStorage.setItem(accKey, accumulatedTimeRef.current.toString());
+            setPersonalCount(prev => {
+              const next = prev + 1;
+              AsyncStorage.setItem(key, next.toString());
+              return next;
+            });
+          }
         }
+        lastTimeRef.current = newTime;
       };
       audio.addEventListener('timeupdate', handleTimeUpdate);
       
       const playAudio = async () => {
-        try { await audio.play(); } catch (e) { console.warn('Auto-play blocked'); }
+        try {
+          if (isSessionActive) {
+            if (isHanuman) {
+              const status = getCurrentHanumanStatus(new Date());
+              if (status.isActive && !status.isCompleted && !status.isBreak) {
+                audio.currentTime = status.audioPositionSeconds;
+                await audio.play();
+              } else if (status.isActive && status.isBreak) {
+                audio.currentTime = 0;
+              }
+            } else {
+              await audio.play();
+            }
+          }
+        } catch (e) {
+          console.warn('Auto-play blocked');
+        }
       };
       playAudio();
       
@@ -399,7 +517,53 @@ export default function LiveJaapRoomView() {
         audioRef.current = null;
       };
     }
-  }, [mantraType, isMuted]);
+  }, [mantraType, isMuted, isSessionActive, WORDS]);
+
+  // Sync effect to handle active state changes and drift for Hanuman Chalisa on Web
+  useEffect(() => {
+    if (Platform.OS === 'web' && audioRef.current && mantraType === 'hanuman') {
+      const audio = audioRef.current;
+      const status = getCurrentHanumanStatus(new Date());
+      if (status.isActive && !status.isCompleted && !status.isBreak) {
+        audio.volume = isMuted ? 0 : (mantraType === 'hanuman' ? 0.3 : 0.9);
+        if (audio.paused) {
+          audio.play().catch(() => {});
+        }
+      } else {
+        audio.pause();
+        if (status.isActive && status.isBreak) {
+          audio.currentTime = 0;
+        }
+      }
+    }
+  }, [hanumanStatus.isActive, hanumanStatus.isActive ? hanumanStatus.isCompleted : false, hanumanStatus.isActive ? hanumanStatus.isBreak : false, isMuted, mantraType]);
+
+  // Periodic drift check for Web
+  useEffect(() => {
+    if (Platform.OS !== 'web' || mantraType !== 'hanuman') return;
+    
+    let initialSynced = false;
+    const syncTimer = setInterval(() => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      
+      const status = getCurrentHanumanStatus(new Date());
+      if (status.isActive && !status.isCompleted && !status.isBreak) {
+        const expected = status.audioPositionSeconds;
+        const current = audio.currentTime;
+        const diff = Math.abs(current - expected);
+        
+        if (!initialSynced || diff > 1.5) {
+          if (audio.readyState >= 1) {
+            audio.currentTime = expected;
+            initialSynced = true;
+          }
+        }
+      }
+    }, 1000);
+    
+    return () => clearInterval(syncTimer);
+  }, [mantraType]);
 
   useEffect(() => {
     Animated.loop(
@@ -452,8 +616,18 @@ export default function LiveJaapRoomView() {
     };
   }, [currentIndex, mantraType]);
 
+  // Synchronized progress calculation for other live jaaps
   useEffect(() => {
     if (mantraType === 'hanuman') return;
+    if (isSessionActive) {
+      const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, otherStatus.isActive ? otherStatus.elapsedSeconds : 0);
+      setCurrentIndex(syncIdx);
+      setIsHolding(syncHold);
+    }
+  }, [now, mantraType, isSessionActive, WORDS, otherStatus.isActive ? otherStatus.elapsedSeconds : 0]);
+
+  useEffect(() => {
+    if (mantraType === 'hanuman' || isSessionActive) return;
 
     let timer: any;
     const isHanuman = mantraType === 'hanuman';
@@ -468,7 +642,7 @@ export default function LiveJaapRoomView() {
       else setIsHolding(true);
     }, wordDuration);
     return () => clearTimeout(timer);
-  }, [currentIndex, isHolding, WORDS, mantraType]);
+  }, [currentIndex, isHolding, WORDS, mantraType, isSessionActive]);
 
   const addReaction = (emoji: string) => {
     const id = Date.now() + Math.random();
@@ -504,113 +678,262 @@ export default function LiveJaapRoomView() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.tabBar}>
-            <TouchableOpacity onPress={() => setActiveTab('chant')} style={[styles.tabButton, activeTab === 'chant' && styles.tabButtonActive]}>
-              <Ionicons name="apps" size={18} color={activeTab === 'chant' ? '#FFEBB5' : 'rgba(255,255,255,0.5)'} />
-              <Text style={[styles.tabText, activeTab === 'chant' && styles.tabTextActive]}>Chanting</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setActiveTab('path')} style={[styles.tabButton, activeTab === 'path' && styles.tabButtonActive]}>
-              <Ionicons name="document-text" size={18} color={activeTab === 'path' ? '#FFEBB5' : 'rgba(255,255,255,0.5)'} />
-              <Text style={[styles.tabText, activeTab === 'path' && styles.tabTextActive]}>Shloka Path</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView contentContainerStyle={[styles.scrollContainer, { justifyContent: 'center', flex: 1 }]} scrollEnabled={false}>
-            {activeTab === 'chant' ? (
-              <View style={styles.soloFocusContainer}>
-                 <Animated.View 
-                    key={activeLineKey} 
-                    style={[
-                      styles.verticalLyricsContainer, 
-                      { opacity: soloFadeAnim, transform: [{ translateY: soloMoveAnim }] }
-                    ]}
-                 >
-                    {/* Previous Line (Top, Dimmed) */}
-                    <View style={styles.sideLineContainer}>
-                      <Text style={[styles.sideLineText, styles.previousLineText]}>
-                        {previousLineText || ' '}
-                      </Text>
-                    </View>
-
-                    {/* Current Line (Middle, Active) */}
-                    <View style={styles.soloWordBox}>
-                      <LinearGradient colors={['rgba(255,138,0,0.15)', 'rgba(255,138,0,0)']} style={styles.soloGlow} />
-                      <View style={styles.soloLineWordsRow}>
-                        {lineItems.map((word, idx) => {
-                          const isHighlighted = highlightedIdx === idx;
-                          return (
-                            <Text 
-                              key={`${word}-${idx}`} 
-                              style={[
-                                styles.soloWordText, 
-                                isHighlighted ? styles.soloWordHighlighted : styles.soloWordDimmed,
-                                isMusic && { fontSize: 36, marginHorizontal: 8 }
-                              ]}
-                            >
-                              {word}{' '}
-                            </Text>
-                          );
-                        })}
-                      </View>
-                      <View style={styles.soloOrnateUnderline} />
-                    </View>
-
-                    {/* Next Line (Bottom, Dimmed) */}
-                    <View style={styles.sideLineContainer}>
-                      <Text style={[styles.sideLineText, styles.nextLineText]}>
-                        {nextLineText || ' '}
-                      </Text>
-                    </View>
-                 </Animated.View>
-              </View>
-            ) : (
-              <View style={styles.fullShlokaBox}>
-                <View style={styles.scrollHeader}>
-                  <Ionicons name="document-text" size={16} color="#FFEBB5" />
-                  <Text style={styles.scrollHeaderText}>Sacred Full Path</Text>
+          {!isSessionActive ? (
+            <View style={styles.countdownContainer}>
+              <View style={styles.countdownGlassCard}>
+                <Text style={styles.countdownOmSymbol}>🕉️</Text>
+                <Text style={styles.countdownTitle}>Live {roomTitle || 'Mantra'} Chanting</Text>
+                <Text style={styles.countdownSubtitle}>Communal Live Jaap is currently offline</Text>
+                
+                <View style={styles.countdownTimerBox}>
+                  <Text style={styles.countdownLabel}>NEXT LIVE SESSION STARTS IN</Text>
+                  <Text style={styles.countdownTimerText}>
+                    {(() => {
+                      const nextStart = (isHanuman && !hanumanStatus.isActive) 
+                        ? hanumanStatus.nextSessionStart 
+                        : ((!isHanuman && !otherStatus.isActive) ? otherStatus.nextSessionStart : null);
+                      if (!nextStart) return '00:00:00';
+                      const diffMs = nextStart.getTime() - now.getTime();
+                      if (diffMs <= 0) return '00:00:00';
+                      const hrs = Math.floor(diffMs / 3600000);
+                      const mins = Math.floor((diffMs % 3600000) / 60000);
+                      const secs = Math.floor((diffMs % 60000) / 1000);
+                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    })()}
+                  </Text>
+                  <Text style={styles.nextSessionNameText}>
+                    Session: {(() => {
+                      const nextName = (isHanuman && !hanumanStatus.isActive) 
+                        ? hanumanStatus.nextSessionName 
+                        : ((!isHanuman && !otherStatus.isActive) ? otherStatus.nextSessionName : '');
+                      return nextName;
+                    })()}
+                  </Text>
                 </View>
-                <Text style={styles.fullShlokaText}>{selectedMantra.text}</Text>
-              </View>
-            )}
-          </ScrollView>
 
-          <View style={styles.reactionOverlay} pointerEvents="none">
-            {reactions.map(r => (
-              <Animated.Text key={r.id} style={[styles.floatingEmoji, {
-                opacity: r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
-                transform: [
-                  { translateY: r.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -300] }) },
-                  { translateX: r.anim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 15, -15, 10, 0] }) },
-                  { scale: r.anim.interpolate({ inputRange: [0, 0.2], outputRange: [0.6, 1.2], extrapolate: 'clamp' }) }
-                ]
-              }]}>{r.emoji}</Animated.Text>
-            ))}
-          </View>
+                <View style={styles.personalOfflineStatsBox}>
+                  <Ionicons name="person-circle-outline" size={24} color="#FFEBB5" />
+                  <Text style={styles.personalOfflineStatsTitle}>Your Completed Chanting Count</Text>
+                  <Text style={styles.personalOfflineStatsCount}>{personalCount}</Text>
+                </View>
 
-          <View style={styles.footerContainer}>
-            <View style={styles.roomStatsBox}><Text style={styles.roomStats}>Sangat: Devotional Session</Text></View>
-            <View style={styles.transparentControlBar}>
-              <View style={styles.leftControls}>
-                <TouchableOpacity onPress={() => setIsMicEnabled(!isMicEnabled)} style={[styles.iconCircle, isMicEnabled && { backgroundColor: 'rgba(76, 217, 100, 0.2)', borderColor: '#4CD964' }]}>
-                  <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={22} color={isMicEnabled ? "#4CD964" : "#FFF"} />
+                <View style={styles.scheduleDetailsBox}>
+                  <Text style={styles.scheduleTitle}>Daily Live Schedule:</Text>
+                  {isHanuman ? (
+                    <>
+                      <Text style={styles.scheduleItem}>• Morning (13 rounds): 5:30 AM – 9:00 AM</Text>
+                      <Text style={styles.scheduleItem}>• Afternoon (13 rounds): 12:00 PM – 3:30 PM</Text>
+                      <Text style={styles.scheduleItem}>• Evening (13 rounds): 4:00 PM – 7:30 PM</Text>
+                      <Text style={styles.scheduleItem}>• Night (12 rounds): 9:00 PM – 12:15 AM</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.scheduleItem}>• Morning Session: 8:00 AM – 11:00 AM</Text>
+                      <Text style={styles.scheduleItem}>• Evening Session: 4:00 PM – 9:00 PM</Text>
+                    </>
+                  )}
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.ekantRedirectBtn}
+                  onPress={() => router.replace('/ekant-jaap')}
+                >
+                  <LinearGradient
+                    colors={['#FF6B00', '#FF8A00']}
+                    style={styles.ekantBtnGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Ionicons name="person" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.ekantRedirectBtnText}>Chant in Ekant (Solo) Mode</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => {
-                  if (mantraType === 'kedarnath' || fromHome === 'true') {
-                    router.replace('/(tabs)/home');
-                  } else {
-                    router.replace('/(tabs)/jaap');
-                  }
-                }} style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}>
-                  <Ionicons name="call" size={20} color="#FFF" />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.rightReactions}>
-                {['🙏', '❤️', '😊', '🔔'].map((emoji) => (
-                  <TouchableOpacity key={emoji} onPress={() => addReaction(emoji)} style={styles.reactionBtn}><Text style={styles.reactionBtnText}>{emoji}</Text></TouchableOpacity>
-                ))}
               </View>
             </View>
-          </View>
+          ) : (
+            <>
+              <View style={styles.tabBar}>
+                <TouchableOpacity onPress={() => setActiveTab('chant')} style={[styles.tabButton, activeTab === 'chant' && styles.tabButtonActive]}>
+                  <Ionicons name="apps" size={18} color={activeTab === 'chant' ? '#FFEBB5' : 'rgba(255,255,255,0.5)'} />
+                  <Text style={[styles.tabText, activeTab === 'chant' && styles.tabTextActive]}>Chanting</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setActiveTab('path')} style={[styles.tabButton, activeTab === 'path' && styles.tabButtonActive]}>
+                  <Ionicons name="document-text" size={18} color={activeTab === 'path' ? '#FFEBB5' : 'rgba(255,255,255,0.5)'} />
+                  <Text style={[styles.tabText, activeTab === 'path' && styles.tabTextActive]}>Shloka Path</Text>
+                </TouchableOpacity>
+              </View>
+
+              {isSessionActive && (
+                <View style={styles.roomStatusBanner}>
+                  <LinearGradient
+                    colors={['rgba(255,107,0,0.15)', 'rgba(255,107,0,0.05)']}
+                    style={styles.roomStatusBannerGradient}
+                  >
+                    {isHanuman && hanumanStatus.isActive ? (
+                      <>
+                        <View style={styles.bannerRowLayout}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="sparkles" size={16} color="#FFEBB5" />
+                            <Text style={styles.bannerMainText}>
+                              {hanumanStatus.isCompleted
+                                ? `Session Completed (Total 51 Rounds Daily)`
+                                : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession}`}
+                            </Text>
+                          </View>
+                          <View style={styles.roundBadge}>
+                            <Text style={styles.roundBadgeText}>Round {hanumanStatus.roundOfDay} / 51</Text>
+                          </View>
+                        </View>
+
+                        {/* Personal Counter row */}
+                        <View style={[styles.bannerRowLayout, { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' }]}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="person" size={14} color="#FF8A00" />
+                            <Text style={[styles.bannerMainText, { color: 'rgba(255,255,255,0.8)' }]}>
+                              Your Personal Progress
+                            </Text>
+                          </View>
+                          <View style={[styles.roundBadge, { backgroundColor: 'rgba(255, 138, 0, 0.15)', borderColor: 'rgba(255, 138, 0, 0.3)' }]}>
+                            <Text style={[styles.roundBadgeText, { color: '#FFEBB5' }]}>Personal Count: {personalCount}</Text>
+                          </View>
+                        </View>
+
+                        {!hanumanStatus.isCompleted && (
+                          <View style={styles.progressBarBg}>
+                            <View 
+                              style={[
+                                styles.progressBarFill, 
+                                { width: `${(currentTimeState / 961.39) * 100}%` }
+                              ]} 
+                            />
+                          </View>
+                        )}
+                      </>
+                    ) : (
+                      <View style={styles.bannerRowLayout}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="sparkles" size={16} color="#FFEBB5" />
+                          <Text style={styles.bannerMainText}>
+                            {!isHanuman && otherStatus.isActive ? otherStatus.sessionName : ''} Live Session
+                          </Text>
+                        </View>
+                        <View style={[styles.roundBadge, { backgroundColor: 'rgba(255, 138, 0, 0.15)', borderColor: 'rgba(255, 138, 0, 0.3)' }]}>
+                          <Text style={[styles.roundBadgeText, { color: '#FFEBB5' }]}>Personal Count: {personalCount}</Text>
+                        </View>
+                      </View>
+                    )}
+                  </LinearGradient>
+                </View>
+              )}
+
+              <ScrollView contentContainerStyle={[styles.scrollContainer, { justifyContent: 'center', flex: 1 }]} scrollEnabled={false}>
+                {activeTab === 'chant' ? (
+                  <View style={styles.soloFocusContainer}>
+                    {isHanuman && hanumanStatus.isActive && hanumanStatus.isBreak ? (
+                      <View style={styles.breakMessageContainer}>
+                        <Text style={styles.breakTextMain}>Have a deep breath.</Text>
+                        <Text style={styles.breakTextSub}>Next jaap is starting soon...</Text>
+                        <View style={styles.breakCountdownCircle}>
+                          <Text style={styles.breakCountdownText}>{hanumanStatus.breakRemainingSeconds || 10}s</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <Animated.View 
+                         key={activeLineKey} 
+                         style={[
+                           styles.verticalLyricsContainer, 
+                           { opacity: soloFadeAnim, transform: [{ translateY: soloMoveAnim }] }
+                         ]}
+                      >
+                         {/* Previous Line (Top, Dimmed) */}
+                         <View style={styles.sideLineContainer}>
+                           <Text style={[styles.sideLineText, styles.previousLineText]}>
+                             {previousLineText || ' '}
+                           </Text>
+                         </View>
+ 
+                         {/* Current Line (Middle, Active) */}
+                         <View style={styles.soloWordBox}>
+                           <LinearGradient colors={['rgba(255,138,0,0.15)', 'rgba(255,138,0,0)']} style={styles.soloGlow} />
+                           <View style={styles.soloLineWordsRow}>
+                             {lineItems.map((word: string, idx: number) => {
+                               const isHighlighted = highlightedIdx === idx;
+                               return (
+                                 <Text 
+                                   key={`${word}-${idx}`} 
+                                   style={[
+                                     styles.soloWordText, 
+                                     isHighlighted ? styles.soloWordHighlighted : styles.soloWordDimmed,
+                                     isMusic && { fontSize: 36, marginHorizontal: 8 }
+                                   ]}
+                                 >
+                                   {word}{' '}
+                                 </Text>
+                               );
+                             })}
+                           </View>
+                           <View style={styles.soloOrnateUnderline} />
+                         </View>
+ 
+                         {/* Next Line (Bottom, Dimmed) */}
+                         <View style={styles.sideLineContainer}>
+                           <Text style={[styles.sideLineText, styles.nextLineText]}>
+                             {nextLineText || ' '}
+                           </Text>
+                         </View>
+                      </Animated.View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.fullShlokaBox}>
+                    <View style={styles.scrollHeader}>
+                      <Ionicons name="document-text" size={16} color="#FFEBB5" />
+                      <Text style={styles.scrollHeaderText}>Sacred Full Path</Text>
+                    </View>
+                    <Text style={styles.fullShlokaText}>{selectedMantra.text}</Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              <View style={styles.reactionOverlay} pointerEvents="none">
+                {reactions.map(r => (
+                  <Animated.Text key={r.id} style={[styles.floatingEmoji, {
+                    opacity: r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+                    transform: [
+                      { translateY: r.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -300] }) },
+                      { translateX: r.anim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 15, -15, 10, 0] }) },
+                      { scale: r.anim.interpolate({ inputRange: [0, 0.2], outputRange: [0.6, 1.2], extrapolate: 'clamp' }) }
+                    ]
+                  }]}>{r.emoji}</Animated.Text>
+                ))}
+              </View>
+
+              <View style={styles.footerContainer}>
+                <View style={styles.roomStatsBox}><Text style={styles.roomStats}>Sangat: 18 Devotees</Text></View>
+                <View style={styles.transparentControlBar}>
+                  <View style={styles.leftControls}>
+                    <TouchableOpacity onPress={() => setIsMicEnabled(!isMicEnabled)} style={[styles.iconCircle, isMicEnabled && { backgroundColor: 'rgba(76, 217, 100, 0.2)', borderColor: '#4CD964' }]}>
+                      <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={22} color={isMicEnabled ? "#4CD964" : "#FFF"} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                      if (mantraType === 'kedarnath' || fromHome === 'true') {
+                        router.replace('/(tabs)/home');
+                      } else {
+                        router.replace('/(tabs)/jaap');
+                      }
+                    }} style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}>
+                      <Ionicons name="call" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.rightReactions}>
+                    {['🙏', '❤️', '😊', '🔔'].map((emoji) => (
+                      <TouchableOpacity key={emoji} onPress={() => addReaction(emoji)} style={styles.reactionBtn}><Text style={styles.reactionBtnText}>{emoji}</Text></TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
         </SafeAreaView>
       </ImageBackground>
     </View>
@@ -687,4 +1010,218 @@ const styles = StyleSheet.create({
   upcomingBox: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', maxWidth: '80%' },
   upcomingLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '700', marginBottom: 2 },
   upcomingMantra: { color: '#FFEBB5', fontSize: 13, fontWeight: '600' },
+  roomStatusBanner: {
+    marginHorizontal: 20,
+    marginTop: 15,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,0,0.25)',
+  },
+  roomStatusBannerGradient: {
+    padding: 12,
+    gap: 8,
+  },
+  bannerRowLayout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  bannerMainText: {
+    color: '#FFEBB5',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  roundBadge: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  roundBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  progressBarBg: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 2,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#FFEBB5',
+  },
+  countdownContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  countdownGlassCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 32,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    width: '100%',
+    padding: 24,
+    alignItems: 'center',
+  },
+  countdownOmSymbol: {
+    fontSize: 48,
+    color: '#FF6B00',
+    marginBottom: 8,
+  },
+  countdownTitle: {
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  countdownSubtitle: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 6,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  countdownTimerBox: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 20,
+    width: '100%',
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    marginBottom: 24,
+  },
+  countdownLabel: {
+    color: '#FF8800',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    marginBottom: 6,
+  },
+  countdownTimerText: {
+    color: '#FFEBB5',
+    fontSize: 38,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    fontWeight: '800',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(255,138,0,0.3)',
+    textShadowRadius: 8,
+  },
+  nextSessionNameText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  scheduleDetailsBox: {
+    width: '100%',
+    gap: 6,
+    marginBottom: 28,
+  },
+  scheduleTitle: {
+    color: '#FFEBB5',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  scheduleItem: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  ekantRedirectBtn: {
+    width: '100%',
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+  },
+  ekantBtnGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ekantRedirectBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  personalOfflineStatsBox: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 20,
+    width: '100%',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 24,
+  },
+  personalOfflineStatsTitle: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+    marginLeft: 10,
+  },
+  personalOfflineStatsCount: {
+    color: '#FFEBB5',
+    fontSize: 18,
+    fontWeight: '800',
+    backgroundColor: 'rgba(255, 138, 0, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 138, 0, 0.3)',
+  },
+  breakMessageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  breakTextMain: {
+    color: '#FFEBB5',
+    fontSize: 24,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  breakTextSub: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 15,
+    fontWeight: '400',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  breakCountdownCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 107, 0, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    display: 'flex',
+  },
+  breakCountdownText: {
+    color: '#FFEBB5',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

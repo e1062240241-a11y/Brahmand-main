@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,6 +39,22 @@ export default function LiveJaapWelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { mantraType, title, fromHome } = useLocalSearchParams<{ mantraType?: string, title?: string, fromHome?: string }>();
+  
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hanumanStatus = getCurrentHanumanStatus(now);
+  const otherStatus = getCurrentOtherJaapStatus(now);
+
+  const isHanuman = mantraType === 'hanuman';
+  const isKedarnath = mantraType === 'kedarnath';
+  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya');
+
+  const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
   
   return (
     <View style={styles.container}>
@@ -78,6 +95,62 @@ export default function LiveJaapWelcomeScreen() {
                <View style={styles.line} /><Text style={styles.lotusIcon}>🪷</Text><View style={styles.line} />
              </View>
           </View>
+
+          {isHanuman && (
+            <View style={styles.statusBanner}>
+              {hanumanStatus.isActive ? (
+                <View style={styles.activeBannerInner}>
+                  <View style={styles.liveDotRing} />
+                  <Text style={styles.statusTextActive}>
+                    {hanumanStatus.isCompleted
+                      ? `Session Completed (Waiting for next)`
+                      : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.inactiveBannerInner}>
+                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
+                  <Text style={styles.statusTextInactive}>
+                    Next Live: {hanumanStatus.nextSessionName} Session Starts in {(() => {
+                      if (!hanumanStatus.nextSessionStart) return '';
+                      const diffMs = hanumanStatus.nextSessionStart.getTime() - now.getTime();
+                      const hrs = Math.floor(diffMs / 3600000);
+                      const mins = Math.floor((diffMs % 3600000) / 60000);
+                      const secs = Math.floor((diffMs % 60000) / 1000);
+                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    })()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {isOtherLiveJaap && (
+            <View style={styles.statusBanner}>
+              {otherStatus.isActive ? (
+                <View style={styles.activeBannerInner}>
+                  <View style={styles.liveDotRing} />
+                  <Text style={styles.statusTextActive}>
+                    {otherStatus.sessionName} Session • Live (8 AM - 11 AM & 4 PM - 9 PM)
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.inactiveBannerInner}>
+                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
+                  <Text style={styles.statusTextInactive}>
+                    Next Live: {otherStatus.nextSessionName} Session Starts in {(() => {
+                      if (!otherStatus.nextSessionStart) return '';
+                      const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
+                      const hrs = Math.floor(diffMs / 3600000);
+                      const mins = Math.floor((diffMs % 3600000) / 60000);
+                      const secs = Math.floor((diffMs % 60000) / 1000);
+                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    })()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* MANTRA PREVIEW - SCROLLABLE FOR LONG TEXTS LIKE HANUMAN CHALISA */}
           <View style={styles.mantraPreviewBox}>
@@ -127,13 +200,21 @@ export default function LiveJaapWelcomeScreen() {
               })}
             >
               <LinearGradient
-                colors={['#FF6B00', '#FF8A00']}
+                colors={
+                  !isSessionActive
+                    ? ['#7B6A58', '#9F8D7C']
+                    : ['#FF6B00', '#FF8A00']
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.buttonGradient}
               >
                 <Text style={styles.buttonText}>
-                  {mantraType === 'kedarnath' ? 'Watch Live Aarti Now' : 'Join Live Jaap Now'}
+                  {mantraType === 'kedarnath' 
+                    ? 'Watch Live Aarti Now' 
+                    : !isSessionActive
+                      ? 'Enter Live Room (Chant Solo / Wait)'
+                      : 'Join Live Jaap Now'}
                 </Text>
                 <View style={styles.buttonOmCircle}>
                   <Text style={styles.buttonOmText}>ॐ</Text>
@@ -240,4 +321,43 @@ const styles = StyleSheet.create({
   buttonOmText: { fontSize: 18, color: '#FF6B00', fontWeight: 'bold' },
   privacyNote: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   privacyText: { fontSize: 10, color: '#7B6A58', marginLeft: 5 },
+  statusBanner: {
+    marginVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 102, 0, 0.08)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 102, 0, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  activeBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveDotRing: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
+    marginRight: 8,
+  },
+  statusTextActive: {
+    color: '#4A2E1F',
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  inactiveBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusTextInactive: {
+    color: '#7B6A58',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
 });

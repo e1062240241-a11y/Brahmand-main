@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Animated,
   PanResponder,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +31,7 @@ import SharePostModal from './SharePostModal';
 import { MentionInput } from './MentionInput';
 import { MentionText } from './MentionText';
 import * as Clipboard from 'expo-clipboard';
-import { Share, Alert, KeyboardAvoidingView, Keyboard } from 'react-native';
+import { Share, KeyboardAvoidingView, Keyboard } from 'react-native';
 
 let ExpoVideoModule: any = null;
 try {
@@ -1282,7 +1283,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                       borderBottomWidth: 0.5,
                       borderBottomColor: '#F0F0F0',
                       alignItems: 'flex-start',
-                      zIndex: activeCommentMenuId === item.id ? 100 : 1,
                     }}>
                       <Avatar photo={item.user_photo} name={item.username} size={36} />
                       <View style={{ marginLeft: 12, flex: 1 }}>
@@ -1292,43 +1292,21 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                             <Text style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>{formatTimeAgo(item.created_at)}</Text>
                           </View>
                           {canDelete && (
-                            <View style={{ position: 'relative', zIndex: 20 }}>
-                              <TouchableOpacity
-                                style={{ padding: 4, marginRight: -4 }}
-                                onPress={() => {
-                                  setActiveCommentMenuId(activeCommentMenuId === item.id ? null : item.id);
-                                }}
-                              >
-                                <Ionicons name="ellipsis-vertical" size={16} color="#888" />
-                              </TouchableOpacity>
-                              {activeCommentMenuId === item.id && (
-                                <>
-                                  <TouchableOpacity
-                                    style={{
-                                      position: 'absolute',
-                                      top: -2000,
-                                      bottom: -2000,
-                                      left: -2000,
-                                      right: -2000,
-                                      backgroundColor: 'transparent',
-                                      zIndex: 1,
-                                    }}
-                                    activeOpacity={1}
-                                    onPress={() => setActiveCommentMenuId(null)}
-                                  />
-                                  <TouchableOpacity
-                                    style={[styles.inlineDeletePopover, { zIndex: 2 }]}
-                                    onPress={() => {
-                                      setActiveCommentMenuId(null);
-                                      handleDeleteComment(item);
-                                    }}
-                                  >
-                                    <Ionicons name="trash-outline" size={14} color="#FF3B30" />
-                                    <Text style={styles.inlineDeleteText}>Delete</Text>
-                                  </TouchableOpacity>
-                                </>
-                              )}
-                            </View>
+                            <TouchableOpacity
+                              style={{ padding: 4, marginRight: -4 }}
+                              onPress={() => {
+                                Alert.alert(
+                                  'Delete Comment',
+                                  'Are you sure you want to delete this comment?',
+                                  [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
+                                  ]
+                                );
+                              }}
+                            >
+                              <Ionicons name="trash-outline" size={16} color="#888" />
+                            </TouchableOpacity>
                           )}
                         </View>
                         <MentionText

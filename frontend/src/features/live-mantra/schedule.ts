@@ -181,6 +181,214 @@ export const getScheduleWindows = () => {
   }));
 };
 
+export type HanumanSession = {
+  readonly name: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+  readonly startHour: number;
+  readonly startMin: number;
+  readonly endHour: number;
+  readonly endMin: number;
+  readonly reps: number;
+  readonly startRoundOffset: number;
+};
+
+export const HANUMAN_SESSIONS: HanumanSession[] = [
+  { name: 'Morning', startHour: 5, startMin: 30, endHour: 9, endMin: 0, reps: 13, startRoundOffset: 1 },
+  { name: 'Afternoon', startHour: 12, startMin: 0, endHour: 15, endMin: 30, reps: 13, startRoundOffset: 14 },
+  { name: 'Evening', startHour: 16, startMin: 0, endHour: 19, endMin: 30, reps: 13, startRoundOffset: 27 },
+  { name: 'Night', startHour: 21, startMin: 0, endHour: 0, endMin: 15, reps: 12, startRoundOffset: 40 },
+];
+
+export const CHALISA_DURATION = 961.39; // seconds
+
+export type HanumanStatus =
+  | {
+      isActive: true;
+      sessionName: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+      roundOfSession: number;
+      totalRepsInSession: number;
+      roundOfDay: number;
+      audioPositionSeconds: number;
+      isCompleted: boolean;
+      isBreak: boolean;
+    }
+  | {
+      isActive: false;
+      nextSessionName: 'Morning' | 'Afternoon' | 'Evening' | 'Night' | '';
+      nextSessionStart: Date | null;
+    };
+
+export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
+  const currentHour = now.getHours();
+  const currentMin = now.getMinutes();
+
+  for (const session of HANUMAN_SESSIONS) {
+    let isMatch = false;
+    let sessionStart = new Date(now);
+    let sessionEnd = new Date(now);
+
+    if (session.name === 'Night') {
+      // Night session crosses midnight: 9:00 PM to 12:15 AM
+      if (currentHour >= 21) {
+        sessionStart.setHours(21, 0, 0, 0);
+        sessionEnd.setDate(sessionEnd.getDate() + 1);
+        sessionEnd.setHours(0, 15, 0, 0);
+        isMatch = now >= sessionStart && now < sessionEnd;
+      } else if (currentHour === 0 && currentMin < 15) {
+        sessionStart.setDate(sessionStart.getDate() - 1);
+        sessionStart.setHours(21, 0, 0, 0);
+        sessionEnd.setHours(0, 15, 0, 0);
+        isMatch = now >= sessionStart && now < sessionEnd;
+      }
+    } else {
+      sessionStart.setHours(session.startHour, session.startMin, 0, 0);
+      sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
+      isMatch = now >= sessionStart && now < sessionEnd;
+    }
+
+    if (isMatch) {
+      const elapsedMs = now.getTime() - sessionStart.getTime();
+      const chalisaDurationMs = CHALISA_DURATION * 1000;
+      const cycleDurationMs = (CHALISA_DURATION + 10) * 1000;
+      const currentRep = Math.floor(elapsedMs / cycleDurationMs);
+
+      if (currentRep < session.reps) {
+        const cycleElapsedMs = elapsedMs % cycleDurationMs;
+        const isBreak = cycleElapsedMs >= chalisaDurationMs;
+        const audioPositionSeconds = isBreak ? CHALISA_DURATION : cycleElapsedMs / 1000;
+        const roundOfSession = currentRep + 1;
+        const roundOfDay = session.startRoundOffset + currentRep;
+
+        return {
+          isActive: true,
+          sessionName: session.name,
+          roundOfSession,
+          totalRepsInSession: session.reps,
+          roundOfDay,
+          audioPositionSeconds,
+          isCompleted: false,
+          isBreak,
+        };
+      } else {
+        return {
+          isActive: true,
+          sessionName: session.name,
+          roundOfSession: session.reps,
+          totalRepsInSession: session.reps,
+          roundOfDay: session.startRoundOffset + session.reps - 1,
+          audioPositionSeconds: CHALISA_DURATION,
+          isCompleted: true,
+          isBreak: false,
+        };
+      }
+    }
+  }
+
+  // Outside any session, find next session
+  let nextSession: typeof HANUMAN_SESSIONS[number] | null = null;
+  let minDiff = Infinity;
+  let nextSessionStart: Date | null = null;
+
+  for (const session of HANUMAN_SESSIONS) {
+    let startCandidate = new Date(now);
+    startCandidate.setHours(session.startHour, session.startMin, 0, 0);
+    if (startCandidate < now) {
+      startCandidate.setDate(startCandidate.getDate() + 1);
+    }
+    const diff = startCandidate.getTime() - now.getTime();
+    if (diff < minDiff) {
+      minDiff = diff;
+      nextSession = session;
+      nextSessionStart = startCandidate;
+    }
+  }
+
+  return {
+    isActive: false,
+    nextSessionName: nextSession ? nextSession.name : '',
+    nextSessionStart,
+  };
+};
+
+export type OtherJaapSession = {
+  readonly name: 'Morning' | 'Evening';
+  readonly startHour: number;
+  readonly endHour: number;
+};
+
+export const OTHER_JAAP_SESSIONS: OtherJaapSession[] = [
+  { name: 'Morning', startHour: 8, endHour: 11 },
+  { name: 'Evening', startHour: 16, endHour: 21 },
+];
+
+export type OtherJaapStatus =
+  | {
+      isActive: true;
+      sessionName: 'Morning' | 'Evening';
+      elapsedSeconds: number;
+    }
+  | {
+      isActive: false;
+      nextSessionName: 'Morning' | 'Evening';
+      nextSessionStart: Date | null;
+    };
+
+export const getCurrentOtherJaapStatus = (now = new Date()): OtherJaapStatus => {
+  for (const session of OTHER_JAAP_SESSIONS) {
+    const sessionStart = new Date(now);
+    sessionStart.setHours(session.startHour, 0, 0, 0);
+    const sessionEnd = new Date(now);
+    sessionEnd.setHours(session.endHour, 0, 0, 0);
+
+    if (now >= sessionStart && now < sessionEnd) {
+      const elapsedSeconds = (now.getTime() - sessionStart.getTime()) / 1000;
+      return {
+        isActive: true,
+        sessionName: session.name,
+        elapsedSeconds,
+      };
+    }
+  }
+
+  let nextSession: OtherJaapSession | null = null;
+  let minDiff = Infinity;
+  let nextSessionStart: Date | null = null;
+
+  for (const session of OTHER_JAAP_SESSIONS) {
+    const startCandidate = new Date(now);
+    startCandidate.setHours(session.startHour, 0, 0, 0);
+    if (startCandidate < now) {
+      startCandidate.setDate(startCandidate.getDate() + 1);
+    }
+    const diff = startCandidate.getTime() - now.getTime();
+    if (diff < minDiff) {
+      minDiff = diff;
+      nextSession = session;
+      nextSessionStart = startCandidate;
+    }
+  }
+
+  return {
+    isActive: false,
+    nextSessionName: nextSession ? nextSession.name : 'Morning',
+    nextSessionStart,
+  };
+};
+
+export const getSynchronizedIndex = (words: string[], elapsedSeconds: number): { currentIndex: number; isHolding: boolean } => {
+  const wordDurations = words.map(w => (w.length > 7 ? 3.0 : 1.2));
+  const totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
+  const position = elapsedSeconds % totalDuration;
+
+  let accumulated = 0;
+  for (let i = 0; i < wordDurations.length; i++) {
+    accumulated += wordDurations[i];
+    if (position < accumulated) {
+      return { currentIndex: i, isHolding: false };
+    }
+  }
+  return { currentIndex: words.length - 1, isHolding: true };
+};
+
 export default {
   TIME_SLOTS,
   SPECIAL_TIME_SLOTS,
@@ -188,5 +396,11 @@ export default {
   isWithinChantingWindow,
   getNextChantingTime,
   getAllAvailableTimes,
-  isTimeSlotAvailable
+  isTimeSlotAvailable,
+  getCurrentHanumanStatus,
+  HANUMAN_SESSIONS,
+  CHALISA_DURATION,
+  getCurrentOtherJaapStatus,
+  OTHER_JAAP_SESSIONS,
+  getSynchronizedIndex
 };

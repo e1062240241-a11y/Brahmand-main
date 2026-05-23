@@ -291,13 +291,6 @@ const HashtagPage = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.bottomSheet}>
-            {activeCommentMenuId !== null && (
-              <TouchableOpacity
-                style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]}
-                activeOpacity={1}
-                onPress={() => setActiveCommentMenuId(null)}
-              />
-            )}
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentSheetHeader}>
               <Text style={styles.bottomSheetTitle}>Comments</Text>
@@ -307,7 +300,6 @@ const HashtagPage = () => {
                   setSelectedCommentPostId(null);
                   setSelectedCommentPost(null);
                   setPostComments([]);
-                  setActiveCommentMenuId(null);
                 }}
                 style={styles.commentCloseBtn}
               >
@@ -333,34 +325,27 @@ const HashtagPage = () => {
                   {postComments.map((comment) => {
                     const canDelete = comment.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                     return (
-                      <View key={comment.id || `${comment.user_id}-${comment.created_at}-${comment.text}`} style={[styles.commentItem, { zIndex: activeCommentMenuId === comment.id ? 100 : 1 }]}>
+                      <View key={comment.id || `${comment.user_id}-${comment.created_at}-${comment.text}`} style={styles.commentItem}>
                         <Avatar name={comment?.username || 'User'} photo={comment?.user_photo} size={32} />
                         <View style={styles.commentBubble}>
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
                             {canDelete && (
-                              <View style={{ position: 'relative', zIndex: 20 }}>
-                                <TouchableOpacity
-                                  style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                  onPress={() => {
-                                    setActiveCommentMenuId(activeCommentMenuId === comment.id ? null : comment.id);
-                                  }}
-                                >
-                                  <Ionicons name="ellipsis-vertical" size={16} color="#8A7B89" />
-                                </TouchableOpacity>
-                                {activeCommentMenuId === comment.id && (
-                                  <TouchableOpacity
-                                    style={styles.inlineDeletePopover}
-                                    onPress={() => {
-                                      setActiveCommentMenuId(null);
-                                      handleDeleteComment(comment);
-                                    }}
-                                  >
-                                    <Ionicons name="trash-outline" size={14} color={COLORS.error || '#FF3B30'} />
-                                    <Text style={styles.inlineDeleteText}>Delete</Text>
-                                  </TouchableOpacity>
-                                )}
-                              </View>
+                              <TouchableOpacity
+                                style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                onPress={() => {
+                                  Alert.alert(
+                                    'Delete Comment',
+                                    'Are you sure you want to delete this comment?',
+                                    [
+                                      { text: 'Cancel', style: 'cancel' },
+                                      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(comment) },
+                                    ]
+                                  );
+                                }}
+                              >
+                                <Ionicons name="trash-outline" size={16} color="#8A7B89" />
+                              </TouchableOpacity>
                             )}
                           </View>
                           <Text style={styles.commentItemText}>{comment?.text || ''}</Text>
