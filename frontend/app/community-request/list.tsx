@@ -60,12 +60,12 @@ export default function ActiveRequestsList() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRequest, setSelectedRequest] = useState<CommunityRequest | null>(null);
 
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<{ community_id?: string, requestId?: string }>();
   const [initialRouteHandled, setInitialRouteHandled] = useState(false);
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+  }, [params.community_id]);
 
   useEffect(() => {
     if (!loading && requests.length > 0 && params.requestId && !initialRouteHandled) {
@@ -99,8 +99,8 @@ export default function ActiveRequestsList() {
     try {
       setLoading(true);
       const [activeRes, resolvedRes] = await Promise.all([
-        getCommunityRequests({ status: 'active', limit: 50 }),
-        getCommunityRequests({ status: 'resolved', limit: 50 })
+        getCommunityRequests({ status: 'active', limit: 50, community_id: params.community_id }),
+        getCommunityRequests({ status: 'resolved', limit: 50, community_id: params.community_id })
       ]);
       const apiRequests = [...(activeRes.data || []), ...(resolvedRes.data || [])];
       

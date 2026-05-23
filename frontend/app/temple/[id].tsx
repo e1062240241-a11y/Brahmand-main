@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, ImageBackground, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +25,7 @@ const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
  'Bhimashankar Temple – Maharashtra': 'Pune district, Maharashtra',
  'Ramanathaswamy Temple – Rameswaram': 'Rameswaram, Tamil Nadu',
  'Grishneshwar Temple – Ellora': 'Ellora, Maharashtra',
+ 'Mahalaxmi Temple – Mumbai': 'Mahalaxmi, Mumbai',
  'Omkareshwar Temple – Madhya Pradesh': 'Khandwa, Madhya Pradesh',
  'Trimbakeshwar Temple – Nashik': 'Nashik, Maharashtra',
  'Nageshwar Temple – Dwarka': 'Dwarka, Gujarat',
@@ -56,6 +57,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Shri Radhagiridhari Mandir, ISKCON Mira Road is a vibrant spiritual temple dedicated to Radha and Giridhari, offering daily worship, bhajans, classes, and community service. The temple is known for its peaceful atmosphere, devotional programs, vegetarian prasadam, and regular festivals celebrating Krishna consciousness. Visitors can take part in congregational chanting, scripture study, and cultural programs organized for families and children.',
  guidance: 'Guidance: To reach ISKCON Mira Road, travel to Mira Road station and take a short taxi or auto-rickshaw ride toward Elderao Nagar. The temple is located near Radha Girdhari Mandir, close to the Mira Road bus depot and main Mira Bhayandar road. From Thane, use the Dahisar–Mira Road route; from Bhayandar, follow the highway toward Mira Road. Parking is available nearby and the temple is well signposted from local landmarks.',
+ youtubeUrl: 'https://www.youtube.com/live/Zuhvqrnj63I?si=7bgvsxBJTRvjeHgV',
  },
  'Shirdi Sai Baba Temple': {
  aliases: ['shirdi', 'sai baba', 'saibaba', 'samadhi', 'sai baba samadhi', 'sai baba mandir'],
@@ -122,7 +124,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Kashi Vishwanath Jyotirling at Varanasi is one of India’s most sacred Shiva shrines, closely associated with the spiritual heart of Kashi and the Ganga ghats.',
  guidance: 'Guidance: Reach Varanasi Junction or Lal Bahadur Shastri Airport, then proceed to the Vishwanath corridor area. Use designated entry gates, carry minimal belongings, and plan darshan outside peak festival windows when possible.',
- youtubeUrl: 'https://www.youtube.com/live/DsdpAaHRo88?si=rq0htZT2p7EOtnk3',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUdMj2twWfMHXrWgX5oVdoyA&autoplay=1',
  },
  'Bhimashankar Temple – Maharashtra': {
  aliases: ['bhimashankar'],
@@ -148,6 +150,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Ramanathaswamy Temple in Rameswaram is one of the Jyotirling shrines and is famed for its grand corridors, sacred wells, and deep Ramayana associations.',
  guidance: 'Guidance: Reach Rameswaram by rail/road from Madurai and proceed to the main temple streets. For a smoother visit, complete tirtha rituals early and follow temple queue lanes for darshan.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
  },
  'Grishneshwar Temple – Ellora': {
  aliases: ['grishneshwar', 'ghrishneshwar', 'ellora jyotirling'],
@@ -160,6 +163,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Grishneshwar Jyotirling near Ellora is the twelfth Jyotirling shrine in many traditions, known for its classic temple architecture and devotional worship.',
  guidance: 'Guidance: Reach Aurangabad and continue by road toward Ellora caves area; Grishneshwar temple is nearby with local signage. Combine darshan with off-peak timings to avoid heavy tourist congestion.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
  },
  'Omkareshwar Temple – Madhya Pradesh': {
  aliases: ['omkareshwar'],
@@ -172,6 +176,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Omkareshwar Jyotirling is situated on an island in the Narmada river and is one of the most spiritually significant Shiva pilgrimage centers in Madhya Pradesh.',
  guidance: 'Guidance: Reach Indore/Khandwa, then travel by road to Omkareshwar. Local bridges and boats connect key temple points; follow marked pilgrim circuits for Omkareshwar and Mamleshwar darshan.',
+ youtubeUrl: 'https://www.youtube.com/live/ZCmoddb5rdY?si=98Xp-UsudX0zvArk-',
  },
  'Trimbakeshwar Temple – Nashik': {
  aliases: ['trimbakeshwar', 'tryambakeshwar'],
@@ -184,6 +189,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Trimbakeshwar Jyotirling near Nashik is a prominent Shiva shrine associated with Vedic traditions and the origin region of the Godavari river.',
  guidance: 'Guidance: Reach Nashik city and continue by road to Trimbak town. The temple area is pedestrian-heavy near entry gates, so plan for short walks and keep darshan slots in mind during weekends.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
  },
  'Nageshwar Temple – Dwarka': {
  aliases: ['nageshwar', 'nagnath', 'dwarka jyotirling'],
@@ -196,6 +202,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Nageshwar Jyotirling near Dwarka is a revered Shiva temple on the coastal pilgrimage route of Gujarat and an important stop for Shiva devotees.',
  guidance: 'Guidance: Reach Dwarka by rail/road, then proceed to Nageshwar temple via local transport on the Dwarka-Bet Dwarka route. Combine darshan planning with Dwarka city temple timings for convenience.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
  },
  'Mallikarjuna Temple – Srisailam': {
  aliases: ['mallikarjuna', 'srisailam jyotirling'],
@@ -208,6 +215,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Mallikarjuna Jyotirling at Srisailam is a major Shaiva pilgrimage center, also revered as a Shakti Peetha, attracting devotees from across southern India.',
  guidance: 'Guidance: Reach Hyderabad/Kurnool and continue to Srisailam by road through ghat sections. Arrive early for temple queue management, especially on Mondays and festival days.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
  },
  'Baidyanath Temple – Deoghar': {
  aliases: ['baidyanath', 'vaidyanath', 'deoghar jyotirling'],
@@ -220,6 +228,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Baidyanath Jyotirling in Deoghar is one of the most visited Shiva pilgrimage sites, especially during the Shravan month Kanwar yatra season.',
  guidance: 'Guidance: Reach Jasidih railway junction and take local transport to Deoghar temple complex. During Shravan and major festivals, use the designated darshan queues and buffer extra time for entry.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
  },
  'Tirupati Balaji Temple – Andhra Pradesh': {
  aliases: ['tirupati balaji', 'tirumala', 'venkateswara temple'],
@@ -232,6 +241,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Tirupati Balaji Temple at Tirumala is one of the most visited pilgrimage shrines in India, dedicated to Lord Venkateswara. The temple is known for disciplined darshan systems, daily sevas, and large-scale prasadam distribution for devotees.',
  guidance: 'Guidance: Reach Tirupati by rail/air, then continue to Tirumala via ghat road buses or private vehicles. Book darshan slots in advance when possible and arrive early to accommodate queue and security procedures.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
  },
  'Vaishno Devi Temple – Jammu & Kashmir': {
  aliases: ['vaishno devi', 'mata vaishno devi', 'katra shrine'],
@@ -257,7 +267,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Siddhivinayak Temple in Mumbai is one of India’s most prominent Lord Ganesha temples, known for daily aarti, darshan, and strong devotional traditions among local and visiting devotees.',
  guidance: 'Guidance: Reach Prabhadevi via local train (Dadar/Prabhadevi area) or metro-road connections. Prefer non-peak hours for shorter queues and follow temple guidelines for entry and offerings.',
- youtubeUrl: 'https://www.youtube.com/live/pxs9ByLrqzU?si=0MMnHB8uvJN_KxPo',
+ youtubeUrl: 'https://www.youtube.com/live/kRfvnjS0Qns?si=8o-BPCU7k9TlrorS',
  },
  'Jagannath Temple – Puri': {
  aliases: ['jagannath temple', 'puri jagannath', 'jagannath puri'],
@@ -296,6 +306,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Meenakshi Temple in Madurai is a landmark Dravidian temple complex dedicated to Goddess Meenakshi and Lord Sundareswarar, celebrated for its architecture and daily ritual schedule.',
  guidance: 'Guidance: Reach Madurai junction/airport and continue to the temple streets in the old city. Prefer early morning or late evening slots for smoother darshan and easier movement around the complex.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
  },
  'ISKCON Temple Bangalore – Karnataka': {
  aliases: ['iskcon bangalore', 'iskcon temple bangalore', 'rajajinagar iskcon'],
@@ -308,6 +319,20 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'ISKCON Temple Bangalore is a major devotional center dedicated to Sri Radha Krishna, offering daily darshan, kirtan, spiritual classes, and festival celebrations for devotees and families.',
  guidance: 'Guidance: Reach Rajajinagar via metro or city roads and use the designated temple entry gates. Visit during non-peak evening hours for shorter queues and better access to darshan halls.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+ },
+ 'Mahalaxmi Temple – Mumbai': {
+ aliases: ['mahalaxmi', 'mahalakshmi', 'mahalakshmi temple', 'mahalakshmi mumbai', 'mahalakshmi mandir'],
+ locationLabel: 'Mahalaxmi, Mumbai',
+ coords: { latitude: 18.9774, longitude: 72.8066 },
+ aartiSessions: [
+ { title: 'Morning Aarti', time: '7:00 AM' },
+ { title: 'Dhoop Aarti', time: '6:30 PM' },
+ { title: 'Shej Aarti', time: '10:00 PM' },
+ ],
+ description: 'Mahalaxmi Temple is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area. It is dedicated to Mahalakshmi the central deity of Devi Mahatmyam. The temple was built in 1831 by Dhakji Dadaji.',
+ guidance: 'Guidance: Reach Mahalaxmi railway station (Western Line) and take a short taxi or walk towards Bhulabhai Desai Road. Expect heavy crowds during Navratri festivals, so plan your visit during early morning hours for peaceful darshan.',
+ youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUqNGTFK0_nHU2Ldj3ZKScYw&autoplay=1',
  },
 };
 
@@ -592,6 +617,55 @@ const formatTempleLocation = (temple: any) => {
  .join(', ') || DEFAULT_TEMPLE_LOCATIONS[temple?.name] || 'Unknown location';
 };
 
+const getTempleAartiSessions = (timings: Record<string, string>, templeName: string) => {
+  const order = ['morning', 'afternoon', 'evening'];
+  const entries = Object.entries(timings || {}).filter(([, value]) => value);
+  const ordered = order
+  .map((key) => entries.find(([name]) => name.toLowerCase() === key))
+  .filter(Boolean) as [string, string][];
+  const rest = entries.filter(([name]) => !order.includes(name.toLowerCase()));
+  const sessions = [...ordered, ...rest];
+  if (sessions.length > 0) return sessions;
+
+  const specialKey = getSpecialTempleKey(templeName);
+  const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
+  if (specialTemple?.aartiSessions?.length) {
+  return specialTemple.aartiSessions.map(({ title, time }) => [title, time] as [string, string]);
+  }
+  return [];
+};
+
+const checkIsAartiLive = (sessions: [string, string][]) => {
+  if (!sessions || sessions.length === 0) return false;
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+  const currentMinutes = istTime.getHours() * 60 + istTime.getMinutes();
+
+  for (const session of sessions) {
+    const timeStr = session[1].split('-')[0].trim();
+    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (match) {
+      let hour = parseInt(match[1], 10);
+      const min = parseInt(match[2], 10);
+      const period = match[3].toUpperCase();
+
+      if (period === 'PM' && hour !== 12) hour += 12;
+      if (period === 'AM' && hour === 12) hour = 0;
+
+      const sessionMinutes = hour * 60 + min;
+      let diff = currentMinutes - sessionMinutes;
+      if (diff < -720) diff += 1440;
+      if (diff > 720) diff -= 1440;
+
+      if (diff >= -15 && diff <= 45) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 export default function TempleDetailScreen() {
  const { id } = useLocalSearchParams<{ id: string }>();
  const resolvedTempleId = decodeURIComponent(String(id || '')).trim();
@@ -603,9 +677,33 @@ export default function TempleDetailScreen() {
   const [isMapModalVisible, setIsMapModalVisible] = useState(false);
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
+  const pulseAnim = React.useRef(new Animated.Value(1)).current;
+  const isCurrentlyLive = temple ? checkIsAartiLive(getTempleAartiSessions(temple.aarti_timings || {}, temple.name || '')) : false;
+
   useEffect(() => {
- fetchTempleData();
- }, [id]);
+    fetchTempleData();
+  }, [id]);
+
+  useEffect(() => {
+    if (isCurrentlyLive) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isCurrentlyLive, pulseAnim]);
 
  const fetchTempleData = async () => {
  try {
@@ -670,23 +768,7 @@ if (!temple) {
     );
     }
 
- const getTempleAartiSessions = (timings: Record<string, string>, templeName: string) => {
- const order = ['morning', 'afternoon', 'evening'];
- const entries = Object.entries(timings || {}).filter(([, value]) => value);
- const ordered = order
- .map((key) => entries.find(([name]) => name.toLowerCase() === key))
- .filter(Boolean) as [string, string][];
- const rest = entries.filter(([name]) => !order.includes(name.toLowerCase()));
- const sessions = [...ordered, ...rest];
- if (sessions.length > 0) return sessions;
 
- const specialKey = getSpecialTempleKey(templeName);
- const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
- if (specialTemple?.aartiSessions?.length) {
- return specialTemple.aartiSessions.map(({ title, time }) => [title, time] as [string, string]);
- }
- return [];
- };
 
 
   const getYoutubeEmbedUrl = (url: string) => {
@@ -695,6 +777,16 @@ if (!temple) {
     const match2 = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
     if (match2) return `https://www.youtube.com/embed/${match2[1]}?autoplay=1`;
     return url;
+  };
+
+  const getYoutubeMobileUrl = (url: string) => {
+    if (url.includes('embed?listType=playlist&list=')) {
+      const listId = url.split('&list=')[1].split('&')[0];
+      return `https://m.youtube.com/playlist?list=${listId}`;
+    }
+    const match = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
+    if (match) return `https://m.youtube.com/watch?v=${match[1]}`;
+    return url.replace('www.youtube.com', 'm.youtube.com');
   };
 
   const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
@@ -794,15 +886,6 @@ if (!temple) {
  </View>
  ))}
  </View>
-  {resolvedYoutubeUrl ? (
-  <TouchableOpacity
-  style={styles.youtubeLinkButton}
-  onPress={() => setIsYoutubeModalVisible(true)}
-  activeOpacity={0.75}
-  >
-  <Text style={styles.youtubeLinkText}>Watch live aarti on YouTube</Text>
-  </TouchableOpacity>
-  ) : null}
  {isMiraRoadTemple && (
  <>
  <Text style={styles.afternoonAartiText}>Afternoon Aarti</Text>
@@ -832,22 +915,46 @@ if (!temple) {
  </View>
 
  {/* Description */}
- {hasSpecialDetails ? (
- <>
- <View style={styles.section}>
- <Text style={styles.sectionTitle}>Description</Text>
- {templeDescription ? (
- <Text style={styles.descriptionText}>{templeDescription}</Text>
- ) : (
- <Text style={styles.noPostsText}>No description yet</Text>
- )}
- </View>
+  {templeDescription ? (
+  <View style={styles.section}>
+  <Text style={styles.sectionTitle}>About</Text>
+  <Text style={styles.descriptionText}>{templeDescription}</Text>
+  </View>
+  ) : (
+  <View style={styles.section}>
+  <Text style={styles.sectionTitle}>About</Text>
+  <Text style={styles.noPostsText}>No description yet</Text>
+  </View>
+  )}
  {templeGuidance ? (
  <View style={styles.section}>
  <Text style={styles.sectionTitle}>Guidance</Text>
  <Text style={styles.descriptionText}>{templeGuidance}</Text>
  </View>
  ) : null}
+
+ {resolvedYoutubeUrl ? (
+ <View style={styles.section}>
+ <TouchableOpacity
+ style={styles.youtubeLinkButton}
+  onPress={() => setIsYoutubeModalVisible(true)}
+ activeOpacity={0.75}
+ >
+ {isCurrentlyLive ? (
+   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+     <Animated.View style={{ opacity: pulseAnim, width: 10, height: 10, borderRadius: 5, backgroundColor: '#FFF', marginRight: 8 }} />
+     <Text style={styles.youtubeLinkText}>🔴 LIVE: Watch Aarti on YouTube</Text>
+   </View>
+ ) : (
+   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+     <Ionicons name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
+     <Text style={styles.youtubeLinkText}>Watch Aarti on YouTube</Text>
+   </View>
+ )}
+ </TouchableOpacity>
+ </View>
+ ) : null}
+
  {hasSpecialMap && (
  <View style={styles.mapSection}>
  <Text style={styles.sectionTitle}>Location</Text>
@@ -874,15 +981,6 @@ if (!temple) {
  </View>
  </TouchableOpacity>
  </View>
- )}
- </>
- ) : (
- templeDescription && (
- <View style={styles.section}>
- <Text style={styles.sectionTitle}>About</Text>
- <Text style={styles.descriptionText}>{templeDescription}</Text>
- </View>
- )
  )}
 
     </ScrollView>
@@ -915,7 +1013,7 @@ if (!temple) {
   />
   ) : (
   <WebView
-  source={{ html: getYoutubeHtml(resolvedYoutubeUrl ? getYoutubeEmbedUrl(resolvedYoutubeUrl) : '') }}
+  source={{ uri: resolvedYoutubeUrl ? getYoutubeMobileUrl(resolvedYoutubeUrl) : 'about:blank' }}
   style={styles.youtubeFrame}
   javaScriptEnabled
   domStorageEnabled

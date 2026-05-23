@@ -51,10 +51,14 @@ export default function VendorBusinessDetailsScreen() {
   const [instagram, setInstagram] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
 
+  const [isInitializing, setIsInitializing] = useState(true);
+
   useEffect(() => {
-    fetchMyVendor().catch((error) => {
-      console.warn('Failed to refresh vendor before business details', error);
-    });
+    fetchMyVendor()
+      .catch((error) => {
+        console.warn('Failed to refresh vendor before business details', error);
+      })
+      .finally(() => setIsInitializing(false));
   }, [fetchMyVendor]);
 
   useEffect(() => {
@@ -244,11 +248,43 @@ export default function VendorBusinessDetailsScreen() {
     }
   };
 
-  if (authLoading || !myVendor) {
+  if (authLoading || isInitializing) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!myVendor) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Business Not Found</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.centered}>
+          <Ionicons name="storefront-outline" size={48} color={COLORS.textLight} />
+          <Text style={{ fontSize: 16, color: COLORS.text, marginTop: SPACING.md, textAlign: 'center' }}>
+            You haven't registered a business yet.
+          </Text>
+          <TouchableOpacity 
+            style={{
+              marginTop: SPACING.lg,
+              backgroundColor: COLORS.primary,
+              paddingHorizontal: SPACING.xl,
+              paddingVertical: SPACING.sm,
+              borderRadius: BORDER_RADIUS.md,
+            }}
+            onPress={() => router.replace('/vendor/dashboard')}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Go to Dashboard</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );

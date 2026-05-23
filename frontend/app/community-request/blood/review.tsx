@@ -8,7 +8,7 @@ import { useAuthStore } from '../../../src/store/authStore';
 
 export default function CommunityRequestBloodReviewPage() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
+  const params = useLocalSearchParams<{ community_id?: string,
     bloodGroup?: string;
     hospitalName?: string;
     location?: string;
@@ -41,7 +41,7 @@ export default function CommunityRequestBloodReviewPage() {
 
     router.push({
       pathname: '/community-request/blood/verify',
-      params: {
+      params: { community_id: params.community_id,
         bloodGroup,
         hospitalName,
         location,

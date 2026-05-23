@@ -124,7 +124,7 @@ export default function CommunityRequestBloodOtpPage() {
 
   const submitRequestIfKycVerified = async (user: any) => {
     try {
-      await createCommunityRequest(requestData);
+      await createCommunityRequest({ ...requestData, community_id: params.community_id });
       router.replace('/community-request/blood/success');
     } catch (submitError: any) {
       Alert.alert('Request error', parseApiError(submitError));

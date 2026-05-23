@@ -889,14 +889,14 @@ export default function MessagesScreen() {
     return (
       <TouchableOpacity
         key={item.id}
-        style={[styles.localCommCard, { backgroundColor: cardBg, borderColor }]}
+        style={[styles.localCommCard, { backgroundColor: cardBg }]}
         onPress={() => router.push(`/community/${item.id}`)}
       >
-        <View style={[styles.localCommAvatarWrapper, { borderColor: `${borderColor}55` }]}>
+        <View style={styles.localCommAvatarWrapper}>
           {item.photo ? (
             <Image source={{ uri: item.photo }} style={styles.localCommAvatar} />
           ) : (
-            <Avatar name={item.name} size={58} />
+            <Avatar name={item.name} size={56} />
           )}
         </View>
 
@@ -1511,13 +1511,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 10,
     marginRight: 12,
-    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
   },
-  localCommAvatarWrapper: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden', borderWidth: 1.5, marginTop: 2 },
-  localCommAvatar: { width: '100%', height: '100%' },
+  localCommAvatarWrapper: { 
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 56, 
+    height: 56, 
+    borderRadius: 28, 
+    marginTop: 2 
+  },
+  localCommAvatar: { width: 56, height: 56, borderRadius: 28 },
   localCommContent: { alignItems: 'center', marginTop: 4 },
   localCommName: { fontSize: 12, fontFamily: FONTS.bold, color: '#000', textAlign: 'center', lineHeight: 15 },
   localCommMembers: { fontSize: 10, color: '#666', fontFamily: FONTS.regular, marginTop: 2, textAlign: 'center' },

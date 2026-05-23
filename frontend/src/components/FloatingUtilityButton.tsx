@@ -19,7 +19,9 @@ import {
   PanResponder,
   Image,
   ImageBackground,
-  SafeAreaView
+  SafeAreaView,
+  AppState,
+  Vibration
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -215,6 +217,15 @@ export const FloatingUtilityButton = () => {
   const overlayFade = useRef(new Animated.Value(0)).current;
   const menuScale = useRef(new Animated.Value(0)).current;
 
+  const [appStateVisible, setAppStateVisible] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      setAppStateVisible(nextAppState);
+    });
+    return () => subscription.remove();
+  }, []);
+
   const resolveMyActiveSOS = async (status: 'resolved' | 'cancelled') => {
     if (!activeSOS?.id) return;
     try {
@@ -259,7 +270,7 @@ export const FloatingUtilityButton = () => {
   const sosGlowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (modalVisible) {
+    if (modalVisible && appStateVisible === 'active') {
       // Loop for "Live" Chamatkari Rays
       Animated.loop(
         Animated.sequence([
@@ -276,10 +287,12 @@ export const FloatingUtilityButton = () => {
         ])
       ).start();
     } else {
+      rayPulseAnim.stopAnimation();
+      sosGlowAnim.stopAnimation();
       rayPulseAnim.setValue(0);
       sosGlowAnim.setValue(0);
     }
-  }, [modalVisible]);
+  }, [modalVisible, appStateVisible]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pan = useRef(new Animated.ValueXY()).current;
@@ -337,7 +350,7 @@ export const FloatingUtilityButton = () => {
   ).current;
 
   useEffect(() => {
-    if (nearbySOSCount > 0) {
+    if (nearbySOSCount > 0 && appStateVisible === 'active') {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.2, duration: 500, easing: Easing.ease, useNativeDriver: true }),
@@ -345,9 +358,10 @@ export const FloatingUtilityButton = () => {
         ])
       ).start();
     } else {
+      pulseAnim.stopAnimation();
       pulseAnim.setValue(1);
     }
-  }, [nearbySOSCount]);
+  }, [nearbySOSCount, appStateVisible]);
 
   const resetSOSFlow = () => {
     setMicroLocation('');
@@ -504,6 +518,7 @@ export const FloatingUtilityButton = () => {
       if (data.creator_id !== user?.id) {
         setIncomingSOS(data);
         setSosResponderModalVisible(true);
+        Vibration.vibrate([0, 1000, 500, 1000, 500, 1000], true); // true = repeat
       }
     };
 
@@ -511,6 +526,7 @@ export const FloatingUtilityButton = () => {
 
     // Check for pending SOS from push notifications
     const checkPendingSOS = setInterval(() => {
+      if (AppState.currentState !== 'active') return;
       if (typeof window !== 'undefined' && (window as any).__PENDING_SOS) {
         const data = (window as any).__PENDING_SOS;
         delete (window as any).__PENDING_SOS;
@@ -520,6 +536,7 @@ export const FloatingUtilityButton = () => {
     }, 2000);
 
     sosRefreshTimerRef.current = setInterval(() => {
+      if (AppState.currentState !== 'active') return;
       checkSOSStatus();
       fetchMyCommunityRequests();
     }, 60000);
@@ -634,6 +651,7 @@ export const FloatingUtilityButton = () => {
     }
 
     sosExpandTimerRef.current = setInterval(async () => {
+      if (AppState.currentState !== 'active') return;
       try {
         const res = await getMySOSAlert();
         const current = res.data;
@@ -1101,6 +1119,7 @@ export const FloatingUtilityButton = () => {
         sosData={incomingSOS}
         onClose={() => {
           setSosResponderModalVisible(false);
+          Vibration.cancel();
           if (incomingSOS?.sos_id || incomingSOS?.id) {
             const idToDismiss = incomingSOS.sos_id || incomingSOS.id;
             setDismissedSOSIds(prev => {
@@ -1111,7 +1130,10 @@ export const FloatingUtilityButton = () => {
             });
           }
         }}
-        onRespond={handleRespondToSOS}
+        onRespond={(id) => {
+          Vibration.cancel();
+          handleRespondToSOS(id);
+        }}
       />
     </View>
   );

@@ -123,6 +123,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
         importance: Notifications.AndroidImportance?.MAX ?? 5,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
+        sound: 'bell.mp3',
       });
 
       await Notifications.setNotificationChannelAsync('messages', {
@@ -131,6 +132,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
         importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
+        sound: 'bell.mp3',
       });
 
       await Notifications.setNotificationChannelAsync('sos_alerts', {
@@ -142,6 +144,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
         bypassDnd: true,
         showBadge: true,
         enableVibrate: true,
+        sound: 'soundreality_mayday_166011.mp3',
       });
     } catch (e) {
       console.warn('[Push] Failed to configure Android channels', e);
@@ -225,13 +228,21 @@ export async function scheduleLocalNotification(
 ) {
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
+  
+  const notificationType = data?.type;
+  const isSos = notificationType?.startsWith('sos');
+  const isMsg = notificationType === 'message';
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
       body,
       data: data || {},
+      sound: isSos ? 'soundreality_mayday_166011.mp3' : 'bell.mp3',
     },
-    trigger: null, // Send immediately
+    trigger: {
+      channelId: isSos ? 'sos_alerts' : (isMsg ? 'messages' : 'default'),
+    },
   });
 }
 

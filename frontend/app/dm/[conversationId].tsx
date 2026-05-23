@@ -583,7 +583,7 @@ const DirectMessageScreen = () => {
     }
     
     try {
-      const response = await getDirectMessages(conversationId!);
+      const response = await getDirectMessages(conversationId!, 30);
       if (!Array.isArray(response?.data)) {
         console.warn('[Chat] Direct messages response was empty or invalid');
         setLoading(false);
@@ -621,7 +621,6 @@ const DirectMessageScreen = () => {
       
       setLoading(false);
       setIsRealtime(false);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 100);
     } catch (error: any) {
       console.error('[Chat] Error fetching messages:', error);
       setLoading(false);
@@ -1340,14 +1339,7 @@ const DirectMessageScreen = () => {
     );
   }, [user?.id, renderMessageContent, formatChatDate, formatTime, messages]);
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Connecting to chat...</Text>
-      </View>
-    );
-  }
+  // Removed full screen loading check to allow Instagram-like smooth transition
 
   const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 8);
 
@@ -1506,21 +1498,27 @@ const DirectMessageScreen = () => {
 
       {/* Messages - takes remaining space */}
       <View style={styles.messagesWrapper}>
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 90 }]}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-              <Text style={styles.emptyText}>Start your conversation</Text>
-            </View>
-          }
-        />
+        {loading && messages.length === 0 ? (
+          <View style={[styles.emptyContainer, { justifyContent: 'center' }]}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 90 }]}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
+                <Text style={styles.emptyText}>Start your conversation</Text>
+              </View>
+            }
+          />
+        )}
       </View>
       {/* Input - anchored at bottom */}
       <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>

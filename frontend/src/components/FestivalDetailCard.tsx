@@ -16,25 +16,11 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress }: FestivalDetailCa
     { title: 'Purpose', value: festival.purpose },
     { title: 'Importance', value: festival.importance },
     { title: 'Celebration', value: festival.celebration },
+    { title: 'Mantra', value: festival.mantra },
   ].filter((section) => section.value);
 
   return (
     <View style={styles.page}>
-      <View style={styles.pageHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Ionicons name="chevron-back" size={24} color="#000000" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.notificationButton} 
-          onPress={() => (festival as any).onToggleReminder?.()}
-        >
-          <Ionicons 
-            name={(festival as any).reminderEnabled ? "notifications" : "notifications-outline"} 
-            size={22} 
-            color={(festival as any).reminderEnabled ? COLORS.primary : "#000000"} 
-          />
-        </TouchableOpacity>
-      </View>
       <View style={styles.heroCard}>
         <Text style={styles.heroSubtitle}>Upcoming Festival</Text>
         <Text style={styles.heroTitle}>{festival.festival_name}</Text>

@@ -140,6 +140,7 @@ export default function TempleScreen() {
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
+        stickyHeaderIndices={[2]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={fetchData} />
         }
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
   searchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 30, paddingHorizontal: 20, paddingVertical: 14, elevation: 4, shadowOpacity: 0.1, shadowRadius: 10 },
   searchInputField: { flex: 1, fontSize: 14, color: '#333', fontFamily: FONTS.medium },
 
-  categoryPillsRow: { marginBottom: 20 },
+  categoryPillsRow: { marginBottom: 20, backgroundColor: '#FFFFFF', paddingVertical: 10 },
   catPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, marginRight: 12 },
   catPillActive: { backgroundColor: '#FFF5EB' },
   catPillText: { fontSize: 14, fontFamily: FONTS.bold, color: '#555' },

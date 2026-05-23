@@ -71,22 +71,62 @@ export const secureStorage = {
       const encryptedValue = await AsyncStorage.getItem(key);
       if (!encryptedValue) return null;
 
+      // If it is obviously plaintext JSON (starts with { or [), return it directly
+      const trimmed = encryptedValue.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+          (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        return encryptedValue;
+      }
+
       try {
         const encryptionKey = await getEncryptionKey();
-        const rawKey = CryptoJS.SHA256(encryptionKey);
-        const rawIv = CryptoJS.MD5(encryptionKey);
         
-        const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, rawKey, { iv: rawIv });
-        const decryptedValue = decryptedBytes.toString(CryptoJS.enc.Utf8);
-        
-        // If decryption succeeds but yields empty, fallback to the original value
-        if (!decryptedValue) {
+        // 1. Try new rawKey / rawIv format
+        try {
+          const rawKey = CryptoJS.SHA256(encryptionKey);
+          const rawIv = CryptoJS.MD5(encryptionKey);
+          const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, rawKey, { iv: rawIv });
+          const decryptedValue = decryptedBytes.toString(CryptoJS.enc.Utf8);
+          if (decryptedValue) {
+            return decryptedValue;
+          }
+        } catch (e) {
+          // ignore and try old method
+        }
+
+        // 2. Try old direct encryptionKey format
+        try {
+          const decryptedBytes = CryptoJS.AES.decrypt(encryptedValue, encryptionKey);
+          const decryptedValue = decryptedBytes.toString(CryptoJS.enc.Utf8);
+          if (decryptedValue) {
+            // Self-migrate to the new format transparently
+            try {
+              const rawKey = CryptoJS.SHA256(encryptionKey);
+              const rawIv = CryptoJS.MD5(encryptionKey);
+              const reEncrypted = CryptoJS.AES.encrypt(decryptedValue, rawKey, { iv: rawIv }).toString();
+              await AsyncStorage.setItem(key, reEncrypted);
+            } catch (migrationError) {
+              console.warn(`[SecureStorage] Migration failed for key "${key}":`, migrationError);
+            }
+            return decryptedValue;
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        // If decryption failed, but the value doesn't look like base64 ciphertext
+        // (e.g. contains spaces, special characters, or dots of a JWT token),
+        // we can return it as plaintext fallback.
+        const isBase64Ciphertext = /^[A-Za-z0-9+/=]+$/.test(encryptedValue);
+        if (!isBase64Ciphertext || encryptedValue.includes('.')) {
           return encryptedValue;
         }
-        return decryptedValue;
+
+        // Otherwise, it is ciphertext that we failed to decrypt. Return null to prevent JSON parsing crashes.
+        return null;
       } catch (decryptError) {
-        // Fallback: return raw unencrypted value if decryption/decoding fails
-        return encryptedValue;
+        console.warn(`[SecureStorage] Error during decryption of key "${key}":`, decryptError);
+        return null;
       }
     } catch (error) {
       console.error(`[SecureStorage] Failed to get item for key "${key}":`, error);
