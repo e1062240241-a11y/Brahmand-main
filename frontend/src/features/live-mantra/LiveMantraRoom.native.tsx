@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { requestRecordingPermissionsAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { requestRecordingPermissionsAsync, useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -93,9 +93,9 @@ export const LiveMantraRoom = () => {
   useEffect(() => {
     if (bgPlayer) {
       bgPlayer.loop = true;
-      bgPlayer.volume = isMuted ? 0 : 0.4;
+      bgPlayer.volume = isMuted ? 0 : 0.8;
       try {
-        if (!bgPlayer.isPlaying) {
+        if (!bgPlayer.playing) {
           bgPlayer.play();
           syncStartTimeRef.current = Date.now();
         }
@@ -107,13 +107,13 @@ export const LiveMantraRoom = () => {
 
   useEffect(() => {
     if (bgPlayer) {
-      bgPlayer.volume = isMuted ? 0 : 0.4;
+      bgPlayer.volume = isMuted ? 0 : 0.8;
     }
   }, [isMuted]);
 
   useEffect(() => {
-    if (bgPlayer && playerStatus?.isPlaying && playerStatus.duration && playerStatus.duration > 0) {
-      const positionMs = playerStatus.position * 1000;
+    if (bgPlayer && playerStatus?.playing && playerStatus.duration && playerStatus.duration > 0) {
+      const positionMs = playerStatus.currentTime * 1000;
       const positionInLoop = positionMs % TOTAL_MANTRA_DURATION;
       
       let newIndex = 0;
@@ -128,7 +128,7 @@ export const LiveMantraRoom = () => {
         setCurrentIndex(newIndex);
       }
     }
-  }, [playerStatus?.position, playerStatus?.duration, currentIndex, isHolding]);
+  }, [playerStatus?.currentTime, playerStatus?.duration, currentIndex, isHolding]);
 
 
   const addRemoteSpeaker = (peerId: string) => {
@@ -367,6 +367,18 @@ export const LiveMantraRoom = () => {
   };
 
   useEffect(() => {
+    const initAudioMode = async () => {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          interruptionMode: 'doNotMix',
+          shouldRouteThroughEarpiece: false,
+        });
+      } catch (error) {
+        console.warn('Failed to set audio mode in LiveMantraRoom:', error);
+      }
+    };
+    initAudioMode();
     connectAgora();
 
     return () => {
@@ -463,7 +475,7 @@ export const LiveMantraRoom = () => {
       return () => clearTimeout(timer);
     }
 
-    if (playerStatus?.isPlaying && playerStatus.duration) {
+    if (playerStatus?.playing && playerStatus.duration) {
       return;
     }
 
@@ -479,7 +491,7 @@ export const LiveMantraRoom = () => {
     }, wordDuration);
 
     return () => clearTimeout(timer);
-  }, [currentIndex, isHolding, playerStatus?.isPlaying, playerStatus?.duration]);
+  }, [currentIndex, isHolding, playerStatus?.playing, playerStatus?.duration]);
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>

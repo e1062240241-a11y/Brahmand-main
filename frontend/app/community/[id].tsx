@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -22,10 +22,12 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
+import { useVendorStore } from '../../src/store/vendorStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
+import { VendorKYCModal } from '../../src/components/VendorKYCModal';
 import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import * as ImagePicker from 'expo-image-picker';
@@ -45,7 +47,7 @@ function saveLocalPost(content: string, category: string) {
     const map: Record<string, string> = raw ? JSON.parse(raw) : {};
     map[content] = category;
     if (typeof localStorage !== 'undefined') localStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
-  } catch {}
+  } catch { }
 }
 function getLocalCategory(content: string): string | undefined {
   const fromMap = localPostCategories.get(content);
@@ -56,7 +58,7 @@ function getLocalCategory(content: string): string | undefined {
       const map: Record<string, string> = JSON.parse(raw);
       return map[content];
     }
-  } catch {}
+  } catch { }
   return undefined;
 }
 
@@ -68,13 +70,13 @@ const CharacterProgressCircle = ({ textLength }: { textLength: number }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const limit = 250;
-  
+
   const currentTextLength = textLength > 0 && textLength % limit === 0 ? limit : textLength % limit;
   const threadCount = Math.floor(textLength / limit) + (textLength % limit > 0 ? 1 : 0);
-  
+
   const percentage = Math.min((currentTextLength / limit) * 100, 100);
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
-  
+
   const remaining = limit - currentTextLength;
   let strokeColor = '#1D9BF0'; // Twitter blue
   if (remaining <= 0) {
@@ -285,12 +287,13 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
 export default function CommunityDetailScreen() {
   const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
+  const { myVendor, fetchMyVendor } = useVendorStore();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
   const stateCommunityIdRef = useRef<string | null>(null);
   const countryCommunityIdRef = useRef<string | null>(null);
-  
+
   const cacheKey = `community_screen_${id}`;
 
   const [community, setCommunity] = useState<any>(() => {
@@ -324,14 +327,23 @@ export default function CommunityDetailScreen() {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTopCategoryDropdown, setShowTopCategoryDropdown] = useState(false);
   const [showBodyCategoryDropdown, setShowBodyCategoryDropdown] = useState(false);
+  const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [postCategory, setPostCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [sevaDetails, setSevaDetails] = useState('');
-  
+  const [showKycModal, setShowKycModal] = useState(false);
+  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
+  const [pendingPostAfterKyc, setPendingPostAfterKyc] = useState(false);
+
+  const isKycVerified =
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified';
+
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
   const [commentText, setCommentText] = useState('');
   const [activeComments, setActiveComments] = useState<any[]>([]);
@@ -351,7 +363,7 @@ export default function CommunityDetailScreen() {
     if (type === 'temple' || type === 'gau' || type === 'animal') {
       return true;
     }
-    if (type === 'help' && (title.includes('temple') || description.includes('temple') || title.includes('seva') || description.includes('seva') || title.includes('donate') || description.includes('donate') || title.includes('donation') || description.includes('donation') || title.includes('bhandara') || description.includes('bhandara') || support.includes('temple') || support.includes('seva') || support.includes('donate') || support.includes('donation')) ) {
+    if (type === 'help' && (title.includes('temple') || description.includes('temple') || title.includes('seva') || description.includes('seva') || title.includes('donate') || description.includes('donate') || title.includes('donation') || description.includes('donation') || title.includes('bhandara') || description.includes('bhandara') || support.includes('temple') || support.includes('seva') || support.includes('donate') || support.includes('donation'))) {
       return true;
     }
     if (title.includes('seva') || description.includes('seva') || title.includes('temple') || description.includes('temple') || title.includes('donate') || description.includes('donate') || title.includes('donation') || description.includes('donation')) {
@@ -391,15 +403,21 @@ export default function CommunityDetailScreen() {
     return [...activeList].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
   }, [requests, activeTab, filteredRequests, filteredSevaRequests]);
 
+  const parseUTCDate = (dateString?: string) => {
+    if (!dateString) return new Date(NaN);
+    let ds = String(dateString);
+    if (ds.includes('T') && !ds.endsWith('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
+      ds += 'Z';
+    }
+    return new Date(ds);
+  };
+
   const getUnixTimestamp = (item: any) => {
     if (item.created_at) {
-      const d = new Date(item.created_at);
+      const d = parseUTCDate(item.created_at);
       if (!Number.isNaN(d.getTime())) return d.getTime();
     }
     if (item.timestamp) {
-      const d = new Date(item.timestamp);
-      if (!Number.isNaN(d.getTime())) return d.getTime();
-      
       const tsStr = String(item.timestamp).toLowerCase();
       const now = Date.now();
       if (tsStr.includes('just now') || tsStr.includes('now')) {
@@ -413,9 +431,12 @@ export default function CommunityDetailScreen() {
         if (unit === 'h') return now - val * 60 * 60 * 1000;
         if (unit === 'd') return now - val * 24 * 60 * 60 * 1000;
       }
+
+      const d = parseUTCDate(item.timestamp);
+      if (!Number.isNaN(d.getTime())) return d.getTime();
     }
     if (item.start_time) {
-      const d = new Date(item.start_time);
+      const d = parseUTCDate(item.start_time);
       if (!Number.isNaN(d.getTime())) return d.getTime();
     }
     return 0;
@@ -430,9 +451,9 @@ export default function CommunityDetailScreen() {
     const cat = (item.category || '').toLowerCase();
 
     return type === 'lost_found' || type === 'lost' || type === 'found' ||
-           cat === 'lost_found' || cat === 'lost' || cat === 'found' ||
-           title.includes('lost') || description.includes('lost') || support.includes('lost') ||
-           title.includes('found') || description.includes('found') || support.includes('found');
+      cat === 'lost_found' || cat === 'lost' || cat === 'found' ||
+      title.includes('lost') || description.includes('lost') || support.includes('lost') ||
+      title.includes('found') || description.includes('found') || support.includes('found');
   };
 
   const isTempleUpdateRequest = (item: any) => {
@@ -444,8 +465,8 @@ export default function CommunityDetailScreen() {
     const cat = (item.category || '').toLowerCase();
 
     return type === 'temple_update' || cat === 'temple_update' ||
-           ((title.includes('temple') || description.includes('temple') || support.includes('temple')) &&
-            (title.includes('update') || description.includes('update') || title.includes('renovation') || description.includes('renovation')));
+      ((title.includes('temple') || description.includes('temple') || support.includes('temple')) &&
+        (title.includes('update') || description.includes('update') || title.includes('renovation') || description.includes('renovation')));
   };
 
   const createDummyItem = (tabName: string) => {
@@ -567,12 +588,12 @@ export default function CommunityDetailScreen() {
 
       const mergedSeva = Array.from(sevaMap.values());
       const sortedSeva = mergedSeva.sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      
+
       return sortedSeva.length > 0 ? sortedSeva : [createDummyItem('Seva')];
     }
     if (activeTab === 'Feed') {
       const itemMap = new Map();
-      
+
       // All chat messages (community posts) only show in Feed section
       communityPosts.forEach(p => {
         // Clear any old/stale threadParentId from raw API messages to recompute cleanly
@@ -582,7 +603,7 @@ export default function CommunityDetailScreen() {
         }
         itemMap.set(p.id, cleanPost);
       });
-      
+
       // Discussion posts are always chat posts in Feed
       discussionPosts.forEach(p => {
         if (!itemMap.has(p.id)) {
@@ -590,8 +611,19 @@ export default function CommunityDetailScreen() {
         }
       });
 
+      // Include Community Requests in Feed
+      requests.forEach(req => {
+        if (!itemMap.has(req.id)) {
+          itemMap.set(req.id, {
+            ...req,
+            type: 'request_item',
+            isRequestInFeed: true,
+          });
+        }
+      });
+
       const allItems = Array.from(itemMap.values());
-      
+
       // Step 1: Sort ascending by ID (or fallback) to chronological order to find consecutive thread messages
       allItems.sort((a, b) => {
         const aIsLocal = String(a.id).startsWith('post-');
@@ -601,18 +633,18 @@ export default function CommunityDetailScreen() {
         if (aIsLocal && bIsLocal) {
           return String(a.id).localeCompare(String(b.id));
         }
-        
+
         const aNum = parseInt(a.id, 10);
         const bNum = parseInt(b.id, 10);
         const aIsNumeric = !isNaN(aNum) && /^\d+$/.test(String(a.id));
         const bIsNumeric = !isNaN(bNum) && /^\d+$/.test(String(b.id));
-        
+
         if (aIsNumeric && bIsNumeric) {
           return aNum - bNum;
         }
         if (aIsNumeric && !bIsNumeric) return 1;
         if (!aIsNumeric && bIsNumeric) return -1;
-        
+
         return String(a.id).localeCompare(String(b.id));
       });
 
@@ -620,15 +652,15 @@ export default function CommunityDetailScreen() {
       for (let i = 0; i < allItems.length; i++) {
         const current = allItems[i];
         if (String(current.id).startsWith('post-')) continue; // Skip local posts (already have parent thread IDs)
-        
+
         let j = i + 1;
         while (j < allItems.length) {
           const next = allItems[j];
           if (String(next.id).startsWith('post-')) break; // Stop at local posts
-          
+
           const isSameSender = (next.sender_id && current.sender_id && String(next.sender_id) === String(current.sender_id)) ||
-                               (next.user?.name && current.user?.name && next.user.name === current.user.name);
-          
+            (next.user?.name && current.user?.name && next.user.name === current.user.name);
+
           if (isSameSender) {
             const timeA = new Date(current.timestamp).getTime();
             const timeB = new Date(next.timestamp).getTime();
@@ -649,7 +681,7 @@ export default function CommunityDetailScreen() {
       // Step 3: Separate parents and children
       const parents: any[] = [];
       const childrenMap = new Map<string, any[]>();
-      
+
       allItems.forEach(item => {
         if (item.threadParentId) {
           const list = childrenMap.get(item.threadParentId) || [];
@@ -659,49 +691,28 @@ export default function CommunityDetailScreen() {
           parents.push(item);
         }
       });
-      
+
       // Step 4: Sort parent posts descending (newest first), with announcements at the very top
       parents.sort((a, b) => {
         const aIsAnn = a.isNationalAnnouncement || a.isStateAnnouncement;
         const bIsAnn = b.isNationalAnnouncement || b.isStateAnnouncement;
-        
+
         if (aIsAnn && !bIsAnn) return -1;
         if (!aIsAnn && bIsAnn) return 1;
-        
+
         if (aIsAnn && bIsAnn) {
           // Both are announcements: national first, then state
           if (a.isNationalAnnouncement && !b.isNationalAnnouncement) return -1;
           if (!a.isNationalAnnouncement && b.isNationalAnnouncement) return 1;
-          
-          // If same type, sort by time (newest first)
-          const timeA = getUnixTimestamp(a);
-          const timeB = getUnixTimestamp(b);
-          if (timeA !== timeB) return timeB - timeA;
-          return String(b.id).localeCompare(String(a.id));
         }
-        
-        const aIsNew = String(a.id).startsWith('post-') || a.timestamp === 'Just now';
-        const bIsNew = String(b.id).startsWith('post-') || b.timestamp === 'Just now';
-        if (aIsNew && !bIsNew) return -1;
-        if (!aIsNew && bIsNew) return 1;
-        if (aIsNew && bIsNew) {
-          return String(b.id).localeCompare(String(a.id));
-        }
-        
-        const aNum = parseInt(a.id, 10);
-        const bNum = parseInt(b.id, 10);
-        const aIsNumeric = !isNaN(aNum) && /^\d+$/.test(String(a.id));
-        const bIsNumeric = !isNaN(bNum) && /^\d+$/.test(String(b.id));
-        
-        if (aIsNumeric && bIsNumeric) {
-          return bNum - aNum;
-        }
-        if (aIsNumeric && !bIsNumeric) return -1;
-        if (!aIsNumeric && bIsNumeric) return 1;
-        
+
+        const timeA = getUnixTimestamp(a);
+        const timeB = getUnixTimestamp(b);
+        if (timeA !== timeB) return timeB - timeA;
+
         return String(b.id).localeCompare(String(a.id));
       });
-      
+
       // Step 5: Interleave children immediately after their parents
       const sortedResult: any[] = [];
       parents.forEach(parent => {
@@ -715,10 +726,10 @@ export default function CommunityDetailScreen() {
           sortedResult.push(...children);
         }
       });
-      
+
       return sortedResult;
     }
-    
+
     return [];
   }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests]);
 
@@ -748,8 +759,20 @@ export default function CommunityDetailScreen() {
       const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
       if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 30000) {
         console.log('[Community] Using fresh cache, skipping fetchCommunity');
+        setCommunity(cachedData.community);
+        setRequests(cachedData.requests || []);
+        setEvents(cachedData.events || []);
+        setAllFestivals(cachedData.allFestivals || []);
+        setCommunityPosts(cachedData.communityPosts || []);
         setLoading(false);
         return;
+      }
+      if (!cachedData) {
+        setCommunity(null);
+        setRequests([]);
+        setEvents([]);
+        setCommunityPosts([]);
+        setLoading(true);
       }
       setHasMorePosts(true);
       let nextCommunity: any = { type: 'city', name: 'Community' };
@@ -770,24 +793,24 @@ export default function CommunityDetailScreen() {
         }
       }
       setCommunity(nextCommunity);
-      
-      const currentSubgroup = nextCommunity.type === 'state' 
-        ? 'state' 
+
+      const currentSubgroup = nextCommunity.type === 'state'
+        ? 'state'
         : (nextCommunity.type === 'country' || nextCommunity.type === 'national' ? 'national' : 'city');
 
       let stateCommunityId: string | null = null;
       let countryCommunityId: string | null = null;
-      
+
       const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList, getCommunities } = require('../../src/services/api');
-      
+
       if (nextCommunity.type === 'city') {
         try {
           const allJoinedRes = await getCommunities().catch(() => ({ data: [] }));
           const joinedList = allJoinedRes.data || [];
-          
+
           const stateCommunity = joinedList.find((c: any) => c.type === 'state');
           const countryCommunity = joinedList.find((c: any) => c.type === 'country' || c.type === 'national');
-          
+
           if (stateCommunity) {
             stateCommunityId = stateCommunity.id;
             stateCommunityIdRef.current = stateCommunity.id;
@@ -822,7 +845,7 @@ export default function CommunityDetailScreen() {
       const nationalMsgResponse = results[4];
       const festResponse = results[5];
       const globalReqResponse = nextCommunity.type === 'city' ? results[6] : null;
-      
+
       console.log('[Community] Requests fetched:', reqResponse.data?.length);
       let nextRequests = reqResponse.data || [];
       if (globalReqResponse && globalReqResponse.data) {
@@ -832,7 +855,7 @@ export default function CommunityDetailScreen() {
       const nextEvents = eventResponse.data || [];
       setRequests(nextRequests);
       setEvents(nextEvents);
-      
+
       let nextFestivals = allFestivals;
       if (festResponse.data && festResponse.data.length > 0) {
         nextFestivals = festResponse.data.map((f: any) => ({
@@ -843,7 +866,7 @@ export default function CommunityDetailScreen() {
         }));
         setAllFestivals(nextFestivals);
       }
-      
+
       // Map API messages to Twitter format
       const formattedMsgs = (msgResponse.data || []).map((msg: any) => ({
         id: msg.id || Math.random().toString(),
@@ -927,7 +950,7 @@ export default function CommunityDetailScreen() {
       const isWithin24Hours = (createdAtStr: string) => {
         if (!createdAtStr || createdAtStr === 'Just now') return true;
         try {
-          const msgTime = new Date(createdAtStr).getTime();
+          const msgTime = parseUTCDate(createdAtStr).getTime();
           return !isNaN(msgTime) && msgTime >= cutoffMs;
         } catch (e) {
           return true;
@@ -941,11 +964,11 @@ export default function CommunityDetailScreen() {
       setCommunityPosts((prev: any[]) => {
         const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
         const seenIds = new Set(localPosts.map((p: any) => p.id));
-        
+
         const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id));
         const uniqueStateMsgs = filteredStateMsgs.filter((p: any) => !seenIds.has(p.id));
         const uniqueNationalMsgs = filteredNationalMsgs.filter((p: any) => !seenIds.has(p.id));
-        
+
         finalPosts = [
           ...uniqueNationalMsgs,
           ...uniqueStateMsgs,
@@ -975,8 +998,8 @@ export default function CommunityDetailScreen() {
     setLoadingMore(true);
     try {
       const { getCommunityMessages } = require('../../src/services/api');
-      const currentSubgroup = community?.type === 'state' 
-        ? 'state' 
+      const currentSubgroup = community?.type === 'state'
+        ? 'state'
         : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
       const cityPostsCount = communityPosts.filter((p: any) => !p.isStateAnnouncement && !p.isNationalAnnouncement && !String(p.id).startsWith('post-')).length;
       const msgResponse = await getCommunityMessages(id as string, currentSubgroup, cityPostsCount + 20);
@@ -1003,7 +1026,7 @@ export default function CommunityDetailScreen() {
         subgroupType: currentSubgroup,
         communityId: id as string,
       }));
-      
+
       if (newMsgs.length > 0) {
         setCommunityPosts(prev => [...prev, ...newMsgs]);
       } else {
@@ -1022,26 +1045,26 @@ export default function CommunityDetailScreen() {
   }, []);
 
   const renderHeader = () => (
-    <LinearGradient 
-      colors={['#FF8C3A', '#FFAD7D', '#FFD4AA', '#FFF1E8', '#FFFFFF']} 
+    <LinearGradient
+      colors={['#FF8C3A', '#FFAD7D', '#FFD4AA', '#FFF1E8', '#FFFFFF']}
       locations={[0, 0.25, 0.55, 0.8, 1]}
       style={[styles.headerGradientContainer, { paddingTop: insets.top }]}
     >
       {/* Top Row: Back Button, Title, and Create Button */}
       <View style={styles.headerTopRow}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => router.replace('/(tabs)/messages')}
           style={styles.headerBackButton}
         >
           <Ionicons name="chevron-back" size={26} color="#000" />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitleText} numberOfLines={1}>
           {community?.name || 'Mumbai Group'}
         </Text>
-        
-        <TouchableOpacity 
-          style={styles.headerCreateBtn} 
+
+        <TouchableOpacity
+          style={styles.headerCreateBtn}
           onPress={() => { setPostCategory(''); setShowCreateModal(true); }}
         >
           <Ionicons name="add" size={16} color="#FFF" />
@@ -1060,15 +1083,15 @@ export default function CommunityDetailScreen() {
       </Text>
 
       {/* Tabs list scroll */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         style={styles.tabsContainer}
         contentContainerStyle={styles.tabsContent}
       >
         {dynamicTabs.map(tab => (
-          <TouchableOpacity 
-            key={tab} 
+          <TouchableOpacity
+            key={tab}
             onPress={() => setActiveTab(tab)}
             style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
           >
@@ -1091,19 +1114,19 @@ export default function CommunityDetailScreen() {
     const nextItem = index !== -1 && index < combinedData.length - 1 ? combinedData[index + 1] : null;
 
     const hasNextThreadConnection = nextItem && (
-      nextItem.threadParentId === item.id || 
+      nextItem.threadParentId === item.id ||
       (item.threadParentId && nextItem.threadParentId === item.threadParentId)
     );
     const hasPrevThreadConnection = item.threadParentId !== undefined;
 
     const shouldTruncate = item.content.length > 300;
     const displayText = shouldTruncate
-      ? item.content.slice(0, 300) + '...' 
+      ? item.content.slice(0, 300) + '...'
       : item.content;
 
     return (
       <View style={[
-        styles.postContainer, 
+        styles.postContainer,
         hasNextThreadConnection && { paddingBottom: 0, borderBottomWidth: 0 },
         hasPrevThreadConnection && { paddingTop: 0 }
       ]}>
@@ -1113,7 +1136,7 @@ export default function CommunityDetailScreen() {
             <Text style={styles.repostHeaderText}>{item.repostedBy || 'Someone'} reposted</Text>
           </View>
         )}
-        
+
         <View style={styles.postMainRow}>
           <View style={[styles.postLeftCol, { width: 48, alignItems: 'center' }]}>
             {hasPrevThreadConnection ? (
@@ -1129,7 +1152,7 @@ export default function CommunityDetailScreen() {
               </>
             )}
           </View>
-          
+
           <View style={[styles.postRightCol, hasPrevThreadConnection && { paddingLeft: 24 }]}>
             <View style={styles.postHeaderRow}>
               <View style={styles.postNameContainer}>
@@ -1146,7 +1169,7 @@ export default function CommunityDetailScreen() {
                 )}
               </View>
               {(item.sender_id === user?.id || item.user.name === user?.name || String(item.id).startsWith('d')) && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   onPress={() => handleDeletePost(item.id)}
                 >
@@ -1155,7 +1178,7 @@ export default function CommunityDetailScreen() {
               )}
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => handleOpenCommentModal(item)}
               activeOpacity={0.8}
             >
@@ -1168,41 +1191,41 @@ export default function CommunityDetailScreen() {
                 <Text style={styles.sevaInfoText}>{item.sevaDetails}</Text>
               </View>
             ) : null}
-            
+
             {item.image && (
-              <Image 
-                source={typeof item.image === 'string' ? { uri: item.image } : item.image} 
-                style={styles.postMediaImage} 
-                resizeMode="cover" 
+              <Image
+                source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                style={styles.postMediaImage}
+                resizeMode="cover"
               />
             )}
 
             <View style={styles.postActionRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.postActionBtn}
                 onPress={() => handleOpenCommentModal(item)}
               >
                 <Ionicons name="chatbubble-outline" size={18} color="#536471" />
                 <Text style={styles.postActionCount}>{item.comments > 0 ? item.comments : ''}</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.postActionBtn}
                 onPress={() => handleRepost(item.id)}
               >
                 <Ionicons name="repeat" size={20} color={item.isRepost ? "#00BA7C" : "#536471"} />
                 <Text style={[styles.postActionCount, item.isRepost && { color: "#00BA7C" }]}>{item.reposts > 0 ? item.reposts : ''}</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.postActionBtn}
                 onPress={() => handleLike(item.id)}
               >
                 <Ionicons name={item.liked ? "heart" : "heart-outline"} size={19} color={item.liked ? "#F91880" : "#536471"} />
                 <Text style={[styles.postActionCount, item.liked && { color: "#F91880" }]}>{item.likes > 0 ? item.likes : ''}</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.postActionBtn}
                 onPress={() => handleShare(item.id)}
               >
@@ -1234,8 +1257,8 @@ export default function CommunityDetailScreen() {
       `Are you sure you want to call ${phoneStr}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Call', 
+        {
+          text: 'Call',
           onPress: () => {
             const { Linking } = require('react-native');
             Linking.openURL(`tel:${phoneStr}`);
@@ -1254,7 +1277,7 @@ export default function CommunityDetailScreen() {
     const cleanPhone = phoneStr.replace(/[^0-9+]/g, '');
     const message = `Jai Jinendra! I saw your post "${title || 'Help Needed'}" on Brahmand. Let me know how I can help.`;
     const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
-    
+
     const { Linking } = require('react-native');
     Linking.canOpenURL(url).then((supported: boolean) => {
       if (supported) {
@@ -1279,7 +1302,7 @@ export default function CommunityDetailScreen() {
             <View style={styles.sevaPremiumUserInfo}>
               <View style={styles.sevaPremiumNameRow}>
                 <Text style={styles.sevaPremiumUserName}>{item.user?.name || item.user_name}</Text>
-                {item.user?.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={16} color="#007AFF" style={{marginLeft: 4}} />}
+                {item.user?.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={16} color="#007AFF" style={{ marginLeft: 4 }} />}
               </View>
               <Text style={styles.sevaPremiumTime}>{item.timestamp || getTimeAgo(item.created_at)}</Text>
             </View>
@@ -1292,12 +1315,12 @@ export default function CommunityDetailScreen() {
 
         <View style={styles.sevaPremiumContent}>
           <Text selectable={true} style={styles.sevaPremiumText}>{item.content || item.description}</Text>
-          
+
           {item.image && (
-            <Image 
-              source={typeof item.image === 'string' ? { uri: item.image } : item.image} 
-              style={styles.sevaPremiumImage} 
-              resizeMode="cover" 
+            <Image
+              source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+              style={styles.sevaPremiumImage}
+              resizeMode="cover"
             />
           )}
 
@@ -1328,16 +1351,16 @@ export default function CommunityDetailScreen() {
 
         <View style={styles.eventActionRow}>
           {/* Call button */}
-          <TouchableOpacity 
-            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]} 
+          <TouchableOpacity
+            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
             onPress={() => handleCallPress(phone)}
           >
             <Ionicons name="call" size={18} color="#16A34A" />
           </TouchableOpacity>
 
           {/* WhatsApp button */}
-          <TouchableOpacity 
-            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]} 
+          <TouchableOpacity
+            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
             onPress={() => handleWhatsAppPress(phone, item.title || item.content || item.description)}
           >
             <FontAwesome5 name="whatsapp" size={18} color="#059669" />
@@ -1397,19 +1420,19 @@ export default function CommunityDetailScreen() {
           </View>
           {item.image_url && <Image source={{ uri: item.image_url }} style={styles.eventImage} />}
         </View>
-        
+
         <View style={styles.eventActionRow}>
           {/* Call button */}
-          <TouchableOpacity 
-            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]} 
+          <TouchableOpacity
+            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
             onPress={() => handleCallPress(phone)}
           >
             <Ionicons name="call" size={18} color="#16A34A" />
           </TouchableOpacity>
 
           {/* WhatsApp button */}
-          <TouchableOpacity 
-            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]} 
+          <TouchableOpacity
+            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
             onPress={() => handleWhatsAppPress(phone, item.title)}
           >
             <FontAwesome5 name="whatsapp" size={18} color="#059669" />
@@ -1490,12 +1513,12 @@ export default function CommunityDetailScreen() {
             <Text style={styles.attendBtnText}>I Will Attend</Text>
           </TouchableOpacity>
           <View style={styles.festActionRow}>
-             <TouchableOpacity style={styles.festMiniBtn}>
-               <Ionicons name="bookmark-outline" size={18} color="#536471" />
-             </TouchableOpacity>
-             <TouchableOpacity style={styles.festMiniBtn}>
-               <Ionicons name="share-social-outline" size={18} color="#536471" />
-             </TouchableOpacity>
+            <TouchableOpacity style={styles.festMiniBtn}>
+              <Ionicons name="bookmark-outline" size={18} color="#536471" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.festMiniBtn}>
+              <Ionicons name="share-social-outline" size={18} color="#536471" />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -1562,7 +1585,7 @@ export default function CommunityDetailScreen() {
           }}>
             <Ionicons name={iconDetails.name as any} size={24} color={iconDetails.color} />
           </View>
-          
+
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <Text style={{ fontSize: 16, fontFamily: FONTS.bold, color: '#111', flex: 1, marginRight: 8, lineHeight: 22 }} numberOfLines={2}>
@@ -1598,16 +1621,16 @@ export default function CommunityDetailScreen() {
 
         <View style={styles.eventActionRow}>
           {/* Call button */}
-          <TouchableOpacity 
-            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]} 
+          <TouchableOpacity
+            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
             onPress={() => handleCallPress(phone)}
           >
             <Ionicons name="call" size={18} color="#16A34A" />
           </TouchableOpacity>
 
           {/* WhatsApp button */}
-          <TouchableOpacity 
-            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]} 
+          <TouchableOpacity
+            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
             onPress={() => handleWhatsAppPress(phone, item.title || item.content)}
           >
             <FontAwesome5 name="whatsapp" size={18} color="#059669" />
@@ -1646,12 +1669,12 @@ export default function CommunityDetailScreen() {
 
   const getTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Just now';
-    const date = new Date(dateString);
+    const date = parseUTCDate(dateString);
     if (Number.isNaN(date.getTime())) return 'Just now';
-    
+
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (diffInSeconds < 0) return 'Just now';
     if (diffInSeconds < 60) return 'Just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
@@ -1682,8 +1705,8 @@ export default function CommunityDetailScreen() {
       'Are you sure you want to mark this request as fulfilled?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Fulfill', 
+        {
+          text: 'Fulfill',
           style: 'default',
           onPress: async () => {
             try {
@@ -1704,7 +1727,7 @@ export default function CommunityDetailScreen() {
     try {
       const deepLink = `sanatanlok://community-request/list?requestId=${item.id}`;
       const typeLabel = (item.request_type || 'Help').toUpperCase();
-      
+
       await Share.share({
         title: item.title,
         message: `📢 *Brahmand Community Request*\n\n[${typeLabel}]\n*${item.title}*\n📍 Location: ${item.location || 'Not specified'}\n⚠️ Urgency: ${(item.urgency_level || 'Normal').toUpperCase()}\n\n💬 Description:\n"${item.description || 'See details in app'}"\n\n📞 Contact number: ${item.contact_number || 'Available in app'}\n\nTap the link below to open in Brahmand App and offer help:\n${deepLink}`,
@@ -1758,7 +1781,7 @@ export default function CommunityDetailScreen() {
       }
       return;
     }
-    
+
     const options: any[] = [
       {
         text: 'Send Message (Chat)',
@@ -1933,7 +1956,7 @@ export default function CommunityDetailScreen() {
     };
 
     setDiscussionPosts(prev => [newRepost, ...prev]);
-    
+
     // Also update the repost count on the original post
     setDiscussionPosts(prev => prev.map(post => {
       if (post.id === postId) {
@@ -1968,14 +1991,14 @@ export default function CommunityDetailScreen() {
           useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
           return updated;
         });
-        
+
         try {
           const { deletePost } = require('../../src/services/api');
           deletePost(postId).catch((e: any) => console.log('API delete err:', e));
         } catch (error) {
           console.log('[Community] Post delete API error:', error);
         }
-        
+
         alert('Post has been deleted successfully!');
       }
       return;
@@ -1986,8 +2009,8 @@ export default function CommunityDetailScreen() {
       'Are you sure you want to delete this post from the community?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
@@ -1996,14 +2019,14 @@ export default function CommunityDetailScreen() {
               useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
               return updated;
             });
-            
+
             try {
               const { deletePost } = require('../../src/services/api');
               await deletePost(postId);
             } catch (error) {
-               console.log('[Community] Post delete API error (safe to ignore for local/mock posts):', error);
+              console.log('[Community] Post delete API error (safe to ignore for local/mock posts):', error);
             }
-            
+
             Alert.alert('Success', 'Post has been deleted successfully!');
           }
         }
@@ -2011,17 +2034,64 @@ export default function CommunityDetailScreen() {
     );
   };
 
-  const handleCreatePost = async () => {
+  const handlePostButtonPress = () => {
+    if (!newMessage.trim() && !selectedImage) return;
+    // Show category selector bottom sheet instead of posting directly
+    setShowCategorySelector(true);
+  };
+
+  const handleCategorySelectedAndPost = async (selectedCategory: string) => {
+    setShowCategorySelector(false);
+    setPostCategory(selectedCategory);
+
+    // If user selected Events or Requests, check KYC
+    if ((selectedCategory === 'Events' || selectedCategory === 'Requests') && !isKycVerified) {
+      // Need KYC verification for Events and Requests
+      let vendorId = myVendor?.id || null;
+      if (!vendorId) {
+        await fetchMyVendor();
+        vendorId = useVendorStore.getState().myVendor?.id || null;
+      }
+      setKycModalVendorId(vendorId || '');
+      setPendingPostAfterKyc(true);
+      setShowKycModal(true);
+      return;
+    }
+
+    // Proceed to create the post
+    await executeCreatePost(selectedCategory);
+  };
+
+  const handleKycSuccess = async () => {
+    setShowKycModal(false);
+    try {
+      const response = await getKYCStatus();
+      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      updateUser({
+        kyc_status: serverStatus,
+        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+      } as any);
+    } catch (error) {
+      console.warn('Failed to refresh KYC status:', error);
+    }
+
+    if (pendingPostAfterKyc) {
+      setPendingPostAfterKyc(false);
+      await executeCreatePost(postCategory || 'Events');
+    }
+  };
+
+  const executeCreatePost = async (categoryOverride?: string) => {
     if (!newMessage.trim() && !selectedImage) return;
 
     // Use activeTab as default category (but map 'Others' or empty to 'Feed')
-    const finalCategory = (postCategory === 'Others' || !postCategory) ? 'Feed' : postCategory;
+    const finalCategory = (categoryOverride === 'Others' || !categoryOverride) ? 'Feed' : categoryOverride;
 
     // Split text into chunks of max 250 characters
     const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
-    
+
     if (textChunks.length === 0 && selectedImage) {
-      textChunks.push('');
+      textChunks.push(' ');
     }
 
     const parentPostId = `post-${Date.now()}`;
@@ -2037,7 +2107,7 @@ export default function CommunityDetailScreen() {
       },
       content: chunk,
       image: index === 0 ? (selectedImage || undefined) : undefined, // Image only on parent
-      timestamp: 'Just now',
+      timestamp: new Date().toISOString(),
       likes: 0,
       comments: 0,
       shares: 0,
@@ -2067,7 +2137,7 @@ export default function CommunityDetailScreen() {
     (async () => {
       let uploadedUrl: string | undefined = undefined;
       const localImageToUpload = selectedImage;
-      
+
       if (localImageToUpload) {
         try {
           const { uploadChatMedia } = require('../../src/services/api');
@@ -2083,19 +2153,23 @@ export default function CommunityDetailScreen() {
         }
       }
 
-      const currentSubgroup = community?.type === 'state' 
-        ? 'state' 
+      const currentSubgroup = community?.type === 'state'
+        ? 'state'
         : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
 
       for (let i = 0; i < textChunks.length; i++) {
         const chunk = textChunks[i];
         if (chunk.trim() || (i === 0 && uploadedUrl)) {
           try {
-            const { sendCommunityMessage } = require('../../src/services/api');
             await sendCommunityMessage(id as string, currentSubgroup, chunk, 'text', finalCategory, i === 0 ? uploadedUrl : undefined);
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
           } catch (error) {
             console.error('Failed to send real message chunk:', error);
+            const errMsg = parseApiError(error);
+            Alert.alert('Post Failed', errMsg);
+            // Remove the optimistic post on failure
+            setCommunityPosts(prev => prev.filter(p => !newPosts.some(np => np.id === p.id)));
+            break;
           }
         }
       }
@@ -2106,7 +2180,7 @@ export default function CommunityDetailScreen() {
     setContactNumber('');
     setSevaDetails('');
     setShowCreateModal(false);
-    
+
     // No longer switching tabs automatically to keep the user in their current context
     // The post will appear immediately in the Feed and its specific category
     Alert.alert('Success', textChunks.length > 1 ? 'Your thread has been shared with the community!' : 'Your post has been shared with the community!');
@@ -2116,11 +2190,11 @@ export default function CommunityDetailScreen() {
     try {
       const appLink = `sanatanlok://community/${id}?postId=${postId}`;
       const webLink = `https://brahmand.app/community/${id}?postId=${postId}`;
-      
+
       await Share.share({
         message: `Check out this community post on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
       });
-      
+
       setDiscussionPosts(prev => prev.map(post => {
         if (post.id === postId) {
           return { ...post, shares: (post.shares || 0) + 1 };
@@ -2162,10 +2236,10 @@ export default function CommunityDetailScreen() {
 
   const handleAddComment = async () => {
     if (!commentText.trim() || !showCommentModal) return;
-    
+
     const textToSend = commentText.trim();
     const targetPostId = showCommentModal.id;
-    
+
     const tempId = `comment-${Date.now()}`;
     const optimisticComment = {
       id: tempId,
@@ -2322,7 +2396,7 @@ export default function CommunityDetailScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
@@ -2424,11 +2498,16 @@ export default function CommunityDetailScreen() {
         ListFooterComponent={() => (activeTab === 'Feed' && loadingMore) ? <ActivityIndicator size="small" color="#FF3B30" style={{ padding: 20 }} /> : null}
         ListHeaderComponent={() => (
           <View>
+<<<<<<< HEAD
             
+=======
+            {renderHeader()}
+
+>>>>>>> a4ab97af45b8afb2b910b96328c6e93812c96c3d
             {(activeTab === 'Requests') && mostRecentRequest && (
               <View style={styles.recentRequestCard}>
-                <LinearGradient 
-                  colors={['#FFF5EE', '#FFFDFB']} 
+                <LinearGradient
+                  colors={['#FFF5EE', '#FFFDFB']}
                   style={styles.recentRequestGradient}
                 >
                   <View style={styles.recentRequestHeader}>
@@ -2439,7 +2518,7 @@ export default function CommunityDetailScreen() {
                       </Text>
                     </View>
                     <View style={[
-                      styles.recentRequestUrgencyBadge, 
+                      styles.recentRequestUrgencyBadge,
                       { backgroundColor: (mostRecentRequest?.urgency_level || 'normal') === 'critical' ? '#FEE2E2' : '#FEF3C7' }
                     ]}>
                       <Text style={[
@@ -2450,7 +2529,7 @@ export default function CommunityDetailScreen() {
                       </Text>
                     </View>
                   </View>
-                  
+
                   <Text style={styles.recentRequestTitle} numberOfLines={1}>
                     {mostRecentRequest?.title}
                   </Text>
@@ -2466,9 +2545,9 @@ export default function CommunityDetailScreen() {
                       </Text>
                     </View>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.recentRequestViewBtn}
-                      onPress={() => router.push('/community-request/list')}
+                      onPress={() => router.push({ pathname: '/community-request/list', params: { community_id: id } })}
                     >
                       <Text style={styles.recentRequestViewBtnText}>View Details</Text>
                       <Ionicons name="arrow-forward" size={14} color="#FFF" />
@@ -2504,7 +2583,7 @@ export default function CommunityDetailScreen() {
       {/* Full Screen Create Post Modal */}
       <Modal visible={showCreateModal} animationType="slide" transparent={false}>
         <View style={[styles.createModalRoot, { paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 40) : 0, backgroundColor: '#FFF' }]}>
-          <KeyboardAvoidingView 
+          <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
@@ -2512,117 +2591,20 @@ export default function CommunityDetailScreen() {
               <TouchableOpacity onPress={() => setShowCreateModal(false)}>
                 <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={{ 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  backgroundColor: 'rgba(29,155,240,0.1)', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 4, 
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: 'rgba(29,155,240,0.2)'
-                }}
-                onPress={() => setShowTopCategoryDropdown(prev => !prev)}
-              >
-                <Text style={{ fontSize: 13, color: '#1D9BF0', fontWeight: 'bold' }}>{postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)}</Text>
-                <Ionicons name="chevron-down" size={12} color="#1D9BF0" style={{ marginLeft: 4 }} />
-              </TouchableOpacity>
 
-              <TouchableOpacity 
+              <Text style={{ fontSize: 15, color: '#0F1419', fontWeight: '700', fontFamily: FONTS.bold }}>Create Post</Text>
+
+              <TouchableOpacity
                 style={[
-                  styles.twitterPostBtn, 
+                  styles.twitterPostBtn,
                   (!newMessage.trim() && !selectedImage) && { opacity: 0.5 }
-                ]} 
-                onPress={handleCreatePost}
+                ]}
+                onPress={handlePostButtonPress}
                 disabled={!newMessage.trim() && !selectedImage}
               >
                 <Text style={styles.twitterPostBtnText}>Post</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Twitter-style inline popover dropdown */}
-            {showTopCategoryDropdown && (
-              <>
-                <TouchableOpacity 
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 99998,
-                  }}
-                  activeOpacity={1}
-                  onPress={() => setShowTopCategoryDropdown(false)}
-                />
-                <View style={{
-                  position: 'absolute',
-                  top: 52, // Align directly below the header row
-                  left: (SCREEN_WIDTH - 220) / 2, // Centered under the category picker pill
-                  width: 220,
-                  backgroundColor: '#FFF',
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: '#EFF3F4',
-                  zIndex: 99999,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.12,
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 4 },
-                  elevation: 8,
-                  paddingVertical: 6,
-                }}>
-                  {POST_CATEGORIES.map(cat => {
-                    const isSelected = (postCategory || (activeTab === 'Feed' ? 'Others' : activeTab)) === cat;
-                    let iconName = 'ellipse-outline';
-                    if (cat === 'Others') iconName = 'options-outline';
-                    else if (cat === 'Seva') iconName = 'heart-outline';
-                    else if (cat === 'Requests') iconName = 'alert-circle-outline';
-                    else if (cat === 'Events') iconName = 'calendar-outline';
-                    else if (cat === 'Lost & Found') iconName = 'search-outline';
-                    else if (cat === 'Festivals') iconName = 'flame-outline';
-                    else if (cat === 'Temple Updates') iconName = 'home-outline';
-
-                    return (
-                      <TouchableOpacity
-                        key={cat}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingHorizontal: 16,
-                          paddingVertical: 10,
-                          backgroundColor: isSelected ? 'rgba(29,155,240,0.06)' : '#FFF',
-                        }}
-                        onPress={() => {
-                          setPostCategory(cat);
-                          setShowTopCategoryDropdown(false);
-                        }}
-                      >
-                        <Ionicons 
-                          name={iconName as any} 
-                          size={18} 
-                          color={isSelected ? '#1D9BF0' : '#536471'} 
-                          style={{ marginRight: 12 }}
-                        />
-                        <Text style={{
-                          flex: 1,
-                          fontSize: 14,
-                          fontWeight: isSelected ? 'bold' : '600',
-                          color: isSelected ? '#1D9BF0' : '#0F1419',
-                        }}>
-                          {cat}
-                        </Text>
-                        {isSelected && (
-                          <Ionicons name="checkmark" size={16} color="#1D9BF0" />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </>
-            )}
 
             <ScrollView style={{ flex: 1, backgroundColor: '#FFF', paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
               <View style={{ flexDirection: 'row', marginTop: 15 }}>
@@ -2634,17 +2616,17 @@ export default function CommunityDetailScreen() {
                     placeholder="What's happening?"
                     placeholderTextColor="#536471"
                     multiline
-                    inputStyle={{ 
-                      fontSize: 18, 
-                      color: '#0F1419', 
-                      minHeight: 120, 
+                    inputStyle={{
+                      fontSize: 18,
+                      color: '#0F1419',
+                      minHeight: 120,
                       textAlignVertical: 'top',
                       paddingTop: 4,
                       lineHeight: 24,
                     }}
                     autoFocus
                   />
-                  
+
                   {/* Add Photo option directly beneath the input box for better accessibility */}
                   {!selectedImage ? (
                     <TouchableOpacity
@@ -2672,8 +2654,8 @@ export default function CommunityDetailScreen() {
                   ) : (
                     <View style={{ position: 'relative', marginTop: 10, borderRadius: 12, overflow: 'hidden', width: '100%', height: 250 }}>
                       <Image source={{ uri: selectedImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                      <TouchableOpacity 
-                        style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }} 
+                      <TouchableOpacity
+                        style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }}
                         onPress={() => setSelectedImage(null)}
                       >
                         <Ionicons name="close" size={16} color="#FFF" />
@@ -2686,16 +2668,16 @@ export default function CommunityDetailScreen() {
 
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
-                <Text style={styles.infoBoxText}>Your post will be visible in the selected category and in the general community discussion.</Text>
+                <Text style={styles.infoBoxText}>When you tap Post, you'll choose a category for your post. It will appear in that category and the general feed.</Text>
               </View>
 
               <View style={styles.createSection}>
-                <Text style={styles.createSectionTitle}>Contact Number <Text style={{color: '#888'}}>(Optional)</Text></Text>
+                <Text style={styles.createSectionTitle}>Contact Number <Text style={{ color: '#888' }}>(Optional)</Text></Text>
                 <View style={styles.phoneInputContainer}>
                   <TouchableOpacity style={styles.phonePrefix}>
-                     <Image source={{ uri: 'https://flagcdn.com/w40/in.png' }} style={styles.flagIcon} />
-                     <Text style={styles.prefixText}>+91</Text>
-                     <Ionicons name="chevron-down" size={14} color="#888" />
+                    <Image source={{ uri: 'https://flagcdn.com/w40/in.png' }} style={styles.flagIcon} />
+                    <Text style={styles.prefixText}>+91</Text>
+                    <Ionicons name="chevron-down" size={14} color="#888" />
                   </TouchableOpacity>
                   <TextInput
                     style={styles.phoneInput}
@@ -2709,7 +2691,7 @@ export default function CommunityDetailScreen() {
               </View>
 
               <View style={styles.createSection}>
-                <Text style={styles.createSectionTitle}>Seva Details <Text style={{color: '#888'}}>(Optional)</Text></Text>
+                <Text style={styles.createSectionTitle}>Seva Details <Text style={{ color: '#888' }}>(Optional)</Text></Text>
                 <TextInput
                   style={[styles.phoneInput, { minHeight: 100, textAlignVertical: 'top' }]}
                   placeholder="Who donated, what amount, or what service was performed"
@@ -2724,29 +2706,29 @@ export default function CommunityDetailScreen() {
               <View style={styles.createDivider} />
 
               <View style={styles.trustBox}>
-                 <View style={styles.trustIconBg}>
-                   <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
-                 </View>
-                 <View style={{ flex: 1, marginLeft: 12 }}>
-                   <Text style={styles.trustTitle}>Stay safe. Be trustworthy.</Text>
-                   <Text style={styles.trustSub}>We encourage respectful and helpful posts that uplift our community.</Text>
-                 </View>
+                <View style={styles.trustIconBg}>
+                  <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.trustTitle}>Stay safe. Be trustworthy.</Text>
+                  <Text style={styles.trustSub}>We encourage respectful and helpful posts that uplift our community.</Text>
+                </View>
               </View>
             </ScrollView>
 
             {/* Keyboard-docked toolbar with minimalist layout matching premium look */}
-            <View style={{ 
-              flexDirection: 'row', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              paddingHorizontal: 16, 
-              paddingVertical: 10, 
-              borderTopWidth: 1, 
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              borderTopWidth: 1,
               borderTopColor: '#EFF3F4',
               backgroundColor: '#FFF'
             }}>
               <View />
-              
+
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <CharacterProgressCircle textLength={newMessage.length} />
               </View>
@@ -2755,6 +2737,151 @@ export default function CommunityDetailScreen() {
         </View>
       </Modal>
 
+      {/* Category Selector Bottom Sheet — shown when Post is tapped */}
+      <Modal
+        visible={showCategorySelector}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategorySelector(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowCategorySelector(false)}
+        >
+          <View
+            style={{
+              backgroundColor: '#FFF',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingTop: 12,
+              paddingBottom: Math.max(insets.bottom, 24),
+              shadowColor: '#000',
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              shadowOffset: { width: 0, height: -4 },
+              elevation: 12,
+            }}
+            onStartShouldSetResponder={() => true}
+          >
+            {/* Handle bar */}
+            <View style={{ alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#DDD' }} />
+            </View>
+
+            <Text style={{
+              fontSize: 17,
+              fontWeight: '700',
+              color: '#0F1419',
+              textAlign: 'center',
+              marginBottom: 16,
+              fontFamily: FONTS.bold,
+            }}>
+              Choose a Category
+            </Text>
+
+            <ScrollView
+              style={{ maxHeight: 400, paddingHorizontal: 16 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {POST_CATEGORIES.map(cat => {
+                let iconName: any = 'ellipse-outline';
+                let iconColor = '#536471';
+                let desc = '';
+                if (cat === 'Others') { iconName = 'chatbubble-ellipses-outline'; iconColor = '#1D9BF0'; desc = 'General community discussion'; }
+                else if (cat === 'Seva') { iconName = 'heart-outline'; iconColor = '#E91E63'; desc = 'Seva, donations & volunteer work'; }
+                else if (cat === 'Requests') { iconName = 'alert-circle-outline'; iconColor = '#FF6B00'; desc = 'Help requests, blood needs, etc.'; }
+                else if (cat === 'Events') { iconName = 'calendar-outline'; iconColor = '#00C853'; desc = 'Community events & gatherings'; }
+                else if (cat === 'Lost & Found') { iconName = 'search-outline'; iconColor = '#9C27B0'; desc = 'Lost or found items'; }
+                else if (cat === 'Festivals') { iconName = 'flame-outline'; iconColor = '#FF9800'; desc = 'Festival celebrations & updates'; }
+                else if (cat === 'Temple Updates') { iconName = 'home-outline'; iconColor = '#795548'; desc = 'Temple news & renovations'; }
+
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 14,
+                      paddingHorizontal: 12,
+                      borderRadius: 16,
+                      marginBottom: 6,
+                      backgroundColor: '#FAFAFA',
+                      borderWidth: 1,
+                      borderColor: '#F0F0F0',
+                    }}
+                    onPress={() => handleCategorySelectedAndPost(cat)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      backgroundColor: `${iconColor}15`,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 14,
+                    }}>
+                      <Ionicons name={iconName} size={22} color={iconColor} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{
+                          fontSize: 15,
+                          fontWeight: '700',
+                          color: '#0F1419',
+                        }}>
+                          {cat}
+                        </Text>
+                        {(cat === 'Events' || cat === 'Requests') && !isKycVerified && (
+                          <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#FFF3E0',
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 8,
+                            marginLeft: 8,
+                          }}>
+                            <Ionicons name="shield-checkmark" size={12} color="#FF6B00" />
+                            <Text style={{ fontSize: 10, color: '#FF6B00', fontWeight: '700', marginLeft: 3 }}>KYC Required</Text>
+                          </View>
+                        )}
+                      </View>
+                      {desc ? (
+                        <Text style={{
+                          fontSize: 12,
+                          color: '#536471',
+                          marginTop: 2,
+                        }}>
+                          {desc}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* KYC Modal for Events verification */}
+      <VendorKYCModal
+        visible={showKycModal}
+        vendorId={kycModalVendorId || ''}
+        allowUserKycFallback
+        onClose={() => {
+          setShowKycModal(false);
+          setPendingPostAfterKyc(false);
+        }}
+        onKycUpdated={handleKycSuccess}
+      />
 
       {/* Comment Modal */}
       <Modal
@@ -2763,7 +2890,7 @@ export default function CommunityDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowCommentModal(null)}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
           style={styles.modalOverlay}
@@ -2775,7 +2902,7 @@ export default function CommunityDetailScreen() {
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
               {activeComments.length > 0 ? (
                 activeComments.map((comment, index) => (
@@ -3016,20 +3143,20 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 8 },
   notifBadge: { position: 'absolute', top: 5, right: 5, backgroundColor: '#FF3B30', borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FFF' },
   notifBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
-  
+
   communityInfo: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   communityIconWrapper: { padding: 4, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 18 },
   communityIcon: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center' },
   infoTextWrapper: { marginLeft: 15 },
   communityTitle: { fontSize: 24, fontFamily: 'Inter_900Black', color: '#111', fontWeight: '900' },
   communityStats: { fontSize: 13, color: '#444', marginTop: 4, fontWeight: '600' },
-  
+
   tagline: { fontSize: 15, color: '#333', marginTop: 15, fontWeight: '600', lineHeight: 22 },
-  
+
   floatingActions: { position: 'absolute', right: 20, bottom: 40, gap: 12 },
   fabBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   fabBtnMore: { backgroundColor: 'rgba(61,40,29,0.9)' },
-  
+
   tabsContainer: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,107,0,0.15)' },
   tabsContent: { paddingHorizontal: 20, paddingVertical: 15, gap: 25 },
   tabItem: { paddingBottom: 5 },
@@ -3044,7 +3171,7 @@ const styles = StyleSheet.create({
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
   sectionTitle: { fontSize: 17, fontFamily: 'Inter_700Bold', color: '#111', fontWeight: '700' },
   viewAll: { fontSize: 13, color: '#FF3B30', fontWeight: '700' },
-  
+
   eventsList: { paddingLeft: 20, paddingRight: 10 },
   eventCard: { width: SCREEN_WIDTH * 0.8, backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginRight: 15, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F0F0F0' },
   eventInfoRow: { flexDirection: 'row', alignItems: 'center' },
@@ -3058,16 +3185,16 @@ const styles = StyleSheet.create({
 
   goingText2: { fontSize: 12, color: '#888' },
   eventImage: { width: 60, height: 100, borderRadius: 12 },
-  
+
   eventActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
   actionIconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
   interestedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   interestedText: { fontSize: 13, color: '#FF3B30', fontWeight: '700' },
-  
+
   verifiedMessagesBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   verifiedMessagesText: { fontSize: 12, color: '#444', fontWeight: '600' },
   viewAllInline: { fontSize: 12, color: '#FF3B30', fontWeight: '700', marginLeft: 8 },
-  
+
   discussionCard: { backgroundColor: '#FFF', marginHorizontal: 20, borderRadius: 24, padding: 16, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, borderWidth: 1, borderColor: '#F5F5F5' },
   postHeader: { flexDirection: 'row', alignItems: 'center' },
   postUserMeta: { flex: 1, marginLeft: 12 },
@@ -3076,21 +3203,21 @@ const styles = StyleSheet.create({
   postSubRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   discussionTimestamp: { fontSize: 12, color: '#888' },
   postLabel: { fontSize: 12, color: '#444', fontWeight: '600' },
-  
+
   postBody: { marginTop: 15, paddingHorizontal: 8 },
   quoteIcon: { marginBottom: -10, opacity: 0.8 },
   postContent: { fontSize: 15, color: '#333', lineHeight: 24, fontWeight: '500' },
-  
+
   postActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
   postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   postActionText: { fontSize: 13, color: '#666', fontWeight: '600' },
-  
+
   footer: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', borderRadius: 28, paddingHorizontal: 12, paddingVertical: 8 },
   input: { flex: 1, marginHorizontal: 12, fontSize: 14, color: '#111' },
   footerIcon: { padding: 6 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', marginLeft: 4 },
-  
+
   stickyTopBar: {
     position: 'absolute',
     top: 0,
@@ -3110,7 +3237,7 @@ const styles = StyleSheet.create({
   headerCommunityInfo: { flexDirection: 'row', alignItems: 'center', marginLeft: 4, gap: 8, flex: 1 },
   headerCommunityName: { fontSize: 16, fontWeight: '700', color: '#000', flex: 1 },
   headerCommunityIconBg: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center' },
-  
+
   requestInterestedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   urgencyLabel: { fontSize: 11, fontWeight: '700', color: '#888', backgroundColor: '#F5F5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   urgencyLabelText: { fontSize: 11, fontWeight: '700', color: '#888' },
@@ -3193,15 +3320,15 @@ const styles = StyleSheet.create({
   createFestBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
   createModalRoot: { flex: 1, backgroundColor: '#FFF' },
-  createModalHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingHorizontal: 20, 
+  createModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     paddingTop: 25,
     paddingBottom: 15,
-    borderBottomWidth: 1, 
-    borderBottomColor: '#F0F0F0' 
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0'
   },
   createModalTitle: { fontSize: 18, fontWeight: '800', color: '#111' },
   postBtnText: { color: '#FF3B30', fontSize: 16, fontWeight: '800' },

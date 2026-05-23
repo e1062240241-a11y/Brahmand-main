@@ -378,7 +378,7 @@ export default function LiveJaapRoomView() {
 
       const audio = new Audio(url);
       audio.loop = true;
-      audio.volume = isMuted ? 0 : 0.02;
+      audio.volume = isMuted ? 0 : 0.9;
       audioRef.current = audio;
       
       const handleTimeUpdate = () => {

@@ -205,16 +205,31 @@ function registerForPushNotifications() {
                             importance: (_g = (_f = Notifications.AndroidImportance) === null || _f === void 0 ? void 0 : _f.MAX) !== null && _g !== void 0 ? _g : 5,
                             vibrationPattern: [0, 250, 250, 250],
                             lightColor: '#FF6B35',
+                            sound: 'bell.mp3',
                         })];
                 case 14:
                     _k.sent();
-                    return [4 /*yield*/, Notifications.setNotificationChannelAsync('messages', {
-                            name: 'Messages',
-                            description: 'Private and community message notifications',
-                            importance: (_j = (_h = Notifications.AndroidImportance) === null || _h === void 0 ? void 0 : _h.HIGH) !== null && _j !== void 0 ? _j : 4,
-                            vibrationPattern: [0, 250, 250, 250],
-                            lightColor: '#FF6B35',
-                        })];
+                    return [4 /*yield*/, Promise.all([
+                            Notifications.setNotificationChannelAsync('messages', {
+                                name: 'Messages',
+                                description: 'Private and community message notifications',
+                                importance: (_j = (_h = Notifications.AndroidImportance) === null || _h === void 0 ? void 0 : _h.HIGH) !== null && _j !== void 0 ? _j : 4,
+                                vibrationPattern: [0, 250, 250, 250],
+                                lightColor: '#FF6B35',
+                                sound: 'bell.mp3',
+                            }),
+                            Notifications.setNotificationChannelAsync('sos_alerts', {
+                                name: 'Emergency SOS Alerts',
+                                description: 'High-priority notifications for emergency SOS requests nearby',
+                                importance: Notifications.AndroidImportance.MAX || 5,
+                                vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
+                                lightColor: '#FF0000',
+                                bypassDnd: true,
+                                showBadge: true,
+                                enableVibrate: true,
+                                sound: 'soundreality-mayday-166011.mp3',
+                            })
+                        ])];
                 case 15:
                     _k.sent();
                     return [3 /*break*/, 17];
@@ -346,7 +361,7 @@ function getLastNotificationResponse() {
  */
 function scheduleLocalNotification(title, body, data) {
     return __awaiter(this, void 0, void 0, function () {
-        var Notifications;
+        var Notifications, notificationType, isSos, isMsg;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, getNotificationsModule()];
@@ -354,13 +369,19 @@ function scheduleLocalNotification(title, body, data) {
                     Notifications = _a.sent();
                     if (!Notifications)
                         return [2 /*return*/, null];
+                    notificationType = data === null || data === void 0 ? void 0 : data.type;
+                    isSos = notificationType === null || notificationType === void 0 ? void 0 : notificationType.startsWith('sos');
+                    isMsg = notificationType === 'message';
                     return [4 /*yield*/, Notifications.scheduleNotificationAsync({
                             content: {
                                 title: title,
                                 body: body,
                                 data: data || {},
+                                sound: isSos ? 'soundreality-mayday-166011.mp3' : 'bell.mp3',
                             },
-                            trigger: null, // Send immediately
+                            trigger: {
+                                channelId: isSos ? 'sos_alerts' : (isMsg ? 'messages' : 'default'),
+                            },
                         })];
                 case 2:
                     _a.sent();

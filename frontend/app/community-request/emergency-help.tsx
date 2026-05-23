@@ -14,7 +14,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
@@ -39,6 +39,7 @@ const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
 
 export default function EmergencyHelpScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ community_id?: string }>();
   
   // Form State
   const [emergencyType, setEmergencyType] = useState('');
@@ -116,6 +117,7 @@ export default function EmergencyHelpScreen() {
     setIsSubmitting(true);
     try {
       await createCommunityRequest({
+        community_id: params.community_id,
         request_type: 'help',
         title: `EMERGENCY: ${emergencyType}`,
         description: description,

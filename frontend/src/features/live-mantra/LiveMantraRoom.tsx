@@ -50,9 +50,9 @@ export const LiveMantraRoom = () => {
   useEffect(() => {
     if (bgPlayer) {
       bgPlayer.loop = true;
-      bgPlayer.volume = isMuted ? 0 : 0.4;
+      bgPlayer.volume = isMuted ? 0 : 0.8;
       try {
-        if (!bgPlayer.isPlaying) {
+        if (!bgPlayer.playing) {
           bgPlayer.play();
           syncStartTimeRef.current = Date.now();
         }
@@ -64,13 +64,13 @@ export const LiveMantraRoom = () => {
 
   useEffect(() => {
     if (bgPlayer) {
-      bgPlayer.volume = isMuted ? 0 : 0.4;
+      bgPlayer.volume = isMuted ? 0 : 0.8;
     }
   }, [isMuted]);
 
   useEffect(() => {
-    if (bgPlayer && playerStatus?.isPlaying && playerStatus.duration && playerStatus.duration > 0) {
-      const positionMs = playerStatus.position * 1000;
+    if (bgPlayer && playerStatus?.playing && playerStatus.duration && playerStatus.duration > 0) {
+      const positionMs = playerStatus.currentTime * 1000;
       const positionInLoop = positionMs % TOTAL_MANTRA_DURATION;
       
       let newIndex = 0;
@@ -85,7 +85,7 @@ export const LiveMantraRoom = () => {
         setCurrentIndex(newIndex);
       }
     }
-  }, [playerStatus?.position, playerStatus?.duration, currentIndex, isHolding]);
+  }, [playerStatus?.currentTime, playerStatus?.duration, currentIndex, isHolding]);
 
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
@@ -158,7 +158,7 @@ export const LiveMantraRoom = () => {
       return () => clearTimeout(timer);
     }
 
-    if (playerStatus?.isPlaying && playerStatus.duration) {
+    if (playerStatus?.playing && playerStatus.duration) {
       return;
     }
 
@@ -173,7 +173,7 @@ export const LiveMantraRoom = () => {
       }
     }, wordDuration);
     return () => clearTimeout(timer);
-  }, [currentIndex, isHolding, playerStatus?.isPlaying, playerStatus?.duration]);
+  }, [currentIndex, isHolding, playerStatus?.playing, playerStatus?.duration]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -286,3 +286,5 @@ const styles = StyleSheet.create({
   controlLabel: { color: '#FFF', fontSize: 13, fontWeight: '600' },
   closeButton: { position: 'absolute', top: 30, left: 20, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', zIndex: 3 },
 });
+
+export default LiveMantraRoom;

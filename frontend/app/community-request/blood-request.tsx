@@ -15,7 +15,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { searchHospitals, createCommunityRequest, parseApiError, reverseGeocode } from '../../src/services/api';
@@ -28,6 +28,7 @@ const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
 
 export default function BloodRequestScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ community_id?: string }>();
   const insets = useSafeAreaInsets();
 
   // Form State
@@ -126,7 +127,7 @@ export default function BloodRequestScreen() {
 
     router.push({
       pathname: '/community-request/blood/review',
-      params: {
+      params: { community_id: params.community_id,
         bloodGroup: bloodGroup,
         hospitalName: location, // Using location as hospital name or vice versa
         location: location,

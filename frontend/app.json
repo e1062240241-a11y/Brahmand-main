@@ -134,6 +134,17 @@
         {
           "googleMapsApiKey": "GOOGLE_MAPS_API_KEY_PLACEHOLDER"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#FF6B00",
+          "sounds": [
+            "./assets/notifysound/bell.mp3",
+            "./assets/notifysound/soundreality-mayday-166011.mp3"
+          ]
+        }
       ]
     ],
     "experiments": {
