@@ -144,7 +144,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
         bypassDnd: true,
         showBadge: true,
         enableVibrate: true,
-        sound: 'soundreality-mayday-166011.mp3',
+        sound: 'soundreality_mayday_166011.mp3',
       });
     } catch (e) {
       console.warn('[Push] Failed to configure Android channels', e);
@@ -238,7 +238,7 @@ export async function scheduleLocalNotification(
       title,
       body,
       data: data || {},
-      sound: isSos ? 'soundreality-mayday-166011.mp3' : 'bell.mp3',
+      sound: isSos ? 'soundreality_mayday_166011.mp3' : 'bell.mp3',
     },
     trigger: {
       channelId: isSos ? 'sos_alerts' : (isMsg ? 'messages' : 'default'),

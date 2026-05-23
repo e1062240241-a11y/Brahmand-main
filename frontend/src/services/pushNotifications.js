@@ -227,7 +227,7 @@ function registerForPushNotifications() {
                                 bypassDnd: true,
                                 showBadge: true,
                                 enableVibrate: true,
-                                sound: 'soundreality-mayday-166011.mp3',
+                                sound: 'soundreality_mayday_166011.mp3',
                             })
                         ])];
                 case 15:
@@ -377,7 +377,7 @@ function scheduleLocalNotification(title, body, data) {
                                 title: title,
                                 body: body,
                                 data: data || {},
-                                sound: isSos ? 'soundreality-mayday-166011.mp3' : 'bell.mp3',
+                                sound: isSos ? 'soundreality_mayday_166011.mp3' : 'bell.mp3',
                             },
                             trigger: {
                                 channelId: isSos ? 'sos_alerts' : (isMsg ? 'messages' : 'default'),
