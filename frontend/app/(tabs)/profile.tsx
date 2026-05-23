@@ -137,10 +137,10 @@ export default function ProfileScreen() {
     },
   ];
 
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(user || null);
+  const [loading, setLoading] = useState(!user);
   const [posts, setPosts] = useState<any[]>([]);
-  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
@@ -470,6 +470,7 @@ export default function ProfileScreen() {
 
       if (reset) {
         setPosts(items);
+        AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify(items)).catch(() => {});
       } else {
         setPosts(prev => [...prev, ...items]);
       }
@@ -493,8 +494,22 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
-    fetchProfile(true);
-    loadPosts(true);
+    if (!userId) return;
+    // Attempt to load cached posts immediately
+    AsyncStorage.getItem(`profile_posts_${userId}`).then(cached => {
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.length > 0) {
+          setPosts(parsed);
+          setPostsLoading(false);
+        }
+      }
+      fetchProfile(!user); // Silently fetch if we already have user data
+      loadPosts(true); // Will update in background if we had cache
+    }).catch(() => {
+      fetchProfile(true);
+      loadPosts(true);
+    });
   }, [userId]);
 
   const onRefresh = useCallback(() => {

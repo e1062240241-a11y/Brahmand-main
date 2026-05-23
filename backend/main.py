@@ -4492,7 +4492,7 @@ async def send_community_message(
 
 
 @api_router.get("/messages/community/{community_id}/{subgroup_type}")
-async def get_community_messages(community_id: str, subgroup_type: str, limit: int = 50, token_data: dict = Depends(verify_token)):
+async def get_community_messages(community_id: str, subgroup_type: str, limit: int = 25, before_timestamp: Optional[str] = None, token_data: dict = Depends(verify_token)):
     db = await get_db()
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
@@ -4505,7 +4505,15 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
         raise HTTPException(status_code=403, detail="Not authorized to view this chat")
         
     chat_id = f"community_{community_id}_{subgroup_type}"
-    return await db.get_chat_messages(chat_id, limit)
+    before_dt = None
+    if before_timestamp:
+        try:
+            # Handle standard ISO formats
+            before_dt = datetime.fromisoformat(before_timestamp.replace('Z', '+00:00'))
+        except ValueError:
+            pass
+            
+    return await db.get_chat_messages(chat_id, limit, before_timestamp=before_dt)
 
 
 @api_router.post("/messages/community/{community_id}/{subgroup_type}/{message_id}/like")

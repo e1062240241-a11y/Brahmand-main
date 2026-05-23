@@ -864,6 +864,7 @@ export default function CommunityDetailScreen() {
         content: msg.content,
         image: msg.media_url || msg.mediaUrl || msg.image,
         timestamp: msg.created_at || 'Just now',
+        raw_timestamp: msg.created_at,
         likes: msg.likes_count || 0,
         comments: msg.comments_count || 0,
         shares: 0,
@@ -954,22 +955,25 @@ export default function CommunityDetailScreen() {
         const uniqueStateMsgs = filteredStateMsgs.filter((p: any) => !seenIds.has(p.id));
         const uniqueNationalMsgs = filteredNationalMsgs.filter((p: any) => !seenIds.has(p.id));
 
-        finalPosts = [
+        const newPosts = [
           ...uniqueNationalMsgs,
           ...uniqueStateMsgs,
           ...localPosts,
           ...uniqueCityMsgs
         ];
-        return finalPosts;
-      });
 
-      useChatStore.getState().setCommunityScreenCache(cacheKey, {
-        community: nextCommunity,
-        requests: nextRequests,
-        events: nextEvents,
-        allFestivals: nextFestivals,
-        communityPosts: finalPosts,
-        lastFetched: Date.now()
+        // CRITICAL FIX: The cache must be updated with the newly computed array.
+        // Doing this outside setCommunityPosts was caching an empty array due to async React state!
+        useChatStore.getState().setCommunityScreenCache(cacheKey, {
+          community: nextCommunity,
+          requests: nextRequests,
+          events: nextEvents,
+          allFestivals: nextFestivals,
+          communityPosts: newPosts,
+          lastFetched: Date.now()
+        });
+
+        return newPosts;
       });
     } catch (error) {
       console.error('Error fetching community data:', error);
@@ -986,9 +990,22 @@ export default function CommunityDetailScreen() {
       const currentSubgroup = community?.type === 'state'
         ? 'state'
         : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
-      const cityPostsCount = communityPosts.filter((p: any) => !p.isStateAnnouncement && !p.isNationalAnnouncement && !String(p.id).startsWith('post-')).length;
-      const msgResponse = await getCommunityMessages(id as string, currentSubgroup, cityPostsCount + 20);
-      const newMsgs = (msgResponse.data || []).slice(cityPostsCount).map((msg: any) => ({
+      const cityPosts = communityPosts.filter((p: any) => !p.isStateAnnouncement && !p.isNationalAnnouncement && !String(p.id).startsWith('post-'));
+      if (cityPosts.length === 0) {
+        setHasMorePosts(false);
+        setLoadingMore(false);
+        return;
+      }
+      
+      const oldestPost = cityPosts[cityPosts.length - 1];
+      let beforeTimestamp = oldestPost.raw_timestamp || oldestPost.timestamp;
+      // In case it's "Just now" or similar, we might have issues, but let's assume raw timestamp exists or try to use current time.
+      if (beforeTimestamp === 'Just now' || beforeTimestamp === 'now') {
+        beforeTimestamp = new Date().toISOString();
+      }
+
+      const msgResponse = await getCommunityMessages(id as string, currentSubgroup, 25, beforeTimestamp);
+      const newMsgs = (msgResponse.data || []).map((msg: any) => ({
         id: msg.id || Math.random().toString(),
         user: {
           name: msg.sender_name || 'Anonymous',
@@ -999,6 +1016,7 @@ export default function CommunityDetailScreen() {
         content: msg.content,
         image: msg.media_url || msg.mediaUrl || msg.image,
         timestamp: msg.created_at || 'Just now',
+        raw_timestamp: msg.created_at, // keep original for pagination
         likes: msg.likes_count || 0,
         comments: msg.comments_count || 0,
         shares: 0,
@@ -1013,7 +1031,21 @@ export default function CommunityDetailScreen() {
       }));
 
       if (newMsgs.length > 0) {
-        setCommunityPosts(prev => [...prev, ...newMsgs]);
+        setCommunityPosts(prev => {
+          const updatedPosts = [...prev, ...newMsgs];
+          
+          // Update cache with the newly paginated posts so they persist when returning
+          const currentCache = useChatStore.getState().communityScreenCaches[cacheKey];
+          if (currentCache) {
+            useChatStore.getState().setCommunityScreenCache(cacheKey, {
+              ...currentCache,
+              communityPosts: updatedPosts,
+              lastFetched: Date.now()
+            });
+          }
+          
+          return updatedPosts;
+        });
       } else {
         setHasMorePosts(false);
       }
