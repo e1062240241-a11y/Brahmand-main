@@ -1511,7 +1511,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 10,
     marginRight: 12,
-    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
