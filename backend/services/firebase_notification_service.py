@@ -66,6 +66,7 @@ class FirebaseNotificationService:
         
         notification_type = data.get('type') if data else None
         is_sos = bool(notification_type and notification_type.startswith('sos'))
+        is_msg = bool(notification_type and notification_type == 'message')
         
         payloads = []
         for token in tokens:
@@ -73,9 +74,9 @@ class FirebaseNotificationService:
                 "to": token,
                 "title": title,
                 "body": body,
-                "sound": "default",
+                "sound": "soundreality-mayday-166011.mp3" if is_sos else "bell.mp3",
                 "priority": "high" if is_sos else "default",
-                "channelId": "sos_alerts" if is_sos else "default",
+                "channelId": "sos_alerts" if is_sos else ("messages" if is_msg else "default"),
                 "badge": 1 if is_sos else 0,
                 "categoryIdentifier": "SOS_ALERT" if is_sos else None,
                 "data": data or {}
@@ -158,17 +159,20 @@ class FirebaseNotificationService:
                     body=body
                 )
                 
-                # High-priority configuration for SOS
+                # Configure custom sound for all except SOS
                 android_config = None
                 apns_config = None
                 notification_type = data.get('type') if data else None
                 
-                if notification_type and notification_type.startswith('sos'):
+                is_sos = bool(notification_type and notification_type.startswith('sos'))
+                is_msg = bool(notification_type and notification_type == 'message')
+                
+                if is_sos:
                     android_config = fcm.AndroidConfig(
                         priority='high',
                         notification=fcm.AndroidNotification(
                             channel_id='sos_alerts',
-                            sound='default',
+                            sound='soundreality-mayday-166011.mp3',
                             priority='max',
                             vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
                         )
@@ -177,11 +181,30 @@ class FirebaseNotificationService:
                         headers={'apns-priority': '10'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='default',
+                                sound='soundreality-mayday-166011.mp3',
                                 badge=1,
                                 content_available=True,
                                 mutable_content=True,
                                 category='SOS_ALERT'
+                            )
+                        )
+                    )
+                else:
+                    channel_id = 'messages' if is_msg else 'default'
+                    android_config = fcm.AndroidConfig(
+                        priority='normal',
+                        notification=fcm.AndroidNotification(
+                            channel_id=channel_id,
+                            sound='bell.mp3',
+                            priority='default'
+                        )
+                    )
+                    apns_config = fcm.APNSConfig(
+                        payload=fcm.APNSPayload(
+                            aps=fcm.Aps(
+                                sound='bell.mp3',
+                                content_available=True,
+                                mutable_content=True
                             )
                         )
                     )
@@ -239,7 +262,11 @@ class FirebaseNotificationService:
             for user_id in user_ids:
                 user = await db.get_document('users', user_id)
                 if user:
-                    tokens = user.get('fcm_tokens', [])
+                    tokens = list(user.get('fcm_tokens', []) or [])
+                    fcm_token = user.get('fcm_token')
+                    if fcm_token and fcm_token not in tokens:
+                        tokens.append(fcm_token)
+                    
                     if tokens:
                         users_with_tokens += 1
                         for token in tokens:
@@ -278,14 +305,16 @@ class FirebaseNotificationService:
                         apns_config = None
                         
                         notification_type = data.get('type') if data else None
+                        is_sos = bool(notification_type and notification_type.startswith('sos'))
+                        is_msg = bool(notification_type and notification_type == 'message')
                         
                         # High-priority for SOS
-                        if notification_type and notification_type.startswith('sos'):
+                        if is_sos:
                             android_config = fcm.AndroidConfig(
                                 priority='high',
                                 notification=fcm.AndroidNotification(
                                     channel_id='sos_alerts',
-                                    sound='default',
+                                    sound='soundreality-mayday-166011.mp3',
                                     priority='max',
                                     vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
                                 )
@@ -294,11 +323,30 @@ class FirebaseNotificationService:
                                 headers={'apns-priority': '10'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='default',
+                                        sound='soundreality-mayday-166011.mp3',
                                         badge=1,
                                         content_available=True,
                                         mutable_content=True,
                                         category='SOS_ALERT'
+                                    )
+                                )
+                            )
+                        else:
+                            channel_id = 'messages' if is_msg else 'default'
+                            android_config = fcm.AndroidConfig(
+                                priority='normal',
+                                notification=fcm.AndroidNotification(
+                                    channel_id=channel_id,
+                                    sound='bell.mp3',
+                                    priority='default'
+                                )
+                            )
+                            apns_config = fcm.APNSConfig(
+                                payload=fcm.APNSPayload(
+                                    aps=fcm.Aps(
+                                        sound='bell.mp3',
+                                        content_available=True,
+                                        mutable_content=True
                                     )
                                 )
                             )
@@ -314,14 +362,15 @@ class FirebaseNotificationService:
                             message_kwargs['apns'] = apns_config
                         
                         message = fcm.MulticastMessage(**message_kwargs)
-                        response = fcm.send_multicast(message)
+                        response = fcm.send_each_for_multicast(message)
                         total_success += response.success_count
                         total_failure += response.failure_count
                         
                         if response.failure_count > 0:
                             logger.warning(f"SOS chunk {i}: {response.success_count} success, {response.failure_count} failed")
-                            for idx, err in enumerate(response.errors):
-                                logger.warning(f"  Token error {idx}: {err}")
+                            for idx, resp in enumerate(response.responses):
+                                if not resp.success:
+                                    logger.warning(f"  Token index {idx} error: {resp.exception}")
                                 
                 except Exception as e:
                     logger.error(f"Multicast FCM error: {e}")

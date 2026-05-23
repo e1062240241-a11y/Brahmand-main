@@ -70,11 +70,12 @@ const FestivalDetailPage = () => {
           content: {
             title: `🪔 Festival Tomorrow: ${festival.name || festival.festival_name}`,
             body: `Get ready! ${festival.name || festival.festival_name} begins in 24 hours.`,
-            sound: true,
+            sound: 'bell.mp3',
             priority: Notifications.AndroidNotificationPriority.HIGH,
           },
           trigger: {
             seconds: 60, // For testing purposes, set to 1 minute. Replace with actual calculated timestamp.
+            channelId: 'default',
           },
         });
         Alert.alert('Reminder Set', 'You will be notified 1 day before the festival!');
