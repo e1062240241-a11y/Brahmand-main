@@ -403,15 +403,21 @@ export default function CommunityDetailScreen() {
     return [...activeList].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
   }, [requests, activeTab, filteredRequests, filteredSevaRequests]);
 
+  const parseUTCDate = (dateString?: string) => {
+    if (!dateString) return new Date(NaN);
+    let ds = String(dateString);
+    if (ds.includes('T') && !ds.endsWith('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
+      ds += 'Z';
+    }
+    return new Date(ds);
+  };
+
   const getUnixTimestamp = (item: any) => {
     if (item.created_at) {
-      const d = new Date(item.created_at);
+      const d = parseUTCDate(item.created_at);
       if (!Number.isNaN(d.getTime())) return d.getTime();
     }
     if (item.timestamp) {
-      const d = new Date(item.timestamp);
-      if (!Number.isNaN(d.getTime())) return d.getTime();
-
       const tsStr = String(item.timestamp).toLowerCase();
       const now = Date.now();
       if (tsStr.includes('just now') || tsStr.includes('now')) {
@@ -425,9 +431,12 @@ export default function CommunityDetailScreen() {
         if (unit === 'h') return now - val * 60 * 60 * 1000;
         if (unit === 'd') return now - val * 24 * 60 * 60 * 1000;
       }
+
+      const d = parseUTCDate(item.timestamp);
+      if (!Number.isNaN(d.getTime())) return d.getTime();
     }
     if (item.start_time) {
-      const d = new Date(item.start_time);
+      const d = parseUTCDate(item.start_time);
       if (!Number.isNaN(d.getTime())) return d.getTime();
     }
     return 0;
@@ -695,32 +704,11 @@ export default function CommunityDetailScreen() {
           // Both are announcements: national first, then state
           if (a.isNationalAnnouncement && !b.isNationalAnnouncement) return -1;
           if (!a.isNationalAnnouncement && b.isNationalAnnouncement) return 1;
-
-          // If same type, sort by time (newest first)
-          const timeA = getUnixTimestamp(a);
-          const timeB = getUnixTimestamp(b);
-          if (timeA !== timeB) return timeB - timeA;
-          return String(b.id).localeCompare(String(a.id));
         }
 
-        const aIsNew = String(a.id).startsWith('post-') || a.timestamp === 'Just now';
-        const bIsNew = String(b.id).startsWith('post-') || b.timestamp === 'Just now';
-        if (aIsNew && !bIsNew) return -1;
-        if (!aIsNew && bIsNew) return 1;
-        if (aIsNew && bIsNew) {
-          return String(b.id).localeCompare(String(a.id));
-        }
-
-        const aNum = parseInt(a.id, 10);
-        const bNum = parseInt(b.id, 10);
-        const aIsNumeric = !isNaN(aNum) && /^\d+$/.test(String(a.id));
-        const bIsNumeric = !isNaN(bNum) && /^\d+$/.test(String(b.id));
-
-        if (aIsNumeric && bIsNumeric) {
-          return bNum - aNum;
-        }
-        if (aIsNumeric && !bIsNumeric) return -1;
-        if (!aIsNumeric && bIsNumeric) return 1;
+        const timeA = getUnixTimestamp(a);
+        const timeB = getUnixTimestamp(b);
+        if (timeA !== timeB) return timeB - timeA;
 
         return String(b.id).localeCompare(String(a.id));
       });
@@ -947,7 +935,7 @@ export default function CommunityDetailScreen() {
       const isWithin24Hours = (createdAtStr: string) => {
         if (!createdAtStr || createdAtStr === 'Just now') return true;
         try {
-          const msgTime = new Date(createdAtStr).getTime();
+          const msgTime = parseUTCDate(createdAtStr).getTime();
           return !isNaN(msgTime) && msgTime >= cutoffMs;
         } catch (e) {
           return true;
@@ -1666,7 +1654,7 @@ export default function CommunityDetailScreen() {
 
   const getTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Just now';
-    const date = new Date(dateString);
+    const date = parseUTCDate(dateString);
     if (Number.isNaN(date.getTime())) return 'Just now';
 
     const now = new Date();
@@ -2088,7 +2076,7 @@ export default function CommunityDetailScreen() {
     const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
 
     if (textChunks.length === 0 && selectedImage) {
-      textChunks.push('');
+      textChunks.push(' ');
     }
 
     const parentPostId = `post-${Date.now()}`;
@@ -2104,7 +2092,7 @@ export default function CommunityDetailScreen() {
       },
       content: chunk,
       image: index === 0 ? (selectedImage || undefined) : undefined, // Image only on parent
-      timestamp: 'Just now',
+      timestamp: new Date().toISOString(),
       likes: 0,
       comments: 0,
       shares: 0,
