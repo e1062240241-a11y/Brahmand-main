@@ -406,9 +406,9 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
   if (mantraType === 'shiva') {
     const totalDuration = 8.48;
     const position = elapsedSeconds % totalDuration;
-    if (position < 3.0) {
+    if (position < 1.9) {
       return { currentIndex: 0, isHolding: false };
-    } else if (position < 4.5) {
+    } else if (position < 3.1) {
       return { currentIndex: 1, isHolding: false };
     } else {
       return { currentIndex: 2, isHolding: false };
