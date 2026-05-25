@@ -25,6 +25,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageByName } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
+import api from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -104,6 +105,22 @@ export default function JaapLandingScreen() {
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
   const [heroBannerIndex, setHeroBannerIndex] = useState(0);
   const hanumanStatus = getCurrentHanumanStatus(now);
+  const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
+
+  const sendJaapInviteFromCard = async (jaapId: string, mantraType: string, title: string) => {
+    try {
+      await api.post('/jaap/invite', {
+        mantra_type: mantraType,
+        mantra_title: title,
+      });
+      setInvitedJaapId(jaapId);
+      Alert.alert('\u{1F64F} Invite Sent!', `All devotees have been notified to join ${title}!`);
+      setTimeout(() => setInvitedJaapId(null), 10000);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || 'Could not send invite. Please try again.';
+      Alert.alert('Invite failed', msg);
+    }
+  };
 
   // Auto-scroll ref for More Live Jaaps
   const jaapScrollRef = useRef<ScrollView>(null);
@@ -408,8 +425,30 @@ export default function JaapLandingScreen() {
                           <Ionicons name="radio" size={12} color="#FFF" style={{ marginRight: 4 }} />
                           <Text style={styles.exactLiveText}>{liveLabel}</Text>
                         </View>
-                        <View style={styles.exactCountBadge}>
-                          <Text style={styles.exactCountText}>{jaap.devotees}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={styles.exactCountBadge}>
+                            <Text style={styles.exactCountText}>{jaap.devotees}</Text>
+                          </View>
+                          {isHanuman && (
+                            <TouchableOpacity
+                              id="hanuman-jaap-bell-btn"
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={[
+                                styles.jaapCardBellBtn,
+                                invitedJaapId === jaap.id && styles.jaapCardBellBtnActive
+                              ]}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                sendJaapInviteFromCard(jaap.id, 'hanuman', 'Hanuman Chalisa');
+                              }}
+                            >
+                              <Ionicons
+                                name={invitedJaapId === jaap.id ? 'notifications' : 'notifications-outline'}
+                                size={14}
+                                color={invitedJaapId === jaap.id ? '#FFD700' : '#FFF'}
+                              />
+                            </TouchableOpacity>
+                          )}
                         </View>
                       </View>
                     <View style={styles.jaapCardBottomArea}>
@@ -854,6 +893,20 @@ const styles = StyleSheet.create({
   exactLiveBadge: { backgroundColor: '#E31E24', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },
   exactLiveText: { color: '#FFF', fontSize: 11, fontWeight: '900' },
   exactCountBadge: { backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 },
+  jaapCardBellBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  jaapCardBellBtnActive: {
+    backgroundColor: 'rgba(255,215,0,0.2)',
+    borderColor: '#FFD700',
+  },
   exactCountText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
   jaapCardBottomArea: { width: '100%' },
   jaapCardTitleExact: { color: '#FFF', fontSize: 26, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, marginBottom: 8 },
