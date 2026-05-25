@@ -210,6 +210,7 @@ export type HanumanStatus =
       audioPositionSeconds: number;
       isCompleted: boolean;
       isBreak: boolean;
+      breakRemainingSeconds?: number;
     }
   | {
       isActive: false;
@@ -257,6 +258,7 @@ export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
         const audioPositionSeconds = isBreak ? CHALISA_DURATION : cycleElapsedMs / 1000;
         const roundOfSession = currentRep + 1;
         const roundOfDay = session.startRoundOffset + currentRep;
+        const breakRemainingSeconds = isBreak ? Math.max(0, Math.ceil((cycleDurationMs - cycleElapsedMs) / 1000)) : undefined;
 
         return {
           isActive: true,
@@ -267,6 +269,7 @@ export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
           audioPositionSeconds,
           isCompleted: false,
           isBreak,
+          breakRemainingSeconds,
         };
       } else {
         return {
@@ -332,7 +335,18 @@ export type OtherJaapStatus =
       nextSessionStart: Date | null;
     };
 
-export const getCurrentOtherJaapStatus = (now = new Date()): OtherJaapStatus => {
+export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string): OtherJaapStatus => {
+  if (mantraType === 'gayatri' || mantraType === 'shiva') {
+    const utcNow = new Date();
+    const utcMidnight = Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate(), 0, 0, 0, 0);
+    const elapsedSeconds = (utcNow.getTime() - utcMidnight) / 1000;
+    return {
+      isActive: true,
+      sessionName: 'Morning',
+      elapsedSeconds,
+    };
+  }
+
   for (const session of OTHER_JAAP_SESSIONS) {
     const sessionStart = new Date(now);
     sessionStart.setHours(session.startHour, 0, 0, 0);
@@ -374,7 +388,33 @@ export const getCurrentOtherJaapStatus = (now = new Date()): OtherJaapStatus => 
   };
 };
 
-export const getSynchronizedIndex = (words: string[], elapsedSeconds: number): { currentIndex: number; isHolding: boolean } => {
+export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, mantraType?: string): { currentIndex: number; isHolding: boolean } => {
+  if (mantraType === 'gayatri') {
+    const wordDurations = [3.0, 3.0, 3.0, 6.0, 2.3, 2.3, 2.4, 1.2, 1.3, 1.3, 5.268];
+    const totalDuration = 31.068;
+    const position = elapsedSeconds % totalDuration;
+    let accumulated = 0;
+    for (let i = 0; i < wordDurations.length; i++) {
+      accumulated += wordDurations[i];
+      if (position < accumulated) {
+        return { currentIndex: i, isHolding: false };
+      }
+    }
+    return { currentIndex: words.length - 1, isHolding: true };
+  }
+
+  if (mantraType === 'shiva') {
+    const totalDuration = 8.48;
+    const position = elapsedSeconds % totalDuration;
+    if (position < 1.9) {
+      return { currentIndex: 0, isHolding: false };
+    } else if (position < 3.1) {
+      return { currentIndex: 1, isHolding: false };
+    } else {
+      return { currentIndex: 2, isHolding: false };
+    }
+  }
+
   const wordDurations = words.map(w => (w.length > 7 ? 3.0 : 1.2));
   const totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
   const position = elapsedSeconds % totalDuration;
