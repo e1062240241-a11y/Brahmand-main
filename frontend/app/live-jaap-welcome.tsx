@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
+import SwipeButton from '../src/components/SwipeButton';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -59,14 +60,11 @@ export default function LiveJaapWelcomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <ImageBackground 
-        source={require('../assets/images/sacred_jaap_welcome_bg_1778756095448.png')} 
-        style={styles.background}
-        resizeMode="cover"
-      >
+      <View style={styles.background}>
         <LinearGradient 
-          colors={['rgba(255, 255, 255, 0.4)', 'rgba(255, 255, 255, 0.1)']} 
-          style={StyleSheet.absoluteFill} 
+          colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#F8EDE7']} 
+          locations={[0, 0.05, 0.25, 1]}
+          style={[StyleSheet.absoluteFill, { opacity: 0.8 }]} 
         />
 
         <View style={[styles.mainContent, { paddingTop: insets.top + 5, paddingBottom: insets.bottom + 10 }]}>
@@ -86,79 +84,19 @@ export default function LiveJaapWelcomeScreen() {
 
           {/* HEADER OM */}
           <View style={styles.headerContainer}>
-             <View style={styles.mandalaContainer}>
-                <Text style={styles.omText}>ॐ</Text>
-             </View>
              <Text style={styles.welcomeText}>Welcome to</Text>
-             <Text style={styles.liveJaapText}>{title || 'Live Jaap'}</Text>
+             <Text style={styles.liveJaapText}>{title || 'Hanuman Chalisa'}</Text>
              <View style={styles.ornateDivider}>
-               <View style={styles.line} /><Text style={styles.lotusIcon}>🪷</Text><View style={styles.line} />
+               <Text style={styles.lotusIcon}>🪷</Text>
              </View>
           </View>
 
-          {isHanuman && (
-            <View style={styles.statusBanner}>
-              {hanumanStatus.isActive ? (
-                <View style={styles.activeBannerInner}>
-                  <View style={styles.liveDotRing} />
-                  <Text style={styles.statusTextActive}>
-                    {hanumanStatus.isCompleted
-                      ? `Session Completed (Waiting for next)`
-                      : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.inactiveBannerInner}>
-                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
-                  <Text style={styles.statusTextInactive}>
-                    Next Live: {hanumanStatus.nextSessionName} Session Starts in {(() => {
-                      if (!hanumanStatus.nextSessionStart) return '';
-                      const diffMs = hanumanStatus.nextSessionStart.getTime() - now.getTime();
-                      const hrs = Math.floor(diffMs / 3600000);
-                      const mins = Math.floor((diffMs % 3600000) / 60000);
-                      const secs = Math.floor((diffMs % 60000) / 1000);
-                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    })()}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {isOtherLiveJaap && (
-            <View style={styles.statusBanner}>
-              {otherStatus.isActive ? (
-                <View style={styles.activeBannerInner}>
-                  <View style={styles.liveDotRing} />
-                  <Text style={styles.statusTextActive}>
-                    {mantraType === 'gayatri' || mantraType === 'shiva' ? 'Live • Open 24 Hours' : `${otherStatus.sessionName} Session • Live (8 AM - 11 AM & 4 PM - 9 PM)`}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.inactiveBannerInner}>
-                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
-                  <Text style={styles.statusTextInactive}>
-                    Next Live: {otherStatus.nextSessionName} Session Starts in {(() => {
-                      if (!otherStatus.nextSessionStart) return '';
-                      const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
-                      const hrs = Math.floor(diffMs / 3600000);
-                      const mins = Math.floor((diffMs % 3600000) / 60000);
-                      const secs = Math.floor((diffMs % 60000) / 1000);
-                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    })()}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* MANTRA PREVIEW - SCROLLABLE FOR LONG TEXTS LIKE HANUMAN CHALISA */}
+          {/* MANTRA PREVIEW */}
           <View style={styles.mantraPreviewBox}>
-            <ScrollView style={{ maxHeight: 100 }} showsVerticalScrollIndicator={true}>
-              <Text style={styles.mantraPreviewText}>
-                {MANTRA_PREVIEW[mantraType || 'gayatri'] || MANTRA_PREVIEW.gayatri}
-              </Text>
-            </ScrollView>
+            <Text style={styles.mantraPreviewText}>
+              श्रीगुरु चरन सरोज रज, निज मनु मुकुर सुधारि{'\n'}
+              बरनऊँ रघुबर बिमल जसु, जो दायकु फल चारि
+            </Text>
           </View>
 
           {/* SUBTITLE */}
@@ -168,11 +106,8 @@ export default function LiveJaapWelcomeScreen() {
 
           {/* GUIDELINES LIST */}
           <View style={styles.guidelinesContainer}>
-            {GUIDELINES.map((item) => (
-              <View key={item.id} style={styles.card}>
-                <LinearGradient colors={['#FF8A00', '#FF6600']} style={styles.cardIconCircle}>
-                  <Ionicons name={item.icon as any} size={14} color="#FFF" />
-                </LinearGradient>
+            {GUIDELINES.map((item, index) => (
+              <View key={item.id} style={[styles.card, index === GUIDELINES.length - 1 ? styles.cardNoBorder : null]}>
                 <View style={styles.cardTextContent}>
                   <Text style={styles.cardTitle}>{item.title}</Text>
                   <Text style={styles.cardDesc}>{item.desc}</Text>
@@ -183,52 +118,30 @@ export default function LiveJaapWelcomeScreen() {
 
           {/* JOIN BUTTON */}
           <View style={styles.footerContainer}>
-            <TouchableOpacity 
-              style={styles.joinButton} 
-              activeOpacity={0.9}
-              onPress={() => router.push({
-                pathname: '/live-jaap-room',
-                params: { 
-                  initialMic: 'false',
-                  mantraType: mantraType || 'gayatri',
-                  title: title || 'Gayatri Mantra',
-                  // Ensure audio and written formats are correctly linked
-                  hasAudio: 'true',
-                  hasText: 'true',
-                  fromHome: fromHome || 'false'
-                }
-              })}
-            >
-              <LinearGradient
-                colors={
-                  !isSessionActive
-                    ? ['#7B6A58', '#9F8D7C']
-                    : ['#FF6B00', '#FF8A00']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.buttonGradient}
-              >
-                <Text style={styles.buttonText}>
-                  {mantraType === 'kedarnath' 
-                    ? 'Watch Live Aarti Now' 
-                    : !isSessionActive
-                      ? 'Enter Live Room (Chant Solo / Wait)'
-                      : 'Join Live Jaap Now'}
-                </Text>
-                <View style={styles.buttonOmCircle}>
-                  <Text style={styles.buttonOmText}>ॐ</Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
+            <SwipeButton 
+              title="Join Live Jaap Now" 
+              onSwipeComplete={() => {
+                router.push({
+                  pathname: '/live-jaap-room',
+                  params: { 
+                    initialMic: 'false',
+                    mantraType: mantraType || 'hanuman',
+                    title: title || 'Hanuman Chalisa',
+                    hasAudio: 'true',
+                    hasText: 'true',
+                    fromHome: fromHome || 'false'
+                  }
+                });
+              }}
+            />
 
             <View style={styles.privacyNote}>
-              <Ionicons name="lock-closed" size={10} color="#7B6A58" />
+              <Ionicons name="lock-closed-outline" size={14} color="#7B6A58" />
               <Text style={styles.privacyText}>Private & Secure Sacred Space</Text>
             </View>
           </View>
         </View>
-      </ImageBackground>
+      </View>
     </View>
   );
 }
@@ -240,124 +153,97 @@ const styles = StyleSheet.create({
   headerContainer: { alignItems: 'center', marginTop: 10 },
   backBtn: {
     position: 'absolute',
-    left: 20,
+    left: 10,
     zIndex: 10,
     padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.1)',
     borderRadius: 20,
-  },
-  mandalaContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 138, 0, 0.05)',
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 5,
   },
-  omText: { fontSize: 32, color: '#FF6600', fontWeight: 'bold' },
-  welcomeText: { fontSize: 18, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', color: '#4A2E1F' },
-  liveJaapText: { fontSize: 38, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: 'bold', color: '#4A2E1F', lineHeight: 44 },
-  ornateDivider: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  line: { width: 30, height: 1, backgroundColor: '#FF9F2F', opacity: 0.4 },
-  lotusIcon: { marginHorizontal: 8, fontSize: 10, color: '#FF9F2F' },
+  welcomeText: { 
+    color: '#374151',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 18,
+    fontStyle: 'italic',
+    fontWeight: '400',
+    lineHeight: 28,
+    marginBottom: 4 
+  },
+  liveJaapText: { 
+    color: '#3D2B1F',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 36,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    lineHeight: 40,
+    letterSpacing: -0.9,
+  },
+  ornateDivider: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 8 },
+  lotusIcon: { fontSize: 16 },
   mantraPreviewBox: {
-    marginTop: 10,
     paddingHorizontal: 15,
-    backgroundColor: 'rgba(255, 102, 0, 0.04)',
-    borderRadius: 12,
     paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 102, 0, 0.1)',
     width: '100%',
   },
   mantraPreviewText: {
     fontSize: 14,
     color: '#4A2E1F',
     textAlign: 'center',
-    lineHeight: 20,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    lineHeight: 22,
+    fontWeight: '500',
   },
-  subtitleContainer: { alignItems: 'center', marginTop: 5 },
-  subtitleMain: { fontSize: 11, color: '#7B6A58', textAlign: 'center', fontWeight: '600' },
-  guidelinesContainer: { width: '100%', gap: 6 },
+  subtitleContainer: { alignItems: 'center', marginVertical: 15 },
+  subtitleMain: { 
+    fontSize: 16, 
+    color: '#4B5563', 
+    textAlign: 'center', 
+    fontWeight: '500', // 510 mapped to 500
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', // SF Pro fallback
+    fontStyle: 'normal',
+    lineHeight: 24,
+  },
+  guidelinesContainer: { 
+    width: 286,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 12,
+    alignSelf: 'center',
+    marginTop: 30, 
+    flex: 1 
+  },
   card: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  cardIconCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  cardTextContent: { flex: 1 },
-  cardTitle: { fontSize: 11, fontWeight: 'bold', color: '#4A2E1F' },
-  cardDesc: { fontSize: 9, color: '#7B6A58' },
-  micSection: { width: '100%', alignItems: 'center' },
-  micPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#7B6A58',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  micPillActive: {
-    backgroundColor: '#FF6600',
-  },
-  micPillText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  footerContainer: { width: '100%', alignItems: 'center' },
-  joinButton: { width: '100%', height: 56, borderRadius: 28, overflow: 'hidden' },
-  buttonGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  buttonText: { color: '#FFF', fontSize: 20, fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', fontWeight: 'bold', flex: 1, textAlign: 'center' },
-  buttonOmCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
-  buttonOmText: { fontSize: 18, color: '#FF6B00', fontWeight: 'bold' },
-  privacyNote: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  privacyText: { fontSize: 10, color: '#7B6A58', marginLeft: 5 },
-  statusBanner: {
-    marginVertical: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 102, 0, 0.08)',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 102, 0, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
     width: '100%',
-  },
-  activeBannerInner: {
     flexDirection: 'row',
+    paddingBottom: 12,
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
   },
-  liveDotRing: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF3B30',
-    marginRight: 8,
+  cardNoBorder: {
+    borderBottomWidth: 0,
   },
-  statusTextActive: {
-    color: '#4A2E1F',
-    fontSize: 12,
-    fontWeight: '800',
-    textAlign: 'center',
+  cardTextContent: { 
+    display: 'flex',
+    width: 286,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 4,
   },
-  inactiveBannerInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusTextInactive: {
-    color: '#7B6A58',
-    fontSize: 12,
+  cardTitle: { 
+    color: '#000',
+    fontSize: 16,
+    fontStyle: 'normal',
     fontWeight: '700',
-    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 0,
   },
+  cardDesc: { fontSize: 14, color: '#374151' },
+  footerContainer: { width: '100%', alignItems: 'center', marginTop: 20 },
+  privacyNote: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
+  privacyText: { fontSize: 13, color: '#64748B', marginLeft: 6 },
 });
