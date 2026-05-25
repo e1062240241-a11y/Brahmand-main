@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView, BackHandler } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, BORDER_RADIUS } from '../../src/constants/theme';
@@ -107,6 +107,21 @@ export default function CommunityRequestEmergencyPage() {
       },
     });
   };
+  const handleBack = () => {
+    router.replace({
+      pathname: '/community-request',
+      params: params.community_id ? { community_id: params.community_id } : {}
+    });
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [params.community_id]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -123,7 +138,7 @@ export default function CommunityRequestEmergencyPage() {
             
             {/* Inner Header */}
             <View style={styles.headerBar}>
-              <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                 <Ionicons name="chevron-back" size={24} color="#333" />
               </TouchableOpacity>
               <View style={styles.iconCircle}>

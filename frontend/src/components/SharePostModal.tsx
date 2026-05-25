@@ -77,7 +77,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
 
   const getPostLink = () => {
     const postId = post?.id || post?.post_id || post?._id;
-    return postId ? `https://brahmand.app/post/${postId}` : 'https://brahmand.app';
+    return postId ? `sanatanlok://post/${postId}` : 'sanatanlok://';
   };
 
   const getShareText = () => {

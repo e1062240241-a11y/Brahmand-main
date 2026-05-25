@@ -642,7 +642,7 @@ export default function HomeScreen() {
     mediaUri?: string;
   }>({ uploading: false, progress: 0, isCompressing: false });
 
-  const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
+  const handleUploadStart = async (media: any, caption: string, filterName?: string, communityLevel: string = 'city', category: string = 'feed') => {
     setBackgroundUpload({
       uploading: true,
       progress: 0,
@@ -667,14 +667,25 @@ export default function HomeScreen() {
               setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
             }
           }
-        }
+        },
+        communityLevel,
+        category
       );
 
       if (response.data) {
-        const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
-        setTabFeed(activeTab, {
-          posts: [response.data, ...currentPosts]
-        });
+        // Optimistically add to current active tab if it matches the category
+        // or if we are in 'for_you'
+        if (activeTab === 'for_you' || activeTab === category) {
+          const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+          setTabFeed(activeTab, {
+            posts: [response.data, ...currentPosts]
+          });
+        }
+        
+        // Also clear cache for 'festivals' if we uploaded a festival post so it refreshes next time
+        if (category === 'festivals' && activeTab !== 'festivals') {
+           setTabFeed('festivals', { lastFetched: 0 }); // Mark as stale
+        }
       }
     } catch (error: any) {
       console.warn('[Home] Background upload failed:', error.message || error);
@@ -850,10 +861,15 @@ export default function HomeScreen() {
       const requestsData = Array.isArray(requestsRes.data)
         ? requestsRes.data
         : (requestsRes.data?.items || requestsRes.data || []);
+      const sortedRequestsData = [...requestsData].sort((a: any, b: any) => {
+        const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return tB - tA;
+      });
       const communitiesData = Array.isArray(communitiesRes.data)
         ? communitiesRes.data
         : (communitiesRes.data?.items || communitiesRes.data || []);
-      setCommunityRequests(requestsData);
+      setCommunityRequests(sortedRequestsData);
       setCommunities(communitiesData);
     } catch (error) {
       console.warn('Failed to load active home requests:', error);
@@ -1166,10 +1182,10 @@ export default function HomeScreen() {
   };
 
   const handleShareExternal = async (post: any) => {
-    const appLink = 'https://brahmand.app';
+    const appLink = post?.id ? `sanatanlok://post/${post.id}` : 'sanatanlok://';
     const mediaUrl = post?.media_url || '';
     const caption = post?.caption ? `\nCaption: ${post.caption}` : '';
-    const message = `Check this post on Brahmand!${caption}\nApp: brahmand.app\n${appLink}`;
+    const message = `Check this post on Brahmand!${caption}\n\n${appLink}`;
 
     try {
       if (FileSystemModule?.cacheDirectory && FileSystemModule?.downloadAsync && mediaUrl) {
@@ -1819,8 +1835,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Blood Request'}</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest?.hospital_name || 'XYZ Hospital'}{'\n'}{bloodRequest?.location || 'Chennai.'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Need Blood?'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.hospital_name || 'Emergency'}\n${bloodRequest.location || 'Nearby'}` : 'Create an urgent\nrequest here'}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1839,7 +1855,17 @@ export default function HomeScreen() {
                         marginBottom: 6,
                       }}
                       onPress={() => {
-                        router.push('/community-request/list');
+                        if (bloodRequest) {
+                          router.push({
+                            pathname: '/community-request/list',
+                            params: {
+                              requestId: bloodRequest.id,
+                              community_id: bloodRequest.community_id
+                            }
+                          });
+                        } else {
+                          router.push('/community-request/list');
+                        }
                       }}
                     >
                       <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
@@ -2259,7 +2285,7 @@ export default function HomeScreen() {
             onCopyLink={async () => {
               if (selectedSharePost?.id) {
                 const Clipboard = await import('expo-clipboard');
-                await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
+                await Clipboard.setStringAsync(`sanatanlok://post/${selectedSharePost.id}`);
                 alert('Link copied to clipboard');
                 setShareModalVisible(false);
               }

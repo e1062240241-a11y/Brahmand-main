@@ -47,7 +47,7 @@ class FirestoreDB:
     
     async def create_document(self, collection: str, data: Dict[str, Any], doc_id: str = None) -> str:
         """Create a document in a collection"""
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = datetime.utcnow().isoformat() + 'Z'
         if 'created_at' not in data:
             data['created_at'] = now_iso
         if 'updated_at' not in data:
@@ -230,7 +230,7 @@ class FirestoreDB:
         return await self.create_document('communities', data)
     
     async def add_member_to_community(self, community_id: str, user_id: str):
-        """Add a member to community"""
+        """Add a member to community and invalidate cache"""
         def _add():
             from google.cloud import firestore
             self.client.collection('communities').document(community_id).update({
@@ -238,9 +238,10 @@ class FirestoreDB:
             })
         
         await self._run_sync(_add)
+        await self._cache.delete(f"communities:{community_id}")
     
     async def array_union_update(self, collection: str, doc_id: str, field: str, values: list):
-        """Update a document field with ArrayUnion"""
+        """Update a document field with ArrayUnion and invalidate cache"""
         def _update():
             from google.cloud import firestore
             self.client.collection(collection).document(doc_id).update({
@@ -248,10 +249,11 @@ class FirestoreDB:
             })
         
         await self._run_sync(_update)
+        await self._cache.delete(f"{collection}:{doc_id}")
     
     async def set_document(self, collection: str, doc_id: str, data: Dict[str, Any]):
         """Set a document with specific ID"""
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = datetime.utcnow().isoformat() + 'Z'
         if 'created_at' not in data:
             data['created_at'] = now_iso
         if 'updated_at' not in data:
@@ -277,7 +279,7 @@ class FirestoreDB:
         """Add a message to chat's messages subcollection"""
         from google.cloud import firestore
         
-        message_data['created_at'] = datetime.utcnow().isoformat()
+        message_data['created_at'] = datetime.utcnow().isoformat() + 'Z'
         message_data['timestamp'] = firestore.SERVER_TIMESTAMP
         
         def _add():
@@ -368,10 +370,11 @@ class FirestoreDB:
         return results
 
     async def array_remove_update(self, collection: str, doc_id: str, field: str, values: list) -> None:
-        """Remove values from an array field"""
+        """Remove values from an array field and invalidate cache"""
         def _update():
             from google.cloud import firestore
             doc_ref = self.client.collection(collection).document(doc_id)
             doc_ref.update({field: firestore.ArrayRemove(values)})
         
         await self._run_sync(_update)
+        await self._cache.delete(f"{collection}:{doc_id}")

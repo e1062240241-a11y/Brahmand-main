@@ -33,6 +33,13 @@ const HomeFeedTabs = ({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProp
       <Text style={[styles.tabText, activeTab === 'trending' && styles.activeTabText]}>Trending</Text>
     </TouchableOpacity>
 
+    <TouchableOpacity 
+      style={[styles.tabBtn, activeTab === 'festivals' && styles.activeTabBtn]} 
+      onPress={() => onTabChange('festivals')}
+    >
+      <Text style={[styles.tabText, activeTab === 'festivals' && styles.activeTabText]}>Festivals</Text>
+    </TouchableOpacity>
+
     <TouchableOpacity activeOpacity={0.8} style={styles.newPostButton} onPress={onCreatePost}>
       <View style={styles.plusIconBg}>
         <Ionicons name="add" size={20} color="#FF6B00" />

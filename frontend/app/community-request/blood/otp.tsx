@@ -12,6 +12,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 export default function CommunityRequestBloodOtpPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    community_id?: string;
     phone?: string;
     bloodGroup?: string;
     hospitalName?: string;
@@ -126,7 +127,10 @@ export default function CommunityRequestBloodOtpPage() {
   const submitRequestIfKycVerified = async (user: any) => {
     try {
       await createCommunityRequest({ ...requestData, community_id: params.community_id });
-      router.replace('/community-request/blood/success');
+      router.replace({
+        pathname: '/community-request/blood/success',
+        params: { community_id: params.community_id }
+      });
     } catch (submitError: any) {
       Alert.alert('Request error', parseApiError(submitError));
     }

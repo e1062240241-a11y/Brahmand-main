@@ -13,6 +13,7 @@ import {
   Modal,
   FlatList,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -121,7 +122,16 @@ export default function GauSevaRequestScreen() {
         support_needed: 'Animal Care',
       });
 
-      Alert.alert('Success', 'Gau Seva request posted!', [{ text: 'OK', onPress: () => router.push('/(tabs)/profile') }]);
+      Alert.alert('Success', 'Gau Seva request posted!', [{
+        text: 'OK',
+        onPress: () => {
+          if (params.community_id) {
+            router.replace(`/community/${params.community_id}`);
+          } else {
+            router.push('/(tabs)/profile');
+          }
+        }
+      }]);
     } catch (error: any) {
       Alert.alert('Error', parseApiError(error));
     } finally {
@@ -168,12 +178,20 @@ export default function GauSevaRequestScreen() {
   };
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/community-request');
-    }
+    router.replace({
+      pathname: '/community-request',
+      params: params.community_id ? { community_id: params.community_id } : {}
+    });
   };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [params.community_id]);
 
   return (
     <View style={styles.mainContainer}>

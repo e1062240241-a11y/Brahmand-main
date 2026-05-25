@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Dimensions,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -106,8 +107,21 @@ export default function CommunityRequestHub() {
   };
 
   const handleBack = () => {
-    router.replace('/(tabs)/messages');
+    if (community_id) {
+      router.replace(`/community/${community_id}`);
+    } else {
+      router.replace('/(tabs)/messages');
+    }
   };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [community_id]);
 
   return (
     <View style={styles.mainContainer}>

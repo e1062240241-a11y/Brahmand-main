@@ -826,8 +826,15 @@ export default function MessagesScreen() {
 
   const getTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Just now';
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return '1h ago';
+    
+    // Ensure UTC interpretation if missing timezone suffix
+    let ds = String(dateString);
+    if (!ds.includes('Z') && !ds.includes('+')) {
+      ds = ds.includes('T') ? `${ds}Z` : `${ds.replace(' ', 'T')}Z`;
+    }
+
+    const date = new Date(ds);
+    if (Number.isNaN(date.getTime())) return 'Just now';
 
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);

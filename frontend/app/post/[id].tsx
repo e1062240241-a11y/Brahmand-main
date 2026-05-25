@@ -60,16 +60,42 @@ const PostScreen = () => {
     if (!append) setLoadingFeed(true);
     else setLoadingMore(true);
     try {
+      let targetPost: any = null;
+      if (!append && routePostId) {
+        try {
+          const targetRes = await getPostById(routePostId as string);
+          if (targetRes.data) {
+            targetPost = targetRes.data.post || targetRes.data;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch specific post', e);
+        }
+      }
+
       const response = await getPostsFeed(FEED_PAGE_SIZE, offset, 'for_you');
       const payload = response.data;
-      const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
-      const nextHasMore = typeof payload?.has_more === 'boolean' ? payload.has_more : items.length === FEED_PAGE_SIZE;
+      let feedItems = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
+
+      let items: any[] = [];
+      if (targetPost) {
+        feedItems = feedItems.filter((p: any) => String(p.id) !== String(targetPost.id));
+        items = [targetPost, ...feedItems];
+      } else {
+        items = feedItems;
+      }
+
+      const nextHasMore = typeof payload?.has_more === 'boolean' ? payload.has_more : feedItems.length === FEED_PAGE_SIZE;
+
       if (append) {
-        setFeedPosts(prev => [...prev, ...items]);
+        setFeedPosts(prev => {
+          const seen = new Set(prev.map(p => String(p.id)));
+          const newItems = items.filter(p => !seen.has(String(p.id)));
+          return [...prev, ...newItems];
+        });
       } else {
         setFeedPosts(items);
       }
-      setFeedOffset(offset + items.length);
+      setFeedOffset(offset + feedItems.length);
       setHasMore(nextHasMore);
     } catch (err) {
       console.warn('[Post] Failed to load feed', err);
@@ -77,7 +103,7 @@ const PostScreen = () => {
       setLoadingFeed(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [routePostId]);
 
   useEffect(() => {
     loadFeed(0, false);
@@ -210,9 +236,10 @@ const PostScreen = () => {
     if (!post) return;
     const mediaUrl = post.media_url || post.mediaUrl || post.image_url || post.imageUrl || '';
     const caption = post.caption || post.description || '';
-    const message = `Check this post on Brahmand!${caption ? `\nCaption: ${caption}` : ''}`;
+    const link = `sanatanlok://post/${post.id}`;
+    const message = `Check this post on Brahmand!${caption ? `\nCaption: ${caption}` : ''}\n\n${link}`;
     try {
-      await Share.share({ message, url: mediaUrl || undefined, title: 'Share via Brahmand' });
+      await Share.share({ message, url: link || undefined, title: 'Share via Brahmand' });
     } catch {
       alert('Could not open share sheet. Please try again.');
     }
@@ -222,7 +249,7 @@ const PostScreen = () => {
     if (!selectedSharePost?.id) return;
     try {
       const Clipboard = await import('expo-clipboard');
-      await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
+      await Clipboard.setStringAsync(`sanatanlok://post/${selectedSharePost.id}`);
       alert('Link copied to clipboard');
       setShareModalVisible(false);
     } catch {
@@ -286,12 +313,12 @@ const PostScreen = () => {
         <PostFeedCard
           post={item}
           isActive={activePostKey === postKey}
-          onLike={() => {}}
+          onLike={() => { }}
           onComment={handleOpenComment}
           openCommentsOnCaptionPress
           onShare={handleSharePost}
           onRepost={handleRepost}
-          onEdit={() => {}}
+          onEdit={() => { }}
           onUserPress={(u: any) => {
             const userId = u?.user_id || u?.user?.id || u?.id;
             if (userId) {

@@ -29,6 +29,7 @@ export const useFeedStore = create<FeedState>((set) => ({
     for_you: initialTabData(),
     following: initialTabData(),
     trending: initialTabData(),
+    festivals: initialTabData(),
   },
   setTabFeed: (tab, data) =>
     set((state) => {
@@ -49,6 +50,7 @@ export const useFeedStore = create<FeedState>((set) => ({
         for_you: initialTabData(),
         following: initialTabData(),
         trending: initialTabData(),
+        festivals: initialTabData(),
       },
     }),
 }));

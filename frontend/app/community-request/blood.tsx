@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, BackHandler } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { parseApiError, searchHospitals } from '../../src/services/api';
@@ -13,6 +13,7 @@ const CONTACT_OPTIONS = ['Call Me', 'WhatsApp', 'Email'];
 
 export default function CommunityRequestBloodPage() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ community_id?: string }>();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [bloodGroup, setBloodGroup] = useState('');
@@ -53,6 +54,7 @@ export default function CommunityRequestBloodPage() {
     router.push({
       pathname: '/community-request/blood/review',
       params: {
+        community_id: params.community_id,
         bloodGroup,
         hospitalName,
         location: location || 'Auto-detected',
@@ -106,8 +108,20 @@ export default function CommunityRequestBloodPage() {
   }, [hospitalName, selectedHospital]);
 
   const handleBack = () => {
-    router.replace('/(tabs)/home');
+    router.replace({
+      pathname: '/community-request',
+      params: params.community_id ? { community_id: params.community_id } : {}
+    });
   };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [params.community_id]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -203,10 +217,10 @@ export default function CommunityRequestBloodPage() {
             {URGENCY_OPTIONS.map((level) => (
               <TouchableOpacity
                 key={level}
-                style={[styles.urgencyChip, urgency === level && styles.urgencyChipSelected(level)]}
+                style={[styles.urgencyChip, urgency === level && (styles as any).urgencyChipSelected(level)]}
                 onPress={() => setUrgency(level)}
               >
-                <Text style={[styles.urgencyText, urgency === level && styles.urgencyTextSelected(level)]}>{level}</Text>
+                <Text style={[styles.urgencyText, urgency === level && (styles as any).urgencyTextSelected(level)]}>{level}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -230,20 +244,20 @@ export default function CommunityRequestBloodPage() {
             {CONTACT_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option}
-                style={[styles.optionChip, contactPreference === option && styles.optionChipSelected]}
+                style={[styles.optionChip, contactPreference === option && (styles as any).optionChipSelected]}
                 onPress={() => setContactPreference(option)}
               >
-                <Text style={[styles.optionText, contactPreference === option && styles.optionTextSelected]}>{option}</Text>
+                <Text style={[styles.optionText, contactPreference === option && (styles as any).optionTextSelected]}>{option}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <TouchableOpacity style={styles.continueButton} onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
+        <TouchableOpacity style={(styles as any).continueButton} onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.continueButtonText}>Continue</Text>
+            <Text style={(styles as any).continueButtonText}>Continue</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

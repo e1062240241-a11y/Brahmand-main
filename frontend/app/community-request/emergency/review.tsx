@@ -6,10 +6,10 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { useAuthStore } from '../../../src/store/authStore';
 
-export default function CommunityRequestBloodReviewPage() {
+export default function CommunityRequestEmergencyReviewPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string,
-    bloodGroup?: string;
+    emergencyType?: string;
     hospitalName?: string;
     location?: string;
     urgency?: string;
@@ -20,10 +20,10 @@ export default function CommunityRequestBloodReviewPage() {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
 
-  const bloodGroup = params.bloodGroup || '';
+  const emergencyType = params.emergencyType || 'General';
   const hospitalName = params.hospitalName || '';
   const location = params.location || 'Auto-detected';
-  const urgency = params.urgency || 'Low';
+  const urgency = params.urgency || 'Urgent';
   const description = params.description || '';
   const contactPreference = params.contactPreference || 'Phone';
   const contactNumber = params.contactNumber || user?.phone || '';
@@ -34,15 +34,15 @@ export default function CommunityRequestBloodReviewPage() {
   }, [location]);
 
   const handlePlaceRequest = async () => {
-    if (!bloodGroup || !hospitalName || !description) {
+    if (!emergencyType || !hospitalName || !description) {
       Alert.alert('Missing Data', 'Please go back and complete the form before placing your request.');
       return;
     }
 
     router.push({
-      pathname: '/community-request/blood/verify',
+      pathname: '/community-request/emergency/verify',
       params: { community_id: params.community_id,
-        bloodGroup,
+        emergencyType,
         hospitalName,
         location,
         urgency,
@@ -69,24 +69,20 @@ export default function CommunityRequestBloodReviewPage() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <View style={styles.iconCircle}>
-              <MaterialCommunityIcons name="blood-drop" size={24} color="#E53935" />
+              <MaterialCommunityIcons name="alert-decagram" size={24} color="#E53935" />
             </View>
             <Text style={styles.summaryTitle}>Request Type</Text>
           </View>
-          <Text style={styles.summaryValue}>Blood Request</Text>
+          <Text style={styles.summaryValue}>{emergencyType} Emergency</Text>
         </View>
 
         <View style={styles.reviewCard}>
           <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Blood Group</Text>
-            <Text style={styles.reviewValue}>{bloodGroup || 'O+'}</Text>
-          </View>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Hospital Name</Text>
+            <Text style={styles.reviewLabel}>Hospital / Location</Text>
             <Text style={styles.reviewValue}>{hospitalName || 'Unknown'}</Text>
           </View>
           <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Hospital Location</Text>
+            <Text style={styles.reviewLabel}>Area</Text>
             <Text style={styles.reviewValue}>{location}</Text>
           </View>
           <View style={styles.reviewRow}> 

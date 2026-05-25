@@ -9,11 +9,12 @@ import { getCurrentUserToken } from '../../../src/services/firebase/authService'
 import { useAuthStore } from '../../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 
-export default function CommunityRequestBloodOtpPage() {
+export default function CommunityRequestEmergencyOtpPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    community_id?: string;
     phone?: string;
-    bloodGroup?: string;
+    emergencyType?: string;
     hospitalName?: string;
     location?: string;
     urgency?: string;
@@ -31,13 +32,12 @@ export default function CommunityRequestBloodOtpPage() {
   const inputRefs = useRef<TextInput[]>([]);
 
   const requestData = {
-    request_type: 'blood' as const,
+    request_type: 'emergency' as const,
     visibility_level: 'area' as const,
-    title: 'Blood Request',
+    title: `${params.emergencyType || 'General'} Emergency`,
     description: params.description || '',
     contact_number: params.contactNumber || phone,
-    urgency_level: (params.urgency === 'Urgent' ? 'critical' : (params.urgency || 'low').toLowerCase()) as 'low' | 'medium' | 'high' | 'critical',
-    blood_group: params.bloodGroup || '',
+    urgency_level: (params.urgency === 'Urgent' ? 'critical' : (params.urgency || 'high').toLowerCase()) as 'low' | 'medium' | 'high' | 'critical',
     hospital_name: params.hospitalName || '',
     location: params.location || '',
   };
@@ -45,7 +45,7 @@ export default function CommunityRequestBloodOtpPage() {
   useEffect(() => {
     if (!phone) {
       Alert.alert('Phone missing', 'Please provide a phone number first.');
-      router.replace('/community-request/blood/verify');
+      router.replace('/community-request/emergency/verify');
       return;
     }
     sendOtp();
@@ -125,7 +125,10 @@ export default function CommunityRequestBloodOtpPage() {
   const submitRequestIfKycVerified = async (user: any) => {
     try {
       await createCommunityRequest({ ...requestData, community_id: params.community_id });
-      router.replace('/community-request/blood/success');
+      router.replace({
+        pathname: '/community-request/emergency/success',
+        params: { community_id: params.community_id }
+      });
     } catch (submitError: any) {
       Alert.alert('Request error', parseApiError(submitError));
     }

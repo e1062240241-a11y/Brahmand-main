@@ -13,6 +13,7 @@ import {
   Share,
   Dimensions,
   BackHandler,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -21,11 +22,13 @@ import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../src/constants/theme
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { socketService } from '../../src/services/socket';
 
 const { width } = Dimensions.get('window');
 
 interface CommunityRequest {
   id: string;
+  community_id: string;
   title: string;
   description: string;
   request_type: string;
@@ -62,9 +65,76 @@ export default function ActiveRequestsList() {
 
   const params = useLocalSearchParams<{ community_id?: string, requestId?: string }>();
   const [initialRouteHandled, setInitialRouteHandled] = useState(false);
+  const [ticker, setTicker] = useState(0);
+
+  const parseUTCDate = (dateString?: string) => {
+    if (!dateString) return new Date(NaN);
+    let ds = String(dateString);
+    if (!ds.includes('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
+      ds = ds.includes('T') ? `${ds}Z` : `${ds.replace(' ', 'T')}Z`;
+    }
+    return new Date(ds);
+  };
+
+  // Timer to refresh "time ago" labels every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTicker(prev => prev + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Socket listener & Polling fallback for real-time requests
+  useEffect(() => {
+    let pollingInterval: NodeJS.Timeout;
+
+    const initSocket = () => {
+      try {
+        if (params.community_id) {
+          socketService.joinRoom(params.community_id);
+        }
+      } catch (err) {
+        console.log('[Socket] Connection failed in RequestList:', err);
+      }
+    };
+
+    initSocket();
+
+    const handleNewRequest = (newRequest: CommunityRequest) => {
+      console.log('[Socket] New community request received:', newRequest.id);
+      
+      // If we are filtering by community and it doesn't match, ignore
+      if (params.community_id && 
+          newRequest.community_id && 
+          String(newRequest.community_id) !== String(params.community_id)) {
+        return;
+      }
+      
+      setRequests(prev => {
+        // Check if it already exists (avoid duplicates)
+        if (prev.find(r => r.id === newRequest.id)) return prev;
+        return sortRequests([newRequest, ...prev]);
+      });
+    };
+
+    socketService.onEvent('new_community_request', handleNewRequest);
+
+    // Polling fallback (every 30 seconds) to ensure list stays fresh even if socket drops
+    pollingInterval = setInterval(() => {
+      fetchRequests(false); // background fetch
+    }, 30000);
+
+    return () => {
+      socketService.offEvent('new_community_request', handleNewRequest);
+      if (params.community_id) {
+        socketService.leaveRoom(params.community_id);
+      }
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
+  }, [params.community_id]);
 
   useEffect(() => {
-    fetchRequests();
+    fetchRequests(true);
   }, [params.community_id]);
 
   useEffect(() => {
@@ -83,21 +153,30 @@ export default function ActiveRequestsList() {
         setSelectedRequest(null);
         return true;
       }
-      return false;
+      if (params.community_id) {
+        router.replace(`/community/${params.community_id}`);
+        return true;
+      }
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+      router.replace('/(tabs)/messages');
+      return true;
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [selectedRequest]);
+  }, [selectedRequest, params.community_id]);
 
   const sortRequests = (list: CommunityRequest[]) => {
     return [...list].sort((a, b) => {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return parseUTCDate(b.created_at).getTime() - parseUTCDate(a.created_at).getTime();
     });
   };
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const [activeRes, resolvedRes] = await Promise.all([
         getCommunityRequests({ status: 'active', limit: 50, community_id: params.community_id }),
         getCommunityRequests({ status: 'resolved', limit: 50, community_id: params.community_id })
@@ -118,7 +197,7 @@ export default function ActiveRequestsList() {
         }
 
         if (req.status === 'resolved') {
-          const createdAt = new Date(req.created_at).getTime();
+          const createdAt = parseUTCDate(req.created_at).getTime();
           return !Number.isNaN(createdAt) && createdAt >= fifteenDaysAgo;
         }
         return true;
@@ -205,7 +284,9 @@ export default function ActiveRequestsList() {
 
   const getTimeAgo = (dateStr: string) => {
     try {
-      const diff = Date.now() - new Date(dateStr).getTime();
+      if (!dateStr) return 'Recently';
+      const parsedDate = parseUTCDate(dateStr);
+      const diff = Date.now() - parsedDate.getTime();
       const mins = Math.floor(diff / 60000);
       if (mins < 1) return 'Just now';
       if (mins < 60) return `${mins}m ago`;
@@ -415,7 +496,9 @@ export default function ActiveRequestsList() {
           <TouchableOpacity 
             style={styles.backBtn}
             onPress={() => {
-              if (router.canGoBack()) {
+              if (params.community_id) {
+                router.replace(`/community/${params.community_id}`);
+              } else if (router.canGoBack()) {
                 router.back();
               } else {
                 router.replace('/(tabs)/messages');
@@ -494,6 +577,13 @@ export default function ActiveRequestsList() {
             renderItem={renderRequestCard}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={() => fetchRequests(true)}
+                colors={['#F25C05']}
+              />
+            }
           />
         ) : (
           <View style={styles.centerContainer}>

@@ -342,29 +342,37 @@ async def _create_post_document(
     source: str,
     filter_name: Optional[str],
     metadata: Optional[dict] = None,
+    category: Optional[str] = None,
+    community_level: str = 'city',
 ) -> dict:
     import random as _random
 
-    # Infer category from caption keywords
-    _caption_lower = (caption or '').lower()
-    _CATEGORY_KEYWORDS = {
-        'temple': ['temple', 'mandir', 'darshan', 'dham', 'tirtha', 'iskcon', 'ram'],
-        'jaap': ['jaap', 'mantra', 'chant', 'jap', 'naam', 'om', 'shlok'],
-        'yoga': ['yoga', 'asana', 'pranayam', 'surya', 'namaskar'],
-        'meditation': ['meditation', 'dhyan', 'peace', 'inner', 'mindful', 'shanti'],
-        'travel': ['travel', 'yatra', 'journey', 'pilgrimage', 'tour', 'kashi', 'ayodhya'],
-        'bhajan': ['bhajan', 'kirtan', 'aarti', 'song', 'stuti', 'dhun', 'ram'],
-        'festivals': ['festival', 'utsav', 'puja', 'pooja', 'navratri', 'diwali', 'holi', 'havan', 'kumbh'],
-        'spirituality': ['spiritual', 'adhyatm', 'guru', 'satsang', 'pravachan', 'katha', 'sadhu'],
-        'food': ['prasad', 'food', 'bhog', 'naivedya', 'langar', 'satvik'],
-        'seva': ['seva', 'service', 'volunteer', 'help', 'sewa', 'shramdaan'],
-        'culture': ['culture', 'tradition', 'sanatan', 'dharma', 'sanatani', 'hindu', 'bharat'],
-    }
-    _inferred_category = 'spirituality'
-    for _cat, _keywords in _CATEGORY_KEYWORDS.items():
-        if any(kw in _caption_lower for kw in _keywords):
-            _inferred_category = _cat
-            break
+    # Use provided category or infer from caption keywords
+    _inferred_category = category
+    if not _inferred_category:
+        _caption_lower = (caption or '').lower()
+        _CATEGORY_KEYWORDS = {
+            'temple': ['temple', 'mandir', 'darshan', 'dham', 'tirtha', 'iskcon', 'ram'],
+            'jaap': ['jaap', 'mantra', 'chant', 'jap', 'naam', 'om', 'shlok'],
+            'yoga': ['yoga', 'asana', 'pranayam', 'surya', 'namaskar'],
+            'meditation': ['meditation', 'dhyan', 'peace', 'inner', 'mindful', 'shanti'],
+            'travel': ['travel', 'yatra', 'journey', 'pilgrimage', 'tour', 'kashi', 'ayodhya'],
+            'bhajan': ['bhajan', 'kirtan', 'aarti', 'song', 'stuti', 'dhun', 'ram'],
+            'festivals': ['festival', 'utsav', 'puja', 'pooja', 'navratri', 'diwali', 'holi', 'havan', 'kumbh'],
+            'spirituality': ['spiritual', 'adhyatm', 'guru', 'satsang', 'pravachan', 'katha', 'sadhu'],
+            'food': ['prasad', 'food', 'bhog', 'naivedya', 'langar', 'satvik'],
+            'seva': ['seva', 'service', 'volunteer', 'help', 'sewa', 'shramdaan'],
+            'culture': ['culture', 'tradition', 'sanatan', 'dharma', 'sanatani', 'hindu', 'bharat'],
+        }
+        _inferred_category = 'spirituality'
+        for _cat, _keywords in _CATEGORY_KEYWORDS.items():
+            if any(kw in _caption_lower for kw in _keywords):
+                _inferred_category = _cat
+                break
+
+    user_loc = user.get('location', {}) or user.get('home_location', {}) or {}
+    if not isinstance(user_loc, dict):
+        user_loc = {}
 
     post_doc = {
         'user_id': user_id,
@@ -387,8 +395,11 @@ async def _create_post_document(
         'engagement_score': 0.0,
         'random_score': round(_random.random(), 5),
         'category': _inferred_category,
-        'city': user.get('city'),
-        'area': user.get('area'),
+        'community_level': community_level,
+        'area': user_loc.get('area'),
+        'city': user_loc.get('city'),
+        'state': user_loc.get('state'),
+        'country': user_loc.get('country'),
         'created_at': datetime.utcnow(),
         'updated_at': datetime.utcnow(),
     }
@@ -510,7 +521,7 @@ async def _notify_mentioned_users(
                 'notification_type': 'social',
                 'data': notification_data,
                 'is_read': False,
-                'created_at': datetime.utcnow().isoformat(),
+                'created_at': datetime.utcnow().isoformat() + 'Z',
             })
             logger.info('Mention notification created for %s by %s', target_user_id, actor_id)
 
@@ -698,7 +709,7 @@ async def _auto_approve_vendor_for_test_phone(db: FirestoreDB, user_id: str, pho
     if vendor.get('kyc_status') == 'verified':
         return True
 
-    reviewed_at = datetime.utcnow().isoformat()
+    reviewed_at = datetime.utcnow().isoformat() + 'Z'
     review_note = 'Auto-approved for Firebase testing number'
 
     await db.update_document('vendors', vendor['id'], {
@@ -890,7 +901,7 @@ async def health_check():
     
     return {
         "status": "healthy" if is_firebase_enabled() else "degraded",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.utcnow().isoformat() + 'Z',
         "version": "2.2.0",
         "services": {
             "firestore": firestore_status,
@@ -1629,7 +1640,7 @@ async def update_current_location(location: dict, token_data: dict = Depends(ver
     current_location = {
         'latitude': latitude,
         'longitude': longitude,
-        'updated_at': datetime.utcnow().isoformat()
+        'updated_at': datetime.utcnow().isoformat() + 'Z'
     }
 
     await db.update_document('users', user_id, {
@@ -1999,7 +2010,7 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
                 'action': 'follow',
             },
             'is_read': False,
-            'created_at': datetime.utcnow().isoformat(),
+            'created_at': datetime.utcnow().isoformat() + 'Z',
         })
         logger.info(f"Follow notification created for user {user_id} by {current_user_id}")
 
@@ -2071,6 +2082,8 @@ async def upload_post(
     caption: str = Form(''),
     source: str = Form('camera_roll'),
     filter_name: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    community_level: str = Form('city'),
     file: UploadFile = File(...),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit)
@@ -2080,14 +2093,16 @@ async def upload_post(
     global_semaphore = get_global_upload_semaphore()
     async with global_semaphore:
         async with user_lock:
-            return await _upload_post_impl(caption, source, filter_name, file, token_data)
+            return await _upload_post_impl(caption, source, filter_name, file, token_data, category, community_level)
 
 async def _upload_post_impl(
     caption: str,
     source: str,
     filter_name: Optional[str],
     file: UploadFile,
-    token_data: dict
+    token_data: dict,
+    category: Optional[str] = None,
+    community_level: str = 'city'
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2254,6 +2269,8 @@ async def _upload_post_impl(
         source=source,
         filter_name=filter_name,
         metadata=video_metadata,
+        category=category,
+        community_level=community_level,
     )
 
     try:
@@ -2331,13 +2348,15 @@ async def upload_post_from_storage(
     caption: str = Form(''),
     source: str = Form('camera_roll'),
     filter_name: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    community_level: str = Form('city'),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit),
 ):
     user_id = token_data['user_id']
     lock = await get_user_upload_lock(user_id)
     async with lock:
-        return await _upload_post_from_storage_impl(storage_path, caption, source, filter_name, token_data)
+        return await _upload_post_from_storage_impl(storage_path, caption, source, filter_name, token_data, category, community_level)
 
 async def _upload_post_from_storage_impl(
     storage_path: str,
@@ -2345,6 +2364,8 @@ async def _upload_post_from_storage_impl(
     source: str,
     filter_name: Optional[str],
     token_data: dict,
+    category: Optional[str] = None,
+    community_level: str = 'city',
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2427,6 +2448,8 @@ async def _upload_post_from_storage_impl(
                 'compressed_size_bytes': compressed_size_bytes,
                 'duration_seconds': duration_seconds,
             },
+            category=category,
+            community_level=community_level,
         )
 
         try:
@@ -2475,8 +2498,13 @@ async def get_posts_feed(
     # Parse already-seen post IDs to avoid repeats
     seen_set = set(s.strip() for s in seen_ids.split(',') if s.strip())
 
-    # Fetch a large pool of posts (not ordered by created_at as main sort)
+    # Fetch user for location data
+    current_user = await db.get_document('users', current_user_id)
+    user_loc = current_user.get('location', {}) if current_user else {}
+
+    # Fetch a large pool of posts
     try:
+        # Increase pool size to ensure we have enough diversity for filtering
         posts = await db.query_documents(
             'posts',
             limit=500,
@@ -2488,14 +2516,45 @@ async def get_posts_feed(
         posts = []
 
     # Filter out already-seen posts and non-public posts
-    public_posts = [p for p in posts if p.get('visibility', 'public') == 'public']
+    public_posts = []
+    
+    # Pre-calculate user location for performance
+    u_city = str(user_loc.get('city') or '').strip().lower()
+    u_state = str(user_loc.get('state') or '').strip().lower()
+    u_country = str(user_loc.get('country') or '').strip().lower()
+
+    for p in posts:
+        if p.get('visibility', 'public') != 'public':
+            continue
+            
+        lvl = p.get('community_level', 'country') # Default to country/public
+        
+        # Scope filtering
+        if lvl == 'city':
+            p_city = str(p.get('city') or '').strip().lower()
+            if p_city != u_city: continue
+        elif lvl == 'state':
+            p_state = str(p.get('state') or '').strip().lower()
+            if p_state != u_state: continue
+        elif lvl == 'country':
+            p_country = str(p.get('country') or '').strip().lower()
+            if p_country != u_country: continue
+            
+        public_posts.append(p)
+
     pool = [p for p in public_posts if p.get('id') not in seen_set]
     
     # Fallback: If user has seen everything (or pool is too small), show old public posts so feed isn't empty
     if len(pool) < safe_limit:
         pool = public_posts
 
-    if tab == 'following':
+    if tab == 'festivals':
+        # Specific filter for festivals category
+        pool = [p for p in pool if p.get('category') == 'festivals']
+        pool.sort(key=lambda p: p.get('created_at') or datetime.min, reverse=True)
+        paged_posts = pool[:safe_limit]
+
+    elif tab == 'following':
         try:
             current_user = await db.get_document('users', current_user_id)
             following_ids = set(current_user.get('following', []) or [])
@@ -2520,7 +2579,40 @@ async def get_posts_feed(
         except Exception:
             pass
 
-        now_ts = datetime.utcnow().timestamp()
+        now = datetime.utcnow()
+        now_ts = now.timestamp()
+
+        def _get_locality_priority(post: dict) -> int:
+            """
+            Ranking: 0=Highest, 2=Lowest
+            """
+            lvl = post.get('community_level', 'city')
+            
+            p_date = post.get('created_at')
+            if isinstance(p_date, str):
+                try: p_date = datetime.fromisoformat(p_date.replace('Z', '+00:00'))
+                except: p_date = now - timedelta(days=365)
+            elif not isinstance(p_date, datetime):
+                p_date = now - timedelta(days=365)
+            
+            is_recent = (now - p_date).total_seconds() < 86400
+
+            # Priority 0: Broad posts (State/Country) under 24h matching user location
+            u_country = user_loc.get('country')
+            if lvl == 'country' and u_country and post.get('country') == u_country and is_recent:
+                return 0
+            
+            u_state = user_loc.get('state')
+            if lvl == 'state' and u_state and post.get('state') == u_state and is_recent:
+                return 0
+            
+            # Priority 1: Local city posts
+            u_city = user_loc.get('city')
+            if u_city and post.get('city') == u_city:
+                return 1
+            
+            # Priority 2: Everything else (Older or non-matching)
+            return 2
 
         def _recency_score(post: dict) -> float:
             """Exponential decay: score 1.0 if just posted, decays over 30 days."""
@@ -2558,6 +2650,7 @@ async def get_posts_feed(
             p['_engagement_val'] = _engagement(p)
             p['_interest_val'] = _interest_score(p)
             p['_recency_val'] = _recency_score(p)
+            p['_priority'] = _get_locality_priority(p)
 
         # Sort each bucket
         random_pool = sorted(pool, key=lambda p: p['_random_val'])
@@ -2574,8 +2667,12 @@ async def get_posts_feed(
         def _take(src, n):
             return src[:n]
 
+        # Priority 0 posts (Recent State/Country) should ALWAYS be considered
+        priority_0_posts = [p for p in pool if p['_priority'] == 0]
+
         candidates = (
-            _take(random_pool, n_random)
+            priority_0_posts
+            + _take(random_pool, n_random)
             + _take(engagement_pool, n_engage)
             + _take(interest_pool, n_interest)
             + _take(latest_pool, n_latest)
@@ -2590,8 +2687,12 @@ async def get_posts_feed(
                 seen_cand.add(pid)
                 unique_candidates.append(p)
 
-        # Shuffle gently for unpredictability
-        _random.shuffle(unique_candidates)
+        # Sort primarily by priority (0 first, then 1, then 2)
+        # but within same priority, preserve the mixed order for diversity
+        unique_candidates.sort(key=lambda p: p['_priority'])
+
+        # Gently shuffle ONLY posts within the same priority level if needed?
+        # Actually, sorting by priority already puts 0 at top.
 
         # ── Anti-repetition pass ─────────────────────────────────────
         # No same creator within 5 positions; no same category 3x in a row
@@ -2960,12 +3061,16 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
 
     liked_by = post.get('liked_by', []) or []
     liked = user_id in liked_by
+    prev_count = post.get('likes_count', len(liked_by))
 
     if liked:
+        new_count = max(0, prev_count - 1)
         await db.array_remove_update('posts', post_id, 'liked_by', [user_id])
     else:
+        new_count = prev_count + 1
         await db.array_union_update('posts', post_id, 'liked_by', [user_id])
 
+        # Push notification logic for new likes
         post_owner_id = post.get('user_id')
         if post_owner_id and post_owner_id != user_id:
             try:
@@ -2988,9 +3093,8 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                         'action': 'like',
                     },
                     'is_read': False,
-                    'created_at': datetime.utcnow().isoformat(),
+                    'created_at': datetime.utcnow().isoformat() + 'Z',
                 })
-                logger.info(f"Like notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
                 await task_queue.enqueue(
                     FirebaseNotificationService.send_push_notification,
@@ -3003,18 +3107,21 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                         'actor_user_id': str(user_id),
                     }
                 )
-                logger.info(f"Like push queued to post owner {post_owner_id} for post {post_id}")
             except Exception as notify_err:
                 logger.warning(f"Post like notification failed for post {post_id}: {notify_err}")
 
-    updated_post = await db.get_document('posts', post_id)
-    updated_liked_by = updated_post.get('liked_by', []) or []
-    likes_count = len(updated_liked_by)
-    await db.update_document('posts', post_id, {'likes_count': likes_count})
+    # Synchronize the denormalized count
+    await db.update_document('posts', post_id, {'likes_count': new_count})
 
+    # Return the updated state immediately
     updated_post = await db.get_document('posts', post_id)
-    updated_post['likes_count'] = likes_count
-    updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
+    if not updated_post:
+        updated_post = post.copy()
+        updated_post['id'] = post_id
+        
+    # Force the local values to ensure UI reflects them even if DB fetch was slightly stale
+    updated_post['likes_count'] = new_count
+    updated_post['liked_by_me'] = not liked
 
     return {
         'message': 'Post unliked' if liked else 'Post liked',
@@ -3119,13 +3226,27 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     await db.update_document('posts', post_id, {'comments_count': comments_count})
 
     updated_post = await db.get_document('posts', post_id)
+    if not updated_post:
+        # Fallback if document not found in cache/db immediately
+        updated_post = post.copy()
+        updated_post['id'] = post_id
+
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
-    top_comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post_id)],
-        limit=200,
-    )
+    
+    # Pre-fetch existing comments but manually include the new one to ensure immediate visibility
+    try:
+        top_comments_raw = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post_id)],
+            limit=10,
+        )
+    except:
+        top_comments_raw = []
+
+    # Ensure the one we just created is included even if Firestore hasn't indexed it yet
+    if not any(c.get('id') == comment_id for c in top_comments_raw):
+        top_comments_raw.append(comment_doc)
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -3133,13 +3254,14 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
             return value
         if isinstance(value, str):
             try:
+                # Handle ISO format with Z or +00:00
                 return datetime.fromisoformat(value.replace('Z', '+00:00'))
             except Exception:
                 return datetime.min
         return datetime.min
 
-    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    updated_post['top_comments'] = top_comments[:5]
+    top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
+    updated_post['top_comments'] = top_comments_raw[:5]
 
     post_owner_id = post.get('user_id')
     if post_owner_id and post_owner_id != user_id:
@@ -3160,7 +3282,7 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
                     'action': 'comment',
                 },
                 'is_read': False,
-                'created_at': datetime.utcnow().isoformat(),
+                'created_at': datetime.utcnow().isoformat() + 'Z',
             })
             logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
@@ -4148,7 +4270,7 @@ async def create_community(
             "code": code,
             "status": "pending",
             "responses": {uid: "pending" for uid in invited_users},
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat() + 'Z'
         }
 
         request_id = await db.create_document('community_creation_requests', request_data)
@@ -4172,7 +4294,7 @@ async def create_community(
                     "owner_name": owner_name
                 },
                 "is_read": False,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.utcnow().isoformat() + 'Z'
             })
 
         for member_id in member_ids:
@@ -4188,7 +4310,7 @@ async def create_community(
                     "owner_name": owner_name
                 },
                 "is_read": False,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.utcnow().isoformat() + 'Z'
             })
 
         return {
@@ -4260,7 +4382,7 @@ async def respond_to_community_request(
                     "status": "declined"
                 },
                 "is_read": False,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.utcnow().isoformat() + 'Z'
             })
             return {"message": "Invitation declined. Consensus broken, community will not be created."}
 
@@ -4308,7 +4430,7 @@ async def respond_to_community_request(
                     "status": "approved"
                 },
                 "is_read": False,
-                "created_at": datetime.utcnow().isoformat()
+                "created_at": datetime.utcnow().isoformat() + 'Z'
             })
 
             # Notify all invited users
@@ -4324,7 +4446,7 @@ async def respond_to_community_request(
                         "status": "approved"
                     },
                     "is_read": False,
-                    "created_at": datetime.utcnow().isoformat()
+                    "created_at": datetime.utcnow().isoformat() + 'Z'
                 })
 
             return {
@@ -4430,7 +4552,7 @@ async def send_community_message(
         'sender_sl_id': user.get('sl_id'),
         'content': message.content,
         'message_type': message.message_type.value,
-        'created_at': datetime.utcnow().isoformat()
+        'created_at': datetime.utcnow().isoformat() + 'Z'
     }
     if message.media_url:
         msg_data['media_url'] = message.media_url
@@ -4448,7 +4570,7 @@ async def send_community_message(
         'sender_sl_id': user.get('sl_id'),
         'content': message.content,
         'message_type': message.message_type.value,
-        'created_at': datetime.utcnow().isoformat()
+        'created_at': datetime.utcnow().isoformat() + 'Z'
     }
     if message.media_url:
         response_data['media_url'] = message.media_url
@@ -4560,7 +4682,7 @@ async def toggle_community_message_like(
                         'action': 'like',
                     },
                     'is_read': False,
-                    'created_at': datetime.utcnow().isoformat(),
+                    'created_at': datetime.utcnow().isoformat() + 'Z',
                 })
                 
                 # Send push
@@ -4612,7 +4734,7 @@ async def add_community_message_comment(
         'username': user.get('name') or user.get('sl_id') or 'User',
         'user_photo': user.get('photo'),
         'text': text,
-        'created_at': datetime.utcnow().isoformat(),
+        'created_at': datetime.utcnow().isoformat() + 'Z',
     }
     
     comment_id = await db.create_document('post_comments', comment_doc)
@@ -5265,7 +5387,7 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
             "name": user['name'],
             "sl_id": user.get('sl_id'),
             "photo": user.get('photo'),
-            "joined_at": datetime.utcnow().isoformat()
+            "joined_at": datetime.utcnow().isoformat() + 'Z'
         }]
     }
 
@@ -5282,7 +5404,7 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
                         "name": member_doc.get('name', ''),
                         "sl_id": member_doc.get('sl_id'),
                         "photo": member_doc.get('photo'),
-                        "joined_at": datetime.utcnow().isoformat()
+                        "joined_at": datetime.utcnow().isoformat() + 'Z'
                     })
                     added_member_ids.append(member_id)
 
@@ -5319,7 +5441,7 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
         "admin_ids": [user_id],
         "member_count": 1,
         "is_admin": True,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.utcnow().isoformat() + 'Z'
     }
 
 
@@ -5786,7 +5908,7 @@ async def send_circle_message(
         'sender_sl_id': user.get('sl_id'),
         'content': message.content,
         'message_type': message.message_type.value,
-        'created_at': datetime.utcnow().isoformat()
+        'created_at': datetime.utcnow().isoformat() + 'Z'
     }
     
     msg_id = await db.add_message_to_chat(chat_id, msg_data.copy())
@@ -5799,7 +5921,7 @@ async def send_circle_message(
         'sender_sl_id': user.get('sl_id'),
         'content': message.content,
         'message_type': message.message_type.value,
-        'created_at': datetime.utcnow().isoformat()
+        'created_at': datetime.utcnow().isoformat() + 'Z'
     }
 
     # Notify mentioned users in this circle message
@@ -5977,7 +6099,7 @@ async def create_temple_post(temple_id: str, data: dict, token_data: dict = Depe
         'title': data.get('title', ''),
         'content': data.get('content', ''),
         'post_type': data.get('post_type', 'announcement'),
-        'created_at': datetime.utcnow().isoformat()
+        'created_at': datetime.utcnow().isoformat() + 'Z'
     }
     
     msg_id = await db.add_message_to_chat(chat_id, post_data)
@@ -6064,7 +6186,7 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
     await db.update_document('users', user_id, {
         'kyc_aadhaar_number': aadhaar_number,
         'kyc_aadhaar_reference_id': reference_id,
-        'kyc_aadhaar_otp_requested_at': datetime.utcnow().isoformat(),
+        'kyc_aadhaar_otp_requested_at': datetime.utcnow().isoformat() + 'Z',
         'kyc_aadhaar_otp_verified': False,
     })
 
@@ -6110,7 +6232,7 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
     await db.update_document('users', user_id, {
         'kyc_aadhaar_reference_id': reference_id,
         'kyc_aadhaar_otp_verified': True,
-        'kyc_aadhaar_otp_verified_at': datetime.utcnow().isoformat(),
+        'kyc_aadhaar_otp_verified_at': datetime.utcnow().isoformat() + 'Z',
     })
 
     return {
@@ -6182,7 +6304,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_id_number': id_number,
         'kyc_id_photo': id_photo,
         'kyc_selfie_photo': selfie_photo if id_type == 'pan' else None,
-        'kyc_submitted_at': datetime.utcnow().isoformat(),
+        'kyc_submitted_at': datetime.utcnow().isoformat() + 'Z',
         'kyc_rejection_reason': None,
         'kyc_verified_at': None,
         'is_verified': False,
@@ -6193,7 +6315,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         match_result = try_face_match(kyc_data['kyc_id_photo'], kyc_data['kyc_selfie_photo'])
         if match_result['status'] == 'verified':
             kyc_data['kyc_status'] = 'verified'
-            kyc_data['kyc_verified_at'] = datetime.utcnow().isoformat()
+            kyc_data['kyc_verified_at'] = datetime.utcnow().isoformat() + 'Z'
             kyc_data['is_verified'] = True
 
     kyc_data['kyc_match_distance'] = match_result.get('distance')
@@ -6272,7 +6394,7 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
         
         update_data = {
             'kyc_status': 'verified',
-            'kyc_verified_at': datetime.utcnow().isoformat(),
+            'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
             'is_verified': True
         }
         await db.update_document('users', user_id, update_data)
@@ -6466,7 +6588,7 @@ async def review_report(report_id: str, data: dict = Body(default={}), token_dat
     await db.update_document('reports', report_id, {
         'status': updated_status,
         'reviewed_by': admin_user_id,
-        'reviewed_at': datetime.utcnow().isoformat(),
+        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
         'review_note': str(data.get('note') or '').strip(),
         'admin_action': action,
         'moderation_result': moderation_result,
@@ -6939,7 +7061,7 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         (user or {}).get('kyc_status') == 'verified'
         and (user or {}).get('kyc_role') == 'vendor'
     )
-    verified_at = (user or {}).get('kyc_verified_at') or datetime.utcnow().isoformat()
+    verified_at = (user or {}).get('kyc_verified_at') or datetime.utcnow().isoformat() + 'Z'
 
     normalized_categories = [str(category).strip() for category in (data.categories or []) if str(category).strip()]
     owner_name = (data.owner_name or (user or {}).get('name') or 'Vendor Owner').strip()
@@ -7783,7 +7905,7 @@ async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), toke
 
     await db.update_document('vendors', vendor_id, {
         'kyc_status': 'manual_review',
-        'aadhaar_otp_verified_at': datetime.utcnow().isoformat(),
+        'aadhaar_otp_verified_at': datetime.utcnow().isoformat() + 'Z',
         'aadhaar_reference_id': reference_id,
     })
     await _sync_vendor_to_admin_queue(db, vendor_id)
@@ -8090,7 +8212,7 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
 
     await db.update_document('vendors', vendor_id, {
         'kyc_status': 'verified',
-        'kyc_verified_at': datetime.utcnow().isoformat(),
+        'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
         'kyc_reviewed_by': admin_user_id,
         'kyc_review_note': data.get('note'),
     })
@@ -8099,7 +8221,7 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
         **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'verified'}),
         'review_status': 'approved',
         'review_state': 'closed',
-        'reviewed_at': datetime.utcnow().isoformat(),
+        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
         'reviewed_by': admin_user_id,
         'review_note': data.get('note'),
     })
@@ -8126,14 +8248,14 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
         'kyc_status': 'pending',
         'kyc_rejection_reason': reason,
         'kyc_reviewed_by': admin_user_id,
-        'kyc_reviewed_at': datetime.utcnow().isoformat(),
+        'kyc_reviewed_at': datetime.utcnow().isoformat() + 'Z',
     })
 
     await db.set_document('vendor_admin_reviews', vendor_id, {
         **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'pending'}),
         'review_status': 'rejected',
         'review_state': 'closed',
-        'reviewed_at': datetime.utcnow().isoformat(),
+        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
         'reviewed_by': admin_user_id,
         'rejection_reason': reason,
     })
@@ -8540,6 +8662,17 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         
     logger.info(f"Community request created by {user_id}: {data.request_type.value} - {data.title}")
     
+    # Emit real-time event to socket
+    try:
+        # Import sio inside the function to avoid circular imports if needed, 
+        # but sio is usually global in main.py
+        await sio.emit('new_community_request', request_data, room=str(resolved_community_id))
+        # Also emit globally
+        await sio.emit('new_community_request', request_data)
+        logger.info(f"Emitted real-time event for community request {request_id}")
+    except Exception as e:
+        logger.warning(f"Failed to emit real-time event for community request: {e}")
+
     return request_data
 
 
@@ -8634,6 +8767,54 @@ async def get_community_requests(
             continue
 
         filtered_clean_requests.append(req)
+
+    # Sort requests: 
+    # 1. State/National requests created < 24h ago matching user location go to TOP
+    # 2. Others following by date (descending)
+    now = datetime.utcnow()
+    def _request_priority(r):
+        vis = r.get('visibility_level', 'area')
+        c_at = r.get('created_at')
+        if isinstance(c_at, str):
+            try: c_at = datetime.fromisoformat(c_at.replace('Z', '+00:00'))
+            except: c_at = now - timedelta(days=365)
+        elif not isinstance(c_at, datetime):
+            c_at = now - timedelta(days=365)
+        
+        is_recent = (now - c_at).total_seconds() < 86400
+        
+        if vis in ['state', 'national'] and is_recent:
+            return 0
+        return 1
+
+    filtered_clean_requests.sort(key=lambda x: (_request_priority(x), x.get('created_at', '')), reverse=True)
+    # Correcting priority 0 to be at start (0 < 1, but we reverse=True for dates)
+    # Actually, using a tuple for sort: priority ASC, created_at DESC
+    filtered_clean_requests.sort(key=lambda x: (_request_priority(x), x.get('created_at', '') if isinstance(x.get('created_at'), str) else ''))
+    # Wait, created_at might be datetime or string.
+    
+    def _sort_key(r):
+        priority = _request_priority(r)
+        # Convert created_at to timestamp string for sorting
+        c_at = r.get('created_at')
+        if isinstance(c_at, datetime):
+            ts = c_at.isoformat()
+        else:
+            ts = str(c_at or "")
+        return (priority, ts)
+
+    # Priority 0 first, then 1. Within each, latest first (so we need priority ASC, date DESC)
+    # To do that, we can use a reverse sort with negative priority or something.
+    # Simpler:
+    filtered_clean_requests.sort(key=lambda r: _sort_key(r))
+    # Wait, this will put priority 0 first (ASC), then created_at ASC. We want created_at DESC.
+    
+    # Final robust sort:
+    filtered_clean_requests.sort(key=lambda r: (
+        _request_priority(r), 
+        -(r.get('created_at').timestamp() if isinstance(r.get('created_at'), datetime) else 
+          (datetime.fromisoformat(r.get('created_at').replace('Z', '+00:00')).timestamp() if isinstance(r.get('created_at'), str) and 'T' in r.get('created_at') else 0))
+    ))
             
     # 2. Store in cache with 30-second TTL
     await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)
@@ -8878,7 +9059,7 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
                 'notification_type': notification_type,
                 'data': data,
                 'is_read': False,
-                'created_at': datetime.utcnow().isoformat()
+                'created_at': datetime.utcnow().isoformat() + 'Z'
             })
         except Exception as e:
             logger.error(f"Failed to save bulk notification for user {uid}: {e}")
@@ -8925,7 +9106,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         "escalation_level": 1,
         "notified_user_ids": [],
         "escalation_step": 1,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.utcnow().isoformat() + 'Z',
         "expires_at": expires_at.isoformat()
     }
     
@@ -9026,7 +9207,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
                 'message_type': 'sos_alert',
                 'sos_id': sos_id,
                 'sos_data': sos_data,
-                'created_at': datetime.utcnow().isoformat()
+                'created_at': datetime.utcnow().isoformat() + 'Z'
             }
             chat_id = f"community_{comm_id}_chat"
             await db.add_message_to_chat(chat_id, alert_message)
@@ -9112,7 +9293,7 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
     
     await db.update_document('sos_alerts', sos_id, {
         'status': status,
-        'resolved_at': datetime.utcnow().isoformat()
+        'resolved_at': datetime.utcnow().isoformat() + 'Z'
     })
     
     if status == 'resolved':
@@ -9137,7 +9318,7 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
                     'notification_type': 'sos',
                     'data': notification_data,
                     'is_read': False,
-                    'created_at': datetime.utcnow().isoformat()
+                    'created_at': datetime.utcnow().isoformat() + 'Z'
                 })
             except Exception as e:
                 logger.error(f"Failed to send/save SOS resolved notification for responder {responder_id}: {e}")
@@ -9184,7 +9365,7 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
         "user_photo": user.get('photo'),
         "response": response,
         "status": 'on_the_way' if response == 'coming' else 'called',
-        "responded_at": datetime.utcnow().isoformat()
+        "responded_at": datetime.utcnow().isoformat() + 'Z'
     }
     
     await db.array_union_update('sos_alerts', sos_id, 'responders', [responder_data])
@@ -9222,7 +9403,7 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
                 'notification_type': 'sos',
                 'data': notification_data,
                 'is_read': False,
-                'created_at': datetime.utcnow().isoformat()
+                'created_at': datetime.utcnow().isoformat() + 'Z'
             })
         except Exception as e:
             logger.error(f"Failed to save SOS responder notification: {e}")
@@ -9266,7 +9447,7 @@ async def update_sos_responder_status(
     for responder in responders:
         if responder.get('user_id') == user_id:
             responder['status'] = status
-            responder['updated_at'] = datetime.utcnow().isoformat()
+            responder['updated_at'] = datetime.utcnow().isoformat() + 'Z'
             updated = True
             break
 
@@ -9294,7 +9475,7 @@ async def update_sos_responder_status(
             'notification_type': 'sos',
             'data': notification_data,
             'is_read': False,
-            'created_at': datetime.utcnow().isoformat()
+            'created_at': datetime.utcnow().isoformat() + 'Z'
         })
     except Exception as e:
         logger.error(f"Failed to save SOS responder status update notification: {e}")
@@ -9866,10 +10047,16 @@ async def disconnect(sid):
 
 
 @sio.event
+@sio.event
 async def join_room(sid, data):
     room = data.get('room')
     peer_id = data.get('peerId')
-    if room and peer_id:
+    
+    if not room:
+        return {"status": "error", "message": "Room not specified"}
+
+    # Handle voice/video peer registration if peerId is provided
+    if peer_id:
         previous_context = SID_TO_PEER.get(sid)
         if previous_context and previous_context != (room, peer_id):
             await _remove_socket_from_voice_room(sid)
@@ -9879,19 +10066,21 @@ async def join_room(sid, data):
             SID_TO_PEER.pop(existing_sid, None)
             await sio.leave_room(existing_sid, room)
 
-        await sio.enter_room(sid, room)
         ROOM_PEERS.setdefault(room, set()).add(peer_id)
         ROOM_PARTICIPANTS.setdefault(room, {})[peer_id] = sid
         SID_TO_PEER[sid] = (room, peer_id)
-
-        existing_peers = [peer for peer in ROOM_PEERS.get(room, set()) if peer != peer_id]
+        
         await sio.emit('peer_joined', {'peerId': peer_id}, room=room, skip_sid=sid)
-        return {
-            'status': 'joined',
-            'room': room,
-            'peerId': peer_id,
-            'peers': existing_peers,
-        }
+
+    # Always enter the room for general events
+    await sio.enter_room(sid, room)
+    
+    return {
+        'status': 'joined',
+        'room': room,
+        'peerId': peer_id,
+        'peers': [peer for peer in ROOM_PEERS.get(room, set()) if peer != peer_id] if peer_id else []
+    }
 
 
 @sio.event
@@ -10002,4 +10191,4 @@ app.mount("/socket.io", socket_app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)
+    uvicorn.run("main:socket_app", host="0.0.0.0", port=8002, reload=True)

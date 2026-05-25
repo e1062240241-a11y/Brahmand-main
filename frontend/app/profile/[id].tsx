@@ -424,10 +424,10 @@ const UserProfileScreen = () => {
   }, [loadPosts]);
 
   const handleShareExternal = async (post: any) => {
-    const appLink = 'https://brahmand.app';
+    const appLink = post?.id ? `sanatanlok://post/${post.id}` : 'sanatanlok://';
     const mediaUrl = post?.media_url || '';
     const caption = post?.caption ? `\nCaption: ${post.caption}` : '';
-    const message = `Check this post on Brahmand!${caption}\nApp: brahmand.app\n${appLink}`;
+    const message = `Check this post on Brahmand!${caption}\n\n${appLink}`;
 
     try {
       if (FileSystemModule?.cacheDirectory && FileSystemModule?.downloadAsync && mediaUrl) {

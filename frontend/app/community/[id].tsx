@@ -22,6 +22,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
@@ -323,6 +324,13 @@ export default function CommunityDetailScreen() {
     return !cachedData;
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [newMessage, setNewMessage] = useState('');
@@ -406,8 +414,8 @@ export default function CommunityDetailScreen() {
   const parseUTCDate = (dateString?: string) => {
     if (!dateString) return new Date(NaN);
     let ds = String(dateString);
-    if (ds.includes('T') && !ds.endsWith('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
-      ds += 'Z';
+    if (!ds.includes('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
+      ds = ds.includes('T') ? `${ds}Z` : `${ds.replace(' ', 'T')}Z`;
     }
     return new Date(ds);
   };
@@ -548,10 +556,82 @@ export default function CommunityDetailScreen() {
         interested_count: 5
       };
     }
+    if (tabName === 'My Posts') {
+      return {
+        id: 'dummy-my-posts-item',
+        isCommunityMsg: true,
+        user: {
+          name: 'Brahmand Bot',
+          photo: null,
+          isVerified: true,
+          verificationLabel: 'System',
+        },
+        content: "You haven't shared any posts in this community yet. Create a post using the floating action button to see it here!",
+        timestamp: 'Just now',
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        reposts: 0,
+        hideBadge: true,
+      };
+    }
     return null;
   };
 
   const combinedData = useMemo(() => {
+    if (activeTab === 'My Posts') {
+      const itemMap = new Map();
+
+      // All chat messages (community posts)
+      communityPosts.forEach(p => {
+        const cleanPost = { ...p };
+        if (cleanPost.id && !String(cleanPost.id).startsWith('post-')) {
+          delete cleanPost.threadParentId;
+        }
+        itemMap.set(p.id, cleanPost);
+      });
+
+      // Discussion posts
+      discussionPosts.forEach(p => {
+        if (!itemMap.has(p.id)) {
+          itemMap.set(p.id, p);
+        }
+      });
+
+      // Include Community Requests
+      requests.forEach(req => {
+        if (!itemMap.has(req.id)) {
+          itemMap.set(req.id, {
+            ...req,
+            type: 'request_item',
+            isRequestInFeed: true,
+          });
+        }
+      });
+
+      const allItems = Array.from(itemMap.values());
+
+      // Filter only user's own posts/requests
+      const userOwnItems = allItems.filter(item => {
+        return (
+          (item.sender_id && user?.id && String(item.sender_id) === String(user?.id)) ||
+          (item.user_id && user?.id && String(item.user_id) === String(user?.id)) ||
+          String(item.id).startsWith('post-') ||
+          String(item.id).startsWith('repost-')
+        );
+      });
+
+      // Sort posts descending (newest first)
+      userOwnItems.sort((a, b) => {
+        const timeA = getUnixTimestamp(a);
+        const timeB = getUnixTimestamp(b);
+        if (timeA !== timeB) return timeB - timeA;
+        return String(b.id).localeCompare(String(a.id));
+      });
+
+      return userOwnItems.length > 0 ? userOwnItems : [createDummyItem('My Posts')];
+    }
+
     if (activeTab === 'Requests') {
       const list = filteredRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
       return list.length > 0 ? list : [createDummyItem('Requests')];
@@ -560,10 +640,43 @@ export default function CommunityDetailScreen() {
       return events.length > 0 ? events : [createDummyItem('Events')];
     }
     if (activeTab === 'Festivals') {
+      const userFestivals = communityPosts
+        .filter((p: any) => (p.category || '').toLowerCase() === 'festivals')
+        .map((p: any) => {
+          let eventImage = p.image || p.image_url || p.media_url;
+          let resolvedImage = typeof eventImage === 'string' ? { uri: eventImage } : eventImage;
+          if (!resolvedImage) {
+            resolvedImage = require('../../assets/images/image temple/Siddhivinayak-Temple.webp');
+          }
+          const diffInSeconds = p.timestamp ? Math.floor((new Date().getTime() - parseUTCDate(p.timestamp).getTime()) / 1000) : 0;
+          let timeAgoStr = 'Just now';
+          if (diffInSeconds >= 86400) timeAgoStr = `${Math.floor(diffInSeconds / 86400)}d ago`;
+          else if (diffInSeconds >= 3600) timeAgoStr = `${Math.floor(diffInSeconds / 3600)}h ago`;
+          else if (diffInSeconds >= 60) timeAgoStr = `${Math.floor(diffInSeconds / 60)}m ago`;
+
+          return {
+            id: p.id,
+            title: p.title || p.content || 'Festival Celebration',
+            description: p.description || p.content || 'Join our community celebration!',
+            location: p.location || p.sevaDetails || 'Nearby Community',
+            time: p.time || (p.timestamp ? new Date(p.timestamp).toLocaleDateString() : 'Today'),
+            image: resolvedImage,
+            organizer: {
+              name: p.user?.name || 'Devotee',
+              photo: p.user?.photo || null,
+              isVerified: p.user?.isVerified || false
+            },
+            timeAgo: timeAgoStr,
+            type: 'festival_event',
+            isReal: true
+          };
+        });
+
       return [
         { id: 'fest-header-main', type: 'festivals_header' },
         { id: 'fest-list-horizontal', type: 'festivals_list' },
         { id: 'fest-events-header-sub', type: 'festival_events_header' },
+        ...userFestivals,
         ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
         { id: 'fest-banner-footer', type: 'festival_banner' }
       ];
@@ -692,16 +805,30 @@ export default function CommunityDetailScreen() {
         }
       });
 
-      // Step 4: Sort parent posts descending (newest first), with announcements at the very top
+      // Step 4: Sort parent posts descending (newest first), pinning only recent announcements (last 24 hours) at the very top
+      const sortCutoffMs = Date.now() - 24 * 60 * 60 * 1000;
+      const isRecentAnn = (post: any) => {
+        const isAnn = post.isNationalAnnouncement || post.isStateAnnouncement;
+        if (!isAnn) return false;
+        const ts = post.timestamp || post.created_at;
+        if (!ts || ts === 'Just now') return true;
+        try {
+          const tMs = parseUTCDate(ts).getTime();
+          return !isNaN(tMs) && tMs >= sortCutoffMs;
+        } catch {
+          return true;
+        }
+      };
+
       parents.sort((a, b) => {
-        const aIsAnn = a.isNationalAnnouncement || a.isStateAnnouncement;
-        const bIsAnn = b.isNationalAnnouncement || b.isStateAnnouncement;
+        const aIsRecentAnn = isRecentAnn(a);
+        const bIsRecentAnn = isRecentAnn(b);
 
-        if (aIsAnn && !bIsAnn) return -1;
-        if (!aIsAnn && bIsAnn) return 1;
+        if (aIsRecentAnn && !bIsRecentAnn) return -1;
+        if (!aIsRecentAnn && bIsRecentAnn) return 1;
 
-        if (aIsAnn && bIsAnn) {
-          // Both are announcements: national first, then state
+        if (aIsRecentAnn && bIsRecentAnn) {
+          // Both are recent announcements: national first, then state
           if (a.isNationalAnnouncement && !b.isNationalAnnouncement) return -1;
           if (!a.isNationalAnnouncement && b.isNationalAnnouncement) return 1;
         }
@@ -929,7 +1056,7 @@ export default function CommunityDetailScreen() {
         communityId: countryCommunityId,
       }));
 
-      // Filter state & national announcements to only show posts from last 24 hours
+      // Separate state & national announcements into recent (last 24 hours, to be pinned) and older (to go down the feed)
       const nowMs = Date.now();
       const cutoffMs = nowMs - 24 * 60 * 60 * 1000;
       const isWithin24Hours = (createdAtStr: string) => {
@@ -942,8 +1069,11 @@ export default function CommunityDetailScreen() {
         }
       };
 
-      const filteredStateMsgs = formattedStateMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
-      const filteredNationalMsgs = formattedNationalMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
+      const recentStateMsgs = formattedStateMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
+      const olderStateMsgs = formattedStateMsgs.filter((msg: any) => !isWithin24Hours(msg.timestamp));
+
+      const recentNationalMsgs = formattedNationalMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
+      const olderNationalMsgs = formattedNationalMsgs.filter((msg: any) => !isWithin24Hours(msg.timestamp));
 
       let finalPosts: any[] = [];
       setCommunityPosts((prev: any[]) => {
@@ -951,14 +1081,32 @@ export default function CommunityDetailScreen() {
         const seenIds = new Set(localPosts.map((p: any) => p.id));
 
         const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id));
-        const uniqueStateMsgs = filteredStateMsgs.filter((p: any) => !seenIds.has(p.id));
-        const uniqueNationalMsgs = filteredNationalMsgs.filter((p: any) => !seenIds.has(p.id));
+        const uniqueRecentStateMsgs = recentStateMsgs.filter((p: any) => !seenIds.has(p.id));
+        const uniqueRecentNationalMsgs = recentNationalMsgs.filter((p: any) => !seenIds.has(p.id));
+        const uniqueOlderStateMsgs = olderStateMsgs.filter((p: any) => !seenIds.has(p.id));
+        const uniqueOlderNationalMsgs = olderNationalMsgs.filter((p: any) => !seenIds.has(p.id));
+
+        const getPostTimeMs = (p: any) => {
+          const ts = p.timestamp || p.created_at;
+          if (!ts || ts === 'Just now') return Date.now();
+          const parsed = parseUTCDate(ts).getTime();
+          return Number.isNaN(parsed) ? Date.now() : parsed;
+        };
+
+        const sortedRecentNationalMsgs = [...uniqueRecentNationalMsgs].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
+        const sortedRecentStateMsgs = [...uniqueRecentStateMsgs].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
+
+        const olderCombined = [
+          ...localPosts,
+          ...uniqueCityMsgs,
+          ...uniqueOlderStateMsgs,
+          ...uniqueOlderNationalMsgs
+        ].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
 
         finalPosts = [
-          ...uniqueNationalMsgs,
-          ...uniqueStateMsgs,
-          ...localPosts,
-          ...uniqueCityMsgs
+          ...sortedRecentNationalMsgs,
+          ...sortedRecentStateMsgs,
+          ...olderCombined
         ];
         return finalPosts;
       });
@@ -1074,6 +1222,32 @@ export default function CommunityDetailScreen() {
         style={styles.tabsContainer}
         contentContainerStyle={styles.tabsContent}
       >
+        <TouchableOpacity
+          onPress={() => setActiveTab('My Posts')}
+          style={{
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingBottom: 5,
+          }}
+        >
+          <View style={{
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            borderWidth: 1.5,
+            borderColor: activeTab === 'My Posts' ? '#FF6B00' : '#888',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            <Ionicons
+              name="checkmark"
+              size={10}
+              color={activeTab === 'My Posts' ? '#FF6B00' : '#888'}
+              style={{ fontWeight: 'bold' }}
+            />
+          </View>
+        </TouchableOpacity>
+
         {dynamicTabs.map(tab => (
           <TouchableOpacity
             key={tab}
@@ -1466,6 +1640,39 @@ export default function CommunityDetailScreen() {
     </View>
   );
 
+  const handleFestivalInterest = async (item: any) => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== 'granted') {
+        Alert.alert('Permission required', 'Please enable notifications in settings to get festival reminders.');
+        return;
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `🪔 Festival Reminder: ${item.title}`,
+          body: `We will keep you updated about the ${item.title} celebration!`,
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: {
+          seconds: 5,
+          channelId: 'default',
+        },
+      });
+      Alert.alert('Notification Set', `You are marked as interested! We will notify you about ${item.title}.`);
+    } catch (err) {
+      console.warn('Failed to set interest reminder', err);
+      Alert.alert('Interested', `You are marked as interested in ${item.title}!`);
+    }
+  };
+
   const renderFestivalEvent = ({ item }: { item: any }) => (
     <View style={styles.festEventCard}>
       <View style={styles.festEventMain}>
@@ -1494,8 +1701,8 @@ export default function CommunityDetailScreen() {
             <Text style={styles.festOrgLabel}>Organizer</Text>
             <Text style={styles.festTimeAgo}>{item.timeAgo}</Text>
           </View>
-          <TouchableOpacity style={styles.attendBtn}>
-            <Text style={styles.attendBtnText}>I Will Attend</Text>
+          <TouchableOpacity style={styles.attendBtn} onPress={() => handleFestivalInterest(item)}>
+            <Text style={styles.attendBtnText}>I am Interested</Text>
           </TouchableOpacity>
           <View style={styles.festActionRow}>
             <TouchableOpacity style={styles.festMiniBtn}>
@@ -1836,9 +2043,8 @@ export default function CommunityDetailScreen() {
   const handleShareCommunity = async () => {
     try {
       const appLink = `sanatanlok://community/${id}`;
-      const webLink = `https://brahmand.app/community/${id}`;
       await Share.share({
-        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
+        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${appLink}`,
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -2174,10 +2380,9 @@ export default function CommunityDetailScreen() {
   const handleShare = async (postId: string) => {
     try {
       const appLink = `sanatanlok://community/${id}?postId=${postId}`;
-      const webLink = `https://brahmand.app/community/${id}?postId=${postId}`;
 
       await Share.share({
-        message: `Check out this community post on Brahmand!\n\nApp Link: ${appLink}\nWeb View: ${webLink}`,
+        message: `Check out this community post on Brahmand!\n\n${appLink}`,
       });
 
       setDiscussionPosts(prev => prev.map(post => {
@@ -2537,18 +2742,22 @@ export default function CommunityDetailScreen() {
               </View>
             )}
 
-            {activeTab === 'Feed' && (
+            {(activeTab === 'Feed' || activeTab === 'My Posts') && (
               <>
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionTitleRow}>
                     <Ionicons name="chatbubbles-outline" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
-                    <Text style={styles.sectionTitle}>Community Discussion</Text>
+                    <Text style={styles.sectionTitle}>
+                      {activeTab === 'My Posts' ? 'My Shared Posts' : 'Community Discussion'}
+                    </Text>
                   </View>
-                  <View style={styles.verifiedMessagesBadge}>
-                    <MaterialCommunityIcons name="check-decagram" size={14} color="#FF3B30" />
-                    <Text style={styles.verifiedMessagesText}>Featured Verified Messages</Text>
-                    <TouchableOpacity><Text style={styles.viewAllInline}>View All</Text></TouchableOpacity>
-                  </View>
+                  {activeTab !== 'My Posts' && (
+                    <View style={styles.verifiedMessagesBadge}>
+                      <MaterialCommunityIcons name="check-decagram" size={14} color="#FF3B30" />
+                      <Text style={styles.verifiedMessagesText}>Featured Verified Messages</Text>
+                      <TouchableOpacity><Text style={styles.viewAllInline}>View All</Text></TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               </>
             )}

@@ -226,11 +226,11 @@ class FirebaseAuthService:
             "kyc_status": "verified",
             "kyc_role": None,
             "kyc_documents": None,
-            "kyc_verified_at": datetime.utcnow().isoformat(),
+            "kyc_verified_at": datetime.utcnow().isoformat() + 'Z',
             "anonymous_account": True,
             "anonymous_disabled": False,
             "anonymous_login_source": "predefined_number",
-            "anonymous_created_at": datetime.utcnow().isoformat(),
+            "anonymous_created_at": datetime.utcnow().isoformat() + 'Z',
             "privacy_settings": {
                 "read_receipts": True,
                 "online_status": True,
@@ -259,7 +259,7 @@ class FirebaseAuthService:
             raise ValueError("Anonymous user not found")
         await db.update_document('users', user_id, {
             'anonymous_disabled': True,
-            'anonymous_disabled_at': datetime.utcnow().isoformat()
+            'anonymous_disabled_at': datetime.utcnow().isoformat() + 'Z'
         })
         return {"message": "Anonymous account permanently disabled"}
     

@@ -13,6 +13,7 @@ import {
   Modal,
   FlatList,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -178,8 +179,20 @@ export default function BloodRequestScreen() {
   };
 
   const handleBack = () => {
-    router.replace('/(tabs)/home');
+    router.replace({
+      pathname: '/community-request',
+      params: params.community_id ? { community_id: params.community_id } : {}
+    });
   };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [params.community_id]);
 
   return (
     <View style={styles.mainContainer}>
@@ -401,6 +414,7 @@ const styles = StyleSheet.create({
   suggestionTextContainer: { marginLeft: 12, flex: 1 },
   suggestionName: { fontSize: 14, fontFamily: FONTS.bold, color: '#333' },
   suggestionAddress: { fontSize: 12, fontFamily: FONTS.regular, color: '#999', marginTop: 2 },
+  suggestionStatus: { padding: 12, fontSize: 13, color: '#999', textAlign: 'center' },
 
   inputWrapper: { backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   input: { fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
