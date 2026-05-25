@@ -179,6 +179,10 @@ async def lifespan(app: FastAPI):
     await task_queue.start()
     logger.info("Background task queue started")
 
+    # Start Jaap reminder worker
+    asyncio.create_task(_jaap_reminder_worker())
+    logger.info("Jaap reminder worker started")
+
     _panchang_prefetch_task = None
     logger.info("Panchang prefetch loop disabled")
     
@@ -10162,8 +10166,7 @@ async def get_astrology_profile(token_data: dict = Depends(verify_token)):
 
 
 # Include router
-app.include_router(api_router)
-app.include_router(video_upload_router)
+# app.include_router(api_router) moved to bottom to ensure all routes are included
 
 
 # =================== SOCKET.IO ===================
@@ -10425,6 +10428,108 @@ async def send_jaap_invite(
     return {"message": "Invite sent!", "sent": len(target_ids)}
 
 
+@api_router.post("/jaap/reminder")
+async def register_jaap_reminder(
+    request: Request,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Register a reminder for a specific jaap session.
+    Stores the user's intent to be notified 5 minutes before the session starts.
+    """
+    db = await get_db()
+    user_id = token_data["user_id"]
+    data = await request.json()
+    
+    mantra_type = data.get("mantra_type")
+    session_name = data.get("session_name")  # e.g., 'Morning', 'Evening'
+    
+    if not mantra_type or not session_name:
+        raise HTTPException(status_code=400, detail="mantra_type and session_name are required")
+
+    # Use a predictable ID to prevent duplicates: user_id:mantra:session
+    reminder_id = f"{user_id}:{mantra_type}:{session_name.lower()}"
+    
+    reminder_data = {
+        "user_id": user_id,
+        "mantra_type": mantra_type,
+        "session_name": session_name,
+        "created_at": datetime.utcnow().isoformat() + 'Z',
+        "active": True
+    }
+    
+    await db.create_document("jaap_reminders", reminder_data, doc_id=reminder_id)
+    
+    return {"message": f"Reminder set for {session_name} {mantra_type} jaap!"}
+
+
+async def _jaap_reminder_worker():
+    """
+    Background worker that checks for upcoming jaap sessions
+    and sends notifications to registered users 5 minutes before start.
+    """
+    logger.info("Starting Jaap reminder worker loop")
+    
+    # Session config (Sync with frontend/src/features/live-mantra/schedule.ts)
+    HAN_SESSIONS = [
+        {'name': 'Morning', 'hour': 5, 'min': 30},
+        {'name': 'Afternoon', 'hour': 12, 'min': 0},
+        {'name': 'Evening', 'hour': 16, 'min': 0},
+        {'name': 'Night', 'hour': 21, 'min': 0},
+    ]
+    
+    while True:
+        try:
+            # Check every minute
+            await asyncio.sleep(60)
+            
+            # Use IST (Asia/Kolkata) for session scheduling
+            tz = ZoneInfo("Asia/Kolkata")
+            now_ist = datetime.now(tz)
+            
+            for session in HAN_SESSIONS:
+                # Calculate session start time for today
+                start_time = now_ist.replace(hour=session['hour'], minute=session['min'], second=0, microsecond=0)
+                
+                # Check if it's exactly 5 minutes before (within a 1-minute window)
+                diff = (start_time - now_ist).total_seconds()
+                
+                if 240 <= diff < 300:  # 4 to 5 minutes before
+                    logger.info(f"Triggering reminders for {session['name']} Hanuman Chalisa (starts in {int(diff/60)}m)")
+                    
+                    db = await get_db()
+                    # Query active reminders for this session
+                    reminders = await db.query_documents(
+                        "jaap_reminders",
+                        filters=[
+                            ("session_name", "==", session['name']),
+                            ("mantra_type", "==", "hanuman"),
+                            ("active", "==", True)
+                        ]
+                    )
+                    
+                    if not reminders:
+                        continue
+                        
+                    for r in reminders:
+                        uid = r.get("user_id")
+                        # Send notification via task queue
+                        await task_queue.enqueue(
+                            FirebaseNotificationService.create_notification,
+                            user_id=uid,
+                            title="🙏 Jaap Starting Soon",
+                            body=f"Your {session['name']} Hanuman Chalisa session starts in 5 minutes. Join now!",
+                            notification_type="jaap_reminder",
+                            data={"mantra_type": "hanuman", "session_name": session['name']}
+                        )
+                    
+        except Exception as e:
+            logger.error(f"Error in jaap reminder worker: {e}")
+            await asyncio.sleep(30) # Cool down on error
+
+
+app.include_router(api_router)
+app.include_router(video_upload_router)
 app.mount("/socket.io", socket_app)
 
 

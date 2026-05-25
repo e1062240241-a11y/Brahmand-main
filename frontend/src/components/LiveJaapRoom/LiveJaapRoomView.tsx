@@ -36,7 +36,7 @@ hanuman: {
     bg: require('../../../assets/images/krishna_jaap_card_v2.png'),
   },
   shiva: {
-    text: 'ॐ नमः शिवाय',
+    text: 'ॐ\u00A0नमः\u00A0शिवाय',
     bg: require('../../../assets/images/shiva_jaap_card_v2.png'),
   },
   mrityunjaya: {

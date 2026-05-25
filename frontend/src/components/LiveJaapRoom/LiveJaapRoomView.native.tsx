@@ -48,7 +48,7 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
     bg: require('../../../assets/images/krishna_jaap_card_v2.png'),
   },
   shiva: {
-    text: 'ॐ नमः शिवाय',
+    text: 'ॐ\u00A0नमः\u00A0शिवाय',
     bg: require('../../../assets/images/jaap_hero_shiva_final.png'),
   },
   mrityunjaya: {
@@ -817,7 +817,7 @@ export default function LiveJaapRoomView() {
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
-                id="jaap-invite-bell-btn"
+                testID="jaap-invite-bell-btn"
                 style={[styles.headerBtn, inviteSent && { backgroundColor: 'rgba(255,200,50,0.25)' }]}
                 onPress={async () => {
                   if (!isSessionActive) {

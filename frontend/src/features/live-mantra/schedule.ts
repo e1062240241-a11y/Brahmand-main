@@ -404,15 +404,7 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
   }
 
   if (mantraType === 'shiva') {
-    const totalDuration = 8.48;
-    const position = elapsedSeconds % totalDuration;
-    if (position < 1.9) {
-      return { currentIndex: 0, isHolding: false };
-    } else if (position < 3.1) {
-      return { currentIndex: 1, isHolding: false };
-    } else {
-      return { currentIndex: 2, isHolding: false };
-    }
+    return { currentIndex: 0, isHolding: false };
   }
 
   const wordDurations = words.map(w => (w.length > 7 ? 3.0 : 1.2));
