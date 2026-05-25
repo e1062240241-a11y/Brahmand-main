@@ -117,8 +117,8 @@ const resolvedWebApiUrl =
       : configuredApiUrl;
 
 export const API_URL = (Platform.OS === 'web'
-  ? (resolvedWebApiUrl || 'http://127.0.0.1:8002')
-  : (configuredApiUrl || 'http://127.0.0.1:8002')).replace('localhost', '127.0.0.1');
+  ? (resolvedWebApiUrl || 'http://127.0.0.1:8000')
+  : (configuredApiUrl || 'http://127.0.0.1:8000')).replace('localhost', '127.0.0.1');
 const isTunnelApiUrl = /\.loca\.lt$/i.test((API_URL || '').replace(/^https?:\/\//i, '').split('/')[0] || '');
 
 const defaultHeaders: Record<string, string> = {

@@ -12,6 +12,7 @@ import {
   Platform,
   Easing,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,7 +48,7 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
     bg: require('../../../assets/images/krishna_jaap_card_v2.png'),
   },
   shiva: {
-    text: 'ॐ नमः शिवाय । ॐ नमः शिवाय । नागेन्द्रहाराय त्रिलोचनाय भस्माङ्गरागाय महेश्वराय । नित्याय शुद्धाय दिगम्बराय तस्मै नकाराय नमः शिवाय ॥ १ ॥ मन्दाकिनीसलिलचन्दनचर्चिताय नन्दीश्वरप्रमथनाथमहेश्वराय । मन्दारपुष्पबहुपुष्पसुपूजिताय तस्मै मकाराय नमः शिवाय ॥ २ ॥ शिवाय गौरीवदनाब्जवृन्दसूर्याय दक्षाध्वरनाशकाय । श्रीनीलकण्ठाय वृषध्वजाय तस्मै शिकाराय नमः शिवाय ॥ ३ ॥ वसिष्ठकुम्भोद्भवगौतमार्यमुनीन्द्रदेवार्चितशेखराय । चन्द्रार्कवैश्वानरलोचनाय तस्मै वकाराय नमः शिवाय ॥ ४ ॥ यक्षस्वरूपाय जटाधराय पिनाकहस्ताय सनातनाय । दिव्याय देवाय दिगम्बराय तस्मै यकाराय नमः शिवाय ॥ ५ ॥',
+    text: 'ॐ\u00A0नमः\u00A0शिवाय',
     bg: require('../../../assets/images/jaap_hero_shiva_final.png'),
   },
   mrityunjaya: {
@@ -65,10 +66,10 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
 };
 
 const MANTRA_BG_AUDIO: Record<string, any> = {
-  gayatri: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
+  gayatri: require('../../../assets/audio/audio ekant/Gayatri Mantra.m4a.mp4'),
   hanuman: require('../../../assets/audio/audio ekant/Hanuman chalisa.mp3'),
   krishna: require('../../../assets/audio/audio ekant/eisenkern1982-waterfall-176958.mp3'),
-  shiva: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
+  shiva: require('../../../assets/audio/audio ekant/Final Om Namah Shivaay 2026-05-23 17_09.m4a.mp4'),
   mrityunjaya: require('../../../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
   ganesh: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
   laxmi: require('../../../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
@@ -245,10 +246,16 @@ export default function LiveJaapRoomView() {
       if (val) setPersonalCount(parseInt(val, 10));
       else setPersonalCount(0);
     });
-    AsyncStorage.getItem(accKey).then(val => {
-      if (val) accumulatedTimeRef.current = parseFloat(val);
-      else accumulatedTimeRef.current = 0;
-    });
+    // For 24/7 always-on rooms (gayatri/shiva), don't restore accumulated
+    // seconds – each room entry starts a fresh count to prevent fluctuation
+    if (mantraType === 'gayatri' || mantraType === 'shiva') {
+      accumulatedTimeRef.current = 0;
+    } else {
+      AsyncStorage.getItem(accKey).then(val => {
+        if (val) accumulatedTimeRef.current = parseFloat(val);
+        else accumulatedTimeRef.current = 0;
+      });
+    }
   }, [mantraType]);
 
   useEffect(() => {
@@ -257,13 +264,13 @@ export default function LiveJaapRoomView() {
   }, []);
 
   const hanumanStatus = getCurrentHanumanStatus(now);
-  const otherStatus = getCurrentOtherJaapStatus(now);
+  const otherStatus = getCurrentOtherJaapStatus(now, mantraType);
 
   const isHanuman = mantraType === 'hanuman';
   const isKedarnath = mantraType === 'kedarnath';
   const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya');
 
-  const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
+  const isSessionActive = true; // Forced to true to bypass offline lock for testing
   
   const selectedMantra = MANTRA_DATA[mantraType || 'gayatri'] || MANTRA_DATA.gayatri;
   const WORDS = useMemo(() => selectedMantra.text.split(' '), [selectedMantra.text]);
@@ -287,6 +294,7 @@ export default function LiveJaapRoomView() {
   const [remotePeers, setRemotePeers] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'chant' | 'path'>('chant');
   const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
+  const [inviteSent, setInviteSent] = useState(false);
   
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
@@ -458,8 +466,15 @@ export default function LiveJaapRoomView() {
       const lastTime = lastTimeRef.current;
       const diff = newTime - lastTime;
       
-      const wordDurations = WORDS.map(w => (w.length > 7 ? 3.0 : 1.2));
-      const totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
+      let totalDuration = 0;
+      if (mantraType === 'gayatri') {
+        totalDuration = 31.068;
+      } else if (mantraType === 'shiva') {
+        totalDuration = 8.48; // 8.48s loop contains 1 main chant + instrumental tail, so 1 loop = 1 count
+      } else {
+        const wordDurations = WORDS.map(w => (w.length > 7 ? 3.0 : 1.2));
+        totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
+      }
 
       if (diff > 0 && diff < 3.0) {
         accumulatedTimeRef.current += diff;
@@ -511,19 +526,45 @@ export default function LiveJaapRoomView() {
 
   // Drift check and synchronization for Native player
   useEffect(() => {
-    if (!bgPlayer || mantraType !== 'hanuman') return;
+    if (!bgPlayer) return;
     
     let hasInitiallySynced = false;
     const syncTimer = setInterval(() => {
-      const status = getCurrentHanumanStatus(new Date());
-      if (status.isActive && !status.isCompleted && !status.isBreak) {
-        const expected = status.audioPositionSeconds;
-        const current = bgPlayer.currentTime || 0;
-        const diff = Math.abs(current - expected);
-        
-        if (!hasInitiallySynced || diff > 2.0) {
-          bgPlayer.seekTo(expected);
-          hasInitiallySynced = true;
+      if (mantraType === 'hanuman') {
+        const status = getCurrentHanumanStatus(new Date());
+        if (status.isActive && !status.isCompleted && !status.isBreak) {
+          const expected = status.audioPositionSeconds;
+          const current = bgPlayer.currentTime || 0;
+          const diff = Math.abs(current - expected);
+          
+          if (!hasInitiallySynced || diff > 2.0) {
+            bgPlayer.seekTo(expected);
+            hasInitiallySynced = true;
+          }
+        }
+      } else if (mantraType === 'gayatri') {
+        const status = getCurrentOtherJaapStatus(new Date(), mantraType);
+        if (status.isActive) {
+          const expected = status.elapsedSeconds % 31.068;
+          const current = bgPlayer.currentTime || 0;
+          const diff = Math.abs(current - expected);
+          
+          if (!hasInitiallySynced || diff > 2.0) {
+            bgPlayer.seekTo(expected);
+            hasInitiallySynced = true;
+          }
+        }
+      } else if (mantraType === 'shiva') {
+        const status = getCurrentOtherJaapStatus(new Date(), mantraType);
+        if (status.isActive) {
+          const expected = status.elapsedSeconds % 8.48;
+          const current = bgPlayer.currentTime || 0;
+          const diff = Math.abs(current - expected);
+          
+          if (!hasInitiallySynced || diff > 2.0) {
+            bgPlayer.seekTo(expected);
+            hasInitiallySynced = true;
+          }
         }
       }
     }, 1500);
@@ -603,11 +644,12 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (mantraType === 'hanuman') return;
     if (isSessionActive) {
-      const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, otherStatus.isActive ? otherStatus.elapsedSeconds : 0);
+      const time = audioStatus?.currentTime || 0;
+      const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, time, mantraType);
       setCurrentIndex(syncIdx);
       setIsHolding(syncHold);
     }
-  }, [now, mantraType, isSessionActive, WORDS, otherStatus.isActive ? otherStatus.elapsedSeconds : 0]);
+  }, [mantraType, isSessionActive, WORDS, audioStatus?.currentTime]);
 
   useEffect(() => {
     if (mantraType === 'hanuman' || isSessionActive) return;
@@ -754,13 +796,12 @@ export default function LiveJaapRoomView() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <ImageBackground source={selectedMantra.bg} style={StyleSheet.absoluteFill} resizeMode="cover">
-        <LinearGradient colors={['rgba(5,5,5,0.7)', 'rgba(5,5,5,0.9)', 'rgba(47,18,0,0.85)']} style={StyleSheet.absoluteFill} />
-        <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => {
+    <LinearGradient colors={['#FFDFAC', '#FFDEAD', '#FFFFFF']} locations={[0, 0.4471, 1]} style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        {/* NEW HEADER */}
+        <View style={styles.headerNew}>
+          <TouchableOpacity onPress={() => {
               if (mantraType === 'kedarnath' || fromHome === 'true') {
                 router.replace('/(tabs)/home');
               } else {
@@ -773,12 +814,50 @@ export default function LiveJaapRoomView() {
                <Text style={styles.participantLabel} numberOfLines={1}>{participantLabel}</Text>
                <Text style={styles.micStatusText}>{micStatus}</Text>
             </View>
-            <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.headerBtn}>
-              <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                testID="jaap-invite-bell-btn"
+                style={[styles.headerBtn, inviteSent && { backgroundColor: 'rgba(255,200,50,0.25)' }]}
+                onPress={async () => {
+                  if (!isSessionActive) {
+                    Alert.alert('Jaap not active', 'Start the jaap first before inviting others.');
+                    return;
+                  }
+                  try {
+                    const { default: api } = await import('../../services/api');
+                    const mantraTitle = (roomTitle as string) || mantraType || 'Live Jaap';
+                    await api.post('/jaap/invite', {
+                      mantra_type: mantraType || 'hanuman',
+                      mantra_title: mantraTitle,
+                    });
+                    setInviteSent(true);
+                    Alert.alert('🙏 Invites Sent!', 'All devotees have been notified to join the jaap.');
+                    setTimeout(() => setInviteSent(false), 5000);
+                  } catch (err: any) {
+                    const msg = err?.response?.data?.detail || 'Could not send invite right now.';
+                    Alert.alert('Invite failed', msg);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={inviteSent ? 'notifications' : 'notifications-outline'}
+                  size={22}
+                  color={inviteSent ? '#FFD700' : '#FFF'}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.headerBtn}>
+                <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           </View>
+          <View style={styles.countPillNew}>
+            <Text style={styles.countLabelNew}>Your
+count</Text>
+            <Text style={styles.countValueNew}>{personalCount}</Text>
+          </View>
+        </View>
 
-          {!isSessionActive ? (
+        {!isSessionActive ? (
             <View style={styles.countdownContainer}>
               <View style={styles.countdownGlassCard}>
                 <Text style={styles.countdownOmSymbol}>🕉️</Text>
@@ -850,200 +929,124 @@ export default function LiveJaapRoomView() {
                 </TouchableOpacity>
               </View>
             </View>
-          ) : (
-            <>
-              <View style={styles.tabBar}>
-                <TouchableOpacity onPress={() => setActiveTab('chant')} style={[styles.tabButton, activeTab === 'chant' && styles.tabButtonActive]}>
-                  <Ionicons name="apps" size={18} color={activeTab === 'chant' ? '#FFEBB5' : 'rgba(255,255,255,0.5)'} />
-                  <Text style={[styles.tabText, activeTab === 'chant' && styles.tabTextActive]}>Chanting</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setActiveTab('path')} style={[styles.tabButton, activeTab === 'path' && styles.tabButtonActive]}>
-                  <Ionicons name="document-text" size={18} color={activeTab === 'path' ? '#FFEBB5' : 'rgba(255,255,255,0.5)'} />
-                  <Text style={[styles.tabText, activeTab === 'path' && styles.tabTextActive]}>Shloka Path</Text>
-                </TouchableOpacity>
+        ) : (
+            <View style={styles.activeRoomContainerNew}>
+              {/* CHANTING WITH YOU PILL */}
+              <View style={styles.chantingWithYouContainer}>
+                <View style={styles.chantingWithYouPill}>
+                  <Text style={styles.chantingLabelNew}>CHANTING WITH YOU  </Text>
+                  <Text style={styles.chantingValueNew}>{(remotePeers + 1) * 18} souls </Text>
+                  <Ionicons name="cellular" size={14} color="#FF8A00" />
+                </View>
               </View>
 
-              {isSessionActive && (
-                <View style={styles.roomStatusBanner}>
-                  <LinearGradient
-                    colors={['rgba(255,107,0,0.15)', 'rgba(255,107,0,0.05)']}
-                    style={styles.roomStatusBannerGradient}
-                  >
-                    {isHanuman && hanumanStatus.isActive ? (
-                      <>
-                        <View style={styles.bannerRowLayout}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="sparkles" size={16} color="#FFEBB5" />
-                            <Text style={styles.bannerMainText}>
-                              {hanumanStatus.isCompleted
-                                ? `Session Completed (Total 51 Rounds Daily)`
-                                : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession}`}
-                            </Text>
-                          </View>
-                          <View style={styles.roundBadge}>
-                            <Text style={styles.roundBadgeText}>Round {hanumanStatus.roundOfDay} / 51</Text>
-                          </View>
-                        </View>
-
-                        {/* Personal Counter row */}
-                        <View style={[styles.bannerRowLayout, { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' }]}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="person" size={14} color="#FF8A00" />
-                            <Text style={[styles.bannerMainText, { color: 'rgba(255,255,255,0.8)' }]}>
-                              Your Personal Progress
-                            </Text>
-                          </View>
-                          <View style={[styles.roundBadge, { backgroundColor: 'rgba(255, 138, 0, 0.15)', borderColor: 'rgba(255, 138, 0, 0.3)' }]}>
-                            <Text style={[styles.roundBadgeText, { color: '#FFEBB5' }]}>Personal Count: {personalCount}</Text>
-                          </View>
-                        </View>
-
-                        {!hanumanStatus.isCompleted && (
-                          <View style={styles.progressBarBg}>
-                            <View 
-                              style={[
-                                styles.progressBarFill, 
-                                { width: `${((audioStatus?.currentTime || 0) / 961.39) * 100}%` }
-                              ]} 
-                            />
-                          </View>
-                        )}
-                      </>
-                    ) : (
-                      <View style={styles.bannerRowLayout}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Ionicons name="sparkles" size={16} color="#FFEBB5" />
-                          <Text style={styles.bannerMainText}>
-                            {!isHanuman && otherStatus.isActive ? otherStatus.sessionName : ''} Live Session
-                          </Text>
-                        </View>
-                        <View style={[styles.roundBadge, { backgroundColor: 'rgba(255, 138, 0, 0.15)', borderColor: 'rgba(255, 138, 0, 0.3)' }]}>
-                          <Text style={[styles.roundBadgeText, { color: '#FFEBB5' }]}>Personal Count: {personalCount}</Text>
-                        </View>
-                      </View>
-                    )}
-                  </LinearGradient>
-                </View>
-              )}
-
-              <View style={[styles.scrollContainer, { justifyContent: 'center', flex: 1 }]}>
-                {activeTab === 'chant' ? (
-                  <View style={styles.soloFocusContainer}>
-                    {isHanuman && hanumanStatus.isActive && hanumanStatus.isBreak ? (
-                      <View style={styles.breakMessageContainer}>
-                        <Text style={styles.breakTextMain}>Have a deep breath.</Text>
-                        <Text style={styles.breakTextSub}>Next jaap is starting soon...</Text>
-                        <View style={styles.breakCountdownCircle}>
-                          <Text style={styles.breakCountdownText}>{hanumanStatus.breakRemainingSeconds || 10}s</Text>
-                        </View>
-                      </View>
-                    ) : (
-                      <Animated.View 
-                         key={activeLineKey} 
-                         style={[
-                           styles.verticalLyricsContainer, 
-                           { opacity: soloFadeAnim, transform: [{ translateY: soloMoveAnim }] }
-                         ]}
-                      >
-                         {/* Previous Line (Top, Dimmed) */}
-                         <View style={styles.sideLineContainer}>
-                           <Text style={[styles.sideLineText, styles.previousLineText]}>
-                             {previousLineText || ' '}
-                           </Text>
-                         </View>
- 
-                         {/* Current Line (Middle, Active) */}
-                         <View style={styles.soloWordBox}>
-                           <LinearGradient colors={['rgba(255,138,0,0.15)', 'rgba(255,138,0,0)']} style={styles.soloGlow} />
-                           <View style={styles.soloLineWordsRow}>
-                             {lineItems.map((word: string, idx: number) => {
-                               const isHighlighted = highlightedIdx === idx;
-                               return (
-                                 <Text 
-                                   key={`${word}-${idx}`} 
-                                   style={[
-                                     styles.soloWordText, 
-                                     isHighlighted ? styles.soloWordHighlighted : styles.soloWordDimmed,
-                                     isMusic && { fontSize: 36, marginHorizontal: 8 }
-                                   ]}
-                                 >
-                                   {word}{' '}
-                                 </Text>
-                               );
-                             })}
-                           </View>
-                           <View style={styles.soloOrnateUnderline} />
-                         </View>
- 
-                         {/* Next Line (Bottom, Dimmed) */}
-                         <View style={styles.sideLineContainer}>
-                           <Text style={[styles.sideLineText, styles.nextLineText]}>
-                             {nextLineText || ' '}
-                           </Text>
-                         </View>
-                      </Animated.View>
-                    )}
-                  </View>
+              {/* MAIN CHANTING LYRICS AREA */}
+              <View style={styles.lyricsAreaNew}>
+                {isHanuman && hanumanStatus.isActive && hanumanStatus.isBreak ? (
+                   <View style={styles.breakMessageContainer}>
+                     <Text style={[styles.breakTextMain, { color: '#000' }]}>Have a deep breath.</Text>
+                     <Text style={[styles.breakTextSub, { color: '#555' }]}>Next jaap is starting soon...</Text>
+                   </View>
                 ) : (
-                  <View style={styles.fullShlokaBox}>
-                    <View style={styles.scrollHeader}>
-                      <Ionicons name="document-text" size={16} color="#FFEBB5" />
-                      <Text style={styles.scrollHeaderText}>Sacred Full Path</Text>
-                    </View>
-                    <ScrollView showsVerticalScrollIndicator={true}>
-                      <Text style={styles.fullShlokaText}>{selectedMantra.text}</Text>
-                    </ScrollView>
-                  </View>
+                   <View style={styles.lyricsBoxNew}>
+                      {/* Current Line */}
+                      <View style={styles.currentLineBoxNew}>
+                        {lineItems.map((word: string, idx: number) => {
+                          const isHighlighted = highlightedIdx === idx;
+                          return (
+                            <Text key={`${word}-${idx}`} style={[styles.wordNew, isHighlighted && styles.wordHighlightNew]}>
+                              {word}{' '}
+                            </Text>
+                          );
+                        })}
+                      </View>
+                      
+                      {/* Next Line */}
+                      <View style={styles.nextLineBoxNew}>
+                         <Text style={styles.nextLineTextNew}>{nextLineText || ' '}</Text>
+                      </View>
+                   </View>
                 )}
               </View>
 
-              <View style={styles.reactionOverlay} pointerEvents="none">
-                {reactions.map(r => (
-                  <Animated.Text key={r.id} style={[styles.floatingEmoji, {
-                    opacity: r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
-                    transform: [
-                      { translateY: r.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -300] }) },
-                      { translateX: r.anim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 15, -15, 10, 0] }) },
-                      { scale: r.anim.interpolate({ inputRange: [0, 0.2], outputRange: [0.6, 1.2], extrapolate: 'clamp' }) }
-                    ]
-                  }]}>{r.emoji}</Animated.Text>
-                ))}
-              </View>
+              {/* BOTTOM ACTIONS AND METRICS */}
+              <View style={styles.bottomAreaNew}>
+                {/* Emojis */}
+                <View style={styles.reactionRowNew}>
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('❤️')}>
+                     <Text style={styles.reactionEmojiNew}>❤️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🙏')}>
+                     <Text style={styles.reactionEmojiNew}>🙏</Text>
+                     <View style={styles.reactionBadgeNew}><Text style={styles.reactionBadgeTextNew}>434</Text></View>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🔥')}>
+                     <Text style={styles.reactionEmojiNew}>🔥</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('ॐ')}>
+                     <Text style={styles.reactionEmojiNew}>ॐ</Text>
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.footerContainer}>
-                <View style={styles.roomStatsBox}><Text style={styles.roomStats}>Sangat: {(remotePeers + 1) * 18} Devotees</Text></View>
-                <View style={styles.transparentControlBar}>
-                  <View style={styles.leftControls}>
-                    <TouchableOpacity onPress={toggleMic} style={styles.iconCircle}>
-                      <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={22} color={isMicEnabled ? "#4CD964" : "#FFF"} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {
-                      if (mantraType === 'kedarnath' || fromHome === 'true') {
-                        router.replace('/(tabs)/home');
-                      } else {
-                        router.replace('/(tabs)/jaap');
-                      }
-                    }} style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}>
-                      <Ionicons name="call" size={20} color="#FFF" />
-                    </TouchableOpacity>
+                {/* Metrics */}
+                <View style={styles.metricsRowNew}>
+                  <View style={styles.metricItemNew}>
+                    <Text style={styles.metricLabelNew}>JAAP</Text>
+                    <Text style={styles.metricValueNew}>{isHanuman ? hanumanStatus.roundOfSession : 1}<Text style={styles.metricSlashNew}> / {isHanuman ? hanumanStatus.totalRepsInSession : 21}</Text></Text>
                   </View>
-                  <View style={styles.rightReactions}>
-                    {['🙏', '❤️', '😊', '🔔'].map((emoji) => (
-                      <TouchableOpacity key={emoji} onPress={() => addReaction(emoji)} style={styles.reactionBtn}><Text style={styles.reactionBtnText}>{emoji}</Text></TouchableOpacity>
-                    ))}
+                  <View style={styles.metricItemNew}>
+                    <Text style={styles.metricLabelNew}>REMAINING</Text>
+                    <Text style={styles.metricValueNew}>{(() => {
+                        const nextEnd = isHanuman ? hanumanStatus.sessionEnd : otherStatus.sessionEnd;
+                        if (!nextEnd) return '0h 0m';
+                        const diffMs = nextEnd.getTime() - now.getTime();
+                        if (diffMs <= 0) return '0h 0m';
+                        const hrs = Math.floor(diffMs / 3600000);
+                        const mins = Math.floor((diffMs % 3600000) / 60000);
+                        return `${hrs}h ${mins}m`;
+                      })()} <Text style={styles.metricSlashNew}>remaining</Text></Text>
+                  </View>
+                  <View style={styles.metricItemNew}>
+                    <Text style={styles.metricLabelNew}>LINE</Text>
+                    <Text style={styles.metricValueNew}>{isHanuman ? Math.floor((audioStatus?.currentTime || 0)/15) + 1 : currentIndex + 1}<Text style={styles.metricSlashNew}> / {isHanuman ? 46 : Math.ceil(WORDS.length / 4)}</Text></Text>
                   </View>
                 </View>
+
+                {/* Controls Bar */}
+                <View style={styles.controlsBarNew}>
+                  <TouchableOpacity onPress={toggleMic} style={styles.controlIconBtnNew}>
+                    <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={24} color={isMicEnabled ? "#FF8A00" : "#000"} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.volumeMuteBtnNew}>
+                    <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={26} color="#FFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.controlIconBtnNew}>
+                    <Ionicons name="share-social-outline" size={24} color="#000" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </>
-          )}
-        </View>
-      </ImageBackground>
-    </View>
+            </View>
+        )}
+      </View>
+
+      <View style={styles.reactionOverlay} pointerEvents="none">
+        {reactions.map(r => (
+          <Animated.Text key={r.id} style={[styles.floatingEmoji, {
+             opacity: r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+             transform: [
+               { translateY: r.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -300] }) },
+               { translateX: r.anim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 15, -15, 10, 0] }) },
+               { scale: r.anim.interpolate({ inputRange: [0, 0.2], outputRange: [0.6, 1.2], extrapolate: 'clamp' }) }
+             ]
+          }]}>{r.emoji}</Animated.Text>
+        ))}
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050505' },
+  container: { flex: 1 },
   safeArea: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, zIndex: 10 },
   headerBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
@@ -1323,4 +1326,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+
+  headerNew: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, zIndex: 10 },
+  backBtnNew: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.4)', justifyContent: 'center', alignItems: 'center' },
+  titleContainerNew: { flex: 1, alignItems: 'center' },
+  titleNew: { fontSize: 20, fontWeight: '800', color: '#1A1A1A' },
+  subtitleNew: { fontSize: 10, fontWeight: '700', color: '#D45D00', letterSpacing: 1.5, marginTop: 2 },
+  countPillNew: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, alignItems: 'center', gap: 6 },
+  countLabelNew: { fontSize: 9, fontWeight: '700', color: '#555', textAlign: 'right', lineHeight: 10 },
+  countValueNew: { fontSize: 18, fontWeight: '800', color: '#000' },
+  
+  activeRoomContainerNew: { flex: 1, justifyContent: 'space-between' },
+  chantingWithYouContainer: { alignItems: 'center', marginTop: 25 },
+  chantingWithYouPill: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center' },
+  chantingLabelNew: { fontSize: 11, fontWeight: '700', color: '#555', letterSpacing: 0.5 },
+  chantingValueNew: { fontSize: 13, fontWeight: '800', color: '#1A1A1A' },
+
+  lyricsAreaNew: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  lyricsBoxNew: { alignItems: 'center', width: '100%' },
+  currentLineBoxNew: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 30 },
+  wordNew: { fontSize: 30, fontWeight: '400', color: '#44403C', textAlign: 'center', lineHeight: 48, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' },
+  wordHighlightNew: { color: '#FF7300', fontWeight: '800' },
+  nextLineBoxNew: { alignItems: 'center', paddingHorizontal: 10 },
+  nextLineTextNew: { fontSize: 18, fontWeight: '500', color: 'rgba(0,0,0,0.4)', textAlign: 'center', lineHeight: 28 },
+
+  bottomAreaNew: { paddingBottom: Platform.OS === 'ios' ? 10 : 20, paddingHorizontal: 20 },
+  reactionRowNew: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 25 },
+  reactionBtnNew: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
+  reactionEmojiNew: { fontSize: 24 },
+  reactionBadgeNew: { position: 'absolute', top: -4, right: -10, backgroundColor: '#FF453A', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  reactionBadgeTextNew: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  
+  metricsRowNew: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: 25 },
+  metricItemNew: { alignItems: 'center' },
+  metricLabelNew: { fontSize: 10, fontWeight: '800', color: 'rgba(0,0,0,0.5)', letterSpacing: 1, marginBottom: 4 },
+  metricValueNew: { fontSize: 16, fontWeight: '800', color: '#000' },
+  metricSlashNew: { fontSize: 12, fontWeight: '700', color: 'rgba(0,0,0,0.5)' },
+
+  controlsBarNew: { flexDirection: 'row', backgroundColor: '#FEE3D0', borderRadius: 40, padding: 10, justifyContent: 'space-around', alignItems: 'center' },
+  controlIconBtnNew: { padding: 10 },
+  volumeMuteBtnNew: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center', shadowColor: '#FF8A00', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
 });

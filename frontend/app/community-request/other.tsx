@@ -148,9 +148,8 @@ export default function OtherRequestScreen() {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalBar} />
-          <View style={styles.modalBar} />
           <View style={styles.modalHeaderOrange}>
-            <Text style={styles.modalTitleWhite}>Dropdown Options</Text>
+            <Text style={styles.modalTitleWhite}>{title}</Text>
             <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtnWhite}>
               <Ionicons name="close" size={20} color="#FFF" />
             </TouchableOpacity>

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { COLORS } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
@@ -357,9 +358,7 @@ export default function NotificationsScreen() {
         {/* Middle Side: Content */}
         <View style={styles.notificationContent}>
           <Text style={styles.notificationText}>
-            <Text style={styles.boldText}>{actorName}</Text>{' '}
-            {item.body ? item.body.replace(itemData?.actor_name || actorName || '', '').trim() : 'sent a notification.'}{' '}
-            <Text style={styles.timeText}>{getTimeAgo(item.time || item.created_at)}</Text>
+            {actorName} {item.body ? item.body.replace(itemData?.actor_name || actorName || '', '').trim() : 'sent a notification.'}
           </Text>
           
           {isInvite && (
@@ -382,35 +381,40 @@ export default function NotificationsScreen() {
           )}
         </View>
 
-        {/* Right Side: Follow button or unread indicator */}
-        {isFollow && actorId && (
-          <TouchableOpacity
-            style={[
-              styles.followButton,
-              followingMap[actorId] && styles.followingButton,
-              followLoadingMap[actorId] && styles.disabledBtn,
-            ]}
-            onPress={() => handleFollowToggle(actorId)}
-            disabled={followLoadingMap[actorId]}
-          >
-            {followLoadingMap[actorId] ? (
-              <ActivityIndicator size="small" color={followingMap[actorId] ? '#000' : '#FFF'} />
-            ) : (
-              <Text
-                style={[
-                  styles.followButtonText,
-                  followingMap[actorId] && styles.followingButtonText,
-                ]}
-              >
-                {followingMap[actorId] ? 'Following' : 'Follow'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        )}
+        {/* Right Side: Follow button or Time */}
+        <View style={styles.rightContent}>
+          {!isFollow && !isInvite && (
+            <Text style={styles.timeText}>{getTimeAgo(item.time || item.created_at)}</Text>
+          )}
+          {isFollow && actorId && (
+            <TouchableOpacity
+              style={[
+                styles.followButton,
+                followingMap[actorId] && styles.followingButton,
+                followLoadingMap[actorId] && styles.disabledBtn,
+              ]}
+              onPress={() => handleFollowToggle(actorId)}
+              disabled={followLoadingMap[actorId]}
+            >
+              {followLoadingMap[actorId] ? (
+                <ActivityIndicator size="small" color={followingMap[actorId] ? '#000' : '#FFF'} />
+              ) : (
+                <Text
+                  style={[
+                    styles.followButtonText,
+                    followingMap[actorId] && styles.followingButtonText,
+                  ]}
+                >
+                  {followingMap[actorId] ? 'Following' : 'Follow'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
 
-        {(!item.is_read || item.unread) && !isInvite && !isFollow && (
-          <View style={styles.unreadDot} />
-        )}
+          {(!item.is_read || item.unread) && !isInvite && !isFollow && (
+            <View style={styles.unreadDot} />
+          )}
+        </View>
       </CardWrapper>
     );
   };
@@ -418,18 +422,16 @@ export default function NotificationsScreen() {
   const groupedData = getGroupedNotifications();
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={['#F9BA9C', '#FFF4ED', '#FFFFFF']} style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.safeHeader}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={24} color="#262626" />
+            <Ionicons name="chevron-back" size={24} color="#000" />
           </TouchableOpacity>
           <View style={styles.headerTitleWrap}>
             <Text style={styles.title}>Notifications</Text>
           </View>
-          <TouchableOpacity style={styles.markAllButton} onPress={handleMarkAllRead}>
-            <Ionicons name="checkmark-done" size={24} color="#FF6600" />
-          </TouchableOpacity>
+          <View style={{ width: 40, height: 40 }} />
         </View>
       </SafeAreaView>
 
@@ -449,7 +451,7 @@ export default function NotificationsScreen() {
               <Text style={styles.emptyText}>When people interact with you, you'll see it here.</Text>
             </View>
           ) : (
-            <View style={{ backgroundColor: '#FFF' }}>
+            <View style={{ backgroundColor: 'transparent' }}>
               {groupedData.map((section) => (
                 <View key={section.title}>
                   {renderSectionHeader(section.title)}
@@ -460,19 +462,17 @@ export default function NotificationsScreen() {
           )}
         </ScrollView>
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   safeHeader: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#DBDBDB',
+    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
   },
   header: {
     flexDirection: 'row',
@@ -493,8 +493,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    color: '#262626',
-    fontSize: 16,
+    color: '#000',
+    fontSize: 18,
     fontWeight: '700',
   },
   markAllButton: {
@@ -507,58 +507,55 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
   },
   loadingText: {
-    color: '#8E8E93',
+    color: '#000',
     fontSize: 13,
     marginTop: 12,
   },
   listWrapper: {
-    backgroundColor: '#FFFFFF',
     paddingBottom: 40,
   },
   sectionHeader: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: '#FFFFFF',
+    paddingTop: 24,
+    paddingBottom: 10,
+    backgroundColor: 'transparent',
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#262626',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#000',
   },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
   },
   notificationItemUnread: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   avatarContainer: {
     position: 'relative',
     marginRight: 12,
   },
   avatarImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 0.5,
-    borderColor: '#EAEAEA',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 0,
   },
   avatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#EAEAEA',
+    borderWidth: 0,
   },
   avatarText: {
     fontSize: 16,
@@ -580,19 +577,24 @@ const styles = StyleSheet.create({
   notificationContent: {
     flex: 1,
     justifyContent: 'center',
+    paddingRight: 8,
   },
   notificationText: {
-    fontSize: 13.5,
-    lineHeight: 18,
-    color: '#262626',
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#222',
   },
   boldText: {
     fontWeight: '700',
-    color: '#262626',
+    color: '#000',
+  },
+  rightContent: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   timeText: {
-    color: '#8E8E93',
-    fontSize: 12.5,
+    color: '#000',
+    fontSize: 13,
   },
   unreadDot: {
     width: 8,

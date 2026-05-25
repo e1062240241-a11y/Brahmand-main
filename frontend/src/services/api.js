@@ -151,8 +151,8 @@ var resolvedWebApiUrl = runtimeWebApiUrl
         ? configuredWebApiUrl
         : configuredApiUrl;
 exports.API_URL = react_native_1.Platform.OS === 'web'
-    ? (resolvedWebApiUrl || 'http://localhost:8002')
-    : (configuredApiUrl || 'http://localhost:8002');
+    ? (resolvedWebApiUrl || 'http://localhost:8000')
+    : (configuredApiUrl || 'http://localhost:8000');
 var isTunnelApiUrl = /\.loca\.lt$/i.test((exports.API_URL || '').replace(/^https?:\/\//i, '').split('/')[0] || '');
 var defaultHeaders = {
     'Content-Type': 'application/json',

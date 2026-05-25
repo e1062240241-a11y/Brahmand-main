@@ -25,6 +25,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageByName } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
+import api from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -104,6 +105,37 @@ export default function JaapLandingScreen() {
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
   const [heroBannerIndex, setHeroBannerIndex] = useState(0);
   const hanumanStatus = getCurrentHanumanStatus(now);
+  const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
+  const [reminders, setReminders] = useState<Record<string, boolean>>({});
+
+  const sendJaapInviteFromCard = async (jaapId: string, mantraType: string, title: string) => {
+    try {
+      await api.post('/jaap/invite', {
+        mantra_type: mantraType,
+        mantra_title: title,
+      });
+      setInvitedJaapId(jaapId);
+      Alert.alert('🙏 Invite Sent!', `All devotees have been notified to join ${title}!`);
+      setTimeout(() => setInvitedJaapId(null), 10000);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || 'Could not send invite. Please try again.';
+      Alert.alert('Invite failed', msg);
+    }
+  };
+
+  const handleSetReminder = async (jaapId: string, mantraType: string, sessionName: string) => {
+    try {
+      await api.post('/jaap/reminder', {
+        mantra_type: mantraType,
+        session_name: sessionName,
+      });
+      setReminders(prev => ({ ...prev, [jaapId]: true }));
+      Alert.alert('🔔 Reminder Set!', `You will be notified 5 minutes before the ${sessionName} session of ${mantraType} jaap.`);
+    } catch (err: any) {
+      console.error('Failed to set reminder:', err);
+      Alert.alert('Error', 'Could not set reminder. Please login again.');
+    }
+  };
 
   // Auto-scroll ref for More Live Jaaps
   const jaapScrollRef = useRef<ScrollView>(null);
@@ -370,7 +402,8 @@ export default function JaapLandingScreen() {
                     }
                   }
                 } else if (isOtherLiveJaap) {
-                  const otherStatus = getCurrentOtherJaapStatus(now);
+                  const mType = jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
+                  const otherStatus = getCurrentOtherJaapStatus(now, mType);
                   showLive = otherStatus.isActive;
                   if (otherStatus.isActive) {
                     liveLabel = 'LIVE';
@@ -407,8 +440,41 @@ export default function JaapLandingScreen() {
                           <Ionicons name="radio" size={12} color="#FFF" style={{ marginRight: 4 }} />
                           <Text style={styles.exactLiveText}>{liveLabel}</Text>
                         </View>
-                        <View style={styles.exactCountBadge}>
-                          <Text style={styles.exactCountText}>{jaap.devotees}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={styles.exactCountBadge}>
+                            <Text style={styles.exactCountText}>{jaap.devotees}</Text>
+                          </View>
+                          <TouchableOpacity
+                            testID={`jaap-bell-${jaap.id}`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={[
+                              styles.jaapCardBellBtn,
+                              (invitedJaapId === jaap.id || reminders[jaap.id]) && styles.jaapCardBellBtnActive
+                            ]}
+                            onPress={() => {
+                              const mantraType = jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
+                              const mantraTitle = jaap.title.replace('\n', ' ');
+                              
+                              if (showLive) {
+                                sendJaapInviteFromCard(jaap.id, mantraType, mantraTitle);
+                              } else {
+                                // For session-based jaaps like Hanuman
+                                if (isHanuman) {
+                                  const sessionName = (hanumanStatus as any).nextSessionName || 'Morning';
+                                  handleSetReminder(jaap.id, 'hanuman', sessionName);
+                                } else {
+                                  // For other jaaps that might not have sessions yet, just use a generic reminder
+                                  handleSetReminder(jaap.id, mantraType, 'Next');
+                                }
+                              }
+                            }}
+                          >
+                            <Ionicons
+                              name={(invitedJaapId === jaap.id || reminders[jaap.id]) ? 'notifications' : 'notifications-outline'}
+                              size={14}
+                              color={(invitedJaapId === jaap.id || reminders[jaap.id]) ? '#FFD700' : '#FFF'}
+                            />
+                          </TouchableOpacity>
                         </View>
                       </View>
                     <View style={styles.jaapCardBottomArea}>
@@ -853,6 +919,20 @@ const styles = StyleSheet.create({
   exactLiveBadge: { backgroundColor: '#E31E24', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },
   exactLiveText: { color: '#FFF', fontSize: 11, fontWeight: '900' },
   exactCountBadge: { backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 },
+  jaapCardBellBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  jaapCardBellBtnActive: {
+    backgroundColor: 'rgba(255,215,0,0.2)',
+    borderColor: '#FFD700',
+  },
   exactCountText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
   jaapCardBottomArea: { width: '100%' },
   jaapCardTitleExact: { color: '#FFF', fontSize: 26, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, marginBottom: 8 },
