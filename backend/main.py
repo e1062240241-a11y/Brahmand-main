@@ -10345,6 +10345,86 @@ async def audio_chunk(sid, data):
     await sio.emit('audio_chunk', payload, to=room, skip_sid=sid)
 
 
+
+# =================== JAAP INVITE NOTIFICATION ===================
+
+# In-memory cooldown: { user_id: last_invite_time }
+_jaap_invite_cooldowns: dict = {}
+JAAP_INVITE_COOLDOWN_SECONDS = 300  # 5 minutes per user per mantra
+
+
+@api_router.post("/jaap/invite")
+async def send_jaap_invite(
+    request: Request,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Send a push notification to all app users inviting them to join a live jaap.
+    Has a per-user cooldown of 5 minutes to prevent spam.
+    """
+    db = await get_db()
+    user_id = token_data["user_id"]
+    data = await request.json()
+    mantra_type = data.get("mantra_type", "hanuman")
+    mantra_title = data.get("mantra_title", "Live Jaap")
+
+    # Cooldown check per (user_id, mantra_type)
+    cooldown_key = f"{user_id}:{mantra_type}"
+    now_ts = datetime.utcnow().timestamp()
+    last_invite = _jaap_invite_cooldowns.get(cooldown_key, 0)
+    if now_ts - last_invite < JAAP_INVITE_COOLDOWN_SECONDS:
+        remaining = int(JAAP_INVITE_COOLDOWN_SECONDS - (now_ts - last_invite))
+        raise HTTPException(
+            status_code=429,
+            detail=f"Please wait {remaining} seconds before sending another invite."
+        )
+
+    inviter = await db.get_document('users', user_id)
+    inviter_name = (inviter or {}).get('name', 'A devotee')
+
+    # Collect all unique FCM tokens from users collection
+    try:
+        all_users = await db.query_documents('users', limit=500)
+    except Exception as e:
+        logger.error(f"Failed to query users for jaap invite: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch users")
+
+    target_ids = [
+        u.get('id') for u in all_users
+        if u.get('id') and u.get('id') != user_id
+    ]
+
+    if not target_ids:
+        return {"message": "No users to notify", "sent": 0}
+
+    title = f"🙏 Join Live {mantra_title}"
+    body = f"{inviter_name} is chanting right now — join the sacred jaap!"
+    notification_data = {
+        "type": "jaap_invite",
+        "mantra_type": mantra_type,
+        "mantra_title": mantra_title,
+        "inviter_name": inviter_name,
+        "inviter_id": user_id,
+        "screen": "live-jaap-room",
+        "params": f"mantraType={mantra_type}&title={mantra_title}"
+    }
+
+    # Fire-and-forget multicast
+    await task_queue.enqueue(
+        FirebaseNotificationService.send_multicast,
+        target_ids,
+        title,
+        body,
+        notification_data
+    )
+
+    # Update cooldown
+    _jaap_invite_cooldowns[cooldown_key] = now_ts
+
+    logger.info(f"Jaap invite sent by {user_id} for mantra={mantra_type} to {len(target_ids)} users")
+    return {"message": "Invite sent!", "sent": len(target_ids)}
+
+
 app.mount("/socket.io", socket_app)
 
 

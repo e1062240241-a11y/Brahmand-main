@@ -12,6 +12,7 @@ import {
   Platform,
   Easing,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -293,6 +294,7 @@ export default function LiveJaapRoomView() {
   const [remotePeers, setRemotePeers] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'chant' | 'path'>('chant');
   const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
+  const [inviteSent, setInviteSent] = useState(false);
   
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
@@ -813,9 +815,41 @@ export default function LiveJaapRoomView() {
                <Text style={styles.participantLabel} numberOfLines={1}>{participantLabel}</Text>
                <Text style={styles.micStatusText}>{micStatus}</Text>
             </View>
-            <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.headerBtn}>
-              <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                id="jaap-invite-bell-btn"
+                style={[styles.headerBtn, inviteSent && { backgroundColor: 'rgba(255,200,50,0.25)' }]}
+                onPress={async () => {
+                  if (!isSessionActive) {
+                    Alert.alert('Jaap not active', 'Start the jaap first before inviting others.');
+                    return;
+                  }
+                  try {
+                    const { default: api } = await import('../../services/api');
+                    const mantraTitle = (roomTitle as string) || mantraType || 'Live Jaap';
+                    await api.post('/jaap/invite', {
+                      mantra_type: mantraType || 'hanuman',
+                      mantra_title: mantraTitle,
+                    });
+                    setInviteSent(true);
+                    Alert.alert('🙏 Invites Sent!', 'All devotees have been notified to join the jaap.');
+                    setTimeout(() => setInviteSent(false), 5000);
+                  } catch (err: any) {
+                    const msg = err?.response?.data?.detail || 'Could not send invite right now.';
+                    Alert.alert('Invite failed', msg);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={inviteSent ? 'notifications' : 'notifications-outline'}
+                  size={22}
+                  color={inviteSent ? '#FFD700' : '#FFF'}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.headerBtn}>
+                <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {!isSessionActive ? (
