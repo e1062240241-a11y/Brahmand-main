@@ -779,7 +779,11 @@ export default function VendorScreen() {
             <TouchableOpacity
               key={section}
               style={[styles.sectionTab, activeSection === section && styles.sectionTabActive]}
-              onPress={() => setActiveSection(section)}
+              onPress={() => {
+                requestAnimationFrame(() => {
+                  setActiveSection(section);
+                });
+              }}
             >
               <Text style={[styles.sectionTabText, activeSection === section && styles.sectionTabTextActive]}>
                 {section}
@@ -796,7 +800,11 @@ export default function VendorScreen() {
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => {
+                requestAnimationFrame(() => {
+                  setActiveTab(tab);
+                });
+              }}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
                 {tab}

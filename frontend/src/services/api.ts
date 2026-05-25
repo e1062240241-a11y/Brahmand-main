@@ -133,7 +133,7 @@ if (Platform.OS === 'web') {
   console.info('[API] api.ts resolved API_URL:', API_URL);
 }
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: `${API_URL}/api`,
   timeout: 120000,
   headers: defaultHeaders,
@@ -720,6 +720,10 @@ export const markPostAsSeen = async (postId: string) => {
       await AsyncStorage.setItem('global_seen_reels', JSON.stringify(seenArray));
     }
   } catch (e) {}
+};
+
+export const getHomeInit = async () => {
+  return await api.get('/home/init');
 };
 
 export const getPostsFeed = async (limit: number = 20, offset: number = 0, tab: string = 'for_you', seen_ids?: string) => {

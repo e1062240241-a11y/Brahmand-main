@@ -311,6 +311,17 @@ def _upload_post_media_file_to_storage(user_id: str, file_path: str, content_typ
     return media_url, object_path
 
 
+def _get_public_base_url(base_url: str) -> str:
+    base_url = base_url.rstrip('/')
+    public_url = os.getenv("PUBLIC_BACKEND_URL")
+    if public_url:
+        return public_url.rstrip('/')
+    if "a.run.app" in base_url or "brahmand" in base_url or "cloud.run" in base_url:
+        if base_url.startswith("http://"):
+            base_url = base_url.replace("http://", "https://", 1)
+    return base_url
+
+
 async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_type: str, base_url: str) -> tuple[str, str]:
     extension = _get_extension_from_content_type(content_type)
     filename = f"{uuid4().hex}.{extension}"
@@ -330,8 +341,12 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
                 resp_text = await resp.text()
                 raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
                 
-    base_url = base_url.rstrip('/')
-    media_url = f"{base_url}/api/bunny-media/{object_path}"
+    pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
+    if pull_zone:
+        media_url = f"{pull_zone.rstrip('/')}/{object_path}"
+    else:
+        clean_base = _get_public_base_url(base_url)
+        media_url = f"{clean_base}/api/bunny-media/{object_path}"
     return media_url, object_path
 
 
@@ -1532,28 +1547,31 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
     if update_data:
         photo_data = update_data.get('photo')
         if photo_data:
-            from services.image_service import compress_base64_image, is_valid_image
-            if not is_valid_image(photo_data):
-                raise HTTPException(status_code=400, detail='Invalid profile photo')
-            try:
-                photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
-                if len(photo_data) > 950000:
-                    from firebase_admin import storage as firebase_storage
-                    bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
-                    bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
-                    object_path = f"users/{token_data['user_id']}/{uuid4().hex}.jpg"
-                    blob = bucket.blob(object_path)
-                    download_token = uuid4().hex
-                    blob.metadata = {'firebaseStorageDownloadTokens': download_token}
-                    base64_payload = photo_data.split(',')[1] if ',' in photo_data else photo_data
-                    blob.upload_from_string(base64.b64decode(base64_payload), content_type='image/jpeg')
-                    photo_data = (
-                        f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
-                        f"{quote(object_path, safe='')}?alt=media&token={download_token}"
-                    )
-            except Exception as e:
-                logger.warning(f"Failed to compress profile photo: {e}")
-                raise HTTPException(status_code=400, detail='Invalid profile photo')
+            if photo_data.startswith('http://') or photo_data.startswith('https://'):
+                pass
+            else:
+                from services.image_service import compress_base64_image, is_valid_image
+                if not is_valid_image(photo_data):
+                    raise HTTPException(status_code=400, detail='Invalid profile photo')
+                try:
+                    photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
+                    if len(photo_data) > 950000:
+                        from firebase_admin import storage as firebase_storage
+                        bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
+                        bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
+                        object_path = f"users/{token_data['user_id']}/{uuid4().hex}.jpg"
+                        blob = bucket.blob(object_path)
+                        download_token = uuid4().hex
+                        blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+                        base64_payload = photo_data.split(',')[1] if ',' in photo_data else photo_data
+                        blob.upload_from_string(base64.b64decode(base64_payload), content_type='image/jpeg')
+                        photo_data = (
+                            f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
+                            f"{quote(object_path, safe='')}?alt=media&token={download_token}"
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to compress profile photo: {e}")
+                    raise HTTPException(status_code=400, detail='Invalid profile photo')
             update_data['photo'] = photo_data
         await db.update_document('users', token_data["user_id"], update_data)
     return await db.get_document('users', token_data["user_id"])
@@ -2124,7 +2142,7 @@ async def get_bunny_media(filepath: str):
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{filepath}"
     headers = {
-        "AccessKey": os.getenv("BUNNY_READ_ACCESS_KEY") or "bb3aebf9-f52b-4224-bc824e379f94-5e76-4b3d"  # Use read-only key for GET requests
+        "AccessKey": os.getenv("BUNNY_READ_ACCESS_KEY") or os.getenv("BUNNY_ACCESS_KEY") or "bb3aebf9-f52b-4224-bc824e379f94-5e76-4b3d"
     }
     
     ext = filepath.split('.')[-1].lower()
@@ -2662,13 +2680,13 @@ async def get_posts_feed(
         # Scope filtering
         if lvl == 'city':
             p_city = str(p.get('city') or '').strip().lower()
-            if p_city != u_city: continue
+            if p_city and u_city and p_city != u_city: continue
         elif lvl == 'state':
             p_state = str(p.get('state') or '').strip().lower()
-            if p_state != u_state: continue
+            if p_state and u_state and p_state != u_state: continue
         elif lvl == 'country':
             p_country = str(p.get('country') or '').strip().lower()
-            if p_country != u_country: continue
+            if p_country and u_country and p_country != u_country: continue
             
         public_posts.append(p)
 
@@ -2678,10 +2696,18 @@ async def get_posts_feed(
     if len(pool) < safe_limit:
         pool = public_posts
 
+    def _get_ts(p):
+        c_at = p.get('created_at')
+        if hasattr(c_at, 'timestamp'): return c_at.timestamp()
+        if isinstance(c_at, str):
+            try: return datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+            except: return 0
+        return 0
+
     if tab == 'festivals':
         # Specific filter for festivals category
         pool = [p for p in pool if p.get('category') == 'festivals']
-        pool.sort(key=lambda p: p.get('created_at') or datetime.min, reverse=True)
+        pool.sort(key=_get_ts, reverse=True)
         paged_posts = pool[:safe_limit]
 
     elif tab == 'following':
@@ -2691,7 +2717,7 @@ async def get_posts_feed(
             pool = [p for p in pool if p.get('user_id') in following_ids]
         except Exception:
             pass
-        pool.sort(key=lambda p: p.get('created_at') or datetime.min, reverse=True)
+        pool.sort(key=_get_ts, reverse=True)
         paged_posts = pool[:safe_limit]
 
     elif tab == 'trending':
@@ -2725,7 +2751,7 @@ async def get_posts_feed(
             elif not isinstance(p_date, datetime):
                 p_date = now - timedelta(days=365)
             
-            is_recent = (now - p_date).total_seconds() < 86400
+            is_recent = (now_ts - p_date.timestamp()) < 86400 if hasattr(p_date, 'timestamp') else False
 
             # Priority 0: Broad posts (State/Country) under 24h matching user location
             u_country = user_loc.get('country')
@@ -6840,6 +6866,31 @@ async def mark_notification_read(notification_id: str, token_data: dict = Depend
     return {"message": "Notification marked as read"}
 
 
+@api_router.post("/notifications/test-send")
+async def test_send_notification(
+    data: dict,
+    token_data: dict = Depends(verify_token)
+):
+    user_id = token_data["user_id"]
+    notif_type = data.get("type", "message")
+    
+    if notif_type == "sos":
+        res = await FirebaseNotificationService.send_push_notification(
+            user_id=user_id,
+            title="Emergency SOS Alert! (Test)",
+            body="Someone nearby needs immediate assistance! [Test Alert]",
+            data={"type": "sos_alert", "sos_id": "test_sos_123"}
+        )
+    else:
+        res = await FirebaseNotificationService.send_push_notification(
+            user_id=user_id,
+            title="New message from Dev (Test)",
+            body="Hey, this is a test notification message!",
+            data={"type": "message", "chat_id": "test_chat_123"}
+        )
+    return {"status": "success", "result": res}
+
+
 @api_router.post("/ai/chat")
 async def ai_chat(
     data: dict,
@@ -8940,7 +8991,7 @@ async def get_community_requests(
         elif not isinstance(c_at, datetime):
             c_at = now - timedelta(days=365)
         
-        is_recent = (now - c_at).total_seconds() < 86400
+        is_recent = (now.timestamp() - c_at.timestamp()) < 86400 if hasattr(c_at, 'timestamp') else False
         
         if vis in ['state', 'national'] and is_recent:
             return 0
@@ -10158,6 +10209,237 @@ async def get_astrology_profile(token_data: dict = Depends(verify_token)):
         "place_of_birth_longitude": user.get('place_of_birth_longitude'),
         "rashi": user.get('rashi'),
         "rashi_english": RASHIS.get(user.get('rashi'), {}).get("english") if user.get('rashi') else None
+    }
+
+
+# =================== WATERMELONDB SYNC APIS ===================
+
+@api_router.get('/sync/pull')
+async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+    
+    if last_pulled_at > 1e11:
+        last_pulled_dt = datetime.utcfromtimestamp(last_pulled_at / 1000.0)
+    else:
+        last_pulled_dt = datetime.utcfromtimestamp(last_pulled_at)
+
+    changes = {
+        "users": {"created": [], "updated": [], "deleted": []},
+        "feeds": {"created": [], "updated": [], "deleted": []},
+        "chats": {"created": [], "updated": [], "deleted": []},
+        "community_messages": {"created": [], "updated": [], "deleted": []},
+        "follows": {"created": [], "updated": [], "deleted": []},
+        "communities": {"created": [], "updated": [], "deleted": []}
+    }
+    
+    # 1. Pull users
+    try:
+        users_ref = db.client.collection('users')
+        if last_pulled_at > 0:
+            query = users_ref.where('updated_at', '>', last_pulled_dt)
+        else:
+            query = users_ref.limit(50)
+        docs = query.stream()
+        for doc in docs:
+            data = doc.to_dict()
+            created_at = data.get('created_at')
+            updated_at = data.get('updated_at')
+            created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+            updated_ts = int(updated_at.timestamp() * 1000) if isinstance(updated_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+            changes["users"]["updated"].append({
+                "id": doc.id,
+                "name": data.get('name', 'User'),
+                "sl_id": data.get('sl_id', ''),
+                "photo": data.get('photo'),
+                "bio": data.get('bio', ''),
+                "created_at": created_ts,
+                "updated_at": updated_ts
+            })
+    except Exception as e:
+        logger.error("Error pulling users in sync: %s", e)
+
+    # 2. Pull feeds (posts)
+    try:
+        posts_ref = db.client.collection('posts')
+        if last_pulled_at > 0:
+            query = posts_ref.where('updated_at', '>', last_pulled_dt)
+        else:
+            query = posts_ref.limit(50)
+        docs = query.stream()
+        for doc in docs:
+            data = doc.to_dict()
+            created_at = data.get('created_at')
+            updated_at = data.get('updated_at')
+            created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+            updated_ts = int(updated_at.timestamp() * 1000) if isinstance(updated_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+            changes["feeds"]["updated"].append({
+                "id": doc.id,
+                "user_id": data.get('user_id', ''),
+                "username": data.get('username', 'User'),
+                "user_photo": data.get('user_photo'),
+                "media_url": data.get('media_url'),
+                "media_type": data.get('media_type', 'image'),
+                "caption": data.get('caption', ''),
+                "likes_count": data.get('likes_count', 0),
+                "comments_count": data.get('comments_count', 0),
+                "liked_by_me": user_id in data.get('liked_by', []) if isinstance(data.get('liked_by'), list) else False,
+                "created_at": created_ts,
+                "updated_at": updated_ts
+            })
+    except Exception as e:
+        logger.error("Error pulling feeds in sync: %s", e)
+
+    # 3. Pull messages across chats
+    try:
+        chats = await db.get_user_chats(user_id)
+        for chat in chats:
+            chat_id = chat['id']
+            messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
+            if last_pulled_at > 0:
+                query = messages_ref.where('created_at', '>', last_pulled_dt)
+            else:
+                query = messages_ref.limit(30)
+            docs = query.stream()
+            for doc in docs:
+                data = doc.to_dict()
+                created_at = data.get('created_at')
+                created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+                changes["chats"]["updated"].append({
+                    "id": doc.id,
+                    "chat_id": chat_id,
+                    "sender_id": data.get('sender_id', ''),
+                    "sender_name": data.get('sender_name', 'Member'),
+                    "content": data.get('content', ''),
+                    "message_type": data.get('message_type', 'text'),
+                    "created_at": created_ts,
+                    "updated_at": created_ts
+                })
+    except Exception as e:
+        logger.error("Error pulling chats in sync: %s", e)
+
+    timestamp = int(datetime.utcnow().timestamp() * 1000)
+    return {"changes": changes, "timestamp": timestamp}
+
+
+@api_router.post('/sync/push')
+async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+    changes = body.get('changes', {})
+    
+    if 'feeds' in changes:
+        feeds = changes['feeds']
+        for post_data in feeds.get('created', []):
+            try:
+                await db.client.collection('posts').document(post_data['id']).set({
+                    "user_id": user_id,
+                    "username": post_data.get('username', 'User'),
+                    "user_photo": post_data.get('user_photo'),
+                    "media_url": post_data.get('media_url'),
+                    "media_type": post_data.get('media_type', 'image'),
+                    "caption": post_data.get('caption', ''),
+                    "likes_count": post_data.get('likes_count', 0),
+                    "comments_count": post_data.get('comments_count', 0),
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                })
+            except Exception as e:
+                logger.error("Error pushing feed created: %s", e)
+
+        for post_data in feeds.get('updated', []):
+            try:
+                await db.client.collection('posts').document(post_data['id']).update({
+                    "caption": post_data.get('caption'),
+                    "likes_count": post_data.get('likes_count'),
+                    "comments_count": post_data.get('comments_count'),
+                    "updated_at": datetime.utcnow()
+                })
+            except Exception as e:
+                logger.error("Error pushing feed updated: %s", e)
+
+        for post_id in feeds.get('deleted', []):
+            try:
+                await db.client.collection('posts').document(post_id).delete()
+            except Exception as e:
+                logger.error("Error pushing feed deleted: %s", e)
+
+    if 'chats' in changes:
+        chats = changes['chats']
+        for msg_data in chats.get('created', []):
+            try:
+                chat_id = msg_data.get('chat_id')
+                if chat_id:
+                    await db.client.collection('chats').document(chat_id).collection('messages').document(msg_data['id']).set({
+                        "sender_id": user_id,
+                        "sender_name": msg_data.get('sender_name', 'User'),
+                        "content": msg_data.get('content', ''),
+                        "message_type": msg_data.get('message_type', 'text'),
+                        "created_at": datetime.utcnow(),
+                    })
+            except Exception as e:
+                logger.error("Error pushing message created: %s", e)
+
+    return Response(status_code=200)
+
+
+# =================== HOME BFF ===================
+
+@api_router.get('/home/init')
+async def home_init(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    async def _get_feed():
+        try:
+            feed_res = await get_posts_feed(limit=10, offset=0, tab='for_you', seen_ids='', token_data=token_data)
+            return {"items": feed_res.get("items", []), "has_more": feed_res.get("has_more", False)}
+        except Exception as e:
+            import logging
+            logging.error(f"Error in init feed: {e}")
+            return {"items": [], "has_more": False}
+
+    async def _get_requests():
+        try:
+            return await get_community_requests(status="active", limit=10, token_data=token_data)
+        except Exception as e:
+            import logging
+            logging.error(f"Error in init requests: {e}")
+            return []
+
+    async def _get_unread():
+        try:
+            return await db.get_unread_notification_count(user_id)
+        except Exception:
+            return {"unread_count": 0}
+
+    async def _get_festival():
+        try:
+            return await db.get_next_festival()
+        except Exception:
+            return None
+
+    async def _get_communities():
+        try:
+            return await db.get_user_communities(user_id=user_id)
+        except Exception:
+            return []
+
+    feed, requests, unread, festival, communities = await asyncio.gather(
+        _get_feed(),
+        _get_requests(),
+        _get_unread(),
+        _get_festival(),
+        _get_communities(),
+        return_exceptions=True
+    )
+    
+    return {
+        "feed": feed if not isinstance(feed, Exception) else {"items": [], "has_more": False},
+        "community_requests": requests if not isinstance(requests, Exception) else [],
+        "communities": communities if not isinstance(communities, Exception) else [],
+        "unread_count": unread.get("unread_count", 0) if isinstance(unread, dict) else 0,
+        "next_festival": festival if not isinstance(festival, Exception) else None
     }
 
 

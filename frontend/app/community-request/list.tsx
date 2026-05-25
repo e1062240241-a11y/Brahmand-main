@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -175,6 +176,24 @@ export default function ActiveRequestsList() {
   };
 
   const fetchRequests = async (showLoading = true) => {
+    const cacheKey = params.community_id 
+      ? `community_requests_${params.community_id}` 
+      : 'community_requests_all';
+
+    try {
+      const cachedData = await AsyncStorage.getItem(cacheKey);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRequests(parsed);
+          setLoading(false);
+          showLoading = false;
+        }
+      }
+    } catch (cacheError) {
+      console.log('Failed to load cached community requests:', cacheError);
+    }
+
     try {
       if (showLoading) setLoading(true);
       const [activeRes, resolvedRes] = await Promise.all([
@@ -203,10 +222,17 @@ export default function ActiveRequestsList() {
         return true;
       });
       
-      setRequests(sortRequests(filtered));
+      const sorted = sortRequests(filtered);
+      setRequests(sorted);
+      
+      try {
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(sorted));
+      } catch (cacheSaveError) {
+        console.log('Failed to save community requests to cache:', cacheSaveError);
+      }
     } catch (error) {
       console.log('Failed to fetch community requests:', error);
-      setRequests([]);
+      setRequests(prev => prev.length > 0 ? prev : []);
     } finally {
       setLoading(false);
     }

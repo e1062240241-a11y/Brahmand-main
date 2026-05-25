@@ -28,7 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
-import {
+import api, {
   getUserPosts,
   getUserProfile,
   viewPost,
@@ -115,6 +115,7 @@ export default function ProfileScreen() {
         { id: 'personality_verification', icon: 'ribbon', label: 'Personality Verification', route: '/profile/personality-verification', color: '#D4AF37' },
         { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications', color: '#F59E0B' },
         { id: 'privacy', icon: 'lock-closed', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#D97706' },
+        { id: 'test_notifications', icon: 'bug', label: 'Test Custom Sounds (Dev)', color: '#FF0000' },
       ],
     },
     {
@@ -521,6 +522,40 @@ export default function ProfileScreen() {
   const handleMenuPress = (item: SettingItem) => {
     if (item.id === 'culture') {
       handleOpenCGModal();
+      return;
+    }
+
+    if (item.id === 'test_notifications') {
+      setShowSettingsModal(false);
+      Alert.alert(
+        'Test Custom Notifications',
+        'Choose notification type to trigger:',
+        [
+          {
+            text: 'Message (bell)',
+            onPress: async () => {
+              try {
+                await api.post('/notifications/test-send', { type: 'message' });
+              } catch (e) {
+                console.warn(e);
+                Alert.alert('Error', 'Failed to trigger test notification');
+              }
+            }
+          },
+          {
+            text: 'Emergency SOS (mayday)',
+            onPress: async () => {
+              try {
+                await api.post('/notifications/test-send', { type: 'sos' });
+              } catch (e) {
+                console.warn(e);
+                Alert.alert('Error', 'Failed to trigger test notification');
+              }
+            }
+          },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
       return;
     }
 
@@ -1041,7 +1076,7 @@ export default function ProfileScreen() {
           />
 
           <TouchableOpacity
-            style={[styles.coverEditBadge, { top: navSpacerHeight - 40 }]}
+            style={[styles.coverEditBadge, { bottom: 20 }]}
             onPress={() => showImageSourcePicker('cover_photo')}
           >
             <Ionicons name="camera" size={14} color="#FFF" />
