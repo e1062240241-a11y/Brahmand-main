@@ -2207,9 +2207,24 @@ export default function HomeScreen() {
                 </View>
               )}
               {loadingFeed && feedPosts.length === 0 ? (
-                <View style={styles.feedLoading}>
-                  <ActivityIndicator color="#FFD26C" />
-                  <Text style={styles.feedLoadingText}>Loading feed...</Text>
+                <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+                  {[1, 2, 3].map((key) => (
+                    <View key={key} style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#FF8A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 138, 0, 0.1)' }} />
+                        <View style={{ marginLeft: 12, flex: 1 }}>
+                          <View style={{ width: '50%', height: 12, backgroundColor: 'rgba(255, 138, 0, 0.1)', borderRadius: 6, marginBottom: 8 }} />
+                          <View style={{ width: '30%', height: 10, backgroundColor: 'rgba(255, 138, 0, 0.05)', borderRadius: 5 }} />
+                        </View>
+                      </View>
+                      <View style={{ width: '100%', height: 300, backgroundColor: 'rgba(255, 138, 0, 0.06)', borderRadius: 16, marginBottom: 12 }} />
+                      <View style={{ flexDirection: 'row', gap: 15 }}>
+                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
+                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
+                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
+                      </View>
+                    </View>
+                  ))}
                 </View>
               ) : feedPosts.length > 0 ? (
                 <>

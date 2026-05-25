@@ -10322,6 +10322,65 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     except Exception as e:
         logger.error("Error pulling chats in sync: %s", e)
 
+    # 4. Pull communities & community messages
+    try:
+        user_doc = await db.get_document('users', user_id)
+        if user_doc and 'communities' in user_doc:
+            for cid in user_doc['communities']:
+                try:
+                    comm_doc = await db.get_document('communities', cid)
+                    if comm_doc:
+                        created_at = comm_doc.get('created_at')
+                        created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+                        changes["communities"]["updated"].append({
+                            "id": cid,
+                            "name": comm_doc.get('name', 'Community'),
+                            "description": comm_doc.get('description', ''),
+                            "photo": comm_doc.get('photo'),
+                            "created_at": created_ts,
+                            "updated_at": created_ts
+                        })
+                except Exception as ex:
+                    logger.error("Error pulling community doc in sync: %s", ex)
+
+                for subgroup in ['city', 'state', 'national']:
+                    try:
+                        chat_id = f"community_{cid}_{subgroup}"
+                        messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
+                        if last_pulled_at > 0:
+                            query = messages_ref.where('created_at', '>', last_pulled_dt)
+                        else:
+                            query = messages_ref.limit(30)
+                        docs = query.stream()
+                        for doc in docs:
+                            data = doc.to_dict()
+                            created_at = data.get('created_at')
+                            if isinstance(created_at, str):
+                                try:
+                                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                                    created_ts = int(dt.timestamp() * 1000)
+                                except Exception:
+                                    created_ts = int(datetime.utcnow().timestamp() * 1000)
+                            elif isinstance(created_at, datetime):
+                                created_ts = int(created_at.timestamp() * 1000)
+                            else:
+                                created_ts = int(datetime.utcnow().timestamp() * 1000)
+                            
+                            changes["community_messages"]["updated"].append({
+                                "id": doc.id,
+                                "community_id": chat_id,
+                                "sender_id": data.get('sender_id', ''),
+                                "sender_name": data.get('sender_name', 'Member'),
+                                "content": data.get('content', ''),
+                                "message_type": data.get('message_type', 'text'),
+                                "created_at": created_ts,
+                                "updated_at": created_ts
+                            })
+                    except Exception as ex:
+                        logger.error("Error pulling community messages for %s: %s", chat_id, ex)
+    except Exception as e:
+        logger.error("Error pulling communities & messages in sync: %s", e)
+
     timestamp = int(datetime.utcnow().timestamp() * 1000)
     return {"changes": changes, "timestamp": timestamp}
 
@@ -10383,6 +10442,22 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
                     })
             except Exception as e:
                 logger.error("Error pushing message created: %s", e)
+
+    if 'community_messages' in changes:
+        comm_msgs = changes['community_messages']
+        for msg_data in comm_msgs.get('created', []):
+            try:
+                chat_id = msg_data.get('community_id')
+                if chat_id:
+                    await db.client.collection('chats').document(chat_id).collection('messages').document(msg_data['id']).set({
+                        "sender_id": user_id,
+                        "sender_name": msg_data.get('sender_name', 'User'),
+                        "content": msg_data.get('content', ''),
+                        "message_type": msg_data.get('message_type', 'text'),
+                        "created_at": datetime.utcnow().isoformat() + 'Z',
+                    })
+            except Exception as e:
+                logger.error("Error pushing community message created: %s", e)
 
     return Response(status_code=200)
 

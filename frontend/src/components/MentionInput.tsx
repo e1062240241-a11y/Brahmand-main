@@ -30,6 +30,7 @@ interface MentionInputProps {
   inputStyle?: any;
   editable?: boolean;
   autoFocus?: boolean;
+  disableMentions?: boolean;
 }
 
 export const MentionInput = ({
@@ -42,6 +43,7 @@ export const MentionInput = ({
   inputStyle,
   editable = true,
   autoFocus = false,
+  disableMentions = false,
 }: MentionInputProps) => {
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
@@ -68,6 +70,7 @@ export const MentionInput = ({
 
   const handleChangeText = useCallback((text: string) => {
     onChangeText(text);
+    if (disableMentions) return;
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     const cursorPos = text.length;
     const atIndex = text.lastIndexOf('@', cursorPos);
@@ -83,7 +86,7 @@ export const MentionInput = ({
         setShowMentions(users.length > 0);
       } catch { setShowMentions(false); }
     }, 300);
-  }, [onChangeText]);
+  }, [onChangeText, disableMentions]);
 
   const handleSelectMention = useCallback((user: MentionUser) => {
     const beforeCursor = value.slice(0, cursorPosition);
@@ -103,25 +106,21 @@ export const MentionInput = ({
 
   return (
     <View style={[styles.container, style]}>
-      {showMentions && mentionResults.length > 0 && (
+      {showMentions && mentionResults.length > 0 && !disableMentions && (
         <View style={styles.mentionDropdown}>
-          <FlatList
-            data={mentionResults}
-            keyExtractor={(item) => item.id}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.mentionItem}
-                onPress={() => handleSelectMention(item)}
-              >
-                <Avatar name={item.name || 'U'} photo={item.photo} size={28} />
-                <View style={styles.mentionItemText}>
-                  <Text style={styles.mentionName}>{item.name || 'Unknown'}</Text>
-                  <Text style={styles.mentionSL}>@{item.sl_id || item.phone || ''}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
+          {mentionResults.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.mentionItem}
+              onPress={() => handleSelectMention(item)}
+            >
+              <Avatar name={item.name || 'U'} photo={item.photo} size={28} />
+              <View style={styles.mentionItemText}>
+                <Text style={styles.mentionName}>{item.name || 'Unknown'}</Text>
+                <Text style={styles.mentionSL}>@{item.sl_id || item.phone || ''}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
       <TextInput
