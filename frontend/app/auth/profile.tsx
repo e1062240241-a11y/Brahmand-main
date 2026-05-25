@@ -176,7 +176,7 @@ export default function ProfileScreen() {
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       setProfile(user || null);
-      showToast('Failed to load profile. Check backend at localhost:8002 or set EXPO_PUBLIC_BACKEND_URL_WEB.');
+      showToast('Failed to load profile. Check backend at localhost:8000 or set EXPO_PUBLIC_BACKEND_URL_WEB.');
       if (error?.response?.status === 401 || error?.response?.status === 502) {
         await logout();
         router.replace('/');

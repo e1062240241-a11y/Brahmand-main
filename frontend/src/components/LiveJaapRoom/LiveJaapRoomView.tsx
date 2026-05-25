@@ -259,7 +259,7 @@ export default function LiveJaapRoomView() {
   const isKedarnath = mantraType === 'kedarnath';
   const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya');
 
-  const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
+  const isSessionActive = true; // Forced to true to bypass offline lock for testing
 
   const selectedMantra = MANTRA_DATA[mantraType || 'gayatri'] || MANTRA_DATA.gayatri;
   const WORDS = useMemo(() => selectedMantra.text.split(' '), [selectedMantra.text]);
