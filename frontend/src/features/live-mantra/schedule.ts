@@ -404,7 +404,9 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
   }
 
   if (mantraType === 'shiva') {
-    const wordDurations = [0.5, 0.8, 2.94, 0.5, 0.8, 2.94];
+    // OM=1 syl, NAMAH=2 syl, SHIVAYA=3 syl → ~0.71s/syl × 2 reps = 8.48s
+    // Offset 0.1s pre-roll: audio content starts at 0.1s into the file
+    const wordDurations = [0.72, 1.42, 2.10, 0.72, 1.42, 2.10];
     const totalDuration = 8.48;
     const position = elapsedSeconds % totalDuration;
     let accumulated = 0;
