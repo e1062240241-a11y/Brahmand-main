@@ -107,10 +107,10 @@ export default function DiscoverCommunitiesScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.groupCard, { backgroundColor: cardBg, borderColor }]}
+        style={[styles.groupCard, { backgroundColor: cardBg }]}
         onPress={() => router.push(`/community/${item.id}`)}
       >
-        <View style={[styles.avatarWrapper, { borderColor: `${borderColor}33` }]}>
+        <View style={styles.avatarWrapper}>
           {item.photo ? (
             <Image source={{ uri: item.photo }} style={styles.avatarImage} />
           ) : (
@@ -280,7 +280,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 16,
-    borderWidth: 1.5,
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.05,
@@ -288,15 +287,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   avatarWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
     width: 48,
     height: 48,
     borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1.5,
   },
   avatarImage: {
-    width: '100%',
-    height: '100%',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   cardContent: {
     flex: 1,

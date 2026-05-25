@@ -284,8 +284,8 @@ const CARD_RADIUS = 18;
 const HOME_CARD_TEXTURES = {
   rose: require('../../assets/images/home_card_bg_rose.png'),
   peach: require('../../assets/images/home_card_bg_peach.png'),
-  mint: require('../../assets/images/home_card_bg_mint.png'),
-  lavender: require('../../assets/images/home_card_bg_lavender.png'),
+  mint: require('../../assets/images/home_card_bg_mint.jpg'),
+  lavender: require('../../assets/images/home_card_bg_lavender.jpg'),
 } as const;
 
 type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
@@ -1699,9 +1699,10 @@ export default function HomeScreen() {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
-                            else if (item.label === 'Kundli' || item.label === 'Cosmic Guidance') router.push('/kundli' as any);
+                            else if (item.label === 'Kundli') router.push('/astrology' as any);
+                            else if (item.label === 'Cosmic Guidance') router.push('/horoscope');
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
-                            else if (item.label === 'Festival Days') router.push('/panchang');
+                            else if (item.label === 'Festival Days') router.push('/festivals');
                             else if (item.label === 'Brahmand Library') router.push('/library');
                           }}
                         >
@@ -2056,27 +2057,16 @@ export default function HomeScreen() {
 
                 {/* Local Community Card */}
                 {(() => {
-                  const mumbaiId = communities.find(c => c.type === 'city' && c.name?.toLowerCase().includes('mumbai'))?.id;
-                  const localComm = communities.find(c => c.name?.toLowerCase().includes('hdnddk'))
-                    || communities.find(c => c.type === 'user_group')
-                    || communities.find(c => c.type === 'home_area')
-                    || communities.find(c => c.is_default)
-                    || communities.find(c => c.id !== mumbaiId);
-                  const displayName = localComm?.name || 'Local Community';
-                  const displayMembers = localComm?.member_count || localComm?.members_count || '0';
+                  const localComm = communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area');
                   return (
                     <TouchableOpacity
                       style={styles.communityCardMini}
                       activeOpacity={0.9}
                       onPress={() => {
-                        if (localComm) {
-                          router.push({
-                            pathname: '/community/[id]',
-                            params: { id: localComm.id, subgroup: localComm.type || 'city', name: localComm.name }
-                          });
-                        } else {
-                          router.push('/messages?tab=Community');
-                        }
+                        router.push({
+                          pathname: '/community/[id]',
+                          params: { id: 'food_pune', subgroup: 'city', name: 'Pune Food Sharing Group' }
+                        });
                       }}
                     >
                       <View style={styles.communityCardIconBox}>
@@ -2084,10 +2074,13 @@ export default function HomeScreen() {
                       </View>
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                          {displayName}
+                          Pune Food Sharing Group
                         </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{displayMembers} members</Text>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>236 members</Text>
+                          <View style={styles.sevaBadgeMini}>
+                            <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                          </View>
                         </View>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
@@ -2336,13 +2329,6 @@ export default function HomeScreen() {
                 }}
               />
               <View style={styles.commentSheet}>
-                {activeCommentMenuId !== null && (
-                  <TouchableOpacity
-                    style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]}
-                    activeOpacity={1}
-                    onPress={() => setActiveCommentMenuId(null)}
-                  />
-                )}
                 <View style={styles.bottomSheetHandle} />
                 <View style={styles.commentSheetHeader}>
                   <Text style={styles.commentTitle}>Comments</Text>
@@ -2352,7 +2338,6 @@ export default function HomeScreen() {
                       setSelectedCommentPostId(null);
                       setSelectedCommentPost(null);
                       setPostComments([]);
-                      setActiveCommentMenuId(null);
                     }}
                     style={styles.commentCloseBtn}
                   >
@@ -2375,34 +2360,27 @@ export default function HomeScreen() {
                       renderItem={({ item }) => {
                         const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                         return (
-                          <View style={[styles.commentItem, { zIndex: activeCommentMenuId === item.id ? 100 : 1 }]}>
+                          <View style={styles.commentItem}>
                             <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
                             <View style={styles.commentBubble}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
                                 {canDelete && (
-                                  <View style={{ position: 'relative', zIndex: 20 }}>
-                                    <TouchableOpacity
-                                      style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                      onPress={() => {
-                                        setActiveCommentMenuId(activeCommentMenuId === item.id ? null : item.id);
-                                      }}
-                                    >
-                                      <Ionicons name="ellipsis-vertical" size={16} color="#8A7B89" />
-                                    </TouchableOpacity>
-                                    {activeCommentMenuId === item.id && (
-                                      <TouchableOpacity
-                                        style={styles.inlineDeletePopover}
-                                        onPress={() => {
-                                          setActiveCommentMenuId(null);
-                                          handleDeleteComment(item);
-                                        }}
-                                      >
-                                        <Ionicons name="trash-outline" size={14} color={COLORS.error || '#FF3B30'} />
-                                        <Text style={styles.inlineDeleteText}>Delete</Text>
-                                      </TouchableOpacity>
-                                    )}
-                                  </View>
+                                  <TouchableOpacity
+                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                    onPress={() => {
+                                      Alert.alert(
+                                        'Delete Comment',
+                                        'Are you sure you want to delete this comment?',
+                                        [
+                                          { text: 'Cancel', style: 'cancel' },
+                                          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
+                                        ]
+                                      );
+                                    }}
+                                  >
+                                    <Ionicons name="trash-outline" size={16} color="#8A7B89" />
+                                  </TouchableOpacity>
                                 )}
                               </View>
                               <MentionText style={styles.commentItemText} text={item?.text || ''} />

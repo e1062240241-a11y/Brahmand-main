@@ -35,8 +35,10 @@ try {
 }
 
 const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
-  if (!ExpoVideoModule?.useVideoPlayer || !source) return null;
-  return ExpoVideoModule.useVideoPlayer(source, setup);
+  if (!ExpoVideoModule?.useVideoPlayer) return null;
+  // DO NOT early return based on `source`. It breaks React Hook order when `source` changes.
+  // expo-video's useVideoPlayer explicitly supports `null` as a source.
+  return ExpoVideoModule.useVideoPlayer(source || null, setup);
 };
 
 type PostFeedCardProps = {
@@ -135,7 +137,9 @@ export const PostFeedCard = memo(({
   const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen;
   const videoRef = useRef<any>(null);
 
-  const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
+  // CRITICAL OPTIMIZATION: Only pass the media source to the native player if the post is active.
+  // This prevents 50+ off-screen AVPlayers from hoarding memory and heating up the phone!
+  const playerSource = (Platform.OS === 'web' || !isVideo || !isActive || !mediaUrl) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {
     if (p) {
       p.loop = true;
@@ -404,7 +408,7 @@ export const PostFeedCard = memo(({
                     </View>
                   )}
                 </>
-              ) : ExpoVideoModule?.VideoView && player ? (
+              ) : ExpoVideoModule?.VideoView && player && isActive ? (
                 <>
                   <ExpoVideoModule.VideoView
                     player={player}
@@ -428,8 +432,12 @@ export const PostFeedCard = memo(({
                 </>
               ) : (
                 <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
-                  <Ionicons name="alert-circle-outline" size={32} color="#444" />
-                  <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>Player unavailable</Text>
+                  {posterUrl ? (
+                    <Image source={{ uri: posterUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  ) : (
+                    <Ionicons name="videocam-outline" size={32} color="#444" />
+                  )}
+                  {isActive && !player && <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>Player unavailable</Text>}
                 </View>
               )}
               <Pressable

@@ -10,21 +10,18 @@ interface FestivalSectionDetailCardProps {
 }
 
 const FestivalSectionDetailCard = ({ festival, section, onBack }: FestivalSectionDetailCardProps) => {
-  const sectionValue = {
+  const sectionMap: Record<string, string> = {
     About: festival.summary,
     Origin: festival.origin,
     Purpose: festival.purpose,
     Importance: festival.importance,
     Celebration: festival.celebration,
-  }[section] || '';
+    Mantra: festival.mantra,
+  };
+  const sectionValue = sectionMap[section] || '';
 
   return (
     <View style={styles.page}>
-      <View style={styles.pageHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Ionicons name="chevron-back" size={24} color="#000000" />
-        </TouchableOpacity>
-      </View>
       <View style={styles.heroCard}>
         <Text style={styles.heroSubtitle}>{section}</Text>
         <Text style={styles.heroTitle}>{festival.festival_name}</Text>

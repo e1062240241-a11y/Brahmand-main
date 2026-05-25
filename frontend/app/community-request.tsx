@@ -36,10 +36,10 @@ const CATEGORIES = [
 export default function CommunityRequestHub() {
   const router = useRouter();
   const { community_id } = useLocalSearchParams<{ community_id?: string }>();
-  
+
   const { user, updateUser } = useAuthStore();
   const { myVendor, fetchMyVendor } = useVendorStore();
-  
+
   const [showKycModal, setShowKycModal] = useState(false);
   const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
   const [pendingCategory, setPendingCategory] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export default function CommunityRequestHub() {
       setShowKycModal(true);
       return;
     }
-    
+
     navigateToCategory(categoryId);
   };
 
@@ -126,7 +126,7 @@ export default function CommunityRequestHub() {
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#FDFBFB', '#EBEDEE']} style={styles.gradientBg} />
-      
+
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topHeader}>
           <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack}>
@@ -137,7 +137,7 @@ export default function CommunityRequestHub() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
+
           {/* Header Card */}
           <View style={styles.headerCard}>
             <View style={styles.headerTextCol}>
@@ -194,15 +194,15 @@ const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   gradientBg: { ...StyleSheet.absoluteFillObject },
   safeArea: { flex: 1 },
-  topHeader: { 
+  topHeader: {
     flexDirection: 'row',
-    alignItems: 'center', 
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14, 
+    paddingVertical: 14,
     paddingHorizontal: 16,
     backgroundColor: '#FFF',
-    borderBottomWidth: 1, 
-    borderBottomColor: 'rgba(0,0,0,0.03)' 
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.03)'
   },
   topHeaderBack: {
     width: 40,
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   topHeaderText: { color: '#F25C05', fontSize: 17, fontFamily: FONTS.bold, letterSpacing: 0.5 },
   scrollContent: { padding: 16, paddingTop: 10 },
-  
+
   headerCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   headerTextCol: { flex: 1 },
   headerTitle: { fontSize: 22, fontFamily: FONTS.bold, color: '#111' },
   headerSubtitle: { fontSize: 13, fontFamily: FONTS.regular, color: '#666', marginTop: 4, lineHeight: 18 },
-  
+
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',

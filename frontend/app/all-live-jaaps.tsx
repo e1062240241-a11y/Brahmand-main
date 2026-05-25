@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 52) / 2;
@@ -86,6 +87,14 @@ const LIVE_JAAPS = [
 
 export default function AllLiveJaapsScreen() {
   const router = useRouter();
+  const [now, setNow] = React.useState(new Date());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 15_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hanumanStatus = getCurrentHanumanStatus(now);
 
   const goToJaap = (jaap: (typeof LIVE_JAAPS)[0]) => {
     router.push({
@@ -133,53 +142,94 @@ export default function AllLiveJaapsScreen() {
         contentContainerStyle={styles.grid}
         showsVerticalScrollIndicator={false}
       >
-        {LIVE_JAAPS.map((jaap) => (
-          <TouchableOpacity
-            key={jaap.id}
-            style={styles.card}
-            activeOpacity={0.9}
-            onPress={() => goToJaap(jaap)}
-          >
-            <Image source={jaap.image} style={styles.cardImage} resizeMode="cover" />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.92)']}
-              style={styles.cardOverlay}
-            >
-              {/* Top badges */}
-              <View style={styles.cardTop}>
-                <View style={styles.liveBadge}>
-                  <Ionicons name="radio" size={10} color="#FFF" style={{ marginRight: 3 }} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-                <View style={styles.countBadge}>
-                  <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 3 }} />
-                  <Text style={styles.countBadgeText}>{jaap.devotees}</Text>
-                </View>
-              </View>
+        {LIVE_JAAPS.map((jaap) => {
+          const isHanuman = jaap.mantraType === 'hanuman';
+          const isKedarnath = jaap.mantraType === 'kedarnath';
+          const isOtherLiveJaap = !isHanuman && !isKedarnath && (jaap.mantraType === 'gayatri' || jaap.mantraType === 'krishna' || jaap.mantraType === 'shiva' || jaap.mantraType === 'ganesh' || jaap.mantraType === 'laxmi' || jaap.mantraType === 'mrityunjaya');
 
-              {/* Bottom content */}
-              <View style={styles.cardBottom}>
-                <Text style={styles.cardTitle}>{jaap.title}</Text>
-                <Text style={styles.cardSlok} numberOfLines={2}>{jaap.slok}</Text>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.joinBtnOuter}
-                  onPress={() => goToJaap(jaap)}
-                >
-                  <LinearGradient
-                    colors={['#FF6B00', '#FF9000']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.joinBtnGradient}
+          let showLive = true;
+          let liveLabel = 'LIVE';
+
+          if (isHanuman) {
+            const hanumanActive = hanumanStatus.isActive;
+            showLive = hanumanActive;
+            if (hanumanActive) {
+              if (hanumanStatus.isCompleted) {
+                liveLabel = 'COMPLETED';
+              } else {
+                liveLabel = `LIVE • ${hanumanStatus.roundOfDay}/51`;
+              }
+            } else {
+              if (hanumanStatus.nextSessionStart) {
+                const timeStr = hanumanStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                liveLabel = `SOON • ${timeStr}`;
+              } else {
+                liveLabel = 'SOON';
+              }
+            }
+          } else if (isOtherLiveJaap) {
+            const otherStatus = getCurrentOtherJaapStatus(now);
+            showLive = otherStatus.isActive;
+            if (otherStatus.isActive) {
+              liveLabel = 'LIVE';
+            } else {
+              if (otherStatus.nextSessionStart) {
+                const timeStr = otherStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                liveLabel = `SOON • ${timeStr}`;
+              } else {
+                liveLabel = 'SOON';
+              }
+            }
+          }
+
+          return (
+            <TouchableOpacity
+              key={jaap.id}
+              style={styles.card}
+              activeOpacity={0.9}
+              onPress={() => goToJaap(jaap)}
+            >
+              <Image source={jaap.image} style={styles.cardImage} resizeMode="cover" />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.92)']}
+                style={styles.cardOverlay}
+              >
+                {/* Top badges */}
+                <View style={styles.cardTop}>
+                  <View style={[styles.liveBadge, (!showLive) && styles.mockupScheduledBadge]}>
+                    <Ionicons name="radio" size={10} color="#FFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.liveBadgeText}>{liveLabel}</Text>
+                  </View>
+                  <View style={styles.countBadge}>
+                    <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 3 }} />
+                    <Text style={styles.countBadgeText}>{jaap.devotees}</Text>
+                  </View>
+                </View>
+
+                {/* Bottom content */}
+                <View style={styles.cardBottom}>
+                  <Text style={styles.cardTitle}>{jaap.title}</Text>
+                  <Text style={styles.cardSlok} numberOfLines={2}>{jaap.slok}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.joinBtnOuter}
+                    onPress={() => goToJaap(jaap)}
                   >
-                    <Text style={styles.joinBtnText}>Join ॐ</Text>
-                    <MaterialCommunityIcons name="waveform" size={16} color="#FFF" />
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        ))}
+                    <LinearGradient
+                      colors={['#FF6B00', '#FF9000']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.joinBtnGradient}
+                    >
+                      <Text style={styles.joinBtnText}>Join ॐ</Text>
+                      <MaterialCommunityIcons name="waveform" size={16} color="#FFF" />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          );
+        })}
 
         {/* Bottom spacer */}
         <View style={{ height: 30 }} />
@@ -393,5 +443,8 @@ const styles = StyleSheet.create({
   },
   joinWaveBox: {
     marginRight: 10,
+  },
+  mockupScheduledBadge: {
+    backgroundColor: '#FF8800',
   },
 });

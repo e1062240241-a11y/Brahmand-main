@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageByName } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
-import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
+import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -103,6 +103,7 @@ export default function JaapLandingScreen() {
   const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
   const [heroBannerIndex, setHeroBannerIndex] = useState(0);
+  const hanumanStatus = getCurrentHanumanStatus(now);
 
   // Auto-scroll ref for More Live Jaaps
   const jaapScrollRef = useRef<ScrollView>(null);
@@ -233,15 +234,16 @@ export default function JaapLandingScreen() {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.mainScroll}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
-        bounces
-      >
-        {activeSection === 'jaap' ? (
-          <>
-            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT }]}>
+      {activeSection === 'jaap' ? (
+        <ScrollView
+          style={styles.mainScroll}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
+          bounces
+          stickyHeaderIndices={[0]}
+        >
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
+            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
                 source={require('../../assets/images/jaap_hero_shiva_final.png')}
                 style={styles.heroBannerFill}
@@ -319,6 +321,7 @@ export default function JaapLandingScreen() {
                 </View>
               </ImageBackground>
             </View>
+          </View>
 
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>More Live Jaaps</Text>
@@ -342,33 +345,72 @@ export default function JaapLandingScreen() {
                 jaapScrollOffset.current = e.nativeEvent.contentOffset.x;
               }}
             >
-              {LIVE_JAAPS.map((jaap) => (
-                <TouchableOpacity
-                  key={jaap.id}
-                  style={[styles.jaapCardContainer, { width: 240, backgroundColor: '#1A0A00' }]}
-                  onPress={() => router.push({
-                    pathname: '/live-jaap-welcome',
-                    params: {
-                      mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
-                      title: jaap.title.replace('\n', ' ')
+              {LIVE_JAAPS.map((jaap) => {
+                const isHanuman = jaap.id === '1';
+                const isOtherLiveJaap = jaap.id === '2' || jaap.id === '3' || jaap.id === '4' || jaap.id === '5' || jaap.id === '6' || jaap.id === '7';
+                
+                let showLive = true;
+                let liveLabel = 'LIVE';
+
+                if (isHanuman) {
+                  const hanumanActive = hanumanStatus.isActive;
+                  showLive = hanumanActive;
+                  if (hanumanActive) {
+                    if (hanumanStatus.isCompleted) {
+                      liveLabel = 'COMPLETED';
+                    } else {
+                      liveLabel = `LIVE • ${hanumanStatus.roundOfDay}/51`;
                     }
-                  })}
-                >
-                  <Image
-                    source={jaap.image}
-                    style={{ width: '100%', height: '100%', position: 'absolute' }}
-                    resizeMode="cover"
-                  />
-                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.jaapCardOverlayExact}>
-                    <View style={styles.jaapCardTopRow}>
-                      <View style={styles.exactLiveBadge}>
-                        <Ionicons name="radio" size={12} color="#FFF" style={{ marginRight: 4 }} />
-                        <Text style={styles.exactLiveText}>LIVE</Text>
+                  } else {
+                    if (hanumanStatus.nextSessionStart) {
+                      const timeStr = hanumanStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      liveLabel = `SOON • ${timeStr}`;
+                    } else {
+                      liveLabel = 'SOON';
+                    }
+                  }
+                } else if (isOtherLiveJaap) {
+                  const otherStatus = getCurrentOtherJaapStatus(now);
+                  showLive = otherStatus.isActive;
+                  if (otherStatus.isActive) {
+                    liveLabel = 'LIVE';
+                  } else {
+                    if (otherStatus.nextSessionStart) {
+                      const timeStr = otherStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      liveLabel = `SOON • ${timeStr}`;
+                    } else {
+                      liveLabel = 'SOON';
+                    }
+                  }
+                }
+
+                return (
+                  <TouchableOpacity
+                    key={jaap.id}
+                    style={[styles.jaapCardContainer, { width: 240, backgroundColor: '#1A0A00' }]}
+                    onPress={() => router.push({
+                      pathname: '/live-jaap-welcome',
+                      params: {
+                        mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
+                        title: jaap.title.replace('\n', ' ')
+                      }
+                    })}
+                  >
+                    <Image
+                      source={jaap.image}
+                      style={{ width: '100%', height: '100%', position: 'absolute' }}
+                      resizeMode="cover"
+                    />
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.jaapCardOverlayExact}>
+                      <View style={styles.jaapCardTopRow}>
+                        <View style={[styles.exactLiveBadge, (!showLive) && styles.mockupScheduledBadge]}>
+                          <Ionicons name="radio" size={12} color="#FFF" style={{ marginRight: 4 }} />
+                          <Text style={styles.exactLiveText}>{liveLabel}</Text>
+                        </View>
+                        <View style={styles.exactCountBadge}>
+                          <Text style={styles.exactCountText}>{jaap.devotees}</Text>
+                        </View>
                       </View>
-                      <View style={styles.exactCountBadge}>
-                        <Text style={styles.exactCountText}>{jaap.devotees}</Text>
-                      </View>
-                    </View>
                     <View style={styles.jaapCardBottomArea}>
                       <Text style={styles.jaapCardTitleExact}>{jaap.title}</Text>
                       <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
@@ -392,7 +434,8 @@ export default function JaapLandingScreen() {
                     </View>
                   </LinearGradient>
                 </TouchableOpacity>
-              ))}
+              );
+              })}
             </ScrollView>
 
             <View style={styles.sectionHeaderParity}>
@@ -433,11 +476,18 @@ export default function JaapLandingScreen() {
                 </View>
               ))}
             </View>
-          </>
-        ) : (
-          <View style={[styles.templeViewContainer, { paddingTop: 0 }]}>
-            {/* Hero Banner (Same structure as Jaap tab banner) */}
-            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 12 }]}>
+        </ScrollView>
+      ) : (
+        <ScrollView
+          style={styles.mainScroll}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
+          bounces
+          stickyHeaderIndices={[0]}
+        >
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
+              {/* Hero Banner (Same structure as Jaap tab banner) */}
+              <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
                 source={require('../../assets/images/image temple/SomnathTemple.jpg')}
                 style={styles.heroBannerFill}
@@ -515,20 +565,16 @@ export default function JaapLandingScreen() {
                 ))}
               </ScrollView>
             </View>
+          </View>
 
-            {/* Temple List */}
+          {/* Temple List */}
             <View style={styles.newTempleListPadding}>
               {loadingTemples ? (
                 <ActivityIndicator size="large" color="#FF6600" />
               ) : filteredTemples.length > 0 ? (
                 filteredTemples.map((item, idx) => (
                   <View key={item.id} style={styles.newTempleCard}>
-                    {/* Hardcoded Badge for 2nd item matching design */}
-                    {idx === 1 && (
-                      <View style={styles.blueBadge}>
-                        <Text style={styles.blueBadgeText}># भगवद गीता अध्याय 2</Text>
-                      </View>
-                    )}
+
                     <Image source={getTempleImageByName(item.name)} style={styles.newTempleCardImg} resizeMode="cover" />
                     <View style={styles.newTempleCardInfo}>
                       <View>
@@ -549,9 +595,8 @@ export default function JaapLandingScreen() {
                 </View>
               )}
             </View>
-          </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      )}
       </View>
     </LinearGradient>
   );
@@ -897,7 +942,7 @@ const styles = StyleSheet.create({
   templeSearchSection: { paddingHorizontal: 20, marginBottom: 15 },
   templeSearchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF8F0', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1, borderColor: '#F5E0C3' },
   templeSearchInputField: { flex: 1, fontSize: 14, color: '#2D1400', fontWeight: '600' },
-  templeCatPillsRow: { marginBottom: 20 },
+  templeCatPillsRow: { marginBottom: 15 },
   templeCatPill: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#FFF', marginRight: 10, borderWidth: 1, borderColor: '#F5E0C3' },
   templeCatPillActive: { backgroundColor: '#FF6600', borderColor: '#FF6600' },
   templeCatPillText: { fontSize: 13, fontWeight: '700', color: '#8B4513' },

@@ -173,9 +173,26 @@ export default function HoroscopeScreen() {
             </View>
           ) : (
             <View style={{ flex: 1 }}>
+              {/* Sign Header */}
+              <View style={styles.signHeaderRow}>
+                <View style={styles.signTitleCol}>
+                  <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
+                  <Text style={styles.signDatesText}>{selectedZodiac.dates}</Text>
+                </View>
+                <View style={styles.signIllustrationContainer}>
+                  <View style={[styles.illustrationBg, { backgroundColor: selectedZodiac.color + '20', borderWidth: 0 }]}>
+                    {(selectedZodiac as any).image ? (
+                      <ExpoImage source={(selectedZodiac as any).image} style={styles.zodiacImage} contentFit="contain" />
+                    ) : (
+                      <Text style={styles.largeZodiacEmoji}>{selectedZodiac.icon}</Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+
               <View style={styles.content}>
                 <LinearGradient
-                  colors={['#FFFFFF', '#FFF9F2']}
+                  colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0.5)']}
                   style={styles.predictionCard}
                 >
                   <View style={styles.cardHeader}>
@@ -186,24 +203,7 @@ export default function HoroscopeScreen() {
                   </View>
                   {renderPrediction()}
                 </LinearGradient>
-                </View>
-
-                {/* Sign Header */}
-                <View style={styles.signHeaderRow}>
-                  <View style={styles.signTitleCol}>
-                    <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
-                    <Text style={styles.signDatesText}>{selectedZodiac.dates}</Text>
-                  </View>
-                  <View style={styles.signIllustrationContainer}>
-                    <View style={[styles.illustrationBg, { backgroundColor: selectedZodiac.color + '20', borderWidth: 0 }]}>
-                      {(selectedZodiac as any).image ? (
-                        <ExpoImage source={(selectedZodiac as any).image} style={styles.zodiacImage} contentFit="contain" />
-                      ) : (
-                        <Text style={styles.largeZodiacEmoji}>{selectedZodiac.icon}</Text>
-                      )}
-                    </View>
-                  </View>
-                </View>
+              </View>
 
               {/* Metrics Section */}
               <View style={styles.metricsContainer}>
@@ -341,7 +341,76 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  datePillText: { fontSize: 13, color: '#333', fontWeight: '700' },
+  datePillText: { fontSize: 12, color: '#555', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 },
+  content: { paddingHorizontal: 20, marginTop: 16 },
+  predictionCard: {
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
+    elevation: 4,
+    shadowColor: '#FF6B00',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  dateBadge: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 10,
+  },
+  dateText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  cardEyebrow: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FF6B00',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  predictionText: {
+    fontSize: 16,
+    lineHeight: 26,
+    color: '#222',
+    fontWeight: '500',
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 8,
+  },
+  categoryItem: {
+    width: '47%',
+    backgroundColor: 'rgba(255, 107, 0, 0.05)',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.1)',
+  },
+  categoryLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E65C00',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  categoryValue: {
+    fontSize: 13,
+    color: '#333',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
   signHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -350,8 +419,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   signTitleCol: { flex: 1 },
-  signNameText: { fontSize: 36, fontWeight: '900', color: '#111' },
-  signDatesText: { fontSize: 14, color: '#444', fontWeight: '700', marginTop: 4 },
+  signNameText: { fontSize: 44, fontWeight: '900', color: '#111', letterSpacing: -1.5 },
+  signDatesText: { fontSize: 15, color: '#666', fontWeight: '600', marginTop: 2, letterSpacing: 0.5 },
   signIllustrationContainer: {
     width: 100,
     height: 100,

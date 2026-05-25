@@ -33,6 +33,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [phoneNumber, setPhoneNumber] = useState('');
   const [yearsInBusiness, setYearsInBusiness] = useState('');
   const [address, setAddress] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryInput, setCategoryInput] = useState('');
 
   const resetForm = () => {
     setBusinessName('');
@@ -40,6 +42,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     setPhoneNumber('');
     setYearsInBusiness('');
     setAddress('');
+    setCategories([]);
+    setCategoryInput('');
   };
 
   const handleSubmit = async () => {
@@ -121,6 +125,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       phoneNumber: trimmedPhone,
       yearsInBusiness: parseInt(yearsInBusiness, 10),
       address: trimmedAddress,
+      categories: categories.length > 0 ? categories : [],
     };
 
     if (!onSubmit) {
@@ -129,12 +134,13 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       return;
     }
 
-    // Optimistically reset form and close modal immediately so UI feels instantaneous
-    resetForm();
-    onClose();
-
-    // Run the background registration API call
-    onSubmit(payload).catch((error: any) => {
+    setLoading(true);
+    try {
+      await onSubmit(payload);
+      resetForm();
+      // Only close if successful (onSubmit might also close it, but good to be safe)
+      onClose();
+    } catch (error: any) {
       console.error('Submit error:', error);
       let errMsg = error?.message || 'Registration failed';
       if (error?.response?.data?.detail) {
@@ -143,7 +149,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           : error.response.data.detail;
       }
       Alert.alert('Registration Error', String(errMsg));
-    });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -220,6 +228,65 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               keyboardType="number-pad"
               maxLength={2}
             />
+
+            {/* Categories */}
+            <Text style={styles.label}>Categories (e.g. Plumber, Electrician) *</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md }}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                placeholder="Enter a category and press Add"
+                placeholderTextColor={COLORS.textLight}
+                value={categoryInput}
+                onChangeText={setCategoryInput}
+                onSubmitEditing={() => {
+                  const cat = categoryInput.trim();
+                  if (cat && !categories.includes(cat)) {
+                    setCategories([...categories, cat]);
+                  }
+                  setCategoryInput('');
+                }}
+              />
+              <TouchableOpacity
+                style={{
+                  backgroundColor: COLORS.primary,
+                  paddingHorizontal: SPACING.md,
+                  height: 50,
+                  justifyContent: 'center',
+                  borderRadius: BORDER_RADIUS.md,
+                  marginLeft: SPACING.sm,
+                }}
+                onPress={() => {
+                  const cat = categoryInput.trim();
+                  if (cat && !categories.includes(cat)) {
+                    setCategories([...categories, cat]);
+                  }
+                  setCategoryInput('');
+                }}
+              >
+                <Text style={{ color: '#FFF', fontWeight: '600' }}>Add</Text>
+              </TouchableOpacity>
+            </View>
+            {categories.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: SPACING.md }}>
+                {categories.map((cat, idx) => (
+                  <View key={idx} style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: `${COLORS.primary}15`,
+                    paddingHorizontal: SPACING.sm,
+                    paddingVertical: SPACING.xs,
+                    borderRadius: BORDER_RADIUS.sm,
+                    marginRight: SPACING.xs,
+                    marginBottom: SPACING.xs,
+                  }}>
+                    <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '500' }}>{cat}</Text>
+                    <TouchableOpacity onPress={() => setCategories(categories.filter(c => c !== cat))}>
+                      <Ionicons name="close-circle" size={16} color={COLORS.primary} style={{ marginLeft: 4 }} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* Address */}
             <Text style={styles.label}>Full Address *</Text>

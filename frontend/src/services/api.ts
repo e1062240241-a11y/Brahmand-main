@@ -900,9 +900,13 @@ export const sendCommunityMessage = (
     media_url: mediaUrl,
   });
 
-export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 50) =>
-  api.get(`/messages/community/${communityId}/${subgroupType}?limit=${limit}`);
-
+export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 25, before_timestamp?: string) => {
+  let url = `/messages/community/${communityId}/${subgroupType}?limit=${limit}`;
+  if (before_timestamp) {
+    url += `&before_timestamp=${encodeURIComponent(before_timestamp)}`;
+  }
+  return api.get(url);
+};
 export const sendCircleMessage = (circleId: string, content: string, messageType: string = 'text') =>
   api.post(`/messages/circle/${circleId}`, { content, message_type: messageType });
 

@@ -137,10 +137,10 @@ export default function ProfileScreen() {
     },
   ];
 
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(user || null);
+  const [loading, setLoading] = useState(!user);
   const [posts, setPosts] = useState<any[]>([]);
-  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
@@ -470,6 +470,7 @@ export default function ProfileScreen() {
 
       if (reset) {
         setPosts(items);
+        AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify(items)).catch(() => {});
       } else {
         setPosts(prev => [...prev, ...items]);
       }
@@ -493,8 +494,22 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
-    fetchProfile(true);
-    loadPosts(true);
+    if (!userId) return;
+    // Attempt to load cached posts immediately
+    AsyncStorage.getItem(`profile_posts_${userId}`).then(cached => {
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.length > 0) {
+          setPosts(parsed);
+          setPostsLoading(false);
+        }
+      }
+      fetchProfile(!user); // Silently fetch if we already have user data
+      loadPosts(true); // Will update in background if we had cache
+    }).catch(() => {
+      fetchProfile(true);
+      loadPosts(true);
+    });
   }, [userId]);
 
   const onRefresh = useCallback(() => {
@@ -1164,6 +1179,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </Animated.View>
 
+      {renderHeader()}
       <Animated.FlatList
         data={posts}
         renderItem={renderPost}
@@ -1174,7 +1190,6 @@ export default function ProfileScreen() {
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
-        ListHeaderComponent={renderHeader()}
         ListFooterComponent={
           postsLoading ? (
             <View style={styles.footerLoader}>
@@ -1384,17 +1399,10 @@ export default function ProfileScreen() {
             >
               <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
               <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
-                {activeCommentMenuId !== null && (
-                  <TouchableOpacity
-                    style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]}
-                    activeOpacity={1}
-                    onPress={() => setActiveCommentMenuId(null)}
-                  />
-                )}
                 <View style={styles.sheetHandle} />
                 <View style={styles.sheetHeader}>
                   <Text style={styles.sheetTitle}>Comments</Text>
-                  <TouchableOpacity onPress={() => { setCommentModalVisible(false); setActiveCommentMenuId(null); }}>
+                  <TouchableOpacity onPress={() => { setCommentModalVisible(false); }}>
                     <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>
                 </View>
@@ -1408,34 +1416,27 @@ export default function ProfileScreen() {
                   renderItem={({ item }) => {
                     const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                     return (
-                      <View style={[styles.commentItem, { zIndex: activeCommentMenuId === item.id ? 100 : 1 }]}>
+                      <View style={styles.commentItem}>
                         <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
                         <View style={styles.commentContent}>
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text style={styles.commentUser}>{item.username || 'User'}</Text>
                             {canDelete && (
-                              <View style={{ position: 'relative', zIndex: 20 }}>
-                                <TouchableOpacity
-                                  style={{ padding: 4, marginRight: -4 }}
-                                  onPress={() => {
-                                    setActiveCommentMenuId(activeCommentMenuId === item.id ? null : item.id);
-                                  }}
-                                >
-                                  <Ionicons name="ellipsis-vertical" size={16} color={COLORS.textSecondary || '#888'} />
-                                </TouchableOpacity>
-                                {activeCommentMenuId === item.id && (
-                                  <TouchableOpacity
-                                    style={styles.inlineDeletePopover}
-                                    onPress={() => {
-                                      setActiveCommentMenuId(null);
-                                      handleDeleteComment(item);
-                                    }}
-                                  >
-                                    <Ionicons name="trash-outline" size={14} color={COLORS.error || '#FF3B30'} />
-                                    <Text style={styles.inlineDeleteText}>Delete</Text>
-                                  </TouchableOpacity>
-                                )}
-                              </View>
+                              <TouchableOpacity
+                                style={{ padding: 4, marginRight: -4 }}
+                                onPress={() => {
+                                  Alert.alert(
+                                    'Delete Comment',
+                                    'Are you sure you want to delete this comment?',
+                                    [
+                                      { text: 'Cancel', style: 'cancel' },
+                                      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
+                                    ]
+                                  );
+                                }}
+                              >
+                                <Ionicons name="trash-outline" size={16} color={COLORS.textSecondary || '#888'} />
+                              </TouchableOpacity>
                             )}
                           </View>
                           <MentionText style={styles.commentText} text={item.text || ''} />

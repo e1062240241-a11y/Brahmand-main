@@ -395,16 +395,9 @@ const PostScreen = () => {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
         >
           <View style={styles.commentModalSheet}>
-            {activeCommentMenuId !== null && (
-              <TouchableOpacity
-                style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]}
-                activeOpacity={1}
-                onPress={() => setActiveCommentMenuId(null)}
-              />
-            )}
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments</Text>
-              <TouchableOpacity onPress={() => { setCommentModalVisible(false); setActiveCommentMenuId(null); }} style={styles.commentCloseBtn}>
+              <TouchableOpacity onPress={() => { setCommentModalVisible(false); }} style={styles.commentCloseBtn}>
                 <Ionicons name="close" size={20} color={COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -423,32 +416,25 @@ const PostScreen = () => {
                   renderItem={({ item }) => {
                     const canDelete = item.user_id === user?.id || commentPost?.user_id === user?.id;
                     return (
-                      <View style={[styles.commentItem, { zIndex: activeCommentMenuId === item.id ? 100 : 1 }]}>
+                      <View style={styles.commentItem}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
                           {canDelete && (
-                            <View style={{ position: 'relative', zIndex: 20 }}>
-                              <TouchableOpacity
-                                style={{ padding: 4, marginRight: -4 }}
-                                onPress={() => {
-                                  setActiveCommentMenuId(activeCommentMenuId === item.id ? null : item.id);
-                                }}
-                              >
-                                <Ionicons name="ellipsis-vertical" size={16} color={COLORS.textSecondary} />
-                              </TouchableOpacity>
-                              {activeCommentMenuId === item.id && (
-                                <TouchableOpacity
-                                  style={styles.inlineDeletePopover}
-                                  onPress={() => {
-                                    setActiveCommentMenuId(null);
-                                    handleDeleteComment(item);
-                                  }}
-                                >
-                                  <Ionicons name="trash-outline" size={14} color={COLORS.error || '#FF3B30'} />
-                                  <Text style={styles.inlineDeleteText}>Delete</Text>
-                                </TouchableOpacity>
-                              )}
-                            </View>
+                            <TouchableOpacity
+                              style={{ padding: 4, marginRight: -4 }}
+                              onPress={() => {
+                                Alert.alert(
+                                  'Delete Comment',
+                                  'Are you sure you want to delete this comment?',
+                                  [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
+                                  ]
+                                );
+                              }}
+                            >
+                              <Ionicons name="trash-outline" size={16} color={COLORS.textSecondary} />
+                            </TouchableOpacity>
                           )}
                         </View>
                         <MentionText style={styles.commentItemText} text={item?.text || ''} />

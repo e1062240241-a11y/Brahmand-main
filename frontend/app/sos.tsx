@@ -238,8 +238,9 @@ export default function SOSScreen() {
     };
   }, [stage, countdown]);
 
-  const handleContinueToLocation = async () => {
-    if (!emergencyType) {
+  const handleContinueToLocation = async (type?: string) => {
+    const activeType = type || emergencyType;
+    if (!activeType) {
       Alert.alert('Select Type', 'Please select an emergency type to continue.');
       return;
     }
@@ -366,7 +367,7 @@ export default function SOSScreen() {
                       setEmergencyType(option.value);
                       // Auto-continue to location stage after selection
                       setTimeout(() => {
-                        handleContinueToLocation();
+                        handleContinueToLocation(option.value);
                       }, 400);
                     }}
                     activeOpacity={0.7}

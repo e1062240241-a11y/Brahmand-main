@@ -520,8 +520,8 @@ export default function VendorScreen() {
       // Close modal immediately so UI feels fast
       setShowRegistrationModal(false);
       
-      // Refresh vendor data in background
-      Promise.all([
+      // Refresh vendor data so the UI updates before the modal closes
+      await Promise.all([
         fetchMyVendor(),
         userLocation ? fetchVendors(userLocation) : fetchVendors()
       ]).catch(err => console.warn('Background fetch error:', err));
