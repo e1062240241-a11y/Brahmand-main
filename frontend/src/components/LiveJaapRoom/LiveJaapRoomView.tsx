@@ -469,7 +469,7 @@ export default function LiveJaapRoomView() {
         if (mantraType === 'gayatri') {
           totalDuration = 31.068;
         } else if (mantraType === 'shiva') {
-          totalDuration = 4.24; // 8.48s loop contains 2 chants, so 1 chant = 4.24s threshold
+          totalDuration = 8.48; // 8.48s loop contains 1 main chant + instrumental tail, so 1 loop = 1 count
         } else {
           const wordDurations = WORDS.map(w => (w.length > 7 ? 3.0 : 1.2));
           totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;

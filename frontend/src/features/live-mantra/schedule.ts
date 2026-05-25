@@ -406,22 +406,12 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
   if (mantraType === 'shiva') {
     const totalDuration = 8.48;
     const position = elapsedSeconds % totalDuration;
-    if (position < 5.0) {
-      if (position < 2.2) {
-        return { currentIndex: 0, isHolding: false };
-      } else if (position < 3.4) {
-        return { currentIndex: 1, isHolding: false };
-      } else {
-        return { currentIndex: 2, isHolding: false };
-      }
+    if (position < 2.2) {
+      return { currentIndex: 0, isHolding: false };
+    } else if (position < 3.4) {
+      return { currentIndex: 1, isHolding: false };
     } else {
-      if (position < 5.8) {
-        return { currentIndex: 0, isHolding: false };
-      } else if (position < 6.6) {
-        return { currentIndex: 1, isHolding: false };
-      } else {
-        return { currentIndex: 2, isHolding: false };
-      }
+      return { currentIndex: 2, isHolding: false };
     }
   }
 
