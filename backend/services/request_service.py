@@ -98,7 +98,7 @@ async def create_request(
         'urgency_level': request_data.get('urgency_level', 'low'),
         'visibility_level': request_data.get('visibility_level', 'area'),
         'status': 'active',
-        'created_at': datetime.utcnow().isoformat(),
+        'created_at': datetime.utcnow().isoformat() + 'Z',
         'fulfilled_at': None,
         'verified_by': [],
         # Type-specific fields
@@ -223,7 +223,7 @@ async def mark_request_fulfilled(
     # Update status
     update_data = {
         'status': 'fulfilled',
-        'fulfilled_at': datetime.utcnow().isoformat()
+        'fulfilled_at': datetime.utcnow().isoformat() + 'Z'
     }
     
     await db.update_document('community_requests', request_id, update_data)

@@ -6,10 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { useAuthStore } from '../../../src/store/authStore';
 
-export default function CommunityRequestBloodVerifyPage() {
+export default function CommunityRequestEmergencyVerifyPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string,
-    bloodGroup?: string;
+    emergencyType?: string;
     hospitalName?: string;
     location?: string;
     urgency?: string;
@@ -28,10 +28,10 @@ export default function CommunityRequestBloodVerifyPage() {
       return;
     }
     router.push({
-      pathname: '/community-request/blood/otp',
+      pathname: '/community-request/emergency/otp',
       params: { community_id: params.community_id,
         phone: phoneNumber.replace(/[^0-9]/g, ''),
-        bloodGroup: params.bloodGroup,
+        emergencyType: params.emergencyType,
         hospitalName: params.hospitalName,
         location: params.location,
         urgency: params.urgency,
@@ -48,9 +48,9 @@ export default function CommunityRequestBloodVerifyPage() {
 
   const handleContinue = () => {
     router.push({
-      pathname: '/community-request/blood/review',
+      pathname: '/community-request/emergency/review',
       params: { community_id: params.community_id,
-        bloodGroup: params.bloodGroup,
+        emergencyType: params.emergencyType,
         hospitalName: params.hospitalName,
         location: params.location,
         urgency: params.urgency,

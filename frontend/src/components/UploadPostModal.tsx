@@ -56,7 +56,7 @@ type UploadPostModalProps = {
   visible: boolean;
   onClose: () => void;
   onUploadSuccess: (post: any) => void;
-  onUploadStart?: (media: SelectedMedia, caption: string, filterName?: string) => void;
+  onUploadStart?: (media: SelectedMedia, caption: string, filterName?: string, communityLevel?: string, category?: string) => void;
 };
 
 const ACCEPTED_MEDIA_TYPES = ['image/*', 'video/*'];
@@ -153,6 +153,8 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null);
   const [caption, setCaption] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Normal');
+  const [communityLevel, setCommunityLevel] = useState('city');
+  const [category, setCategory] = useState('feed');
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -291,7 +293,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const handleUpload = async () => {
     if (!selectedMedia) return;
     if (onUploadStart) {
-      onUploadStart(selectedMedia, caption, selectedFilter);
+      onUploadStart(selectedMedia, caption, selectedFilter, communityLevel, category);
       resetAndClose();
       return;
     }
@@ -312,7 +314,9 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             setUploadProgress(percent);
             if (percent >= 100 && selectedMedia.mediaType === 'video') setIsCompressing(true);
           }
-        }
+        },
+        communityLevel,
+        category
       );
       onUploadSuccess(response.data);
       resetAndClose();
@@ -408,6 +412,47 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>Post Details</Text>
               <M3OutlinedInput label="Caption / Description" value={caption} onChangeText={setCaption} multiline />
+            </View>
+
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Visible to</Text>
+              <View style={styles.toggleRow}>
+                {[
+                  { id: 'city', label: 'City' },
+                  { id: 'state', label: 'State' },
+                  { id: 'country', label: 'National' },
+                ].map((lvl) => (
+                  <TouchableOpacity
+                    key={lvl.id}
+                    style={[styles.toggleBtn, communityLevel === lvl.id && styles.toggleBtnActive]}
+                    onPress={() => setCommunityLevel(lvl.id)}
+                  >
+                    <Text style={[styles.toggleBtnText, communityLevel === lvl.id && styles.toggleBtnTextActive]}>
+                      {lvl.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Category</Text>
+              <View style={styles.toggleRow}>
+                {[
+                  { id: 'feed', label: 'Standard Feed' },
+                  { id: 'festivals', label: 'Festivals' },
+                ].map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.toggleBtn, category === cat.id && styles.toggleBtnActive]}
+                    onPress={() => setCategory(cat.id)}
+                  >
+                    <Text style={[styles.toggleBtnText, category === cat.id && styles.toggleBtnTextActive]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
             <View style={styles.bottomBar}>
@@ -551,6 +596,33 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: SPACING.md,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  toggleBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#79747E',
+    marginBottom: 8,
+  },
+  toggleBtnActive: {
+    backgroundColor: '#E8DEF8',
+    borderColor: COLORS.primary,
+  },
+  toggleBtnText: {
+    fontSize: 15,
+    color: '#49454F',
+    fontWeight: '600',
+  },
+  toggleBtnTextActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
   },
   subLabel: {
     color: '#49454F',

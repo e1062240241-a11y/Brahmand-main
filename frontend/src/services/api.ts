@@ -577,7 +577,9 @@ export const uploadUserPost = (
   file: { uri: string; name: string; type: string },
   caption: string,
   filterName?: string,
-  onProgress?: (progressEvent: any) => void
+  onProgress?: (progressEvent: any) => void,
+  community_level: string = 'city',
+  category: string = 'feed'
 ) => {
   return (async () => {
     if (Platform.OS === 'web' && ENABLE_WEB_DIRECT_VIDEO_UPLOAD && isVideoMimeType(file.type)) {
@@ -590,6 +592,8 @@ export const uploadUserPost = (
         formData.append('storage_path', objectPath);
         formData.append('caption', caption || '');
         formData.append('source', 'camera_roll');
+        formData.append('community_level', community_level);
+        formData.append('category', category);
         if (filterName) {
           formData.append('filter_name', filterName);
         }
@@ -602,6 +606,8 @@ export const uploadUserPost = (
 
     const formData = new FormData();
     formData.append('caption', caption || '');
+    formData.append('community_level', community_level);
+    formData.append('category', category);
     if (filterName) {
       formData.append('filter_name', filterName);
     }

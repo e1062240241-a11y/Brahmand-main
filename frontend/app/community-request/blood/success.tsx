@@ -1,17 +1,36 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
+import { BackHandler, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 
 export default function CommunityRequestBloodSuccessPage() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ community_id?: string }>();
+
+  const handleBackToCommunity = () => {
+    if (params.community_id) {
+      router.replace(`/community/${params.community_id}`);
+    } else {
+      router.replace('/community-request/list');
+    }
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBackToCommunity();
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [params.community_id]);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/community-request/list')}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackToCommunity}>
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
       </View>
@@ -38,7 +57,14 @@ export default function CommunityRequestBloodSuccessPage() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={() => router.replace('/community-request/list')} activeOpacity={0.8}>
+        <TouchableOpacity 
+          style={styles.primaryButton} 
+          onPress={() => router.replace({
+            pathname: '/community-request/list',
+            params: { community_id: params.community_id }
+          })} 
+          activeOpacity={0.8}
+        >
           <Text style={styles.primaryButtonText}>View My Request</Text>
         </TouchableOpacity>
 
@@ -46,7 +72,7 @@ export default function CommunityRequestBloodSuccessPage() {
           <Text style={styles.secondaryButtonText}>Share Externally</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linkButton} onPress={() => router.replace('/community-request/list')} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.linkButton} onPress={handleBackToCommunity} activeOpacity={0.8}>
           <Text style={styles.linkButtonText}>Go to Community</Text>
         </TouchableOpacity>
       </View>
