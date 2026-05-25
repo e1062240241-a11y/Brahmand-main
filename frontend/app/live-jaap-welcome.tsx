@@ -48,7 +48,7 @@ export default function LiveJaapWelcomeScreen() {
   }, []);
 
   const hanumanStatus = getCurrentHanumanStatus(now);
-  const otherStatus = getCurrentOtherJaapStatus(now);
+  const otherStatus = getCurrentOtherJaapStatus(now, mantraType);
 
   const isHanuman = mantraType === 'hanuman';
   const isKedarnath = mantraType === 'kedarnath';
@@ -131,7 +131,7 @@ export default function LiveJaapWelcomeScreen() {
                 <View style={styles.activeBannerInner}>
                   <View style={styles.liveDotRing} />
                   <Text style={styles.statusTextActive}>
-                    {otherStatus.sessionName} Session • Live (8 AM - 11 AM & 4 PM - 9 PM)
+                    {mantraType === 'gayatri' || mantraType === 'shiva' ? 'Live • Open 24 Hours' : `${otherStatus.sessionName} Session • Live (8 AM - 11 AM & 4 PM - 9 PM)`}
                   </Text>
                 </View>
               ) : (

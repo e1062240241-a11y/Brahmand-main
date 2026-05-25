@@ -370,7 +370,8 @@ export default function JaapLandingScreen() {
                     }
                   }
                 } else if (isOtherLiveJaap) {
-                  const otherStatus = getCurrentOtherJaapStatus(now);
+                  const mType = jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
+                  const otherStatus = getCurrentOtherJaapStatus(now, mType);
                   showLive = otherStatus.isActive;
                   if (otherStatus.isActive) {
                     liveLabel = 'LIVE';

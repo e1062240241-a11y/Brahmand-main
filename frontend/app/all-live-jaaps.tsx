@@ -168,7 +168,7 @@ export default function AllLiveJaapsScreen() {
               }
             }
           } else if (isOtherLiveJaap) {
-            const otherStatus = getCurrentOtherJaapStatus(now);
+            const otherStatus = getCurrentOtherJaapStatus(now, jaap.mantraType);
             showLive = otherStatus.isActive;
             if (otherStatus.isActive) {
               liveLabel = 'LIVE';
