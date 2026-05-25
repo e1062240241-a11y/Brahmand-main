@@ -36,7 +36,7 @@ hanuman: {
     bg: require('../../../assets/images/krishna_jaap_card_v2.png'),
   },
   shiva: {
-    text: 'ॐ नमः शिवाय ॐ नमः शिवाय',
+    text: 'ॐ नमः शिवाय',
     bg: require('../../../assets/images/shiva_jaap_card_v2.png'),
   },
   mrityunjaya: {
@@ -241,10 +241,15 @@ export default function LiveJaapRoomView() {
       if (val) setPersonalCount(parseInt(val, 10));
       else setPersonalCount(0);
     });
-    AsyncStorage.getItem(accKey).then(val => {
-      if (val) accumulatedTimeRef.current = parseFloat(val);
-      else accumulatedTimeRef.current = 0;
-    });
+    // For 24/7 rooms reset accumulated time each entry to prevent count fluctuation
+    if (mantraType === 'gayatri' || mantraType === 'shiva') {
+      accumulatedTimeRef.current = 0;
+    } else {
+      AsyncStorage.getItem(accKey).then(val => {
+        if (val) accumulatedTimeRef.current = parseFloat(val);
+        else accumulatedTimeRef.current = 0;
+      });
+    }
   }, [mantraType]);
 
   useEffect(() => {
@@ -657,7 +662,9 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (mantraType === 'hanuman') return;
     if (isSessionActive) {
-      const time = (currentTimeState > 0) ? currentTimeState : (otherStatus.isActive ? otherStatus.elapsedSeconds : 0);
+      const time = (mantraType === 'gayatri' || mantraType === 'shiva')
+        ? (otherStatus.isActive ? otherStatus.elapsedSeconds : 0)
+        : ((currentTimeState > 0) ? currentTimeState : (otherStatus.isActive ? otherStatus.elapsedSeconds : 0));
       const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, time, mantraType);
       setCurrentIndex(syncIdx);
       setIsHolding(syncHold);

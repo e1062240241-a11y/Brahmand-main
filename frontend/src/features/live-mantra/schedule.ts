@@ -404,21 +404,26 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
   }
 
   if (mantraType === 'shiva') {
-    // OM is held/sustained for ~2.5s in audio before NAMAH begins
-    // 2nd repetition is slightly faster (no long lead-in)
-    // Boundaries: OM:0–2.5 | NAMAH:2.5–4.0 | SHIVAYA:4.0–5.0+gap
-    //             OM2:5.0–6.0 | NAMAH2:6.0–7.0 | SHIVAYA2:7.0–8.48
-    const wordDurations = [2.5, 1.5, 1.0, 1.0, 1.0, 1.48];
     const totalDuration = 8.48;
     const position = elapsedSeconds % totalDuration;
-    let accumulated = 0;
-    for (let i = 0; i < wordDurations.length; i++) {
-      accumulated += wordDurations[i];
-      if (position < accumulated) {
-        return { currentIndex: i, isHolding: false };
+    if (position < 4.24) {
+      if (position < 2.2) {
+        return { currentIndex: 0, isHolding: false };
+      } else if (position < 3.4) {
+        return { currentIndex: 1, isHolding: false };
+      } else {
+        return { currentIndex: 2, isHolding: false };
+      }
+    } else {
+      const rel = position - 4.24;
+      if (rel < 1.0) {
+        return { currentIndex: 0, isHolding: false };
+      } else if (rel < 2.0) {
+        return { currentIndex: 1, isHolding: false };
+      } else {
+        return { currentIndex: 2, isHolding: false };
       }
     }
-    return { currentIndex: words.length - 1, isHolding: true };
   }
 
   const wordDurations = words.map(w => (w.length > 7 ? 3.0 : 1.2));
