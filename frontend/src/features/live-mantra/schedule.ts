@@ -404,10 +404,11 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
   }
 
   if (mantraType === 'shiva') {
-    // Word timestamps derived from RMS audio analysis of the 8.48s loop:
-    // ॐ(1): 0.1–1.5s | नमः(1): 1.5–3.5s | शिवाय(1): 3.5–5.0s (incl breath)
-    // ॐ(2): 5.0–6.0s | नमः(2): 6.0–7.0s | शिवाय(2): 7.0–8.48s (incl reverb tail)
-    const wordDurations = [1.5, 2.0, 1.5, 1.0, 1.0, 1.48];
+    // OM is held/sustained for ~2.5s in audio before NAMAH begins
+    // 2nd repetition is slightly faster (no long lead-in)
+    // Boundaries: OM:0–2.5 | NAMAH:2.5–4.0 | SHIVAYA:4.0–5.0+gap
+    //             OM2:5.0–6.0 | NAMAH2:6.0–7.0 | SHIVAYA2:7.0–8.48
+    const wordDurations = [2.5, 1.5, 1.0, 1.0, 1.0, 1.48];
     const totalDuration = 8.48;
     const position = elapsedSeconds % totalDuration;
     let accumulated = 0;
