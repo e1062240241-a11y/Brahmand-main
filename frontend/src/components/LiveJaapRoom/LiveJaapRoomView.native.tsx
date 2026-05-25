@@ -642,14 +642,12 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (mantraType === 'hanuman') return;
     if (isSessionActive) {
-      const time = (mantraType === 'gayatri' || mantraType === 'shiva')
-        ? (otherStatus.isActive ? otherStatus.elapsedSeconds : 0)
-        : ((audioStatus?.currentTime && audioStatus.currentTime > 0) ? audioStatus.currentTime : (otherStatus.isActive ? otherStatus.elapsedSeconds : 0));
+      const time = audioStatus?.currentTime || 0;
       const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, time, mantraType);
       setCurrentIndex(syncIdx);
       setIsHolding(syncHold);
     }
-  }, [now, mantraType, isSessionActive, WORDS, audioStatus?.currentTime, otherStatus.isActive ? otherStatus.elapsedSeconds : 0]);
+  }, [mantraType, isSessionActive, WORDS, audioStatus?.currentTime]);
 
   useEffect(() => {
     if (mantraType === 'hanuman' || isSessionActive) return;

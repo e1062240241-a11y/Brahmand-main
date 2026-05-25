@@ -662,14 +662,12 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (mantraType === 'hanuman') return;
     if (isSessionActive) {
-      const time = (mantraType === 'gayatri' || mantraType === 'shiva')
-        ? (otherStatus.isActive ? otherStatus.elapsedSeconds : 0)
-        : ((currentTimeState > 0) ? currentTimeState : (otherStatus.isActive ? otherStatus.elapsedSeconds : 0));
+      const time = currentTimeState || 0;
       const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, time, mantraType);
       setCurrentIndex(syncIdx);
       setIsHolding(syncHold);
     }
-  }, [now, mantraType, isSessionActive, WORDS, currentTimeState, otherStatus.isActive ? otherStatus.elapsedSeconds : 0]);
+  }, [mantraType, isSessionActive, WORDS, currentTimeState]);
 
   useEffect(() => {
     if (mantraType === 'hanuman' || isSessionActive) return;
