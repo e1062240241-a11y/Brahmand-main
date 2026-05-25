@@ -106,6 +106,7 @@ export default function JaapLandingScreen() {
   const [heroBannerIndex, setHeroBannerIndex] = useState(0);
   const hanumanStatus = getCurrentHanumanStatus(now);
   const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
+  const [reminders, setReminders] = useState<Record<string, boolean>>({});
 
   const sendJaapInviteFromCard = async (jaapId: string, mantraType: string, title: string) => {
     try {
@@ -114,11 +115,25 @@ export default function JaapLandingScreen() {
         mantra_title: title,
       });
       setInvitedJaapId(jaapId);
-      Alert.alert('\u{1F64F} Invite Sent!', `All devotees have been notified to join ${title}!`);
+      Alert.alert('🙏 Invite Sent!', `All devotees have been notified to join ${title}!`);
       setTimeout(() => setInvitedJaapId(null), 10000);
     } catch (err: any) {
       const msg = err?.response?.data?.detail || 'Could not send invite. Please try again.';
       Alert.alert('Invite failed', msg);
+    }
+  };
+
+  const handleSetReminder = async (jaapId: string, mantraType: string, sessionName: string) => {
+    try {
+      await api.post('/jaap/reminder', {
+        mantra_type: mantraType,
+        session_name: sessionName,
+      });
+      setReminders(prev => ({ ...prev, [jaapId]: true }));
+      Alert.alert('🔔 Reminder Set!', `You will be notified 5 minutes before the ${sessionName} session of ${mantraType} jaap.`);
+    } catch (err: any) {
+      console.error('Failed to set reminder:', err);
+      Alert.alert('Error', 'Could not set reminder. Please login again.');
     }
   };
 
@@ -429,26 +444,37 @@ export default function JaapLandingScreen() {
                           <View style={styles.exactCountBadge}>
                             <Text style={styles.exactCountText}>{jaap.devotees}</Text>
                           </View>
-                          {isHanuman && (
-                            <TouchableOpacity
-                              id="hanuman-jaap-bell-btn"
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              style={[
-                                styles.jaapCardBellBtn,
-                                invitedJaapId === jaap.id && styles.jaapCardBellBtnActive
-                              ]}
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                sendJaapInviteFromCard(jaap.id, 'hanuman', 'Hanuman Chalisa');
-                              }}
-                            >
-                              <Ionicons
-                                name={invitedJaapId === jaap.id ? 'notifications' : 'notifications-outline'}
-                                size={14}
-                                color={invitedJaapId === jaap.id ? '#FFD700' : '#FFF'}
-                              />
-                            </TouchableOpacity>
-                          )}
+                          <TouchableOpacity
+                            testID={`jaap-bell-${jaap.id}`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={[
+                              styles.jaapCardBellBtn,
+                              (invitedJaapId === jaap.id || reminders[jaap.id]) && styles.jaapCardBellBtnActive
+                            ]}
+                            onPress={() => {
+                              const mantraType = jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
+                              const mantraTitle = jaap.title.replace('\n', ' ');
+                              
+                              if (showLive) {
+                                sendJaapInviteFromCard(jaap.id, mantraType, mantraTitle);
+                              } else {
+                                // For session-based jaaps like Hanuman
+                                if (isHanuman) {
+                                  const sessionName = (hanumanStatus as any).nextSessionName || 'Morning';
+                                  handleSetReminder(jaap.id, 'hanuman', sessionName);
+                                } else {
+                                  // For other jaaps that might not have sessions yet, just use a generic reminder
+                                  handleSetReminder(jaap.id, mantraType, 'Next');
+                                }
+                              }
+                            }}
+                          >
+                            <Ionicons
+                              name={(invitedJaapId === jaap.id || reminders[jaap.id]) ? 'notifications' : 'notifications-outline'}
+                              size={14}
+                              color={(invitedJaapId === jaap.id || reminders[jaap.id]) ? '#FFD700' : '#FFF'}
+                            />
+                          </TouchableOpacity>
                         </View>
                       </View>
                     <View style={styles.jaapCardBottomArea}>

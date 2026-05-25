@@ -74,9 +74,9 @@ class FirebaseNotificationService:
                 "to": token,
                 "title": title,
                 "body": body,
-                "sound": "soundreality-mayday-166011.mp3" if is_sos else "bell.mp3",
+                "sound": "soundreality_mayday_166011" if is_sos else "bell",
                 "priority": "high" if is_sos else "default",
-                "channelId": "sos_alerts" if is_sos else ("messages" if is_msg else "default"),
+                "channelId": "sos_alerts_v3" if is_sos else ("messages_v3" if is_msg else "default"),
                 "badge": 1 if is_sos else 0,
                 "categoryIdentifier": "SOS_ALERT" if is_sos else None,
                 "data": data or {}
@@ -171,8 +171,8 @@ class FirebaseNotificationService:
                     android_config = fcm.AndroidConfig(
                         priority='high',
                         notification=fcm.AndroidNotification(
-                            channel_id='sos_alerts',
-                            sound='soundreality-mayday-166011.mp3',
+                            channel_id='sos_alerts_v3',
+                            sound='soundreality_mayday_166011',
                             priority='max',
                             vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
                         )
@@ -181,7 +181,7 @@ class FirebaseNotificationService:
                         headers={'apns-priority': '10'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='soundreality-mayday-166011.mp3',
+                                sound='soundreality_mayday_166011.mp3',
                                 badge=1,
                                 content_available=True,
                                 mutable_content=True,
@@ -190,12 +190,12 @@ class FirebaseNotificationService:
                         )
                     )
                 else:
-                    channel_id = 'messages' if is_msg else 'default'
+                    channel_id = 'messages_v3' if is_msg else 'default'
                     android_config = fcm.AndroidConfig(
                         priority='normal',
                         notification=fcm.AndroidNotification(
                             channel_id=channel_id,
-                            sound='bell.mp3',
+                            sound='bell',
                             priority='default'
                         )
                     )
@@ -314,7 +314,7 @@ class FirebaseNotificationService:
                                 priority='high',
                                 notification=fcm.AndroidNotification(
                                     channel_id='sos_alerts',
-                                    sound='soundreality-mayday-166011.mp3',
+                                    sound='soundreality_mayday_166011',
                                     priority='max',
                                     vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
                                 )
@@ -323,7 +323,7 @@ class FirebaseNotificationService:
                                 headers={'apns-priority': '10'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='soundreality-mayday-166011.mp3',
+                                        sound='soundreality_mayday_166011.mp3',
                                         badge=1,
                                         content_available=True,
                                         mutable_content=True,
@@ -337,7 +337,7 @@ class FirebaseNotificationService:
                                 priority='normal',
                                 notification=fcm.AndroidNotification(
                                     channel_id=channel_id,
-                                    sound='bell.mp3',
+                                    sound='bell',
                                     priority='default'
                                 )
                             )

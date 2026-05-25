@@ -77,7 +77,9 @@ export default function CommunityRequestHub() {
       return;
     }
 
-    navigateToCategory(categoryId);
+    requestAnimationFrame(() => {
+      navigateToCategory(categoryId);
+    });
   };
 
   const handleKycSuccess = async () => {

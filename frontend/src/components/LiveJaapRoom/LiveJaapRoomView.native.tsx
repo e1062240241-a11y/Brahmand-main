@@ -48,7 +48,7 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
     bg: require('../../../assets/images/krishna_jaap_card_v2.png'),
   },
   shiva: {
-    text: 'ॐ नमः शिवाय',
+    text: 'ॐ\u00A0नमः\u00A0शिवाय',
     bg: require('../../../assets/images/jaap_hero_shiva_final.png'),
   },
   mrityunjaya: {
@@ -807,12 +807,48 @@ export default function LiveJaapRoomView() {
               } else {
                 router.replace('/(tabs)/jaap');
               }
-            }} style={styles.backBtnNew}>
-            <Ionicons name="chevron-back" size={24} color="#000" />
-          </TouchableOpacity>
-          <View style={styles.titleContainerNew}>
-            <Text style={styles.titleNew}>{roomTitle || 'Hanuman Chalisa'}</Text>
-            <Text style={styles.subtitleNew}>LIVE COLLECTIVE JAAP</Text>
+            }} style={styles.headerBtn}>
+              <Ionicons name="close" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleBox}>
+               <Text style={styles.participantLabel} numberOfLines={1}>{participantLabel}</Text>
+               <Text style={styles.micStatusText}>{micStatus}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                testID="jaap-invite-bell-btn"
+                style={[styles.headerBtn, inviteSent && { backgroundColor: 'rgba(255,200,50,0.25)' }]}
+                onPress={async () => {
+                  if (!isSessionActive) {
+                    Alert.alert('Jaap not active', 'Start the jaap first before inviting others.');
+                    return;
+                  }
+                  try {
+                    const { default: api } = await import('../../services/api');
+                    const mantraTitle = (roomTitle as string) || mantraType || 'Live Jaap';
+                    await api.post('/jaap/invite', {
+                      mantra_type: mantraType || 'hanuman',
+                      mantra_title: mantraTitle,
+                    });
+                    setInviteSent(true);
+                    Alert.alert('🙏 Invites Sent!', 'All devotees have been notified to join the jaap.');
+                    setTimeout(() => setInviteSent(false), 5000);
+                  } catch (err: any) {
+                    const msg = err?.response?.data?.detail || 'Could not send invite right now.';
+                    Alert.alert('Invite failed', msg);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={inviteSent ? 'notifications' : 'notifications-outline'}
+                  size={22}
+                  color={inviteSent ? '#FFD700' : '#FFF'}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.headerBtn}>
+                <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.countPillNew}>
             <Text style={styles.countLabelNew}>Your

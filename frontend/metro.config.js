@@ -11,6 +11,9 @@ config.resolver.extraNodeModules = {
   'zustand/middleware': path.resolve(__dirname, 'node_modules/zustand/middleware.js'),
   'zustand/vanilla': path.resolve(__dirname, 'node_modules/zustand/vanilla.js'),
   'zustand/react': path.resolve(__dirname, 'node_modules/zustand/react.js'),
+  // Shim out better-sqlite3 (Node.js-only) so WatermelonDB's sqlite-node
+  // path does not crash the bundler on React Native / Web
+  'better-sqlite3': path.resolve(__dirname, 'src/database/better-sqlite3-shim.js'),
   util: require.resolve('util/'),
   crypto: require.resolve('crypto-browserify'),
   stream: require.resolve('stream-browserify'),

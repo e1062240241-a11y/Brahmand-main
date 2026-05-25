@@ -257,6 +257,7 @@ import {
   getAllUsers,
   getCommunities,
   getCommunityRequests,
+  getHomeInit,
   getPostComments,
   getPostsFeed,
   repostPost,
@@ -570,32 +571,62 @@ export default function HomeScreen() {
     fetchLiveLocation();
   }, []);
 
+  const initializeHome = useCallback(async () => {
+    try {
+      const res = await getHomeInit();
+      
+      // 1. Unread count & Festival
+      if (res.data.unread_count !== undefined) setUnreadCount(res.data.unread_count);
+      if (res.data.next_festival) setNextFestival(res.data.next_festival);
+      
+      // 2. Community Requests & Communities
+      if (res.data.community_requests) {
+        const reqs = res.data.community_requests;
+        setCommunityRequests(reqs);
+        AsyncStorage.setItem('home_community_requests', JSON.stringify(reqs)).catch(e => console.log(e));
+      }
+      if (res.data.communities) {
+        const comms = res.data.communities;
+        setCommunities(comms);
+        AsyncStorage.setItem('home_communities', JSON.stringify(comms)).catch(e => console.log(e));
+      }
+
+      // 3. Feed Posts
+      if (res.data.feed?.items && res.data.feed.items.length > 0) {
+        const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
+        setTabFeed(tabToLoad, {
+          posts: res.data.feed.items,
+          offset: res.data.feed.items.length,
+          hasMore: res.data.feed.has_more,
+          lastFetched: Date.now(),
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to init home data:', err);
+    }
+  }, [setUnreadCount, setTabFeed]);
+
   useEffect(() => {
     if (!isFocused) return;
+    let isMounted = true;
+    
+    initializeHome();
+
     const fetchUnreadCount = async () => {
       try {
         const res = await getUnreadNotificationCount();
-        setUnreadCount(res.data.unread_count || 0);
+        if (isMounted) setUnreadCount(res.data.unread_count || 0);
       } catch (err) {
         console.log('Failed to fetch unread count:', err);
       }
     };
 
-    const fetchNextFestival = async () => {
-      try {
-        const res = await getNextFestival();
-        const festival = res.data;
-        setNextFestival(festival || null);
-      } catch (err) {
-        console.log('Failed to fetch next festival:', err);
-      }
-    };
-
-    fetchUnreadCount();
-    fetchNextFestival();
     const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
-    return () => clearInterval(interval);
-  }, [setUnreadCount, isFocused]);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [isFocused, initializeHome, setUnreadCount]);
 
   const handleNotificationPress = async () => {
     try {
@@ -853,50 +884,23 @@ export default function HomeScreen() {
   }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
 
   const loadHomeRequests = useCallback(async () => {
-    setRequestsLoading(true);
-    try {
-      const [requestsRes, communitiesRes] = await Promise.all([
-        getCommunityRequests({ status: 'active', limit: 30 }),
-        getCommunities(),
-      ]);
-      const requestsData = Array.isArray(requestsRes.data)
-        ? requestsRes.data
-        : (requestsRes.data?.items || requestsRes.data || []);
-      const sortedRequestsData = [...requestsData].sort((a: any, b: any) => {
-        const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return tB - tA;
-      });
-      const communitiesData = Array.isArray(communitiesRes.data)
-        ? communitiesRes.data
-        : (communitiesRes.data?.items || communitiesRes.data || []);
-      setCommunityRequests(sortedRequestsData);
-      setCommunities(communitiesData);
-    } catch (error) {
-      console.warn('Failed to load active home requests:', error);
-      setCommunityRequests([]);
-    } finally {
-      setRequestsLoading(false);
-    }
+    // Legacy function, replaced by initializeHome
   }, []);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([
-        loadFeedPosts(0, false),
-        loadHomeRequests(),
-      ]);
+      await initializeHome();
     } catch (err) {
       console.warn('Refresh failed:', err);
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);
     }
-  }, [loadFeedPosts, loadHomeRequests]);
+  }, [initializeHome]);
 
   useEffect(() => {
-    loadHomeRequests();
-  }, [loadHomeRequests]);
+    // Handled by main initializeHome now
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('tabPress' as any, () => {
@@ -1475,7 +1479,7 @@ export default function HomeScreen() {
                 colors={['#FF6B00']}
               />
             }
-            stickyHeaderIndices={[]}
+            stickyHeaderIndices={[Platform.OS === 'android' ? 2 : 1]}
             onScroll={handleHomeScroll}
             onMomentumScrollEnd={handleHomeScroll}
             onScrollEndDrag={handleHomeScroll}
@@ -2168,7 +2172,9 @@ export default function HomeScreen() {
                 <HomeFeedTabs
                   activeTab={activeTab}
                   onTabChange={(tab) => {
-                    setActiveTab(tab);
+                    requestAnimationFrame(() => {
+                      setActiveTab(tab);
+                    });
                   }}
                   onCreatePost={() => setShowUploadPostModal(true)}
                 />
@@ -2209,6 +2215,15 @@ export default function HomeScreen() {
                 <>
                   {feedPosts.map((post, index) => {
                     const postKey = String(post.id || post.media_url || index);
+                    const yOffset = postOffsetsRef.current[postKey];
+                    const cardHeight = postHeightsRef.current[postKey];
+
+                    const isFarOffScreen =
+                      typeof yOffset === 'number' &&
+                      typeof cardHeight === 'number' &&
+                      (yOffset + cardHeight < currentScrollY.current - SCREEN_HEIGHT * 1.5 ||
+                       yOffset > currentScrollY.current + SCREEN_HEIGHT * 2.0);
+
                     return (
                       <View
                         key={postKey}
@@ -2218,20 +2233,25 @@ export default function HomeScreen() {
                           postOffsetsRef.current[postKey] = y;
                           postHeightsRef.current[postKey] = h;
                         }}
+                        style={isFarOffScreen ? { height: cardHeight } : undefined}
                       >
-                        <PostFeedCard
-                          post={post}
-                          onLike={handleLikePost}
-                          onComment={handleOpenComment}
-                          onShare={handleSharePost}
-                          onRepost={handleRepost}
-                          onUserPress={handleOpenPostUserProfile}
-                          onPostMenuPress={handlePostMenuPress}
-                          postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
-                          isActive={activePostKey === postKey}
-                          theme="light"
-                          isBlackBackground={false}
-                        />
+                        {isFarOffScreen ? (
+                          <View style={{ height: cardHeight, backgroundColor: '#F9F9F9', borderRadius: 16, marginVertical: 8, opacity: 0.5 }} />
+                        ) : (
+                          <PostFeedCard
+                            post={post}
+                            onLike={handleLikePost}
+                            onComment={handleOpenComment}
+                            onShare={handleSharePost}
+                            onRepost={handleRepost}
+                            onUserPress={handleOpenPostUserProfile}
+                            onPostMenuPress={handlePostMenuPress}
+                            postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
+                            isActive={activePostKey === postKey}
+                            theme="light"
+                            isBlackBackground={false}
+                          />
+                        )}
                       </View>
                     );
                   })}

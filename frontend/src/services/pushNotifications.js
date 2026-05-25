@@ -205,7 +205,7 @@ function registerForPushNotifications() {
                             importance: (_g = (_f = Notifications.AndroidImportance) === null || _f === void 0 ? void 0 : _f.MAX) !== null && _g !== void 0 ? _g : 5,
                             vibrationPattern: [0, 250, 250, 250],
                             lightColor: '#FF6B35',
-                            sound: 'bell.mp3',
+                            sound: 'bell',
                         })];
                 case 14:
                     _k.sent();
@@ -216,7 +216,7 @@ function registerForPushNotifications() {
                                 importance: (_j = (_h = Notifications.AndroidImportance) === null || _h === void 0 ? void 0 : _h.HIGH) !== null && _j !== void 0 ? _j : 4,
                                 vibrationPattern: [0, 250, 250, 250],
                                 lightColor: '#FF6B35',
-                                sound: 'bell.mp3',
+                                sound: 'bell',
                             }),
                             Notifications.setNotificationChannelAsync('sos_alerts', {
                                 name: 'Emergency SOS Alerts',
@@ -227,7 +227,7 @@ function registerForPushNotifications() {
                                 bypassDnd: true,
                                 showBadge: true,
                                 enableVibrate: true,
-                                sound: 'soundreality_mayday_166011.mp3',
+                                sound: 'soundreality_mayday_166011',
                             })
                         ])];
                 case 15:

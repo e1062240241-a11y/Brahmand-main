@@ -10,7 +10,7 @@ type HomeFeedTabsProps = {
   onCreatePost: () => void;
 };
 
-const HomeFeedTabs = ({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProps) => (
+const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProps) => (
   <View style={styles.feedTabs}>
     <TouchableOpacity 
       style={[styles.tabBtn, activeTab === 'for_you' && styles.activeTabBtn]} 
@@ -33,12 +33,7 @@ const HomeFeedTabs = ({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProp
       <Text style={[styles.tabText, activeTab === 'trending' && styles.activeTabText]}>Trending</Text>
     </TouchableOpacity>
 
-    <TouchableOpacity 
-      style={[styles.tabBtn, activeTab === 'festivals' && styles.activeTabBtn]} 
-      onPress={() => onTabChange('festivals')}
-    >
-      <Text style={[styles.tabText, activeTab === 'festivals' && styles.activeTabText]}>Festivals</Text>
-    </TouchableOpacity>
+
 
     <TouchableOpacity activeOpacity={0.8} style={styles.newPostButton} onPress={onCreatePost}>
       <View style={styles.plusIconBg}>
@@ -46,7 +41,7 @@ const HomeFeedTabs = ({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProp
       </View>
     </TouchableOpacity>
   </View>
-);
+));
 
 const styles = StyleSheet.create({
   feedTabs: {

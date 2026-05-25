@@ -2,6 +2,7 @@
   "expo": {
     "name": "Brahmand",
     "slug": "sanatan-lok",
+    "jsEngine": "hermes",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -126,7 +127,7 @@
       [
         "expo-video",
         {
-          "supportsBackgroundPlayback": false
+          "supportsBackgroundPlayback": true
         }
       ],
       "expo-web-browser",

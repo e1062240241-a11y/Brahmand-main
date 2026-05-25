@@ -19,6 +19,7 @@ import { useNotificationStore } from '../src/store/notificationStore';
 import { ToastContainer } from '../src/components/ToastContainer';
 import { toast } from '../src/store/toastStore';
 import { Alert as RNAlert } from 'react-native';
+import { syncDatabase } from '../src/database/sync';
 
 const originalAlert = RNAlert.alert;
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
@@ -415,6 +416,16 @@ export default function RootLayout() {
       console.warn('[Push] Auto init on app load failed:', error);
     });
   }, [isLoading, token, isAuthenticated, initPushNotifications]);
+
+  // Synchronize WatermelonDB local database on startup/authentication
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && token) {
+      console.log('[Sync] Initializing local database sync...');
+      syncDatabase()
+        .then(() => console.log('[Sync] WatermelonDB sync complete on startup'))
+        .catch((err) => console.warn('[Sync] WatermelonDB sync failed on startup:', err));
+    }
+  }, [isLoading, isAuthenticated, token]);
 
   if (isLoading || !fontsLoaded) {
     return (

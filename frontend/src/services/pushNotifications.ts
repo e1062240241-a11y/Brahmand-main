@@ -123,20 +123,20 @@ export async function registerForPushNotifications(): Promise<string | null> {
         importance: Notifications.AndroidImportance?.MAX ?? 5,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
-        sound: 'bell.mp3',
+        sound: 'bell',
       });
 
-      await Notifications.setNotificationChannelAsync('messages', {
-        name: 'Messages',
+      await Notifications.setNotificationChannelAsync('messages_v3', {
+        name: 'Messages v3',
         description: 'Private and community message notifications',
         importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
-        sound: 'bell.mp3',
+        sound: 'bell',
       });
 
-      await Notifications.setNotificationChannelAsync('sos_alerts', {
-        name: 'Emergency SOS Alerts',
+      await Notifications.setNotificationChannelAsync('sos_alerts_v3', {
+        name: 'Emergency SOS Alerts v3',
         description: 'High-priority notifications for emergency SOS requests nearby',
         importance: Notifications.AndroidImportance?.MAX ?? 5,
         vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
@@ -144,7 +144,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
         bypassDnd: true,
         showBadge: true,
         enableVibrate: true,
-        sound: 'soundreality_mayday_166011.mp3',
+        sound: 'soundreality_mayday_166011',
       });
     } catch (e) {
       console.warn('[Push] Failed to configure Android channels', e);
@@ -238,10 +238,10 @@ export async function scheduleLocalNotification(
       title,
       body,
       data: data || {},
-      sound: isSos ? 'soundreality_mayday_166011.mp3' : 'bell.mp3',
+      sound: isSos ? 'soundreality_mayday_166011' : 'bell',
     },
     trigger: {
-      channelId: isSos ? 'sos_alerts' : (isMsg ? 'messages' : 'default'),
+      channelId: isSos ? 'sos_alerts_v3' : (isMsg ? 'messages_v3' : 'default'),
     },
   });
 }
