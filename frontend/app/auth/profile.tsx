@@ -49,28 +49,6 @@ export default function ProfileScreen() {
       alert('Camera roll permission needed');
       return;
     }
-<<<<<<< HEAD
-    if (showLoading) setLoading(true);
-    try {
-      const res = await getUserProfile();
-      const nextProfile = res.data || {};
-      setProfile(nextProfile);
-      updateUser(nextProfile);
-    } catch (error: any) {
-      console.error('Error fetching profile:', error);
-      setProfile(user || null);
-      showToast('Failed to load profile. Check backend at localhost:8000 or set EXPO_PUBLIC_BACKEND_URL_WEB.');
-      if (error?.response?.status === 401 || error?.response?.status === 502) {
-        await logout();
-        router.replace('/');
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [logout, router, updateUser, userId]);
-=======
->>>>>>> bd3d4c679446ef37d0240d790c5823856f0f9366
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
