@@ -367,6 +367,7 @@ export default function HomeScreen() {
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedCommentPostId, setSelectedCommentPostId] = useState<string | null>(null);
   const [selectedCommentPost, setSelectedCommentPost] = useState<any | null>(null);
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -1769,52 +1770,124 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              <TouchableOpacity activeOpacity={0.95} style={styles.featuredLiveCard} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true' } })}>
-                <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
-                  {/* Cinematic Left-to-Right Horizontal Black Shade Layer */}
-                  <LinearGradient
-                    colors={['rgba(0,0,0,0.95)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)', 'transparent']}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 0.8, y: 0.5 }}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  <LinearGradient colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.6)']} locations={[0, 0.4, 1]} style={styles.featuredLiveOverlay}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                        <Text style={[styles.featuredLiveTitle, { color: '#FFF' }]}>Mahamrityunjaya Mantra</Text>
-                      </View>
-                      <View style={styles.liveBadge}>
-                        <View style={styles.liveDot} />
-                        <Text style={styles.liveBadgeText}>LIVE</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.featuredLiveContent}>
-                      <Text style={styles.featuredDevotees}>1,248 devotees are chanting</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
-                        <Ionicons name="time-outline" size={14} color="#FFF" />
-                        <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6 }]}>Live until 5:00 PM</Text>
-                      </View>
-
+              <View style={{ position: 'relative' }}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                snapToInterval={SCREEN_WIDTH - 40 + 12}
+                contentContainerStyle={{ gap: 12, paddingRight: 20 }}
+                onScroll={(e) => {
+                  const x = e.nativeEvent.contentOffset.x;
+                  const idx = Math.round(x / (SCREEN_WIDTH - 40));
+                  setActiveBannerIndex(idx);
+                }}
+                scrollEventThrottle={16}
+              >
+                <TouchableOpacity activeOpacity={0.95} style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}>
+                  <ImageBackground source={require('../../assets/images/hanuman_orange.png')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15, transform: [{ scale: 1.1 }] }}>
+                    <LinearGradient 
+                      colors={['transparent', 'transparent']} 
+                      style={styles.featuredLiveOverlay}
+                    >
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true' } })}>
-                          <Ionicons name="volume-medium" size={16} color="#FFF" />
-                          <Text style={styles.joinJaapText}>Join Live Jaap</Text>
-                          <Ionicons name="chevron-forward" size={18} color="#FFF" />
-                        </TouchableOpacity>
-
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                          <View style={[styles.liveDot, { backgroundColor: '#FF6A00' }]} />
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                          <Text style={[
+                            styles.featuredLiveTitle,
+                            {
+                              color: '#111',
+                              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+                              fontSize: 15,
+                              fontStyle: 'normal',
+                              fontWeight: '900',
+                              letterSpacing: 1,
+                              textShadowColor: 'rgba(255,255,255,0.8)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 4,
+                            }
+                          ]}>Hanuman Chalisa</Text>
+                        </View>
+                        <View style={styles.liveBadge}>
                           <View style={styles.liveDot} />
-                          <View style={styles.liveDot} />
-                          <View style={styles.liveDot} />
+                          <Text style={styles.liveBadgeText}>LIVE</Text>
                         </View>
                       </View>
-                    </View>
-                  </LinearGradient>
-                </ImageBackground>
-              </TouchableOpacity>
+
+                      <View style={styles.featuredLiveContent}>
+                        <Text style={[styles.featuredDevotees, { color: '#111', fontWeight: '700', textShadowColor: 'rgba(255,255,255,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>5,420 devotees are chanting</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
+                          <Ionicons name="time-outline" size={14} color="#111" />
+                          <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6, color: '#111', fontWeight: '700' }]}>Live until 7:30 PM</Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}>
+                            <Ionicons name="volume-medium" size={16} color="#FFF" />
+                            <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                            <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </LinearGradient>
+                  </ImageBackground>
+                </TouchableOpacity>
+
+                <TouchableOpacity activeOpacity={0.95} style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}>
+                  <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
+                    <LinearGradient 
+                      colors={['transparent', 'transparent']} 
+                      style={styles.featuredLiveOverlay}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                          <Text style={[
+                            styles.featuredLiveTitle,
+                            {
+                              color: '#111',
+                              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+                              fontSize: 14,
+                              fontStyle: 'normal',
+                              fontWeight: '900',
+                              letterSpacing: 1,
+                              textShadowColor: 'rgba(255,255,255,0.8)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 4,
+                            }
+                          ]}>Mahamrityunjaya Mantra</Text>
+                        </View>
+                        <View style={styles.liveBadge}>
+                          <View style={styles.liveDot} />
+                          <Text style={styles.liveBadgeText}>LIVE</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.featuredLiveContent}>
+                        <Text style={[styles.featuredDevotees, { color: '#111', fontWeight: '700', textShadowColor: 'rgba(255,255,255,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>1,248 devotees are chanting</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
+                          <Ionicons name="time-outline" size={14} color="#111" />
+                          <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6, color: '#111', fontWeight: '700' }]}>Live until 5:00 PM</Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}>
+                            <Ionicons name="volume-medium" size={16} color="#FFF" />
+                            <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                            <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </LinearGradient>
+                  </ImageBackground>
+                </TouchableOpacity>
+              </ScrollView>
+              
+              <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, zIndex: 10 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 0 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 1 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
+              </View>
+              </View>
             </View>
 
             <View style={styles.postBannerSection}>
@@ -1836,8 +1909,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Need Blood?'}</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.hospital_name || 'Emergency'}\n${bloodRequest.location || 'Nearby'}` : 'Create an urgent\nrequest here'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Need Blood?'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{bloodRequest ? `${bloodRequest.hospital_name || 'Emergency'}\n${bloodRequest.location || 'Nearby'}` : 'Create an urgent\nrequest here'}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1930,8 +2003,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <LotusIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Sai Flower Decorator</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>Flower Decor{'\n'}Andheri West</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Sai Flower Decorator</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>Flower Decor{'\n'}Andheri West</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -1970,7 +2043,7 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Live Kedarnath Aarti</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>Live Kedarnath Aarti</Text>
                       <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
                         <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>Notify</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>

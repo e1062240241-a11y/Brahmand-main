@@ -697,31 +697,31 @@ export default function LiveJaapRoomView() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <ImageBackground source={selectedMantra.bg} style={StyleSheet.absoluteFill} resizeMode="cover">
-        <LinearGradient colors={['rgba(5,5,5,0.7)', 'rgba(5,5,5,0.9)', 'rgba(47,18,0,0.85)']} style={StyleSheet.absoluteFill} />
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => {
+    <LinearGradient colors={['#FFDFAC', '#FFDEAD', '#FFFFFF']} locations={[0, 0.4471, 1]} style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={styles.safeArea}>
+        {/* NEW HEADER */}
+        <View style={styles.headerNew}>
+          <TouchableOpacity onPress={() => {
               if (mantraType === 'kedarnath' || fromHome === 'true') {
                 router.replace('/(tabs)/home');
               } else {
                 router.replace('/(tabs)/jaap');
               }
-            }} style={styles.headerBtn}>
-              <Ionicons name="close" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <View style={styles.headerTitleBox}>
-               <Text style={styles.participantLabel} numberOfLines={1}>{roomTitle || 'Live Jaap'}</Text>
-               <Text style={styles.micStatusText}>Collective Chanting Room</Text>
-            </View>
-            <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.headerBtn}>
-              <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
-            </TouchableOpacity>
+            }} style={styles.backBtnNew}>
+            <Ionicons name="chevron-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <View style={styles.titleContainerNew}>
+            <Text style={styles.titleNew}>{roomTitle || 'Hanuman Chalisa'}</Text>
+            <Text style={styles.subtitleNew}>LIVE COLLECTIVE JAAP</Text>
           </View>
+          <View style={styles.countPillNew}>
+            <Text style={styles.countLabelNew}>Your{'\n'}count</Text>
+            <Text style={styles.countValueNew}>{personalCount}</Text>
+          </View>
+        </View>
 
-          {!isSessionActive ? (
+        {!isSessionActive ? (
             <View style={styles.countdownContainer}>
               <View style={styles.countdownGlassCard}>
                 <Text style={styles.countdownOmSymbol}>🕉️</Text>
@@ -793,198 +793,124 @@ export default function LiveJaapRoomView() {
                 </TouchableOpacity>
               </View>
             </View>
-          ) : (
-            <>
-              <View style={styles.tabBar}>
-                <TouchableOpacity onPress={() => setActiveTab('chant')} style={[styles.tabButton, activeTab === 'chant' && styles.tabButtonActive]}>
-                  <Ionicons name="apps" size={18} color={activeTab === 'chant' ? '#FFEBB5' : 'rgba(255,255,255,0.5)'} />
-                  <Text style={[styles.tabText, activeTab === 'chant' && styles.tabTextActive]}>Chanting</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setActiveTab('path')} style={[styles.tabButton, activeTab === 'path' && styles.tabButtonActive]}>
-                  <Ionicons name="document-text" size={18} color={activeTab === 'path' ? '#FFEBB5' : 'rgba(255,255,255,0.5)'} />
-                  <Text style={[styles.tabText, activeTab === 'path' && styles.tabTextActive]}>Shloka Path</Text>
-                </TouchableOpacity>
+        ) : (
+            <View style={styles.activeRoomContainerNew}>
+              {/* CHANTING WITH YOU PILL */}
+              <View style={styles.chantingWithYouContainer}>
+                <View style={styles.chantingWithYouPill}>
+                  <Text style={styles.chantingLabelNew}>CHANTING WITH YOU  </Text>
+                  <Text style={styles.chantingValueNew}>1225 souls </Text>
+                  <Ionicons name="cellular" size={14} color="#FF8A00" />
+                </View>
               </View>
 
-              {isSessionActive && (
-                <View style={styles.roomStatusBanner}>
-                  <LinearGradient
-                    colors={['rgba(255,107,0,0.15)', 'rgba(255,107,0,0.05)']}
-                    style={styles.roomStatusBannerGradient}
-                  >
-                    {isHanuman && hanumanStatus.isActive ? (
-                      <>
-                        <View style={styles.bannerRowLayout}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="sparkles" size={16} color="#FFEBB5" />
-                            <Text style={styles.bannerMainText}>
-                              {hanumanStatus.isCompleted
-                                ? `Session Completed (Total 51 Rounds Daily)`
-                                : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession}`}
-                            </Text>
-                          </View>
-                          <View style={styles.roundBadge}>
-                            <Text style={styles.roundBadgeText}>Round {hanumanStatus.roundOfDay} / 51</Text>
-                          </View>
-                        </View>
-
-                        {/* Personal Counter row */}
-                        <View style={[styles.bannerRowLayout, { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' }]}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="person" size={14} color="#FF8A00" />
-                            <Text style={[styles.bannerMainText, { color: 'rgba(255,255,255,0.8)' }]}>
-                              Your Personal Progress
-                            </Text>
-                          </View>
-                          <View style={[styles.roundBadge, { backgroundColor: 'rgba(255, 138, 0, 0.15)', borderColor: 'rgba(255, 138, 0, 0.3)' }]}>
-                            <Text style={[styles.roundBadgeText, { color: '#FFEBB5' }]}>Personal Count: {personalCount}</Text>
-                          </View>
-                        </View>
-
-                        {!hanumanStatus.isCompleted && (
-                          <View style={styles.progressBarBg}>
-                            <View 
-                              style={[
-                                styles.progressBarFill, 
-                                { width: `${(currentTimeState / 961.39) * 100}%` }
-                              ]} 
-                            />
-                          </View>
-                        )}
-                      </>
-                    ) : (
-                      <View style={styles.bannerRowLayout}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Ionicons name="sparkles" size={16} color="#FFEBB5" />
-                          <Text style={styles.bannerMainText}>
-                            {!isHanuman && otherStatus.isActive ? otherStatus.sessionName : ''} Live Session
-                          </Text>
-                        </View>
-                        <View style={[styles.roundBadge, { backgroundColor: 'rgba(255, 138, 0, 0.15)', borderColor: 'rgba(255, 138, 0, 0.3)' }]}>
-                          <Text style={[styles.roundBadgeText, { color: '#FFEBB5' }]}>Personal Count: {personalCount}</Text>
-                        </View>
-                      </View>
-                    )}
-                  </LinearGradient>
-                </View>
-              )}
-
-              <ScrollView contentContainerStyle={[styles.scrollContainer, { justifyContent: 'center', flex: 1 }]} scrollEnabled={false}>
-                {activeTab === 'chant' ? (
-                  <View style={styles.soloFocusContainer}>
-                    {isHanuman && hanumanStatus.isActive && hanumanStatus.isBreak ? (
-                      <View style={styles.breakMessageContainer}>
-                        <Text style={styles.breakTextMain}>Have a deep breath.</Text>
-                        <Text style={styles.breakTextSub}>Next jaap is starting soon...</Text>
-                        <View style={styles.breakCountdownCircle}>
-                          <Text style={styles.breakCountdownText}>{hanumanStatus.breakRemainingSeconds || 10}s</Text>
-                        </View>
-                      </View>
-                    ) : (
-                      <Animated.View 
-                         key={activeLineKey} 
-                         style={[
-                           styles.verticalLyricsContainer, 
-                           { opacity: soloFadeAnim, transform: [{ translateY: soloMoveAnim }] }
-                         ]}
-                      >
-                         {/* Previous Line (Top, Dimmed) */}
-                         <View style={styles.sideLineContainer}>
-                           <Text style={[styles.sideLineText, styles.previousLineText]}>
-                             {previousLineText || ' '}
-                           </Text>
-                         </View>
- 
-                         {/* Current Line (Middle, Active) */}
-                         <View style={styles.soloWordBox}>
-                           <LinearGradient colors={['rgba(255,138,0,0.15)', 'rgba(255,138,0,0)']} style={styles.soloGlow} />
-                           <View style={styles.soloLineWordsRow}>
-                             {lineItems.map((word: string, idx: number) => {
-                               const isHighlighted = highlightedIdx === idx;
-                               return (
-                                 <Text 
-                                   key={`${word}-${idx}`} 
-                                   style={[
-                                     styles.soloWordText, 
-                                     isHighlighted ? styles.soloWordHighlighted : styles.soloWordDimmed,
-                                     isMusic && { fontSize: 36, marginHorizontal: 8 }
-                                   ]}
-                                 >
-                                   {word}{' '}
-                                 </Text>
-                               );
-                             })}
-                           </View>
-                           <View style={styles.soloOrnateUnderline} />
-                         </View>
- 
-                         {/* Next Line (Bottom, Dimmed) */}
-                         <View style={styles.sideLineContainer}>
-                           <Text style={[styles.sideLineText, styles.nextLineText]}>
-                             {nextLineText || ' '}
-                           </Text>
-                         </View>
-                      </Animated.View>
-                    )}
-                  </View>
+              {/* MAIN CHANTING LYRICS AREA */}
+              <View style={styles.lyricsAreaNew}>
+                {isHanuman && hanumanStatus.isActive && hanumanStatus.isBreak ? (
+                   <View style={styles.breakMessageContainer}>
+                     <Text style={[styles.breakTextMain, { color: '#000' }]}>Have a deep breath.</Text>
+                     <Text style={[styles.breakTextSub, { color: '#555' }]}>Next jaap is starting soon...</Text>
+                   </View>
                 ) : (
-                  <View style={styles.fullShlokaBox}>
-                    <View style={styles.scrollHeader}>
-                      <Ionicons name="document-text" size={16} color="#FFEBB5" />
-                      <Text style={styles.scrollHeaderText}>Sacred Full Path</Text>
-                    </View>
-                    <Text style={styles.fullShlokaText}>{selectedMantra.text}</Text>
-                  </View>
+                   <View style={styles.lyricsBoxNew}>
+                      {/* Current Line */}
+                      <View style={styles.currentLineBoxNew}>
+                        {lineItems.map((word: string, idx: number) => {
+                          const isHighlighted = highlightedIdx === idx;
+                          return (
+                            <Text key={`${word}-${idx}`} style={[styles.wordNew, isHighlighted && styles.wordHighlightNew]}>
+                              {word}{' '}
+                            </Text>
+                          );
+                        })}
+                      </View>
+                      
+                      {/* Next Line */}
+                      <View style={styles.nextLineBoxNew}>
+                         <Text style={styles.nextLineTextNew}>{nextLineText || ' '}</Text>
+                      </View>
+                   </View>
                 )}
-              </ScrollView>
-
-              <View style={styles.reactionOverlay} pointerEvents="none">
-                {reactions.map(r => (
-                  <Animated.Text key={r.id} style={[styles.floatingEmoji, {
-                    opacity: r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
-                    transform: [
-                      { translateY: r.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -300] }) },
-                      { translateX: r.anim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 15, -15, 10, 0] }) },
-                      { scale: r.anim.interpolate({ inputRange: [0, 0.2], outputRange: [0.6, 1.2], extrapolate: 'clamp' }) }
-                    ]
-                  }]}>{r.emoji}</Animated.Text>
-                ))}
               </View>
 
-              <View style={styles.footerContainer}>
-                <View style={styles.roomStatsBox}><Text style={styles.roomStats}>Sangat: 18 Devotees</Text></View>
-                <View style={styles.transparentControlBar}>
-                  <View style={styles.leftControls}>
-                    <TouchableOpacity onPress={() => setIsMicEnabled(!isMicEnabled)} style={[styles.iconCircle, isMicEnabled && { backgroundColor: 'rgba(76, 217, 100, 0.2)', borderColor: '#4CD964' }]}>
-                      <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={22} color={isMicEnabled ? "#4CD964" : "#FFF"} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {
-                      if (mantraType === 'kedarnath' || fromHome === 'true') {
-                        router.replace('/(tabs)/home');
-                      } else {
-                        router.replace('/(tabs)/jaap');
-                      }
-                    }} style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}>
-                      <Ionicons name="call" size={20} color="#FFF" />
-                    </TouchableOpacity>
+              {/* BOTTOM ACTIONS AND METRICS */}
+              <View style={styles.bottomAreaNew}>
+                {/* Emojis */}
+                <View style={styles.reactionRowNew}>
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('❤️')}>
+                     <Text style={styles.reactionEmojiNew}>❤️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🙏')}>
+                     <Text style={styles.reactionEmojiNew}>🙏</Text>
+                     <View style={styles.reactionBadgeNew}><Text style={styles.reactionBadgeTextNew}>434</Text></View>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🔥')}>
+                     <Text style={styles.reactionEmojiNew}>🔥</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('ॐ')}>
+                     <Text style={styles.reactionEmojiNew}>ॐ</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Metrics */}
+                <View style={styles.metricsRowNew}>
+                  <View style={styles.metricItemNew}>
+                    <Text style={styles.metricLabelNew}>JAAP</Text>
+                    <Text style={styles.metricValueNew}>{isHanuman ? hanumanStatus.roundOfSession : 1}<Text style={styles.metricSlashNew}> / {isHanuman ? hanumanStatus.totalRepsInSession : 21}</Text></Text>
                   </View>
-                  <View style={styles.rightReactions}>
-                    {['🙏', '❤️', '😊', '🔔'].map((emoji) => (
-                      <TouchableOpacity key={emoji} onPress={() => addReaction(emoji)} style={styles.reactionBtn}><Text style={styles.reactionBtnText}>{emoji}</Text></TouchableOpacity>
-                    ))}
+                  <View style={styles.metricItemNew}>
+                    <Text style={styles.metricLabelNew}>REMAINING</Text>
+                    <Text style={styles.metricValueNew}>{(() => {
+                        const nextEnd = isHanuman ? hanumanStatus.sessionEnd : otherStatus.sessionEnd;
+                        if (!nextEnd) return '0h 0m';
+                        const diffMs = nextEnd.getTime() - now.getTime();
+                        if (diffMs <= 0) return '0h 0m';
+                        const hrs = Math.floor(diffMs / 3600000);
+                        const mins = Math.floor((diffMs % 3600000) / 60000);
+                        return `${hrs}h ${mins}m`;
+                      })()} <Text style={styles.metricSlashNew}>remaining</Text></Text>
+                  </View>
+                  <View style={styles.metricItemNew}>
+                    <Text style={styles.metricLabelNew}>LINE</Text>
+                    <Text style={styles.metricValueNew}>{isHanuman ? Math.floor(currentTimeState/15) + 1 : currentIndex + 1}<Text style={styles.metricSlashNew}> / {isHanuman ? 46 : Math.ceil(WORDS.length / 4)}</Text></Text>
                   </View>
                 </View>
+
+                {/* Controls Bar */}
+                <View style={styles.controlsBarNew}>
+                  <TouchableOpacity style={styles.controlIconBtnNew}>
+                    <Ionicons name="mic-outline" size={24} color="#000" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.volumeMuteBtnNew}>
+                    <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={26} color="#FFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.controlIconBtnNew}>
+                    <Ionicons name="share-social-outline" size={24} color="#000" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </>
-          )}
-        </SafeAreaView>
-      </ImageBackground>
-    </View>
+            </View>
+        )}
+      </SafeAreaView>
+      
+      <View style={styles.reactionOverlay} pointerEvents="none">
+        {reactions.map(r => (
+          <Animated.Text key={r.id} style={[styles.floatingEmoji, {
+             opacity: r.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+             transform: [
+               { translateY: r.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -300] }) },
+               { translateX: r.anim.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 15, -15, 10, 0] }) },
+               { scale: r.anim.interpolate({ inputRange: [0, 0.2], outputRange: [0.6, 1.2], extrapolate: 'clamp' }) }
+             ]
+          }]}>{r.emoji}</Animated.Text>
+        ))}
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050505' },
+  container: { flex: 1 },
   safeArea: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, zIndex: 10 },
   headerBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
@@ -1267,4 +1193,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  
+  headerNew: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, zIndex: 10 },
+  backBtnNew: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.4)', justifyContent: 'center', alignItems: 'center' },
+  titleContainerNew: { flex: 1, alignItems: 'center' },
+  titleNew: { fontSize: 20, fontWeight: '800', color: '#1A1A1A' },
+  subtitleNew: { fontSize: 10, fontWeight: '700', color: '#D45D00', letterSpacing: 1.5, marginTop: 2 },
+  countPillNew: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, alignItems: 'center', gap: 6 },
+  countLabelNew: { fontSize: 9, fontWeight: '700', color: '#555', textAlign: 'right', lineHeight: 10 },
+  countValueNew: { fontSize: 18, fontWeight: '800', color: '#000' },
+  
+  activeRoomContainerNew: { flex: 1, justifyContent: 'space-between' },
+  chantingWithYouContainer: { alignItems: 'center', marginTop: 25 },
+  chantingWithYouPill: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center' },
+  chantingLabelNew: { fontSize: 11, fontWeight: '700', color: '#555', letterSpacing: 0.5 },
+  chantingValueNew: { fontSize: 13, fontWeight: '800', color: '#1A1A1A' },
+
+  lyricsAreaNew: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  lyricsBoxNew: { alignItems: 'center', width: '100%' },
+  currentLineBoxNew: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 30 },
+  wordNew: { fontSize: 30, fontWeight: '400', color: '#44403C', textAlign: 'center', lineHeight: 48, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' },
+  wordHighlightNew: { color: '#FF7300', fontWeight: '800' },
+  nextLineBoxNew: { alignItems: 'center', paddingHorizontal: 10 },
+  nextLineTextNew: { fontSize: 18, fontWeight: '500', color: 'rgba(0,0,0,0.4)', textAlign: 'center', lineHeight: 28 },
+
+  bottomAreaNew: { paddingBottom: Platform.OS === 'ios' ? 10 : 20, paddingHorizontal: 20 },
+  reactionRowNew: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginBottom: 25 },
+  reactionBtnNew: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
+  reactionEmojiNew: { fontSize: 24 },
+  reactionBadgeNew: { position: 'absolute', top: -4, right: -10, backgroundColor: '#FF453A', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  reactionBadgeTextNew: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  
+  metricsRowNew: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: 25 },
+  metricItemNew: { alignItems: 'center' },
+  metricLabelNew: { fontSize: 10, fontWeight: '800', color: 'rgba(0,0,0,0.5)', letterSpacing: 1, marginBottom: 4 },
+  metricValueNew: { fontSize: 16, fontWeight: '800', color: '#000' },
+  metricSlashNew: { fontSize: 12, fontWeight: '700', color: 'rgba(0,0,0,0.5)' },
+
+  controlsBarNew: { flexDirection: 'row', backgroundColor: '#FEE3D0', borderRadius: 40, padding: 10, justifyContent: 'space-around', alignItems: 'center' },
+  controlIconBtnNew: { padding: 10 },
+  volumeMuteBtnNew: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center', shadowColor: '#FF8A00', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
 });
