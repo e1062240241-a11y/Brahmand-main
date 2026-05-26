@@ -313,6 +313,44 @@ const ChatScreen = () => {
       setLoading(false);
       return;
     }
+    
+    // Offline-first approach for messages
+    if (!cachedData?.messages || cachedData.messages.length === 0) {
+      try {
+        const { Q } = require('@nozbe/watermelondb');
+        const { database } = require('../../../src/database');
+        if (database) {
+          const tableName = type === 'community' ? 'community_messages' : 'chats';
+          const filterCol = type === 'community' ? 'community_id' : 'chat_id';
+          const filterId = type === 'community' ? `community_${id}_${subgroup}` : id;
+          
+          const localMessages = await database.get(tableName)
+            .query(
+              Q.where(filterCol, filterId),
+              Q.sortBy('created_at', Q.desc),
+              Q.take(50)
+            ).fetch();
+            
+          if (localMessages && localMessages.length > 0) {
+            const mapped = localMessages.reverse().map((msg: any) => ({
+              id: msg.id,
+              sender_id: msg.senderId,
+              sender_name: msg.senderName,
+              content: msg.content,
+              message_type: msg.messageType,
+              created_at: msg.createdAt,
+              updated_at: msg.updatedAt
+            }));
+            const filteredLocal = applyClientClearFilter(mapped);
+            setMessages(filteredLocal);
+            setLoading(false); // Stop loading immediately
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load local messages:', err);
+      }
+    }
+    
     try {
       let response;
       if (type === 'community') {
