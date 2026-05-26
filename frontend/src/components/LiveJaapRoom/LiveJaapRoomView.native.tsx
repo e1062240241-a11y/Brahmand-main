@@ -855,7 +855,6 @@ export default function LiveJaapRoomView() {
 count</Text>
             <Text style={styles.countValueNew}>{personalCount}</Text>
           </View>
-        </View>
 
         {!isSessionActive ? (
             <View style={styles.countdownContainer}>

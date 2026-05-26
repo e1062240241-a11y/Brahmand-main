@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
 import SwipeButton from '../src/components/SwipeButton';
@@ -59,9 +59,11 @@ export default function LiveJaapWelcomeScreen() {
   
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ gestureEnabled: false }} />
       <StatusBar barStyle="dark-content" />
       <View style={styles.background}>
         <LinearGradient 
+
           colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#F8EDE7']} 
           locations={[0, 0.05, 0.25, 1]}
           style={[StyleSheet.absoluteFill, { opacity: 0.8 }]} 
