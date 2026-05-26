@@ -2496,6 +2496,7 @@ async def _upload_chat_media_impl(
 
 @api_router.post('/posts/upload-from-storage')
 async def upload_post_from_storage(
+    request: Request,
     storage_path: str = Form(...),
     caption: str = Form(''),
     source: str = Form('camera_roll'),
@@ -2508,7 +2509,7 @@ async def upload_post_from_storage(
     user_id = token_data['user_id']
     lock = await get_user_upload_lock(user_id)
     async with lock:
-        return await _upload_post_from_storage_impl(storage_path, caption, source, filter_name, token_data, category, community_level)
+        return await _upload_post_from_storage_impl(storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url))
 
 async def _upload_post_from_storage_impl(
     storage_path: str,
@@ -2518,6 +2519,7 @@ async def _upload_post_from_storage_impl(
     token_data: dict,
     category: Optional[str] = None,
     community_level: str = 'city',
+    base_url: str = '',
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2577,12 +2579,22 @@ async def _upload_post_from_storage_impl(
         if compressed_size_bytes <= 0:
             raise HTTPException(status_code=500, detail='Compressed video is empty')
 
-        media_url, object_path = await asyncio.to_thread(
-            _upload_post_media_file_to_storage,
-            user_id,
-            temp_output_file.name,
-            'video/mp4',
-        )
+        try:
+            media_url, object_path = await _upload_post_media_file_to_bunny(
+                user_id,
+                temp_output_file.name,
+                'video/mp4',
+                base_url
+            )
+            logger.info("Uploaded processed video from storage to Bunny.net successfully")
+        except Exception as bunny_exc:
+            logger.warning(f"Bunny.net video upload failed ({bunny_exc}), falling back to Firebase...")
+            media_url, object_path = await asyncio.to_thread(
+                _upload_post_media_file_to_storage,
+                user_id,
+                temp_output_file.name,
+                'video/mp4',
+            )
 
         post_doc = await _create_post_document(
             db=db,

@@ -1183,7 +1183,7 @@ export const deleteHelpRequest = (requestId: string) =>
 
 export const createCommunityRequest = (data: {
   community_id?: string;
-  request_type: 'help' | 'blood' | 'medical' | 'financial' | 'petition';
+  request_type: 'help' | 'blood' | 'medical' | 'financial' | 'petition' | 'emergency';
   visibility_level?: 'area' | 'city' | 'state' | 'national';
   title: string;
   description: string;

@@ -634,11 +634,30 @@ export default function CommunityDetailScreen() {
     }
 
     if (activeTab === 'Requests') {
-      const list = filteredRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
+      const apiList = filteredRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
+      const localList = communityPosts
+        .filter((p: any) => (p.category || '').toLowerCase() === 'requests')
+        .map((p: any) => ({ ...p, type: 'request_item', isRequestItem: true, isRequestInFeed: false }));
+
+      const reqMap = new Map();
+      apiList.forEach(r => reqMap.set(r.id, r));
+      localList.forEach(r => reqMap.set(r.id, r));
+
+      const list = Array.from(reqMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
       return list.length > 0 ? list : [createDummyItem('Requests')];
     }
     if (activeTab === 'Events') {
-      return events.length > 0 ? events : [createDummyItem('Events')];
+      const apiList = events;
+      const localList = communityPosts
+        .filter((p: any) => (p.category || '').toLowerCase() === 'events')
+        .map((p: any) => ({ ...p, isEventItem: true }));
+
+      const evtMap = new Map();
+      apiList.forEach(e => evtMap.set(e.id, e));
+      localList.forEach(e => evtMap.set(e.id, e));
+
+      const list = Array.from(evtMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
+      return list.length > 0 ? list : [createDummyItem('Events')];
     }
     if (activeTab === 'Festivals') {
       const userFestivals = communityPosts
@@ -683,11 +702,29 @@ export default function CommunityDetailScreen() {
       ];
     }
     if (activeTab === 'Lost & Found') {
-      const list = requests.filter((item: any) => isLostFoundRequest(item));
+      const apiList = requests.filter((item: any) => isLostFoundRequest(item));
+      const localList = communityPosts
+        .filter((p: any) => isLostFoundRequest(p))
+        .map((p: any) => ({ ...p, isRequestItem: true }));
+
+      const lfMap = new Map();
+      apiList.forEach(r => lfMap.set(r.id, r));
+      localList.forEach(r => lfMap.set(r.id, r));
+
+      const list = Array.from(lfMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
       return list.length > 0 ? list : [createDummyItem('Lost & Found')];
     }
     if (activeTab === 'Temple Updates') {
-      const list = requests.filter((item: any) => isTempleUpdateRequest(item));
+      const apiList = requests.filter((item: any) => isTempleUpdateRequest(item));
+      const localList = communityPosts
+        .filter((p: any) => isTempleUpdateRequest(p))
+        .map((p: any) => ({ ...p, isRequestItem: true }));
+
+      const tuMap = new Map();
+      apiList.forEach(r => tuMap.set(r.id, r));
+      localList.forEach(r => tuMap.set(r.id, r));
+
+      const list = Array.from(tuMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
       return list.length > 0 ? list : [createDummyItem('Temple Updates')];
     }
     if (activeTab === 'Seva') {
@@ -1160,7 +1197,7 @@ export default function CommunityDetailScreen() {
         setLoadingMore(false);
         return;
       }
-      
+
       const oldestPost = cityPosts[cityPosts.length - 1];
       let beforeTimestamp = oldestPost.raw_timestamp || oldestPost.timestamp;
       // In case it's "Just now" or similar, we might have issues, but let's assume raw timestamp exists or try to use current time.
@@ -1197,7 +1234,7 @@ export default function CommunityDetailScreen() {
       if (newMsgs.length > 0) {
         setCommunityPosts(prev => {
           const updatedPosts = [...prev, ...newMsgs];
-          
+
           // Update cache with the newly paginated posts so they persist when returning
           const currentCache = useChatStore.getState().communityScreenCaches[cacheKey];
           if (currentCache) {
@@ -1207,7 +1244,7 @@ export default function CommunityDetailScreen() {
               lastFetched: Date.now()
             });
           }
-          
+
           return updatedPosts;
         });
       } else {
@@ -1702,16 +1739,26 @@ export default function CommunityDetailScreen() {
         return;
       }
 
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('festival-reminders', {
+          name: 'Festival Reminders',
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: 'bell.mp3', // Make sure to use the sound defined in app.json
+        });
+      }
+
       await Notifications.scheduleNotificationAsync({
         content: {
           title: `🪔 Festival Reminder: ${item.title}`,
           body: `We will keep you updated about the ${item.title} celebration!`,
-          sound: 'default',
+          sound: 'bell.mp3', // Custom sound for iOS
           priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: 5,
-          channelId: 'default',
+          repeats: false,
+          channelId: Platform.OS === 'android' ? 'festival-reminders' : undefined,
         },
       });
       Alert.alert('Notification Set', `You are marked as interested! We will notify you about ${item.title}.`);
@@ -1750,7 +1797,7 @@ export default function CommunityDetailScreen() {
             <Text style={styles.festTimeAgo}>{item.timeAgo}</Text>
           </View>
           <TouchableOpacity style={styles.attendBtn} onPress={() => handleFestivalInterest(item)}>
-            <Text style={styles.attendBtnText}>I am Interested</Text>
+            <Text style={styles.attendBtnText}>Set a reminder</Text>
           </TouchableOpacity>
           <View style={styles.festActionRow}>
             <TouchableOpacity style={styles.festMiniBtn}>
@@ -2281,7 +2328,7 @@ export default function CommunityDetailScreen() {
       router.push({ pathname: '/community-request', params: { community_id: id } });
       return;
     }
-    
+
     setPostCategory(category);
     const text = newMessage;
     const lastAtIndex = text.lastIndexOf('@');
@@ -2423,8 +2470,18 @@ export default function CommunityDetailScreen() {
         const chunk = textChunks[i];
         if (chunk.trim() || (i === 0 && uploadedUrl)) {
           try {
-            await sendCommunityMessage(id as string, currentSubgroup, chunk, 'text', finalCategory, i === 0 ? uploadedUrl : undefined);
+            const res = await sendCommunityMessage(id as string, currentSubgroup, chunk, 'text', finalCategory, i === 0 ? uploadedUrl : undefined);
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
+
+            // Deduplicate by updating the optimistic post with the real server ID
+            const realId = res?.data?.id || (res as any)?.id;
+            if (realId) {
+              setCommunityPosts(prev => {
+                const updated = prev.map(p => p.id === newPosts[i].id ? { ...p, id: realId } : p);
+                useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+                return updated;
+              });
+            }
           } catch (error) {
             console.error('Failed to send real message chunk:', error);
             const errMsg = parseApiError(error);
@@ -2872,6 +2929,15 @@ export default function CommunityDetailScreen() {
                   <MentionInput
                     value={newMessage}
                     onChangeText={(text) => {
+                      if (!postCategory) {
+                        if (text === '' || text === '@') {
+                          setNewMessage(text);
+                          if (text === '@') setShowInlineCategories(true);
+                          else setShowInlineCategories(false);
+                        }
+                        return;
+                      }
+
                       setNewMessage(text);
                       if (text.endsWith('@')) {
                         setShowInlineCategories(true);
@@ -2879,7 +2945,7 @@ export default function CommunityDetailScreen() {
                         setShowInlineCategories(false);
                       }
                     }}
-                    placeholder="Tap @ to choose category or type"
+                    placeholder="@ for mentioned categories"
                     placeholderTextColor="#536471"
                     multiline
                     editable={true}

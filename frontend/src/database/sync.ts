@@ -2,8 +2,13 @@ import { synchronize } from '@nozbe/watermelondb/sync'
 import { database } from './index'
 import { api } from '../services/api'
 import { secureStorage } from '../utils/secureStorage'
+import { Platform } from 'react-native'
 
 export async function syncDatabase() {
+  if (Platform.OS === 'web') {
+    return;
+  }
+
   const token = await secureStorage.getItem('auth_token');
   if (!token) {
     console.log('[Sync] User not authenticated, skipping sync');

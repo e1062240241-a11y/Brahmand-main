@@ -1481,10 +1481,64 @@ export default function HomeScreen() {
             }
             stickyHeaderIndices={[Platform.OS === 'android' ? 2 : 1]}
             onScroll={handleHomeScroll}
-            onMomentumScrollEnd={handleHomeScroll}
-            onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
           >
+            {loadingFeed && feedPosts.length === 0 ? (
+              <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
+                {/* Avatar + Lines */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                  <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.6)' }} />
+                  <View style={{ marginLeft: 12 }}>
+                    <View style={{ width: 150, height: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 6, marginBottom: 8 }} />
+                    <View style={{ width: 100, height: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 5 }} />
+                  </View>
+                </View>
+
+                {/* 3 Horizontal Boxes */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                </View>
+
+                {/* 1 Large Box */}
+                <View style={{ width: '100%', height: 220, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 16, marginBottom: 20, padding: 15, justifyContent: 'space-between' }}>
+                  <View style={{ alignSelf: 'flex-end', width: 40, height: 20, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 10 }} />
+                  <View style={{ width: '40%', height: 35, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 20 }} />
+                </View>
+
+                {/* 4 Vertical Boxes */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                </View>
+
+                {/* 2 Horizontal Boxes */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 }}>
+                  <View style={{ width: '48%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '48%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                </View>
+
+                {/* 3 Thin Lines */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, paddingHorizontal: 20 }}>
+                  <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                  <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                  <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                </View>
+
+                {/* Bottom Avatar + Lines */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.6)' }} />
+                  <View style={{ marginLeft: 12 }}>
+                    <View style={{ width: 150, height: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 6, marginBottom: 8 }} />
+                    <View style={{ width: 100, height: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 5 }} />
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <>
             <View
               style={styles.upperContentWrapper}
               onLayout={(event) => {
@@ -2207,24 +2261,8 @@ export default function HomeScreen() {
                 </View>
               )}
               {loadingFeed && feedPosts.length === 0 ? (
-                <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-                  {[1, 2, 3].map((key) => (
-                    <View key={key} style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#FF8A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 138, 0, 0.1)' }} />
-                        <View style={{ marginLeft: 12, flex: 1 }}>
-                          <View style={{ width: '50%', height: 12, backgroundColor: 'rgba(255, 138, 0, 0.1)', borderRadius: 6, marginBottom: 8 }} />
-                          <View style={{ width: '30%', height: 10, backgroundColor: 'rgba(255, 138, 0, 0.05)', borderRadius: 5 }} />
-                        </View>
-                      </View>
-                      <View style={{ width: '100%', height: 300, backgroundColor: 'rgba(255, 138, 0, 0.06)', borderRadius: 16, marginBottom: 12 }} />
-                      <View style={{ flexDirection: 'row', gap: 15 }}>
-                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                      </View>
-                    </View>
-                  ))}
+                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
+                  <ActivityIndicator size="large" color="#FF6B00" />
                 </View>
               ) : feedPosts.length > 0 ? (
                 <>
@@ -2282,6 +2320,8 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
+            </>
+          )}
           </ScrollView>
 
           <Modal visible={isEditingBio} transparent animationType="fade">
