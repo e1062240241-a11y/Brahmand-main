@@ -2124,10 +2124,10 @@ export default function HomeScreen() {
 
                 {/* Verified Vendor */}
                 {(() => {
-                  const verifiedVendor = vendors.find(v => v.kyc_status === 'verified');
-                  const businessName = verifiedVendor ? verifiedVendor.business_name : 'Sai Flower Decorator';
-                  const categoryAndLoc = verifiedVendor 
-                    ? `${verifiedVendor.categories?.[0] || 'Decor'}\n${verifiedVendor.full_address || 'Nearby'}`
+                  const displayVendor = vendors.find(v => v.kyc_status === 'verified') || vendors[0];
+                  const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
+                  const categoryAndLoc = displayVendor 
+                    ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
                     : 'Flower Decor\nAndheri West';
                   
                   return (
@@ -2158,8 +2158,8 @@ export default function HomeScreen() {
                             marginBottom: 6,
                           }}
                           onPress={() => {
-                            if (verifiedVendor) {
-                              router.push(`/vendor/${verifiedVendor.id}`);
+                            if (displayVendor) {
+                              router.push(`/vendor/${displayVendor.id}`);
                             } else {
                               router.push('/(tabs)/vendor');
                             }
@@ -2234,88 +2234,6 @@ export default function HomeScreen() {
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
                       <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Temple</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Ask My Krishna */}
-                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                  <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="peach">
-                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                      <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                        <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 36, height: 36, alignSelf: 'center' }} />
-                      </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Ask My Krishna</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>AI Dharma{"\n"}Guidance Guide</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={{
-                        width: '85%',
-                        height: 28,
-                        borderRadius: 14,
-                        backgroundColor: '#FF5100',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        alignSelf: 'center',
-                        shadowColor: '#FF5100',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 3,
-                        elevation: 4,
-                        marginBottom: 6,
-                      }}
-                      onPress={() => router.push('/my-krishna')}
-                    >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Chat</Text>
-                    </TouchableOpacity>
-                    </HomeCardTextureBg>
-                  </View>
-                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
-                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={{ width: 75, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF5100', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF5100', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>AI Dharma</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Vedic Panchang */}
-                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                  <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="rose">
-                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                      <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                        <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 36, height: 36, alignSelf: 'center' }} />
-                      </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Vedic Panchang</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>Daily auspicious{"\n"}tithi & muhurats</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={{
-                        width: '85%',
-                        height: 28,
-                        borderRadius: 14,
-                        backgroundColor: '#FF3B30',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        alignSelf: 'center',
-                        shadowColor: '#FF3B30',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 3,
-                        elevation: 4,
-                        marginBottom: 6,
-                      }}
-                      onPress={() => router.push('/panchang')}
-                    >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
-                    </TouchableOpacity>
-                    </HomeCardTextureBg>
-                  </View>
-                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
-                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={{ width: 55, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF3B30', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF3B30', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>Rituals</Text>
                     </View>
                   </View>
                 </View>
