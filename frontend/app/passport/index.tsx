@@ -174,8 +174,29 @@ export default function PassportCoverScreen() {
                     <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#111' }}>{badges.length}</Text>
                 </View>
 
+                {/* Completed Jaap Stamps */}
+                <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.1)', paddingTop: 10, marginTop: 10, marginHorizontal: 10 }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#8b0000', textAlign: 'center', marginBottom: 5 }}>COMPLETED JAAPS</Text>
+                    <View style={{ gap: 4 }}>
+                      {badges
+                        .filter((b) => b.title.includes('Mala') || b.title.includes('Chalisa'))
+                        .map((b) => {
+                          const shortName = b.title.replace(' Completed', '').replace(' Mantra', '');
+                          return (
+                            <View key={b.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 5 }}>
+                              <Text style={{ fontSize: 10, color: '#333', fontWeight: '700' }}>{shortName}</Text>
+                              <Text style={{ fontSize: 10, color: '#FF5100', fontWeight: '900' }}>x{b.count || 1}</Text>
+                            </View>
+                          );
+                        })}
+                      {badges.filter((b) => b.title.includes('Mala') || b.title.includes('Chalisa')).length === 0 && (
+                        <Text style={{ fontSize: 9, color: '#888', textAlign: 'center', fontStyle: 'italic', marginTop: 4 }}>No completed jaap stamps yet</Text>
+                      )}
+                    </View>
+                </View>
+
                 {/* Decorative stamp-like visual */}
-                <View style={{ marginTop: 30, alignItems: 'center', opacity: 0.8 }}>
+                <View style={{ marginTop: 20, alignItems: 'center', opacity: 0.8 }}>
                     <View style={{ width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: '#cca25e', alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-15deg' }] }}>
                         <Text style={{ color: '#cca25e', fontSize: 10, fontWeight: 'bold' }}>BRAHMAND</Text>
                         <Text style={{ color: '#cca25e', fontSize: 8 }}>VALID</Text>

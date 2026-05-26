@@ -414,46 +414,6 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
               <M3OutlinedInput label="Caption / Description" value={caption} onChangeText={setCaption} multiline />
             </View>
 
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Visible to</Text>
-              <View style={styles.toggleRow}>
-                {[
-                  { id: 'city', label: 'City' },
-                  { id: 'state', label: 'State' },
-                  { id: 'country', label: 'National' },
-                ].map((lvl) => (
-                  <TouchableOpacity
-                    key={lvl.id}
-                    style={[styles.toggleBtn, communityLevel === lvl.id && styles.toggleBtnActive]}
-                    onPress={() => setCommunityLevel(lvl.id)}
-                  >
-                    <Text style={[styles.toggleBtnText, communityLevel === lvl.id && styles.toggleBtnTextActive]}>
-                      {lvl.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Category</Text>
-              <View style={styles.toggleRow}>
-                {[
-                  { id: 'feed', label: 'Standard Feed' },
-                  { id: 'festivals', label: 'Festivals' },
-                ].map((cat) => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[styles.toggleBtn, category === cat.id && styles.toggleBtnActive]}
-                    onPress={() => setCategory(cat.id)}
-                  >
-                    <Text style={[styles.toggleBtnText, category === cat.id && styles.toggleBtnTextActive]}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
 
             <View style={styles.bottomBar}>
               {uploading ? (

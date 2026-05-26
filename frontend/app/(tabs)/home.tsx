@@ -29,6 +29,7 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
+import { useVendorStore } from '../../src/store/vendorStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
@@ -254,6 +255,7 @@ import {
   createCommunityRequest,
   deletePost,
   deletePostComment,
+  discoverCommunities,
   followUser,
   getAllUsers,
   getCommunities,
@@ -337,11 +339,11 @@ try {
   console.warn('expo-file-system unavailable for media sharing:', error);
 }
 
-const quickAccess = [
+const baseQuickAccess = [
   { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF' },
-  { label: 'Kundli', subtitle: 'Your Daily Vedic Energy', color: '#FFF' },
+  { label: 'Live Mantra', subtitle: 'Mantra Chanting', color: '#FFF' },
   { label: 'Cosmic Guidance', subtitle: 'Your Cosmic Blueprint', color: '#FFF' },
   { label: 'Brahmand Passport', subtitle: 'Your Temple Journey Record', color: '#FFF' },
   { label: 'Festival Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
@@ -366,6 +368,40 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
+
+  // Dynamic Live Mantra state
+  const liveMantraActive = isWithinGayatriMantraWindow(new Date()) !== null;
+  const liveMantraName = liveMantraActive ? 'Maha Mrityunjaya' : 'Gayatri Chanting';
+
+  const currentQuickAccess = useMemo(() => {
+    return baseQuickAccess.map(item => {
+      if (item.label === 'Live Mantra') {
+        return {
+          ...item,
+          subtitle: `${liveMantraName} is Live`
+        };
+      }
+      return item;
+    });
+  }, [liveMantraName]);
+
+  const [shuffledQuickAccess, setShuffledQuickAccess] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const shuffleArray = (array: any[]) => {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[arr[j]]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+    setShuffledQuickAccess(shuffleArray(currentQuickAccess));
+  }, [currentQuickAccess, isFocused]);
+
+  const displayQuickAccess = shuffledQuickAccess.length > 0 ? shuffledQuickAccess : currentQuickAccess;
+
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
   const currentUserId = (user as any)?.id;
@@ -422,7 +458,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!isFocused) return;
     const CARD_WIDTH = 185; // 175 card + 10 gap
-    const TOTAL_CARDS = quickAccess.length;
+    const TOTAL_CARDS = displayQuickAccess.length;
     const interval = setInterval(() => {
       topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
       topFeaturesScrollRef.current?.scrollTo({
@@ -431,7 +467,7 @@ export default function HomeScreen() {
       });
     }, 3000);
     return () => clearInterval(interval);
-  }, [isFocused]);
+  }, [isFocused, displayQuickAccess.length]);
 
   useEffect(() => {
     if (user?.id) {
@@ -481,6 +517,46 @@ export default function HomeScreen() {
     }
 
     try {
+      if (!append && !hasCache && tabToLoad === 'for_you') {
+        try {
+          const { Q } = require('@nozbe/watermelondb');
+          const { database } = require('../../src/database');
+          if (database) {
+            const localFeeds = await database.get('feeds')
+              .query(Q.sortBy('created_at', Q.desc), Q.take(FEED_PAGE_SIZE))
+              .fetch();
+            
+            if (localFeeds && localFeeds.length > 0) {
+              console.log(`[HomeFeed] Loaded ${localFeeds.length} local posts from WatermelonDB`);
+              const mappedFeeds = localFeeds.map((post: any) => ({
+                id: post.id,
+                user_id: post.userId,
+                username: post.username,
+                user_photo: post.userPhoto,
+                media_url: post.mediaUrl,
+                media_type: post.mediaType,
+                caption: post.caption,
+                likes_count: post.likesCount,
+                comments_count: post.commentsCount,
+                liked_by_me: post.likedByMe,
+                created_at: post.createdAt,
+                updated_at: post.updatedAt,
+              }));
+              
+              setTabFeed(tabToLoad, {
+                posts: mappedFeeds,
+                offset: mappedFeeds.length,
+                hasMore: true,
+                lastFetched: Date.now(),
+              });
+              setLoadingFeed(false);
+            }
+          }
+        } catch (localErr) {
+          console.warn('[HomeFeed] Failed to load local feeds:', localErr);
+        }
+      }
+
       console.log(`[HomeFeed] Fetching from API: /posts/feed?tab=${tabToLoad}&offset=${offset}`);
       const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
       console.log(`[HomeFeed] API response received for ${tabToLoad}`);
@@ -585,8 +661,22 @@ export default function HomeScreen() {
     fetchLiveLocation();
   }, []);
 
+  const fetchLocalCommunities = useCallback(async () => {
+    try {
+      const response = await discoverCommunities();
+      const allComms = response.data || [];
+      const userGroupsList = allComms.filter(
+        (item: any) => item.type === 'user_group' || item.type === 'local'
+      );
+      setLocalCommunities(userGroupsList);
+    } catch (err) {
+      console.warn('Failed to fetch local communities for home:', err);
+    }
+  }, []);
+
   const initializeHome = useCallback(async () => {
     try {
+      fetchLocalCommunities();
       const res = await getHomeInit();
       
       // 1. Unread count & Festival
@@ -618,7 +708,7 @@ export default function HomeScreen() {
     } catch (err) {
       console.warn('Failed to init home data:', err);
     }
-  }, [setUnreadCount, setTabFeed]);
+  }, [setUnreadCount, setTabFeed, fetchLocalCommunities]);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -658,11 +748,14 @@ export default function HomeScreen() {
   );
   const [communityRequests, setCommunityRequests] = useState<any[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
+  const [localCommunities, setLocalCommunities] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [nextFestival, setNextFestival] = useState<any | null>(null);
   const [now, setNow] = useState(new Date());
+
+  const { myVendor, vendors } = useVendorStore();
 
   useFocusEffect(
     useCallback(() => {
@@ -673,6 +766,11 @@ export default function HomeScreen() {
       if (!cached || cached.posts.length === 0 || isStale) {
         loadFeedPosts(0, false, currentActiveTab);
       }
+
+      // Load vendor data dynamically for home tab cards
+      const store = useVendorStore.getState();
+      store.fetchMyVendor().catch((e) => console.warn('Home focus myVendor load error:', e));
+      store.fetchVendors().catch((e) => console.warn('Home focus vendors load error:', e));
     }, [loadFeedPosts])
   );
   const feedTabsYRef = useRef(0);
@@ -1494,12 +1592,67 @@ export default function HomeScreen() {
                 colors={['#FF6B00']}
               />
             }
-            stickyHeaderIndices={[1]}
+            stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
             onScroll={handleHomeScroll}
-            onMomentumScrollEnd={handleHomeScroll}
-            onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
           >
+            <View>
+            {loadingFeed && feedPosts.length === 0 && (
+              <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
+                {/* Avatar + Lines */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                  <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.6)' }} />
+                  <View style={{ marginLeft: 12 }}>
+                    <View style={{ width: 150, height: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 6, marginBottom: 8 }} />
+                    <View style={{ width: 100, height: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 5 }} />
+                  </View>
+                </View>
+
+                {/* 3 Horizontal Boxes */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                </View>
+
+                {/* 1 Large Box */}
+                <View style={{ width: '100%', height: 220, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 16, marginBottom: 20, padding: 15, justifyContent: 'space-between' }}>
+                  <View style={{ alignSelf: 'flex-end', width: 40, height: 20, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 10 }} />
+                  <View style={{ width: '40%', height: 35, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 20 }} />
+                </View>
+
+                {/* 4 Vertical Boxes */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                </View>
+
+                {/* 2 Horizontal Boxes */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 }}>
+                  <View style={{ width: '48%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                  <View style={{ width: '48%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
+                </View>
+
+                {/* 3 Thin Lines */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, paddingHorizontal: 20 }}>
+                  <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                  <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                  <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                </View>
+
+                {/* Bottom Avatar + Lines */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.6)' }} />
+                  <View style={{ marginLeft: 12 }}>
+                    <View style={{ width: 150, height: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 6, marginBottom: 8 }} />
+                    <View style={{ width: 100, height: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 5 }} />
+                  </View>
+                </View>
+              </View>
+            )}
+            {!(loadingFeed && feedPosts.length === 0) && (
             <View
               onLayout={(event) => {
                 const h = event.nativeEvent.layout.height;
@@ -1696,7 +1849,7 @@ export default function HomeScreen() {
                     decelerationRate="fast"
                     contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
                   >
-                    {quickAccess.map((item, idx) => {
+                    {displayQuickAccess.map((item, idx) => {
                       let cardBg = '#FFFFFF';
                       let iconBg = '#FF8A3D';
                       if (item.label === 'Panchang') {
@@ -1708,6 +1861,9 @@ export default function HomeScreen() {
                       } else if (item.label === 'SOS') {
                         cardBg = '#FFF5F5';
                         iconBg = '#FF3B30';
+                      } else if (item.label === 'Live Mantra') {
+                        cardBg = '#FFF3EB';
+                        iconBg = '#FF6B00';
                       }
 
                       return (
@@ -1719,6 +1875,15 @@ export default function HomeScreen() {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
+                            else if (item.label === 'Live Mantra') {
+                              router.push({
+                                pathname: '/live-jaap-welcome',
+                                params: {
+                                  mantraType: liveMantraActive ? 'mrityunjaya' : 'gayatri',
+                                  title: liveMantraActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra',
+                                },
+                              });
+                            }
                             else if (item.label === 'Kundli') router.push('/astrology' as any);
                             else if (item.label === 'Cosmic Guidance') router.push('/horoscope');
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
@@ -1739,6 +1904,12 @@ export default function HomeScreen() {
                           ) : item.label === 'Panchang' ? (
                             <View style={styles.featureIconWrap}>
                               <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                            </View>
+                          ) : item.label === 'Live Mantra' ? (
+                            <View style={styles.featureIconWrap}>
+                              <View style={[styles.sosRing, { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' }]}>
+                                <Ionicons name="radio-outline" size={20} color="#FFF" />
+                              </View>
                             </View>
                           ) : item.label === 'Kundli' ? (
                             <View style={styles.featureIconWrap}>
@@ -1981,8 +2152,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <ShopIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Become a Verified</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>Sanatan Vendor</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? 'Manage Your' : 'Become a Verified'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? 'Business Profile' : 'Sanatan Vendor'}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -2000,59 +2171,82 @@ export default function HomeScreen() {
                         elevation: 4,
                         marginBottom: 6,
                       }}
-                      onPress={() => router.push('/vendor/business-details')}
+                      onPress={() => {
+                        if (myVendor) {
+                          router.push('/vendor/dashboard');
+                        } else {
+                          router.push('/(tabs)/vendor');
+                        }
+                      }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Register</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? 'Manage' : 'Register'}</Text>
                     </TouchableOpacity>
                     </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={{ width: 55, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FFF600', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>Free</Text>
+                    <View style={{ width: 65, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                      <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? 'Approved' : 'Pending') : 'Free'}</Text>
                     </View>
                   </View>
                 </View>
 
                 {/* Verified Vendor */}
-                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                  <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="mint">
-                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                      <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                        <LotusIcon />
+                {(() => {
+                  const displayVendor = vendors.find(v => v.kyc_status === 'verified') || vendors[0];
+                  const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
+                  const categoryAndLoc = displayVendor 
+                    ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
+                    : 'Flower Decor\nAndheri West';
+                  
+                  return (
+                    <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                      <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                        <HomeCardTextureBg texture="mint">
+                        <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                          <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                            <LotusIcon />
+                          </View>
+                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={{
+                            width: '85%',
+                            height: 28,
+                            borderRadius: 14,
+                            backgroundColor: '#00C781',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            alignSelf: 'center',
+                            shadowColor: '#00C781',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 3,
+                            elevation: 4,
+                            marginBottom: 6,
+                          }}
+                          onPress={() => {
+                            if (displayVendor) {
+                              router.push(`/vendor/${displayVendor.id}`);
+                            } else {
+                              router.push('/(tabs)/vendor');
+                            }
+                          }}
+                        >
+                          <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
+                        </TouchableOpacity>
+                        </HomeCardTextureBg>
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>Sai Flower Decorator</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>Flower Decor{'\n'}Andheri West</Text>
+                      {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
+                      <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                        <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                          <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Verified vendor</Text>
+                        </View>
+                      </View>
                     </View>
-                    <TouchableOpacity
-                      style={{
-                        width: '85%',
-                        height: 28,
-                        borderRadius: 14,
-                        backgroundColor: '#00C781',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        alignSelf: 'center',
-                        shadowColor: '#00C781',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 3,
-                        elevation: 4,
-                        marginBottom: 6,
-                      }}
-                    >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
-                    </TouchableOpacity>
-                    </HomeCardTextureBg>
-                  </View>
-                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
-                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Verified vendor</Text>
-                    </View>
-                  </View>
-                </View>
+                  );
+                })()}
 
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
@@ -2146,9 +2340,14 @@ export default function HomeScreen() {
 
                 {/* Local Community Card */}
                 {(() => {
-                  const localComm = communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area');
-                  const localName = localComm?.name || 'Local Community';
-                  const localId = localComm?.id || 'local_default';
+                  const localComm = 
+                    communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area' || c.type === 'user_group' || c.type === 'local') ||
+                    localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
+                  const localName = 'Local Community';
+                  const localId = localComm?.id || 'food_pune';
+                  const realGroupName = localComm?.name || 'Pune Food Sharing Group';
+                  const localMembers = localComm ? (localComm.member_count || localComm.members_count || 12) : 236;
+                  const localSubgroup = localComm?.type || 'city';
                   return (
                     <TouchableOpacity
                       style={styles.communityCardMini}
@@ -2156,7 +2355,7 @@ export default function HomeScreen() {
                       onPress={() => {
                         router.push({
                           pathname: '/community/[id]',
-                          params: { id: localId, subgroup: 'area', name: localName }
+                          params: { id: localId, subgroup: localSubgroup, name: realGroupName }
                         });
                       }}
                     >
@@ -2168,7 +2367,7 @@ export default function HomeScreen() {
                           {localName}
                         </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>236 members</Text>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} members</Text>
                           <View style={styles.sevaBadgeMini}>
                             <Text style={styles.sevaBadgeTextMini}>Seva</Text>
                           </View>
@@ -2181,7 +2380,10 @@ export default function HomeScreen() {
               </View>
             </View>
             </View>
+            )}
+            </View>
 
+            {!(loadingFeed && feedPosts.length === 0) && (
             <View style={styles.stickyFeedTabsShell}>
               <View style={styles.stickyFeedTabs}>
                 <HomeFeedTabs
@@ -2195,7 +2397,9 @@ export default function HomeScreen() {
                 />
               </View>
             </View>
+            )}
 
+            {!(loadingFeed && feedPosts.length === 0) && (
             <View style={styles.feedPanel}>
               {backgroundUpload.uploading && (
                 <View style={styles.uploadingStatusBar}>
@@ -2297,6 +2501,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
+            )}
           </ScrollView>
 
           <Modal visible={isEditingBio} transparent animationType="fade">
@@ -2454,7 +2659,7 @@ export default function HomeScreen() {
               <View style={styles.commentSheet}>
                 <View style={styles.bottomSheetHandle} />
                 <View style={styles.commentSheetHeader}>
-                  <Text style={styles.commentTitle}>Comments</Text>
+                  <Text style={styles.commentTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
                   <TouchableOpacity
                     onPress={() => {
                       setCommentModalVisible(false);
@@ -2491,18 +2696,9 @@ export default function HomeScreen() {
                                 {canDelete && (
                                   <TouchableOpacity
                                     style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => {
-                                      Alert.alert(
-                                        'Delete Comment',
-                                        'Are you sure you want to delete this comment?',
-                                        [
-                                          { text: 'Cancel', style: 'cancel' },
-                                          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
-                                        ]
-                                      );
-                                    }}
+                                    onPress={() => handleDeleteComment(item)}
                                   >
-                                    <Ionicons name="trash-outline" size={16} color="#8A7B89" />
+                                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                                   </TouchableOpacity>
                                 )}
                               </View>

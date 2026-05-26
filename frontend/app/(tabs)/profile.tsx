@@ -115,7 +115,6 @@ export default function ProfileScreen() {
         { id: 'personality_verification', icon: 'ribbon', label: 'Personality Verification', route: '/profile/personality-verification', color: '#D4AF37' },
         { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications', color: '#F59E0B' },
         { id: 'privacy', icon: 'lock-closed', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#D97706' },
-        { id: 'test_notifications', icon: 'bug', label: 'Test Custom Sounds (Dev)', color: '#FF0000' },
       ],
     },
     {
@@ -522,40 +521,6 @@ export default function ProfileScreen() {
   const handleMenuPress = (item: SettingItem) => {
     if (item.id === 'culture') {
       handleOpenCGModal();
-      return;
-    }
-
-    if (item.id === 'test_notifications') {
-      setShowSettingsModal(false);
-      Alert.alert(
-        'Test Custom Notifications',
-        'Choose notification type to trigger:',
-        [
-          {
-            text: 'Message (bell)',
-            onPress: async () => {
-              try {
-                await api.post('/notifications/test-send', { type: 'message' });
-              } catch (e) {
-                console.warn(e);
-                Alert.alert('Error', 'Failed to trigger test notification');
-              }
-            }
-          },
-          {
-            text: 'Emergency SOS (mayday)',
-            onPress: async () => {
-              try {
-                await api.post('/notifications/test-send', { type: 'sos' });
-              } catch (e) {
-                console.warn(e);
-                Alert.alert('Error', 'Failed to trigger test notification');
-              }
-            }
-          },
-          { text: 'Cancel', style: 'cancel' }
-        ]
-      );
       return;
     }
 
@@ -1003,6 +968,51 @@ export default function ProfileScreen() {
             color="#FFF"
           />
         </View>
+
+        {/* View and Comment Count Overlay */}
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.1)',
+          justifyContent: 'flex-end',
+          padding: 6,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+              alignSelf: 'flex-start',
+              gap: 4,
+            }}>
+              <Ionicons name="play" size={10} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>
+                {item.views_count || 0}
+              </Text>
+            </View>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+              alignSelf: 'flex-start',
+              gap: 4,
+            }}>
+              <Ionicons name="chatbubble" size={10} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>
+                {item.comments_count || 0}
+              </Text>
+            </View>
+          </View>
+        </View>
       </Pressable>
     );
   };
@@ -1433,7 +1443,7 @@ export default function ProfileScreen() {
               <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
                 <View style={styles.sheetHandle} />
                 <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>Comments</Text>
+                  <Text style={styles.sheetTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
                   <TouchableOpacity onPress={() => { setCommentModalVisible(false); }}>
                     <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>
@@ -1456,18 +1466,9 @@ export default function ProfileScreen() {
                             {canDelete && (
                               <TouchableOpacity
                                 style={{ padding: 4, marginRight: -4 }}
-                                onPress={() => {
-                                  Alert.alert(
-                                    'Delete Comment',
-                                    'Are you sure you want to delete this comment?',
-                                    [
-                                      { text: 'Cancel', style: 'cancel' },
-                                      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
-                                    ]
-                                  );
-                                }}
+                                onPress={() => handleDeleteComment(item)}
                               >
-                                <Ionicons name="trash-outline" size={16} color={COLORS.textSecondary || '#888'} />
+                                <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                               </TouchableOpacity>
                             )}
                           </View>

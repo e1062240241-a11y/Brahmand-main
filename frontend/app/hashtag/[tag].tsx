@@ -293,7 +293,7 @@ const HashtagPage = () => {
           <View style={styles.bottomSheet}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentSheetHeader}>
-              <Text style={styles.bottomSheetTitle}>Comments</Text>
+              <Text style={styles.bottomSheetTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
               <TouchableOpacity
                 onPress={() => {
                   setCommentModalVisible(false);
@@ -333,18 +333,9 @@ const HashtagPage = () => {
                             {canDelete && (
                               <TouchableOpacity
                                 style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                onPress={() => {
-                                  Alert.alert(
-                                    'Delete Comment',
-                                    'Are you sure you want to delete this comment?',
-                                    [
-                                      { text: 'Cancel', style: 'cancel' },
-                                      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(comment) },
-                                    ]
-                                  );
-                                }}
+                                onPress={() => handleDeleteComment(comment)}
                               >
-                                <Ionicons name="trash-outline" size={16} color="#8A7B89" />
+                                <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                               </TouchableOpacity>
                             )}
                           </View>

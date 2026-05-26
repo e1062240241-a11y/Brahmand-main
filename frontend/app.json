@@ -151,7 +151,8 @@
           "color": "#FF6B00",
           "sounds": [
             "./assets/notifysound/bell.mp3",
-            "./assets/notifysound/soundreality_mayday_166011.mp3"
+            "./assets/notifysound/soundreality_mayday_166011.mp3",
+            "./assets/notifysound/nornal.aiff"
           ]
         }
       ]

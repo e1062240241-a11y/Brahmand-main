@@ -461,9 +461,12 @@ export default function CommunityDetailScreen() {
     const support = (item.support_needed || '').toLowerCase().trim();
     const cat = (item.category || '').toLowerCase().trim();
 
-    return type === 'lost_found' || type === 'lost' || type === 'found' ||
-      cat === 'lost & found' || cat === 'lost_found' || cat === 'lost' || cat === 'found' ||
-      title.includes('lost') || description.includes('lost') || support.includes('lost') ||
+    // Check category field first (most reliable - covers community posts created with 'Lost & Found' category)
+    if (cat === 'lost & found' || cat === 'lost_found' || cat === 'lost' || cat === 'found') return true;
+    // Check request_type field (for API community requests)
+    if (type === 'lost_found' || type === 'lost' || type === 'found') return true;
+    // Keyword fallback for legacy items
+    return title.includes('lost') || description.includes('lost') || support.includes('lost') ||
       title.includes('found') || description.includes('found') || support.includes('found');
   };
 
@@ -475,9 +478,13 @@ export default function CommunityDetailScreen() {
     const support = (item.support_needed || '').toLowerCase().trim();
     const cat = (item.category || '').toLowerCase().trim();
 
-    return type === 'temple_update' || cat === 'temple updates' || cat === 'temple_update' ||
-      ((title.includes('temple') || description.includes('temple') || support.includes('temple')) &&
-        (title.includes('update') || description.includes('update') || title.includes('renovation') || description.includes('renovation')));
+    // Check category field first (most reliable - covers community posts created with 'Temple Updates' category)
+    if (cat === 'temple updates' || cat === 'temple_update' || cat === 'temple update') return true;
+    // Check request_type field (for API community requests)
+    if (type === 'temple_update') return true;
+    // Keyword fallback for legacy items
+    return (title.includes('temple') || description.includes('temple') || support.includes('temple')) &&
+      (title.includes('update') || description.includes('update') || title.includes('renovation') || description.includes('renovation'));
   };
 
   const createDummyItem = (tabName: string) => {
@@ -2632,6 +2639,7 @@ export default function CommunityDetailScreen() {
         }
         return post;
       }));
+      setShowCommentModal(prev => prev ? { ...prev, comments: (prev.comments || 0) + 1 } : null);
     } catch (error) {
       console.error('Failed to post comment:', error);
       // Rollback comment on error
@@ -2644,84 +2652,36 @@ export default function CommunityDetailScreen() {
     const commentToDelete = activeComments.find(c => c.id === commentId);
     if (!commentToDelete) return;
 
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Delete this comment?');
-      if (confirmed) {
-        setActiveComments(prev => prev.filter(c => c.id !== commentId));
+    // Delete comment immediately from the state without confirmation popups
+    setActiveComments(prev => prev.filter(c => c.id !== commentId));
 
-        const targetPostId = showCommentModal?.id;
-        if (targetPostId) {
-          setCommunityPosts(prev => {
-            const updated = prev.map(post => {
-              if (post.id === targetPostId) {
-                return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
-              }
-              return post;
-            });
-            useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
-            return updated;
-          });
-          setDiscussionPosts(prev => prev.map(post => {
-            if (post.id === targetPostId) {
-              return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
-            }
-            return post;
-          }));
+    const targetPostId = showCommentModal?.id;
+    if (targetPostId) {
+      setCommunityPosts(prev => {
+        const updated = prev.map(post => {
+          if (post.id === targetPostId) {
+            return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
+          }
+          return post;
+        });
+        useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+        return updated;
+      });
+      setDiscussionPosts(prev => prev.map(post => {
+        if (post.id === targetPostId) {
+          return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
         }
-
-        try {
-          const { deleteComment: deleteCommentApi } = require('../../src/services/api');
-          deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
-        } catch (error) {
-          console.log('[Community] Comment delete API error:', error);
-        }
-      }
-      return;
+        return post;
+      }));
+      setShowCommentModal(prev => prev ? { ...prev, comments: Math.max(0, (prev.comments || 0) - 1) } : null);
     }
 
-    Alert.alert(
-      'Delete Comment',
-      'Are you sure you want to delete this comment?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            setActiveComments(prev => prev.filter(c => c.id !== commentId));
-
-            const targetPostId = showCommentModal?.id;
-            if (targetPostId) {
-              setCommunityPosts(prev => {
-                const updated = prev.map(post => {
-                  if (post.id === targetPostId) {
-                    return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
-                  }
-                  return post;
-                });
-                useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
-                return updated;
-              });
-              setDiscussionPosts(prev => prev.map(post => {
-                if (post.id === targetPostId) {
-                  return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
-                }
-                return post;
-              }));
-            }
-
-            try {
-              const { deleteComment: deleteCommentApi } = require('../../src/services/api');
-              deleteCommentApi(commentId)
-                .then(() => Alert.alert('Success', 'Comment deleted successfully!'))
-                .catch((e: any) => console.log('API delete comment err:', e));
-            } catch (error) {
-              console.log('[Community] Comment delete API error:', error);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      const { deleteComment: deleteCommentApi } = require('../../src/services/api');
+      deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
+    } catch (error) {
+      console.log('[Community] Comment delete API error:', error);
+    }
   };
 
 
@@ -2951,14 +2911,12 @@ export default function CommunityDetailScreen() {
                     value={newMessage}
                     onChangeText={(text) => {
                       if (!postCategory) {
-                        if (text.length > 0 && !text.includes('@')) {
-                          return;
+                        if (text === '' || text === '@') {
+                          setNewMessage(text);
+                          if (text === '@') setShowInlineCategories(true);
+                          else setShowInlineCategories(false);
                         }
-                        if (text.includes('@')) {
-                          setNewMessage('@');
-                          setShowInlineCategories(true);
-                          return;
-                        }
+                        return;
                       }
                       setNewMessage(text);
                       if (text.endsWith('@') || text.includes(' @')) {
@@ -3300,7 +3258,7 @@ export default function CommunityDetailScreen() {
           <ToastContainer />
           <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={styles.commentModalHeader}>
-              <Text style={styles.commentModalTitle}>Comments</Text>
+              <Text style={styles.commentModalTitle}>Comments ({showCommentModal?.comments ?? activeComments.length ?? 0})</Text>
               <TouchableOpacity onPress={() => setShowCommentModal(null)}>
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
@@ -3325,7 +3283,7 @@ export default function CommunityDetailScreen() {
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             onPress={() => handleDeleteComment(comment.id)}
                           >
-                            <Ionicons name="ellipsis-horizontal" size={14} color="#536471" />
+                            <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                           </TouchableOpacity>
                         )}
                       </View>

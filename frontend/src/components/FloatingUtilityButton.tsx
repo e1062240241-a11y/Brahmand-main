@@ -494,6 +494,13 @@ export const FloatingUtilityButton = () => {
   };
 
   const loadInitialUtilityData = async () => {
+    if (!user?.id) {
+      if (!hasLoadedData) {
+        await loadUtilityData();
+        setHasLoadedData(true);
+      }
+      return;
+    }
     fetchMyCommunityRequests();
     await Promise.allSettled([
       fetchActiveRequest(),
@@ -509,6 +516,8 @@ export const FloatingUtilityButton = () => {
   };
 
   useEffect(() => {
+    if (!user?.id) return;
+
     checkSOSStatus();
     fetchMyCommunityRequests();
 
@@ -1130,9 +1139,9 @@ export const FloatingUtilityButton = () => {
             });
           }
         }}
-        onRespond={(id) => {
+        onRespond={async (id) => {
           Vibration.cancel();
-          handleRespondToSOS(id);
+          await handleRespondToSOS(id);
         }}
       />
     </View>

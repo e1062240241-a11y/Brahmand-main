@@ -118,21 +118,21 @@ export async function registerForPushNotifications(): Promise<string | null> {
   // Configure Android notification channel
   if (Platform.OS === 'android') {
     try {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Default',
+      await Notifications.setNotificationChannelAsync('default_v4', {
+        name: 'Default v4',
         importance: Notifications.AndroidImportance?.MAX ?? 5,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
-        sound: 'bell',
+        sound: 'nornal',
       });
 
-      await Notifications.setNotificationChannelAsync('messages_v3', {
-        name: 'Messages v3',
+      await Notifications.setNotificationChannelAsync('messages_v4', {
+        name: 'Messages v4',
         description: 'Private and community message notifications',
         importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
-        sound: 'bell',
+        sound: 'nornal',
       });
 
       await Notifications.setNotificationChannelAsync('sos_alerts_v3', {
@@ -230,18 +230,22 @@ export async function scheduleLocalNotification(
   if (!Notifications) return null;
   
   const notificationType = data?.type;
-  const isSos = notificationType?.startsWith('sos');
+  const isSos = !!notificationType?.startsWith('sos');
   const isMsg = notificationType === 'message';
+
+  const soundName = isSos 
+    ? (Platform.OS === 'ios' ? 'soundreality_mayday_166011.mp3' : 'soundreality_mayday_166011')
+    : (Platform.OS === 'ios' ? 'nornal.aiff' : 'nornal');
 
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
       body,
       data: data || {},
-      sound: isSos ? 'soundreality_mayday_166011' : 'bell',
+      sound: soundName,
     },
     trigger: {
-      channelId: isSos ? 'sos_alerts_v3' : (isMsg ? 'messages_v3' : 'default'),
+      channelId: isSos ? 'sos_alerts_v3' : (isMsg ? 'messages_v4' : 'default_v4'),
     },
   });
 }

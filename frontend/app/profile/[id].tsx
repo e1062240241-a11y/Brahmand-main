@@ -569,11 +569,17 @@ const UserProfileScreen = () => {
           </View>
         )}
         
-        {/* View Count Overlay */}
+        {/* View Count and Comments Count Overlay */}
         <View style={styles.gridOverlay}>
-          <View style={styles.viewCountBadge}>
-            <Ionicons name="play" size={10} color="#FFF" />
-            <Text style={styles.viewCountText}>{views >= 1000 ? `${(views/1000).toFixed(1)}K` : views}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={styles.viewCountBadge}>
+              <Ionicons name="play" size={10} color="#FFF" />
+              <Text style={styles.viewCountText}>{views >= 1000 ? `${(views/1000).toFixed(1)}K` : views}</Text>
+            </View>
+            <View style={styles.viewCountBadge}>
+              <Ionicons name="chatbubble" size={10} color="#FFF" />
+              <Text style={styles.viewCountText}>{item.comments_count || 0}</Text>
+            </View>
           </View>
         </View>
 
@@ -840,7 +846,7 @@ const UserProfileScreen = () => {
               <View style={[styles.commentModalSheet, { paddingBottom: insets.bottom + 10 }]}>
                 <View style={styles.bottomSheetHandle} />
                 <View style={styles.commentModalHeader}>
-                  <Text style={styles.commentModalTitle}>Comments</Text>
+                  <Text style={styles.commentModalTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
                   <TouchableOpacity onPress={() => { setCommentModalVisible(false); }} style={styles.commentCloseBtn}>
                     <Ionicons name="close" size={24} color={COLORS.text} />
                   </TouchableOpacity>
@@ -871,18 +877,9 @@ const UserProfileScreen = () => {
                               {canDelete && (
                                 <TouchableOpacity
                                   style={{ padding: 4, marginRight: -4 }}
-                                  onPress={() => {
-                                    Alert.alert(
-                                      'Delete Comment',
-                                      'Are you sure you want to delete this comment?',
-                                      [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
-                                      ]
-                                    );
-                                  }}
+                                  onPress={() => handleDeleteComment(item)}
                                 >
-                                  <Ionicons name="trash-outline" size={16} color={COLORS.textSecondary || '#888'} />
+                                  <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                                 </TouchableOpacity>
                               )}
                             </View>

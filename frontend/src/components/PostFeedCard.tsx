@@ -543,6 +543,11 @@ export const PostFeedCard = memo(({
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
           <Ionicons name="chatbubble-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+          {commentsCount > 0 && (
+            <Text style={[styles.actionText, theme === 'light' ? styles.actionTextLight : { color: '#FFF' }]}>
+              {commentsCount}
+            </Text>
+          )}
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
           <Ionicons name="paper-plane-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />

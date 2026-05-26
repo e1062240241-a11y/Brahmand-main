@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, BackHandler, ViewStyle } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -124,7 +124,7 @@ export default function CommunityRequestBloodPage() {
   }, [params.community_id]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container as ViewStyle}>
       <View style={styles.pageHeader}>
         <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
@@ -217,10 +217,10 @@ export default function CommunityRequestBloodPage() {
             {URGENCY_OPTIONS.map((level) => (
               <TouchableOpacity
                 key={level}
-                style={[styles.urgencyChip, urgency === level && (styles as any).urgencyChipSelected(level)]}
+                style={[styles.urgencyChip, urgency === level && urgencyChipSelectedStyle(level)]}
                 onPress={() => setUrgency(level)}
               >
-                <Text style={[styles.urgencyText, urgency === level && (styles as any).urgencyTextSelected(level)]}>{level}</Text>
+                <Text style={[styles.urgencyText, urgency === level && urgencyTextSelectedStyle(level)]}>{level}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -244,26 +244,35 @@ export default function CommunityRequestBloodPage() {
             {CONTACT_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option}
-                style={[styles.optionChip, contactPreference === option && (styles as any).optionChipSelected]}
+                style={[styles.optionChip, contactPreference === option && styles.optionChipSelected]}
                 onPress={() => setContactPreference(option)}
               >
-                <Text style={[styles.optionText, contactPreference === option && (styles as any).optionTextSelected]}>{option}</Text>
+                <Text style={[styles.optionText, contactPreference === option && styles.optionTextSelected]}>{option}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <TouchableOpacity style={(styles as any).continueButton} onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.continueButton} onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={(styles as any).continueButtonText}>Continue</Text>
+            <Text style={styles.continueButtonText}>Continue</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const urgencyChipSelectedStyle = (level: string) => ({
+  backgroundColor: level === 'Urgent' ? '#E53935' : COLORS.primary,
+  borderColor: level === 'Urgent' ? '#E53935' : COLORS.primary,
+});
+
+const urgencyTextSelectedStyle = (level: string) => ({
+  color: '#FFF',
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -350,17 +359,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.divider,
     backgroundColor: '#FFFFFF',
   },
-  urgencyChipSelected: (level: string) => ({
-    backgroundColor: level === 'Urgent' ? '#E53935' : COLORS.primary,
-    borderColor: level === 'Urgent' ? '#E53935' : COLORS.primary,
-  }),
   urgencyText: {
     color: COLORS.text,
     fontWeight: '600',
   },
-  urgencyTextSelected: (level: string) => ({
-    color: '#FFF',
-  }),
   input: {
     backgroundColor: '#FFFFFF',
     borderRadius: BORDER_RADIUS.lg,

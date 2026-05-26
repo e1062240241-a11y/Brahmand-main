@@ -15,7 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,7 +31,7 @@ import {
   AudioProfileType,
 } from 'react-native-agora';
 import { getAgoraToken } from '../../services/api';
-
+import { usePassportStore } from '../../store/passportStore';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
@@ -217,6 +217,22 @@ const HANUMAN_CHALISA_SEGMENTS = [
   { type: 'music', startTime: 911.5, endTime: 961.39, items: ['🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵'] }
 ];
 
+const getSlotId = (date: Date, mType: string): string => {
+  const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  if (mType === 'hanuman') {
+    const status = getCurrentHanumanStatus(date);
+    if (status.isActive) {
+      return `${dateStr}_${status.sessionName}`;
+    }
+  } else {
+    const status = getCurrentOtherJaapStatus(date, mType);
+    if (status.isActive) {
+      return `${dateStr}_${status.sessionName}`;
+    }
+  }
+  return `${dateStr}_offline`;
+};
+
 export default function LiveJaapRoomView() {
   const router = useRouter();
   const { initialMic, mantraType, title: roomTitle, fromHome } = useLocalSearchParams<{ 
@@ -233,30 +249,38 @@ export default function LiveJaapRoomView() {
   const lastTimeRef = useRef(0);
   const accumulatedTimeRef = useRef(0);
 
+  const currentSlotId = useMemo(() => {
+    return getSlotId(now, mantraType || 'gayatri');
+  }, [now, mantraType]);
+
+  const { countKey, accKey } = useMemo(() => {
+    const prefix = mantraType === 'hanuman' ? '@hanuman_jaap' : `@jaap_${mantraType || 'gayatri'}`;
+    return {
+      countKey: `${prefix}_personal_count_${currentSlotId}`,
+      accKey: `${prefix}_accumulated_seconds_${currentSlotId}`
+    };
+  }, [mantraType, currentSlotId]);
+
+  const countKeyRef = useRef(countKey);
+  const accKeyRef = useRef(accKey);
+
+  useEffect(() => {
+    countKeyRef.current = countKey;
+    accKeyRef.current = accKey;
+  }, [countKey, accKey]);
+
   // Load personal count and accumulated progress from AsyncStorage
   useEffect(() => {
-    const key = mantraType === 'hanuman' 
-      ? '@hanuman_jaap_personal_count' 
-      : `@jaap_personal_count_${mantraType}`;
-    const accKey = mantraType === 'hanuman'
-      ? '@hanuman_jaap_accumulated_seconds'
-      : `@jaap_accumulated_seconds_${mantraType}`;
-
-    AsyncStorage.getItem(key).then(val => {
+    AsyncStorage.getItem(countKey).then(val => {
       if (val) setPersonalCount(parseInt(val, 10));
       else setPersonalCount(0);
     });
-    // For 24/7 always-on rooms (gayatri/shiva), don't restore accumulated
-    // seconds – each room entry starts a fresh count to prevent fluctuation
-    if (mantraType === 'gayatri' || mantraType === 'shiva') {
-      accumulatedTimeRef.current = 0;
-    } else {
-      AsyncStorage.getItem(accKey).then(val => {
-        if (val) accumulatedTimeRef.current = parseFloat(val);
-        else accumulatedTimeRef.current = 0;
-      });
-    }
-  }, [mantraType]);
+
+    AsyncStorage.getItem(accKey).then(val => {
+      if (val) accumulatedTimeRef.current = parseFloat(val);
+      else accumulatedTimeRef.current = 0;
+    });
+  }, [countKey, accKey]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -270,10 +294,10 @@ export default function LiveJaapRoomView() {
   const isKedarnath = mantraType === 'kedarnath';
   const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya');
 
-  const isSessionActive = true; // Forced to true to bypass offline lock for testing
+  const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
   
   const selectedMantra = MANTRA_DATA[mantraType || 'gayatri'] || MANTRA_DATA.gayatri;
-  const WORDS = useMemo(() => selectedMantra.text.split(' '), [selectedMantra.text]);
+  const WORDS = useMemo(() => selectedMantra.text.split(/[\s\u00A0]+/g), [selectedMantra.text]);
   
   const MANTRA_LINES = useMemo(() => {
     const lines = [];
@@ -478,24 +502,35 @@ export default function LiveJaapRoomView() {
 
       if (diff > 0 && diff < 3.0) {
         accumulatedTimeRef.current += diff;
-        const accKey = mantraType === 'hanuman'
-          ? '@hanuman_jaap_accumulated_seconds'
-          : `@jaap_accumulated_seconds_${mantraType}`;
-        const key = mantraType === 'hanuman' 
-          ? '@hanuman_jaap_personal_count' 
-          : `@jaap_personal_count_${mantraType}`;
 
         if (Math.floor(accumulatedTimeRef.current) % 10 === 0) {
-          AsyncStorage.setItem(accKey, accumulatedTimeRef.current.toString());
+          AsyncStorage.setItem(accKeyRef.current, accumulatedTimeRef.current.toString());
         }
         
         const threshold = isHanuman ? 961.39 : totalDuration;
         if (accumulatedTimeRef.current >= threshold) {
           accumulatedTimeRef.current = Math.max(0, accumulatedTimeRef.current - threshold);
-          AsyncStorage.setItem(accKey, accumulatedTimeRef.current.toString());
+          AsyncStorage.setItem(accKeyRef.current, accumulatedTimeRef.current.toString());
           setPersonalCount(prev => {
             const next = prev + 1;
-            AsyncStorage.setItem(key, next.toString());
+            AsyncStorage.setItem(countKeyRef.current, next.toString());
+            
+            // Record to Passport Store
+            usePassportStore.getState().addJaap(1);
+            if (isHanuman) {
+              usePassportStore.getState().awardBadge(
+                "Hanuman Chalisa Completed",
+                "Completed 1 full Hanuman Chalisa jaap session."
+              );
+            } else {
+              if (next % 108 === 0) {
+                const readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : 'Gayatri Mantra';
+                usePassportStore.getState().awardBadge(
+                  `${readableMantra} Mala Completed`,
+                  `Completed 1 full Mala (108 chants) of ${readableMantra}.`
+                );
+              }
+            }
             return next;
           });
         }
@@ -507,10 +542,26 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (bgPlayer) {
       bgPlayer.loop = true;
-      bgPlayer.volume = isMuted ? 0 : (mantraType === 'hanuman' ? 0.3 : 0.9);
       try {
         const isCurrentlyBreak = isHanuman && hanumanStatus.isActive && hanumanStatus.isBreak;
         if (isSessionActive && !isCurrentlyBreak) {
+          // Perform an instant initial seek to the expected position before play starts
+          let expected = 0;
+          if (isHanuman) {
+            const status = getCurrentHanumanStatus(new Date());
+            if (status.isActive && !status.isCompleted && !status.isBreak) {
+              expected = status.audioPositionSeconds;
+            }
+          } else {
+            const status = getCurrentOtherJaapStatus(new Date(), mantraType);
+            if (status.isActive) {
+              const totalDuration = mantraType === 'gayatri' ? 31.068 : 8.48;
+              expected = status.elapsedSeconds % totalDuration;
+            }
+          }
+          if (expected > 0) {
+            bgPlayer.seekTo(expected);
+          }
           bgPlayer.play();
         } else {
           bgPlayer.pause();
@@ -522,7 +573,14 @@ export default function LiveJaapRoomView() {
         console.warn('Background player failed to play:', e);
       }
     }
-  }, [bgPlayer, isMuted, mantraType, isSessionActive, isHanuman, hanumanStatus.isActive ? hanumanStatus.isBreak : false]);
+  }, [bgPlayer, mantraType, isSessionActive, isHanuman, hanumanStatus.isActive ? hanumanStatus.isBreak : false]);
+
+  // Handle dynamic volume changes on Native without re-triggering playback
+  useEffect(() => {
+    if (bgPlayer) {
+      bgPlayer.volume = isMuted ? 0 : (mantraType === 'hanuman' ? 0.3 : 0.9);
+    }
+  }, [bgPlayer, isMuted, mantraType]);
 
   // Drift check and synchronization for Native player
   useEffect(() => {
@@ -537,7 +595,7 @@ export default function LiveJaapRoomView() {
           const current = bgPlayer.currentTime || 0;
           const diff = Math.abs(current - expected);
           
-          if (!hasInitiallySynced || diff > 2.0) {
+          if (!hasInitiallySynced || diff > 0.5) {
             bgPlayer.seekTo(expected);
             hasInitiallySynced = true;
           }
@@ -549,7 +607,7 @@ export default function LiveJaapRoomView() {
           const current = bgPlayer.currentTime || 0;
           const diff = Math.abs(current - expected);
           
-          if (!hasInitiallySynced || diff > 2.0) {
+          if (!hasInitiallySynced || diff > 0.5) {
             bgPlayer.seekTo(expected);
             hasInitiallySynced = true;
           }
@@ -561,7 +619,7 @@ export default function LiveJaapRoomView() {
           const current = bgPlayer.currentTime || 0;
           const diff = Math.abs(current - expected);
           
-          if (!hasInitiallySynced || diff > 2.0) {
+          if (!hasInitiallySynced || diff > 0.5) {
             bgPlayer.seekTo(expected);
             hasInitiallySynced = true;
           }
@@ -698,6 +756,7 @@ export default function LiveJaapRoomView() {
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
       });
+      await engine.current.setDefaultAudioRouteToSpeakerphone(true);
       engine.current.registerEventHandler({
         onJoinChannelSuccess: (connection: RtcConnection) => {
           agoraJoinedRef.current = true;
@@ -738,9 +797,17 @@ export default function LiveJaapRoomView() {
         }
       });
       await engine.current.setAudioProfile(
-        AudioProfileType.AudioProfileMusicHighQualityStereo,
-        AudioScenarioType.AudioScenarioGameStreaming
+        AudioProfileType.AudioProfileDefault,
+        AudioScenarioType.AudioScenarioChatroom
       );
+      try {
+        await engine.current.setParameters('{"che.audio.enable.aec":true}');
+        await engine.current.setParameters('{"che.audio.enable.ns":true}');
+        await engine.current.setParameters('{"che.audio.enable.agc":true}');
+        await engine.current.setParameters('{"che.audio.ns.mode":3}');
+      } catch (paramErr) {
+        console.warn('[Agora] Failed to set parameters', paramErr);
+      }
       await engine.current.enableAudio();
       await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
       await engine.current.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
@@ -849,11 +916,10 @@ export default function LiveJaapRoomView() {
                 <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
               </TouchableOpacity>
             </View>
-          </View>
-          <View style={styles.countPillNew}>
-            <Text style={styles.countLabelNew}>Your
-count</Text>
-            <Text style={styles.countValueNew}>{personalCount}</Text>
+            <View style={styles.countPillNew}>
+              <Text style={styles.countLabelNew}>{isHanuman ? `Your\ncount` : `Mala\ncount`}</Text>
+              <Text style={styles.countValueNew}>{isHanuman ? personalCount : Math.floor(personalCount / 108)}</Text>
+            </View>
           </View>
 
         {!isSessionActive ? (
@@ -906,8 +972,8 @@ count</Text>
                     </>
                   ) : (
                     <>
-                      <Text style={styles.scheduleItem}>• Morning Session: 8:00 AM – 11:00 AM</Text>
-                      <Text style={styles.scheduleItem}>• Evening Session: 4:00 PM – 9:00 PM</Text>
+                      <Text style={styles.scheduleItem}>• Morning Session: 6:00 AM – 12:00 PM</Text>
+                      <Text style={styles.scheduleItem}>• Evening Session: 1:00 PM – 8:00 PM</Text>
                     </>
                   )}
                 </View>
@@ -937,6 +1003,45 @@ count</Text>
                   <Text style={styles.chantingValueNew}>{(remotePeers + 1) * 18} souls </Text>
                   <Ionicons name="cellular" size={14} color="#FF8A00" />
                 </View>
+              </View>
+
+              {/* MALA COUNT & PROGRESS AREA */}
+              <View style={styles.malaStatusContainer}>
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.85)', 'rgba(254, 227, 208, 0.9)']}
+                  style={styles.malaStatusCard}
+                >
+                  <View style={styles.malaHeaderRow}>
+                    <MaterialCommunityIcons name="dharmachakra" size={20} color="#FF6600" />
+                    <Text style={styles.malaTitleText}>Personal Mala Progress</Text>
+                  </View>
+                  
+                  {/* Beads Progress Bar */}
+                  <View style={styles.beadsProgressRow}>
+                    <View style={styles.beadsProgressBarBg}>
+                      <View style={[styles.beadsProgressBarFill, { width: `${((personalCount % 108) / 108) * 100}%` }]} />
+                    </View>
+                    <Text style={styles.beadsText}>{personalCount % 108} / 108 Beads</Text>
+                  </View>
+
+                  {/* Completed Mala Section */}
+                  {Math.floor(personalCount / 108) > 0 && (
+                    <View style={styles.completedMalaSection}>
+                      <LinearGradient
+                        colors={['#FF6B00', '#FF8A00']}
+                        style={styles.completedMalaBadge}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      >
+                        <Ionicons name="sparkles" size={14} color="#FFF" />
+                        <Text style={styles.completedMalaText}>
+                          {Math.floor(personalCount / 108)} {Math.floor(personalCount / 108) === 1 ? 'Mala' : 'Malas'} Done
+                        </Text>
+                        <Ionicons name="sparkles" size={14} color="#FFF" />
+                      </LinearGradient>
+                    </View>
+                  )}
+                </LinearGradient>
               </View>
 
               {/* MAIN CHANTING LYRICS AREA */}
@@ -991,12 +1096,12 @@ count</Text>
                 <View style={styles.metricsRowNew}>
                   <View style={styles.metricItemNew}>
                     <Text style={styles.metricLabelNew}>JAAP</Text>
-                    <Text style={styles.metricValueNew}>{isHanuman ? hanumanStatus.roundOfSession : 1}<Text style={styles.metricSlashNew}> / {isHanuman ? hanumanStatus.totalRepsInSession : 21}</Text></Text>
+                    <Text style={styles.metricValueNew}>{(isHanuman && hanumanStatus.isActive) ? hanumanStatus.roundOfSession : 1}<Text style={styles.metricSlashNew}> / {(isHanuman && hanumanStatus.isActive) ? hanumanStatus.totalRepsInSession : 21}</Text></Text>
                   </View>
                   <View style={styles.metricItemNew}>
                     <Text style={styles.metricLabelNew}>REMAINING</Text>
                     <Text style={styles.metricValueNew}>{(() => {
-                        const nextEnd = isHanuman ? hanumanStatus.sessionEnd : otherStatus.sessionEnd;
+                        const nextEnd = (isHanuman && hanumanStatus.isActive) ? hanumanStatus.sessionEnd : (otherStatus.isActive ? otherStatus.sessionEnd : null);
                         if (!nextEnd) return '0h 0m';
                         const diffMs = nextEnd.getTime() - now.getTime();
                         if (diffMs <= 0) return '0h 0m';
@@ -1345,7 +1450,14 @@ const styles = StyleSheet.create({
   lyricsBoxNew: { alignItems: 'center', width: '100%' },
   currentLineBoxNew: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 30 },
   wordNew: { fontSize: 30, fontWeight: '400', color: '#44403C', textAlign: 'center', lineHeight: 48, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' },
-  wordHighlightNew: { color: '#FF7300', fontWeight: '800' },
+  wordHighlightNew: {
+    color: '#FF7300',
+    fontWeight: '900',
+    fontSize: 34,
+    textShadowColor: 'rgba(255, 115, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
   nextLineBoxNew: { alignItems: 'center', paddingHorizontal: 10 },
   nextLineTextNew: { fontSize: 18, fontWeight: '500', color: 'rgba(0,0,0,0.4)', textAlign: 'center', lineHeight: 28 },
 
@@ -1365,4 +1477,82 @@ const styles = StyleSheet.create({
   controlsBarNew: { flexDirection: 'row', backgroundColor: '#FEE3D0', borderRadius: 40, padding: 10, justifyContent: 'space-around', alignItems: 'center' },
   controlIconBtnNew: { padding: 10 },
   volumeMuteBtnNew: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center', shadowColor: '#FF8A00', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+  malaStatusContainer: {
+    paddingHorizontal: 20,
+    marginTop: 15,
+    width: '100%',
+    alignItems: 'center',
+  },
+  malaStatusCard: {
+    width: '90%',
+    borderRadius: 20,
+    padding: 15,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 107, 0, 0.25)',
+    elevation: 4,
+    shadowColor: '#FF6600',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  malaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  malaTitleText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#2D1400',
+  },
+  beadsProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  beadsProgressBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  beadsProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#FF6600',
+    borderRadius: 4,
+  },
+  beadsText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D45D00',
+    minWidth: 65,
+    textAlign: 'right',
+  },
+  completedMalaSection: {
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completedMalaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    gap: 6,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  completedMalaText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
 });

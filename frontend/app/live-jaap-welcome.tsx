@@ -92,8 +92,63 @@ export default function LiveJaapWelcomeScreen() {
                <Text style={styles.lotusIcon}>🪷</Text>
              </View>
           </View>
+          {isHanuman && (
+            <View style={styles.statusBanner}>
+              {hanumanStatus.isActive ? (
+                <View style={styles.activeBannerInner}>
+                  <View style={styles.liveDotRing} />
+                  <Text style={styles.statusTextActive}>
+                    {hanumanStatus.isCompleted
+                      ? `Session Completed (Waiting for next)`
+                      : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.inactiveBannerInner}>
+                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
+                  <Text style={styles.statusTextInactive}>
+                    Next Live: {hanumanStatus.nextSessionName} Session Starts in {(() => {
+                      if (!hanumanStatus.nextSessionStart) return '';
+                      const diffMs = hanumanStatus.nextSessionStart.getTime() - now.getTime();
+                      const hrs = Math.floor(diffMs / 3600000);
+                      const mins = Math.floor((diffMs % 3600000) / 60000);
+                      const secs = Math.floor((diffMs % 60000) / 1000);
+                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    })()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
-          {/* MANTRA PREVIEW */}
+          {isOtherLiveJaap && (
+            <View style={styles.statusBanner}>
+              {otherStatus.isActive ? (
+                <View style={styles.activeBannerInner}>
+                  <View style={styles.liveDotRing} />
+                  <Text style={styles.statusTextActive}>
+                    {`${otherStatus.sessionName} Session • Live (6 AM - 12 PM & 1 PM - 8 PM)`}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.inactiveBannerInner}>
+                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
+                  <Text style={styles.statusTextInactive}>
+                    Next Live: {otherStatus.nextSessionName} Session Starts in {(() => {
+                      if (!otherStatus.nextSessionStart) return '';
+                      const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
+                      const hrs = Math.floor(diffMs / 3600000);
+                      const mins = Math.floor((diffMs % 3600000) / 60000);
+                      const secs = Math.floor((diffMs % 60000) / 1000);
+                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    })()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* MANTRA PREVIEW - SCROLLABLE FOR LONG TEXTS LIKE HANUMAN CHALISA */}
           <View style={styles.mantraPreviewBox}>
             <Text style={styles.mantraPreviewText}>
               श्रीगुरु चरन सरोज रज, निज मनु मुकुर सुधारि{'\n'}
