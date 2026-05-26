@@ -235,10 +235,67 @@ const UserProfileScreen = () => {
 
   const loadProfile = useCallback(async (showLoading = true) => {
     if (!profileUserId) return;
+    
+    // 1. Optimistic load from WatermelonDB
+    try {
+      if (Platform.OS !== 'web') {
+        const { database } = require('../../src/database');
+        const { Q } = require('@nozbe/watermelondb');
+        const usersCollection = database.collections.get('users');
+        const cachedUsers = await usersCollection.query(Q.where('id', profileUserId)).fetch();
+        if (cachedUsers.length > 0) {
+          const u = cachedUsers[0];
+          setProfile((prev: any) => prev?.id === profileUserId ? prev : {
+            id: u.id,
+            name: u.name,
+            sl_id: u.slId,
+            photo: u.photo,
+            bio: u.bio
+          });
+          showLoading = false; // We have initial data, don't show full loading spinner
+        }
+      }
+    } catch (e) {
+      console.log('WMDB cache error:', e);
+    }
+
     if (showLoading) setLoading(true);
     try {
       const response = await getUserProfile(profileUserId);
       setProfile(response.data);
+
+      // 2. Save fetched data back to WatermelonDB for next time
+      try {
+        if (Platform.OS !== 'web') {
+          const { database } = require('../../src/database');
+          const { Q } = require('@nozbe/watermelondb');
+          const usersCollection = database.collections.get('users');
+          const remoteUser = response.data;
+          
+          await database.write(async () => {
+            const existing = await usersCollection.query(Q.where('id', profileUserId)).fetch();
+            if (existing.length > 0) {
+              await existing[0].update((u: any) => {
+                u.name = remoteUser.name || '';
+                u.slId = remoteUser.sl_id || '';
+                u.photo = remoteUser.photo || '';
+                u.bio = remoteUser.bio || '';
+              });
+            } else {
+              await usersCollection.create((u: any) => {
+                u._raw.id = remoteUser.id;
+                u.name = remoteUser.name || '';
+                u.slId = remoteUser.sl_id || '';
+                u.photo = remoteUser.photo || '';
+                u.bio = remoteUser.bio || '';
+              });
+            }
+          });
+        }
+      } catch (dbErr) {
+        console.log('Failed to update profile cache:', dbErr);
+      }
+      
     } catch (error) {
       console.error('Failed to load user profile', error);
     } finally {

@@ -18,6 +18,7 @@ import {
   Platform,
   Alert,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -346,6 +347,19 @@ const quickAccess = [
   { label: 'Festival Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
   { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
 ];
+
+const AnimatedSkeleton = ({ children, style }: { children: React.ReactNode; style?: any }) => {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [opacity]);
+  return <Animated.View style={[{ opacity }, style]}>{children}</Animated.View>;
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -848,8 +862,9 @@ export default function HomeScreen() {
         const visibleTop = Math.max(viewportTop, postAbsoluteTop);
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        // Only consider it a candidate if it occupies a significant portion of the screen (e.g. 40%)
-        if (visibleAmount > maxVisible && visibleAmount > SCREEN_HEIGHT * 0.4) {
+        // Stricter condition: Post must be at least 60% visible OR take up at least 50% of the screen
+        const visibilityThreshold = Math.min(height * 0.6, SCREEN_HEIGHT * 0.5);
+        if (visibleAmount > maxVisible && visibleAmount > visibilityThreshold) {
           maxVisible = visibleAmount;
           closestKey = key;
         }
@@ -1479,20 +1494,20 @@ export default function HomeScreen() {
                 colors={['#FF6B00']}
               />
             }
-            stickyHeaderIndices={[Platform.OS === 'android' ? 2 : 1]}
+            stickyHeaderIndices={[1]}
             onScroll={handleHomeScroll}
             onMomentumScrollEnd={handleHomeScroll}
             onScrollEndDrag={handleHomeScroll}
             scrollEventThrottle={16}
           >
             <View
-              style={styles.upperContentWrapper}
               onLayout={(event) => {
                 const h = event.nativeEvent.layout.height;
                 feedTabsYRef.current = h;
                 setFeedTabsY(h);
               }}
             >
+              <View style={styles.upperContentWrapper}>
               <View style={styles.header}>
                 <View style={styles.headerLeft}>
                   <TouchableOpacity
@@ -2102,28 +2117,25 @@ export default function HomeScreen() {
               <View style={styles.twoButtonsRow}>
                 {/* Mumbai Community Card */}
                 {(() => {
-                  const mumbaiComm = communities.find(c => c.type === 'city' && c.name?.toLowerCase().includes('mumbai')) ||
-                    communities.find(c => c.name?.toLowerCase().includes('mumbai'));
+                  const cityComm = communities.find(c => c.type === 'city');
+                  const cityName = cityComm?.name || 'City Community';
+                  const cityId = cityComm?.id || 'city_default';
                   return (
                     <TouchableOpacity
                       style={styles.communityCardMini}
                       activeOpacity={0.9}
                       onPress={() => {
-                        if (mumbaiComm) {
-                          router.push({
-                            pathname: '/community/[id]',
-                            params: { id: mumbaiComm.id, subgroup: 'city', name: mumbaiComm.name }
-                          });
-                        } else {
-                          router.push('/messages?tab=Community');
-                        }
+                        router.push({
+                          pathname: '/community/[id]',
+                          params: { id: cityId, subgroup: 'city', name: cityName }
+                        });
                       }}
                     >
                       <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                         <Text style={[styles.miniCardType, styles.communityCardLabel]}>CITY COMMUNITY</Text>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                          {mumbaiComm?.name || 'Mumbai Community'}
+                          {cityName}
                         </Text>
                         <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 members</Text>
                       </View>
@@ -2135,6 +2147,8 @@ export default function HomeScreen() {
                 {/* Local Community Card */}
                 {(() => {
                   const localComm = communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area');
+                  const localName = localComm?.name || 'Local Community';
+                  const localId = localComm?.id || 'local_default';
                   return (
                     <TouchableOpacity
                       style={styles.communityCardMini}
@@ -2142,7 +2156,7 @@ export default function HomeScreen() {
                       onPress={() => {
                         router.push({
                           pathname: '/community/[id]',
-                          params: { id: 'food_pune', subgroup: 'city', name: 'Pune Food Sharing Group' }
+                          params: { id: localId, subgroup: 'area', name: localName }
                         });
                       }}
                     >
@@ -2151,7 +2165,7 @@ export default function HomeScreen() {
                       </View>
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                          Pune Food Sharing Group
+                          {localName}
                         </Text>
                         <View style={styles.miniCardBottomRow}>
                           <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>236 members</Text>
@@ -2165,6 +2179,7 @@ export default function HomeScreen() {
                   );
                 })()}
               </View>
+            </View>
             </View>
 
             <View style={styles.stickyFeedTabsShell}>
@@ -2209,7 +2224,7 @@ export default function HomeScreen() {
               {loadingFeed && feedPosts.length === 0 ? (
                 <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
                   {[1, 2, 3].map((key) => (
-                    <View key={key} style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#FF8A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 }}>
+                    <AnimatedSkeleton key={key} style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#FF8A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 138, 0, 0.1)' }} />
                         <View style={{ marginLeft: 12, flex: 1 }}>
@@ -2223,7 +2238,7 @@ export default function HomeScreen() {
                         <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
                         <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
                       </View>
-                    </View>
+                    </AnimatedSkeleton>
                   ))}
                 </View>
               ) : feedPosts.length > 0 ? (
