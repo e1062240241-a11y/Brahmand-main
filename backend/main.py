@@ -1976,25 +1976,37 @@ async def get_user_posts(
 
     def _created_at_sort_key(item: dict):
         value = item.get('created_at')
+        min_aware = datetime.fromisoformat('0001-01-01T00:00:00+00:00')
         if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=min_aware.tzinfo)
             return value
         if isinstance(value, str):
             try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                if dt.tzinfo is None:
+                    return dt.replace(tzinfo=min_aware.tzinfo)
+                return dt
             except Exception:
-                return datetime.min
-        return datetime.min
+                return min_aware
+        return min_aware
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
+        min_aware = datetime.fromisoformat('0001-01-01T00:00:00+00:00')
         if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=min_aware.tzinfo)
             return value
         if isinstance(value, str):
             try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                if dt.tzinfo is None:
+                    return dt.replace(tzinfo=min_aware.tzinfo)
+                return dt
             except Exception:
-                return datetime.min
-        return datetime.min
+                return min_aware
+        return min_aware
 
     candidate_posts.sort(key=_created_at_sort_key, reverse=True)
     total_count = len(candidate_posts)

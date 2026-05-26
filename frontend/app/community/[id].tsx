@@ -1778,35 +1778,33 @@ export default function CommunityDetailScreen() {
           <View style={styles.festEventMeta}>
             <View style={styles.festMetaRow}>
               <Ionicons name="location-outline" size={14} color="#FF3B30" />
-              <Text style={styles.festMetaText}>{item.location}</Text>
+              <Text style={styles.festMetaText} numberOfLines={1}>{item.location}</Text>
             </View>
             <View style={styles.festMetaRow}>
               <Ionicons name="time-outline" size={14} color="#FF3B30" />
-              <Text style={styles.festMetaText}>{item.time}</Text>
+              <Text style={styles.festMetaText} numberOfLines={1}>{item.time}</Text>
             </View>
           </View>
         </View>
-        <View style={styles.festOrganizerCol}>
-          <Avatar name={item.organizer.name} size={40} />
-          <View style={styles.festOrgDetails}>
+      </View>
+      <View style={styles.festEventFooter}>
+        <View style={styles.festOrgDetailsRow}>
+          <Avatar name={item.organizer.name} size={32} photo={item.organizer.photo} />
+          <View style={{ marginLeft: 8, flex: 1 }}>
             <View style={styles.festOrgNameRow}>
               <Text style={styles.festOrgName} numberOfLines={1}>{item.organizer.name}</Text>
-              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" />}
+              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
             </View>
-            <Text style={styles.festOrgLabel}>Organizer</Text>
-            <Text style={styles.festTimeAgo}>{item.timeAgo}</Text>
+            <Text style={styles.festOrgLabel}>Organizer • {item.timeAgo}</Text>
           </View>
+        </View>
+        <View style={styles.festActionRow}>
           <TouchableOpacity style={styles.attendBtn} onPress={() => handleFestivalInterest(item)}>
             <Text style={styles.attendBtnText}>Set a reminder</Text>
           </TouchableOpacity>
-          <View style={styles.festActionRow}>
-            <TouchableOpacity style={styles.festMiniBtn}>
-              <Ionicons name="bookmark-outline" size={18} color="#536471" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.festMiniBtn}>
-              <Ionicons name="share-social-outline" size={18} color="#536471" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.festMiniBtn}>
+            <Ionicons name="share-social-outline" size={20} color="#536471" />
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -2772,8 +2770,8 @@ export default function CommunityDetailScreen() {
             return (
               <View style={styles.festBanner}>
                 <View style={styles.festBannerLeft}>
-                  <Ionicons name="sparkles-outline" size={28} color="#FF3B30" />
-                  <View style={{ marginLeft: 12 }}>
+                  <Ionicons name="sparkles-outline" size={28} color="#FF6B00" />
+                  <View style={{ marginLeft: 12, flex: 1 }}>
                     <Text style={styles.festBannerTitle}>Share the Joy of Festivals!</Text>
                     <Text style={styles.festBannerSub}>Create a festival post and invite others to be a part of the celebration.</Text>
                   </View>
@@ -2897,13 +2895,14 @@ export default function CommunityDetailScreen() {
       {/* Bottom footer input bar is removed to keep layout clean and centered on top-header Create button */}
 
       {/* Full Screen Create Post Modal */}
-      <Modal visible={showCreateModal} animationType="slide" transparent={false}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF' }}>
+      <Modal visible={showCreateModal} animationType="slide" transparent={true}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
-            <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: '#EFF3F4', paddingHorizontal: 16 }]}>
+            <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
               <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); }}>
                 <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
               </TouchableOpacity>
@@ -2922,8 +2921,8 @@ export default function CommunityDetailScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ flex: 1, backgroundColor: '#FFF', paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
-              <View style={{ flexDirection: 'row', marginTop: 15 }}>
+            <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
+              <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
                 <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <MentionInput
@@ -3036,15 +3035,15 @@ export default function CommunityDetailScreen() {
               </View>
 
 
-              <View style={styles.infoBox}>
-                <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
-                <Text style={styles.infoBoxText}>When you tap Post, you'll choose a category for your post. It will appear in that category and the general feed.</Text>
+              <View style={[styles.infoBox, { backgroundColor: 'rgba(255,255,255,0.5)', alignItems: 'flex-start' }]}>
+                <Ionicons name="information-circle-outline" size={20} color="#FF6B00" style={{ marginRight: 10, marginTop: 2 }} />
+                <Text style={[styles.infoBoxText, { color: '#0F1419' }]}>When you tap Post, you'll choose a category for your post. It will appear in that category and the general feed.</Text>
               </View>
 
               <View style={styles.createSection}>
                 <Text style={styles.createSectionTitle}>Contact Number <Text style={{ color: '#888' }}>(Optional)</Text></Text>
-                <View style={styles.phoneInputContainer}>
-                  <TouchableOpacity style={styles.phonePrefix}>
+                <View style={[styles.phoneInputContainer, { backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.8)' }]}>
+                  <TouchableOpacity style={[styles.phonePrefix, { borderRightColor: 'rgba(255,255,255,0.8)' }]}>
                     <Image source={{ uri: 'https://flagcdn.com/w40/in.png' }} style={styles.flagIcon} />
                     <Text style={styles.prefixText}>+91</Text>
                     <Ionicons name="chevron-down" size={14} color="#888" />
@@ -3063,7 +3062,7 @@ export default function CommunityDetailScreen() {
               <View style={styles.createSection}>
                 <Text style={styles.createSectionTitle}>Seva Details <Text style={{ color: '#888' }}>(Optional)</Text></Text>
                 <TextInput
-                  style={[styles.phoneInput, { minHeight: 100, textAlignVertical: 'top' }]}
+                  style={[styles.phoneInput, { minHeight: 100, textAlignVertical: 'top', backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.8)', borderWidth: 1, borderRadius: 16, padding: 12 }]}
                   placeholder="Who donated, what amount, or what service was performed"
                   value={sevaDetails}
                   onChangeText={setSevaDetails}
@@ -3094,8 +3093,8 @@ export default function CommunityDetailScreen() {
               paddingHorizontal: 16,
               paddingVertical: 10,
               borderTopWidth: 1,
-              borderTopColor: '#EFF3F4',
-              backgroundColor: '#FFF'
+              borderTopColor: 'rgba(0,0,0,0.05)',
+              backgroundColor: 'rgba(255,255,255,0.5)'
             }}>
               <View />
 
@@ -3104,7 +3103,8 @@ export default function CommunityDetailScreen() {
               </View>
             </View>
           </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
+        </LinearGradient>
       </Modal>
 
       {/* Category Selector Bottom Sheet — shown when Post is tapped */}
@@ -3662,24 +3662,24 @@ const styles = StyleSheet.create({
   festivalEventCountNum: { fontSize: 18, fontWeight: '900', color: '#111' },
   festivalEventCountText: { fontSize: 10, fontWeight: '600', color: '#666' },
 
-  festEventCard: { marginHorizontal: 20, backgroundColor: '#FFF', borderRadius: 24, padding: 12, marginBottom: 15, elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F5F5F5' },
-  festEventMain: { flexDirection: 'row' },
-  festEventImage: { width: 100, height: 120, borderRadius: 16 },
-  festEventInfo: { flex: 1, marginLeft: 12, marginRight: 8 },
-  festEventTitle: { fontSize: 16, fontWeight: '800', color: '#111', marginBottom: 4 },
-  festEventDesc: { fontSize: 12, color: '#666', lineHeight: 18, marginBottom: 10 },
+  festEventCard: { marginHorizontal: 20, backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 15, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F5F5F5' },
+  festEventMain: { flexDirection: 'row', marginBottom: 12 },
+  festEventImage: { width: 90, height: 90, borderRadius: 16 },
+  festEventInfo: { flex: 1, marginLeft: 16 },
+  festEventTitle: { fontSize: 17, fontWeight: '800', color: '#111', marginBottom: 6 },
+  festEventDesc: { fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 10 },
   festEventMeta: { gap: 6 },
-  festMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  festMetaText: { fontSize: 11, color: '#444', fontWeight: '600' },
-  festOrganizerCol: { width: 100, alignItems: 'center', borderLeftWidth: 1, borderLeftColor: '#F0F0F0', paddingLeft: 8 },
-  festOrgDetails: { alignItems: 'center', marginTop: 8, marginBottom: 12 },
-  festOrgNameRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  festOrgName: { fontSize: 11, fontWeight: '700', color: '#111' },
-  festOrgLabel: { fontSize: 10, color: '#888' },
-  festTimeAgo: { fontSize: 9, color: '#AAA', marginTop: 2 },
-  attendBtn: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#FF3B30', paddingHorizontal: 6, paddingVertical: 6, borderRadius: 10, width: '100%' },
-  attendBtnText: { color: '#FF3B30', fontSize: 10, fontWeight: '700', textAlign: 'center' },
-  festActionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  festMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  festMetaText: { fontSize: 12, color: '#444', fontWeight: '600', flexShrink: 1 },
+  
+  festEventFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  festOrgDetailsRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  festOrgNameRow: { flexDirection: 'row', alignItems: 'center' },
+  festOrgName: { fontSize: 14, fontWeight: '700', color: '#111' },
+  festOrgLabel: { fontSize: 12, color: '#888', marginTop: 2 },
+  festActionRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  attendBtn: { backgroundColor: '#FFF5F0', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FFEBE0' },
+  attendBtnText: { color: '#FF6B00', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   festMiniBtn: { padding: 4 },
 
   festBanner: { marginHorizontal: 20, backgroundColor: '#FFF5F0', borderRadius: 20, padding: 15, marginTop: 10, marginBottom: 30, borderWidth: 1, borderColor: '#FFEBE0' },

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { View, Text, StyleSheet, Animated, PanResponder, Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -15,35 +15,40 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
   const padding = 4;
   const slideDistance = buttonWidth - circleWidth - (padding * 2);
 
-  const [swiped, setSwiped] = useState(false);
+  const swipedRef = useRef(false);
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !swiped,
-      onStartShouldSetPanResponderCapture: () => !swiped,
-      onMoveShouldSetPanResponder: () => !swiped,
-      onMoveShouldSetPanResponderCapture: () => !swiped,
+      onStartShouldSetPanResponder: () => !swipedRef.current,
+      onStartShouldSetPanResponderCapture: () => !swipedRef.current,
+      onMoveShouldSetPanResponder: (_, gestureState) => !swipedRef.current && gestureState.dx > 0,
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => !swipedRef.current && gestureState.dx > 0,
       onPanResponderGrant: () => {
-        // user started swiping
+        // Stop any ongoing spring animations
+        slideAnim.stopAnimation();
       },
       onPanResponderMove: (_, gestureState) => {
-        if (swiped) return;
-        if (gestureState.dx > 0 && gestureState.dx <= slideDistance) {
-          slideAnim.setValue(gestureState.dx);
-        } else if (gestureState.dx > slideDistance) {
-          slideAnim.setValue(slideDistance);
-        }
+        if (swipedRef.current) return;
+        let newX = gestureState.dx;
+        if (newX < 0) newX = 0;
+        if (newX > slideDistance) newX = slideDistance;
+        slideAnim.setValue(newX);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (swiped) return;
-        if (gestureState.dx >= slideDistance * 0.5) {
-          setSwiped(true);
+        if (swipedRef.current) return;
+        if (gestureState.dx >= slideDistance * 0.6) {
+          swipedRef.current = true;
           Animated.timing(slideAnim, {
             toValue: slideDistance,
             duration: 150,
             useNativeDriver: false,
           }).start(() => {
             onSwipeComplete();
+            // Reset state after a delay in case the user navigates back
+            setTimeout(() => {
+              swipedRef.current = false;
+              slideAnim.setValue(0);
+            }, 1000);
           });
         } else {
           Animated.spring(slideAnim, {
@@ -53,7 +58,7 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
         }
       },
       onPanResponderTerminate: () => {
-        if (!swiped) {
+        if (!swipedRef.current) {
           Animated.spring(slideAnim, {
             toValue: 0,
             useNativeDriver: false,
@@ -70,12 +75,13 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
   });
 
   return (
-    <View style={styles.container} {...panResponder.panHandlers}>
+    <View style={styles.container}>
       <Animated.Text style={[styles.text, { opacity: textOpacity }]}>
         {title}
       </Animated.Text>
       <Animated.View
         style={[styles.circle, { transform: [{ translateX: slideAnim }] }]}
+        {...panResponder.panHandlers}
       >
         <Text style={styles.icon}>ॐ</Text>
       </Animated.View>
@@ -112,6 +118,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    position: 'absolute',
+    left: 4,
+    zIndex: 10,
   },
   icon: {
     color: '#E8630A',
@@ -119,3 +128,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
