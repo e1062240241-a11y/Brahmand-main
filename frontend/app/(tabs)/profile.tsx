@@ -1133,10 +1133,6 @@ export default function ProfileScreen() {
                 )}
                 <View style={styles.glassStatDivider} />
                 {renderStatCell('grid-outline', postsCount, 'Posts')}
-                <View style={styles.glassStatDivider} />
-                {renderStatCell('bookmark', savedCount, 'Saved', () =>
-                  showToast('Saved posts coming soon')
-                )}
               </View>
             </View>
           </View>
@@ -1216,6 +1212,7 @@ export default function ProfileScreen() {
 
       {renderHeader()}
       <Animated.FlatList
+        style={{ flex: 1 }}
         data={posts}
         renderItem={renderPost}
         keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}

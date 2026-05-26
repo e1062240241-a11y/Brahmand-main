@@ -68,7 +68,7 @@ const getActionBadge = (item: any) => {
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const { dismissBadge } = useNotificationStore();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [actorsMap, setActorsMap] = useState<Record<string, { name?: string; photo?: string }>>({});
@@ -230,9 +230,18 @@ export default function NotificationsScreen() {
       if (currentlyFollowing) {
         await unfollowUser(actorId);
         setFollowingMap(prev => ({ ...prev, [actorId]: false }));
+        if (user && user.following) {
+          updateUser({ following: user.following.filter((id: string) => id !== actorId) });
+        }
       } else {
         await followUser(actorId);
         setFollowingMap(prev => ({ ...prev, [actorId]: true }));
+        if (user) {
+          const currentFollowing = user.following || [];
+          if (!currentFollowing.includes(actorId)) {
+            updateUser({ following: [...currentFollowing, actorId] });
+          }
+        }
       }
     } catch (err) {
       console.warn('Failed to follow/unfollow:', err);
