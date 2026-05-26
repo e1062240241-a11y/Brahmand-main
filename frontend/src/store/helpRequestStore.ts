@@ -65,7 +65,7 @@ export const useHelpRequestStore = create<HelpRequestStore>((set, get) => ({
       const response = await getActiveHelpRequest();
       set({ activeRequest: response.data });
     } catch (error) {
-      console.error('Error fetching active request:', error);
+      console.warn('Error fetching active request:', error);
       set({ activeRequest: null });
     }
   },
@@ -76,7 +76,7 @@ export const useHelpRequestStore = create<HelpRequestStore>((set, get) => ({
       const response = await getHelpRequests({ type, community_level: communityLevel });
       set({ allRequests: response.data || [] });
     } catch (error) {
-      console.error('Error fetching help requests:', error);
+      console.warn('Error fetching help requests:', error);
       set({ allRequests: [] });
     } finally {
       set({ loading: false });
@@ -88,7 +88,7 @@ export const useHelpRequestStore = create<HelpRequestStore>((set, get) => ({
       const response = await getMyHelpRequests();
       set({ myRequests: response.data || [] });
     } catch (error) {
-      console.error('Error fetching my requests:', error);
+      console.warn('Error fetching my requests:', error);
       set({ myRequests: [] });
     }
   },
@@ -108,7 +108,7 @@ export const useHelpRequestStore = create<HelpRequestStore>((set, get) => ({
       await fulfillHelpRequest(activeRequest.id);
       set({ activeRequest: null });
     } catch (error) {
-      console.error('Error resolving request:', error);
+      console.warn('Error resolving request:', error);
       throw error;
     }
   },

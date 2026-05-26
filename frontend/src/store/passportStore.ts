@@ -83,20 +83,29 @@ export const usePassportStore = create<PassportState>((set, get) => ({
 
   awardBadge: async (title, description) => {
     set((state) => {
-      const alreadyHas = state.badges.some((badge) => badge.title === title);
-      if (alreadyHas) return state;
+      const existingBadgeIndex = state.badges.findIndex((badge) => badge.title === title);
+      const updatedBadges = [...state.badges];
+      
+      if (existingBadgeIndex !== -1) {
+        const existing = updatedBadges[existingBadgeIndex];
+        updatedBadges[existingBadgeIndex] = {
+          ...existing,
+          count: (existing.count || 1) + 1,
+          earned_at: new Date().toISOString(),
+        };
+      } else {
+        updatedBadges.push({
+          id: `passport_badge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          title,
+          description,
+          earned_at: new Date().toISOString(),
+          count: 1,
+        });
+      }
 
       const nextState = {
         ...state,
-        badges: [
-          ...state.badges,
-          {
-            id: `passport_badge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            title,
-            description,
-            earned_at: new Date().toISOString(),
-          },
-        ],
+        badges: updatedBadges,
       };
       persistPassportState({
         journeys: nextState.journeys,

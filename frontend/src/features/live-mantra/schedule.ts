@@ -204,6 +204,7 @@ export type HanumanStatus =
   | {
       isActive: true;
       sessionName: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+      sessionEnd: Date;
       roundOfSession: number;
       totalRepsInSession: number;
       roundOfDay: number;
@@ -263,6 +264,7 @@ export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
         return {
           isActive: true,
           sessionName: session.name,
+          sessionEnd,
           roundOfSession,
           totalRepsInSession: session.reps,
           roundOfDay,
@@ -275,6 +277,7 @@ export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
         return {
           isActive: true,
           sessionName: session.name,
+          sessionEnd,
           roundOfSession: session.reps,
           totalRepsInSession: session.reps,
           roundOfDay: session.startRoundOffset + session.reps - 1,
@@ -319,14 +322,15 @@ export type OtherJaapSession = {
 };
 
 export const OTHER_JAAP_SESSIONS: OtherJaapSession[] = [
-  { name: 'Morning', startHour: 8, endHour: 11 },
-  { name: 'Evening', startHour: 16, endHour: 21 },
+  { name: 'Morning', startHour: 6, endHour: 12 },
+  { name: 'Evening', startHour: 13, endHour: 20 },
 ];
 
 export type OtherJaapStatus =
   | {
       isActive: true;
       sessionName: 'Morning' | 'Evening';
+      sessionEnd: Date;
       elapsedSeconds: number;
     }
   | {
@@ -336,17 +340,6 @@ export type OtherJaapStatus =
     };
 
 export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string): OtherJaapStatus => {
-  if (mantraType === 'gayatri' || mantraType === 'shiva') {
-    const utcNow = new Date();
-    const utcMidnight = Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), utcNow.getUTCDate(), 0, 0, 0, 0);
-    const elapsedSeconds = (utcNow.getTime() - utcMidnight) / 1000;
-    return {
-      isActive: true,
-      sessionName: 'Morning',
-      elapsedSeconds,
-    };
-  }
-
   for (const session of OTHER_JAAP_SESSIONS) {
     const sessionStart = new Date(now);
     sessionStart.setHours(session.startHour, 0, 0, 0);
@@ -358,6 +351,7 @@ export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string)
       return {
         isActive: true,
         sessionName: session.name,
+        sessionEnd,
         elapsedSeconds,
       };
     }
@@ -404,7 +398,17 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
   }
 
   if (mantraType === 'shiva') {
-    return { currentIndex: 0, isHolding: false };
+    const wordDurations = [4.2, 1.0, 2.5];
+    const totalDuration = 8.48;
+    const position = elapsedSeconds % totalDuration;
+    let accumulated = 0;
+    for (let i = 0; i < wordDurations.length; i++) {
+      accumulated += wordDurations[i];
+      if (position < accumulated) {
+        return { currentIndex: i, isHolding: false };
+      }
+    }
+    return { currentIndex: words.length - 1, isHolding: true };
   }
 
   const wordDurations = words.map(w => (w.length > 7 ? 3.0 : 1.2));

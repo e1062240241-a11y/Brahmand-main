@@ -123,17 +123,49 @@ export default function JaapLandingScreen() {
     }
   };
 
+  const fetchReminders = async () => {
+    try {
+      const response = await api.get('/jaap/reminders');
+      if (response.data && response.data.reminders) {
+        const loadedReminders: Record<string, boolean> = {};
+        response.data.reminders.forEach((r: any) => {
+          let jaapId = '';
+          if (r.mantra_type === 'hanuman') jaapId = '1';
+          else if (r.mantra_type === 'krishna') jaapId = '2';
+          else if (r.mantra_type === 'shiva') jaapId = '3';
+          else if (r.mantra_type === 'gayatri') jaapId = '4';
+          else if (r.mantra_type === 'ganesh') jaapId = '5';
+          else if (r.mantra_type === 'laxmi') jaapId = '6';
+          
+          if (jaapId) {
+            loadedReminders[jaapId] = true;
+          }
+        });
+        setReminders(loadedReminders);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch reminders:', err);
+    }
+  };
+
   const handleSetReminder = async (jaapId: string, mantraType: string, sessionName: string) => {
     try {
-      await api.post('/jaap/reminder', {
+      const response = await api.post('/jaap/reminder', {
         mantra_type: mantraType,
         session_name: sessionName,
       });
-      setReminders(prev => ({ ...prev, [jaapId]: true }));
-      Alert.alert('🔔 Reminder Set!', `You will be notified 5 minutes before the ${sessionName} session of ${mantraType} jaap.`);
+      const active = response.data.active;
+      setReminders(prev => ({ ...prev, [jaapId]: active }));
+      if (active) {
+        const readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Jaap`;
+        Alert.alert('🔔 Reminders Set!', `You will now receive notifications 5 minutes before any session starts for ${readableMantra}.`);
+      } else {
+        const readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Jaap`;
+        Alert.alert('🔔 Reminders Removed', `You have unsubscribed from notifications for ${readableMantra}.`);
+      }
     } catch (err: any) {
-      console.error('Failed to set reminder:', err);
-      Alert.alert('Error', 'Could not set reminder. Please login again.');
+      console.error('Failed to toggle reminder:', err);
+      Alert.alert('Error', 'Could not toggle reminder. Please login again.');
     }
   };
 
@@ -153,6 +185,12 @@ export default function JaapLandingScreen() {
     if (!isFocused) return;
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
+  }, [isFocused]);
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchReminders();
+    }
   }, [isFocused]);
 
   // Auto-scroll effect for More Live Jaaps
@@ -449,30 +487,18 @@ export default function JaapLandingScreen() {
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             style={[
                               styles.jaapCardBellBtn,
-                              (invitedJaapId === jaap.id || reminders[jaap.id]) && styles.jaapCardBellBtnActive
+                              reminders[jaap.id] && styles.jaapCardBellBtnActive
                             ]}
                             onPress={() => {
                               const mantraType = jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
-                              const mantraTitle = jaap.title.replace('\n', ' ');
-                              
-                              if (showLive) {
-                                sendJaapInviteFromCard(jaap.id, mantraType, mantraTitle);
-                              } else {
-                                // For session-based jaaps like Hanuman
-                                if (isHanuman) {
-                                  const sessionName = (hanumanStatus as any).nextSessionName || 'Morning';
-                                  handleSetReminder(jaap.id, 'hanuman', sessionName);
-                                } else {
-                                  // For other jaaps that might not have sessions yet, just use a generic reminder
-                                  handleSetReminder(jaap.id, mantraType, 'Next');
-                                }
-                              }
+                              // Toggle reminders for all sessions of this mantra
+                              handleSetReminder(jaap.id, mantraType, 'All');
                             }}
                           >
                             <Ionicons
-                              name={(invitedJaapId === jaap.id || reminders[jaap.id]) ? 'notifications' : 'notifications-outline'}
+                              name={reminders[jaap.id] ? 'notifications' : 'notifications-outline'}
                               size={14}
-                              color={(invitedJaapId === jaap.id || reminders[jaap.id]) ? '#FFD700' : '#FFF'}
+                              color={reminders[jaap.id] ? '#FFD700' : '#FFF'}
                             />
                           </TouchableOpacity>
                         </View>
