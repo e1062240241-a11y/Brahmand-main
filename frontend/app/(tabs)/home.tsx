@@ -481,6 +481,46 @@ export default function HomeScreen() {
     }
 
     try {
+      if (!append && !hasCache && tabToLoad === 'for_you') {
+        try {
+          const { Q } = require('@nozbe/watermelondb');
+          const { database } = require('../../src/database');
+          if (database) {
+            const localFeeds = await database.get('feeds')
+              .query(Q.sortBy('created_at', Q.desc), Q.take(FEED_PAGE_SIZE))
+              .fetch();
+            
+            if (localFeeds && localFeeds.length > 0) {
+              console.log(`[HomeFeed] Loaded ${localFeeds.length} local posts from WatermelonDB`);
+              const mappedFeeds = localFeeds.map((post: any) => ({
+                id: post.id,
+                user_id: post.userId,
+                username: post.username,
+                user_photo: post.userPhoto,
+                media_url: post.mediaUrl,
+                media_type: post.mediaType,
+                caption: post.caption,
+                likes_count: post.likesCount,
+                comments_count: post.commentsCount,
+                liked_by_me: post.likedByMe,
+                created_at: post.createdAt,
+                updated_at: post.updatedAt,
+              }));
+              
+              setTabFeed(tabToLoad, {
+                posts: mappedFeeds,
+                offset: mappedFeeds.length,
+                hasMore: true,
+                lastFetched: Date.now(),
+              });
+              setLoadingFeed(false);
+            }
+          }
+        } catch (localErr) {
+          console.warn('[HomeFeed] Failed to load local feeds:', localErr);
+        }
+      }
+
       console.log(`[HomeFeed] Fetching from API: /posts/feed?tab=${tabToLoad}&offset=${offset}`);
       const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
       console.log(`[HomeFeed] API response received for ${tabToLoad}`);

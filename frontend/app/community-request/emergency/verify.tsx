@@ -8,7 +8,8 @@ import { useAuthStore } from '../../../src/store/authStore';
 
 export default function CommunityRequestEmergencyVerifyPage() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ community_id?: string,
+  const params = useLocalSearchParams<{
+    community_id?: string,
     emergencyType?: string;
     hospitalName?: string;
     location?: string;
@@ -29,7 +30,8 @@ export default function CommunityRequestEmergencyVerifyPage() {
     }
     router.push({
       pathname: '/community-request/emergency/otp',
-      params: { community_id: params.community_id,
+      params: {
+        community_id: params.community_id,
         phone: phoneNumber.replace(/[^0-9]/g, ''),
         emergencyType: params.emergencyType,
         hospitalName: params.hospitalName,
@@ -49,7 +51,8 @@ export default function CommunityRequestEmergencyVerifyPage() {
   const handleContinue = () => {
     router.push({
       pathname: '/community-request/emergency/review',
-      params: { community_id: params.community_id,
+      params: {
+        community_id: params.community_id,
         emergencyType: params.emergencyType,
         hospitalName: params.hospitalName,
         location: params.location,
