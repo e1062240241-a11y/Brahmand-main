@@ -754,7 +754,7 @@ const ReelVideoItem = React.memo(({
             }}
           />
           <Text style={{ color: '#fff', marginTop: 4, fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }}>
-            {commentsCount > 0 ? commentsCount : ''}
+            {commentsCount}
           </Text>
         </TouchableOpacity>
 
@@ -1271,7 +1271,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
               }}
             >
               <View style={{ width: 40, height: 5, backgroundColor: '#DDD', borderRadius: 3, alignSelf: 'center', marginBottom: 15 }} />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>Comments</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>Comments ({selectedPost?.comments_count ?? localComments.length ?? 0})</Text>
 
               <FlatList
                 data={localComments}
@@ -1296,18 +1296,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                           {canDelete && (
                             <TouchableOpacity
                               style={{ padding: 4, marginRight: -4 }}
-                              onPress={() => {
-                                Alert.alert(
-                                  'Delete Comment',
-                                  'Are you sure you want to delete this comment?',
-                                  [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
-                                  ]
-                                );
-                              }}
+                              onPress={() => handleDeleteComment(item)}
                             >
-                              <Ionicons name="trash-outline" size={16} color="#888" />
+                              <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                             </TouchableOpacity>
                           )}
                         </View>

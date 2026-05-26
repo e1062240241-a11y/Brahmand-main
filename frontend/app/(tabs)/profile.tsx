@@ -968,6 +968,51 @@ export default function ProfileScreen() {
             color="#FFF"
           />
         </View>
+
+        {/* View and Comment Count Overlay */}
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.1)',
+          justifyContent: 'flex-end',
+          padding: 6,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+              alignSelf: 'flex-start',
+              gap: 4,
+            }}>
+              <Ionicons name="play" size={10} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>
+                {item.views_count || 0}
+              </Text>
+            </View>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+              alignSelf: 'flex-start',
+              gap: 4,
+            }}>
+              <Ionicons name="chatbubble" size={10} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>
+                {item.comments_count || 0}
+              </Text>
+            </View>
+          </View>
+        </View>
       </Pressable>
     );
   };
@@ -1398,7 +1443,7 @@ export default function ProfileScreen() {
               <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
                 <View style={styles.sheetHandle} />
                 <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>Comments</Text>
+                  <Text style={styles.sheetTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
                   <TouchableOpacity onPress={() => { setCommentModalVisible(false); }}>
                     <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>
@@ -1421,18 +1466,9 @@ export default function ProfileScreen() {
                             {canDelete && (
                               <TouchableOpacity
                                 style={{ padding: 4, marginRight: -4 }}
-                                onPress={() => {
-                                  Alert.alert(
-                                    'Delete Comment',
-                                    'Are you sure you want to delete this comment?',
-                                    [
-                                      { text: 'Cancel', style: 'cancel' },
-                                      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
-                                    ]
-                                  );
-                                }}
+                                onPress={() => handleDeleteComment(item)}
                               >
-                                <Ionicons name="trash-outline" size={16} color={COLORS.textSecondary || '#888'} />
+                                <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                               </TouchableOpacity>
                             )}
                           </View>
