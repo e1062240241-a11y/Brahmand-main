@@ -24,6 +24,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus } from '../../src/services/api';
+import { originalAlert } from '../../src/utils/nativeAlert';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
 import { useVendorStore } from '../../src/store/vendorStore';
@@ -31,6 +32,7 @@ import { COLORS, FONTS } from '../../src/constants/theme';
 import { VendorKYCModal } from '../../src/components/VendorKYCModal';
 import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
+import { ToastContainer } from '../../src/components/ToastContainer';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 
@@ -456,11 +458,11 @@ export default function CommunityDetailScreen() {
     const type = (item.request_type || '').toLowerCase();
     const title = (item.title || '').toLowerCase();
     const description = (item.description || '').toLowerCase();
-    const support = (item.support_needed || '').toLowerCase();
-    const cat = (item.category || '').toLowerCase();
+    const support = (item.support_needed || '').toLowerCase().trim();
+    const cat = (item.category || '').toLowerCase().trim();
 
     return type === 'lost_found' || type === 'lost' || type === 'found' ||
-      cat === 'lost_found' || cat === 'lost' || cat === 'found' ||
+      cat === 'lost & found' || cat === 'lost_found' || cat === 'lost' || cat === 'found' ||
       title.includes('lost') || description.includes('lost') || support.includes('lost') ||
       title.includes('found') || description.includes('found') || support.includes('found');
   };
@@ -470,10 +472,10 @@ export default function CommunityDetailScreen() {
     const type = (item.request_type || '').toLowerCase();
     const title = (item.title || '').toLowerCase();
     const description = (item.description || '').toLowerCase();
-    const support = (item.support_needed || '').toLowerCase();
-    const cat = (item.category || '').toLowerCase();
+    const support = (item.support_needed || '').toLowerCase().trim();
+    const cat = (item.category || '').toLowerCase().trim();
 
-    return type === 'temple_update' || cat === 'temple_update' ||
+    return type === 'temple_update' || cat === 'temple updates' || cat === 'temple_update' ||
       ((title.includes('temple') || description.includes('temple') || support.includes('temple')) &&
         (title.includes('update') || description.includes('update') || title.includes('renovation') || description.includes('renovation')));
   };
@@ -636,8 +638,21 @@ export default function CommunityDetailScreen() {
     if (activeTab === 'Requests') {
       const apiList = filteredRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
       const localList = communityPosts
-        .filter((p: any) => (p.category || '').toLowerCase() === 'requests')
-        .map((p: any) => ({ ...p, type: 'request_item', isRequestItem: true, isRequestInFeed: false }));
+        .filter((p: any) => (p.category || '').toLowerCase().trim() === 'requests')
+        .map((p: any) => ({ 
+          ...p, 
+          type: 'request_item', 
+          isRequestItem: true, 
+          isRequestInFeed: false,
+          title: p.title || 'Community Request',
+          description: p.description || p.content || '',
+          user_name: p.user_name || p.user?.name || 'Devotee',
+          created_at: p.created_at || p.timestamp || new Date().toISOString(),
+          urgency_level: p.urgency_level || 'normal',
+          request_type: p.request_type || 'help',
+          image: p.image || p.image_url || p.media_url,
+          image_url: p.image_url || p.image || p.media_url
+        }));
 
       const reqMap = new Map();
       apiList.forEach(r => reqMap.set(r.id, r));
@@ -649,8 +664,18 @@ export default function CommunityDetailScreen() {
     if (activeTab === 'Events') {
       const apiList = events;
       const localList = communityPosts
-        .filter((p: any) => (p.category || '').toLowerCase() === 'events')
-        .map((p: any) => ({ ...p, isEventItem: true }));
+        .filter((p: any) => (p.category || '').toLowerCase().trim() === 'events')
+        .map((p: any) => ({ 
+          ...p, 
+          isEventItem: true,
+          title: p.title || 'Community Event',
+          description: p.description || p.content || '',
+          user_name: p.user_name || p.user?.name || 'Devotee',
+          start_time: p.start_time || p.timestamp || new Date().toISOString(),
+          location: p.location || p.sevaDetails || 'Community Group',
+          image: p.image || p.image_url || p.media_url,
+          image_url: p.image_url || p.image || p.media_url
+        }));
 
       const evtMap = new Map();
       apiList.forEach(e => evtMap.set(e.id, e));
@@ -661,7 +686,7 @@ export default function CommunityDetailScreen() {
     }
     if (activeTab === 'Festivals') {
       const userFestivals = communityPosts
-        .filter((p: any) => (p.category || '').toLowerCase() === 'festivals')
+        .filter((p: any) => (p.category || '').toLowerCase().trim() === 'festivals')
         .map((p: any) => {
           let eventImage = p.image || p.image_url || p.media_url;
           let resolvedImage = typeof eventImage === 'string' ? { uri: eventImage } : eventImage;
@@ -705,7 +730,17 @@ export default function CommunityDetailScreen() {
       const apiList = requests.filter((item: any) => isLostFoundRequest(item));
       const localList = communityPosts
         .filter((p: any) => isLostFoundRequest(p))
-        .map((p: any) => ({ ...p, isRequestItem: true }));
+        .map((p: any) => ({ 
+          ...p, 
+          isRequestItem: true,
+          title: p.title || 'Lost & Found',
+          description: p.description || p.content || '',
+          user_name: p.user_name || p.user?.name || 'Devotee',
+          created_at: p.created_at || p.timestamp || new Date().toISOString(),
+          request_type: 'lost_found',
+          image: p.image || p.image_url || p.media_url,
+          image_url: p.image_url || p.image || p.media_url
+        }));
 
       const lfMap = new Map();
       apiList.forEach(r => lfMap.set(r.id, r));
@@ -718,7 +753,17 @@ export default function CommunityDetailScreen() {
       const apiList = requests.filter((item: any) => isTempleUpdateRequest(item));
       const localList = communityPosts
         .filter((p: any) => isTempleUpdateRequest(p))
-        .map((p: any) => ({ ...p, isRequestItem: true }));
+        .map((p: any) => ({ 
+          ...p, 
+          isRequestItem: true,
+          title: p.title || 'Temple Update',
+          description: p.description || p.content || '',
+          user_name: p.user_name || p.user?.name || 'Devotee',
+          created_at: p.created_at || p.timestamp || new Date().toISOString(),
+          request_type: 'temple_update',
+          image: p.image || p.image_url || p.media_url,
+          image_url: p.image_url || p.image || p.media_url
+        }));
 
       const tuMap = new Map();
       apiList.forEach(r => tuMap.set(r.id, r));
@@ -730,8 +775,19 @@ export default function CommunityDetailScreen() {
     if (activeTab === 'Seva') {
       const apiSeva = filteredSevaRequests.map((r: any) => ({ ...r, isSevaPost: true, isRequestItem: true }));
       const localSeva = communityPosts
-        .filter((p: any) => (p.category || '').toLowerCase() === 'seva')
-        .map((p: any) => ({ ...p, isSevaPost: true, isRequestItem: true }));
+        .filter((p: any) => (p.category || '').toLowerCase().trim() === 'seva')
+        .map((p: any) => ({ 
+          ...p, 
+          isSevaPost: true, 
+          isRequestItem: true,
+          title: p.title || 'Seva Request',
+          description: p.description || p.content || '',
+          user_name: p.user_name || p.user?.name || 'Devotee',
+          created_at: p.created_at || p.timestamp || new Date().toISOString(),
+          request_type: 'seva',
+          image: p.image || p.image_url || p.media_url,
+          image_url: p.image_url || p.image || p.media_url
+        }));
 
       const sevaMap = new Map();
       apiSeva.forEach(s => sevaMap.set(s.id, s));
@@ -1309,37 +1365,25 @@ export default function CommunityDetailScreen() {
       >
         <TouchableOpacity
           onPress={() => setActiveTab('My Posts')}
-          style={{
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingBottom: 5,
-          }}
+          style={[styles.pillTab, activeTab === 'My Posts' && styles.pillTabActive]}
         >
-          <View style={{
-            width: 14,
-            height: 14,
-            borderRadius: 7,
-            borderWidth: 1.5,
-            borderColor: activeTab === 'My Posts' ? '#FF6B00' : '#888',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
+          <View style={[styles.pillIconWrap, activeTab === 'My Posts' && styles.pillIconWrapActive]}>
             <Ionicons
-              name="checkmark"
+              name="person"
               size={10}
               color={activeTab === 'My Posts' ? '#FF6B00' : '#888'}
-              style={{ fontWeight: 'bold' }}
             />
           </View>
+          <Text style={[styles.pillTabText, activeTab === 'My Posts' && styles.pillTabTextActive]}>My Posts</Text>
         </TouchableOpacity>
 
         {dynamicTabs.map(tab => (
           <TouchableOpacity
             key={tab}
             onPress={() => setActiveTab(tab)}
-            style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
+            style={[styles.pillTab, activeTab === tab && styles.pillTabActive]}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+            <Text style={[styles.pillTabText, activeTab === tab && styles.pillTabTextActive]}>{tab}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -1362,6 +1406,8 @@ export default function CommunityDetailScreen() {
       (item.threadParentId && nextItem.threadParentId === item.threadParentId)
     );
     const hasPrevThreadConnection = item.threadParentId !== undefined;
+
+    const isFulfilled = (item as any).status === 'fulfilled' || (item as any).status === 'resolved' || (item as any).status === 'done';
 
     const shouldTruncate = item.content.length > 300;
     const displayText = shouldTruncate
@@ -1411,14 +1457,29 @@ export default function CommunityDetailScreen() {
                     <Text style={styles.featuredBadgeText}>Featured</Text>
                   </View>
                 )}
+                {(item as any).category && (item as any).category !== 'Feed' && (item as any).category !== 'Others' && (
+                  <View style={{ backgroundColor: '#F0F9FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#BAE6FD' }}>
+                    <Text style={{ fontSize: 10, color: '#0369A1', fontWeight: 'bold' }}>{(item as any).category.toUpperCase()}</Text>
+                  </View>
+                )}
               </View>
               {(item.sender_id === user?.id || item.user.name === user?.name || String(item.id).startsWith('d')) && (
-                <TouchableOpacity
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  onPress={() => handleDeletePost(item.id)}
-                >
-                  <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  {((item as any).isRequestInFeed || ['requests', 'seva', 'lost & found', 'temple updates'].includes((item as any).category?.toLowerCase()) || (item as any).request_type) && !isFulfilled && (
+                    <TouchableOpacity
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      onPress={() => handleResolveRequest(item)}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={20} color="#059669" />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    onPress={() => handleDeletePost(item.id)}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
 
@@ -1539,61 +1600,46 @@ export default function CommunityDetailScreen() {
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     const phone = item.contact || item.contact_number || item.user_phone;
     return (
-      <View style={styles.sevaPremiumCard}>
-        <View style={styles.sevaPremiumHeader}>
-          <View style={styles.sevaPremiumUserRow}>
-            <Avatar name={item.user?.name || item.user_name || 'User'} photo={item.user?.photo} size={44} />
-            <View style={styles.sevaPremiumUserInfo}>
-              <View style={styles.sevaPremiumNameRow}>
-                <Text style={styles.sevaPremiumUserName}>{item.user?.name || item.user_name}</Text>
-                {item.user?.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={16} color="#007AFF" style={{ marginLeft: 4 }} />}
-              </View>
-              <Text style={styles.sevaPremiumTime}>{item.timestamp || getTimeAgo(item.created_at)}</Text>
-            </View>
-          </View>
-          <View style={styles.sevaPremiumBadge}>
-            <Ionicons name="heart" size={12} color="#FFF" />
-            <Text style={styles.sevaPremiumBadgeText}>Seva</Text>
-          </View>
-        </View>
-
-        <View style={styles.sevaPremiumContent}>
-          <Text selectable={true} style={styles.sevaPremiumText}>{item.content || item.description}</Text>
-
-          {item.image && (
+      <View style={styles.festEventCard}>
+        <View style={styles.festEventMain}>
+          {(item.image || item.image_url || item.media_url) && (
             <Image
-              source={typeof item.image === 'string' ? { uri: item.image } : item.image}
-              style={styles.sevaPremiumImage}
-              resizeMode="cover"
+              source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
+              style={styles.festEventImage}
             />
           )}
-
-          {item.sevaDetails ? (
-            <View style={styles.sevaPremiumDetailsBox}>
-              <View style={styles.sevaDetailIconBg}>
-                <Ionicons name="information" size={18} color="#FF6B00" />
+          <View style={styles.festEventInfo}>
+            <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Seva'}</Text>
+            {item.description || item.content || item.sevaDetails ? (
+              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description || item.content || item.sevaDetails}</Text>
+            ) : null}
+            <View style={styles.festEventMeta}>
+              <View style={styles.festMetaRow}>
+                <Ionicons name="heart" size={14} color="#E91E63" />
+                <Text style={styles.festMetaText} numberOfLines={1}>Seva</Text>
               </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.sevaDetailLabel}>Seva Details</Text>
-                <Text style={styles.sevaDetailText}>{item.sevaDetails}</Text>
-              </View>
-            </View>
-          ) : null}
-
-          {phone ? (
-            <View style={styles.sevaPremiumContactBox}>
-              <View style={styles.sevaContactIconBg}>
-                <Ionicons name="call" size={16} color="#00BA7C" />
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.sevaContactLabel}>Contact Person</Text>
-                <Text style={styles.sevaContactText}>{phone}</Text>
+              <View style={styles.festMetaRow}>
+                <Ionicons name="time-outline" size={14} color="#FF3B30" />
+                <Text style={styles.festMetaText} numberOfLines={1}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
               </View>
             </View>
-          ) : null}
+          </View>
         </View>
 
-        <View style={styles.eventActionRow}>
+        <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
+          <View style={styles.festOrgDetailsRow}>
+            <Avatar name={item.user?.name || item.user_name || 'User'} size={32} photo={item.user?.photo} />
+            <View style={{ marginLeft: 8, flex: 1 }}>
+              <View style={styles.festOrgNameRow}>
+                <Text style={styles.festOrgName} numberOfLines={1}>{item.user?.name || item.user_name || 'User'}</Text>
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+              </View>
+              <Text style={styles.festOrgLabel}>Volunteer • {item.location || 'Local'}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
           {/* Call button */}
           <TouchableOpacity
             style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
@@ -1614,7 +1660,7 @@ export default function CommunityDetailScreen() {
           <View style={{ flex: 1, marginHorizontal: 8 }}>
             {item.user_id === user?.id || item.sender_id === user?.id ? (
               !isFulfilled && (
-                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item.id)}>
+                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item)}>
                   <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
                 </TouchableOpacity>
               )
@@ -1624,10 +1670,6 @@ export default function CommunityDetailScreen() {
               <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
                 <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
               </View>
-            ) : (!item.user_id || item.user_id !== user?.id) && (item.sender_id !== user?.id) ? (
-              <TouchableOpacity style={[styles.helpBtn, { width: '100%' }]} onPress={() => handleOfferHelp(item)}>
-                <Text style={styles.helpBtnText}>Offer Help</Text>
-              </TouchableOpacity>
             ) : null}
           </View>
 
@@ -1641,40 +1683,56 @@ export default function CommunityDetailScreen() {
   };
 
   const renderEventItem = ({ item }: { item: any }) => {
-    const eventDate = item.start_time ? new Date(item.start_time) : new Date();
-    const dateNum = eventDate.getDate().toString();
-    const month = eventDate.toLocaleString('default', { month: 'short' }).toUpperCase();
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     const phone = item.contact_number || item.contact || item.user_phone;
 
     return (
-      <View style={styles.eventCard}>
-        <View style={styles.eventInfoRow}>
-          <View style={styles.eventDateCol}>
-            <Text style={styles.eventDate}>{dateNum}</Text>
-            <Text style={styles.eventMonth}>{month}</Text>
-          </View>
-          <View style={styles.eventTextCol}>
-            <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
-            <Text style={styles.eventMeta}>{item.location || 'Online'}</Text>
-            <View style={styles.goingRow}>
-              <Ionicons name="people" size={12} color="#888" />
-              <Text style={styles.goingText2}>{item.attendee_count || 0} Going</Text>
+      <View style={styles.festEventCard}>
+        <View style={styles.festEventMain}>
+          {(item.image_url || item.image || item.media_url) && (
+            <Image
+              source={typeof (item.image_url || item.image || item.media_url) === 'string' ? { uri: (item.image_url || item.image || item.media_url) } : (item.image_url || item.image || item.media_url)}
+              style={styles.festEventImage}
+            />
+          )}
+          <View style={styles.festEventInfo}>
+            <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || 'Event'}</Text>
+            {item.description ? (
+              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
+            ) : null}
+            <View style={styles.festEventMeta}>
+              <View style={styles.festMetaRow}>
+                <Ionicons name="location-outline" size={14} color="#FF3B30" />
+                <Text style={styles.festMetaText} numberOfLines={1}>{item.location || 'Online'}</Text>
+              </View>
+              <View style={styles.festMetaRow}>
+                <Ionicons name="people" size={14} color="#00C853" />
+                <Text style={styles.festMetaText} numberOfLines={1}>{item.attendee_count || 0} Going</Text>
+              </View>
             </View>
           </View>
-          {item.image_url && <Image source={{ uri: item.image_url }} style={styles.eventImage} />}
         </View>
 
-        <View style={styles.eventActionRow}>
-          {/* Call button */}
+        <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
+          <View style={styles.festOrgDetailsRow}>
+            <Avatar name={item.user_name || item.user?.name || 'User'} size={32} photo={item.user?.photo} />
+            <View style={{ marginLeft: 8, flex: 1 }}>
+              <View style={styles.festOrgNameRow}>
+                <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+              </View>
+              <Text style={styles.festOrgLabel}>Organizer • {getTimeAgo(item.start_time || item.created_at || item.timestamp)}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
           <TouchableOpacity
             style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
             onPress={() => handleCallPress(phone)}
           >
             <Ionicons name="call" size={18} color="#16A34A" />
           </TouchableOpacity>
-
-          {/* WhatsApp button */}
           <TouchableOpacity
             style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
             onPress={() => handleWhatsAppPress(phone, item.title)}
@@ -1682,11 +1740,10 @@ export default function CommunityDetailScreen() {
             <FontAwesome5 name="whatsapp" size={18} color="#059669" />
           </TouchableOpacity>
 
-          {/* Fulfill / Help Button */}
           <View style={{ flex: 1, marginHorizontal: 8 }}>
             {item.user_id === user?.id || item.sender_id === user?.id ? (
               !isFulfilled && (
-                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item.id)}>
+                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item)}>
                   <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
                 </TouchableOpacity>
               )
@@ -1696,14 +1753,9 @@ export default function CommunityDetailScreen() {
               <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
                 <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
               </View>
-            ) : (!item.user_id || item.user_id !== user?.id) && (item.sender_id !== user?.id) ? (
-              <TouchableOpacity style={[styles.helpBtn, { width: '100%' }]} onPress={() => handleOfferHelp(item)}>
-                <Text style={styles.helpBtnText}>Offer Help</Text>
-              </TouchableOpacity>
             ) : null}
           </View>
 
-          {/* Share button */}
           <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
             <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
@@ -1842,78 +1894,54 @@ export default function CommunityDetailScreen() {
     const iconDetails = getRequestIconDetails(item);
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     const phone = item.contact_number || item.contact || item.user_phone;
+    
     return (
-      <View style={{
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: 16,
-        marginHorizontal: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.04)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        elevation: 3,
-      }}>
-        {/* Header Row: Icon + Title + Urgency */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-          <View style={{
-            width: 48,
-            height: 48,
-            borderRadius: 16,
-            backgroundColor: iconDetails.bg,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginRight: 12
-          }}>
-            <Ionicons name={iconDetails.name as any} size={24} color={iconDetails.color} />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Text style={{ fontSize: 16, fontFamily: FONTS.bold, color: '#111', flex: 1, marginRight: 8, lineHeight: 22 }} numberOfLines={2}>
-                {item.title}
-              </Text>
-              <View style={{
-                backgroundColor: isFulfilled ? '#DCFCE7' : (item.urgency_level === 'high' ? '#FEE2E2' : '#F3F4F6'),
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}>
-                <Text style={{
-                  fontSize: 10,
-                  fontFamily: FONTS.bold,
-                  color: isFulfilled ? '#166534' : (item.urgency_level === 'high' ? '#DC2626' : '#4B5563')
-                }}>
-                  {isFulfilled ? 'DONE' : (item.urgency_level || 'NORMAL').toUpperCase()}
-                </Text>
+      <View style={styles.festEventCard}>
+        <View style={styles.festEventMain}>
+          {(item.image || item.image_url || item.media_url) && (
+            <Image
+              source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
+              style={styles.festEventImage}
+            />
+          )}
+          <View style={styles.festEventInfo}>
+            <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Request'}</Text>
+            {item.description ? (
+              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
+            ) : null}
+            <View style={styles.festEventMeta}>
+              <View style={styles.festMetaRow}>
+                <Ionicons name={iconDetails.name as any} size={14} color={iconDetails.color} />
+                <Text style={styles.festMetaText} numberOfLines={1}>{(item.urgency_level || 'Normal').toUpperCase()}</Text>
+              </View>
+              <View style={styles.festMetaRow}>
+                <Ionicons name="time-outline" size={14} color="#FF3B30" />
+                <Text style={styles.festMetaText} numberOfLines={1}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
               </View>
             </View>
-            <Text style={{ fontSize: 12, fontFamily: FONTS.medium, color: '#6B7280', marginTop: 4 }}>
-              Requested by {item.user_name || 'Anonymous'} • {getTimeAgo(item.created_at)}
-            </Text>
           </View>
         </View>
-        {/* Support Stats Row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 10, borderRadius: 12, marginBottom: 16 }}>
-          <Ionicons name="heart" size={16} color="#FF3B30" />
-          <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#374151', marginLeft: 6 }}>
-            {item.interested_count || 0} Devotees Interested
-          </Text>
+
+        <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
+          <View style={styles.festOrgDetailsRow}>
+            <Avatar name={item.user_name || item.user?.name || 'User'} size={32} photo={item.user?.photo} />
+            <View style={{ marginLeft: 8, flex: 1 }}>
+              <View style={styles.festOrgNameRow}>
+                <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+              </View>
+              <Text style={styles.festOrgLabel}>{item.request_type ? item.request_type.toUpperCase() : 'Requester'} • {item.interested_count || 0} Interested</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.eventActionRow}>
-          {/* Call button */}
+        <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
           <TouchableOpacity
             style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
             onPress={() => handleCallPress(phone)}
           >
             <Ionicons name="call" size={18} color="#16A34A" />
           </TouchableOpacity>
-
-          {/* WhatsApp button */}
           <TouchableOpacity
             style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
             onPress={() => handleWhatsAppPress(phone, item.title || item.content)}
@@ -1921,11 +1949,10 @@ export default function CommunityDetailScreen() {
             <FontAwesome5 name="whatsapp" size={18} color="#059669" />
           </TouchableOpacity>
 
-          {/* Fulfill / Help Button */}
           <View style={{ flex: 1, marginHorizontal: 8 }}>
             {item.user_id === user?.id || item.sender_id === user?.id ? (
               !isFulfilled && (
-                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item.id)}>
+                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item)}>
                   <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
                 </TouchableOpacity>
               )
@@ -1935,14 +1962,9 @@ export default function CommunityDetailScreen() {
               <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
                 <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
               </View>
-            ) : (!item.user_id || item.user_id !== user?.id) && (item.sender_id !== user?.id) ? (
-              <TouchableOpacity style={[styles.helpBtn, { width: '100%' }]} onPress={() => handleOfferHelp(item)}>
-                <Text style={styles.helpBtnText}>Offer Help</Text>
-              </TouchableOpacity>
             ) : null}
           </View>
 
-          {/* Share button */}
           <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
             <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
@@ -1967,25 +1989,16 @@ export default function CommunityDetailScreen() {
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
-  const handleResolveRequest = (requestId: string) => {
+  const handleResolveRequest = (item: any) => {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Are you sure you want to mark this request as fulfilled?');
       if (confirmed) {
-        (async () => {
-          try {
-            await resolveCommunityRequest(requestId);
-            window.alert('Request marked as fulfilled successfully!');
-            fetchCommunity(true); // Reload requests list!
-          } catch (error: any) {
-            const { parseApiError } = require('../../src/services/api');
-            window.alert(parseApiError(error));
-          }
-        })();
+        executeResolve(item);
       }
       return;
     }
 
-    Alert.alert(
+    originalAlert(
       'Fulfill Request',
       'Are you sure you want to mark this request as fulfilled?',
       [
@@ -1993,19 +2006,26 @@ export default function CommunityDetailScreen() {
         {
           text: 'Fulfill',
           style: 'default',
-          onPress: async () => {
-            try {
-              await resolveCommunityRequest(requestId);
-              Alert.alert('Success', 'Request marked as fulfilled successfully!');
-              fetchCommunity(true); // Reload requests list!
-            } catch (error: any) {
-              const { parseApiError } = require('../../src/services/api');
-              Alert.alert('Error', parseApiError(error));
-            }
-          }
+          onPress: () => executeResolve(item)
         }
       ]
     );
+  };
+
+  const executeResolve = async (item: any) => {
+    try {
+      if (item.request_type) {
+        await resolveCommunityRequest(item.id);
+      } else {
+        const { deletePost } = require('../../src/services/api');
+        await deletePost(item.id);
+      }
+      Alert.alert('Success', 'Request marked as fulfilled successfully!');
+      fetchCommunity(true); // Reload requests list!
+    } catch (error: any) {
+      const { parseApiError } = require('../../src/services/api');
+      Alert.alert('Error', parseApiError(error));
+    }
   };
 
   const handleShareRequest = async (item: any) => {
@@ -2288,7 +2308,7 @@ export default function CommunityDetailScreen() {
       return;
     }
 
-    Alert.alert(
+    originalAlert(
       'Delete Post',
       'Are you sure you want to delete this post from the community?',
       [
@@ -2331,10 +2351,10 @@ export default function CommunityDetailScreen() {
     const text = newMessage;
     const lastAtIndex = text.lastIndexOf('@');
     if (lastAtIndex !== -1) {
-      const updatedText = text.slice(0, lastAtIndex) + `#${category} ` + text.slice(lastAtIndex + 1);
+      const updatedText = text.slice(0, lastAtIndex) + text.slice(lastAtIndex + 1);
       setNewMessage(updatedText);
     } else {
-      setNewMessage(`#${category} `);
+      setNewMessage(text);
     }
   };
 
@@ -2351,9 +2371,9 @@ export default function CommunityDetailScreen() {
     setShowCategorySelector(false);
     setPostCategory(selectedCategory);
 
-    // If user selected Events or Requests, check KYC
-    if ((selectedCategory === 'Events' || selectedCategory === 'Requests') && !isKycVerified) {
-      // Need KYC verification for Events and Requests
+    // If user selected Requests, check KYC
+    if (selectedCategory === 'Requests' && !isKycVerified) {
+      // Need KYC verification for Requests
       let vendorId = myVendor?.id || null;
       if (!vendorId) {
         await fetchMyVendor();
@@ -2692,7 +2712,9 @@ export default function CommunityDetailScreen() {
 
             try {
               const { deleteComment: deleteCommentApi } = require('../../src/services/api');
-              deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
+              deleteCommentApi(commentId)
+                .then(() => Alert.alert('Success', 'Comment deleted successfully!'))
+                .catch((e: any) => console.log('API delete comment err:', e));
             } catch (error) {
               console.log('[Community] Comment delete API error:', error);
             }
@@ -2928,6 +2950,16 @@ export default function CommunityDetailScreen() {
                   <MentionInput
                     value={newMessage}
                     onChangeText={(text) => {
+                      if (!postCategory) {
+                        if (text.length > 0 && !text.includes('@')) {
+                          return;
+                        }
+                        if (text.includes('@')) {
+                          setNewMessage('@');
+                          setShowInlineCategories(true);
+                          return;
+                        }
+                      }
                       setNewMessage(text);
                       if (text.endsWith('@') || text.includes(' @')) {
                         setShowInlineCategories(true);
@@ -2935,7 +2967,7 @@ export default function CommunityDetailScreen() {
                         setShowInlineCategories(false);
                       }
                     }}
-                    placeholder="What's happening? Type @ for categories"
+                    placeholder={postCategory ? "What's happening?" : "Type @ to select a category"}
                     placeholderTextColor="#536471"
                     multiline
                     editable={true}
@@ -3037,7 +3069,7 @@ export default function CommunityDetailScreen() {
 
               <View style={[styles.infoBox, { backgroundColor: 'rgba(255,255,255,0.5)', alignItems: 'flex-start' }]}>
                 <Ionicons name="information-circle-outline" size={20} color="#FF6B00" style={{ marginRight: 10, marginTop: 2 }} />
-                <Text style={[styles.infoBoxText, { color: '#0F1419' }]}>When you tap Post, you'll choose a category for your post. It will appear in that category and the general feed.</Text>
+                <Text style={[styles.infoBoxText, { color: '#0F1419' }]}>When you tap Post, you&apos;ll choose a category for your post. It will appear in that category and the general feed.</Text>
               </View>
 
               <View style={styles.createSection}>
@@ -3207,7 +3239,7 @@ export default function CommunityDetailScreen() {
                         }}>
                           {cat}
                         </Text>
-                        {(cat === 'Events' || cat === 'Requests') && !isKycVerified && (
+                        {cat === 'Requests' && !isKycVerified && (
                           <View style={{
                             flexDirection: 'row',
                             alignItems: 'center',
@@ -3265,6 +3297,7 @@ export default function CommunityDetailScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
           style={styles.modalOverlay}
         >
+          <ToastContainer />
           <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments</Text>
@@ -3286,7 +3319,7 @@ export default function CommunityDetailScreen() {
                     </View>
                     <View style={{ flex: 1, backgroundColor: '#F7F9F9', padding: 12, borderRadius: 16 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419' }}>{comment.userName}</Text>
+                        <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419', flex: 1, marginRight: 8 }} numberOfLines={1}>{comment.userName}</Text>
                         {comment.userId === user?.id && (
                           <TouchableOpacity
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -3527,10 +3560,53 @@ const styles = StyleSheet.create({
   fabBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   fabBtnMore: { backgroundColor: 'rgba(61,40,29,0.9)' },
 
-  tabsContainer: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,107,0,0.15)' },
-  tabsContent: { paddingHorizontal: 20, paddingVertical: 15, gap: 25 },
-  tabItem: { paddingBottom: 5 },
-  tabItemActive: { borderBottomWidth: 3, borderBottomColor: '#FF6B00' },
+  tabsContainer: { marginTop: 20 },
+  tabsContent: { paddingHorizontal: 16, paddingBottom: 16, gap: 10, alignItems: 'center' },
+  pillTab: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  pillTabActive: {
+    backgroundColor: '#FF6B00',
+    borderColor: '#FF6B00',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  pillTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  pillTabTextActive: {
+    color: '#FFFFFF',
+  },
+  pillIconWrap: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pillIconWrapActive: {
+    backgroundColor: '#FFFFFF',
+  },
   goingText: { marginLeft: 6, fontSize: 13, color: '#888', fontFamily: FONTS.regular },
   timeAgoText: { fontSize: 11, color: '#AAA', fontFamily: FONTS.regular },
   tabText: { fontSize: 15, color: '#888', fontWeight: '600' },
