@@ -1499,8 +1499,16 @@ const DirectMessageScreen = () => {
       {/* Messages - takes remaining space */}
       <View style={styles.messagesWrapper}>
         {loading && messages.length === 0 ? (
-          <View style={[styles.emptyContainer, { justifyContent: 'center' }]}>
-            <ActivityIndicator size="small" color={COLORS.primary} />
+          <View style={{ flex: 1, padding: SPACING.md, justifyContent: 'flex-end' }}>
+            {[1, 2, 3, 4, 5].reverse().map((item, index) => {
+              const isOwn = index % 2 === 0;
+              return (
+                <View key={item} style={[styles.messageContainer, isOwn && styles.ownMessageContainer, { opacity: 1 - index * 0.15, marginBottom: 12 }]}>
+                  {!isOwn && <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.06)' }} />}
+                  <View style={[styles.messageBubble, isOwn && styles.ownMessageBubble, { backgroundColor: isOwn ? 'rgba(55, 151, 240, 0.2)' : 'rgba(0,0,0,0.06)', width: index % 3 === 0 ? '60%' : '40%', height: 40 }]} />
+                </View>
+              );
+            })}
           </View>
         ) : (
           <FlatList
@@ -1575,8 +1583,8 @@ const DirectMessageScreen = () => {
         >
           <Ionicons 
             name="send" 
-            size={20} 
-            color={(!newMessage.trim() && !selectedMedia) ? '#BDC3C7' : COLORS.surface} 
+            size={24} 
+            color={(!newMessage.trim() && !selectedMedia) ? '#BDC3C7' : '#3797F0'} 
           />
         </TouchableOpacity>
       </View>
@@ -2004,21 +2012,23 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '75%',
-    backgroundColor: '#F2F3F5',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: '#EFEFEF',
+    borderRadius: 22,
+    borderBottomLeftRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     marginLeft: 8,
     borderWidth: 0,
   },
   ownMessageBubble: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: '#3797F0',
+    borderRadius: 22,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     marginRight: 8,
     marginLeft: 0,
-    borderBottomRightRadius: 4,
   },
   sharedPostMessageBubble: {
     backgroundColor: 'transparent',
@@ -2036,16 +2046,16 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 15,
     fontFamily: 'Inter_400Regular',
-    color: '#1A1A1A',
+    color: '#000000',
     lineHeight: 21,
   },
   ownMessageText: {
-    color: '#000000',
+    color: '#FFFFFF',
   },
   timeText: {
     fontSize: 10,
     fontFamily: 'Inter_400Regular',
-    color: COLORS.textLight,
+    color: '#A0A0A0',
   },
   ownTimeText: {
     color: 'rgba(255,255,255,0.7)',
@@ -2089,20 +2099,20 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#F1F2F6',
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E8ECF2',
+    borderWidth: 0,
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === 'ios' ? 8 : 4,
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Inter_400Regular',
-    color: COLORS.text,
+    color: '#000000',
     paddingTop: 8,
     paddingBottom: 8,
+    minHeight: 40,
   },
   attachButton: {
     padding: 4,
@@ -2111,15 +2121,13 @@ const styles = StyleSheet.create({
   sendButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
-    marginBottom: 2,
+    marginLeft: 4,
+    marginBottom: 0,
   },
   sendButtonDisabled: {
-    backgroundColor: '#E8ECF2',
+    opacity: 0.5,
   },
   attachmentButtons: {
     flexDirection: 'row',

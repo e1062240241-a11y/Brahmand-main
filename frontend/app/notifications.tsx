@@ -436,10 +436,18 @@ export default function NotificationsScreen() {
       </SafeAreaView>
 
       {loading ? (
-        <View style={styles.loadingWrapper}>
-          <ActivityIndicator size="small" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading activity...</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.listWrapper} showsVerticalScrollIndicator={false}>
+          {[1, 2, 3, 4, 5, 6].map((key) => (
+            <View key={key} style={styles.notificationItem}>
+              <View style={[styles.avatarImage, { backgroundColor: 'rgba(0,0,0,0.06)' }]} />
+              <View style={styles.notificationContent}>
+                <View style={{ width: '80%', height: 14, backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 4, marginBottom: 8 }} />
+                <View style={{ width: '40%', height: 12, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 4 }} />
+              </View>
+              <View style={{ width: 40, height: 40, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 8 }} />
+            </View>
+          ))}
+        </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.listWrapper} showsVerticalScrollIndicator={false}>
           {notifications.length === 0 ? (

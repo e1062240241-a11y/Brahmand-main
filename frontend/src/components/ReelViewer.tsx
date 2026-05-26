@@ -1023,7 +1023,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       // Build seen_ids param (cap at 200 to keep URL sane)
       const seenParam = Array.from(seenIdsRef.current).slice(-200).join(',');
 
-      const res = await getPostsFeed(10, 0, 'for_you', seenParam);
+      // Use the current number of loaded videos as the offset (minus 1 if initialPost is not from the API)
+      const offset = Math.max(0, videosRef.current.length);
+      const res = await getPostsFeed(10, offset, 'for_you', seenParam);
       const newPosts = res.data?.items || res.data || [];
 
       if (newPosts.length === 0) {

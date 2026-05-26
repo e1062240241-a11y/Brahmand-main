@@ -346,6 +346,7 @@ export default function CommunityDetailScreen() {
   const [showKycModal, setShowKycModal] = useState(false);
   const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
   const [pendingPostAfterKyc, setPendingPostAfterKyc] = useState(false);
+  const [showInlineCategories, setShowInlineCategories] = useState(false);
 
   const isKycVerified =
     (user as any)?.kyc_status === 'verified' ||
@@ -2272,10 +2273,33 @@ export default function CommunityDetailScreen() {
     );
   };
 
+  const handleInlineCategorySelect = (category: string) => {
+    setShowInlineCategories(false);
+    if (category === 'Requests') {
+      setShowCreateModal(false);
+      setPostCategory('');
+      router.push({ pathname: '/community-request', params: { community_id: id } });
+      return;
+    }
+    
+    setPostCategory(category);
+    const text = newMessage;
+    const lastAtIndex = text.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const updatedText = text.slice(0, lastAtIndex) + `#${category} ` + text.slice(lastAtIndex + 1);
+      setNewMessage(updatedText);
+    } else {
+      setNewMessage(`#${category} `);
+    }
+  };
+
   const handlePostButtonPress = () => {
     if (!newMessage.trim() && !selectedImage) return;
-    // Show category selector bottom sheet instead of posting directly
-    setShowCategorySelector(true);
+    if (postCategory) {
+      handleCategorySelectedAndPost(postCategory);
+    } else {
+      setShowCategorySelector(true);
+    }
   };
 
   const handleCategorySelectedAndPost = async (selectedCategory: string) => {
@@ -2817,13 +2841,13 @@ export default function CommunityDetailScreen() {
 
       {/* Full Screen Create Post Modal */}
       <Modal visible={showCreateModal} animationType="slide" transparent={false}>
-        <View style={[styles.createModalRoot, { paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 40) : 0, backgroundColor: '#FFF' }]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF' }}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: '#EFF3F4', paddingHorizontal: 16 }]}>
-              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); }}>
                 <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
               </TouchableOpacity>
 
@@ -2847,10 +2871,19 @@ export default function CommunityDetailScreen() {
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <MentionInput
                     value={newMessage}
-                    onChangeText={setNewMessage}
-                    placeholder="What's happening?"
+                    onChangeText={(text) => {
+                      setNewMessage(text);
+                      if (text.endsWith('@')) {
+                        setShowInlineCategories(true);
+                      } else if (!text.includes('@')) {
+                        setShowInlineCategories(false);
+                      }
+                    }}
+                    placeholder="Tap @ to choose category or type"
                     placeholderTextColor="#536471"
                     multiline
+                    editable={true}
+                    disableMentions={true}
                     inputStyle={{
                       fontSize: 18,
                       color: '#0F1419',
@@ -2859,8 +2892,53 @@ export default function CommunityDetailScreen() {
                       paddingTop: 4,
                       lineHeight: 24,
                     }}
-                    autoFocus
+                    autoFocus={true}
                   />
+
+                  {postCategory ? (
+                    <View style={styles.selectedCategoryBadge}>
+                      <Ionicons name="pricetag-outline" size={14} color="#FF6600" />
+                      <Text style={styles.selectedCategoryText}>Category: {postCategory}</Text>
+                      <TouchableOpacity onPress={() => { setPostCategory(''); setNewMessage(''); }}>
+                        <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+
+                  {showInlineCategories && (
+                    <View style={styles.inlineCategoriesContainer}>
+                      <Text style={styles.inlineCategoriesTitle}>Select Category</Text>
+                      {POST_CATEGORIES.map((cat) => {
+                        let iconName: any = 'ellipse-outline';
+                        let iconColor = '#536471';
+                        let desc = '';
+                        if (cat === 'Others') { iconName = 'chatbubble-ellipses-outline'; iconColor = '#1D9BF0'; desc = 'General discussion'; }
+                        else if (cat === 'Seva') { iconName = 'heart-outline'; iconColor = '#E91E63'; desc = 'Volunteer & seva'; }
+                        else if (cat === 'Requests') { iconName = 'alert-circle-outline'; iconColor = '#FF6B00'; desc = 'Help & emergency'; }
+                        else if (cat === 'Events') { iconName = 'calendar-outline'; iconColor = '#00C853'; desc = 'Gatherings'; }
+                        else if (cat === 'Lost & Found') { iconName = 'search-outline'; iconColor = '#9C27B0'; desc = 'Lost items'; }
+                        else if (cat === 'Festivals') { iconName = 'flame-outline'; iconColor = '#FF9800'; desc = 'Fest Celebrations'; }
+                        else if (cat === 'Temple Updates') { iconName = 'home-outline'; iconColor = '#795548'; desc = 'Temple news'; }
+
+                        return (
+                          <TouchableOpacity
+                            key={cat}
+                            style={styles.inlineCategoryItem}
+                            onPress={() => handleInlineCategorySelect(cat)}
+                          >
+                            <View style={[styles.inlineCategoryIconBg, { backgroundColor: `${iconColor}15` }]}>
+                              <Ionicons name={iconName} size={16} color={iconColor} />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                              <Text style={styles.inlineCategoryName}>{cat}</Text>
+                              <Text style={styles.inlineCategoryDesc}>{desc}</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={14} color="#CCC" />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
 
                   {/* Add Photo option directly beneath the input box for better accessibility */}
                   {!selectedImage ? (
@@ -2969,7 +3047,7 @@ export default function CommunityDetailScreen() {
               </View>
             </View>
           </KeyboardAvoidingView>
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Category Selector Bottom Sheet — shown when Post is tapped */}
@@ -3629,4 +3707,67 @@ const styles = StyleSheet.create({
   sevaPrimaryBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
   sevaActionRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   sevaActionBtn: { padding: 8, backgroundColor: '#F8F9FA', borderRadius: 12 },
+  selectedCategoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFEBE0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#FFC8B0',
+    gap: 4,
+  },
+  selectedCategoryText: {
+    fontSize: 13,
+    color: '#FF6B00',
+    fontWeight: '700',
+  },
+  inlineCategoriesContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  inlineCategoriesTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#8899A6',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  inlineCategoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F8FA',
+  },
+  inlineCategoryIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inlineCategoryName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#15181C',
+  },
+  inlineCategoryDesc: {
+    fontSize: 11,
+    color: '#8899A6',
+    marginTop: 1,
+  },
 });
