@@ -651,6 +651,15 @@ export default function MessagesScreen() {
           return true;
         });
 
+        // Offline-first: Load communities from cache
+        try {
+          const cachedComms = await getCachedData(COMMUNITIES_CACHE_KEY);
+          if (cachedComms?.data && cachedComms.data.length > 0) {
+            setCommunities(cachedComms.data);
+            setLoading(false);
+          }
+        } catch (e) {}
+
         const [communityRes, requestRes] = await Promise.all([
           getCommunities(),
           getCommunityRequests({ status: 'active', limit: 10 }),
@@ -665,6 +674,7 @@ export default function MessagesScreen() {
         );
 
         setCommunities(verifiedComms);
+        setCachedData(COMMUNITIES_CACHE_KEY, verifiedComms);
 
         // Fetch ALL user_group communities — load from cache first, then refresh
         try {
@@ -707,6 +717,20 @@ export default function MessagesScreen() {
           if (circles.length > 0) return false;
           return true;
         });
+        
+        // Offline-first: Load conversations from cache
+        try {
+          const cachedConvos = await getCachedData(CONVERSATIONS_CACHE_KEY);
+          if (cachedConvos?.data) {
+            if (cachedConvos.data.circles) setCircles(cachedConvos.data.circles);
+            if (cachedConvos.data.conversations) {
+               setConversations(cachedConvos.data.conversations);
+               setLoadingConversations(false);
+            }
+            setLoading(false);
+          }
+        } catch (e) {}
+        
         const res = await getCircles();
         setCircles(res.data || []);
         fetchConversations();
@@ -730,7 +754,10 @@ export default function MessagesScreen() {
     setLoadingConversations((prev) => conversations.length === 0 ? true : prev);
     try {
       const response = await getConversations();
-      setConversations(response.data || []);
+      const newConvos = response.data || [];
+      setConversations(newConvos);
+      // Cache both circles and conversations together
+      setCachedData(CONVERSATIONS_CACHE_KEY, { circles, conversations: newConvos });
     } catch (error: any) {
       console.warn('Error fetching conversations:', error.message || error);
       if (error.response?.status === 401) {
