@@ -2619,6 +2619,7 @@ export default function CommunityDetailScreen() {
         }
         return post;
       }));
+      setShowCommentModal(prev => prev ? { ...prev, comments: (prev.comments || 0) + 1 } : null);
     } catch (error) {
       console.error('Failed to post comment:', error);
       // Rollback comment on error
@@ -2631,82 +2632,36 @@ export default function CommunityDetailScreen() {
     const commentToDelete = activeComments.find(c => c.id === commentId);
     if (!commentToDelete) return;
 
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Delete this comment?');
-      if (confirmed) {
-        setActiveComments(prev => prev.filter(c => c.id !== commentId));
+    // Delete comment immediately from the state without confirmation popups
+    setActiveComments(prev => prev.filter(c => c.id !== commentId));
 
-        const targetPostId = showCommentModal?.id;
-        if (targetPostId) {
-          setCommunityPosts(prev => {
-            const updated = prev.map(post => {
-              if (post.id === targetPostId) {
-                return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
-              }
-              return post;
-            });
-            useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
-            return updated;
-          });
-          setDiscussionPosts(prev => prev.map(post => {
-            if (post.id === targetPostId) {
-              return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
-            }
-            return post;
-          }));
+    const targetPostId = showCommentModal?.id;
+    if (targetPostId) {
+      setCommunityPosts(prev => {
+        const updated = prev.map(post => {
+          if (post.id === targetPostId) {
+            return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
+          }
+          return post;
+        });
+        useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+        return updated;
+      });
+      setDiscussionPosts(prev => prev.map(post => {
+        if (post.id === targetPostId) {
+          return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
         }
-
-        try {
-          const { deleteComment: deleteCommentApi } = require('../../src/services/api');
-          deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
-        } catch (error) {
-          console.log('[Community] Comment delete API error:', error);
-        }
-      }
-      return;
+        return post;
+      }));
+      setShowCommentModal(prev => prev ? { ...prev, comments: Math.max(0, (prev.comments || 0) - 1) } : null);
     }
 
-    Alert.alert(
-      'Delete Comment',
-      'Are you sure you want to delete this comment?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            setActiveComments(prev => prev.filter(c => c.id !== commentId));
-
-            const targetPostId = showCommentModal?.id;
-            if (targetPostId) {
-              setCommunityPosts(prev => {
-                const updated = prev.map(post => {
-                  if (post.id === targetPostId) {
-                    return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
-                  }
-                  return post;
-                });
-                useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
-                return updated;
-              });
-              setDiscussionPosts(prev => prev.map(post => {
-                if (post.id === targetPostId) {
-                  return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
-                }
-                return post;
-              }));
-            }
-
-            try {
-              const { deleteComment: deleteCommentApi } = require('../../src/services/api');
-              deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
-            } catch (error) {
-              console.log('[Community] Comment delete API error:', error);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      const { deleteComment: deleteCommentApi } = require('../../src/services/api');
+      deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
+    } catch (error) {
+      console.log('[Community] Comment delete API error:', error);
+    }
   };
 
 
@@ -3283,7 +3238,7 @@ export default function CommunityDetailScreen() {
         >
           <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={styles.commentModalHeader}>
-              <Text style={styles.commentModalTitle}>Comments</Text>
+              <Text style={styles.commentModalTitle}>Comments ({showCommentModal?.comments ?? activeComments.length ?? 0})</Text>
               <TouchableOpacity onPress={() => setShowCommentModal(null)}>
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
@@ -3308,7 +3263,7 @@ export default function CommunityDetailScreen() {
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             onPress={() => handleDeleteComment(comment.id)}
                           >
-                            <Ionicons name="ellipsis-horizontal" size={14} color="#536471" />
+                            <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                           </TouchableOpacity>
                         )}
                       </View>

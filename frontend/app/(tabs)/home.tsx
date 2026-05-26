@@ -255,6 +255,7 @@ import {
   createCommunityRequest,
   deletePost,
   deletePostComment,
+  discoverCommunities,
   followUser,
   getAllUsers,
   getCommunities,
@@ -626,8 +627,22 @@ export default function HomeScreen() {
     fetchLiveLocation();
   }, []);
 
+  const fetchLocalCommunities = useCallback(async () => {
+    try {
+      const response = await discoverCommunities();
+      const allComms = response.data || [];
+      const userGroupsList = allComms.filter(
+        (item: any) => item.type === 'user_group' || item.type === 'local'
+      );
+      setLocalCommunities(userGroupsList);
+    } catch (err) {
+      console.warn('Failed to fetch local communities for home:', err);
+    }
+  }, []);
+
   const initializeHome = useCallback(async () => {
     try {
+      fetchLocalCommunities();
       const res = await getHomeInit();
       
       // 1. Unread count & Festival
@@ -659,7 +674,7 @@ export default function HomeScreen() {
     } catch (err) {
       console.warn('Failed to init home data:', err);
     }
-  }, [setUnreadCount, setTabFeed]);
+  }, [setUnreadCount, setTabFeed, fetchLocalCommunities]);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -699,6 +714,7 @@ export default function HomeScreen() {
   );
   const [communityRequests, setCommunityRequests] = useState<any[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
+  const [localCommunities, setLocalCommunities] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
@@ -2353,9 +2369,14 @@ export default function HomeScreen() {
 
                 {/* Local Community Card */}
                 {(() => {
-                  const localComm = communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area');
-                  const localName = localComm?.name || 'Local Community';
-                  const localId = localComm?.id || 'local_default';
+                  const localComm = 
+                    communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area' || c.type === 'user_group' || c.type === 'local') ||
+                    localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
+                  const localName = 'Local Community';
+                  const localId = localComm?.id || 'food_pune';
+                  const realGroupName = localComm?.name || 'Pune Food Sharing Group';
+                  const localMembers = localComm ? (localComm.member_count || localComm.members_count || 12) : 236;
+                  const localSubgroup = localComm?.type || 'city';
                   return (
                     <TouchableOpacity
                       style={styles.communityCardMini}
@@ -2363,7 +2384,7 @@ export default function HomeScreen() {
                       onPress={() => {
                         router.push({
                           pathname: '/community/[id]',
-                          params: { id: localId, subgroup: 'area', name: localName }
+                          params: { id: localId, subgroup: localSubgroup, name: realGroupName }
                         });
                       }}
                     >
@@ -2375,7 +2396,7 @@ export default function HomeScreen() {
                           {localName}
                         </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>236 members</Text>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} members</Text>
                           <View style={styles.sevaBadgeMini}>
                             <Text style={styles.sevaBadgeTextMini}>Seva</Text>
                           </View>
@@ -2663,7 +2684,7 @@ export default function HomeScreen() {
               <View style={styles.commentSheet}>
                 <View style={styles.bottomSheetHandle} />
                 <View style={styles.commentSheetHeader}>
-                  <Text style={styles.commentTitle}>Comments</Text>
+                  <Text style={styles.commentTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
                   <TouchableOpacity
                     onPress={() => {
                       setCommentModalVisible(false);
@@ -2700,18 +2721,9 @@ export default function HomeScreen() {
                                 {canDelete && (
                                   <TouchableOpacity
                                     style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => {
-                                      Alert.alert(
-                                        'Delete Comment',
-                                        'Are you sure you want to delete this comment?',
-                                        [
-                                          { text: 'Cancel', style: 'cancel' },
-                                          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
-                                        ]
-                                      );
-                                    }}
+                                    onPress={() => handleDeleteComment(item)}
                                   >
-                                    <Ionicons name="trash-outline" size={16} color="#8A7B89" />
+                                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                                   </TouchableOpacity>
                                 )}
                               </View>

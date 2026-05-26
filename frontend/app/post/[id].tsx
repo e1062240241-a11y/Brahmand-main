@@ -149,7 +149,12 @@ const PostScreen = () => {
     if (!commentPost?.id || !commentText.trim()) return;
     setCommentSubmitting(true);
     try {
-      await addPostComment(String(commentPost.id), commentText.trim());
+      const response = await addPostComment(String(commentPost.id), commentText.trim());
+      const updatedPost = response.data?.post || response.data;
+      if (updatedPost) {
+        setFeedPosts(prev => prev.map(p => p.id === commentPost.id ? { ...p, ...updatedPost } : p));
+        setCommentPost((prev: any) => prev?.id === commentPost.id ? { ...prev, ...updatedPost } : prev);
+      }
       setCommentText('');
       await loadComments(String(commentPost.id));
     } catch {
@@ -396,7 +401,7 @@ const PostScreen = () => {
         >
           <View style={styles.commentModalSheet}>
             <View style={styles.commentModalHeader}>
-              <Text style={styles.commentModalTitle}>Comments</Text>
+              <Text style={styles.commentModalTitle}>Comments ({commentPost?.comments_count ?? postComments.length ?? 0})</Text>
               <TouchableOpacity onPress={() => { setCommentModalVisible(false); }} style={styles.commentCloseBtn}>
                 <Ionicons name="close" size={20} color={COLORS.text} />
               </TouchableOpacity>
@@ -422,18 +427,9 @@ const PostScreen = () => {
                           {canDelete && (
                             <TouchableOpacity
                               style={{ padding: 4, marginRight: -4 }}
-                              onPress={() => {
-                                Alert.alert(
-                                  'Delete Comment',
-                                  'Are you sure you want to delete this comment?',
-                                  [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Delete', style: 'destructive', onPress: () => handleDeleteComment(item) },
-                                  ]
-                                );
-                              }}
+                              onPress={() => handleDeleteComment(item)}
                             >
-                              <Ionicons name="trash-outline" size={16} color={COLORS.textSecondary} />
+                              <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                             </TouchableOpacity>
                           )}
                         </View>
