@@ -51,7 +51,11 @@ class FirebaseMessagingService:
         community_id: str,
         subgroup_type: str,
         content: str,
-        message_type: str = "text"
+        message_type: str = "text",
+        media_url: Optional[str] = None,
+        category: Optional[str] = None,
+        contact: Optional[str] = None,
+        seva_details: Optional[str] = None
     ) -> Dict[str, Any]:
         """Send message to community subgroup"""
         db = await FirebaseMessagingService.get_db()
@@ -93,11 +97,21 @@ class FirebaseMessagingService:
             'sender_name': user['name'],
             'sender_photo': user.get('photo'),
             'sender_sl_id': user.get('sl_id'),
+            'is_verified': user.get('is_verified', False),
+            'verification_level': user.get('verification_level', 'state'),
             'content': content,
             'message_type': message_type,
             'created_at': datetime.utcnow(),
             'timestamp': firestore.SERVER_TIMESTAMP
         }
+        if media_url:
+            message_data['media_url'] = media_url
+        if category:
+            message_data['category'] = category
+        if contact:
+            message_data['contact'] = contact
+        if seva_details:
+            message_data['seva_details'] = seva_details
         
         message_id = await db.add_message_to_chat(chat_id, message_data)
         message_data['id'] = message_id

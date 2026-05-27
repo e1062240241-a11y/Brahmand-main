@@ -270,6 +270,8 @@ class MessageCreate(BaseModel):
     post_id: Optional[str] = None  # Required for POST_SHARE
     media_url: Optional[str] = None  # Required for POST_SHARE
     category: Optional[str] = None
+    contact: Optional[str] = None
+    seva_details: Optional[str] = None
 
 
     @model_validator(mode='after')
