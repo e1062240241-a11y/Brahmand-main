@@ -4408,22 +4408,27 @@ async def create_community(
         db = await get_db()
         owner_id = token_data["user_id"]
         
-        # 1. Validation: Must have exactly 2 admins and 2 members
-        # Make sure owner is not in either, and no duplicates
+        # 1. Validation: Ensure owner is not in either, and no duplicates
         admin_ids = list(set(data.admin_ids))
         member_ids = list(set(data.member_ids))
         
-        if len(admin_ids) != 2 or len(member_ids) != 2:
+        if owner_id in admin_ids or owner_id in member_ids:
             raise HTTPException(
                 status_code=400,
-                detail="A local community group requires exactly 1 owner, 2 admins, and 2 members to initiate consensus creation."
+                detail="Owner cannot be invited as an admin or member."
             )
             
-        all_members_set = set([owner_id] + admin_ids + member_ids)
-        if len(all_members_set) != 5:
+        duplicate_ids = set(admin_ids).intersection(set(member_ids))
+        if duplicate_ids:
             raise HTTPException(
                 status_code=400,
-                detail="Owner, admins, and members must all be unique users."
+                detail="A user cannot be both an admin and a member."
+            )
+
+        if len(admin_ids) + len(member_ids) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="A local community group requires at least one invited admin or member to initiate consensus creation."
             )
 
         # 2. Upload photos to Firebase Storage if provided as base64
