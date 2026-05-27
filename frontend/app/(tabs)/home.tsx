@@ -487,7 +487,7 @@ export default function HomeScreen() {
         x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
         animated: true,
       });
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [isFocused]);
 
@@ -1926,37 +1926,37 @@ export default function HomeScreen() {
                           ) : item.label === 'My Krishna' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Panchang' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Kundli' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Jyotish' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Passport' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Festival Days' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Library' ? (
@@ -1999,29 +1999,12 @@ export default function HomeScreen() {
                 scrollEventThrottle={16}
               >
                 <TouchableOpacity activeOpacity={0.95} style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}>
-                  <ImageBackground source={require('../../assets/images/hanuman_orange.png')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15, transform: [{ scale: 1.1 }] }}>
+                  <ImageBackground source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                     <LinearGradient 
-                      colors={['transparent', 'transparent']} 
+                      colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']} 
                       style={styles.featuredLiveOverlay}
                     >
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                          <Text style={[
-                            styles.featuredLiveTitle,
-                            {
-                              color: '#111',
-                              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-                              fontSize: 15,
-                              fontStyle: 'normal',
-                              fontWeight: '900',
-                              letterSpacing: 1,
-                              textShadowColor: 'rgba(255,255,255,0.8)',
-                              textShadowOffset: { width: 0, height: 1 },
-                              textShadowRadius: 4,
-                            }
-                          ]}>Hanuman Chalisa</Text>
-                        </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
                         <View style={styles.liveBadge}>
                           <View style={styles.liveDot} />
                           <Text style={styles.liveBadgeText}>LIVE</Text>
@@ -2029,10 +2012,26 @@ export default function HomeScreen() {
                       </View>
 
                       <View style={styles.featuredLiveContent}>
-                        <Text style={[styles.featuredDevotees, { color: '#111', fontWeight: '700', textShadowColor: 'rgba(255,255,255,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>5,420 devotees are chanting</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
-                          <Ionicons name="time-outline" size={14} color="#111" />
-                          <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6, color: '#111', fontWeight: '700' }]}>Live until 7:30 PM</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                          <Text style={[
+                            styles.featuredLiveTitle,
+                            {
+                              color: '#FFF',
+                              fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                              fontSize: 22,
+                              fontWeight: '900',
+                              letterSpacing: 0.5,
+                              textShadowColor: 'rgba(0,0,0,0.9)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 6,
+                            }
+                          ]}>Hanuman Chalisa</Text>
+                        </View>
+                        <Text style={[styles.featuredDevotees, { color: '#FFF', fontWeight: '600', opacity: 0.9, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>5,420 devotees are chanting</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 12 }}>
+                          <Ionicons name="time-outline" size={14} color="#FFF" />
+                          <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6, color: '#FFF', fontWeight: '600' }]}>Live until 7:30 PM</Text>
                         </View>
 
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2050,27 +2049,10 @@ export default function HomeScreen() {
                 <TouchableOpacity activeOpacity={0.95} style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}>
                   <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                     <LinearGradient 
-                      colors={['transparent', 'transparent']} 
+                      colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']} 
                       style={styles.featuredLiveOverlay}
                     >
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                          <Text style={[
-                            styles.featuredLiveTitle,
-                            {
-                              color: '#111',
-                              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-                              fontSize: 14,
-                              fontStyle: 'normal',
-                              fontWeight: '900',
-                              letterSpacing: 1,
-                              textShadowColor: 'rgba(255,255,255,0.8)',
-                              textShadowOffset: { width: 0, height: 1 },
-                              textShadowRadius: 4,
-                            }
-                          ]}>Mahamrityunjaya Mantra</Text>
-                        </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
                         <View style={styles.liveBadge}>
                           <View style={styles.liveDot} />
                           <Text style={styles.liveBadgeText}>LIVE</Text>
@@ -2078,10 +2060,26 @@ export default function HomeScreen() {
                       </View>
 
                       <View style={styles.featuredLiveContent}>
-                        <Text style={[styles.featuredDevotees, { color: '#111', fontWeight: '700', textShadowColor: 'rgba(255,255,255,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>1,248 devotees are chanting</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
-                          <Ionicons name="time-outline" size={14} color="#111" />
-                          <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6, color: '#111', fontWeight: '700' }]}>Live until 5:00 PM</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                          <Text style={[
+                            styles.featuredLiveTitle,
+                            {
+                              color: '#FFF',
+                              fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                              fontSize: 22,
+                              fontWeight: '900',
+                              letterSpacing: 0.5,
+                              textShadowColor: 'rgba(0,0,0,0.9)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 6,
+                            }
+                          ]}>Mahamrityunjaya Mantra</Text>
+                        </View>
+                        <Text style={[styles.featuredDevotees, { color: '#FFF', fontWeight: '600', opacity: 0.9, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>1,248 devotees are chanting</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 12 }}>
+                          <Ionicons name="time-outline" size={14} color="#FFF" />
+                          <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6, color: '#FFF', fontWeight: '600' }]}>Live until 5:00 PM</Text>
                         </View>
 
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3208,7 +3206,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   featuredLiveContent: {
-    marginBottom: 10,
+    marginBottom: 25,
   },
   featuredLiveTitle: {
     fontFamily: 'Outfit_700Bold',

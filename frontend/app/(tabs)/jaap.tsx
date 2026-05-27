@@ -206,7 +206,7 @@ export default function JaapLandingScreen() {
         jaapScrollDir.current = 1;
       }
       jaapScrollRef.current?.scrollTo({ x: jaapScrollOffset.current, animated: true });
-    }, 2800);
+    }, 4000);
     return () => clearInterval(autoScroll);
   }, []);
 
@@ -312,7 +312,6 @@ export default function JaapLandingScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
           bounces
-          stickyHeaderIndices={[0]}
         >
           <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
             <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
@@ -577,7 +576,6 @@ export default function JaapLandingScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
           bounces
-          stickyHeaderIndices={[0]}
         >
             <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
               {/* Hero Banner (Same structure as Jaap tab banner) */}
