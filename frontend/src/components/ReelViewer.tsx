@@ -34,7 +34,7 @@ import { MentionInput } from './MentionInput';
 import { MentionText } from './MentionText';
 import * as Clipboard from 'expo-clipboard';
 import { Share, KeyboardAvoidingView, Keyboard } from 'react-native';
-
+import { useTranslation } from '../utils/i18n';
 let ExpoVideoModule: any = null;
 try {
   ExpoVideoModule = require('expo-video');
@@ -818,6 +818,7 @@ const ReelVideoItem = React.memo(({
 });
 
 export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuthStore();
   const [videos, setVideos] = useState<any[]>([initialPost]);
@@ -1400,7 +1401,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                   ) : (
                     <View style={{ marginTop: 60, alignItems: 'center' }}>
                       <Ionicons name="chatbubbles-outline" size={48} color="#CCC" />
-                      <Text style={{ color: '#999', marginTop: 10 }}>No comments yet. Be the first!</Text>
+                      <Text style={{ color: '#999', marginTop: 10 }}>{t('noCommentsYet')}</Text>
                     </View>
                   )
                 }
@@ -1411,7 +1412,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                   <MentionInput
                     value={newCommentText}
                     onChangeText={setNewCommentText}
-                    placeholder="Add a comment..."
+                    placeholder={t('addComment')}
                     style={{ flex: 1 }}
                     inputStyle={{ fontSize: 14, color: '#111', maxHeight: 100 }}
                     multiline
@@ -1425,7 +1426,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                       fontWeight: 'bold',
                       marginLeft: 10
                     }}>
-                      {isSubmittingComment ? '...' : 'Post'}
+                      {isSubmittingComment ? '...' : t('post')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1448,7 +1449,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           >
             <View style={styles.sheetContainer}>
               <View style={styles.sheetHandle} />
-              <Text style={styles.sheetTitle}>Reel Settings</Text>
+              <Text style={styles.sheetTitle}>{t('reelSettings')}</Text>
 
               <TouchableOpacity
                 style={styles.sheetRow}
@@ -1464,7 +1465,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                     color="#FFF"
                     style={styles.sheetIcon}
                   />
-                  <Text style={styles.sheetRowText}>Auto Scroll Next Reel</Text>
+                  <Text style={styles.sheetRowText}>{t('autoScrollNextReel')}</Text>
                 </View>
                 <View style={[styles.toggleTrack, autoScroll && styles.toggleTrackActive]}>
                   <View style={[styles.toggleThumb, autoScroll && styles.toggleThumbActive]} />
@@ -1475,7 +1476,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                 style={[styles.sheetCancelBtn, { marginTop: 16 }]}
                 onPress={() => setIsOptionsVisible(false)}
               >
-                <Text style={styles.sheetCancelText}>Cancel</Text>
+                <Text style={styles.sheetCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
