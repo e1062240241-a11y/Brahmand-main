@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Modal,
   Platform,
   ScrollView,
@@ -16,12 +15,14 @@ import {
   KeyboardAvoidingView,
   PanResponder,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { uploadUserPost, getAllUsers } from '../services/api';
 import { MentionInput } from './MentionInput';
+import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 
 let ExpoVideoModule: any = null;
 try {
@@ -181,7 +182,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const [dynamicRatio, setDynamicRatio] = useState<number>(4 / 5);
   const [aspectRatioMode, setAspectRatioMode] = useState<'1:1' | '4:5' | '1.91:1' | '9:16' | 'original'>('original');
 
-  const previewVideoSource = selectedMedia?.mediaType === 'video' ? selectedMedia.uri : null;
+  const previewVideoSource = (visible && selectedMedia?.mediaType === 'video') ? selectedMedia.uri : null;
   const previewPlayer = useSafeVideoPlayer(Platform.OS === 'web' ? null : previewVideoSource, (p) => {
     p.loop = true;
     p.muted = false;
@@ -569,18 +570,23 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                     <Text style={styles.previewPlaceholder}>Upload Photos or Videos</Text>
                   </View>
                 ) : aspectRatioMode === 'original' ? (
-                  selectedMedia.mediaType === 'image' ? (
-                     <Image source={{ uri: selectedMedia.uri }} style={styles.previewImage} resizeMode="contain" />
-                  ) : Platform.OS === 'web' ? (
-                    <video src={selectedMedia.uri} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  ) : ExpoVideoModule?.VideoView && previewPlayer ? (
-                    <ExpoVideoModule.VideoView player={previewPlayer} style={styles.previewVideo} contentFit="contain" nativeControls playsInline />
-                  ) : (
-                    <View style={[styles.previewVideo, { backgroundColor: '#000' }]} />
-                  )
+                  <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                    {selectedMedia.mediaType === 'image' ? (
+                       <Image source={{ uri: selectedMedia.uri }} style={[styles.previewImage, getFilterStyle(selectedFilter)]} contentFit="contain" />
+                    ) : Platform.OS === 'web' ? (
+                      <video src={selectedMedia.uri} controls style={{ width: '100%', height: '100%', objectFit: 'contain', ...getFilterStyle(selectedFilter) }} />
+                    ) : ExpoVideoModule?.VideoView && previewPlayer ? (
+                      <ExpoVideoModule.VideoView player={previewPlayer} style={styles.previewVideo} contentFit="contain" nativeControls playsInline />
+                    ) : (
+                      <View style={[styles.previewVideo, { backgroundColor: '#000' }]} />
+                    )}
+                    {Platform.OS !== 'web' && selectedFilter !== 'Normal' && (
+                      <View style={[StyleSheet.absoluteFill, getOverlayStyle(selectedFilter)]} pointerEvents="none" />
+                    )}
+                  </View>
                 ) : (
                   <View 
-                    style={{ width: '100%', height: '100%', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}
+                    style={{ width: '100%', height: '100%', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', position: 'relative' }}
                     {...panResponder.panHandlers}
                   >
                     <Animated.View
@@ -594,15 +600,18 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                       }}
                     >
                       {selectedMedia.mediaType === 'image' ? (
-                        <Image source={{ uri: selectedMedia.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                        <Image source={{ uri: selectedMedia.uri }} style={[{ width: '100%', height: '100%' }, getFilterStyle(selectedFilter)]} contentFit="cover" />
                       ) : Platform.OS === 'web' ? (
-                        <video src={selectedMedia.uri} loop muted autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <video src={selectedMedia.uri} loop muted autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', ...getFilterStyle(selectedFilter) }} />
                       ) : ExpoVideoModule?.VideoView && previewPlayer ? (
                         <ExpoVideoModule.VideoView player={previewPlayer} style={{ width: '100%', height: '100%' }} contentFit="cover" nativeControls={false} playsInline />
                       ) : (
                         <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />
                       )}
                     </Animated.View>
+                    {Platform.OS !== 'web' && selectedFilter !== 'Normal' && (
+                      <View style={[StyleSheet.absoluteFill, getOverlayStyle(selectedFilter)]} pointerEvents="none" />
+                    )}
 
                     {/* Rule of Thirds Grid Overlay (Fades in on drag) */}
                     <Animated.View style={[styles.gridOverlay, { opacity: gridOpacity }]} pointerEvents="none">

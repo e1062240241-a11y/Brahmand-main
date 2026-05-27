@@ -26,6 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from '../../src/utils/i18n';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
 import api, {
@@ -86,6 +87,7 @@ type SettingItem = {
 };
 
 export default function ProfileScreen() {
+  const { t, language, setLanguage } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout, updateUser } = useAuthStore();
@@ -108,31 +110,31 @@ export default function ProfileScreen() {
   const SETTINGS_SECTIONS: { id: string; title: string; items: SettingItem[] }[] = [
     {
       id: 'account',
-      title: 'Account',
+      title: t('account'),
       items: [
-        { id: 'edit', icon: 'person-circle', label: 'Manage Profile', route: '/profile/edit', color: '#F97316' },
-        { id: 'kyc', icon: 'shield-checkmark', label: 'KYC Verification', route: '/kyc', color: '#FB923C' },
-        { id: 'personality_verification', icon: 'ribbon', label: 'Personality Verification', route: '/profile/personality-verification', color: '#D4AF37' },
-        { id: 'notifications', icon: 'notifications', label: 'Notifications', route: '/settings/notifications', color: '#F59E0B' },
-        { id: 'privacy', icon: 'lock-closed', label: 'Privacy', route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#D97706' },
+        { id: 'edit', icon: 'person-circle', label: t('manageProfile'), route: '/profile/edit', color: '#F97316' },
+        { id: 'kyc', icon: 'shield-checkmark', label: t('kycVerification'), route: '/kyc', color: '#FB923C' },
+        { id: 'personality_verification', icon: 'ribbon', label: t('personalityVerification'), route: '/profile/personality-verification', color: '#D4AF37' },
+        { id: 'notifications', icon: 'notifications', label: t('notifications'), route: '/settings/notifications', color: '#F59E0B' },
+        { id: 'privacy', icon: 'lock-closed', label: t('privacy'), route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#D97706' },
       ],
     },
     {
       id: 'preferences',
-      title: 'Preferences',
+      title: t('preferences'),
       items: [
-        { id: 'about', icon: 'information-circle', label: 'About Us', route: '/settings/guidelines', color: '#C2410C' },
-        { id: 'location', icon: 'location', label: 'Location', route: '/settings/location', disabled: true, subLabel: 'Coming soon', color: '#EA580C' },
-        { id: 'language', icon: 'language', label: 'Language', value: 'English', disabled: true, color: '#B45309' },
+        { id: 'about', icon: 'information-circle', label: t('aboutUs'), route: '/settings/guidelines', color: '#C2410C' },
+        { id: 'location', icon: 'location', label: t('location'), route: '/settings/location', disabled: true, subLabel: 'Coming soon', color: '#EA580C' },
+        { id: 'language', icon: 'language', label: t('language'), value: language === 'en' ? t('english') : t('hindi'), disabled: false, color: '#B45309' },
       ],
     },
     {
       id: 'support',
-      title: 'Support',
+      title: t('support'),
       items: [
-        { id: 'guidelines', icon: 'document-text', label: 'Community Guidelines', route: '/settings/guidelines', color: '#92400E' },
-        { id: 'culture', icon: 'people', label: 'My Culture Group', value: user?.cultural_community || 'Not set', color: '#854D0E' },
-        { id: 'logout', icon: 'log-out', label: 'Logout', action: 'logout', color: '#B91C1C' },
+        { id: 'guidelines', icon: 'document-text', label: t('communityGuidelines'), route: '/settings/guidelines', color: '#92400E' },
+        { id: 'culture', icon: 'people', label: t('myCultureGroup'), value: user?.cultural_community || 'Not set', color: '#854D0E' },
+        { id: 'logout', icon: 'log-out', label: t('logout'), action: 'logout', color: '#B91C1C' },
       ],
     },
   ];
@@ -162,6 +164,7 @@ export default function ProfileScreen() {
 
   // Cultural Group states
   const [showCGModal, setShowCGModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [cgSearch, setCGSearch] = useState('');
   const [cgList, setCGList] = useState<string[]>([]);
   const [cgLoading, setCGLoading] = useState(false);
@@ -281,8 +284,10 @@ export default function ProfileScreen() {
       updateUser(nextProfile);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
-      console.error('Error status:', error?.response?.status);
-      console.error('Error data:', error?.response?.data);
+      if (error && error.response) {
+        console.error('Error status:', error.response.status);
+        console.error('Error data:', error.response.data);
+      }
       console.error('Error message:', error?.message);
       setProfile(user || null);
       showToast('Profile error. Check backend port 8000.');
@@ -541,6 +546,11 @@ export default function ProfileScreen() {
   const handleMenuPress = (item: SettingItem) => {
     if (item.id === 'culture') {
       handleOpenCGModal();
+      return;
+    }
+
+    if (item.id === 'language') {
+      setShowLanguageModal(true);
       return;
     }
 
@@ -1138,14 +1148,14 @@ export default function ProfileScreen() {
 
             <TouchableOpacity activeOpacity={0.85} onPress={openBioEditor}>
               <Text style={styles.heroBioText}>
-                {profile?.bio || user?.bio || 'Tap to add bio'}
+                {profile?.bio || user?.bio || t('tapToAddBio')}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.heroLocationRow} activeOpacity={0.85} onPress={openLocationEditor}>
               <Ionicons name="location-sharp" size={14} color="rgba(255,255,255,0.9)" />
               <Text style={styles.heroLocationText}>
-                {locationLabel || 'Tap to add location'}
+                {locationLabel || t('tapToAddLocation')}
               </Text>
             </TouchableOpacity>
 
@@ -1154,15 +1164,15 @@ export default function ProfileScreen() {
                 <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFillObject} />
               ) : null}
               <View style={styles.glassStatsOverlay}>
-                {renderStatCell('trending-up', followersCount, 'Followers', () =>
+                {renderStatCell('trending-up', followersCount, t('followers'), () =>
                   router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })
                 )}
                 <View style={styles.glassStatDivider} />
-                {renderStatCell('people', followingCount, 'Following', () =>
+                {renderStatCell('people', followingCount, t('following'), () =>
                   router.push({ pathname: '/follow-connections', params: { tab: 'following' } })
                 )}
                 <View style={styles.glassStatDivider} />
-                {renderStatCell('grid-outline', postsCount, 'Posts')}
+                {renderStatCell('grid-outline', postsCount, t('postCount'))}
               </View>
             </View>
           </View>
@@ -1182,7 +1192,7 @@ export default function ProfileScreen() {
               onPress={() => setShowUploadModal(true)}
             >
               <Ionicons name="add" size={20} color="#FFF" />
-              <Text style={styles.addPostButtonText}>Add Post</Text>
+              <Text style={styles.addPostButtonText}>{t('addPost')}</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.shareProfileButton, pressed && styles.actionPressed]}
@@ -1296,7 +1306,7 @@ export default function ProfileScreen() {
           <View style={[styles.settingsSheet, { paddingBottom: insets.bottom }]}>
             <View style={styles.settingsHeader}>
               <View style={styles.settingsHeaderBar} />
-              <Text style={styles.settingsTitle}>Settings and Privacy</Text>
+              <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
               <TouchableOpacity 
                 style={styles.settingsClose} 
                 onPress={() => setShowSettingsModal(false)}
@@ -1602,6 +1612,50 @@ export default function ProfileScreen() {
                 }
               />
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Language Selection Modal */}
+      <Modal visible={showLanguageModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.cgModalContent}>
+            <View style={styles.cgModalHeader}>
+              <Text style={styles.cgModalTitle}>{t('selectLanguage')}</Text>
+              <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.cgItem}
+              onPress={async () => {
+                await setLanguage('en');
+                setShowLanguageModal(false);
+              }}
+            >
+              <Text style={[styles.cgItemText, language === 'en' && styles.cgItemTextSelected]}>
+                {t('english')}
+              </Text>
+              {language === 'en' && (
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cgItem}
+              onPress={async () => {
+                await setLanguage('hi');
+                setShowLanguageModal(false);
+              }}
+            >
+              <Text style={[styles.cgItemText, language === 'hi' && styles.cgItemTextSelected]}>
+                {t('hindi')}
+              </Text>
+              {language === 'hi' && (
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

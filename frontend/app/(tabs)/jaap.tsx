@@ -26,6 +26,7 @@ import { getTempleImageByName } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import api from '../../src/services/api';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -98,6 +99,7 @@ const UPCOMING_SESSIONS = [
 ];
 
 export default function JaapLandingScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -298,8 +300,8 @@ export default function JaapLandingScreen() {
       <View style={[styles.stickyTopTabsWrap, { paddingTop: insets.top + 10 }]}>
         <View style={styles.topTabsContainer}>
           <View style={styles.topTabsInner}>
-            {renderTopTab('jaap', 'Jaap')}
-            {renderTopTab('temple', 'Temple')}
+            {renderTopTab('jaap', t('jaap'))}
+            {renderTopTab('temple', t('temple'))}
           </View>
         </View>
       </View>
@@ -394,13 +396,13 @@ export default function JaapLandingScreen() {
           </View>
 
             <View style={styles.sectionHeaderParity}>
-              <Text style={styles.sectionTitleText}>More Live Jaaps</Text>
+              <Text style={styles.sectionTitleText}>{t('moreLiveJaaps')}</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => router.push('/all-live-jaaps' as any)}
                 style={{ flexDirection: 'row', alignItems: 'center' }}
               >
-                <Text style={styles.viewAllSaffronRefined}>View All</Text>
+                <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
                 <Ionicons name="chevron-forward" size={18} color="#FF6600" />
               </TouchableOpacity>
             </View>
@@ -517,7 +519,7 @@ export default function JaapLandingScreen() {
                         })}
                       >
                         <View style={{ flex: 1, alignItems: 'center', paddingLeft: 30 }}>
-                          <Text style={styles.exactJoinText}>Join</Text>
+                          <Text style={styles.exactJoinText}>{t('join')}</Text>
                         </View>
                         <View style={styles.waveformIconBox}>
                           <MaterialCommunityIcons name="waveform" size={24} color="#FF6600" />
@@ -531,9 +533,9 @@ export default function JaapLandingScreen() {
             </ScrollView>
 
             <View style={styles.sectionHeaderParity}>
-              <Text style={[styles.sectionTitleText, { flexShrink: 1, marginRight: 12 }]}>Upcoming Spiritual Sessions</Text>
+              <Text style={[styles.sectionTitleText, { flexShrink: 1, marginRight: 12 }]}>{t('upcomingSpiritualSessions')}</Text>
               <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
-                <Text style={styles.viewAllSaffronRefined}>View All</Text>
+                <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
                 <Ionicons name="chevron-forward" size={18} color="#FF6600" />
               </TouchableOpacity>
             </View>
@@ -631,7 +633,7 @@ export default function JaapLandingScreen() {
               <View style={styles.newTempleSearchBarWrapper}>
                 <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 10 }} />
                 <TextInput 
-                  placeholder="Search Mandir"
+                  placeholder={t('searchMandir')}
                   style={styles.newTempleSearchInput}
                   value={templeSearch}
                   onChangeText={setTempleSearch}
@@ -675,7 +677,7 @@ export default function JaapLandingScreen() {
                         <Text style={styles.newTempleCardLoc}>{getTempleLocation(item)}</Text>
                       </View>
                       <TouchableOpacity style={styles.newTempleOpenBtn} onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}>
-                        <Text style={styles.newTempleOpenBtnText}>Open in Maps</Text>
+                        <Text style={styles.newTempleOpenBtnText}>{t('openInMaps')}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
