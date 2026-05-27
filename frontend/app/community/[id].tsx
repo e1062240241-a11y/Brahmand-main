@@ -327,6 +327,7 @@ export default function CommunityDetailScreen() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
+  const [rsvpStates, setRsvpStates] = useState<Record<string, 'yes' | 'no'>>({});
   useEffect(() => {
     const timer = setInterval(() => {
       setTick(t => t + 1);
@@ -1392,6 +1393,8 @@ export default function CommunityDetailScreen() {
           <Text style={[styles.pillTabText, activeTab === 'My Posts' && styles.pillTabTextActive]}>My Posts</Text>
         </TouchableOpacity>
 
+        <View style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
+
         {dynamicTabs.map(tab => (
           <TouchableOpacity
             key={tab}
@@ -1625,8 +1628,14 @@ export default function CommunityDetailScreen() {
           )}
           <View style={styles.festEventInfo}>
             <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Seva'}</Text>
-            {item.description || item.content || item.sevaDetails ? (
-              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description || item.content || item.sevaDetails}</Text>
+            {item.description || item.content ? (
+              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description || item.content}</Text>
+            ) : null}
+            {item.sevaDetails ? (
+              <View style={[styles.sevaInfoCard, { marginTop: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }]}>
+                <Text style={[styles.sevaInfoLabel, { fontSize: 10, marginBottom: 2 }]}>Seva Details</Text>
+                <Text style={[styles.sevaInfoText, { fontSize: 13, lineHeight: 18 }]}>{item.sevaDetails}</Text>
+              </View>
             ) : null}
             <View style={styles.festEventMeta}>
               <View style={styles.festMetaRow}>
@@ -1647,7 +1656,7 @@ export default function CommunityDetailScreen() {
             <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.festOrgNameRow}>
                 <Text style={styles.festOrgName} numberOfLines={1}>{item.user?.name || item.user_name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
               </View>
               <Text style={styles.festOrgLabel}>Volunteer • {item.location || 'Local'}</Text>
             </View>
@@ -1697,9 +1706,40 @@ export default function CommunityDetailScreen() {
     );
   };
 
+  const handleAttendPress = async (eventId: string, wantsToAttend: boolean) => {
+    setRsvpStates(prev => ({
+      ...prev,
+      [eventId]: wantsToAttend ? 'yes' : 'no'
+    }));
+
+    try {
+      if (typeof eventId === 'string' && !eventId.startsWith('post-') && !eventId.startsWith('dummy-')) {
+        const { attendEvent } = require('../../src/services/api');
+        if (wantsToAttend) {
+          await attendEvent(eventId);
+        } else {
+          const { api: axiosInstance } = require('../../src/services/api');
+          await axiosInstance.post(`/events/${eventId}/cancel-attendance`);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to update event attendance on backend:', err);
+    }
+  };
+
   const renderEventItem = ({ item }: { item: any }) => {
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     const phone = item.contact_number || item.contact || item.user_phone;
+
+    const userIsAttendee = Array.isArray(item.attendees) && item.attendees.includes(user?.id);
+    const rsvp = rsvpStates[item.id] || (userIsAttendee ? 'yes' : undefined);
+    
+    let displayGoingCount = item.attendee_count || 0;
+    if (rsvpStates[item.id] === 'yes' && !userIsAttendee) {
+      displayGoingCount += 1;
+    } else if (rsvpStates[item.id] === 'no' && userIsAttendee) {
+      displayGoingCount = Math.max(0, displayGoingCount - 1);
+    }
 
     return (
       <View style={styles.festEventCard}>
@@ -1722,7 +1762,7 @@ export default function CommunityDetailScreen() {
               </View>
               <View style={styles.festMetaRow}>
                 <Ionicons name="people" size={14} color="#00C853" />
-                <Text style={styles.festMetaText} numberOfLines={1}>{item.attendee_count || 0} Going</Text>
+                <Text style={styles.festMetaText} numberOfLines={1}>{displayGoingCount} Going</Text>
               </View>
             </View>
           </View>
@@ -1734,7 +1774,7 @@ export default function CommunityDetailScreen() {
             <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.festOrgNameRow}>
                 <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
               </View>
               <Text style={styles.festOrgLabel}>Organizer • {getTimeAgo(item.start_time || item.created_at || item.timestamp)}</Text>
             </View>
@@ -1775,12 +1815,54 @@ export default function CommunityDetailScreen() {
             <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
         </View>
+
+        {!(item.user_id === user?.id || item.sender_id === user?.id || item.organizer_id === user?.id) && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 12,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: '#F0F0F0',
+          }}>
+            <Text style={{ fontSize: 13, color: '#64748B', fontFamily: FONTS.regular }}>
+              Do you want to attend?
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 14 }}>
+              <TouchableOpacity
+                onPress={() => handleAttendPress(item.id, true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={rsvp === 'yes' ? "checkmark-circle" : "checkmark-circle-outline"}
+                  size={22}
+                  color={rsvp === 'yes' ? "#16A34A" : "#94A3B8"}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleAttendPress(item.id, false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={rsvp === 'no' ? "close-circle" : "close-circle-outline"}
+                  size={22}
+                  color={rsvp === 'no' ? "#DC2626" : "#94A3B8"}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     );
   };
 
-  const renderFestivalItem = ({ item }: { item: any }) => (
-    <View style={[styles.festivalTypeCard, { backgroundColor: item.color }]}>
+  const renderFestivalItem = ({ item, index }: { item: any; index: number }) => (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => router.push(`/festival-detail?index=${index}`)}
+      style={[styles.festivalTypeCard, { backgroundColor: item.color }]}
+    >
       <View style={styles.festivalIconCircle}>
         <Ionicons name={item.icon} size={24} color={item.iconColor} />
       </View>
@@ -1789,7 +1871,7 @@ export default function CommunityDetailScreen() {
         <Text style={styles.festivalEventCountNum}>{item.events}</Text>
         <Text style={styles.festivalEventCountText}>Events</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const handleFestivalInterest = async (item: any) => {
@@ -1860,7 +1942,7 @@ export default function CommunityDetailScreen() {
           <View style={{ marginLeft: 8, flex: 1 }}>
             <View style={styles.festOrgNameRow}>
               <Text style={styles.festOrgName} numberOfLines={1}>{item.organizer.name}</Text>
-              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
             </View>
             <Text style={styles.festOrgLabel}>Organizer • {item.timeAgo}</Text>
           </View>
@@ -1943,7 +2025,7 @@ export default function CommunityDetailScreen() {
             <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.festOrgNameRow}>
                 <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
               </View>
               <Text style={styles.festOrgLabel}>{item.request_type ? item.request_type.toUpperCase() : 'Requester'} • {item.interested_count || 0} Interested</Text>
             </View>
@@ -2926,26 +3008,11 @@ export default function CommunityDetailScreen() {
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <MentionInput
                     value={newMessage}
-                    onChangeText={(text) => {
-                      if (!postCategory) {
-                        if (text === '' || text === '@') {
-                          setNewMessage(text);
-                          if (text === '@') setShowInlineCategories(true);
-                          else setShowInlineCategories(false);
-                        }
-                        return;
-                      }
-                      setNewMessage(text);
-                      if (text.endsWith('@') || text.includes(' @')) {
-                        setShowInlineCategories(true);
-                      } else {
-                        setShowInlineCategories(false);
-                      }
-                    }}
-                    placeholder={postCategory ? "What's happening?" : "Type @ to select a category"}
+                    onChangeText={setNewMessage}
+                    placeholder={postCategory ? "What's happening?" : "Select a category below to start writing..."}
                     placeholderTextColor="#536471"
                     multiline
-                    editable={true}
+                    editable={!!postCategory}
                     disableMentions={true}
                     inputStyle={{
                       fontSize: 18,
@@ -2954,11 +3021,34 @@ export default function CommunityDetailScreen() {
                       textAlignVertical: 'top',
                       paddingTop: 4,
                       lineHeight: 24,
+                      opacity: postCategory ? 1 : 0.6
                     }}
-                    autoFocus={true}
+                    autoFocus={!!postCategory}
                   />
 
-                  {postCategory ? (
+                  {!postCategory ? (
+                    <TouchableOpacity
+                      onPress={() => setShowInlineCategories(!showInlineCategories)}
+                      activeOpacity={0.7}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        alignSelf: 'flex-start',
+                        gap: 6,
+                        backgroundColor: '#FF6600',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                        marginTop: 10,
+                      }}
+                    >
+                      <Ionicons name="pricetag-outline" size={14} color="#FFF" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF', fontFamily: FONTS.bold }}>
+                        Choose Category *
+                      </Text>
+                      <Ionicons name={showInlineCategories ? "chevron-up" : "chevron-down"} size={12} color="#FFF" />
+                    </TouchableOpacity>
+                  ) : (
                     <View style={styles.selectedCategoryBadge}>
                       <Ionicons name="pricetag-outline" size={14} color="#FF6600" />
                       <Text style={styles.selectedCategoryText}>Category: {postCategory}</Text>
@@ -2966,40 +3056,73 @@ export default function CommunityDetailScreen() {
                         <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
                     </View>
-                  ) : null}
+                  )}
 
                   {showInlineCategories && (
-                    <View style={styles.inlineCategoriesContainer}>
-                      <Text style={styles.inlineCategoriesTitle}>Select Category</Text>
-                      {POST_CATEGORIES.map((cat) => {
-                        let iconName: any = 'ellipse-outline';
-                        let iconColor = '#536471';
-                        let desc = '';
-                        if (cat === 'Others') { iconName = 'chatbubble-ellipses-outline'; iconColor = '#1D9BF0'; desc = 'General discussion'; }
-                        else if (cat === 'Seva') { iconName = 'heart-outline'; iconColor = '#E91E63'; desc = 'Volunteer & seva'; }
-                        else if (cat === 'Requests') { iconName = 'alert-circle-outline'; iconColor = '#FF6B00'; desc = 'Help & emergency'; }
-                        else if (cat === 'Events') { iconName = 'calendar-outline'; iconColor = '#00C853'; desc = 'Gatherings'; }
-                        else if (cat === 'Lost & Found') { iconName = 'search-outline'; iconColor = '#9C27B0'; desc = 'Lost items'; }
-                        else if (cat === 'Festivals') { iconName = 'flame-outline'; iconColor = '#FF9800'; desc = 'Fest Celebrations'; }
-                        else if (cat === 'Temple Updates') { iconName = 'home-outline'; iconColor = '#795548'; desc = 'Temple news'; }
+                    <View style={{ marginTop: 12 }}>
+                      <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>Select Category</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {POST_CATEGORIES.map((cat) => {
+                          let iconColor = '#536471';
+                          if (cat === 'Others') iconColor = '#1D9BF0';
+                          else if (cat === 'Seva') iconColor = '#E91E63';
+                          else if (cat === 'Requests') iconColor = '#FF6B00';
+                          else if (cat === 'Events') iconColor = '#00C853';
+                          else if (cat === 'Lost & Found') iconColor = '#9C27B0';
+                          else if (cat === 'Festivals') iconColor = '#FF9800';
+                          else if (cat === 'Temple Updates') iconColor = '#795548';
 
-                        return (
-                          <TouchableOpacity
-                            key={cat}
-                            style={styles.inlineCategoryItem}
-                            onPress={() => handleInlineCategorySelect(cat)}
-                          >
-                            <View style={[styles.inlineCategoryIconBg, { backgroundColor: `${iconColor}15` }]}>
-                              <Ionicons name={iconName} size={16} color={iconColor} />
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 10 }}>
-                              <Text style={styles.inlineCategoryName}>{cat}</Text>
-                              <Text style={styles.inlineCategoryDesc}>{desc}</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={14} color="#CCC" />
-                          </TouchableOpacity>
-                        );
-                      })}
+                          return (
+                            <TouchableOpacity
+                              key={cat}
+                              onPress={() => {
+                                handleInlineCategorySelect(cat);
+                                setShowInlineCategories(false);
+                              }}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#FFF',
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: 20,
+                                borderWidth: 1,
+                                borderColor: `${iconColor}30`,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.05,
+                                shadowRadius: 2,
+                                elevation: 1,
+                              }}
+                            >
+                              <View style={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: 10,
+                                backgroundColor: `${iconColor}15`,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                marginRight: 6
+                              }}>
+                                <Ionicons
+                                  name={
+                                    cat === 'Others' ? 'chatbubble-ellipses-outline' :
+                                    cat === 'Seva' ? 'heart-outline' :
+                                    cat === 'Requests' ? 'alert-circle-outline' :
+                                    cat === 'Events' ? 'calendar-outline' :
+                                    cat === 'Lost & Found' ? 'search-outline' :
+                                    cat === 'Festivals' ? 'flame-outline' :
+                                    'home-outline'
+                                  }
+                                  size={12}
+                                  color={iconColor}
+                                />
+                              </View>
+                              <Text style={{ fontSize: 12, fontFamily: FONTS.medium, color: '#333' }}>{cat}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
                     </View>
                   )}
 
@@ -3877,5 +4000,60 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8899A6',
     marginTop: 1,
+  },
+  attendPromptContainer: {
+    backgroundColor: '#F8FAF5',
+    padding: 12,
+    borderRadius: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  attendPromptText: {
+    fontSize: 13,
+    color: '#334155',
+    fontFamily: FONTS.medium,
+    flex: 1,
+    marginRight: 8,
+  },
+  attendPromptButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  attendPromptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  attendYesBtn: {
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
+  },
+  attendYesBtnActive: {
+    borderColor: '#16A34A',
+    backgroundColor: '#16A34A',
+  },
+  attendNoBtn: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
+  },
+  attendNoBtnActive: {
+    borderColor: '#DC2626',
+    backgroundColor: '#DC2626',
+  },
+  attendPromptBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  attendPromptBtnTextActive: {
+    color: '#FFF',
   },
 });

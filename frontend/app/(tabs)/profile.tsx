@@ -24,7 +24,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
@@ -1112,7 +1112,7 @@ export default function ProfileScreen() {
               {(profile?.is_verified ||
                 user?.is_verified ||
                 user?.personality_verification_status === 'approved') && (
-                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                <MaterialCommunityIcons name="check-decagram" size={18} color="#FF6B00" style={{ marginLeft: 6 }} />
               )}
             </View>
 

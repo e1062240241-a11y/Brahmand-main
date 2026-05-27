@@ -139,12 +139,41 @@ class FirebaseMessagingService:
     async def get_community_messages(
         community_id: str,
         subgroup_type: str,
-        limit: int = 50
+        limit: int = 50,
+        before_timestamp: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get messages from community chat"""
         db = await FirebaseMessagingService.get_db()
         chat_id = FirebaseMessagingService._get_chat_id('community', community_id, subgroup_type)
-        return await db.get_chat_messages(chat_id, limit)
+        
+        parsed_timestamp = None
+        if before_timestamp:
+            try:
+                ts_str = before_timestamp.replace('Z', '+00:00')
+                parsed_timestamp = datetime.fromisoformat(ts_str)
+            except Exception:
+                try:
+                    from dateutil import parser
+                    parsed_timestamp = parser.parse(before_timestamp)
+                except Exception as e:
+                    logger.warning(f"Failed to parse before_timestamp: {before_timestamp}. Error: {e}")
+                    
+        messages = await db.get_chat_messages(chat_id, limit, parsed_timestamp)
+        
+        # Dynamically decorate with current sender verification status
+        if messages:
+            sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+            if sender_ids:
+                users_list = await db.get_documents_batch('users', sender_ids)
+                users_map = {u['id']: u for u in users_list if 'id' in u}
+                for msg in messages:
+                    sender_id = msg.get('sender_id')
+                    if sender_id and sender_id in users_map:
+                        user_doc = users_map[sender_id]
+                        msg['is_verified'] = user_doc.get('is_verified', False)
+                        msg['verification_level'] = user_doc.get('verification_level', 'state')
+                        
+        return messages
     
     @staticmethod
     async def send_circle_message(
