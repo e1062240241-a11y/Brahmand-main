@@ -3537,7 +3537,21 @@ async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = D
         return datetime.min
 
     comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    return comments[:safe_limit]
+    comments = comments[:safe_limit]
+    
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+                    c['is_verified'] = user_doc.get('is_verified', False)
+                    
+    return comments
 
 
 @api_router.delete('/posts/{post_id}/comments/{comment_id}')
@@ -4992,6 +5006,19 @@ async def get_community_message_comments(
     def _sort_key(c):
         return c.get('created_at', '')
     comments.sort(key=_sort_key, reverse=True)
+    
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+                    c['is_verified'] = user_doc.get('is_verified', False)
+                    
     return {
         'status': 'success',
         'data': comments
@@ -5266,7 +5293,9 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
                     "id": other_id,
                     "name": other.get('name', 'Unknown'),
                     "sl_id": other.get('sl_id', ''),
-                    "photo": other.get('photo')
+                    "photo": other.get('photo'),
+                    "is_verified": other.get('is_verified', False),
+                    "verification_level": other.get('verification_level', 'state')
                 },
                 "last_message": chat.get('last_message', ''),
                 "last_message_at": chat.get('updated_at', chat.get('created_at')),
@@ -5313,6 +5342,20 @@ async def get_dm_messages(chat_id: str, limit: int = 50, token_data: dict = Depe
         raise HTTPException(status_code=403, detail="Access denied")
 
     messages = await db.get_chat_messages(chat_id, limit)
+    
+    # Dynamically decorate with current sender verification status
+    if messages:
+        sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+        if sender_ids:
+            users_list = await db.get_documents_batch('users', sender_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for msg in messages:
+                sender_id = msg.get('sender_id')
+                if sender_id and sender_id in users_map:
+                    user_doc = users_map[sender_id]
+                    msg['is_verified'] = user_doc.get('is_verified', False)
+                    msg['verification_level'] = user_doc.get('verification_level', 'state')
+                    
     return messages
 
 

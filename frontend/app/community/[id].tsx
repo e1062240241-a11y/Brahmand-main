@@ -2669,6 +2669,7 @@ export default function CommunityDetailScreen() {
         text: c.text || c.content || '',
         avatar: c.user_photo || c.sender_photo || null,
         userId: c.user_id,
+        isVerified: c.is_verified || false,
       }));
       setActiveComments(mappedComments);
     } catch (error) {
@@ -3417,7 +3418,10 @@ export default function CommunityDetailScreen() {
                     </View>
                     <View style={{ flex: 1, backgroundColor: '#F7F9F9', padding: 12, borderRadius: 16 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419', flex: 1, marginRight: 8 }} numberOfLines={1}>{comment.userName}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                          <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419' }} numberOfLines={1}>{comment.userName}</Text>
+                          {comment.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+                        </View>
                         {comment.userId === user?.id && (
                           <TouchableOpacity
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, FlatList, Image, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../../src/components/Button';
 import { getAllUsers, getConversations, sendDirectMessage } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -166,7 +166,12 @@ export default function NewDMScreen() {
         )}
       </View>
       <View style={styles.userMeta}>
-        <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
+          {item.is_verified && (
+            <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />
+          )}
+        </View>
         <Text style={styles.userSl}>SL: {item.sl_id}</Text>
       </View>
       <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
@@ -239,7 +244,12 @@ export default function NewDMScreen() {
             <View style={styles.userCard}>
               <Avatar name={foundUser.name} photo={foundUser.photo} size={50} />
               <View style={styles.userInfo}>
-                <Text style={styles.selectedUserName}>{foundUser.name}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.selectedUserName}>{foundUser.name}</Text>
+                  {(foundUser.is_verified || foundUser.isVerified) && (
+                    <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />
+                  )}
+                </View>
                 <Text style={styles.userSlId}>{foundUser.sl_id}</Text>
               </View>
               <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
