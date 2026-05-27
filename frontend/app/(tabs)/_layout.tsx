@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../src/utils/i18n';
+import FloatingMenu from '../../src/components/FloatingMenu';
 
 const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
   <View style={styles.iconContainer}>
@@ -17,6 +18,7 @@ export default function TabLayout() {
   const { t } = useTranslation();
 
   return (
+    <>
     <Tabs
       initialRouteName="home"
       screenOptions={{
@@ -110,6 +112,8 @@ export default function TabLayout() {
       <Tabs.Screen name="jobs" options={{ href: null }} />
       <Tabs.Screen name="discover" options={{ href: null }} />
     </Tabs>
+    <FloatingMenu bottomOffset={65} />
+    </>
   );
 }
 

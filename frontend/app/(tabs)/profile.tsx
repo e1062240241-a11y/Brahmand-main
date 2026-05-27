@@ -123,7 +123,6 @@ export default function ProfileScreen() {
       id: 'preferences',
       title: t('preferences'),
       items: [
-        { id: 'about', icon: 'information-circle', label: t('aboutUs'), route: '/settings/guidelines', color: '#C2410C' },
         { id: 'location', icon: 'location', label: t('location'), route: '/settings/location', disabled: true, subLabel: 'Coming soon', color: '#EA580C' },
         { id: 'language', icon: 'language', label: t('language'), value: language === 'en' ? t('english') : t('hindi'), disabled: false, color: '#B45309' },
       ],

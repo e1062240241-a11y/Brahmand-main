@@ -42,7 +42,7 @@ export const translations = {
     reels: 'Reels',
     posts: 'Posts',
     community: 'Community',
-    temple: 'Temple',
+    temple: 'Jaap',
     service: 'Service',
     
     // Profile Screen / Settings
@@ -172,7 +172,7 @@ export const translations = {
     reels: 'रील्स',
     posts: 'पोस्ट',
     community: 'समुदाय',
-    temple: 'मंदिर',
+    temple: 'Jaap',
     service: 'सेवा',
     
     // Profile Screen / Settings
