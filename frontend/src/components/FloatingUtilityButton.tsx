@@ -294,6 +294,7 @@ export const FloatingUtilityButton = () => {
     }
   }, [modalVisible, appStateVisible]);
 
+  
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pan = useRef(new Animated.ValueXY()).current;
   const isDragging = useRef(false);
@@ -1075,7 +1076,7 @@ export const FloatingUtilityButton = () => {
                       onLongPress={startSOSFlow}
                     >
                       <View style={[styles.sosButtonLarge, activeSOS && styles.sosButtonActive]}>
-                        <Text style={styles.sosTextLarge}>SOS</Text>
+                        <Text style={styles.sosButtonText}>SOS</Text>
                       </View>
                       <Text style={styles.itemTitleSOS}>Emergency SOS</Text>
                       <Text style={styles.itemSub}>Tap for Help</Text>
