@@ -360,6 +360,8 @@ function SafeSlot() {
   }
 }
 
+import { useLanguageStore } from '../src/utils/i18n';
+
 export default function RootLayout() {
   const pathname = usePathname();
   const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
@@ -383,6 +385,7 @@ export default function RootLayout() {
   useMutedNotificationFilter();
 
   useEffect(() => {
+    useLanguageStore.getState().loadLanguage();
     Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {
       const authErr = results[0].status === 'rejected' ? results[0].reason : null;
       const adminErr = results[1].status === 'rejected' ? results[1].reason : null;

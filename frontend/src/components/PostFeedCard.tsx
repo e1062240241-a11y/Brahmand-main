@@ -24,6 +24,7 @@ import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
+import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 
 const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 
@@ -93,6 +94,7 @@ export const PostFeedCard = memo(({
   isBlackBackground = false,
 }: PostFeedCardProps) => {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -444,13 +446,16 @@ export const PostFeedCard = memo(({
                       setMediaError('Video failed to load');
                       console.warn('[PostFeedCard] Web Video Load Error:', e);
                     }}
-                    style={cropStyle ? [cropStyle, { objectFit: 'cover' }] : { width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={cropStyle ? { ...cropStyle, objectFit: 'cover', ...getFilterStyle(filterName) } : { width: '100%', height: '100%', objectFit: 'cover', ...getFilterStyle(filterName) } as any}
                     poster={posterUrl || undefined}
                   />
                   {mediaLoading && (
                     <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }]}>
                       <ActivityIndicator color={theme === 'light' ? '#FF8F00' : '#FFD26C'} />
                     </View>
+                  )}
+                  {(Platform.OS as string) !== 'web' && filterName !== 'Normal' && (
+                    <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
                   )}
                 </>
               ) : ExpoVideoModule?.VideoView && player && isActive ? (
@@ -466,6 +471,9 @@ export const PostFeedCard = memo(({
                       setMediaError('Video player error');
                     }}
                   />
+                  {(Platform.OS as string) !== 'web' && filterName !== 'Normal' && (
+                    <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
+                  )}
                   {mediaLoading && posterUrl ? (
                     <Image
                       source={{ uri: posterUrl }}
@@ -512,7 +520,7 @@ export const PostFeedCard = memo(({
             >
               <Image
                 source={{ uri: mediaUrl }}
-                style={cropStyle || StyleSheet.absoluteFill}
+                style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
                 contentFit="cover"
                 transition={300}
                 onLoadStart={() => setMediaLoading(true)}
@@ -531,6 +539,9 @@ export const PostFeedCard = memo(({
                   console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', mediaUrl);
                 }}
               />
+              {((Platform.OS as string) !== 'web') && filterName !== 'Normal' && (
+                <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
+              )}
             </Pressable>
           )
         ) : (

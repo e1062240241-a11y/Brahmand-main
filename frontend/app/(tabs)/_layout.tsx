@@ -3,6 +3,8 @@ import { View, StyleSheet, Image } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from '../../src/utils/i18n';
+
 const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
   <View style={styles.iconContainer}>
     <IconComponent name={name} size={22} color={color} />
@@ -12,6 +14,7 @@ const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom;
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -43,7 +46,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: t('home') as any,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon IconComponent={Ionicons} name={focused ? "home" : "home-outline"} color={color} />
           ),
@@ -54,7 +57,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          tabBarLabel: 'Community',
+          tabBarLabel: t('community') as any,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon IconComponent={Ionicons} name={focused ? "people" : "people-outline"} color={color} />
           ),
@@ -65,7 +68,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="jaap"
         options={{
-          tabBarLabel: 'Temple',
+          tabBarLabel: t('temple') as any,
           tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
               <Image
@@ -82,7 +85,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="vendor"
         options={{
-          tabBarLabel: 'Service',
+          tabBarLabel: t('service') as any,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon IconComponent={MaterialCommunityIcons} name={focused ? "hand-heart" : "hand-heart-outline"} color={color} />
           ),
@@ -93,7 +96,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: t('profile') as any,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon IconComponent={Ionicons} name={focused ? "person" : "person-outline"} color={color} />
           ),
