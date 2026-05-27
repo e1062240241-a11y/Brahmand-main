@@ -364,8 +364,15 @@ const ChatScreen = () => {
       const fetchedMsgs = applyClientClearFilter(response.data || []);
       setMessages(fetchedMsgs);
       useChatStore.getState().setChatCache(roomKey, { messages: response.data || [], lastFetched: Date.now() });
-    } catch (error) {
+      return true;
+    } catch (error: any) {
       console.error('Error fetching messages:', error);
+      if (error?.response?.status === 404) {
+        // Stop fetching if the circle/community is not found (deleted or removed)
+        setLoading(false);
+        return false;
+      }
+      return true;
     } finally {
       setLoading(false);
     }
@@ -419,8 +426,11 @@ const ChatScreen = () => {
       } catch (error) {
         console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
         if (!pollingInterval) {
-          pollingInterval = setInterval(() => {
-            fetchMessages(true);
+          pollingInterval = setInterval(async () => {
+            const shouldContinue = await fetchMessages(true);
+            if (shouldContinue === false && pollingInterval) {
+              clearInterval(pollingInterval);
+            }
           }, 3000);
         }
       }
@@ -430,8 +440,11 @@ const ChatScreen = () => {
 
     if (Platform.OS === 'web') {
       // Web uses polling only for group/community chat; socket transport is unreliable in this setup.
-      pollingInterval = setInterval(() => {
-        fetchMessages(true);
+      pollingInterval = setInterval(async () => {
+        const shouldContinue = await fetchMessages(true);
+        if (shouldContinue === false && pollingInterval) {
+          clearInterval(pollingInterval);
+        }
       }, 3000);
     } else {
       setupSocket();

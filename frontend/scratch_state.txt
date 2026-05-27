@@ -1,0 +1,55 @@
+  const [fabExpanded, setFabExpanded] = useState(false);
+  const fabScale = useRef(new Animated.Value(0)).current;
+  const fabRotation = useRef(new Animated.Value(0)).current;
+  const fabItemAnims = useRef(
+    Array.from({ length: 8 }, () => new Animated.Value(0))
+  ).current;
+
+  const toggleFab = useCallback(() => {
+    const toOpen = !fabExpanded;
+    setFabExpanded(toOpen);
+    if (toOpen) {
+      Animated.parallel([
+        Animated.spring(fabScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabRotation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        ...fabItemAnims.map((anim, i) =>
+          Animated.spring(anim, {
+            toValue: 1,
+            friction: 5,
+            tension: 50,
+            delay: i * 40,
+            useNativeDriver: true,
+          })
+        ),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(fabScale, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabRotation, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        ...fabItemAnims.map((anim) =>
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          })
+        ),
+      ]).start();
+    }
+  }, [fabExpanded, fabScale, fabRotation, fabItemAnims]);
