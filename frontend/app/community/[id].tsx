@@ -1119,6 +1119,8 @@ export default function CommunityDetailScreen() {
         isCommunityMsg: true,
         subgroupType: currentSubgroup,
         communityId: id as string,
+        contact: msg.contact,
+        sevaDetails: msg.seva_details,
       }));
 
       // Map State API messages
@@ -1145,6 +1147,8 @@ export default function CommunityDetailScreen() {
         isCommunityMsg: true,
         subgroupType: 'state',
         communityId: stateCommunityId,
+        contact: msg.contact,
+        sevaDetails: msg.seva_details,
       }));
 
       // Map National API messages
@@ -1171,6 +1175,8 @@ export default function CommunityDetailScreen() {
         isCommunityMsg: true,
         subgroupType: 'national',
         communityId: countryCommunityId,
+        contact: msg.contact,
+        sevaDetails: msg.seva_details,
       }));
 
       // Separate state & national announcements into recent (last 24 hours, to be pinned) and older (to go down the feed)
@@ -1292,6 +1298,8 @@ export default function CommunityDetailScreen() {
         isCommunityMsg: true,
         subgroupType: currentSubgroup,
         communityId: id as string,
+        contact: msg.contact,
+        sevaDetails: msg.seva_details,
       }));
 
       if (newMsgs.length > 0) {
@@ -2495,7 +2503,16 @@ export default function CommunityDetailScreen() {
         const chunk = textChunks[i];
         if (chunk.trim() || (i === 0 && uploadedUrl)) {
           try {
-            const res = await sendCommunityMessage(id as string, currentSubgroup, chunk, 'text', finalCategory, i === 0 ? uploadedUrl : undefined);
+            const res = await sendCommunityMessage(
+              id as string,
+              currentSubgroup,
+              chunk,
+              'text',
+              finalCategory,
+              i === 0 ? uploadedUrl : undefined,
+              i === 0 ? (contactNumber || undefined) : undefined,
+              i === 0 ? (sevaDetails || undefined) : undefined
+            );
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
 
             // Deduplicate by updating the optimistic post with the real server ID

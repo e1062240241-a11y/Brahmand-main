@@ -4755,6 +4755,8 @@ async def send_community_message(
         'sender_name': user['name'],
         'sender_photo': user.get('photo'),
         'sender_sl_id': user.get('sl_id'),
+        'is_verified': user.get('is_verified', False),
+        'verification_level': user.get('verification_level', 'state'),
         'content': message.content,
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat() + 'Z'
@@ -4763,6 +4765,10 @@ async def send_community_message(
         msg_data['media_url'] = message.media_url
     if message.category:
         msg_data['category'] = message.category
+    if message.contact:
+        msg_data['contact'] = message.contact
+    if message.seva_details:
+        msg_data['seva_details'] = message.seva_details
     
     msg_id = await db.add_message_to_chat(chat_id, msg_data.copy())
     
@@ -4773,6 +4779,8 @@ async def send_community_message(
         'sender_name': user['name'],
         'sender_photo': user.get('photo'),
         'sender_sl_id': user.get('sl_id'),
+        'is_verified': user.get('is_verified', False),
+        'verification_level': user.get('verification_level', 'state'),
         'content': message.content,
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat() + 'Z'
@@ -4781,6 +4789,10 @@ async def send_community_message(
         response_data['media_url'] = message.media_url
     if message.category:
         response_data['category'] = message.category
+    if message.contact:
+        response_data['contact'] = message.contact
+    if message.seva_details:
+        response_data['seva_details'] = message.seva_details
 
     # Notify mentioned users in this community message
     try:
