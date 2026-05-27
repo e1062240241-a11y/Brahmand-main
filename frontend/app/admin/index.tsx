@@ -179,13 +179,13 @@ export default function AdminPanelScreen() {
     }
   };
 
-  const handleApproveReport = async (reportId: string) => {
+  const handleApprovePost = async (reportId: string) => {
     if (!adminToken) return;
     setProcessingKey(`report:${reportId}`);
     try {
-      await adminReviewReport(adminToken, reportId, 'approve');
+      await adminReviewReport(adminToken, reportId, 'deny', 'Approved by admin');
       await loadRequests();
-      Alert.alert('Success', 'Report approved and moderated.');
+      Alert.alert('Success', 'Post approved and kept.');
     } catch (error: any) {
       const detail = error?.response?.data?.detail || 'Approve failed';
       Alert.alert('Error', detail);
@@ -194,15 +194,15 @@ export default function AdminPanelScreen() {
     }
   };
 
-  const handleDenyReport = async (reportId: string) => {
+  const handleDeletePost = async (reportId: string) => {
     if (!adminToken) return;
     setProcessingKey(`report:${reportId}`);
     try {
-      await adminReviewReport(adminToken, reportId, 'deny', 'Denied by admin');
+      await adminReviewReport(adminToken, reportId, 'approve');
       await loadRequests();
-      Alert.alert('Updated', 'Report denied.');
+      Alert.alert('Success', 'Post deleted successfully.');
     } catch (error: any) {
-      const detail = error?.response?.data?.detail || 'Deny failed';
+      const detail = error?.response?.data?.detail || 'Delete failed';
       Alert.alert('Error', detail);
     } finally {
       setProcessingKey(null);
@@ -340,7 +340,7 @@ export default function AdminPanelScreen() {
           <TouchableOpacity
             style={[styles.button, styles.approveButton, busy && styles.buttonDisabled]}
             disabled={busy}
-            onPress={() => handleApproveReport(item.id)}
+            onPress={() => handleApprovePost(item.id)}
           >
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Approve</Text>}
           </TouchableOpacity>
@@ -348,9 +348,9 @@ export default function AdminPanelScreen() {
           <TouchableOpacity
             style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
             disabled={busy}
-            onPress={() => handleDenyReport(item.id)}
+            onPress={() => handleDeletePost(item.id)}
           >
-            <Text style={styles.buttonText}>Deny</Text>
+            <Text style={styles.buttonText}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>

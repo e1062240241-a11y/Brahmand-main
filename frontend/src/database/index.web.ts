@@ -4,6 +4,8 @@
 class DummyCollection {
   query() { return { fetch: async () => [], observe: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }) } }
   find() { return Promise.resolve(null) }
+  create(fn: (record: any) => void) { return Promise.resolve({ update: async () => {} }) }
+  update(record: any, fn: (record: any) => void) { return Promise.resolve({}) }
 }
 
 export const database = {

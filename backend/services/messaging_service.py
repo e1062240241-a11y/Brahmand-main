@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
+from bson.objectid import ObjectId
 from config.database import get_database
 from utils.helpers import serialize_doc, moderate_content
 from utils.cache import cache_manager
@@ -73,14 +74,26 @@ class MessagingService:
     async def get_community_messages(
         community_id: str,
         subgroup_type: str,
-        limit: int = 50
+        limit: int = 50,
+        before_timestamp: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get messages from community subgroup"""
         db = await get_database()
-        messages = await db.messages.find({
+        
+        query: Dict[str, Any] = {
             "community_id": community_id,
             "subgroup_type": subgroup_type
-        }).sort("created_at", -1).limit(limit).to_list(limit)
+        }
+        
+        if before_timestamp:
+            try:
+                from dateutil import parser
+                parsed_timestamp = parser.parse(before_timestamp)
+                query["created_at"] = {"$lt": parsed_timestamp}
+            except Exception:
+                pass
+                
+        messages = await db.messages.find(query).sort("created_at", -1).limit(limit).to_list(limit)
         
         return [serialize_doc(msg) for msg in reversed(messages)]
     

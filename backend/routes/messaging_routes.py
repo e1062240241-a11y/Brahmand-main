@@ -32,7 +32,11 @@ async def send_community_message(
             community_id=community_id,
             subgroup_type=subgroup_type,
             content=message.content,
-            message_type=message.message_type.value
+            message_type=message.message_type.value,
+            media_url=message.media_url,
+            category=message.category,
+            contact=message.contact,
+            seva_details=message.seva_details
         )
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -43,11 +47,12 @@ async def get_community_messages(
     community_id: str,
     subgroup_type: str,
     limit: int = 50,
+    before_timestamp: str = None,
     token_data: dict = Depends(verify_token)
 ):
     """Get messages from community subgroup"""
     return await MessagingService.get_community_messages(
-        community_id, subgroup_type, limit
+        community_id, subgroup_type, limit, before_timestamp
     )
 
 

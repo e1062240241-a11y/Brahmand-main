@@ -24,7 +24,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
@@ -195,7 +195,19 @@ export default function ProfileScreen() {
     mediaUri?: string;
   }>({ uploading: false, progress: 0, isCompressing: false });
 
-  const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
+  const handleUploadStart = async (
+    media: any,
+    caption: string,
+    filterName?: string,
+    communityLevel: string = 'city',
+    category: string = 'feed',
+    mediaWidth?: number,
+    mediaHeight?: number,
+    cropOffsetX?: number,
+    cropOffsetY?: number,
+    originalWidth?: number,
+    originalHeight?: number
+  ) => {
     setBackgroundUpload({ 
       uploading: true, 
       progress: 0, 
@@ -220,7 +232,15 @@ export default function ProfileScreen() {
               setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
             }
           }
-        }
+        },
+        communityLevel,
+        category,
+        mediaWidth,
+        mediaHeight,
+        cropOffsetX,
+        cropOffsetY,
+        originalWidth,
+        originalHeight
       );
       
       if (response.data) {
@@ -1112,7 +1132,7 @@ export default function ProfileScreen() {
               {(profile?.is_verified ||
                 user?.is_verified ||
                 user?.personality_verification_status === 'approved') && (
-                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                <MaterialCommunityIcons name="check-decagram" size={18} color="#FF6B00" style={{ marginLeft: 6 }} />
               )}
             </View>
 

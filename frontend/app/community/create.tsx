@@ -125,10 +125,6 @@ export default function CreateCommunityScreen() {
     if (selectedAdmins.find(u => u.id === user.id)) {
       setSelectedAdmins(selectedAdmins.filter(u => u.id !== user.id));
     } else {
-      if (selectedAdmins.length >= 2) {
-        Alert.alert('Limit Reached', 'You can select up to 2 admins.');
-        return;
-      }
       setSelectedAdmins([...selectedAdmins, user]);
     }
   };
@@ -137,10 +133,6 @@ export default function CreateCommunityScreen() {
     if (selectedMembers.find(u => u.id === user.id)) {
       setSelectedMembers(selectedMembers.filter(u => u.id !== user.id));
     } else {
-      if (selectedMembers.length >= 2) {
-        Alert.alert('Limit Reached', 'You can select up to 2 initial members.');
-        return;
-      }
       setSelectedMembers([...selectedMembers, user]);
     }
   };
@@ -176,7 +168,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Create a Community{"\n"}(5 Members Minimum)</Text>
+        <Text style={styles.title}>Create a Community</Text>
         <Text style={styles.subtitle}>Build a trusted and active community{"\n"}with a strong founding team.</Text>
 
         <View style={styles.rolesCard}>
@@ -195,7 +187,7 @@ export default function CreateCommunityScreen() {
               <Ionicons name="shield-checkmark" size={24} color="#3399FF" />
             </View>
             <View style={styles.roleText}>
-              <Text style={styles.roleTitle}>2 Admins</Text>
+              <Text style={styles.roleTitle}>Admins</Text>
               <Text style={styles.roleSub}>Help manage and moderate</Text>
             </View>
           </View>
@@ -205,7 +197,7 @@ export default function CreateCommunityScreen() {
               <Ionicons name="people" size={24} color="#9933FF" />
             </View>
             <View style={styles.roleText}>
-              <Text style={styles.roleTitle}>2 Members</Text>
+              <Text style={styles.roleTitle}>Members</Text>
               <Text style={styles.roleSub}>Core members to start the{"\n"}community</Text>
             </View>
           </View>
@@ -215,8 +207,8 @@ export default function CreateCommunityScreen() {
               <Ionicons name="checkmark-circle" size={24} color="#33CC33" />
             </View>
             <View style={styles.roleText}>
-              <Text style={styles.roleTitle}>5 Minimum</Text>
-              <Text style={styles.roleSub}>Community activates after{"\n"}5 members join</Text>
+              <Text style={styles.roleTitle}>Consensus Activated</Text>
+              <Text style={styles.roleSub}>Community activates after{"\n"}invited team members join</Text>
             </View>
           </View>
         </View>
@@ -260,7 +252,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.howTitle}>How it works?</Text>
           <View style={styles.howStep}>
             <View style={styles.howDot} />
-            <Text style={styles.howText}>Invite 4 people (2 admins + 2 members)</Text>
+            <Text style={styles.howText}>Invite team members (Admins & Members)</Text>
           </View>
           <View style={styles.howStep}>
             <View style={styles.howDot} />
@@ -523,7 +515,7 @@ export default function CreateCommunityScreen() {
       </View>
       <View style={styles.searchHeader}>
         <Text style={styles.selectionTitle}>Select Initial Members</Text>
-        <Text style={styles.selectionSub}>Select 2 Admins and 2 Members to start.</Text>
+        <Text style={styles.selectionSub}>Select Admins and Members to start.</Text>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color="#888" />
           <TextInput
@@ -579,12 +571,12 @@ export default function CreateCommunityScreen() {
 
       <View style={styles.selectionFooter}>
         <Text style={styles.countInfo}>
-          Admins: {selectedAdmins.length}/2 | Members: {selectedMembers.length}/2
+          Admins: {selectedAdmins.length} | Members: {selectedMembers.length}
         </Text>
         <TouchableOpacity
-          style={[styles.continueButton, (selectedAdmins.length < 2 || selectedMembers.length < 2) && styles.disabledButton]}
+          style={[styles.continueButton, (selectedAdmins.length + selectedMembers.length === 0) && styles.disabledButton]}
           onPress={handleNext}
-          disabled={selectedAdmins.length < 2 || selectedMembers.length < 2}
+          disabled={selectedAdmins.length + selectedMembers.length === 0}
         >
           <Text style={styles.continueButtonText}>Continue</Text>
         </TouchableOpacity>
@@ -905,7 +897,7 @@ const styles = StyleSheet.create({
      shadowOffset: { width: 0, height: 2 },
    },
    uploadText: { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 18 },
-   uploadHint: { fontSize: 11, color: '#FF6600', fontFamily: FONTS.semibold, textAlign: 'center', marginTop: 6 },
+   uploadHint: { fontSize: 11, color: '#FF6600', fontFamily: FONTS.semiBold, textAlign: 'center', marginTop: 6 },
    previewImage: { width: 100, height: 100, borderRadius: 50 },
   previewImageCover: { width: '100%', height: 120, borderRadius: 12 },
   dropdown: {

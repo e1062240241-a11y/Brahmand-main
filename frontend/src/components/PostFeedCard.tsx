@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { Image } from 'expo-image';
 import {
   Pressable,
@@ -100,8 +100,18 @@ export const PostFeedCard = memo(({
   const [mediaLoading, setMediaLoading] = useState(true);
   const [showSpinner, setShowSpinner] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  const [dynamicRatio, setDynamicRatio] = useState(4 / 5);
+  const w = Number(post?.media_width || post?.metadata?.width);
+  const h = Number(post?.media_height || post?.metadata?.height);
+  const initialRawRatio = (w && h) ? (w / h) : null;
+
+  const [dynamicRatio, setDynamicRatio] = useState(initialRawRatio || 4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+
+  useEffect(() => {
+    if (initialRawRatio) {
+      setDynamicRatio(initialRawRatio);
+    }
+  }, [initialRawRatio]);
 
   const rawMediaUrl =
     post?.media_url ||
@@ -126,12 +136,48 @@ export const PostFeedCard = memo(({
 
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
-  const w = Number(post?.media_width);
-  const h = Number(post?.media_height);
-  const initialRawRatio = (w && h) ? (w / h) : null;
-
-  const displayRatio = dynamicRatio < 1 ? dynamicRatio : Math.max(4 / 5, dynamicRatio);
+  const displayRatio = dynamicRatio;
   const feedHeight = SCREEN_WIDTH / displayRatio;
+
+  const cropStyle = useMemo(() => {
+    const cropX = post?.crop_offset_x ?? post?.metadata?.crop_offset_x;
+    const cropY = post?.crop_offset_y ?? post?.metadata?.crop_offset_y;
+    
+    if (cropX === undefined && cropY === undefined) {
+      return null;
+    }
+
+    const origW = post?.original_width ?? post?.metadata?.original_width;
+    const origH = post?.original_height ?? post?.metadata?.original_height;
+
+    if (!origW || !origH) {
+      return null;
+    }
+
+    const rOrig = origW / origH;
+    const cardHeight = feedHeight;
+
+    const imgWidth = displayRatio < rOrig ? cardHeight * rOrig : SCREEN_WIDTH;
+    const imgHeight = displayRatio > rOrig ? SCREEN_WIDTH / rOrig : cardHeight;
+
+    const maxDragX = imgWidth - SCREEN_WIDTH;
+    const maxDragY = imgHeight - cardHeight;
+
+    const targetCropX = cropX !== undefined ? cropX : 0.5;
+    const targetCropY = cropY !== undefined ? cropY : 0.5;
+
+    const translateX = maxDragX > 0 ? -targetCropX * maxDragX : 0;
+    const translateY = maxDragY > 0 ? -targetCropY * maxDragY : 0;
+
+    return {
+      width: imgWidth,
+      height: imgHeight,
+      transform: [
+        { translateX },
+        { translateY }
+      ]
+    };
+  }, [post, displayRatio, feedHeight]);
 
   const isFocused = useIsFocused();
   const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen;
@@ -365,7 +411,7 @@ export const PostFeedCard = memo(({
 
         {mediaUrl ? (
           isVideo ? (
-            <View style={styles.videoContainer}>
+            <View style={[styles.videoContainer, { overflow: 'hidden' }]}>
               {Platform.OS === 'web' ? (
                 <>
                   <video
@@ -381,7 +427,6 @@ export const PostFeedCard = memo(({
                     onLoadedData={() => setMediaLoading(false)}
                     onCanPlay={() => setMediaLoading(false)}
                     onWaiting={() => {
-                      // Only show loader if we haven't started playing or if it stays stuck
                       if (videoRef.current && videoRef.current.currentTime === 0) {
                         setMediaLoading(true);
                       }
@@ -399,7 +444,7 @@ export const PostFeedCard = memo(({
                       setMediaError('Video failed to load');
                       console.warn('[PostFeedCard] Web Video Load Error:', e);
                     }}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={cropStyle ? [cropStyle, { objectFit: 'cover' }] : { width: '100%', height: '100%', objectFit: 'cover' }}
                     poster={posterUrl || undefined}
                   />
                   {mediaLoading && (
@@ -412,7 +457,7 @@ export const PostFeedCard = memo(({
                 <>
                   <ExpoVideoModule.VideoView
                     player={player}
-                    style={styles.videoBackground}
+                    style={cropStyle || styles.videoBackground}
                     contentFit="cover"
                     nativeControls={false}
                     onFirstFrameRender={() => setMediaLoading(false)}
@@ -460,14 +505,14 @@ export const PostFeedCard = memo(({
             </View>
           ) : (
             <Pressable
-              style={styles.media}
+              style={[styles.media, { overflow: 'hidden' }]}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
               onPress={handleMediaPress}
             >
               <Image
                 source={{ uri: mediaUrl }}
-                style={StyleSheet.absoluteFill}
+                style={cropStyle || StyleSheet.absoluteFill}
                 contentFit="cover"
                 transition={300}
                 onLoadStart={() => setMediaLoading(true)}

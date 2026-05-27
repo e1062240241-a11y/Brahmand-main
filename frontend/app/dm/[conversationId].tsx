@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
@@ -517,6 +517,7 @@ const DirectMessageScreen = () => {
         status: msg.status,
         created_at: msg.created_at || msg.timestamp || '',
         timestamp: msg.timestamp || msg.created_at || '',
+        is_verified: msg.is_verified || false,
       }));
       
       const existingIds = new Set(messages.map(m => m.id));
@@ -1299,7 +1300,25 @@ const DirectMessageScreen = () => {
               <Avatar name={conversation.user.name} photo={conversation.user.photo} size={40} />
             </View>
             <View style={styles.headerTextInfo}>
-              <Text style={styles.headerTitle} numberOfLines={1}>{conversation.user.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.headerTitle} numberOfLines={1}>{conversation.user.name}</Text>
+                {(conversation.user as any)?.is_verified && (
+                  <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 4 }} />
+                )}
+              </View>
+              <View style={styles.statusRow}>
+                {isRealtime && (
+                  <View style={styles.realtimeBadge}>
+                    <View style={styles.realtimeDot} />
+                    <Text style={styles.realtimeText}>Live</Text>
+                  </View>
+                )}
+                {!!getPresenceLabel() && (
+                  <Text style={[styles.headerSubtitle, { color: getPresenceSource()?.online_status ? '#3DC07D' : COLORS.textSecondary }]}>
+                    {getPresenceLabel()}
+                  </Text>
+                )}
+              </View>
             </View>
           </TouchableOpacity>
         )}

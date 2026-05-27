@@ -14,6 +14,7 @@ import {
   Animated,
   SafeAreaView,
   KeyboardAvoidingView,
+  PanResponder,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -175,9 +176,10 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   }, [uploadProgress]);
 
   const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
   const availableWidth = screenWidth - SPACING.lg * 2;
   const [dynamicRatio, setDynamicRatio] = useState<number>(4 / 5);
-  const [isFit, setIsFit] = useState<boolean>(false); 
+  const [aspectRatioMode, setAspectRatioMode] = useState<'1:1' | '4:5' | '1.91:1' | '9:16' | 'original'>('original');
 
   const previewVideoSource = selectedMedia?.mediaType === 'video' ? selectedMedia.uri : null;
   const previewPlayer = useSafeVideoPlayer(Platform.OS === 'web' ? null : previewVideoSource, (p) => {
@@ -202,8 +204,165 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     }
   }, [selectedMedia]);
 
-  const displayRatio = isFit ? dynamicRatio : Math.max(4 / 5, dynamicRatio);
-  const previewHeight = availableWidth / displayRatio;
+  const getSelectedRatio = () => {
+    switch (aspectRatioMode) {
+      case '1:1':
+        return 1.0;
+      case '4:5':
+        return 4 / 5;
+      case '1.91:1':
+        return 1.91;
+      case '9:16':
+        return 9 / 16;
+      case 'original':
+      default:
+        return dynamicRatio;
+    }
+  };
+
+  const [offsetXPercent, setOffsetXPercent] = useState<number>(0.5);
+  const [offsetYPercent, setOffsetYPercent] = useState<number>(0.5);
+  const [scrollEnabled, setScrollEnabled] = useState<boolean>(true);
+
+  const dragX = useRef(new Animated.Value(0)).current;
+  const dragY = useRef(new Animated.Value(0)).current;
+  const gridOpacity = useRef(new Animated.Value(0)).current;
+
+  const currentDragX = useRef(0);
+  const currentDragY = useRef(0);
+
+  useEffect(() => {
+    const idX = dragX.addListener(({ value }) => {
+      currentDragX.current = value;
+    });
+    const idY = dragY.addListener(({ value }) => {
+      currentDragY.current = value;
+    });
+    return () => {
+      dragX.removeListener(idX);
+      dragY.removeListener(idY);
+    };
+  }, [dragX, dragY]);
+
+  const offsetXPercentRef = useRef(0.5);
+  const offsetYPercentRef = useRef(0.5);
+
+  const displayRatio = getSelectedRatio();
+  const maxPreviewHeight = screenHeight * 0.55;
+
+  let previewWidth = availableWidth;
+  let previewHeight = availableWidth / displayRatio;
+
+  if (previewHeight > maxPreviewHeight) {
+    previewHeight = maxPreviewHeight;
+    previewWidth = maxPreviewHeight * displayRatio;
+  }
+
+  const imgWidth = displayRatio < dynamicRatio ? previewHeight * dynamicRatio : previewWidth;
+  const imgHeight = displayRatio > dynamicRatio ? previewWidth / dynamicRatio : previewHeight;
+
+  const aspectRatioModeRef = useRef(aspectRatioMode);
+  const imgWidthRef = useRef(imgWidth);
+  const imgHeightRef = useRef(imgHeight);
+  const previewHeightRef = useRef(previewHeight);
+  const previewWidthRef = useRef(previewWidth);
+
+  useEffect(() => {
+    aspectRatioModeRef.current = aspectRatioMode;
+    imgWidthRef.current = imgWidth;
+    imgHeightRef.current = imgHeight;
+    previewHeightRef.current = previewHeight;
+    previewWidthRef.current = previewWidth;
+  }, [aspectRatioMode, imgWidth, imgHeight, previewHeight, previewWidth]);
+
+  useEffect(() => {
+    offsetXPercentRef.current = 0.5;
+    offsetYPercentRef.current = 0.5;
+    setOffsetXPercent(0.5);
+    setOffsetYPercent(0.5);
+
+    const initialX = imgWidth > previewWidth ? -0.5 * (imgWidth - previewWidth) : 0;
+    const initialY = imgHeight > previewHeight ? -0.5 * (imgHeight - previewHeight) : 0;
+
+    dragX.setValue(initialX);
+    dragY.setValue(initialY);
+  }, [aspectRatioMode, selectedMedia, displayRatio, imgWidth, imgHeight, previewWidth, previewHeight]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => aspectRatioModeRef.current !== 'original',
+      onMoveShouldSetPanResponder: () => aspectRatioModeRef.current !== 'original',
+      onPanResponderGrant: () => {
+        setScrollEnabled(false);
+        Animated.timing(gridOpacity, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }).start();
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (aspectRatioModeRef.current === 'original') return;
+
+        const currentW = imgWidthRef.current;
+        const currentH = imgHeightRef.current;
+        const currentPrevW = previewWidthRef.current;
+        const currentPrevH = previewHeightRef.current;
+
+        if (currentW > currentPrevW) {
+          const maxDragX = currentW - currentPrevW;
+          const startX = -offsetXPercentRef.current * maxDragX;
+          const newX = Math.max(-maxDragX, Math.min(0, startX + gestureState.dx));
+          dragX.setValue(newX);
+        } else if (currentH > currentPrevH) {
+          const maxDragY = currentH - currentPrevH;
+          const startY = -offsetYPercentRef.current * maxDragY;
+          const newY = Math.max(-maxDragY, Math.min(0, startY + gestureState.dy));
+          dragY.setValue(newY);
+        }
+      },
+      onPanResponderRelease: () => {
+        setScrollEnabled(true);
+        Animated.timing(gridOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+
+        const currentW = imgWidthRef.current;
+        const currentH = imgHeightRef.current;
+        const currentAvailW = previewWidthRef.current;
+        const currentPrevH = previewHeightRef.current;
+
+        if (currentW > currentAvailW) {
+          const maxDragX = currentW - currentAvailW;
+          offsetXPercentRef.current = -currentDragX.current / maxDragX;
+          setOffsetXPercent(offsetXPercentRef.current);
+        } else if (currentH > currentPrevH) {
+          const maxDragY = currentH - currentPrevH;
+          offsetYPercentRef.current = -currentDragY.current / maxDragY;
+          setOffsetYPercent(offsetYPercentRef.current);
+        }
+      },
+      onPanResponderTerminate: () => {
+        setScrollEnabled(true);
+        Animated.timing(gridOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      },
+    })
+  ).current;
+
+  const isCroppedHorizontally = imgWidth > previewWidth;
+  const isCroppedVertically = imgHeight > previewHeight;
+
+  let tooltipText = "Drag to adjust fit";
+  if (isCroppedHorizontally) {
+    tooltipText = "← Drag left / right to adjust fit →";
+  } else if (isCroppedVertically) {
+    tooltipText = "↑ Drag up / down to adjust fit ↓";
+  }
 
   const canUpload = useMemo(() => !!selectedMedia && !uploading, [selectedMedia, uploading]);
 
@@ -214,7 +373,10 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     setUploading(false);
     setUploadProgress(0);
     setIsCompressing(false);
-    setIsFit(false);
+    setAspectRatioMode('original');
+    setOffsetXPercent(0.5);
+    setOffsetYPercent(0.5);
+    setScrollEnabled(true);
     onClose();
   };
 
@@ -292,8 +454,50 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
 
   const handleUpload = async () => {
     if (!selectedMedia) return;
+
+    let mediaWidth: number | undefined;
+    let mediaHeight: number | undefined;
+
+    switch (aspectRatioMode) {
+      case '1:1':
+        mediaWidth = 1080;
+        mediaHeight = 1080;
+        break;
+      case '4:5':
+        mediaWidth = 1080;
+        mediaHeight = 1350;
+        break;
+      case '1.91:1':
+        mediaWidth = 1080;
+        mediaHeight = 566;
+        break;
+      case '9:16':
+        mediaWidth = 1080;
+        mediaHeight = 1920;
+        break;
+      case 'original':
+      default:
+        mediaWidth = selectedMedia.width;
+        mediaHeight = selectedMedia.height;
+        break;
+    }
+
+    const uploadCategory = aspectRatioMode === '9:16' ? 'reels' : category;
+
     if (onUploadStart) {
-      onUploadStart(selectedMedia, caption, selectedFilter, communityLevel, category);
+      onUploadStart(
+        selectedMedia,
+        caption,
+        selectedFilter,
+        communityLevel,
+        uploadCategory,
+        mediaWidth,
+        mediaHeight,
+        offsetXPercent,
+        offsetYPercent,
+        selectedMedia.width,
+        selectedMedia.height
+      );
       resetAndClose();
       return;
     }
@@ -316,7 +520,13 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
           }
         },
         communityLevel,
-        category
+        uploadCategory,
+        mediaWidth,
+        mediaHeight,
+        offsetXPercent,
+        offsetYPercent,
+        selectedMedia.width,
+        selectedMedia.height
       );
       onUploadSuccess(response.data);
       resetAndClose();
@@ -343,13 +553,14 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             <View style={styles.iconBtn} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <ScrollView scrollEnabled={scrollEnabled} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             
             <View style={styles.mediaContainer}>
               <View
                 style={[
                   styles.previewBox,
-                  selectedMedia ? { height: Math.min(previewHeight, availableWidth / (4 / 5)) } : {},
+                  selectedMedia ? { width: previewWidth, height: previewHeight } : {},
+                  (selectedMedia && aspectRatioMode === 'original') ? { backgroundColor: '#FFFFFF' } : {},
                 ]}
               >
                 {!selectedMedia ? (
@@ -357,22 +568,110 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                     <MaterialIcons name="add-photo-alternate" size={48} color={COLORS.textSecondary} />
                     <Text style={styles.previewPlaceholder}>Upload Photos or Videos</Text>
                   </View>
-                ) : selectedMedia.mediaType === 'image' ? (
-                   <Image source={{ uri: selectedMedia.uri }} style={styles.previewImage} resizeMode={isFit ? "contain" : "cover"} />
-                ) : Platform.OS === 'web' ? (
-                  <video src={selectedMedia.uri} controls style={{ width: '100%', height: '100%', objectFit: isFit ? 'contain' : 'cover' }} />
-                ) : ExpoVideoModule?.VideoView && previewPlayer ? (
-                  <ExpoVideoModule.VideoView player={previewPlayer} style={styles.previewVideo} contentFit={isFit ? 'contain' : 'cover'} nativeControls playsInline />
+                ) : aspectRatioMode === 'original' ? (
+                  selectedMedia.mediaType === 'image' ? (
+                     <Image source={{ uri: selectedMedia.uri }} style={styles.previewImage} resizeMode="contain" />
+                  ) : Platform.OS === 'web' ? (
+                    <video src={selectedMedia.uri} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : ExpoVideoModule?.VideoView && previewPlayer ? (
+                    <ExpoVideoModule.VideoView player={previewPlayer} style={styles.previewVideo} contentFit="contain" nativeControls playsInline />
+                  ) : (
+                    <View style={[styles.previewVideo, { backgroundColor: '#000' }]} />
+                  )
                 ) : (
-                  <View style={[styles.previewVideo, { backgroundColor: '#000' }]} />
+                  <View 
+                    style={{ width: '100%', height: '100%', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}
+                    {...panResponder.panHandlers}
+                  >
+                    <Animated.View
+                      style={{
+                        width: imgWidth,
+                        height: imgHeight,
+                        transform: [
+                          { translateX: dragX },
+                          { translateY: dragY }
+                        ]
+                      }}
+                    >
+                      {selectedMedia.mediaType === 'image' ? (
+                        <Image source={{ uri: selectedMedia.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                      ) : Platform.OS === 'web' ? (
+                        <video src={selectedMedia.uri} loop muted autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : ExpoVideoModule?.VideoView && previewPlayer ? (
+                        <ExpoVideoModule.VideoView player={previewPlayer} style={{ width: '100%', height: '100%' }} contentFit="cover" nativeControls={false} playsInline />
+                      ) : (
+                        <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />
+                      )}
+                    </Animated.View>
+
+                    {/* Rule of Thirds Grid Overlay (Fades in on drag) */}
+                    <Animated.View style={[styles.gridOverlay, { opacity: gridOpacity }]} pointerEvents="none">
+                      <View style={styles.gridRow}>
+                        <View style={styles.gridCell} />
+                        <View style={[styles.gridCell, styles.gridCellMiddleHorizontal]} />
+                        <View style={styles.gridCell} />
+                      </View>
+                      <View style={[styles.gridRow, styles.gridRowMiddleVertical]}>
+                        <View style={styles.gridCell} />
+                        <View style={[styles.gridCell, styles.gridCellMiddleHorizontal]} />
+                        <View style={styles.gridCell} />
+                      </View>
+                      <View style={styles.gridRow}>
+                        <View style={styles.gridCell} />
+                        <View style={[styles.gridCell, styles.gridCellMiddleHorizontal]} />
+                        <View style={styles.gridCell} />
+                      </View>
+                    </Animated.View>
+                  </View>
                 )}
-                
-                {selectedMedia && (
-                  <TouchableOpacity onPress={() => setIsFit(!isFit)} style={styles.fitToggleBtn}>
-                    <Ionicons name={isFit ? "expand" : "contract"} size={18} color="#fff" />
-                  </TouchableOpacity>
+
+                {selectedMedia && aspectRatioMode !== 'original' && (
+                  <View style={styles.dragTooltip} pointerEvents="none">
+                    <Ionicons name="move" size={14} color="#FFF" />
+                    <Text style={styles.dragTooltipText}>{tooltipText}</Text>
+                  </View>
                 )}
               </View>
+              
+              {selectedMedia && (
+                <View style={styles.aspectRatioContainer}>
+                  <TouchableOpacity
+                    onPress={() => setAspectRatioMode('original')}
+                    style={[styles.aspectRatioBtn, aspectRatioMode === 'original' && styles.aspectRatioBtnActive]}
+                  >
+                    <Ionicons name="image-outline" size={13} color="#fff" />
+                    <Text style={styles.aspectRatioBtnText}>Original</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setAspectRatioMode('1:1')}
+                    style={[styles.aspectRatioBtn, aspectRatioMode === '1:1' && styles.aspectRatioBtnActive]}
+                  >
+                    <Ionicons name="square-outline" size={13} color="#fff" />
+                    <Text style={styles.aspectRatioBtnText}>1:1</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setAspectRatioMode('4:5')}
+                    style={[styles.aspectRatioBtn, aspectRatioMode === '4:5' && styles.aspectRatioBtnActive]}
+                  >
+                    <Ionicons name="resize-outline" size={13} color="#fff" />
+                    <Text style={styles.aspectRatioBtnText}>4:5</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setAspectRatioMode('1.91:1')}
+                    style={[styles.aspectRatioBtn, aspectRatioMode === '1.91:1' && styles.aspectRatioBtnActive]}
+                  >
+                    <Ionicons name="tablet-landscape-outline" size={13} color="#fff" />
+                    <Text style={styles.aspectRatioBtnText}>1.91:1</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setAspectRatioMode('9:16')}
+                    style={[styles.aspectRatioBtn, aspectRatioMode === '9:16' && styles.aspectRatioBtnActive]}
+                  >
+                    <Ionicons name="phone-portrait-outline" size={13} color="#fff" />
+                    <Text style={styles.aspectRatioBtnText}>9:16</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               
               <View style={styles.sourceRow}>
                 <TouchableOpacity style={styles.sourceCard} onPress={captureFromCamera}>
@@ -489,6 +788,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EADDFF',
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
     marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
@@ -514,13 +814,74 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  fitToggleBtn: {
+  dragTooltip: {
     position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 8,
-    borderRadius: 16,
+    top: 12,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+    zIndex: 10,
+  },
+  dragTooltipText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    zIndex: 5,
+  },
+  gridRow: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  gridRowMiddleVertical: {
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  gridCell: {
+    flex: 1,
+  },
+  gridCellMiddleHorizontal: {
+    borderLeftWidth: 0.5,
+    borderRightWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  aspectRatioContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#1E1E24',
+    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    marginTop: 12,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  aspectRatioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+  },
+  aspectRatioBtnActive: {
+    backgroundColor: COLORS.primary,
+  },
+  aspectRatioBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   sourceRow: {
     flexDirection: 'row',

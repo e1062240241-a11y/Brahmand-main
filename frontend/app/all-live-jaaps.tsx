@@ -112,7 +112,17 @@ export default function AllLiveJaapsScreen() {
         colors={['#FFFBF5', '#FFF3E8']}
         style={styles.header}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
+        <TouchableOpacity 
+          style={styles.backBtn} 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/jaap');
+            }
+          }} 
+          activeOpacity={0.8}
+        >
           <Ionicons name="chevron-back" size={24} color="#FF6600" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>

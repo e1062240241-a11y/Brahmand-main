@@ -471,6 +471,10 @@ async def _create_post_document(
         # Flatten for easier frontend access
         if 'width' in metadata: post_doc['media_width'] = metadata['width']
         if 'height' in metadata: post_doc['media_height'] = metadata['height']
+        if 'crop_offset_x' in metadata: post_doc['crop_offset_x'] = metadata['crop_offset_x']
+        if 'crop_offset_y' in metadata: post_doc['crop_offset_y'] = metadata['crop_offset_y']
+        if 'original_width' in metadata: post_doc['original_width'] = metadata['original_width']
+        if 'original_height' in metadata: post_doc['original_height'] = metadata['original_height']
         if 'duration_seconds' in metadata: post_doc['duration'] = metadata['duration_seconds']
         if 'thumbnail_url' in metadata: post_doc['thumbnail_url'] = metadata['thumbnail_url']
 
@@ -2206,6 +2210,12 @@ async def upload_post(
     filter_name: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     community_level: str = Form('city'),
+    media_width: Optional[int] = Form(None),
+    media_height: Optional[int] = Form(None),
+    crop_offset_x: Optional[float] = Form(None),
+    crop_offset_y: Optional[float] = Form(None),
+    original_width: Optional[int] = Form(None),
+    original_height: Optional[int] = Form(None),
     file: UploadFile = File(...),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit)
@@ -2215,7 +2225,9 @@ async def upload_post(
     global_semaphore = get_global_upload_semaphore()
     async with global_semaphore:
         async with user_lock:
-            return await _upload_post_impl(caption, source, filter_name, file, token_data, request, category, community_level)
+            return await _upload_post_impl(
+                caption, source, filter_name, file, token_data, request, category, community_level, media_width, media_height, crop_offset_x, crop_offset_y, original_width, original_height
+            )
 
 async def _upload_post_impl(
     caption: str,
@@ -2225,7 +2237,13 @@ async def _upload_post_impl(
     token_data: dict,
     request: Request,
     category: Optional[str] = None,
-    community_level: str = 'city'
+    community_level: str = 'city',
+    passed_media_width: Optional[int] = None,
+    passed_media_height: Optional[int] = None,
+    crop_offset_x: Optional[float] = None,
+    crop_offset_y: Optional[float] = None,
+    original_width: Optional[int] = None,
+    original_height: Optional[int] = None,
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2410,16 +2428,31 @@ async def _upload_post_impl(
             raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
     media_type = 'video' if content_type.startswith('video/') else 'image'
 
-    video_metadata = None
+    video_metadata = {}
     if content_type.startswith('video/'):
         video_metadata = {
             'original_size_bytes': original_size_bytes,
             'compressed_size_bytes': compressed_size_bytes,
             'duration_seconds': duration_seconds,
-            'width': media_width,
-            'height': media_height,
+            'width': passed_media_width if passed_media_width else media_width,
+            'height': passed_media_height if passed_media_height else media_height,
             'thumbnail_url': thumbnail_url,
         }
+    else:
+        if passed_media_width and passed_media_height:
+            video_metadata = {
+                'width': passed_media_width,
+                'height': passed_media_height,
+            }
+
+    if crop_offset_x is not None:
+        video_metadata['crop_offset_x'] = crop_offset_x
+    if crop_offset_y is not None:
+        video_metadata['crop_offset_y'] = crop_offset_y
+    if original_width is not None:
+        video_metadata['original_width'] = original_width
+    if original_height is not None:
+        video_metadata['original_height'] = original_height
 
     post_doc = await _create_post_document(
         db=db,
@@ -2515,13 +2548,19 @@ async def upload_post_from_storage(
     filter_name: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     community_level: str = Form('city'),
+    media_width: Optional[int] = Form(None),
+    media_height: Optional[int] = Form(None),
+    crop_offset_x: Optional[float] = Form(None),
+    crop_offset_y: Optional[float] = Form(None),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit),
 ):
     user_id = token_data['user_id']
     lock = await get_user_upload_lock(user_id)
     async with lock:
-        return await _upload_post_from_storage_impl(storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url))
+        return await _upload_post_from_storage_impl(
+            storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url), media_width, media_height, crop_offset_x, crop_offset_y
+        )
 
 async def _upload_post_from_storage_impl(
     storage_path: str,
@@ -2532,6 +2571,10 @@ async def _upload_post_from_storage_impl(
     category: Optional[str] = None,
     community_level: str = 'city',
     base_url: str = '',
+    passed_media_width: Optional[int] = None,
+    passed_media_height: Optional[int] = None,
+    crop_offset_x: Optional[float] = None,
+    crop_offset_y: Optional[float] = None,
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2623,6 +2666,10 @@ async def _upload_post_from_storage_impl(
                 'original_size_bytes': original_size_bytes,
                 'compressed_size_bytes': compressed_size_bytes,
                 'duration_seconds': duration_seconds,
+                'width': passed_media_width if passed_media_width else metadata.get('width', 0),
+                'height': passed_media_height if passed_media_height else metadata.get('height', 0),
+                'crop_offset_x': crop_offset_x,
+                'crop_offset_y': crop_offset_y,
             },
             category=category,
             community_level=community_level,
@@ -3537,7 +3584,21 @@ async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = D
         return datetime.min
 
     comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    return comments[:safe_limit]
+    comments = comments[:safe_limit]
+    
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+                    c['is_verified'] = user_doc.get('is_verified', False)
+                    
+    return comments
 
 
 @api_router.delete('/posts/{post_id}/comments/{comment_id}')
@@ -4408,22 +4469,27 @@ async def create_community(
         db = await get_db()
         owner_id = token_data["user_id"]
         
-        # 1. Validation: Must have exactly 2 admins and 2 members
-        # Make sure owner is not in either, and no duplicates
+        # 1. Validation: Ensure owner is not in either, and no duplicates
         admin_ids = list(set(data.admin_ids))
         member_ids = list(set(data.member_ids))
         
-        if len(admin_ids) != 2 or len(member_ids) != 2:
+        if owner_id in admin_ids or owner_id in member_ids:
             raise HTTPException(
                 status_code=400,
-                detail="A local community group requires exactly 1 owner, 2 admins, and 2 members to initiate consensus creation."
+                detail="Owner cannot be invited as an admin or member."
             )
             
-        all_members_set = set([owner_id] + admin_ids + member_ids)
-        if len(all_members_set) != 5:
+        duplicate_ids = set(admin_ids).intersection(set(member_ids))
+        if duplicate_ids:
             raise HTTPException(
                 status_code=400,
-                detail="Owner, admins, and members must all be unique users."
+                detail="A user cannot be both an admin and a member."
+            )
+
+        if len(admin_ids) + len(member_ids) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="A local community group requires at least one invited admin or member to initiate consensus creation."
             )
 
         # 2. Upload photos to Firebase Storage if provided as base64
@@ -4755,6 +4821,8 @@ async def send_community_message(
         'sender_name': user['name'],
         'sender_photo': user.get('photo'),
         'sender_sl_id': user.get('sl_id'),
+        'is_verified': user.get('is_verified', False),
+        'verification_level': user.get('verification_level', 'state'),
         'content': message.content,
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat() + 'Z'
@@ -4763,6 +4831,10 @@ async def send_community_message(
         msg_data['media_url'] = message.media_url
     if message.category:
         msg_data['category'] = message.category
+    if message.contact:
+        msg_data['contact'] = message.contact
+    if message.seva_details:
+        msg_data['seva_details'] = message.seva_details
     
     msg_id = await db.add_message_to_chat(chat_id, msg_data.copy())
     
@@ -4773,6 +4845,8 @@ async def send_community_message(
         'sender_name': user['name'],
         'sender_photo': user.get('photo'),
         'sender_sl_id': user.get('sl_id'),
+        'is_verified': user.get('is_verified', False),
+        'verification_level': user.get('verification_level', 'state'),
         'content': message.content,
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat() + 'Z'
@@ -4781,6 +4855,10 @@ async def send_community_message(
         response_data['media_url'] = message.media_url
     if message.category:
         response_data['category'] = message.category
+    if message.contact:
+        response_data['contact'] = message.contact
+    if message.seva_details:
+        response_data['seva_details'] = message.seva_details
 
     # Notify mentioned users in this community message
     try:
@@ -4975,6 +5053,19 @@ async def get_community_message_comments(
     def _sort_key(c):
         return c.get('created_at', '')
     comments.sort(key=_sort_key, reverse=True)
+    
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+                    c['is_verified'] = user_doc.get('is_verified', False)
+                    
     return {
         'status': 'success',
         'data': comments
@@ -5249,7 +5340,9 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
                     "id": other_id,
                     "name": other.get('name', 'Unknown'),
                     "sl_id": other.get('sl_id', ''),
-                    "photo": other.get('photo')
+                    "photo": other.get('photo'),
+                    "is_verified": other.get('is_verified', False),
+                    "verification_level": other.get('verification_level', 'state')
                 },
                 "last_message": chat.get('last_message', ''),
                 "last_message_at": chat.get('updated_at', chat.get('created_at')),
@@ -5296,6 +5389,20 @@ async def get_dm_messages(chat_id: str, limit: int = 50, token_data: dict = Depe
         raise HTTPException(status_code=403, detail="Access denied")
 
     messages = await db.get_chat_messages(chat_id, limit)
+    
+    # Dynamically decorate with current sender verification status
+    if messages:
+        sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+        if sender_ids:
+            users_list = await db.get_documents_batch('users', sender_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for msg in messages:
+                sender_id = msg.get('sender_id')
+                if sender_id and sender_id in users_map:
+                    user_doc = users_map[sender_id]
+                    msg['is_verified'] = user_doc.get('is_verified', False)
+                    msg['verification_level'] = user_doc.get('verification_level', 'state')
+                    
     return messages
 
 

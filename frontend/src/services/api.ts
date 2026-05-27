@@ -579,7 +579,13 @@ export const uploadUserPost = (
   filterName?: string,
   onProgress?: (progressEvent: any) => void,
   community_level: string = 'city',
-  category: string = 'feed'
+  category: string = 'feed',
+  mediaWidth?: number,
+  mediaHeight?: number,
+  cropOffsetX?: number,
+  cropOffsetY?: number,
+  originalWidth?: number,
+  originalHeight?: number
 ) => {
   return (async () => {
     if (Platform.OS === 'web' && ENABLE_WEB_DIRECT_VIDEO_UPLOAD && isVideoMimeType(file.type)) {
@@ -597,6 +603,24 @@ export const uploadUserPost = (
         if (filterName) {
           formData.append('filter_name', filterName);
         }
+        if (mediaWidth) {
+          formData.append('media_width', String(mediaWidth));
+        }
+        if (mediaHeight) {
+          formData.append('media_height', String(mediaHeight));
+        }
+        if (cropOffsetX !== undefined) {
+          formData.append('crop_offset_x', String(cropOffsetX));
+        }
+        if (cropOffsetY !== undefined) {
+          formData.append('crop_offset_y', String(cropOffsetY));
+        }
+        if (originalWidth) {
+          formData.append('original_width', String(originalWidth));
+        }
+        if (originalHeight) {
+          formData.append('original_height', String(originalHeight));
+        }
 
         return api.post('/posts/upload-from-storage', formData, {
           timeout: 30 * 60 * 1000,
@@ -610,6 +634,24 @@ export const uploadUserPost = (
     formData.append('category', category);
     if (filterName) {
       formData.append('filter_name', filterName);
+    }
+    if (mediaWidth) {
+      formData.append('media_width', String(mediaWidth));
+    }
+    if (mediaHeight) {
+      formData.append('media_height', String(mediaHeight));
+    }
+    if (cropOffsetX !== undefined) {
+      formData.append('crop_offset_x', String(cropOffsetX));
+    }
+    if (cropOffsetY !== undefined) {
+      formData.append('crop_offset_y', String(cropOffsetY));
+    }
+    if (originalWidth) {
+      formData.append('original_width', String(originalWidth));
+    }
+    if (originalHeight) {
+      formData.append('original_height', String(originalHeight));
     }
     await appendMultipartFile(formData, 'file', file);
 
@@ -896,12 +938,16 @@ export const sendCommunityMessage = (
   messageType: string = 'text',
   category?: string,
   mediaUrl?: string,
+  contact?: string,
+  sevaDetails?: string,
 ) =>
   api.post(`/messages/community/${communityId}/${subgroupType}`, {
     content,
     message_type: messageType,
     category,
     media_url: mediaUrl,
+    contact,
+    seva_details: sevaDetails,
   });
 
 export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 25, before_timestamp?: string) => {

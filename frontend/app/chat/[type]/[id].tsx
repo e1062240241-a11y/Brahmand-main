@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { MentionInput } from '../../../src/components/MentionInput';
 import * as ExpoLinking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
@@ -140,6 +140,9 @@ const ChatMessageItem = React.memo(({
             <Text style={[styles.senderName, { marginBottom: 0 }, isOwnMessage && { color: COLORS.surface }]}>
               {isOwnMessage ? 'You' : item.sender_name}
             </Text>
+            {!isOwnMessage && (item as any).is_verified && (
+              <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />
+            )}
             <Text style={{ fontSize: 10, color: isOwnMessage ? 'rgba(255,255,255,0.7)' : COLORS.textSecondary, marginLeft: 4 }}>
               · {getTimeAgo(item.created_at)}
             </Text>
