@@ -1923,7 +1923,9 @@ async def get_users_batch(
             "id": user.get('id'),
             "name": user.get('name'),
             "sl_id": user.get('sl_id'),
-            "photo": user.get('photo')
+            "photo": user.get('photo'),
+            "is_verified": user.get('is_verified', False),
+            "verification_level": user.get('verification_level', 'state')
         })
     return result
 
@@ -1951,6 +1953,8 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
         'following': user.get('following', []),
         'followers_count': user.get('followers_count', len(user.get('followers', []))),
         'following_count': user.get('following_count', len(user.get('following', []))),
+        'is_verified': user.get('is_verified', False),
+        'verification_level': user.get('verification_level', 'state')
     }
     return safe_user
 
@@ -2023,6 +2027,8 @@ async def get_user_posts(
         async with semaphore:
             post['user_photo'] = user.get('photo')
             post['username'] = user.get('name') or user.get('sl_id') or post.get('username')
+            post['is_verified'] = user.get('is_verified', False)
+            post['verification_level'] = user.get('verification_level', 'state')
 
             liked_by = post.get('liked_by', []) or []
             post['likes_count'] = post.get('likes_count', len(liked_by))
@@ -2516,20 +2522,24 @@ async def _upload_chat_media_impl(
             content_type = 'image/heic'
         elif filename_lower.endswith('.gif'):
             content_type = 'image/gif'
+        elif filename_lower.endswith('.mp4'):
+            content_type = 'video/mp4'
+        elif filename_lower.endswith('.mov'):
+            content_type = 'video/quicktime'
 
-    # Broaden allowed types to support all common images
-    if not content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail='Unsupported media type. Please upload an image (jpg, png, webp, heic, gif).')
+    # Broaden allowed types to support all common images and videos
+    if not (content_type.startswith('image/') or content_type.startswith('video/')):
+        raise HTTPException(status_code=400, detail='Unsupported media type. Please upload an image or video.')
 
     file_bytes = await file.read()
     if not file_bytes:
         raise HTTPException(status_code=400, detail='Empty upload file')
 
-    max_image_bytes = 30 * 1024 * 1024
-    if len(file_bytes) > max_image_bytes:
-        raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 30MB')
+    max_media_bytes = 100 * 1024 * 1024
+    if len(file_bytes) > max_media_bytes:
+        raise HTTPException(status_code=413, detail='Media file too large. Max allowed size is 100MB')
 
-    media_url, object_path = await _upload_chat_media_to_storage(user_id, file_bytes, content_type)
+    media_url, object_path = await _upload_post_media_to_bunny(user_id, file_bytes, content_type, "")
     await file.close()
 
     return {
@@ -4918,7 +4928,31 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
         except ValueError:
             pass
             
-    return await db.get_chat_messages(chat_id, limit, before_timestamp=before_dt)
+    messages = await db.get_chat_messages(chat_id, limit, before_timestamp=before_dt)
+
+    # Decorate messages with live verification data so old posts also show the badge
+    sender_ids = list({m.get('sender_id') for m in messages if m.get('sender_id')})
+    sender_map: dict = {}
+    for sid in sender_ids:
+        try:
+            u = await db.get_document('users', sid)
+            if u:
+                sender_map[sid] = {
+                    'is_verified': u.get('is_verified', False),
+                    'verification_level': u.get('verification_level', 'state'),
+                }
+        except Exception:
+            pass
+
+    for msg in messages:
+        sid = msg.get('sender_id')
+        if sid and sid in sender_map:
+            msg['is_verified'] = sender_map[sid]['is_verified']
+            msg['verification_level'] = sender_map[sid]['verification_level']
+        elif 'is_verified' not in msg:
+            msg['is_verified'] = False
+
+    return messages
 
 
 @api_router.post("/messages/community/{community_id}/{subgroup_type}/{message_id}/like")
@@ -9132,34 +9166,23 @@ async def get_community_requests(
             return 0
         return 1
 
-    filtered_clean_requests.sort(key=lambda x: (_request_priority(x), x.get('created_at', '')), reverse=True)
-    # Correcting priority 0 to be at start (0 < 1, but we reverse=True for dates)
-    # Actually, using a tuple for sort: priority ASC, created_at DESC
-    filtered_clean_requests.sort(key=lambda x: (_request_priority(x), x.get('created_at', '') if isinstance(x.get('created_at'), str) else ''))
-    # Wait, created_at might be datetime or string.
-    
-    def _sort_key(r):
+    def _final_sort_key(r):
         priority = _request_priority(r)
-        # Convert created_at to timestamp string for sorting
         c_at = r.get('created_at')
-        if isinstance(c_at, datetime):
-            ts = c_at.isoformat()
-        else:
-            ts = str(c_at or "")
-        return (priority, ts)
+        
+        ts = 0
+        if hasattr(c_at, 'timestamp'):
+            ts = c_at.timestamp()
+        elif isinstance(c_at, str) and 'T' in c_at:
+            try:
+                ts = datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+            except Exception:
+                pass
+                
+        # Priority ASC (0 before 1), created_at DESC (higher timestamp first)
+        return (priority, -ts)
 
-    # Priority 0 first, then 1. Within each, latest first (so we need priority ASC, date DESC)
-    # To do that, we can use a reverse sort with negative priority or something.
-    # Simpler:
-    filtered_clean_requests.sort(key=lambda r: _sort_key(r))
-    # Wait, this will put priority 0 first (ASC), then created_at ASC. We want created_at DESC.
-    
-    # Final robust sort:
-    filtered_clean_requests.sort(key=lambda r: (
-        _request_priority(r), 
-        -(r.get('created_at').timestamp() if isinstance(r.get('created_at'), datetime) else 
-          (datetime.fromisoformat(r.get('created_at').replace('Z', '+00:00')).timestamp() if isinstance(r.get('created_at'), str) and 'T' in r.get('created_at') else 0))
-    ))
+    filtered_clean_requests.sort(key=_final_sort_key)
             
     # 2. Store in cache with 30-second TTL
     await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)
@@ -9204,6 +9227,37 @@ async def resolve_community_request(request_id: str, token_data: dict = Depends(
     logger.info(f"Community request {request_id} resolved by {user_id}")
     
     return {"message": "Request resolved successfully"}
+
+
+@api_router.post("/community-requests/{request_id}/interest")
+async def toggle_request_interest(request_id: str, token_data: dict = Depends(verify_token)):
+    """Toggle a user's interest/attendance on a Lost&Found or Temple Updates request"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    request = await db.get_document('community_requests', request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    interested_by = list(request.get('interested_by', []) or [])
+    if user_id in interested_by:
+        interested_by.remove(user_id)
+        action = "removed"
+    else:
+        interested_by.append(user_id)
+        action = "added"
+
+    await db.update_document('community_requests', request_id, {
+        'interested_by': interested_by,
+        'interested_count': len(interested_by)
+    })
+
+    try:
+        await cache_manager.invalidate_community_requests()
+    except Exception:
+        pass
+
+    return {"interested_count": len(interested_by), "action": action, "user_interested": action == "added"}
 
 
 @api_router.delete("/community-requests/{request_id}")

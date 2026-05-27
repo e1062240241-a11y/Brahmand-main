@@ -1265,6 +1265,9 @@ export const getMyActiveCommunityRequests = () =>
 export const resolveCommunityRequest = (requestId: string) =>
   api.post(`/community-requests/${requestId}/resolve`);
 
+export const toggleRequestInterest = (requestId: string) =>
+  api.post(`/community-requests/${requestId}/interest`);
+
 export const deleteCommunityRequest = (requestId: string) =>
   api.delete(`/community-requests/${requestId}`);
 

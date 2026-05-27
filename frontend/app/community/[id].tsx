@@ -23,7 +23,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest } from '../../src/services/api';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
@@ -313,6 +313,23 @@ export default function CommunityDetailScreen() {
     return cachedData?.events || [];
   });
   const [discussionPosts, setDiscussionPosts] = useState<DiscussionPost[]>(MOCK_DISCUSSION);
+
+  // interest state: requestId -> { count, userInterested }
+  const [interestMap, setInterestMap] = useState<Record<string, { count: number; userInterested: boolean }>>({});
+
+  const handleToggleInterest = async (item: any) => {
+    const id = item.id;
+    if (!id || String(id).startsWith('dummy')) return;
+    const prev = interestMap[id] ?? { count: item.interested_count || 0, userInterested: (item.interested_by || []).includes(user?.id) };
+    const next = { count: prev.userInterested ? prev.count - 1 : prev.count + 1, userInterested: !prev.userInterested };
+    setInterestMap(m => ({ ...m, [id]: next }));
+    try {
+      await toggleRequestInterest(id);
+    } catch {
+      setInterestMap(m => ({ ...m, [id]: prev }));
+    }
+  };
+
   const [communityPosts, setCommunityPosts] = useState<any[]>(() => {
     const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
     return cachedData?.communityPosts || [];
@@ -357,6 +374,7 @@ export default function CommunityDetailScreen() {
     myVendor?.kyc_status === 'verified';
 
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
+  const [fullScreenMedia, setFullScreenMedia] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [activeComments, setActiveComments] = useState<any[]>([]);
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
@@ -717,7 +735,7 @@ export default function CommunityDetailScreen() {
             organizer: {
               name: p.user?.name || 'Devotee',
               photo: p.user?.photo || null,
-              isVerified: p.user?.isVerified || false
+              isVerified: p.user?.isVerified || p.user?.is_verified || p.is_verified || false
             },
             timeAgo: timeAgoStr,
             type: 'festival_event',
@@ -1130,8 +1148,8 @@ export default function CommunityDetailScreen() {
         user: {
           name: msg.sender_name || 'Anonymous',
           photo: msg.sender_photo,
-          isVerified: true,
-          verificationLabel: 'State Verified',
+          isVerified: msg.is_verified || false,
+          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
         },
         content: msg.content,
         image: msg.media_url || msg.mediaUrl || msg.image,
@@ -1158,8 +1176,8 @@ export default function CommunityDetailScreen() {
         user: {
           name: msg.sender_name || 'Anonymous',
           photo: msg.sender_photo,
-          isVerified: true,
-          verificationLabel: 'Bharat Verified',
+          isVerified: msg.is_verified || false,
+          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
         },
         content: msg.content,
         image: msg.media_url || msg.mediaUrl || msg.image,
@@ -1476,8 +1494,8 @@ export default function CommunityDetailScreen() {
                   </View>
                 )}
                 {(item as any).category && (item as any).category !== 'Feed' && (item as any).category !== 'Others' && (
-                  <View style={{ backgroundColor: '#F0F9FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#BAE6FD' }}>
-                    <Text style={{ fontSize: 10, color: '#0369A1', fontWeight: 'bold' }}>{(item as any).category.toUpperCase()}</Text>
+                  <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>{(item as any).category.toUpperCase()}</Text>
                   </View>
                 )}
               </View>
@@ -1516,11 +1534,13 @@ export default function CommunityDetailScreen() {
             ) : null}
 
             {item.image && (
-              <Image
-                source={typeof item.image === 'string' ? { uri: item.image } : item.image}
-                style={styles.postMediaImage}
-                resizeMode="cover"
-              />
+              <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof item.image === 'string' ? item.image : item.image.uri)}>
+                <Image
+                  source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                  style={styles.postMediaImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
             )}
 
             <View style={styles.postActionRow}>
@@ -1621,10 +1641,12 @@ export default function CommunityDetailScreen() {
       <View style={styles.festEventCard}>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (
-            <Image
-              source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
-              style={styles.festEventImage}
-            />
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}>
+              <Image
+                source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
+                style={styles.festEventImage}
+              />
+            </TouchableOpacity>
           )}
           <View style={styles.festEventInfo}>
             <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Seva'}</Text>
@@ -1745,10 +1767,12 @@ export default function CommunityDetailScreen() {
       <View style={styles.festEventCard}>
         <View style={styles.festEventMain}>
           {(item.image_url || item.image || item.media_url) && (
-            <Image
-              source={typeof (item.image_url || item.image || item.media_url) === 'string' ? { uri: (item.image_url || item.image || item.media_url) } : (item.image_url || item.image || item.media_url)}
-              style={styles.festEventImage}
-            />
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof (item.image_url || item.image || item.media_url) === 'string' ? (item.image_url || item.image || item.media_url) : (item.image_url || item.image || item.media_url).uri)}>
+              <Image
+                source={typeof (item.image_url || item.image || item.media_url) === 'string' ? { uri: (item.image_url || item.image || item.media_url) } : (item.image_url || item.image || item.media_url)}
+                style={styles.festEventImage}
+              />
+            </TouchableOpacity>
           )}
           <View style={styles.festEventInfo}>
             <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || 'Event'}</Text>
@@ -1951,8 +1975,12 @@ export default function CommunityDetailScreen() {
           <TouchableOpacity style={styles.attendBtn} onPress={() => handleFestivalInterest(item)}>
             <Text style={styles.attendBtnText}>Set a reminder</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.festMiniBtn}>
-            <Ionicons name="share-social-outline" size={20} color="#536471" />
+          <TouchableOpacity
+            style={[styles.festMiniBtn, { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, backgroundColor: '#F0F9FF', borderRadius: 8, borderWidth: 1, borderColor: '#BAE6FD' }]}
+            onPress={() => setActiveTab('Requests')}
+          >
+            <Ionicons name="people-outline" size={16} color="#0369A1" />
+            <Text style={{ fontSize: 11, color: '#0369A1', fontWeight: '700' }}>View Requests</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1996,10 +2024,12 @@ export default function CommunityDetailScreen() {
       <View style={styles.festEventCard}>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (
-            <Image
-              source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
-              style={styles.festEventImage}
-            />
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}>
+              <Image
+                source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
+                style={styles.festEventImage}
+              />
+            </TouchableOpacity>
           )}
           <View style={styles.festEventInfo}>
             <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Request'}</Text>
@@ -2022,12 +2052,12 @@ export default function CommunityDetailScreen() {
         <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
           <View style={styles.festOrgDetailsRow}>
             <Avatar name={item.user_name || item.user?.name || 'User'} size={32} photo={item.user?.photo} />
-            <View style={{ marginLeft: 8, flex: 1 }}>
+              <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.festOrgNameRow}>
                 <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
                 {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
               </View>
-              <Text style={styles.festOrgLabel}>{item.request_type ? item.request_type.toUpperCase() : 'Requester'} • {item.interested_count || 0} Interested</Text>
+              <Text style={styles.festOrgLabel}>{item.request_type ? item.request_type.toUpperCase() : 'Requester'}</Text>
             </View>
           </View>
         </View>
@@ -2053,6 +2083,37 @@ export default function CommunityDetailScreen() {
                   <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
                 </TouchableOpacity>
               )
+            ) : !isFulfilled ? (
+              (() => {
+                const isLostFound = isLostFoundRequest(item);
+                const isTemple = isTempleUpdateRequest(item);
+                if (!isLostFound && !isTemple) return null;
+                const interest = interestMap[item.id] ?? { count: item.interested_count || 0, userInterested: (item.interested_by || []).includes(user?.id) };
+                return (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 12, color: '#666', flex: 1 }}>
+                      {isLostFound ? 'Did you find this?' : 'Will you attend?'}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleToggleInterest(item)}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: interest.userInterested ? '#D1FAE5' : '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: interest.userInterested ? '#059669' : '#BBF7D0' }}
+                    >
+                      <Ionicons name="checkmark" size={16} color={interest.userInterested ? '#059669' : '#34D399'} />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: interest.userInterested ? '#059669' : '#34D399' }}>
+                        {interest.count > 0 ? `${interest.count} ${isLostFound ? 'found' : 'going'}` : isLostFound ? 'Found' : 'Going'}
+                      </Text>
+                    </TouchableOpacity>
+                    {isTemple && !interest.userInterested && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#FEF2F2', padding: 6, borderRadius: 20, borderWidth: 1, borderColor: '#FECACA' }}
+                        onPress={() => {}}
+                      >
+                        <Ionicons name="close" size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })()
             ) : null}
 
             {isFulfilled ? (
@@ -2267,7 +2328,7 @@ export default function CommunityDetailScreen() {
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
       quality: 0.8,
     });
@@ -3007,26 +3068,6 @@ export default function CommunityDetailScreen() {
               <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
                 <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <MentionInput
-                    value={newMessage}
-                    onChangeText={setNewMessage}
-                    placeholder={postCategory ? "What's happening?" : "Select a category below to start writing..."}
-                    placeholderTextColor="#536471"
-                    multiline
-                    editable={!!postCategory}
-                    disableMentions={true}
-                    inputStyle={{
-                      fontSize: 18,
-                      color: '#0F1419',
-                      minHeight: 120,
-                      textAlignVertical: 'top',
-                      paddingTop: 4,
-                      lineHeight: 24,
-                      opacity: postCategory ? 1 : 0.6
-                    }}
-                    autoFocus={!!postCategory}
-                  />
-
                   {!postCategory ? (
                     <TouchableOpacity
                       onPress={() => setShowInlineCategories(!showInlineCategories)}
@@ -3040,7 +3081,7 @@ export default function CommunityDetailScreen() {
                         paddingHorizontal: 12,
                         paddingVertical: 6,
                         borderRadius: 16,
-                        marginTop: 10,
+                        marginBottom: 10,
                       }}
                     >
                       <Ionicons name="pricetag-outline" size={14} color="#FFF" />
@@ -3050,7 +3091,7 @@ export default function CommunityDetailScreen() {
                       <Ionicons name={showInlineCategories ? "chevron-up" : "chevron-down"} size={12} color="#FFF" />
                     </TouchableOpacity>
                   ) : (
-                    <View style={styles.selectedCategoryBadge}>
+                    <View style={[styles.selectedCategoryBadge, { marginBottom: 10, marginTop: 0 }]}>
                       <Ionicons name="pricetag-outline" size={14} color="#FF6600" />
                       <Text style={styles.selectedCategoryText}>Category: {postCategory}</Text>
                       <TouchableOpacity onPress={() => { setPostCategory(''); }}>
@@ -3060,7 +3101,7 @@ export default function CommunityDetailScreen() {
                   )}
 
                   {showInlineCategories && (
-                    <View style={{ marginTop: 12 }}>
+                    <View style={{ marginBottom: 16 }}>
                       <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>Select Category</Text>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                         {POST_CATEGORIES.map((cat) => {
@@ -3126,6 +3167,25 @@ export default function CommunityDetailScreen() {
                       </View>
                     </View>
                   )}
+                  <MentionInput
+                    value={newMessage}
+                    onChangeText={setNewMessage}
+                    placeholder={postCategory ? "What's happening?" : "Select a category above to start writing..."}
+                    placeholderTextColor="#536471"
+                    multiline
+                    editable={!!postCategory}
+                    disableMentions={true}
+                    inputStyle={{
+                      fontSize: 18,
+                      color: '#0F1419',
+                      minHeight: 120,
+                      textAlignVertical: 'top',
+                      paddingTop: 4,
+                      lineHeight: 24,
+                      opacity: postCategory ? 1 : 0.6
+                    }}
+                    autoFocus={!!postCategory}
+                  />
 
                   {/* Add Photo option directly beneath the input box for better accessibility */}
                   {!selectedImage ? (
@@ -3146,9 +3206,9 @@ export default function CommunityDetailScreen() {
                         borderColor: 'rgba(255, 102, 0, 0.2)',
                       }}
                     >
-                      <Ionicons name="image-outline" size={18} color="#FF6600" />
+                      <Ionicons name="images-outline" size={18} color="#FF6600" />
                       <Text style={{ fontSize: 13, fontWeight: '700', color: '#FF6600', fontFamily: FONTS.bold }}>
-                        Add Photo
+                        Add Media
                       </Text>
                     </TouchableOpacity>
                   ) : (
@@ -3165,55 +3225,6 @@ export default function CommunityDetailScreen() {
                 </View>
               </View>
 
-
-              <View style={[styles.infoBox, { backgroundColor: 'rgba(255,255,255,0.5)', alignItems: 'flex-start' }]}>
-                <Ionicons name="information-circle-outline" size={20} color="#FF6B00" style={{ marginRight: 10, marginTop: 2 }} />
-                <Text style={[styles.infoBoxText, { color: '#0F1419' }]}>When you tap Post, you&apos;ll choose a category for your post. It will appear in that category and the general feed.</Text>
-              </View>
-
-              <View style={styles.createSection}>
-                <Text style={styles.createSectionTitle}>Contact Number <Text style={{ color: '#888' }}>(Optional)</Text></Text>
-                <View style={[styles.phoneInputContainer, { backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.8)' }]}>
-                  <TouchableOpacity style={[styles.phonePrefix, { borderRightColor: 'rgba(255,255,255,0.8)' }]}>
-                    <Image source={{ uri: 'https://flagcdn.com/w40/in.png' }} style={styles.flagIcon} />
-                    <Text style={styles.prefixText}>+91</Text>
-                    <Ionicons name="chevron-down" size={14} color="#888" />
-                  </TouchableOpacity>
-                  <TextInput
-                    style={styles.phoneInput}
-                    placeholder="Enter phone number (optional)"
-                    value={contactNumber}
-                    onChangeText={setContactNumber}
-                    keyboardType="phone-pad"
-                  />
-                </View>
-                <Text style={styles.phoneSub}>Providing your number is optional. Others can contact you if you choose to share it.</Text>
-              </View>
-
-              <View style={styles.createSection}>
-                <Text style={styles.createSectionTitle}>Seva Details <Text style={{ color: '#888' }}>(Optional)</Text></Text>
-                <TextInput
-                  style={[styles.phoneInput, { minHeight: 100, textAlignVertical: 'top', backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.8)', borderWidth: 1, borderRadius: 16, padding: 12 }]}
-                  placeholder="Who donated, what amount, or what service was performed"
-                  value={sevaDetails}
-                  onChangeText={setSevaDetails}
-                  multiline
-                  numberOfLines={4}
-                />
-                <Text style={styles.phoneSub}>Use this field to capture seva contributions such as donations, support, or service details.</Text>
-              </View>
-
-              <View style={styles.createDivider} />
-
-              <View style={styles.trustBox}>
-                <View style={styles.trustIconBg}>
-                  <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.trustTitle}>Stay safe. Be trustworthy.</Text>
-                  <Text style={styles.trustSub}>We encourage respectful and helpful posts that uplift our community.</Text>
-                </View>
-              </View>
             </ScrollView>
 
             {/* Keyboard-docked toolbar with minimalist layout matching premium look */}
@@ -3383,6 +3394,18 @@ export default function CommunityDetailScreen() {
         }}
         onKycUpdated={handleKycSuccess}
       />
+
+      {/* Full Screen Media Modal */}
+      <Modal visible={!!fullScreenMedia} transparent={true} animationType="fade" onRequestClose={() => setFullScreenMedia(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10 }} onPress={() => setFullScreenMedia(null)}>
+            <Ionicons name="close" size={32} color="#FFF" />
+          </TouchableOpacity>
+          {fullScreenMedia && (
+            <Image source={{ uri: fullScreenMedia }} style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.8 }} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
 
       {/* Comment Modal */}
       <Modal
@@ -3821,7 +3844,7 @@ const styles = StyleSheet.create({
   feedPostUserName: { fontSize: 15, fontWeight: '700', color: '#0F1419', maxWidth: '40%' },
   postHandle: { fontSize: 15, color: '#536471', marginLeft: 4, flexShrink: 1 },
   postDot: { fontSize: 15, color: '#536471', marginHorizontal: 4 },
-  postContentText: { fontSize: 15, color: '#0F1419', lineHeight: 22, marginTop: 2 },
+  postContentText: { fontSize: 16, color: '#0F1419', lineHeight: 22, marginTop: 4 },
   postMediaImage: { width: '100%', maxWidth: '100%', height: 250, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#EFF3F4', overflow: 'hidden' },
   postActionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingRight: 40 },
   postActionCount: { fontSize: 13, color: '#536471' },

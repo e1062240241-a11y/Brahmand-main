@@ -66,10 +66,13 @@ class FirebaseUserService:
             raise ValueError("User not found")
         
         return {
+            "id": user.get("id"),
             "sl_id": user["sl_id"],
             "name": user["name"],
             "photo": user.get("photo"),
-            "badges": user.get("badges", [])
+            "badges": user.get("badges", []),
+            "is_verified": user.get("is_verified", False),
+            "verification_level": user.get("verification_level", "state")
         }
     
     @staticmethod
@@ -95,7 +98,9 @@ class FirebaseUserService:
                     "language": user_data.get("language"),
                     "badges": user_data.get("badges", []),
                     "reputation": user_data.get("reputation", 0),
-                    "created_at": user_data.get("created_at")
+                    "created_at": user_data.get("created_at"),
+                    "is_verified": user_data.get("is_verified", False),
+                    "verification_level": user_data.get("verification_level", "state")
                 })
         
         return users

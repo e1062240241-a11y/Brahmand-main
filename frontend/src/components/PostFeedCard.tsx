@@ -15,7 +15,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -366,7 +366,10 @@ export const PostFeedCard = memo(({
         <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
           <View style={styles.userMeta}>
-            <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+              {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+            </View>
             <Text style={[styles.timeText, theme === 'light' ? styles.timeTextLight : {}]}>{postTimeText}</Text>
           </View>
         </TouchableOpacity>
@@ -627,7 +630,9 @@ export const PostFeedCard = memo(({
             }}
           >
             <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
-              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFF' }}>{post?.username || 'User'} </Text>
+              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFF' }}>
+                {post?.username || 'User'} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
+              </Text> 
               {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                 seg.isHashtag ? (
                   <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
@@ -663,7 +668,9 @@ export const PostFeedCard = memo(({
         <View style={styles.topCommentsWrap}>
           {topComments.map((comment: any, index: number) => (
             <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
-              <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>{comment?.username || 'User'} </Text>
+              <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>
+                {comment?.username || 'User'} {comment?.is_verified && <MaterialCommunityIcons name="check-decagram" size={12} color="#FF6B00" style={{ marginRight: 2 }} />}
+              </Text> 
               <Text style={{ color: theme === 'light' ? '#444' : '#DDD', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
             </Text>
           ))}
