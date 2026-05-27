@@ -65,7 +65,7 @@ class FirebaseNotificationService:
         url = "https://exp.host/--/api/v2/push/send"
         
         notification_type = data.get('type') if data else None
-        is_sos = bool(notification_type and notification_type.startswith('sos'))
+        is_sos = bool(notification_type and notification_type == 'sos_alert')
         is_msg = bool(notification_type and notification_type == 'message')
         
         payloads = []
@@ -74,7 +74,7 @@ class FirebaseNotificationService:
                 "to": token,
                 "title": title,
                 "body": body,
-                "sound": "soundreality_mayday_166011" if is_sos else "nornal.aiff",
+                "sound": "soundreality_mayday_166011" if is_sos else "default",
                 "priority": "high" if is_sos else "default",
                 "channelId": "sos_alerts_v3" if is_sos else ("messages_v4" if is_msg else "default_v4"),
                 "badge": 1 if is_sos else 0,
@@ -164,7 +164,7 @@ class FirebaseNotificationService:
                 apns_config = None
                 notification_type = data.get('type') if data else None
                 
-                is_sos = bool(notification_type and notification_type.startswith('sos'))
+                is_sos = bool(notification_type and notification_type == 'sos_alert')
                 is_msg = bool(notification_type and notification_type == 'message')
                 
                 if is_sos:
@@ -195,14 +195,14 @@ class FirebaseNotificationService:
                         priority='normal',
                         notification=fcm.AndroidNotification(
                             channel_id=channel_id,
-                            sound='nornal',
+                            sound='default',
                             priority='default'
                         )
                     )
                     apns_config = fcm.APNSConfig(
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='nornal.aiff',
+                                sound='default',
                                 content_available=True,
                                 mutable_content=True
                             )
@@ -305,7 +305,7 @@ class FirebaseNotificationService:
                         apns_config = None
                         
                         notification_type = data.get('type') if data else None
-                        is_sos = bool(notification_type and notification_type.startswith('sos'))
+                        is_sos = bool(notification_type and notification_type == 'sos_alert')
                         is_msg = bool(notification_type and notification_type == 'message')
                         
                         # High-priority for SOS
@@ -313,7 +313,7 @@ class FirebaseNotificationService:
                             android_config = fcm.AndroidConfig(
                                 priority='high',
                                 notification=fcm.AndroidNotification(
-                                    channel_id='sos_alerts',
+                                    channel_id='sos_alerts_v3',
                                     sound='soundreality_mayday_166011',
                                     priority='max',
                                     vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
@@ -337,14 +337,14 @@ class FirebaseNotificationService:
                                 priority='normal',
                                 notification=fcm.AndroidNotification(
                                     channel_id=channel_id,
-                                    sound='nornal',
+                                    sound='default',
                                     priority='default'
                                 )
                             )
                             apns_config = fcm.APNSConfig(
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='nornal.aiff',
+                                        sound='default',
                                         content_available=True,
                                         mutable_content=True
                                     )

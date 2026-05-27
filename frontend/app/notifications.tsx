@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { COLORS } from '../src/constants/theme';
@@ -125,7 +125,8 @@ export default function NotificationsScreen() {
               if (actorUser && actorUser.id) {
                 newActorsMap[actorUser.id] = {
                   name: actorUser.name,
-                  photo: actorUser.photo
+                  photo: actorUser.photo,
+                  isVerified: actorUser.is_verified || false
                 };
               }
             });
@@ -367,7 +368,9 @@ export default function NotificationsScreen() {
         {/* Middle Side: Content */}
         <View style={styles.notificationContent}>
           <Text style={styles.notificationText}>
-            {actorName} {item.body ? item.body.replace(itemData?.actor_name || actorName || '', '').trim() : 'sent a notification.'}
+            <Text style={{ fontWeight: '700' }}>{actorName}</Text>
+            {actorUser?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+            {' '}{item.body ? item.body.replace(itemData?.actor_name || actorName || '', '').trim() : 'sent a notification.'}
           </Text>
           
           {isInvite && (

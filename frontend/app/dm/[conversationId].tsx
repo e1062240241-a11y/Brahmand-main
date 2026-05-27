@@ -411,6 +411,31 @@ const DirectMessageScreen = () => {
     return conversation?.user;
   };
 
+  const getPresenceLabel = () => {
+    const src = getPresenceSource();
+    if (!src) return '';
+    if (src.online_status) return 'Online';
+    const lastActive = src.last_seen_at || src.last_active || src.updated_at;
+    if (lastActive) {
+      try {
+        const date = new Date(lastActive);
+        if (Number.isNaN(date.getTime())) return '';
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffHours < 48) return 'Yesterday';
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  };
+
   const requestStatus = conversation?.request_status || 'approved';
   const isRequester = !!conversation?.request_by && conversation.request_by === user?.id;
   const retryAfterDate = parseDateOrNull(conversation?.request_retry_after);
@@ -1412,7 +1437,7 @@ const DirectMessageScreen = () => {
               data={messages}
               renderItem={renderMessage}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 90 }]}
+              contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 8 }]}
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
               onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
               keyboardShouldPersistTaps="handled"
@@ -1557,6 +1582,11 @@ const styles = StyleSheet.create({
   headerTextInfo: { marginLeft: 12, flex: 1 },
   avatarWrapper: { position: 'relative' },
   headerTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'Inter_600SemiBold', color: COLORS.text },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  headerSubtitle: { fontSize: 13, fontWeight: '500', color: COLORS.textSecondary },
+  realtimeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,107,0,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, marginRight: 6 },
+  realtimeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF6B00', marginRight: 4 },
+  realtimeText: { fontSize: 11, fontWeight: '700', color: '#FF6B00' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   modalContent: { backgroundColor: COLORS.surface, padding: SPACING.md, borderTopLeftRadius: BORDER_RADIUS.lg, borderTopRightRadius: BORDER_RADIUS.lg, borderTopWidth: 1, borderTopColor: COLORS.divider },
   modalItem: { paddingVertical: SPACING.sm },

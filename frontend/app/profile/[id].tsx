@@ -606,11 +606,7 @@ const UserProfileScreen = () => {
             ) : (
               <Avatar name={profile?.name || 'User'} size={86} />
             )}
-            {profile?.id !== currentUserId && isFollowing && (
-              <View style={styles.followingIndicator}>
-                <Ionicons name="checkmark" size={12} color="#FFF" />
-              </View>
-            )}
+
           </View>
         </TouchableOpacity>
 
@@ -788,19 +784,7 @@ const UserProfileScreen = () => {
           </View>
           <FlatList
             ref={detailFlatListRef}
-            data={posts}
-            initialScrollIndex={posts.findIndex(p => p.id === selectedPost?.id) !== -1 ? posts.findIndex(p => p.id === selectedPost?.id) : 0}
-            getItemLayout={(data, index) => ({
-              length: SCREEN_WIDTH * 1.25 + 180,
-              offset: (SCREEN_WIDTH * 1.25 + 180) * index,
-              index,
-            })}
-            onScrollToIndexFailed={(info) => {
-              const wait = new Promise(resolve => setTimeout(resolve, 500));
-              wait.then(() => {
-                detailFlatListRef.current?.scrollToIndex({ index: info.index, animated: false });
-              });
-            }}
+            data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
             renderItem={({ item }) => (
               <PostFeedCard
                 post={item}

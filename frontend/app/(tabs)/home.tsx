@@ -23,7 +23,7 @@ import {
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../src/store/authStore';
@@ -1824,7 +1824,10 @@ export default function HomeScreen() {
                               >
                                 <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
                                 <View style={styles.userResultText}>
-                                  <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                                    {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+                                  </View>
                                   <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
                                 </View>
                               </TouchableOpacity>
