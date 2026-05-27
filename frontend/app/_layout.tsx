@@ -463,6 +463,98 @@ export default function RootLayout() {
                   gestureEnabled: false
                 }} 
               />
+              {/* Modals and Creation Forms - Slide from Bottom */}
+              <Stack.Screen 
+                name="community-request/blood" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/food" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/gau-seva" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/animal-care" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/temple-help" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/emergency" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/other" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="sos" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="kyc-submit" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="live-jaap-welcome" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="circle/create" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community/create" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-tweets" 
+                options={{ 
+                  animation: 'slide_from_right',
+                }} 
+              />
+              {/* Other standard stack navigations will inherit default slide_from_right */}
             </Stack>
             {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
             <ToastContainer />

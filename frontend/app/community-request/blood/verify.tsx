@@ -5,6 +5,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { useAuthStore } from '../../../src/store/authStore';
+import { useVendorStore } from '../../../src/store/vendorStore';
+import { VendorKYCModal } from '../../../src/components/VendorKYCModal';
+import { getKYCStatus } from '../../../src/services/api';
 
 export default function CommunityRequestBloodVerifyPage() {
   const router = useRouter();
@@ -17,12 +20,58 @@ export default function CommunityRequestBloodVerifyPage() {
     contactPreference?: string;
     contactNumber?: string;
   }>();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
+  const { myVendor, fetchMyVendor } = useVendorStore();
 
   const [phoneNumber, setPhoneNumber] = React.useState((params.contactNumber || user?.phone || '').replace(/[^0-9]/g, ''));
-  const isKycVerified = true; // Auto-verify for development / testing bypass
+  const [showKycModal, setShowKycModal] = React.useState(false);
+  const [kycModalVendorId, setKycModalVendorId] = React.useState<string | null>(myVendor?.id || null);
+
+  React.useEffect(() => {
+    fetchMyVendor();
+  }, [fetchMyVendor]);
+
+  const isKycVerified =
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified';
+
+  const handleCompleteKyc = async () => {
+    let vendorId = myVendor?.id || null;
+    if (!vendorId) {
+      await fetchMyVendor();
+      vendorId = useVendorStore.getState().myVendor?.id || null;
+    }
+    setKycModalVendorId(vendorId || '');
+    setShowKycModal(true);
+  };
+
+  const handleKycSuccess = async () => {
+    setShowKycModal(false);
+    try {
+      const response = await getKYCStatus();
+      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      updateUser({
+        kyc_status: serverStatus,
+        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+      } as any);
+    } catch (error) {
+      console.warn('Failed to refresh KYC status:', error);
+    }
+  };
 
   const handleSendOtp = () => {
+    if (!isKycVerified) {
+      Alert.alert(
+        'KYC Required',
+        'Please complete your KYC verification first to create a community request.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Complete KYC', onPress: handleCompleteKyc }
+        ]
+      );
+      return;
+    }
     if (!phoneNumber || phoneNumber.length < 10) {
       Alert.alert('Enter Phone', 'Please enter a valid phone number before sending OTP.');
       return;
@@ -41,11 +90,6 @@ export default function CommunityRequestBloodVerifyPage() {
       },
     });
   };
-
-  const handleCompleteKyc = () => {
-    router.push('/kyc');
-  };
-
 
 
   return (
@@ -91,11 +135,18 @@ export default function CommunityRequestBloodVerifyPage() {
             <Text style={styles.stepDescription}>KYC helps us maintain trust and safety in the community.</Text>
             <View style={styles.detailBox}>
               <Text style={styles.detailLabel}>KYC Status</Text>
-              <Text style={[styles.detailValue, isKycVerified ? styles.verifiedText : styles.pendingText]}>{isKycVerified ? 'Verified' : 'Not KYC Verified'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {isKycVerified && <Ionicons name="checkmark-circle" size={18} color="#2E7D32" />}
+                <Text style={[styles.detailValue, isKycVerified ? styles.verifiedText : styles.pendingText]}>
+                  {isKycVerified ? 'Verified' : 'Not KYC Verified'}
+                </Text>
+              </View>
             </View>
-            <TouchableOpacity style={styles.outlineButton} onPress={handleCompleteKyc} activeOpacity={0.8}>
-              <Text style={styles.outlineButtonText}>Complete KYC Now</Text>
-            </TouchableOpacity>
+            {!isKycVerified && (
+              <TouchableOpacity style={styles.outlineButton} onPress={handleCompleteKyc} activeOpacity={0.8}>
+                <Text style={styles.outlineButtonText}>Complete KYC Now</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -103,6 +154,16 @@ export default function CommunityRequestBloodVerifyPage() {
           <Text style={styles.noteText}>Your information is secure and never shared with anyone.</Text>
         </View>
       </ScrollView>
+
+      <VendorKYCModal
+        visible={showKycModal}
+        vendorId={kycModalVendorId || ''}
+        allowUserKycFallback
+        onClose={() => {
+          setShowKycModal(false);
+        }}
+        onKycUpdated={handleKycSuccess}
+      />
     </SafeAreaView>
   );
 }
