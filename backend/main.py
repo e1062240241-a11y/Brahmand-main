@@ -471,6 +471,10 @@ async def _create_post_document(
         # Flatten for easier frontend access
         if 'width' in metadata: post_doc['media_width'] = metadata['width']
         if 'height' in metadata: post_doc['media_height'] = metadata['height']
+        if 'crop_offset_x' in metadata: post_doc['crop_offset_x'] = metadata['crop_offset_x']
+        if 'crop_offset_y' in metadata: post_doc['crop_offset_y'] = metadata['crop_offset_y']
+        if 'original_width' in metadata: post_doc['original_width'] = metadata['original_width']
+        if 'original_height' in metadata: post_doc['original_height'] = metadata['original_height']
         if 'duration_seconds' in metadata: post_doc['duration'] = metadata['duration_seconds']
         if 'thumbnail_url' in metadata: post_doc['thumbnail_url'] = metadata['thumbnail_url']
 
@@ -2206,6 +2210,12 @@ async def upload_post(
     filter_name: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     community_level: str = Form('city'),
+    media_width: Optional[int] = Form(None),
+    media_height: Optional[int] = Form(None),
+    crop_offset_x: Optional[float] = Form(None),
+    crop_offset_y: Optional[float] = Form(None),
+    original_width: Optional[int] = Form(None),
+    original_height: Optional[int] = Form(None),
     file: UploadFile = File(...),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit)
@@ -2215,7 +2225,9 @@ async def upload_post(
     global_semaphore = get_global_upload_semaphore()
     async with global_semaphore:
         async with user_lock:
-            return await _upload_post_impl(caption, source, filter_name, file, token_data, request, category, community_level)
+            return await _upload_post_impl(
+                caption, source, filter_name, file, token_data, request, category, community_level, media_width, media_height, crop_offset_x, crop_offset_y, original_width, original_height
+            )
 
 async def _upload_post_impl(
     caption: str,
@@ -2225,7 +2237,13 @@ async def _upload_post_impl(
     token_data: dict,
     request: Request,
     category: Optional[str] = None,
-    community_level: str = 'city'
+    community_level: str = 'city',
+    passed_media_width: Optional[int] = None,
+    passed_media_height: Optional[int] = None,
+    crop_offset_x: Optional[float] = None,
+    crop_offset_y: Optional[float] = None,
+    original_width: Optional[int] = None,
+    original_height: Optional[int] = None,
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2410,16 +2428,31 @@ async def _upload_post_impl(
             raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
     media_type = 'video' if content_type.startswith('video/') else 'image'
 
-    video_metadata = None
+    video_metadata = {}
     if content_type.startswith('video/'):
         video_metadata = {
             'original_size_bytes': original_size_bytes,
             'compressed_size_bytes': compressed_size_bytes,
             'duration_seconds': duration_seconds,
-            'width': media_width,
-            'height': media_height,
+            'width': passed_media_width if passed_media_width else media_width,
+            'height': passed_media_height if passed_media_height else media_height,
             'thumbnail_url': thumbnail_url,
         }
+    else:
+        if passed_media_width and passed_media_height:
+            video_metadata = {
+                'width': passed_media_width,
+                'height': passed_media_height,
+            }
+
+    if crop_offset_x is not None:
+        video_metadata['crop_offset_x'] = crop_offset_x
+    if crop_offset_y is not None:
+        video_metadata['crop_offset_y'] = crop_offset_y
+    if original_width is not None:
+        video_metadata['original_width'] = original_width
+    if original_height is not None:
+        video_metadata['original_height'] = original_height
 
     post_doc = await _create_post_document(
         db=db,
@@ -2515,13 +2548,19 @@ async def upload_post_from_storage(
     filter_name: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     community_level: str = Form('city'),
+    media_width: Optional[int] = Form(None),
+    media_height: Optional[int] = Form(None),
+    crop_offset_x: Optional[float] = Form(None),
+    crop_offset_y: Optional[float] = Form(None),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit),
 ):
     user_id = token_data['user_id']
     lock = await get_user_upload_lock(user_id)
     async with lock:
-        return await _upload_post_from_storage_impl(storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url))
+        return await _upload_post_from_storage_impl(
+            storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url), media_width, media_height, crop_offset_x, crop_offset_y
+        )
 
 async def _upload_post_from_storage_impl(
     storage_path: str,
@@ -2532,6 +2571,10 @@ async def _upload_post_from_storage_impl(
     category: Optional[str] = None,
     community_level: str = 'city',
     base_url: str = '',
+    passed_media_width: Optional[int] = None,
+    passed_media_height: Optional[int] = None,
+    crop_offset_x: Optional[float] = None,
+    crop_offset_y: Optional[float] = None,
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2623,6 +2666,10 @@ async def _upload_post_from_storage_impl(
                 'original_size_bytes': original_size_bytes,
                 'compressed_size_bytes': compressed_size_bytes,
                 'duration_seconds': duration_seconds,
+                'width': passed_media_width if passed_media_width else metadata.get('width', 0),
+                'height': passed_media_height if passed_media_height else metadata.get('height', 0),
+                'crop_offset_x': crop_offset_x,
+                'crop_offset_y': crop_offset_y,
             },
             category=category,
             community_level=community_level,

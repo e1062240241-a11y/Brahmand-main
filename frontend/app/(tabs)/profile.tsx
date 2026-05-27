@@ -195,7 +195,19 @@ export default function ProfileScreen() {
     mediaUri?: string;
   }>({ uploading: false, progress: 0, isCompressing: false });
 
-  const handleUploadStart = async (media: any, caption: string, filterName?: string) => {
+  const handleUploadStart = async (
+    media: any,
+    caption: string,
+    filterName?: string,
+    communityLevel: string = 'city',
+    category: string = 'feed',
+    mediaWidth?: number,
+    mediaHeight?: number,
+    cropOffsetX?: number,
+    cropOffsetY?: number,
+    originalWidth?: number,
+    originalHeight?: number
+  ) => {
     setBackgroundUpload({ 
       uploading: true, 
       progress: 0, 
@@ -220,7 +232,15 @@ export default function ProfileScreen() {
               setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
             }
           }
-        }
+        },
+        communityLevel,
+        category,
+        mediaWidth,
+        mediaHeight,
+        cropOffsetX,
+        cropOffsetY,
+        originalWidth,
+        originalHeight
       );
       
       if (response.data) {

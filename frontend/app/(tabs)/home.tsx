@@ -786,7 +786,19 @@ export default function HomeScreen() {
     mediaUri?: string;
   }>({ uploading: false, progress: 0, isCompressing: false });
 
-  const handleUploadStart = async (media: any, caption: string, filterName?: string, communityLevel: string = 'city', category: string = 'feed') => {
+  const handleUploadStart = async (
+    media: any,
+    caption: string,
+    filterName?: string,
+    communityLevel: string = 'city',
+    category: string = 'feed',
+    mediaWidth?: number,
+    mediaHeight?: number,
+    cropOffsetX?: number,
+    cropOffsetY?: number,
+    originalWidth?: number,
+    originalHeight?: number
+  ) => {
     setBackgroundUpload({
       uploading: true,
       progress: 0,
@@ -813,7 +825,13 @@ export default function HomeScreen() {
           }
         },
         communityLevel,
-        category
+        category,
+        mediaWidth,
+        mediaHeight,
+        cropOffsetX,
+        cropOffsetY,
+        originalWidth,
+        originalHeight
       );
 
       if (response.data) {
