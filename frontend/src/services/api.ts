@@ -938,12 +938,16 @@ export const sendCommunityMessage = (
   messageType: string = 'text',
   category?: string,
   mediaUrl?: string,
+  contact?: string,
+  sevaDetails?: string,
 ) =>
   api.post(`/messages/community/${communityId}/${subgroupType}`, {
     content,
     message_type: messageType,
     category,
     media_url: mediaUrl,
+    contact,
+    seva_details: sevaDetails,
   });
 
 export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 25, before_timestamp?: string) => {

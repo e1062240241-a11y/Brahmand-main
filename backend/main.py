@@ -3584,7 +3584,21 @@ async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = D
         return datetime.min
 
     comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    return comments[:safe_limit]
+    comments = comments[:safe_limit]
+    
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+                    c['is_verified'] = user_doc.get('is_verified', False)
+                    
+    return comments
 
 
 @api_router.delete('/posts/{post_id}/comments/{comment_id}')
@@ -4455,22 +4469,27 @@ async def create_community(
         db = await get_db()
         owner_id = token_data["user_id"]
         
-        # 1. Validation: Must have exactly 2 admins and 2 members
-        # Make sure owner is not in either, and no duplicates
+        # 1. Validation: Ensure owner is not in either, and no duplicates
         admin_ids = list(set(data.admin_ids))
         member_ids = list(set(data.member_ids))
         
-        if len(admin_ids) != 2 or len(member_ids) != 2:
+        if owner_id in admin_ids or owner_id in member_ids:
             raise HTTPException(
                 status_code=400,
-                detail="A local community group requires exactly 1 owner, 2 admins, and 2 members to initiate consensus creation."
+                detail="Owner cannot be invited as an admin or member."
             )
             
-        all_members_set = set([owner_id] + admin_ids + member_ids)
-        if len(all_members_set) != 5:
+        duplicate_ids = set(admin_ids).intersection(set(member_ids))
+        if duplicate_ids:
             raise HTTPException(
                 status_code=400,
-                detail="Owner, admins, and members must all be unique users."
+                detail="A user cannot be both an admin and a member."
+            )
+
+        if len(admin_ids) + len(member_ids) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="A local community group requires at least one invited admin or member to initiate consensus creation."
             )
 
         # 2. Upload photos to Firebase Storage if provided as base64
@@ -4802,6 +4821,8 @@ async def send_community_message(
         'sender_name': user['name'],
         'sender_photo': user.get('photo'),
         'sender_sl_id': user.get('sl_id'),
+        'is_verified': user.get('is_verified', False),
+        'verification_level': user.get('verification_level', 'state'),
         'content': message.content,
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat() + 'Z'
@@ -4810,6 +4831,10 @@ async def send_community_message(
         msg_data['media_url'] = message.media_url
     if message.category:
         msg_data['category'] = message.category
+    if message.contact:
+        msg_data['contact'] = message.contact
+    if message.seva_details:
+        msg_data['seva_details'] = message.seva_details
     
     msg_id = await db.add_message_to_chat(chat_id, msg_data.copy())
     
@@ -4820,6 +4845,8 @@ async def send_community_message(
         'sender_name': user['name'],
         'sender_photo': user.get('photo'),
         'sender_sl_id': user.get('sl_id'),
+        'is_verified': user.get('is_verified', False),
+        'verification_level': user.get('verification_level', 'state'),
         'content': message.content,
         'message_type': message.message_type.value,
         'created_at': datetime.utcnow().isoformat() + 'Z'
@@ -4828,6 +4855,10 @@ async def send_community_message(
         response_data['media_url'] = message.media_url
     if message.category:
         response_data['category'] = message.category
+    if message.contact:
+        response_data['contact'] = message.contact
+    if message.seva_details:
+        response_data['seva_details'] = message.seva_details
 
     # Notify mentioned users in this community message
     try:
@@ -5022,6 +5053,19 @@ async def get_community_message_comments(
     def _sort_key(c):
         return c.get('created_at', '')
     comments.sort(key=_sort_key, reverse=True)
+    
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+                    c['is_verified'] = user_doc.get('is_verified', False)
+                    
     return {
         'status': 'success',
         'data': comments
@@ -5296,7 +5340,9 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
                     "id": other_id,
                     "name": other.get('name', 'Unknown'),
                     "sl_id": other.get('sl_id', ''),
-                    "photo": other.get('photo')
+                    "photo": other.get('photo'),
+                    "is_verified": other.get('is_verified', False),
+                    "verification_level": other.get('verification_level', 'state')
                 },
                 "last_message": chat.get('last_message', ''),
                 "last_message_at": chat.get('updated_at', chat.get('created_at')),
@@ -5343,6 +5389,20 @@ async def get_dm_messages(chat_id: str, limit: int = 50, token_data: dict = Depe
         raise HTTPException(status_code=403, detail="Access denied")
 
     messages = await db.get_chat_messages(chat_id, limit)
+    
+    # Dynamically decorate with current sender verification status
+    if messages:
+        sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+        if sender_ids:
+            users_list = await db.get_documents_batch('users', sender_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for msg in messages:
+                sender_id = msg.get('sender_id')
+                if sender_id and sender_id in users_map:
+                    user_doc = users_map[sender_id]
+                    msg['is_verified'] = user_doc.get('is_verified', False)
+                    msg['verification_level'] = user_doc.get('verification_level', 'state')
+                    
     return messages
 
 

@@ -1112,7 +1112,12 @@ export default function MessagesScreen() {
                   >
                     <Avatar name={conv.user?.name || '?'} photo={conv.user?.photo} size={50} />
                     <View style={styles.chatItemInfo}>
-                      <Text style={styles.chatItemName}>{conv.user?.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.chatItemName}>{conv.user?.name}</Text>
+                        {(conv.user as any)?.is_verified && (
+                          <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 4 }} />
+                        )}
+                      </View>
                       <Text style={[styles.chatItemLastMsg, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>{conv.last_message || 'Send a message'}</Text>
                     </View>
                     <View style={styles.chatItemRight}>

@@ -51,7 +51,11 @@ class FirebaseMessagingService:
         community_id: str,
         subgroup_type: str,
         content: str,
-        message_type: str = "text"
+        message_type: str = "text",
+        media_url: Optional[str] = None,
+        category: Optional[str] = None,
+        contact: Optional[str] = None,
+        seva_details: Optional[str] = None
     ) -> Dict[str, Any]:
         """Send message to community subgroup"""
         db = await FirebaseMessagingService.get_db()
@@ -93,11 +97,21 @@ class FirebaseMessagingService:
             'sender_name': user['name'],
             'sender_photo': user.get('photo'),
             'sender_sl_id': user.get('sl_id'),
+            'is_verified': user.get('is_verified', False),
+            'verification_level': user.get('verification_level', 'state'),
             'content': content,
             'message_type': message_type,
             'created_at': datetime.utcnow(),
             'timestamp': firestore.SERVER_TIMESTAMP
         }
+        if media_url:
+            message_data['media_url'] = media_url
+        if category:
+            message_data['category'] = category
+        if contact:
+            message_data['contact'] = contact
+        if seva_details:
+            message_data['seva_details'] = seva_details
         
         message_id = await db.add_message_to_chat(chat_id, message_data)
         message_data['id'] = message_id
@@ -125,12 +139,41 @@ class FirebaseMessagingService:
     async def get_community_messages(
         community_id: str,
         subgroup_type: str,
-        limit: int = 50
+        limit: int = 50,
+        before_timestamp: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get messages from community chat"""
         db = await FirebaseMessagingService.get_db()
         chat_id = FirebaseMessagingService._get_chat_id('community', community_id, subgroup_type)
-        return await db.get_chat_messages(chat_id, limit)
+        
+        parsed_timestamp = None
+        if before_timestamp:
+            try:
+                ts_str = before_timestamp.replace('Z', '+00:00')
+                parsed_timestamp = datetime.fromisoformat(ts_str)
+            except Exception:
+                try:
+                    from dateutil import parser
+                    parsed_timestamp = parser.parse(before_timestamp)
+                except Exception as e:
+                    logger.warning(f"Failed to parse before_timestamp: {before_timestamp}. Error: {e}")
+                    
+        messages = await db.get_chat_messages(chat_id, limit, parsed_timestamp)
+        
+        # Dynamically decorate with current sender verification status
+        if messages:
+            sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+            if sender_ids:
+                users_list = await db.get_documents_batch('users', sender_ids)
+                users_map = {u['id']: u for u in users_list if 'id' in u}
+                for msg in messages:
+                    sender_id = msg.get('sender_id')
+                    if sender_id and sender_id in users_map:
+                        user_doc = users_map[sender_id]
+                        msg['is_verified'] = user_doc.get('is_verified', False)
+                        msg['verification_level'] = user_doc.get('verification_level', 'state')
+                        
+        return messages
     
     @staticmethod
     async def send_circle_message(
@@ -194,7 +237,22 @@ class FirebaseMessagingService:
         """Get circle messages"""
         db = await FirebaseMessagingService.get_db()
         chat_id = FirebaseMessagingService._get_chat_id('circle', circle_id)
-        return await db.get_chat_messages(chat_id, limit)
+        messages = await db.get_chat_messages(chat_id, limit)
+        
+        # Dynamically decorate with current sender verification status
+        if messages:
+            sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+            if sender_ids:
+                users_list = await db.get_documents_batch('users', sender_ids)
+                users_map = {u['id']: u for u in users_list if 'id' in u}
+                for msg in messages:
+                    sender_id = msg.get('sender_id')
+                    if sender_id and sender_id in users_map:
+                        user_doc = users_map[sender_id]
+                        msg['is_verified'] = user_doc.get('is_verified', False)
+                        msg['verification_level'] = user_doc.get('verification_level', 'state')
+                        
+        return messages
     
     @staticmethod
     async def send_direct_message(
@@ -262,14 +320,34 @@ class FirebaseMessagingService:
         """Get all DM conversations"""
         db = await FirebaseMessagingService.get_db()
         
-        # Query chats where user is participant
-        chats = await db.query_documents(
-            'chats',
-            filters=[('type', '==', 'dm'), ('participants', 'array_contains', user_id)],
-            order_by='last_message_at',
-            order_direction='DESCENDING',
-            limit=50
-        )
+        try:
+            # Query chats where user is participant
+            chats = await db.query_documents(
+                'chats',
+                filters=[('type', '==', 'dm'), ('participants', 'array_contains', user_id)],
+                order_by='last_message_at',
+                order_direction='DESCENDING',
+                limit=50
+            )
+        except Exception as e:
+            logger.warning(f"Failed to query with index, falling back to Python sorting. Error: {e}")
+            chats = await db.query_documents(
+                'chats',
+                filters=[('type', '==', 'dm'), ('participants', 'array_contains', user_id)]
+            )
+            # Sort in Python
+            def _sort_key(c):
+                val = c.get('last_message_at')
+                if isinstance(val, datetime):
+                    return val
+                if isinstance(val, str):
+                    try:
+                        return datetime.fromisoformat(val.replace('Z', '+00:00'))
+                    except Exception:
+                        pass
+                return datetime.min
+            chats.sort(key=_sort_key, reverse=True)
+            chats = chats[:50]
         
         result = []
         for chat in chats:
@@ -284,7 +362,9 @@ class FirebaseMessagingService:
                         "id": other_id,
                         "sl_id": other_user.get('sl_id'),
                         "name": other_user['name'],
-                        "photo": other_user.get('photo')
+                        "photo": other_user.get('photo'),
+                        "is_verified": other_user.get('is_verified', False),
+                        "verification_level": other_user.get('verification_level', 'state')
                     },
                     "last_message": chat.get('last_message', ''),
                     "last_message_at": chat.get('last_message_at')
@@ -306,4 +386,19 @@ class FirebaseMessagingService:
         if not chat or user_id not in chat.get('participants', []):
             raise ValueError("Not authorized")
         
-        return await db.get_chat_messages(conversation_id, limit)
+        messages = await db.get_chat_messages(conversation_id, limit)
+        
+        # Dynamically decorate with current sender verification status
+        if messages:
+            sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+            if sender_ids:
+                users_list = await db.get_documents_batch('users', sender_ids)
+                users_map = {u['id']: u for u in users_list if 'id' in u}
+                for msg in messages:
+                    sender_id = msg.get('sender_id')
+                    if sender_id and sender_id in users_map:
+                        user_doc = users_map[sender_id]
+                        msg['is_verified'] = user_doc.get('is_verified', False)
+                        msg['verification_level'] = user_doc.get('verification_level', 'state')
+                        
+        return messages

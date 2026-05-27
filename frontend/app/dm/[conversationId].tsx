@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
 import type * as ContactsType from 'expo-contacts';
@@ -601,6 +601,7 @@ const DirectMessageScreen = () => {
         status: msg.status,
         created_at: msg.created_at || msg.timestamp || '',
         timestamp: msg.timestamp || msg.created_at || '',
+        is_verified: msg.is_verified || false,
       }));
       
       // Check if messages actually changed before updating
@@ -1389,7 +1390,12 @@ const DirectMessageScreen = () => {
               )}
             </View>
             <View style={styles.headerTextInfo}>
-              <Text style={styles.headerTitle} numberOfLines={1}>{conversation.user.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.headerTitle} numberOfLines={1}>{conversation.user.name}</Text>
+                {(conversation.user as any)?.is_verified && (
+                  <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 4 }} />
+                )}
+              </View>
               <View style={styles.statusRow}>
                 {isRealtime && (
                   <View style={styles.realtimeBadge}>
