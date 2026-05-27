@@ -38,6 +38,10 @@ export default function PassportTimelineScreen() {
   const [queryMonth, setQueryMonth] = useState('');
   const [queryYear, setQueryYear] = useState('');
 
+  const hanumanCount = badges.find((b) => b.title === 'Hanuman Chalisa Completed')?.count || 0;
+  const gayatriCount = badges.find((b) => b.title === 'Gayatri Mantra Mala Completed')?.count || 0;
+  const shivaCount = badges.find((b) => b.title === 'Om Namah Shivaya Mala Completed')?.count || 0;
+
   useEffect(() => {
     loadPassport();
   }, []);
@@ -141,6 +145,24 @@ export default function PassportTimelineScreen() {
           </View>
         </View>
 
+        <View style={{ marginTop: SPACING.lg }}>
+          <Text style={styles.sectionTitle}>Jaap Achievements</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: SPACING.sm, marginTop: SPACING.sm }}>
+            <View style={{ flex: 1, backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, alignItems: 'center', borderWidth: 1, borderColor: '#FEF3E7' }}>
+              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#FF5100' }}>{hanumanCount}</Text>
+              <Text style={{ fontSize: 10, color: COLORS.textSecondary, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Hanuman Chalisa</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, alignItems: 'center', borderWidth: 1, borderColor: '#FEF3E7' }}>
+              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#FF5100' }}>{gayatriCount}</Text>
+              <Text style={{ fontSize: 10, color: COLORS.textSecondary, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Gayatri Malas</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, alignItems: 'center', borderWidth: 1, borderColor: '#FEF3E7' }}>
+              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#FF5100' }}>{shivaCount}</Text>
+              <Text style={{ fontSize: 10, color: COLORS.textSecondary, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Shiva Malas</Text>
+            </View>
+          </View>
+        </View>
+
         <View style={styles.badgePanel}>
           <Text style={styles.sectionTitle}>Badges</Text>
           {badges.length === 0 ? (
@@ -148,7 +170,14 @@ export default function PassportTimelineScreen() {
           ) : (
             badges.map((badge) => (
               <View key={badge.id} style={styles.badgeTile}>
-                <Text style={styles.badgeTileTitle}>{badge.title}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.badgeTileTitle}>{badge.title}</Text>
+                  {badge.count && badge.count > 1 ? (
+                    <View style={{ backgroundColor: '#FF5100', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                      <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>x{badge.count}</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={styles.badgeTileMeta}>{badge.description}</Text>
               </View>
             ))

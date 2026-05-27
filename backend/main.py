@@ -10829,31 +10829,73 @@ async def register_jaap_reminder(
     """
     Register a reminder for a specific jaap session.
     Stores the user's intent to be notified 5 minutes before the session starts.
+    Toggles the active state if it already exists.
     """
     db = await get_db()
     user_id = token_data["user_id"]
     data = await request.json()
     
     mantra_type = data.get("mantra_type")
-    session_name = data.get("session_name")  # e.g., 'Morning', 'Evening'
     
-    if not mantra_type or not session_name:
-        raise HTTPException(status_code=400, detail="mantra_type and session_name are required")
+    if not mantra_type:
+        raise HTTPException(status_code=400, detail="mantra_type is required")
 
-    # Use a predictable ID to prevent duplicates: user_id:mantra:session
-    reminder_id = f"{user_id}:{mantra_type}:{session_name.lower()}"
+    # Define the sessions for this mantra
+    if mantra_type == "hanuman":
+        sessions = ["Morning", "Afternoon", "Evening", "Night"]
+    else:
+        sessions = ["Morning", "Evening"]
+
+    # We want to check if ANY of these sessions are currently subscribed.
+    # If yes, we toggle all of them OFF (delete).
+    # If no, we toggle all of them ON (create).
+    any_active = False
+    for session in sessions:
+        reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
+        existing = await db.get_document("jaap_reminders", reminder_id)
+        if existing and existing.get("active", False):
+            any_active = True
+            break
+
+    if any_active:
+        # Toggle off: delete all
+        for session in sessions:
+            reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
+            await db.delete_document("jaap_reminders", reminder_id)
+        return {"message": f"Reminders removed for {mantra_type} jaap", "active": False}
+    else:
+        # Toggle on: create all
+        for session in sessions:
+            reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
+            reminder_data = {
+                "user_id": user_id,
+                "mantra_type": mantra_type,
+                "session_name": session,
+                "created_at": datetime.utcnow().isoformat() + 'Z',
+                "active": True
+            }
+            await db.create_document("jaap_reminders", reminder_data, doc_id=reminder_id)
+        return {"message": f"Reminders set for all sessions of {mantra_type} jaap!", "active": True}
+
+
+@api_router.get("/jaap/reminders")
+async def get_jaap_reminders(
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Get all active jaap reminders for the current user.
+    """
+    db = await get_db()
+    user_id = token_data["user_id"]
     
-    reminder_data = {
-        "user_id": user_id,
-        "mantra_type": mantra_type,
-        "session_name": session_name,
-        "created_at": datetime.utcnow().isoformat() + 'Z',
-        "active": True
-    }
-    
-    await db.create_document("jaap_reminders", reminder_data, doc_id=reminder_id)
-    
-    return {"message": f"Reminder set for {session_name} {mantra_type} jaap!"}
+    reminders = await db.query_documents(
+        "jaap_reminders",
+        filters=[
+            ("user_id", "==", user_id),
+            ("active", "==", True)
+        ]
+    )
+    return {"reminders": reminders}
 
 
 async def _jaap_reminder_worker():
@@ -10871,6 +10913,11 @@ async def _jaap_reminder_worker():
         {'name': 'Night', 'hour': 21, 'min': 0},
     ]
     
+    OTHER_SESSIONS = [
+        {'name': 'Morning', 'hour': 6, 'min': 0},
+        {'name': 'Evening', 'hour': 13, 'min': 0},
+    ]
+    
     while True:
         try:
             # Check every minute
@@ -10880,6 +10927,7 @@ async def _jaap_reminder_worker():
             tz = ZoneInfo("Asia/Kolkata")
             now_ist = datetime.now(tz)
             
+            # 1. Check Hanuman Chalisa sessions
             for session in HAN_SESSIONS:
                 # Calculate session start time for today
                 start_time = now_ist.replace(hour=session['hour'], minute=session['min'], second=0, microsecond=0)
@@ -10914,6 +10962,41 @@ async def _jaap_reminder_worker():
                             body=f"Your {session['name']} Hanuman Chalisa session starts in 5 minutes. Join now!",
                             notification_type="jaap_reminder",
                             data={"mantra_type": "hanuman", "session_name": session['name']}
+                        )
+
+            # 2. Check other Live Jaap sessions (Gayatri, Shiva, Krishna, etc.)
+            for session in OTHER_SESSIONS:
+                start_time = now_ist.replace(hour=session['hour'], minute=session['min'], second=0, microsecond=0)
+                diff = (start_time - now_ist).total_seconds()
+                
+                if 240 <= diff < 300:  # 4 to 5 minutes before
+                    logger.info(f"Triggering reminders for {session['name']} Other Live Jaaps (starts in {int(diff/60)}m)")
+                    
+                    db = await get_db()
+                    reminders = await db.query_documents(
+                        "jaap_reminders",
+                        filters=[
+                            ("session_name", "==", session['name']),
+                            ("active", "==", True)
+                        ]
+                    )
+                    
+                    if not reminders:
+                        continue
+                        
+                    for r in reminders:
+                        mantra_type = r.get("mantra_type")
+                        if mantra_type == "hanuman":
+                            continue
+                        uid = r.get("user_id")
+                        mantra_title = mantra_type.capitalize() + " Mantra" if mantra_type != "shiva" else "Om Namah Shivaya"
+                        await task_queue.enqueue(
+                            FirebaseNotificationService.create_notification,
+                            user_id=uid,
+                            title="🙏 Live Jaap Starting Soon",
+                            body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
+                            notification_type="jaap_reminder",
+                            data={"mantra_type": mantra_type, "session_name": session['name']}
                         )
                     
         except Exception as e:

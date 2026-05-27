@@ -89,10 +89,11 @@ def get_rate_limit_key(request: Request, endpoint: str = "") -> str:
 async def rate_limit_dependency(
     request: Request,
     limit: int = None,
+    window: int = 60,
     key_prefix: str = "api"
 ):
     """FastAPI dependency for rate limiting"""
-    allowed = await limiter.check_rate_limit(request, limit, key_prefix=key_prefix)
+    allowed = await limiter.check_rate_limit(request, limit, window=window, key_prefix=key_prefix)
     if not allowed:
         raise HTTPException(
             status_code=429,
@@ -104,13 +105,13 @@ async def rate_limit_dependency(
 # Specific rate limiters for different endpoints
 async def auth_rate_limit(request: Request):
     """Rate limit for authentication endpoints (stricter)"""
-    return await rate_limit_dependency(request, settings.RATE_LIMIT_AUTH, "auth")
+    return await rate_limit_dependency(request, settings.RATE_LIMIT_AUTH, key_prefix="auth")
 
 
 async def messaging_rate_limit(request: Request):
     """Rate limit for messaging endpoints"""
-    return await rate_limit_dependency(request, settings.RATE_LIMIT_MESSAGING, "messaging")
+    return await rate_limit_dependency(request, settings.RATE_LIMIT_MESSAGING, key_prefix="messaging")
 
 async def upload_rate_limit(request: Request):
-    """Rate limit for file uploads (stricter to save bandwidth and server resources)"""
-    return await rate_limit_dependency(request, limit=5, key_prefix="upload")
+    """Rate limit for file uploads (stricter to save bandwidth and server resources): 3 uploads per 10 minutes"""
+    return await rate_limit_dependency(request, limit=3, window=600, key_prefix="upload")

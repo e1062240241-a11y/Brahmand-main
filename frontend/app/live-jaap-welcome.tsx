@@ -92,8 +92,63 @@ export default function LiveJaapWelcomeScreen() {
                <Text style={styles.lotusIcon}>🪷</Text>
              </View>
           </View>
+          {isHanuman && (
+            <View style={styles.statusBanner}>
+              {hanumanStatus.isActive ? (
+                <View style={styles.activeBannerInner}>
+                  <View style={styles.liveDotRing} />
+                  <Text style={styles.statusTextActive}>
+                    {hanumanStatus.isCompleted
+                      ? `Session Completed (Waiting for next)`
+                      : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.inactiveBannerInner}>
+                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
+                  <Text style={styles.statusTextInactive}>
+                    Next Live: {hanumanStatus.nextSessionName} Session Starts in {(() => {
+                      if (!hanumanStatus.nextSessionStart) return '';
+                      const diffMs = hanumanStatus.nextSessionStart.getTime() - now.getTime();
+                      const hrs = Math.floor(diffMs / 3600000);
+                      const mins = Math.floor((diffMs % 3600000) / 60000);
+                      const secs = Math.floor((diffMs % 60000) / 1000);
+                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    })()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
-          {/* MANTRA PREVIEW */}
+          {isOtherLiveJaap && (
+            <View style={styles.statusBanner}>
+              {otherStatus.isActive ? (
+                <View style={styles.activeBannerInner}>
+                  <View style={styles.liveDotRing} />
+                  <Text style={styles.statusTextActive}>
+                    {`${otherStatus.sessionName} Session • Live (6 AM - 12 PM & 1 PM - 8 PM)`}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.inactiveBannerInner}>
+                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
+                  <Text style={styles.statusTextInactive}>
+                    Next Live: {otherStatus.nextSessionName} Session Starts in {(() => {
+                      if (!otherStatus.nextSessionStart) return '';
+                      const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
+                      const hrs = Math.floor(diffMs / 3600000);
+                      const mins = Math.floor((diffMs % 3600000) / 60000);
+                      const secs = Math.floor((diffMs % 60000) / 1000);
+                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    })()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* MANTRA PREVIEW - SCROLLABLE FOR LONG TEXTS LIKE HANUMAN CHALISA */}
           <View style={styles.mantraPreviewBox}>
             <Text style={styles.mantraPreviewText}>
               श्रीगुरु चरन सरोज रज, निज मनु मुकुर सुधारि{'\n'}
@@ -164,6 +219,48 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  statusBanner: {
+    alignSelf: 'center',
+    marginVertical: 10,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    width: '90%',
+  },
+  activeBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(74, 186, 126, 0.08)',
+  },
+  inactiveBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(123, 106, 88, 0.05)',
+  },
+  liveDotRing: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ABA7E',
+    marginRight: 8,
+  },
+  statusTextActive: {
+    fontSize: 12,
+    color: '#2E7D32',
+    fontWeight: '700',
+  },
+  statusTextInactive: {
+    fontSize: 12,
+    color: '#7B6A58',
+    fontWeight: '600',
   },
   welcomeText: { 
     color: '#374151',

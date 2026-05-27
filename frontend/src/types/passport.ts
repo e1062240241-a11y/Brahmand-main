@@ -28,6 +28,7 @@ export interface PassportBadge {
   title: string;
   description: string;
   earned_at: string;
+  count?: number;
 }
 
 export interface PassportCertificate {

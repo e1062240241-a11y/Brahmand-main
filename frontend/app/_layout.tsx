@@ -21,7 +21,8 @@ import { toast } from '../src/store/toastStore';
 import { Alert as RNAlert } from 'react-native';
 import { syncDatabase } from '../src/database/sync';
 
-const originalAlert = RNAlert.alert;
+import { originalAlert } from '../src/utils/nativeAlert';
+
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
   const titleStr = typeof title === 'string' ? title : '';
   const bodyStr = typeof message === 'string' ? message : '';

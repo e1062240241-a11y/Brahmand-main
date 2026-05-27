@@ -339,11 +339,11 @@ try {
   console.warn('expo-file-system unavailable for media sharing:', error);
 }
 
-const quickAccess = [
+const baseQuickAccess = [
   { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF' },
-  { label: 'Kundli', subtitle: 'Your Daily Vedic Energy', color: '#FFF' },
+  { label: 'Live Mantra', subtitle: 'Mantra Chanting', color: '#FFF' },
   { label: 'Cosmic Guidance', subtitle: 'Your Cosmic Blueprint', color: '#FFF' },
   { label: 'Brahmand Passport', subtitle: 'Your Temple Journey Record', color: '#FFF' },
   { label: 'Festival Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
@@ -368,6 +368,40 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
+
+  // Dynamic Live Mantra state
+  const liveMantraActive = isWithinGayatriMantraWindow(new Date()) !== null;
+  const liveMantraName = liveMantraActive ? 'Maha Mrityunjaya' : 'Gayatri Chanting';
+
+  const currentQuickAccess = useMemo(() => {
+    return baseQuickAccess.map(item => {
+      if (item.label === 'Live Mantra') {
+        return {
+          ...item,
+          subtitle: `${liveMantraName} is Live`
+        };
+      }
+      return item;
+    });
+  }, [liveMantraName]);
+
+  const [shuffledQuickAccess, setShuffledQuickAccess] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const shuffleArray = (array: any[]) => {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[arr[j]]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+    setShuffledQuickAccess(shuffleArray(currentQuickAccess));
+  }, [currentQuickAccess, isFocused]);
+
+  const displayQuickAccess = shuffledQuickAccess.length > 0 ? shuffledQuickAccess : currentQuickAccess;
+
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
   const currentUserId = (user as any)?.id;
@@ -424,7 +458,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!isFocused) return;
     const CARD_WIDTH = 185; // 175 card + 10 gap
-    const TOTAL_CARDS = quickAccess.length;
+    const TOTAL_CARDS = displayQuickAccess.length;
     const interval = setInterval(() => {
       topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
       topFeaturesScrollRef.current?.scrollTo({
@@ -433,7 +467,7 @@ export default function HomeScreen() {
       });
     }, 3000);
     return () => clearInterval(interval);
-  }, [isFocused]);
+  }, [isFocused, displayQuickAccess.length]);
 
   useEffect(() => {
     if (user?.id) {
@@ -1558,11 +1592,12 @@ export default function HomeScreen() {
                 colors={['#FF6B00']}
               />
             }
-            stickyHeaderIndices={[1]}
+            stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
             onScroll={handleHomeScroll}
             scrollEventThrottle={16}
           >
-            {loadingFeed && feedPosts.length === 0 ? (
+            <View>
+            {loadingFeed && feedPosts.length === 0 && (
               <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
                 {/* Avatar + Lines */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
@@ -1616,8 +1651,8 @@ export default function HomeScreen() {
                   </View>
                 </View>
               </View>
-            ) : (
-              <>
+            )}
+            {!(loadingFeed && feedPosts.length === 0) && (
             <View
               onLayout={(event) => {
                 const h = event.nativeEvent.layout.height;
@@ -1814,7 +1849,7 @@ export default function HomeScreen() {
                     decelerationRate="fast"
                     contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
                   >
-                    {quickAccess.map((item, idx) => {
+                    {displayQuickAccess.map((item, idx) => {
                       let cardBg = '#FFFFFF';
                       let iconBg = '#FF8A3D';
                       if (item.label === 'Panchang') {
@@ -1826,6 +1861,9 @@ export default function HomeScreen() {
                       } else if (item.label === 'SOS') {
                         cardBg = '#FFF5F5';
                         iconBg = '#FF3B30';
+                      } else if (item.label === 'Live Mantra') {
+                        cardBg = '#FFF3EB';
+                        iconBg = '#FF6B00';
                       }
 
                       return (
@@ -1837,6 +1875,15 @@ export default function HomeScreen() {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
+                            else if (item.label === 'Live Mantra') {
+                              router.push({
+                                pathname: '/live-jaap-welcome',
+                                params: {
+                                  mantraType: liveMantraActive ? 'mrityunjaya' : 'gayatri',
+                                  title: liveMantraActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra',
+                                },
+                              });
+                            }
                             else if (item.label === 'Kundli') router.push('/astrology' as any);
                             else if (item.label === 'Cosmic Guidance') router.push('/horoscope');
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
@@ -1857,6 +1904,12 @@ export default function HomeScreen() {
                           ) : item.label === 'Panchang' ? (
                             <View style={styles.featureIconWrap}>
                               <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                            </View>
+                          ) : item.label === 'Live Mantra' ? (
+                            <View style={styles.featureIconWrap}>
+                              <View style={[styles.sosRing, { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' }]}>
+                                <Ionicons name="radio-outline" size={20} color="#FFF" />
+                              </View>
                             </View>
                           ) : item.label === 'Kundli' ? (
                             <View style={styles.featureIconWrap}>
@@ -2327,7 +2380,10 @@ export default function HomeScreen() {
               </View>
             </View>
             </View>
+            )}
+            </View>
 
+            {!(loadingFeed && feedPosts.length === 0) && (
             <View style={styles.stickyFeedTabsShell}>
               <View style={styles.stickyFeedTabs}>
                 <HomeFeedTabs
@@ -2341,7 +2397,9 @@ export default function HomeScreen() {
                 />
               </View>
             </View>
+            )}
 
+            {!(loadingFeed && feedPosts.length === 0) && (
             <View style={styles.feedPanel}>
               {backgroundUpload.uploading && (
                 <View style={styles.uploadingStatusBar}>
@@ -2443,8 +2501,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
-            </>
-          )}
+            )}
           </ScrollView>
 
           <Modal visible={isEditingBio} transparent animationType="fade">
