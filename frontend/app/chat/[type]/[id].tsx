@@ -38,8 +38,9 @@ const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void)
 };
 
 const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contain', isLooping = false }: any) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<any>(null);
-  const playerSource = Platform.OS === 'web' ? null : uri;
+  const playerSource = (Platform.OS === 'web' || !isPlaying) ? null : uri;
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = isLooping;
   });
@@ -50,6 +51,12 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
       videoRef.current.loop = isLooping;
     }
   }, [isLooping]);
+
+  useEffect(() => {
+    if (player && isPlaying) {
+      player.play();
+    }
+  }, [player, isPlaying]);
 
   if (Platform.OS === 'web') {
     return (
@@ -62,20 +69,27 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
     );
   }
 
-  if (ExpoVideoModule?.VideoView && player) {
+  if (isPlaying && ExpoVideoModule?.VideoView && player) {
     return (
       <ExpoVideoModule.VideoView
         player={player}
         style={style}
         contentFit={resizeMode}
         allowsPictureInPicture={false}
-        nativeControls={useNativeControls}
+        nativeControls={true}
         playsInline
       />
     );
   }
 
-  return <View style={[style, { backgroundColor: '#000' }]} />;
+  return (
+    <TouchableOpacity 
+      style={[style, { backgroundColor: '#1C1C1E', justifyContent: 'center', alignItems: 'center', position: 'relative' }]}
+      onPress={() => setIsPlaying(true)}
+    >
+      <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.85)" />
+    </TouchableOpacity>
+  );
 };
 
 const getTimeAgo = (dateString?: string) => {
@@ -367,8 +381,15 @@ const ChatScreen = () => {
       const fetchedMsgs = applyClientClearFilter(response.data || []);
       setMessages(fetchedMsgs);
       useChatStore.getState().setChatCache(roomKey, { messages: response.data || [], lastFetched: Date.now() });
-    } catch (error) {
+      return true;
+    } catch (error: any) {
       console.error('Error fetching messages:', error);
+      if (error?.response?.status === 404) {
+        // Stop fetching if the circle/community is not found (deleted or removed)
+        setLoading(false);
+        return false;
+      }
+      return true;
     } finally {
       setLoading(false);
     }
@@ -422,8 +443,11 @@ const ChatScreen = () => {
       } catch (error) {
         console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
         if (!pollingInterval) {
-          pollingInterval = setInterval(() => {
-            fetchMessages(true);
+          pollingInterval = setInterval(async () => {
+            const shouldContinue = await fetchMessages(true);
+            if (shouldContinue === false && pollingInterval) {
+              clearInterval(pollingInterval);
+            }
           }, 3000);
         }
       }
@@ -433,8 +457,11 @@ const ChatScreen = () => {
 
     if (Platform.OS === 'web') {
       // Web uses polling only for group/community chat; socket transport is unreliable in this setup.
-      pollingInterval = setInterval(() => {
-        fetchMessages(true);
+      pollingInterval = setInterval(async () => {
+        const shouldContinue = await fetchMessages(true);
+        if (shouldContinue === false && pollingInterval) {
+          clearInterval(pollingInterval);
+        }
       }, 3000);
     } else {
       setupSocket();

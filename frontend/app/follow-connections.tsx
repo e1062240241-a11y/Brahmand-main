@@ -293,7 +293,11 @@ export default function FollowConnectionsScreen() {
           <TouchableOpacity
             style={styles.messageButton}
             activeOpacity={0.85}
-            onPress={() => router.push(`/chat/user/${item.id}` as any)}
+            onPress={() => {
+              const userName = encodeURIComponent(item.name || '');
+              const userSL = encodeURIComponent(item.sl_id || '');
+              router.push(`/dm/new?userId=${item.id}&userName=${userName}&userSL=${userSL}` as any);
+            }}
           >
             <Text style={styles.messageButtonText}>Message</Text>
           </TouchableOpacity>
@@ -616,19 +620,18 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   messageButton: {
+    minWidth: 80,
     paddingHorizontal: 14,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#FFF4EE',
+    backgroundColor: '#F25C05',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#FFD7C2',
   },
   messageButtonText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#F25C05',
+    color: '#FFFFFF',
   },
   emptyState: {
     alignItems: 'center',

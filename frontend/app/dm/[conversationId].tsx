@@ -20,6 +20,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
 import type * as ContactsType from 'expo-contacts';
@@ -37,7 +38,6 @@ import {
   muteConversation,
   unmuteConversation,
 } from '../../src/services/api';
-import { MentionInput } from '../../src/components/MentionInput';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatMessage } from '../../src/services/firebase/chatService';
 import { useAuthStore } from '../../src/store/authStore';
@@ -100,8 +100,9 @@ const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void)
 };
 
 const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contain', isLooping = false }: any) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<any>(null);
-  const playerSource = Platform.OS === 'web' ? null : uri;
+  const playerSource = (Platform.OS === 'web' || !isPlaying) ? null : uri;
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = isLooping;
   });
@@ -112,6 +113,12 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
       videoRef.current.loop = isLooping;
     }
   }, [isLooping]);
+
+  useEffect(() => {
+    if (player && isPlaying) {
+      player.play();
+    }
+  }, [player, isPlaying]);
 
   if (Platform.OS === 'web') {
     return (
@@ -124,20 +131,27 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
     );
   }
 
-  if (ExpoVideoModule?.VideoView && player) {
+  if (isPlaying && ExpoVideoModule?.VideoView && player) {
     return (
       <ExpoVideoModule.VideoView
         player={player}
         style={style}
         contentFit={resizeMode}
         allowsPictureInPicture={false}
-        nativeControls={useNativeControls}
+        nativeControls={true}
         playsInline
       />
     );
   }
 
-  return <View style={[style, { backgroundColor: '#000' }]} />;
+  return (
+    <TouchableOpacity 
+      style={[style, { backgroundColor: '#1C1C1E', justifyContent: 'center', alignItems: 'center', position: 'relative' }]}
+      onPress={() => setIsPlaying(true)}
+    >
+      <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.85)" />
+    </TouchableOpacity>
+  );
 };
 
 const MessageStatus = ({ status, isOwn }: { status?: string; isOwn: boolean }) => {
@@ -217,50 +231,36 @@ const DMMessageItem = React.memo(({
         {!isOwnMessage && (
           <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
         )}
-        <View
-          style={[
-            styles.messageBubble,
-            isOwnMessage && styles.ownMessageBubble,
-            isSharedPost && styles.sharedPostMessageBubble,
-          ]}
-        >
-          {renderMessageContent(item)}
+        <View style={{ flexDirection: 'column', alignItems: isOwnMessage ? 'flex-end' : 'flex-start', flexShrink: 1 }}>
+          <View
+            style={[
+              styles.messageBubble,
+              isOwnMessage && styles.ownMessageBubble,
+              isSharedPost && styles.sharedPostMessageBubble,
+            ]}
+          >
+            {renderMessageContent(item)}
+          </View>
           {!isSharedPost && (
-            <View style={styles.messageFooter}>
+            <View style={[styles.messageFooter, isOwnMessage && styles.ownMessageFooter]}>
               <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
                 {formatTime(item.created_at)}
               </Text>
-              <MessageStatus status={(item as any).status} isOwn={isOwnMessage} />
             </View>
           )}
         </View>
       </View>
     </>
   );
-}, (prevProps, nextProps) => {
-  const prevItem = prevProps.item;
-  const nextItem = nextProps.item;
-  return (
-    prevItem.id === nextItem.id &&
-    prevItem.sender_id === nextItem.sender_id &&
-    prevItem.created_at === nextItem.created_at &&
-    prevItem.content === nextItem.content &&
-    prevItem.text === nextItem.text &&
-    (prevItem as any).message_type === (nextItem as any).message_type &&
-    prevItem.sender_name === nextItem.sender_name &&
-    prevItem.sender_photo === nextItem.sender_photo &&
-    (prevItem as any).status === (nextItem as any).status &&
-    prevProps.userId === nextProps.userId &&
-    prevProps.index === nextProps.index &&
-    prevProps.showDateSeparator === nextProps.showDateSeparator &&
-    prevProps.renderMessageContent === nextProps.renderMessageContent &&
-    prevProps.formatChatDate === nextProps.formatChatDate &&
-    prevProps.formatTime === nextProps.formatTime
-  );
 });
 
 const DirectMessageScreen = () => {
-  const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
+  const { conversationId, userId, userName, userSL } = useLocalSearchParams<{
+    conversationId: string;
+    userId?: string;
+    userName?: string;
+    userSL?: string;
+  }>();
   const router = useRouter();
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
@@ -302,7 +302,14 @@ const DirectMessageScreen = () => {
   const [requestActionLoading, setRequestActionLoading] = useState(false);
   const attachmentAnim = useRef(new Animated.Value(0)).current;
 
-  // Mark messages as read when opening chat
+  // Get picker media types function
+  const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
+    return mediaType === 'image' 
+      ? ImagePicker.MediaTypeOptions.Images 
+      : ImagePicker.MediaTypeOptions.Videos;
+  };
+
+  // Mark messages as read
   const markMessagesAsRead = useCallback(async () => {
     if (!conversationId || hasMarkedRead) return;
     
@@ -313,7 +320,7 @@ const DirectMessageScreen = () => {
     } catch (error: any) {
       const status = error?.response?.status;
       if (status === 502 || status === 503) {
-        console.warn('[Chat] Backend unavailable, unable to mark messages as read:', status);
+        console.warn('[Chat] Backend unavailable:', status);
       } else {
         console.error('[Chat] Error marking messages as read:', error);
       }
@@ -404,49 +411,6 @@ const DirectMessageScreen = () => {
     return conversation?.user;
   };
 
-  const getPresenceLabel = () => {
-    const presence = getPresenceSource();
-    if (!presence) return '';
-
-    if (presence.online_status === true) {
-      return 'Online';
-    }
-
-    const lastSeen = presence.last_seen_at || presence.last_active || presence.updated_at;
-    const date = parseDateOrNull(lastSeen);
-    if (!date) return '';
-
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMinutes = Math.floor(diffMs / 60000);
-    if (diffMinutes < 1) return 'Online';
-    if (diffMinutes < 60) return `Last seen ${diffMinutes} min ago`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `Last seen ${diffHours} hr ago`;
-
-    return `Last seen ${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
-  };
-
-  useEffect(() => {
-    const loadOtherUserPresence = async () => {
-      if (!conversation?.user?.id) return;
-      try {
-        const response = await getUserProfile(conversation.user.id);
-        const profile = response?.data || {};
-        setOtherUserPresence({
-          online_status: profile.online_status,
-          last_seen_at: profile.last_seen_at || profile.last_active || profile.updated_at,
-          last_active: profile.last_active,
-          updated_at: profile.updated_at,
-        });
-      } catch (error) {
-        console.warn('[DM] Failed to load other user profile for presence', error);
-      }
-    };
-
-    loadOtherUserPresence();
-  }, [conversation?.user?.id]);
-
   const requestStatus = conversation?.request_status || 'approved';
   const isRequester = !!conversation?.request_by && conversation.request_by === user?.id;
   const retryAfterDate = parseDateOrNull(conversation?.request_retry_after);
@@ -511,49 +475,6 @@ const DirectMessageScreen = () => {
     };
   }, [handleBackNavigation]);
 
-  // Handle viewport resize for iOS Safari keyboard
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      // iOS Safari specific viewport handling
-      const handleViewportResize = () => {
-        if (window.visualViewport) {
-          const newHeight = window.visualViewport.height;
-          const offset = window.innerHeight - newHeight;
-          setViewHeight(newHeight);
-          // Scroll to bottom when keyboard opens
-          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
-        }
-      };
-
-      const handleResize = () => {
-        if (window.visualViewport) {
-          setViewHeight(window.visualViewport.height);
-        } else {
-          setViewHeight(window.innerHeight);
-        }
-        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-      };
-
-      // Initial setup
-      handleResize();
-      
-      // Listen to visual viewport changes (iOS Safari)
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', handleViewportResize);
-        window.visualViewport.addEventListener('scroll', handleViewportResize);
-      }
-      window.addEventListener('resize', handleResize);
-
-      return () => {
-        if (window.visualViewport) {
-          window.visualViewport.removeEventListener('resize', handleViewportResize);
-          window.visualViewport.removeEventListener('scroll', handleViewportResize);
-        }
-        window.removeEventListener('resize', handleResize);
-      };
-    }
-  }, []);
-
   // Fetch conversation details
   const fetchConversation = useCallback(async () => {
     try {
@@ -562,18 +483,27 @@ const DirectMessageScreen = () => {
       const conv = conversations.find((c: Conversation) => 
         c.conversation_id === conversationId || c.chat_id === conversationId
       );
-      if (conv) setConversation(conv);
-      else if (convResponse?.data == null) {
-        console.warn('[Chat] Conversation list response was empty or invalid');
+      if (conv) {
+        setConversation(conv);
+      } else if (conversationId === 'new') {
+        setConversation({
+          conversation_id: 'new',
+          chat_id: 'new',
+          user: {
+            id: userId || '',
+            name: userName || 'Unknown User',
+            sl_id: userSL || ''
+          },
+          request_status: 'approved',
+        } as unknown as Conversation);
       }
     } catch (error) {
       console.error('Error fetching conversation:', error);
     }
-  }, [conversationId]);
+  }, [conversationId, userId, userName, userSL]);
 
   // Fetch messages via REST API
   const fetchMessagesViaAPI = useCallback(async (fromCache = true) => {
-    // Show cached messages first for instant load (only once)
     if (fromCache && messages.length === 0) {
       const cached = await getCachedMessages(conversationId);
       if (cached.length > 0) {
@@ -604,15 +534,12 @@ const DirectMessageScreen = () => {
         is_verified: msg.is_verified || false,
       }));
       
-      // Check if messages actually changed before updating
       const existingIds = new Set(messages.map(m => m.id));
       const hasNewMessages = apiMessages.some(m => !existingIds.has(m.id));
       
       if (hasNewMessages || apiMessages.length !== messages.length) {
-        // Merge with optimistic messages that are still sending to avoid flickering
         setMessages(prev => {
           const sending = prev.filter(m => m.status === 'sending');
-          // Avoid duplicates if API already has the message
           const apiIds = new Set(apiMessages.map(m => m.id));
           const stillSending = sending.filter(m => !apiIds.has(m.id));
           return [...apiMessages, ...stillSending];
@@ -621,10 +548,11 @@ const DirectMessageScreen = () => {
       }
       
       setLoading(false);
-      setIsRealtime(false);
+      return true;
     } catch (error: any) {
       console.error('[Chat] Error fetching messages:', error);
       setLoading(false);
+      return true;
     }
   }, [conversationId, messages.length]);
 
@@ -636,13 +564,12 @@ const DirectMessageScreen = () => {
     const socketListenerId = `dm_${conversationId}_${Date.now()}`;
 
     if (Platform.OS === 'web') {
-      setIsRealtime(false);
-      pollingInterval = setInterval(() => {
+      pollingInterval = setInterval(async () => {
         if (!uploadingMedia) {
-          fetchMessagesViaAPI();
-          fetchConversation();
+          await fetchMessagesViaAPI();
+          await fetchConversation();
         }
-      }, 5000); // Reduced from 2000 to 5000ms
+      }, 5000);
       setTimeout(() => markMessagesAsRead(), 1000);
 
       return () => {
@@ -654,8 +581,6 @@ const DirectMessageScreen = () => {
       try {
         await socketService.connect();
         socketService.joinRoom(conversationId!);
-        setIsRealtime(true);
-
         socketService.onMessage(socketListenerId, async () => {
           await fetchMessagesViaAPI();
           await fetchConversation();
@@ -664,18 +589,16 @@ const DirectMessageScreen = () => {
         });
       } catch (error) {
         console.error('[Chat] Socket real-time setup failed:', error);
-        setIsRealtime(false);
       }
     })();
 
-    pollingInterval = setInterval(() => {
+    pollingInterval = setInterval(async () => {
       if (!uploadingMedia) {
-        fetchMessagesViaAPI();
-        fetchConversation();
+        await fetchMessagesViaAPI();
+        await fetchConversation();
       }
     }, 5000);
 
-    // Mark messages as read after initial load
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {
@@ -689,10 +612,6 @@ const DirectMessageScreen = () => {
     if (!conversationId) return;
     isConversationMuted(conversationId).then(setIsMuted);
   }, [conversationId]);
-
-  const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
-    return [mediaType === 'image' ? 'images' : 'videos'] as any;
-  };
 
   const inferUploadMimeType = (asset: any, mediaType: 'image' | 'video') => {
     if (asset.mimeType && typeof asset.mimeType === 'string') {
@@ -738,7 +657,6 @@ const DirectMessageScreen = () => {
     if ((!newMessage.trim() && !selectedMedia) || !conversation) return;
     if (isInputLocked) return;
 
-    // Optimistic UI - add message immediately
     const tempId = `temp_${Date.now()}`;
     const messageText = newMessage.trim();
 
@@ -770,7 +688,6 @@ const DirectMessageScreen = () => {
       return;
     }
 
-    // Optimistic update - add message immediately before API call
     setNewMessage('');
     const optimisticMessage: Message = {
       id: tempId,
@@ -783,24 +700,17 @@ const DirectMessageScreen = () => {
       status: 'sending',
     };
     
-    // Use functional update to ensure we have latest messages
     setMessages(prev => [...prev, optimisticMessage]);
     setSending(true);
     
     try {
       const response = await sendDirectMessage(conversation.user.sl_id, messageText);
-      
-      // Replace optimistic message with actual message from server if possible, or just mark as sent
       setMessages(prev => prev.map(m => 
         m.id === tempId ? { ...m, id: response?.data?.id || m.id, status: 'sent' } : m
       ));
-      
-      // Update cache
       const cached = await getCachedMessages(conversationId);
       await setCachedMessages(conversationId, [...cached, { ...optimisticMessage, status: 'sent' }]);
-      
     } catch (error: any) {
-      // Remove optimistic message on failure
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setNewMessage(messageText);
       Alert.alert('Send failed', error.response?.data?.detail || 'Failed to send message');
@@ -936,6 +846,36 @@ const DirectMessageScreen = () => {
     }
   };
 
+  const handleOpenCamera = async () => {
+    closeAttachmentOptions();
+    if (!conversation || !conversation.user?.sl_id || uploadingMedia || sending || isInputLocked) return;
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Alert.alert('Permission Denied', 'Camera access is required.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: false,
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    const mediaType = asset.type === 'video' ? 'video' : 'image';
+    const fileName = (asset as any).fileName || `chat-${mediaType}-${Date.now()}.${mediaType === 'image' ? 'jpg' : 'mp4'}`;
+    const mimeType = inferUploadMimeType(asset, mediaType);
+
+    setSelectedMedia({
+      uri: asset.uri,
+      name: fileName,
+      type: mimeType,
+      mediaType,
+    });
+  };
+
   const handlePickMedia = async (mediaType: 'image' | 'video') => {
     closeAttachmentOptions();
     if (!conversation || !conversation.user?.sl_id || uploadingMedia || sending || isInputLocked) return;
@@ -947,7 +887,7 @@ const DirectMessageScreen = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: getPickerMediaTypes(mediaType),
+      mediaTypes: mediaType === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
       allowsEditing: false,
       quality: 0.7,
     });
@@ -1121,7 +1061,6 @@ const DirectMessageScreen = () => {
         return mergeParsed(decoded);
       }
     } catch (e: any) {
-      // Manual fallback parser just in case JSON is mangled
       try {
         const snake = (key: string) => key.replace(/([A-Z])/g, '_$1').toLowerCase();
         const extract = (key: string) => {
@@ -1142,7 +1081,7 @@ const DirectMessageScreen = () => {
         parsed.uploaderPhoto = extract('uploaderPhoto') || extract('userPhoto') || extract('user_photo') || extract('photo_url');
         return parsed;
       } catch {
-        // Absolute worst case fallback
+        // Fallback
       }
     }
 
@@ -1180,10 +1119,19 @@ const DirectMessageScreen = () => {
     }
   };
 
+  const getSafeUri = (uri?: string) => {
+    if (!uri || typeof uri !== 'string' || uri === 'null' || uri === 'undefined') return undefined;
+    return encodeURI(uri.trim());
+  };
+
   const renderMessageContent = useCallback((message: any) => {
     const rawContent = message.content ?? message.text ?? '';
-    const sourceUrl = typeof rawContent === 'string' ? rawContent : '';
+    const sourceUrl = typeof rawContent === 'string' ? rawContent.trim() : '';
+    const safeSourceUrl = getSafeUri(sourceUrl);
+    
     const shared = parseSharedPostPayload(rawContent);
+    const safeSharedMediaUrl = getSafeUri(shared.mediaUrl);
+    
     const rawString = typeof rawContent === 'string' ? rawContent : '';
     const hasSharedKeys =
       typeof rawContent === 'object' &&
@@ -1206,17 +1154,17 @@ const DirectMessageScreen = () => {
       hasSharedKeys ||
       looksLikeSharedPost;
 
-    if (message.message_type === 'image' && sourceUrl) {
+    if (message.message_type === 'image' && safeSourceUrl) {
       return (
-        <TouchableOpacity onPress={() => setFullScreenMedia({ uri: sourceUrl, type: 'image' })} activeOpacity={0.85}>
-          <Image source={{ uri: sourceUrl }} style={styles.messageMedia} resizeMode="cover" />
+        <TouchableOpacity onPress={() => setFullScreenMedia({ uri: safeSourceUrl, type: 'image' })} activeOpacity={0.85}>
+          <Image source={{ uri: safeSourceUrl }} style={styles.messageMedia} resizeMode="cover" />
         </TouchableOpacity>
       );
     }
-    if (message.message_type === 'video' && sourceUrl) {
+    if (message.message_type === 'video' && safeSourceUrl) {
       return (
         <ChatVideo
-          uri={sourceUrl}
+          uri={safeSourceUrl}
           style={styles.messageVideo}
           useNativeControls
           resizeMode="contain"
@@ -1252,8 +1200,8 @@ const DirectMessageScreen = () => {
               </Text>
             </View>
           ) : null}
-          {shared.mediaUrl ? (
-            <Image source={{ uri: shared.mediaUrl }} style={styles.sharedPostImage} resizeMode="cover" />
+          {safeSharedMediaUrl && safeSharedMediaUrl !== 'null' ? (
+            <Image source={{ uri: safeSharedMediaUrl }} style={styles.sharedPostImage} resizeMode="cover" />
           ) : null}
           <View style={styles.sharedPostMeta}>
             <Text style={styles.sharedPostTitle}>{shared.title || 'Shared post'}</Text>
@@ -1340,54 +1288,30 @@ const DirectMessageScreen = () => {
     );
   }, [user?.id, renderMessageContent, formatChatDate, formatTime, messages]);
 
-  // Removed full screen loading check to allow Instagram-like smooth transition
-
   const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 8);
-
-  // Calculate container style based on platform
-  const containerStyle = Platform.OS === 'web' 
-    ? [styles.container, { height: viewHeight, maxHeight: viewHeight }]
-    : styles.container;
 
   const renderContent = () => (
     <View style={styles.chatScreen}>
-      <View style={styles.chatBackground}>
-        <View style={[styles.chatPatternCircle, { top: 40, left: 16, opacity: 0.08 }]} />
-        <View style={[styles.chatPatternCircle, { top: 220, right: 12, opacity: 0.06 }]} />
-        <View style={[styles.chatPatternCircle, { top: 420, left: 100, opacity: 0.05 }]} />
-        <View style={[styles.chatPatternDot, { top: 72, left: 24, opacity: 0.16 }]} />
-        <View style={[styles.chatPatternDot, { top: 140, right: 20, opacity: 0.12 }]} />
-        <View style={[styles.chatPatternDot, { top: 280, left: 130, opacity: 0.1 }]} />
-        <View style={[styles.chatPatternDot, { top: 380, right: 100, opacity: 0.11 }]} />
-        <View style={[styles.chatPatternStripe, { top: 120, left: 40, transform: [{ rotate: '16deg' }] }]} />
-        <View style={[styles.chatPatternStripe, { top: 280, right: 32, transform: [{ rotate: '-14deg' }] }]} />
-        <View style={[styles.chatPatternLine, { top: 190, left: 20, width: 180, opacity: 0.08, transform: [{ rotate: '8deg' }] }]} />
-        <View style={[styles.chatPatternLine, { top: 330, right: 20, width: 140, opacity: 0.06, transform: [{ rotate: '-8deg' }] }]} />
+      <View style={styles.chatBackground} pointerEvents="none">
+        <LinearGradient
+          colors={['#FF8D57', '#EA9B76', '#FFFFFF']}
+          locations={[0, 0.0481, 0.2404]}
+          style={StyleSheet.absoluteFillObject}
+        />
       </View>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={handleBackNavigation}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
+      
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 12 : 0) }]}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackNavigation} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         {conversation && (
-          <TouchableOpacity
-            style={styles.headerInfo}
-            onPress={() => {
-              if (conversation.user?.id) {
-                router.push(`/profile/${conversation.user.id}`);
-              }
-            }}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.headerInfo} onPress={() => {
+            if (conversation.user?.id) {
+              router.push(`/profile/${conversation.user.id}`);
+            }
+          }} activeOpacity={0.7}>
             <View style={styles.avatarWrapper}>
               <Avatar name={conversation.user.name} photo={conversation.user.photo} size={40} />
-              {getPresenceSource()?.online_status && (
-                <View style={styles.onlineBadge} />
-              )}
             </View>
             <View style={styles.headerTextInfo}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1412,326 +1336,196 @@ const DirectMessageScreen = () => {
             </View>
           </TouchableOpacity>
         )}
-        <TouchableOpacity 
-          style={styles.moreButton} 
-          onPress={openChatOptions}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
+        <TouchableOpacity style={styles.moreButton} onPress={openChatOptions} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
         </TouchableOpacity>
       </View>
 
-      <Modal
-        visible={showOptions}
-        transparent
-        animationType="fade"
-        onRequestClose={closeChatOptions}
-      >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
-          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
-            <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
-              <Ionicons name={isMuted ? 'notifications-off' : 'notifications'} size={20} color="#333" style={{ marginRight: 10 }} />
-              <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>
-            </TouchableOpacity>
-            <View style={styles.modalDivider} />
-            <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
-              <Text style={[styles.modalItemText, styles.modalItemDestructive]}>Clear Chat</Text>
-            </TouchableOpacity>
-            <View style={styles.modalDivider} />
-            <TouchableOpacity style={styles.modalItem} onPress={closeChatOptions}>
-              <Text style={styles.modalItemText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal
-        visible={!!fullScreenMedia}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setFullScreenMedia(null)}
-      >
-        <View style={styles.fullScreenMediaOverlay}>
-          <TouchableOpacity style={styles.fullScreenMediaClose} onPress={() => setFullScreenMedia(null)}>
-            <Ionicons name="close" size={28} color="#FFFFFF" />
+      <View style={{ flex: 1 }}>
+        <Modal visible={showOptions} transparent animationType="fade" onRequestClose={closeChatOptions}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
+            <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+              <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
+                <Ionicons name={isMuted ? 'notifications-off' : 'notifications'} size={20} color="#333" style={{ marginRight: 10 }} />
+                <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>
+              </TouchableOpacity>
+              <View style={styles.modalDivider} />
+              <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
+                <Text style={[styles.modalItemText, styles.modalItemDestructive]}>Clear Chat</Text>
+              </TouchableOpacity>
+              <View style={styles.modalDivider} />
+              <TouchableOpacity style={styles.modalItem} onPress={closeChatOptions}>
+                <Text style={styles.modalItemText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
-          {fullScreenMedia?.type === 'image' && (
-            <Image source={{ uri: fullScreenMedia.uri }} style={styles.fullScreenMediaImage} resizeMode="contain" />
-          )}
-          {fullScreenMedia?.type === 'video' && (
-            <ChatVideo
-              uri={fullScreenMedia.uri}
-              style={styles.fullScreenMediaVideo}
-              useNativeControls
-              resizeMode="contain"
-              isLooping={false}
-            />
-          )}
-        </View>
-      </Modal>
+        </Modal>
 
-      {requestStatus !== 'approved' && (
-        <View style={styles.requestCard}>
-          <Text style={styles.requestTitle}>Message Request</Text>
-          <Text style={styles.requestText}>{inputLockReason || 'This chat requires request approval.'}</Text>
-          {canSendAfterCooldown && (
-            <Text style={styles.requestHint}>You can now send one new message request.</Text>
-          )}
-          {needsRecipientDecision && (
-            <View style={styles.requestActionRow}>
-              <TouchableOpacity
-                style={[styles.requestButton, styles.requestDenyButton]}
-                onPress={handleDenyRequest}
-                disabled={requestActionLoading}
-              >
-                <Text style={[styles.requestButtonText, styles.requestDenyButtonText]}>
-                  {requestActionLoading ? 'Please wait...' : 'Deny'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.requestButton, styles.requestApproveButton]}
-                onPress={handleApproveRequest}
-                disabled={requestActionLoading}
-              >
-                <Text style={styles.requestButtonText}>
-                  {requestActionLoading ? 'Please wait...' : 'Approve'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Messages - takes remaining space */}
-      <View style={styles.messagesWrapper}>
-        {loading && messages.length === 0 ? (
-          <View style={{ flex: 1, padding: SPACING.md, justifyContent: 'flex-end' }}>
-            {[1, 2, 3, 4, 5].reverse().map((item, index) => {
-              const isOwn = index % 2 === 0;
-              return (
-                <View key={item} style={[styles.messageContainer, isOwn && styles.ownMessageContainer, { opacity: 1 - index * 0.15, marginBottom: 12 }]}>
-                  {!isOwn && <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.06)' }} />}
-                  <View style={[styles.messageBubble, isOwn && styles.ownMessageBubble, { backgroundColor: isOwn ? 'rgba(55, 151, 240, 0.2)' : 'rgba(0,0,0,0.06)', width: index % 3 === 0 ? '60%' : '40%', height: 40 }]} />
-                </View>
-              );
-            })}
+        <Modal visible={!!fullScreenMedia} transparent animationType="fade" onRequestClose={() => setFullScreenMedia(null)}>
+          <View style={styles.fullScreenMediaOverlay}>
+            <TouchableOpacity style={styles.fullScreenMediaClose} onPress={() => setFullScreenMedia(null)}>
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+            {fullScreenMedia?.type === 'image' && (
+              <Image source={{ uri: getSafeUri(fullScreenMedia.uri) || '' }} style={styles.fullScreenMediaImage} resizeMode="contain" />
+            )}
+            {fullScreenMedia?.type === 'video' && (
+              <ChatVideo uri={fullScreenMedia.uri} style={styles.fullScreenMediaVideo} useNativeControls resizeMode="contain" isLooping={false} />
+            )}
           </View>
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 90 }]}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-            keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>Start your conversation</Text>
+        </Modal>
+
+        {requestStatus !== 'approved' && (
+          <View style={styles.requestCard}>
+            <Text style={styles.requestTitle}>Message Request</Text>
+            <Text style={styles.requestText}>{inputLockReason || 'This chat requires request approval.'}</Text>
+            {canSendAfterCooldown && <Text style={styles.requestHint}>You can now send one new message request.</Text>}
+            {needsRecipientDecision && (
+              <View style={styles.requestActionRow}>
+                <TouchableOpacity style={[styles.requestButton, styles.requestDenyButton]} onPress={handleDenyRequest} disabled={requestActionLoading}>
+                  <Text style={[styles.requestButtonText, styles.requestDenyButtonText]}>{requestActionLoading ? 'Please wait...' : 'Deny'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.requestButton, styles.requestApproveButton]} onPress={handleApproveRequest} disabled={requestActionLoading}>
+                  <Text style={styles.requestButtonText}>{requestActionLoading ? 'Please wait...' : 'Approve'}</Text>
+                </TouchableOpacity>
               </View>
-            }
-          />
-        )}
-      </View>
-      {/* Input - anchored at bottom */}
-      <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        {selectedMedia && (
-          <View style={styles.mediaPreviewContainer}>
-            <View style={styles.mediaPreviewHeader}>
-              <Text style={styles.mediaPreviewLabel}>
-                {selectedMedia.mediaType === 'image' ? 'Image ready' : 'Video ready'}
-              </Text>
-              <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewClose}>
-                <Ionicons name="close" size={18} color={COLORS.textWhite} />
-              </TouchableOpacity>
-            </View>
-            {selectedMedia.mediaType === 'image' ? (
-              <Image source={{ uri: selectedMedia.uri }} style={styles.mediaPreviewImage} resizeMode="cover" />
-            ) : (
-              <ChatVideo
-                uri={selectedMedia.uri}
-                style={styles.mediaPreviewVideo}
-                useNativeControls
-                resizeMode="contain"
-                isLooping={false}
-              />
             )}
           </View>
         )}
 
-        <View style={styles.inputContainer}>
-        <View style={styles.inputFieldContainer}>
-          <MentionInput
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholder="Type a message"
-            placeholderTextColor={COLORS.textSecondary}
-            multiline
-            inputStyle={styles.input}
-            editable={!isInputLocked}
-          />
-          <TouchableOpacity
-            style={styles.attachButton}
-            onPress={toggleAttachmentOptions}
-            disabled={uploadingMedia || sending || isInputLocked}
-          >
-            <Ionicons name="add-circle" size={28} color={isInputLocked ? COLORS.textLight : COLORS.primary} />
-          </TouchableOpacity>
+        <View style={styles.messagesWrapper}>
+          {loading && messages.length === 0 ? (
+            <View style={{ flex: 1, padding: SPACING.md, justifyContent: 'flex-end' }}>
+              {[1, 2, 3, 4, 5].reverse().map((item, index) => {
+                const isOwn = index % 2 === 0;
+                return (
+                  <View key={item} style={[styles.messageContainer, isOwn && styles.ownMessageContainer, { opacity: 1 - index * 0.15, marginBottom: 12 }]}>
+                    {!isOwn && <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.06)' }} />}
+                    <View style={[styles.messageBubble, isOwn && styles.ownMessageBubble, { backgroundColor: isOwn ? 'rgba(55, 151, 240, 0.2)' : 'rgba(0,0,0,0.06)', width: index % 3 === 0 ? '60%' : '40%', height: 40 }]} />
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessage}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 90 }]}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+              onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+              keyboardShouldPersistTaps="handled"
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
+                  <Text style={styles.emptyText}>Start your conversation</Text>
+                </View>
+              }
+            />
+          )}
         </View>
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!newMessage.trim() && !selectedMedia) && styles.sendButtonDisabled
-          ]}
-          onPress={handleSend}
-          disabled={(!newMessage.trim() && !selectedMedia) || sending || uploadingMedia || isInputLocked}
-        >
-          <Ionicons 
-            name="send" 
-            size={24} 
-            color={(!newMessage.trim() && !selectedMedia) ? '#BDC3C7' : '#3797F0'} 
-          />
-        </TouchableOpacity>
-      </View>
-        {showAttachmentOptions && (
-          <Animated.View
-            style={[
-              styles.attachmentOverlay,
-              {
-                opacity: attachmentAnim,
-                transform: [
-                  {
-                    scale: attachmentAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.95, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
+        
+        <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          {selectedMedia && (
+            <View style={styles.mediaPreviewContainer}>
+              <View style={styles.mediaPreviewHeader}>
+                <Text style={styles.mediaPreviewLabel}>{selectedMedia.mediaType === 'image' ? 'Image ready' : 'Video ready'}</Text>
+                <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewClose}>
+                  <Ionicons name="close" size={18} color={COLORS.textWhite} />
+                </TouchableOpacity>
+              </View>
+              {selectedMedia.mediaType === 'image' ? (
+                <Image source={{ uri: getSafeUri(selectedMedia.uri) || '' }} style={styles.mediaPreviewImage} resizeMode="cover" />
+              ) : (
+                <ChatVideo uri={selectedMedia.uri} style={styles.mediaPreviewVideo} useNativeControls resizeMode="contain" isLooping={false} />
+              )}
+            </View>
+          )}
+
+          <View style={styles.inputContainer}>
+            <View style={styles.inputFieldContainer}>
+              <TextInput
+                value={newMessage}
+                onChangeText={setNewMessage}
+                placeholder="Message..."
+                placeholderTextColor="#888888"
+                multiline
+                blurOnSubmit={false}
+                style={styles.input}
+                editable={!isInputLocked}
+                returnKeyType="default"
+              />
+              <TouchableOpacity onPress={handleOpenCamera} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="camera-outline" size={24} color="#000" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handlePickMedia('image')} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="image-outline" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
-              style={styles.attachmentOption}
-              onPress={() => handlePickMedia('image')}
-              disabled={uploadingMedia || sending || isInputLocked}
+              style={[styles.sendButton, (!newMessage.trim() && !selectedMedia) && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={(!newMessage.trim() && !selectedMedia) || sending || uploadingMedia || isInputLocked}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="image-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.attachmentOptionText}>Photo</Text>
+              <Ionicons name="send-outline" size={22} color="#000" style={{ marginLeft: 2 }} />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.attachmentOption}
-              onPress={() => handlePickMedia('video')}
-              disabled={uploadingMedia || sending || isInputLocked}
-            >
-              <Ionicons name="videocam-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.attachmentOptionText}>Video</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.attachmentOption}
-              onPress={handleOpenContactShare}
-              disabled={uploadingMedia || sending || isInputLocked}
-            >
-              <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.attachmentOptionText}>Contact</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-        <Modal
-          visible={showContactModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowContactModal(false)}
-        >
+          </View>
+          
+          {showAttachmentOptions && (
+            <Animated.View style={[styles.attachmentOverlay, { opacity: attachmentAnim, transform: [{ scale: attachmentAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }]}>
+              <TouchableOpacity style={styles.attachmentOption} onPress={() => handlePickMedia('image')} disabled={uploadingMedia || sending || isInputLocked}>
+                <Ionicons name="image-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.attachmentOptionText}>Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachmentOption} onPress={() => handlePickMedia('video')} disabled={uploadingMedia || sending || isInputLocked}>
+                <Ionicons name="videocam-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.attachmentOptionText}>Video</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachmentOption} onPress={handleOpenContactShare} disabled={uploadingMedia || sending || isInputLocked}>
+                <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.attachmentOptionText}>Contact</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+        </View>
+        
+        <Modal visible={showContactModal} transparent animationType="fade" onRequestClose={() => setShowContactModal(false)}>
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactModal(false)} />
           <View style={styles.contactModalCard}>
             <View style={styles.contactModalHeader}>
               <Text style={styles.contactModalTitle}>Share Contact</Text>
-              <TouchableOpacity onPress={() => setShowContactModal(false)}>
-                <Ionicons name="close" size={22} color={COLORS.text} />
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowContactModal(false)}><Ionicons name="close" size={22} color={COLORS.text} /></TouchableOpacity>
             </View>
             <View style={styles.contactModalBody}>
               <Text style={styles.contactModalLabel}>Name</Text>
-              <TextInput
-                style={styles.contactModalInput}
-                value={contactShareName}
-                onChangeText={setContactShareName}
-                placeholder="Contact name"
-                placeholderTextColor={COLORS.textSecondary}
-              />
+              <TextInput style={styles.contactModalInput} value={contactShareName} onChangeText={setContactShareName} placeholder="Contact name" placeholderTextColor={COLORS.textSecondary} />
               <Text style={styles.contactModalLabel}>Phone</Text>
-              <TextInput
-                style={styles.contactModalInput}
-                value={contactSharePhone}
-                onChangeText={setContactSharePhone}
-                placeholder="Phone number"
-                keyboardType="phone-pad"
-                placeholderTextColor={COLORS.textSecondary}
-              />
-              <TouchableOpacity
-                style={[styles.contactModalButton, styles.contactPickerButton]}
-                onPress={async () => {
-                  const hasContacts = await loadPhoneContacts();
-                  if (hasContacts) {
-                    setShowContactPicker(true);
-                  }
-                }}
-                disabled={loadingContacts}
-              >
-                {loadingContacts ? (
-                  <ActivityIndicator size="small" color={COLORS.textPrimary} />
-                ) : (
-                  <Text style={styles.contactPickerButtonText}>Pick from phone contacts</Text>
-                )}
+              <TextInput style={styles.contactModalInput} value={contactSharePhone} onChangeText={setContactSharePhone} placeholder="Phone number" keyboardType="phone-pad" placeholderTextColor={COLORS.textSecondary} />
+              <TouchableOpacity style={[styles.contactModalButton, styles.contactPickerButton]} onPress={async () => { const hasContacts = await loadPhoneContacts(); if (hasContacts) setShowContactPicker(true); }} disabled={loadingContacts}>
+                {loadingContacts ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={styles.contactPickerButtonText}>Pick from phone contacts</Text>}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.contactModalButton, sharingContact ? styles.sendButtonDisabled : null]}
-                onPress={handleSendContact}
-                disabled={sharingContact}
-              >
-                {sharingContact ? (
-                  <ActivityIndicator size="small" color={COLORS.textWhite} />
-                ) : (
-                  <Text style={styles.contactModalButtonText}>Share</Text>
-                )}
+              <TouchableOpacity style={[styles.contactModalButton, sharingContact ? styles.sendButtonDisabled : null]} onPress={handleSendContact} disabled={sharingContact}>
+                {sharingContact ? <ActivityIndicator size="small" color={COLORS.textWhite} /> : <Text style={styles.contactModalButtonText}>Share</Text>}
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
-        <Modal
-          visible={showContactPicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowContactPicker(false)}
-        >
+        
+        <Modal visible={showContactPicker} transparent animationType="fade" onRequestClose={() => setShowContactPicker(false)}>
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactPicker(false)} />
           <View style={[styles.contactModalCard, { maxHeight: '70%' }]}> 
             <View style={styles.contactModalHeader}>
               <Text style={styles.contactModalTitle}>Choose Contact</Text>
-              <TouchableOpacity onPress={() => setShowContactPicker(false)}>
-                <Ionicons name="close" size={22} color={COLORS.text} />
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowContactPicker(false)}><Ionicons name="close" size={22} color={COLORS.text} /></TouchableOpacity>
             </View>
-            {loadingContacts ? (
-              <ActivityIndicator size="large" color={COLORS.primary} />
-            ) : (
-              <FlatList
-                data={phoneContacts}
-                keyExtractor={(item, index) => String((item as any).id || item.name || item.phoneNumbers?.[0]?.id || index)}
-                renderItem={({ item }) => {
-                  const phone = item.phoneNumbers?.[0]?.number || 'No number';
-                  const name = item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Unknown';
-                  return (
-                    <TouchableOpacity style={styles.phoneContactItem} onPress={() => handleSelectPhoneContact(item)}>
-                      <View>
-                        <Text style={styles.phoneContactName}>{name}</Text>
-                        <Text style={styles.phoneContactNumber}>{phone}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                }}
-              />
+            {loadingContacts ? <ActivityIndicator size="large" color={COLORS.primary} /> : (
+              <FlatList data={phoneContacts} keyExtractor={(item, index) => String((item as any).id || item.name || item.phoneNumbers?.[0]?.id || index)} renderItem={({ item }) => {
+                const phone = item.phoneNumbers?.[0]?.number || 'No number';
+                const name = item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Unknown';
+                return <TouchableOpacity style={styles.phoneContactItem} onPress={() => handleSelectPhoneContact(item)}><View><Text style={styles.phoneContactName}>{name}</Text><Text style={styles.phoneContactNumber}>{phone}</Text></View></TouchableOpacity>;
+              }} />
             )}
           </View>
         </Modal>
@@ -1740,731 +1534,111 @@ const DirectMessageScreen = () => {
   );
 
   if (Platform.OS === 'web') {
-    return (
-      <View style={[styles.container, { height: viewHeight }]}>
-        {renderContent()}
-      </View>
-    );
+    return <View style={[styles.container, { height: viewHeight }]}>{renderContent()}</View>;
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-      >
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
         {renderContent()}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  chatScreen: {
-    flex: 1,
-    backgroundColor: '#F7F5EA',
-  },
-  chatBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F7F5EA',
-    pointerEvents: 'none',
-  },
-  chatPatternDot: {
-    position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#ffffff',
-  },
-  chatPatternCircle: {
-    position: 'absolute',
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    borderWidth: 1,
-    borderColor: '#ffffff',
-  },
-  chatPatternLine: {
-    position: 'absolute',
-    height: 2,
-    backgroundColor: '#ffffff',
-  },
-  chatPatternStripe: {
-    position: 'absolute',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#ffffff',
-    opacity: 0.1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  loadingText: {
-    marginTop: SPACING.md,
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    zIndex: 10,
-    flexShrink: 0,
-  },
-  backButton: {
-    marginRight: SPACING.md,
-    padding: 4,
-  },
-  moreButton: {
-    padding: 6,
-    borderRadius: BORDER_RADIUS.full,
-    marginLeft: 8,
-  },
-  headerInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTextInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  avatarWrapper: {
-    position: 'relative',
-  },
-  onlineBadge: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#3DC07D',
-    borderWidth: 2,
-    borderColor: COLORS.surface,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'Inter_600SemiBold',
-    color: COLORS.text,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  statusInfoText: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: COLORS.textSecondary,
-    marginLeft: SPACING.sm,
-  },
-  realtimeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 4,
-  },
-  realtimeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#4CAF50',
-    marginRight: 4,
-  },
-  realtimeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#4CAF50',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  modalContent: {
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderTopLeftRadius: BORDER_RADIUS.lg,
-    borderTopRightRadius: BORDER_RADIUS.lg,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-  },
-  modalItem: {
-    paddingVertical: SPACING.sm,
-  },
-  modalItemText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  modalItemDestructive: {
-    color: COLORS.error,
-  },
-  modalDivider: {
-    height: 1,
-    backgroundColor: COLORS.divider,
-    marginVertical: SPACING.xs,
-  },
-  requestCard: {
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.sm,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  requestTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  requestText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  requestHint: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  requestActionRow: {
-    marginTop: SPACING.sm,
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  requestButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 4,
-  },
-  requestApproveButton: {
-    backgroundColor: '#0088CC',
-  },
-  requestDenyButton: {
-    backgroundColor: '#F5F5F5',
-  },
-  requestButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  requestDenyButtonText: {
-    color: '#E53935',
-  },
-  messagesWrapper: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  messagesList: {
-    padding: SPACING.md,
-    flexGrow: 1,
-  },
-  dateSeparatorContainer: {
-    width: '100%',
-    alignItems: 'center',
-    marginVertical: SPACING.sm,
-  },
-  dateSeparator: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 4,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.full,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  dateSeparatorText: {
-    fontSize: 12,
-    fontFamily: 'Inter_600SemiBold',
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  messageContainer: {
-    flexDirection: 'row',
-    marginBottom: SPACING.xs,
-    alignItems: 'flex-end',
-    paddingHorizontal: SPACING.md,
-  },
-  ownMessageContainer: {
-    justifyContent: 'flex-end',
-  },
-  messageBubble: {
-    maxWidth: '75%',
-    backgroundColor: '#EFEFEF',
-    borderRadius: 22,
-    borderBottomLeftRadius: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginLeft: 8,
-    borderWidth: 0,
-  },
-  ownMessageBubble: {
-    backgroundColor: '#3797F0',
-    borderRadius: 22,
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginRight: 8,
-    marginLeft: 0,
-  },
-  sharedPostMessageBubble: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    borderRadius: 0,
-    shadowOpacity: 0,
-    elevation: 0,
-    borderWidth: 0,
-    marginLeft: 0,
-    width: '100%',
-    maxWidth: 340,
-    alignSelf: 'flex-start',
-  },
-  messageText: {
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    color: '#000000',
-    lineHeight: 21,
-  },
-  ownMessageText: {
-    color: '#FFFFFF',
-  },
-  timeText: {
-    fontSize: 10,
-    fontFamily: 'Inter_400Regular',
-    color: '#A0A0A0',
-  },
-  ownTimeText: {
-    color: 'rgba(255,255,255,0.7)',
-  },
-  messageFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: 4,
-    gap: 4,
-  },
-  statusContainer: {
-    marginLeft: 2,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: SPACING.xl * 4,
-  },
-  emptyText: {
-    marginTop: SPACING.md,
-    fontSize: 16,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-  },
-  inputWrapperContainer: {
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
-    backgroundColor: COLORS.surface,
-  },
-  inputFieldContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F2F6',
-    borderRadius: 24,
-    borderWidth: 0,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    color: '#000000',
-    paddingTop: 8,
-    paddingBottom: 8,
-    minHeight: 40,
-  },
-  attachButton: {
-    padding: 4,
-    marginLeft: 4,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 4,
-    marginBottom: 0,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  attachmentButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: SPACING.sm,
-  },
-  attachmentButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#E8F5FF',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    marginRight: SPACING.xs,
-  },
-  attachmentOverlay: {
-    position: 'absolute',
-    bottom: 60,
-    left: SPACING.sm,
-    width: 160,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 8,
-    paddingVertical: SPACING.xs,
-    zIndex: 20,
-  },
-  attachmentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-  },
-  attachmentOptionText: {
-    marginLeft: SPACING.sm,
-    color: COLORS.text,
-    fontSize: 14,
-  },
-  contactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F4FAFF',
-    padding: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    marginTop: SPACING.xs,
-  },
-  contactCardContent: {
-    marginLeft: SPACING.sm,
-  },
-  contactName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  contactPhone: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  sharedPostContainer: {
-    maxWidth: 340,
-    width: '100%',
-    minHeight: 220,
-    flexShrink: 1,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    marginBottom: SPACING.xs,
-    alignSelf: 'flex-start',
-  },
-  sharedPostUploader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.sm,
-    backgroundColor: COLORS.surface,
-  },
-  sharedPostUploaderText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  sharedPostImage: {
-    width: '100%',
-    height: 180,
-    backgroundColor: COLORS.background, // Fallback color if image loads slowly
-  },
-  sharedPostMeta: {
-    padding: SPACING.sm,
-  },
-  sharedPostTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  sharedPostCaption: {
-    marginTop: SPACING.xs,
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  contactModalCard: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    top: '30%',
-    zIndex: 20,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  contactModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  contactModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  contactModalBody: {
-    marginTop: SPACING.sm,
-  },
-  contactModalLabel: {
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-    marginTop: SPACING.sm,
-  },
-  contactModalInput: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    color: COLORS.text,
-    fontSize: 14,
-  },
-  contactModalButton: {
-    marginTop: SPACING.md,
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-  },
-  contactPickerButton: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  contactModalButtonText: {
-    color: COLORS.textWhite,
-    fontWeight: '700',
-  },
-  contactPickerButtonText: {
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  phoneContactItem: {
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  phoneContactName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  phoneContactNumber: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
-  },
-  modalBackdrop: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  inputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: '#E8E3D0',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    marginRight: SPACING.sm,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8E3D0',
-    marginRight: SPACING.xs,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    borderRadius: 0,
-    paddingHorizontal: 0,
-    paddingVertical: 10,
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    color: '#1A1A1A',
-    maxHeight: 120,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#2F2F2F',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  fullScreenMediaOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullScreenMediaClose: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 40 : 24,
-    right: 20,
-    zIndex: 2,
-    padding: 10,
-    borderRadius: BORDER_RADIUS.full,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  fullScreenMediaImage: {
-    width: '100%',
-    height: '100%',
-  },
-  fullScreenMediaVideo: {
-    width: '100%',
-    height: '100%',
-  },
-  messageMedia: {
-    width: 200,
-    height: 140,
-    borderRadius: 18,
-    marginBottom: SPACING.xs,
-  },
-  messageVideo: {
-    width: 200,
-    height: 140,
-    borderRadius: 18,
-    marginBottom: SPACING.xs,
-  },
-  mediaPreviewContainer: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.xs,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    overflow: 'hidden',
-  },
-  mediaPreviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    backgroundColor: COLORS.primary,
-  },
-  mediaPreviewLabel: {
-    color: COLORS.textWhite,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  mediaPreviewClose: {
-    padding: SPACING.xs,
-  },
-  mediaPreviewImage: {
-    width: '100%',
-    height: 120,
-  },
-  mediaPreviewVideo: {
-    width: '100%',
-    height: 120,
-  },
-  inputDisabled: {
-    opacity: 0.65,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#0088CC',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#0088CC',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-    shadowOpacity: 0,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  chatScreen: { flex: 1, backgroundColor: '#FFFFFF' },
+  chatBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: '#F2ECE8', pointerEvents: 'none' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 12, paddingTop: Platform.OS === 'android' ? 12 : undefined, paddingHorizontal: 16, backgroundColor: 'transparent', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3, borderBottomWidth: 0, zIndex: 10, flexShrink: 0 },
+  backButton: { marginRight: SPACING.md, padding: 4 },
+  moreButton: { padding: 6, borderRadius: BORDER_RADIUS.full, marginLeft: 8 },
+  headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  headerTextInfo: { marginLeft: 12, flex: 1 },
+  avatarWrapper: { position: 'relative' },
+  headerTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'Inter_600SemiBold', color: COLORS.text },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  modalContent: { backgroundColor: COLORS.surface, padding: SPACING.md, borderTopLeftRadius: BORDER_RADIUS.lg, borderTopRightRadius: BORDER_RADIUS.lg, borderTopWidth: 1, borderTopColor: COLORS.divider },
+  modalItem: { paddingVertical: SPACING.sm },
+  modalItemText: { fontSize: 16, fontWeight: '600', color: COLORS.text },
+  modalItemDestructive: { color: COLORS.error },
+  modalDivider: { height: 1, backgroundColor: COLORS.divider, marginVertical: SPACING.xs },
+  requestCard: { marginHorizontal: SPACING.md, marginTop: SPACING.sm, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.divider },
+  requestTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
+  requestText: { fontSize: 13, color: COLORS.textSecondary },
+  requestHint: { marginTop: 6, fontSize: 12, fontWeight: '600', color: COLORS.primary },
+  requestActionRow: { marginTop: SPACING.sm, flexDirection: 'row', gap: SPACING.sm },
+  requestButton: { flex: 1, paddingVertical: 10, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginHorizontal: 4 },
+  requestApproveButton: { backgroundColor: '#0088CC' },
+  requestDenyButton: { backgroundColor: '#F5F5F5' },
+  requestButtonText: { fontSize: 14, fontWeight: '600' },
+  requestDenyButtonText: { color: '#E53935' },
+  messagesWrapper: { flex: 1, overflow: 'hidden' },
+  messagesList: { padding: SPACING.md, flexGrow: 1 },
+  dateSeparatorContainer: { width: '100%', alignItems: 'center', marginVertical: SPACING.sm },
+  dateSeparator: { paddingHorizontal: SPACING.md, paddingVertical: 4, backgroundColor: 'transparent', borderWidth: 0 },
+  dateSeparatorText: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#8E8E8E' },
+  messageContainer: { flexDirection: 'row', marginBottom: SPACING.xs, alignItems: 'flex-end', paddingHorizontal: SPACING.md },
+  ownMessageContainer: { justifyContent: 'flex-end' },
+  messageBubble: { maxWidth: '85%', backgroundColor: '#EFE1D8', borderRadius: 22, borderBottomLeftRadius: 8, paddingHorizontal: 16, paddingVertical: 12, marginLeft: 8, borderWidth: 0 },
+  ownMessageBubble: { backgroundColor: '#EFE1D8', borderRadius: 22, borderBottomRightRadius: 8, paddingHorizontal: 16, paddingVertical: 12, marginRight: 8, marginLeft: 0 },
+  sharedPostMessageBubble: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, borderRadius: 0, shadowOpacity: 0, elevation: 0, borderWidth: 0, marginLeft: 0, width: '100%', maxWidth: 340, alignSelf: 'flex-start' },
+  messageText: { fontSize: 15, fontFamily: 'Inter_400Regular', color: '#000000', lineHeight: 21 },
+  ownMessageText: { color: '#000000' },
+  timeText: { fontSize: 11, fontFamily: 'Inter_400Regular', color: '#8E8E8E' },
+  ownTimeText: { color: '#8E8E8E' },
+  messageFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 4, marginLeft: 8 },
+  ownMessageFooter: { justifyContent: 'flex-end', marginRight: 8, marginLeft: 0 },
+  statusContainer: { marginLeft: 2 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: SPACING.xl * 4 },
+  emptyText: { marginTop: SPACING.md, fontSize: 16, fontWeight: '500', color: COLORS.textSecondary },
+  inputWrapperContainer: { backgroundColor: '#E4E4E4', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, borderTopWidth: 0, zIndex: 20, elevation: 20 },
+  inputContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingBottom: 8 },
+  inputFieldContainer: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', backgroundColor: 'transparent', borderRadius: 24, borderWidth: 1, borderColor: '#737373', paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 8 : 4 },
+  inlineIcon: { padding: 4, marginLeft: 4 },
+  sendButtonDisabled: { opacity: 0.5 },
+  attachmentOverlay: { position: 'absolute', bottom: 60, left: SPACING.sm, width: 160, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider, shadowColor: '#000', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 8, paddingVertical: SPACING.xs, zIndex: 20 },
+  attachmentOption: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
+  attachmentOptionText: { marginLeft: SPACING.sm, color: COLORS.text, fontSize: 14 },
+  contactCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F4FAFF', padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, marginTop: SPACING.xs },
+  contactCardContent: { marginLeft: SPACING.sm },
+  contactName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  contactPhone: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
+  sharedPostContainer: { maxWidth: 340, width: '100%', minHeight: 220, flexShrink: 1, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.divider, marginBottom: SPACING.xs, alignSelf: 'flex-start' },
+  sharedPostUploader: { flexDirection: 'row', alignItems: 'center', padding: SPACING.sm, backgroundColor: COLORS.surface },
+  sharedPostUploaderText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  sharedPostImage: { width: '100%', height: 180, backgroundColor: COLORS.background },
+  sharedPostMeta: { padding: SPACING.sm },
+  sharedPostTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  sharedPostCaption: { marginTop: SPACING.xs, fontSize: 13, color: COLORS.textSecondary },
+  contactModalCard: { position: 'absolute', left: 16, right: 16, top: '30%', zIndex: 20, backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 8 }, shadowRadius: 16, elevation: 12 },
+  contactModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+  contactModalTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  contactModalBody: { marginTop: SPACING.sm },
+  contactModalLabel: { color: COLORS.textSecondary, marginBottom: SPACING.xs, marginTop: SPACING.sm },
+  contactModalInput: { backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.divider, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, color: COLORS.text, fontSize: 14 },
+  contactModalButton: { marginTop: SPACING.md, backgroundColor: COLORS.primary, paddingVertical: SPACING.sm, borderRadius: BORDER_RADIUS.md, alignItems: 'center' },
+  contactPickerButton: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary },
+  contactModalButtonText: { color: COLORS.textWhite, fontWeight: '700' },
+  contactPickerButtonText: { color: COLORS.primary, fontWeight: '700' },
+  phoneContactItem: { paddingVertical: SPACING.sm, borderBottomWidth: 1, borderColor: COLORS.divider },
+  phoneContactName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  phoneContactNumber: { fontSize: 13, color: COLORS.textSecondary, marginTop: SPACING.xs },
+  modalBackdrop: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
+  input: { flex: 1, backgroundColor: 'transparent', borderRadius: 0, paddingHorizontal: 0, paddingVertical: 10, fontSize: 15, fontFamily: 'Inter_400Regular', color: '#1A1A1A', maxHeight: 120, minHeight: 40 },
+  fullScreenMediaOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  fullScreenMediaClose: { position: 'absolute', top: Platform.OS === 'ios' ? 40 : 24, right: 20, zIndex: 2, padding: 10, borderRadius: BORDER_RADIUS.full, backgroundColor: 'rgba(0,0,0,0.35)' },
+  fullScreenMediaImage: { width: '100%', height: '100%' },
+  fullScreenMediaVideo: { width: '100%', height: '100%' },
+  messageMedia: { width: 200, height: 140, borderRadius: 18, marginBottom: SPACING.xs },
+  messageVideo: { width: 200, height: 140, borderRadius: 18, marginBottom: SPACING.xs },
+  mediaPreviewContainer: { marginHorizontal: SPACING.md, marginBottom: SPACING.xs, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider, overflow: 'hidden' },
+  mediaPreviewHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, backgroundColor: COLORS.primary },
+  mediaPreviewLabel: { color: COLORS.textWhite, fontSize: 13, fontWeight: '700' },
+  mediaPreviewClose: { padding: SPACING.xs },
+  mediaPreviewImage: { width: '100%', height: 120 },
+  mediaPreviewVideo: { width: '100%', height: 120 },
+  sendButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#3C3C3C', justifyContent: 'center', alignItems: 'center', shadowOpacity: 0, elevation: 0 },
 });
+
 export default DirectMessageScreen;

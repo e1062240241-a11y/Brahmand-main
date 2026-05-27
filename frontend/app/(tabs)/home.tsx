@@ -343,8 +343,8 @@ const baseQuickAccess = [
   { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
   { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF' },
-  { label: 'Live Mantra', subtitle: 'Mantra Chanting', color: '#FFF' },
-  { label: 'Cosmic Guidance', subtitle: 'Your Cosmic Blueprint', color: '#FFF' },
+  { label: 'Kundli', subtitle: 'Your Daily Vedic Energy', color: '#FFF' },
+  { label: 'Jyotish', subtitle: 'Your Cosmic Blueprint', color: '#FFF' },
   { label: 'Brahmand Passport', subtitle: 'Your Temple Journey Record', color: '#FFF' },
   { label: 'Festival Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
   { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
@@ -368,39 +368,6 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
-
-  // Dynamic Live Mantra state
-  const liveMantraActive = isWithinGayatriMantraWindow(new Date()) !== null;
-  const liveMantraName = liveMantraActive ? 'Maha Mrityunjaya' : 'Gayatri Chanting';
-
-  const currentQuickAccess = useMemo(() => {
-    return baseQuickAccess.map(item => {
-      if (item.label === 'Live Mantra') {
-        return {
-          ...item,
-          subtitle: `${liveMantraName} is Live`
-        };
-      }
-      return item;
-    });
-  }, [liveMantraName]);
-
-  const [shuffledQuickAccess, setShuffledQuickAccess] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!isFocused) return;
-    const shuffleArray = (array: any[]) => {
-      const arr = [...array];
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[arr[j]]] = [arr[j], arr[i]];
-      }
-      return arr;
-    };
-    setShuffledQuickAccess(shuffleArray(currentQuickAccess));
-  }, [currentQuickAccess, isFocused]);
-
-  const displayQuickAccess = shuffledQuickAccess.length > 0 ? shuffledQuickAccess : currentQuickAccess;
 
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
@@ -428,6 +395,61 @@ export default function HomeScreen() {
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
   const [showUploadPostModal, setShowUploadPostModal] = useState(false);
   const [showProfileActions, setShowProfileActions] = useState(false);
+  const [fabExpanded, setFabExpanded] = useState(false);
+  const fabScale = useRef(new Animated.Value(0)).current;
+  const fabRotation = useRef(new Animated.Value(0)).current;
+  const fabItemAnims = useRef(
+    Array.from({ length: 8 }, () => new Animated.Value(0))
+  ).current;
+
+  const toggleFab = useCallback(() => {
+    const toOpen = !fabExpanded;
+    setFabExpanded(toOpen);
+    if (toOpen) {
+      Animated.parallel([
+        Animated.spring(fabScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabRotation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        ...fabItemAnims.map((anim, i) =>
+          Animated.spring(anim, {
+            toValue: 1,
+            friction: 5,
+            tension: 50,
+            delay: i * 40,
+            useNativeDriver: true,
+          })
+        ),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(fabScale, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabRotation, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        ...fabItemAnims.map((anim) =>
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          })
+        ),
+      ]).start();
+    }
+  }, [fabExpanded, fabScale, fabRotation, fabItemAnims]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -458,7 +480,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!isFocused) return;
     const CARD_WIDTH = 185; // 175 card + 10 gap
-    const TOTAL_CARDS = displayQuickAccess.length;
+    const TOTAL_CARDS = baseQuickAccess.length;
     const interval = setInterval(() => {
       topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
       topFeaturesScrollRef.current?.scrollTo({
@@ -467,7 +489,7 @@ export default function HomeScreen() {
       });
     }, 3000);
     return () => clearInterval(interval);
-  }, [isFocused, displayQuickAccess.length]);
+  }, [isFocused]);
 
   useEffect(() => {
     if (user?.id) {
@@ -1870,7 +1892,7 @@ export default function HomeScreen() {
                     decelerationRate="fast"
                     contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
                   >
-                    {displayQuickAccess.map((item, idx) => {
+                    {baseQuickAccess.map((item, idx) => {
                       let cardBg = '#FFFFFF';
                       let iconBg = '#FF8A3D';
                       if (item.label === 'Panchang') {
@@ -1882,9 +1904,6 @@ export default function HomeScreen() {
                       } else if (item.label === 'SOS') {
                         cardBg = '#FFF5F5';
                         iconBg = '#FF3B30';
-                      } else if (item.label === 'Live Mantra') {
-                        cardBg = '#FFF3EB';
-                        iconBg = '#FF6B00';
                       }
 
                       return (
@@ -1896,71 +1915,58 @@ export default function HomeScreen() {
                             if (item.label === 'Panchang') router.push('/panchang');
                             else if (item.label === 'My Krishna') router.push('/my-krishna');
                             else if (item.label === 'SOS') router.push('/sos');
-                            else if (item.label === 'Live Mantra') {
-                              router.push({
-                                pathname: '/live-jaap-welcome',
-                                params: {
-                                  mantraType: liveMantraActive ? 'mrityunjaya' : 'gayatri',
-                                  title: liveMantraActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra',
-                                },
-                              });
-                            }
                             else if (item.label === 'Kundli') router.push('/astrology' as any);
-                            else if (item.label === 'Cosmic Guidance') router.push('/horoscope');
+                            else if (item.label === 'Jyotish') router.push('/horoscope');
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
                             else if (item.label === 'Festival Days') router.push('/festivals');
                             else if (item.label === 'Brahmand Library') router.push('/library');
                           }}
                         >
                           {item.label === 'SOS' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={[styles.sosRing, { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }]}>
-                                <Text style={{ color: '#FFF', fontSize: 11, fontFamily: 'Inter_700Bold' }}>SOS</Text>
-                              </View>
+                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                              <Image source={require('../../assets/images/sos_icon_3.png')} style={{ width: 44, height: 44, borderRadius: 22 }} resizeMode="contain" />
                             </View>
                           ) : item.label === 'My Krishna' ? (
-                            <View style={styles.featureIconWrap}>
-                              <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                              </ImageBackground>
                             </View>
                           ) : item.label === 'Panchang' ? (
-                            <View style={styles.featureIconWrap}>
-                              <Image source={require('../../assets/images/panchang_calendar_icon.png')} style={{ width: 44, height: 44, borderRadius: 22 }} />
-                            </View>
-                          ) : item.label === 'Live Mantra' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={[styles.sosRing, { width: 38, height: 38, borderRadius: 19, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' }]}>
-                                <Ionicons name="radio-outline" size={20} color="#FFF" />
-                              </View>
+                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                              </ImageBackground>
                             </View>
                           ) : item.label === 'Kundli' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={{ transform: [{ scale: 1.8 }] }}>
-                                <KundliSirenIcon />
-                              </View>
+                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                              </ImageBackground>
                             </View>
-                          ) : item.label === 'Cosmic Guidance' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={{ transform: [{ scale: 1.8 }] }}>
-                                <CosmicMoonIcon />
-                              </View>
+                          ) : item.label === 'Jyotish' ? (
+                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                              <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                              </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Passport' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={{ transform: [{ scale: 1.8 }] }}>
-                                <PassportIcon />
-                              </View>
+                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                              </ImageBackground>
                             </View>
                           ) : item.label === 'Festival Days' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={{ transform: [{ scale: 1.8 }] }}>
-                                <SacredDaysIcon />
-                              </View>
+                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                              </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Library' ? (
-                            <View style={styles.featureIconWrap}>
-                              <View style={{ transform: [{ scale: 1.8 }] }}>
-                                <LibraryBookIcon />
-                              </View>
+                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                              </ImageBackground>
                             </View>
                           ) : (
                             <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
@@ -2524,6 +2530,177 @@ export default function HomeScreen() {
             </View>
             )}
           </ScrollView>
+
+          {/* ─── Floating Action Button (FAB) ─── */}
+          {fabExpanded && (
+            <TouchableOpacity
+              style={fabStyles.overlay}
+              activeOpacity={1}
+              onPress={toggleFab}
+            >
+              <Animated.View
+                style={[
+                  fabStyles.menuContainer,
+                  {
+                    transform: [{ scale: fabScale }],
+                    opacity: fabScale,
+                  },
+                ]}
+              >
+                {/* Outer decorative ring */}
+                <View style={fabStyles.outerRing}>
+                  {/* Inner circle with items */}
+                  <View style={fabStyles.innerCircle}>
+                    {/* Decorative dotted ring */}
+                    <View style={fabStyles.dottedRing} />
+
+                    {/* Menu items arranged in a circle */}
+                    {[
+                      { label: 'Festival', icon: 'calendar-outline' as const, route: '/festivals' },
+                      { label: 'Kundli', icon: 'planet-outline' as const, route: '/astrology' },
+                      { label: 'Brahmand\nPassport', icon: 'compass-outline' as const, route: '/passport' },
+                      { label: 'My Krishna', icon: 'heart-outline' as const, route: '/my-krishna' },
+                      { label: 'Panchang', icon: 'today-outline' as const, route: '/panchang' },
+                      { label: 'Brahmand\nLibrary', icon: 'library-outline' as const, route: '/library' },
+                      { label: 'Jyotish', icon: 'star-outline' as const, route: '/horoscope' },
+                    ].map((item, index) => {
+                      // Position items in a circle (7 items, starting from top)
+                      const totalItems = 7;
+                      const angleStep = (2 * Math.PI) / totalItems;
+                      const startAngle = -Math.PI / 2; // Start from top
+                      const angle = startAngle + index * angleStep;
+                      const radius = 120;
+                      const centerX = 180 - 40; // center of 360 - half of 80
+                      const centerY = 180 - 40;
+                      const x = centerX + radius * Math.cos(angle);
+                      const y = centerY + radius * Math.sin(angle);
+
+                      return (
+                        <Animated.View
+                          key={item.label}
+                          style={[
+                            fabStyles.menuItem,
+                            {
+                              left: x,
+                              top: y,
+                              transform: [
+                                { scale: fabItemAnims[index] },
+                              ],
+                              opacity: fabItemAnims[index],
+                            },
+                          ]}
+                        >
+                          <TouchableOpacity
+                            style={[
+                              fabStyles.menuItemButton,
+                              item.isSos && { ...fabStyles.menuItemSos, backgroundColor: 'transparent', shadowOpacity: 0 },
+                              { backgroundColor: 'transparent', shadowOpacity: 0 }
+                            ]}
+                            activeOpacity={0.8}
+                            onPress={() => {
+                              toggleFab();
+                              setTimeout(() => {
+                                router.push(item.route as any);
+                              }, 200);
+                            }}
+                          >
+                            {item.label === 'My Krishna' ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label === 'Festival' ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label === 'Kundli' ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label.includes('Passport') ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label === 'Panchang' ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image
+                                  source={require('../../assets/images/panchang_icon_3.png')}
+                                  style={{ width: 44, height: 44 }}
+                                  resizeMode="contain"
+                                />
+                              </ImageBackground>
+                            ) : item.label.includes('Library') ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label === 'Jyotish' ? (
+                              <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : (
+                              <Ionicons name={item.icon} size={28} color="#FFF" />
+                            )}
+                          </TouchableOpacity>
+                          <Text style={[
+                            fabStyles.menuItemLabel,
+                            item.isSos && { marginTop: 4 },
+                          ]}>
+                            {item.label}
+                          </Text>
+                        </Animated.View>
+                      );
+                    })}
+
+                    {/* Center - SOS */}
+                    <Animated.View
+                      style={[
+                        fabStyles.centerButton,
+                        {
+                          transform: [{ scale: fabItemAnims[7] }],
+                          opacity: fabItemAnims[7],
+                        },
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={fabStyles.centerButtonInner}
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          toggleFab();
+                          setTimeout(() => {
+                            router.push('/sos');
+                          }, 200);
+                        }}
+                      >
+                        <Image
+                          source={require('../../assets/images/sos_icon_3.png')}
+                          style={{ width: 102, height: 102, borderRadius: 51, alignSelf: 'center' }}
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+                      <Text style={fabStyles.centerLabel}>SOS</Text>
+                    </Animated.View>
+                  </View>
+                </View>
+              </Animated.View>
+            </TouchableOpacity>
+          )}
+
+          {/* FAB trigger button */}
+          <TouchableOpacity
+            style={[
+              fabStyles.fab,
+              { bottom: 90 + insets.bottom },
+              fabExpanded && { opacity: 0 },
+            ]}
+            activeOpacity={0.85}
+            onPress={toggleFab}
+          >
+            <Image
+              source={require('../../assets/images/peacock_feather_icon.png')}
+              style={fabStyles.fabIcon}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+
 
           <Modal visible={isEditingBio} transparent animationType="fade">
             <View style={styles.bioModalOverlay}>
@@ -4053,5 +4230,139 @@ const styles = StyleSheet.create({
   },
   modalBackgroundDismiss: {
     ...StyleSheet.absoluteFillObject,
+  },
+});
+
+const fabStyles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    zIndex: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuContainer: {
+    width: 380,
+    height: 380,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outerRing: {
+    width: 380,
+    height: 380,
+    borderRadius: 190,
+    backgroundColor: '#FFD5B8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF7B00',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  innerCircle: {
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: '#FFEEE7',
+    position: 'relative',
+  },
+  dottedRing: {
+    position: 'absolute',
+    top: 40,
+    left: 40,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 123, 0, 0.15)',
+    borderStyle: 'dashed',
+  },
+  menuItem: {
+    position: 'absolute',
+    width: 80,
+    alignItems: 'center',
+  },
+  menuItemButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF5100',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  menuItemSos: {
+    backgroundColor: '#FF0000',
+  },
+  sosButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  menuItemLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 13,
+  },
+  centerButton: {
+    position: 'absolute',
+    left: 126,
+    top: 126,
+    alignItems: 'center',
+    width: 108,
+  },
+  centerButtonInner: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF7B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: '#FFD5B8',
+  },
+  centerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF5100',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 10,
+    zIndex: 998,
+    borderWidth: 3,
+    borderColor: '#FFD5B8',
+  },
+  fabIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
 });

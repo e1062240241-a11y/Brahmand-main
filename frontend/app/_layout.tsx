@@ -10,7 +10,6 @@ import { addNotificationResponseReceivedListener, addNotificationReceivedListene
 import { sendDirectMessage } from '../src/services/api';
 import { getAllMutedConversations } from '../src/services/mutedChats';
 import { COLORS } from '../src/constants/theme';
-import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { useAdminStore } from '../src/store/adminStore';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
@@ -361,6 +360,8 @@ function SafeSlot() {
   }
 }
 
+import { useLanguageStore } from '../src/utils/i18n';
+
 export default function RootLayout() {
   const pathname = usePathname();
   const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
@@ -384,6 +385,7 @@ export default function RootLayout() {
   useMutedNotificationFilter();
 
   useEffect(() => {
+    useLanguageStore.getState().loadLanguage();
     Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {
       const authErr = results[0].status === 'rejected' ? results[0].reason : null;
       const adminErr = results[1].status === 'rejected' ? results[1].reason : null;
@@ -556,7 +558,6 @@ export default function RootLayout() {
               />
               {/* Other standard stack navigations will inherit default slide_from_right */}
             </Stack>
-            {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
             <ToastContainer />
           </MuteProvider>
         </View>
