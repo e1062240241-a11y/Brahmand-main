@@ -19,6 +19,7 @@ import { ToastContainer } from '../src/components/ToastContainer';
 import { toast } from '../src/store/toastStore';
 import { Alert as RNAlert } from 'react-native';
 import { syncDatabase } from '../src/database/sync';
+import { GlobalFAB } from '../src/components/GlobalFAB';
 
 import { originalAlert } from '../src/utils/nativeAlert';
 
@@ -558,6 +559,7 @@ export default function RootLayout() {
               />
               {/* Other standard stack navigations will inherit default slide_from_right */}
             </Stack>
+            <GlobalFAB />
             <ToastContainer />
           </MuteProvider>
         </View>
