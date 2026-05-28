@@ -1556,9 +1556,9 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+    <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#000000', '#000000', '#000000']} locations={[0, 0.14, 0.32]} style={styles.screen}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -3479,7 +3479,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   feedPanel: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#000000',
     overflow: 'hidden',
   },
   feedLoading: {
