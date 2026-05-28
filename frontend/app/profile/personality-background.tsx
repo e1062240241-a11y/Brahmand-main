@@ -219,7 +219,7 @@ export default function PersonalityBackgroundScreen() {
         visible={showProfessionPicker} 
         onClose={() => setShowProfessionPicker(false)} 
         options={professionOptions}
-        onSelect={(val) => setFormData({ ...formData, profession: val })}
+        onSelect={(val: string) => setFormData({ ...formData, profession: val })}
         title="Select Profession"
       />
     </View>

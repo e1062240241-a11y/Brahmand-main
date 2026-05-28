@@ -278,7 +278,7 @@ export default function PersonalityDetailsScreen() {
         visible={showGenderPicker} 
         onClose={() => setShowGenderPicker(false)} 
         options={genderOptions}
-        onSelect={(val) => setFormData({ ...formData, gender: val })}
+        onSelect={(val: string) => setFormData({ ...formData, gender: val })}
         title="Select Gender"
       />
 
@@ -287,7 +287,7 @@ export default function PersonalityDetailsScreen() {
         visible={showCityPicker} 
         onClose={() => setShowCityPicker(false)} 
         options={cityOptions}
-        onSelect={(val) => setFormData({ ...formData, city: val })}
+        onSelect={(val: string) => setFormData({ ...formData, city: val })}
         title="Select City"
       />
     </View>

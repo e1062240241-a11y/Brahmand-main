@@ -71,7 +71,7 @@ export default function NotificationsScreen() {
   const { user, updateUser } = useAuthStore();
   const { dismissBadge } = useNotificationStore();
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [actorsMap, setActorsMap] = useState<Record<string, { name?: string; photo?: string }>>({});
+  const [actorsMap, setActorsMap] = useState<Record<string, { name?: string; photo?: string; isVerified?: boolean }>>({});
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
   const [followLoadingMap, setFollowLoadingMap] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
@@ -360,7 +360,7 @@ export default function NotificationsScreen() {
           {/* Action Badge overlay */}
           {actionBadge && (
             <View style={[styles.badgeOverlay, { backgroundColor: actionBadge.bg }]}>
-              <Ionicons name={actionBadge.name} size={9} color="#FFF" />
+              <Ionicons name={actionBadge.name as any} size={9} color="#FFF" />
             </View>
           )}
         </View>

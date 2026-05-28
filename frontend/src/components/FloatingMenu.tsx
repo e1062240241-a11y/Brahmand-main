@@ -283,7 +283,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
 const fabStyles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center' },
   menuContainer: { position: 'absolute', width: 360, height: 360, alignSelf: 'center', top: height / 2 - 180 },
-  outerRing: { width: 360, height: 360, borderRadius: 180, backgroundColor: 'rgba(255, 255, 255, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  outerRing: { width: 360, height: 360, borderRadius: 180, backgroundColor: '#FFEEE7', justifyContent: 'center', alignItems: 'center' },
   innerCircle: { width: 280, height: 280, borderRadius: 140, backgroundColor: '#FFEEE7', position: 'relative' },
   dottedRing: { position: 'absolute', top: 40, left: 40, width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: 'rgba(255, 123, 0, 0.15)', borderStyle: 'dashed' },
   menuItem: { position: 'absolute', width: 80, alignItems: 'center', marginLeft: -30, marginTop: -30 },
@@ -293,7 +293,7 @@ const fabStyles = StyleSheet.create({
   centerButton: { position: 'absolute', left: 90, top: 90, alignItems: 'center', width: 100, height: 100 },
   centerButtonInner: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 4, borderColor: '#FFF', shadowColor: '#FF3B30', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
   sosImageLarge: { width: 40, height: 40, marginBottom: 2 },
-  centerLabel: { color: '#FFF', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+  centerLabel: { color: '#000', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
   fab: { position: 'absolute', right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#FF7B00', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 8, zIndex: 9999 },
   fabIcon: { width: '100%', height: '100%' },
 });
