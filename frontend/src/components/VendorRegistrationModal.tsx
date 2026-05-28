@@ -569,77 +569,35 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Categories */}
             <Text style={styles.label}>Categories (e.g. Plumber, Electrician) *</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md }}>
+            <View style={{ marginBottom: SPACING.md }}>
               <TextInput
-                style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="Enter a category and press Add"
+                style={styles.input}
+                placeholder="Search or enter a category"
                 placeholderTextColor={COLORS.textLight}
                 value={categoryInput}
                 onChangeText={(text) => {
                   const filtered = text.replace(/[^a-zA-Z\s]/g, '');
                   setCategoryInput(filtered.slice(0, 30));
-                }}
-                onSubmitEditing={() => {
-                  const cat = categoryInput.trim();
-                  if (cat && !categories.includes(cat)) {
-                    setCategories([...categories, cat]);
-                  }
-                  setCategoryInput('');
-                }}
-              />
-              <TouchableOpacity
-                style={{
-                  backgroundColor: COLORS.primary,
-                  paddingHorizontal: SPACING.md,
-                  height: 50,
-                  justifyContent: 'center',
-                  borderRadius: 12,
-                  marginLeft: SPACING.sm,
-                }}
-                onPress={() => {
-                  const cat = categoryInput.trim();
-                  if (cat && !categories.includes(cat)) {
-                    setCategories([...categories, cat]);
-                  }
-                  setCategoryInput('');
-                }}
-              >
-                <Text style={{ color: '#FFF', fontWeight: '600' }}>Add</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Selected Categories */}
-            {categories.length > 0 && (
-              <View style={styles.selectedCategories}>
-                {categories.map((cat, idx) => (
-                  <View key={idx} style={styles.categoryTag}>
-                    <Text style={styles.categoryTagText}>{cat}</Text>
-                    <TouchableOpacity onPress={() => setCategories(categories.filter(c => c !== cat))}>
-                      <Ionicons name="close-circle" size={16} color={COLORS.primary} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Category Search */}
-            <View style={styles.categorySearchContainer}>
-              <Ionicons name="search" size={18} color={COLORS.textLight} />
-              <TextInput
-                style={styles.categorySearchInput}
-                placeholder="Search categories (Gym, Yoga, Restaurant...)"
-                placeholderTextColor={COLORS.textLight}
-                value={categoryInput}
-                onChangeText={(text) => {
-                  setCategoryInput(text);
                   setShowCategoryDropdown(true);
                 }}
                 onFocus={() => setShowCategoryDropdown(true)}
+                onSubmitEditing={() => {
+                  const cat = categoryInput.trim();
+                  if (cat && !categories.includes(cat)) {
+                    if (categories.length >= 5) {
+                      Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                      return;
+                    }
+                    setCategories([...categories, cat]);
+                  }
+                  setCategoryInput('');
+                  setShowCategoryDropdown(false);
+                }}
               />
             </View>
 
             {/* Category Dropdown (Pills) */}
-            {showCategoryDropdown && categoryInput.trim().length > 0 && filteredCategories.length > 0 && (
+            {categoryInput.trim().length > 0 && (
               <View style={styles.categoryDropdown}>
                 {filteredCategories.slice(0, 10).map((cat) => (
                   <TouchableOpacity
@@ -678,6 +636,20 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     <Ionicons name="add-circle" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
                   </TouchableOpacity>
                 )}
+              </View>
+            )}
+
+            {/* Selected Categories */}
+            {categories.length > 0 && (
+              <View style={styles.selectedCategories}>
+                {categories.map((cat, idx) => (
+                  <View key={idx} style={styles.categoryTag}>
+                    <Text style={styles.categoryTagText}>{cat}</Text>
+                    <TouchableOpacity onPress={() => setCategories(categories.filter(c => c !== cat))}>
+                      <Ionicons name="close-circle" size={16} color={COLORS.primary} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
               </View>
             )}
 
