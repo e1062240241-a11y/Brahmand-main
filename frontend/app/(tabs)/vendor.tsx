@@ -29,6 +29,7 @@ import { useVendorStore, Vendor, DEFAULT_CATEGORIES } from '../../src/store/vend
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { createOrUpdateJobProfile, getJobProfiles, getMyJobProfile, getKYCStatus, uploadJobProfileFile } from '../../src/services/api';
 import * as Location from 'expo-location';
+import { useTranslation } from '../../src/utils/i18n';
 
 const TABS = ['Nearby'];
 const MAIN_SECTIONS = ['Services', 'Jobs'];
@@ -51,6 +52,7 @@ interface JobProfile {
 }
 
 export default function VendorScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
@@ -70,6 +72,29 @@ export default function VendorScreen() {
   } = useVendorStore();
   const hasVerifiedKyc = myVendor?.kyc_status === 'verified';
   
+  const getCategoryTranslation = (cat: string) => {
+    const map: { [key: string]: string } = {
+      'Nearby': 'आसपास',
+      'Services': 'सेवाएं',
+      'Jobs': 'नौकरियां',
+      'Pooja & Pandit': 'पूजा और पंडित',
+      'Grocery & Sweets': 'किराना और मिठाई',
+      'Restaurant & Catering': 'रेस्टोरेंट और खानपान',
+      'Gym & Yoga': 'जिम और योग',
+      'Salon & Beauty': 'सैलून और सौंदर्य',
+      'All': 'सभी',
+      'Carpenter': 'बढ़ई',
+      'Housemaid': 'कामवाली बाई',
+      'Plumber': 'नलसाज',
+      'Electrician': 'बिजली मिस्त्री',
+      'Cook': 'रसोइया',
+      'Teacher': 'शिक्षक',
+      'Painter': 'रंगसाज',
+      'Beautician': 'ब्यूटीशियन',
+    };
+    return t('language') === 'hi' ? (map[cat] || cat) : cat;
+  };
+
   const [activeTab, setActiveTab] = useState('Nearby');
   const [activeSection, setActiveSection] = useState('Services');
   const [refreshing, setRefreshing] = useState(false);
@@ -484,7 +509,10 @@ export default function VendorScreen() {
         cv_url: uploadedCvUrl,
       });
 
-      Alert.alert('Success', 'Job profile saved successfully.');
+      Alert.alert(
+        t('language') === 'hi' ? 'सफलता' : 'Success',
+        t('language') === 'hi' ? 'नौकरी प्रोफ़ाइल सफलतापूर्वक सहेजी गई।' : 'Job profile saved successfully.'
+      );
       await loadJobsData();
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
@@ -533,11 +561,11 @@ export default function VendorScreen() {
       
       if (kycStatus === 'verified' || hasVerifiedKyc) {
         Alert.alert(
-          'Approved', 
-          'Your business has been registered and your KYC is already verified.',
+          t('language') === 'hi' ? 'स्वीकृत' : 'Approved', 
+          t('language') === 'hi' ? 'आपका व्यवसाय पंजीकृत हो गया है और आपका केवाईसी पहले से ही सत्यापित है।' : 'Your business has been registered and your KYC is already verified.',
           [
             {
-              text: 'Go to Dashboard',
+              text: t('language') === 'hi' ? 'डैशबोर्ड पर जाएं' : 'Go to Dashboard',
               onPress: () => router.push('/vendor/dashboard')
             }
           ]
@@ -545,18 +573,18 @@ export default function VendorScreen() {
       } else {
         // Show KYC modal for verification
         Alert.alert(
-          'Registration Complete', 
-          'Your business is registered. Please complete KYC verification to make it visible and access all features.',
+          t('language') === 'hi' ? 'पंजीकरण पूर्ण' : 'Registration Complete', 
+          t('language') === 'hi' ? 'आपका व्यवसाय पंजीकृत है। कृपया इसे दृश्यमान बनाने और सभी सुविधाओं तक पहुँचने के लिए केवाईसी सत्यापन पूरा करें।' : 'Your business is registered. Please complete KYC verification to make it visible and access all features.',
           [
             { 
-              text: 'Later', 
+              text: t('language') === 'hi' ? 'बाद में' : 'Later', 
               style: 'cancel',
               onPress: () => {
                 router.push('/vendor/dashboard');
               }
             },
             { 
-              text: 'Complete KYC', 
+              text: t('language') === 'hi' ? 'केवाईसी पूरा करें' : 'Complete KYC', 
               onPress: () => {
                 console.log('Opening KYC modal with vendor ID:', newVendor?.id);
                 setKycModalVendorId(newVendor?.id);
@@ -575,21 +603,27 @@ export default function VendorScreen() {
   const handleDeleteVendor = () => {
     if (!myVendor?.id) return;
     Alert.alert(
-      'Delete Service Profile',
-      'Are you sure you want to permanently delete your service business profile? This action cannot be undone.',
+      t('language') === 'hi' ? 'सेवा प्रोफ़ाइल हटाएं' : 'Delete Service Profile',
+      t('language') === 'hi' ? 'क्या आप वाकई अपने सेवा व्यवसाय प्रोफ़ाइल को स्थायी रूप से हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।' : 'Are you sure you want to permanently delete your service business profile? This action cannot be undone.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('language') === 'hi' ? 'रद्द करें' : 'Cancel', style: 'cancel' },
         {
-          text: 'Delete Permanently',
+          text: t('language') === 'hi' ? 'स्थायी रूप से हटाएं' : 'Delete Permanently',
           style: 'destructive',
           onPress: async () => {
             try {
               const store = useVendorStore.getState();
               await store.deleteVendor(myVendor.id);
-              Alert.alert('Deleted', 'Your service registration was deleted successfully.');
+              Alert.alert(
+                t('language') === 'hi' ? 'हटाया गया' : 'Deleted', 
+                t('language') === 'hi' ? 'आपका सेवा पंजीकरण सफलतापूर्वक हटा दिया गया था।' : 'Your service registration was deleted successfully.'
+              );
               await loadData();
             } catch (error: any) {
-              Alert.alert('Error', error?.message || 'Failed to delete service.');
+              Alert.alert(
+                t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+                error?.message || (t('language') === 'hi' ? 'सेवा हटाने में विफल।' : 'Failed to delete service.')
+              );
             }
           }
         }
@@ -654,7 +688,7 @@ export default function VendorScreen() {
             <View style={styles.categoriesRow}>
               {vendorCategories.slice(0, 2).map((cat, idx) => (
                 <View key={idx} style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{cat}</Text>
+                  <Text style={styles.categoryBadgeText}>{getCategoryTranslation(cat)}</Text>
                 </View>
               ))}
               {vendorCategories.length > 2 && (
@@ -666,7 +700,11 @@ export default function VendorScreen() {
           {/* Distance */}
           <View style={styles.distanceRow}>
             <Ionicons name="location" size={12} color={COLORS.textLight} />
-            <Text style={styles.distanceText}>{formatDistance(item.distance)}</Text>
+            <Text style={styles.distanceText}>
+              {t('language') === 'hi' 
+                ? formatDistance(item.distance).replace('km', 'किमी').replace('m', 'मीटर') 
+                : formatDistance(item.distance)}
+            </Text>
           </View>
         </View>
 
@@ -706,7 +744,7 @@ export default function VendorScreen() {
 
         <View style={styles.vendorInfo}>
           <View style={styles.vendorNameRow}>
-            <Text style={styles.vendorName}>{item.name || 'Unnamed Profile'}</Text>
+            <Text style={styles.vendorName}>{item.name || (t('language') === 'hi' ? 'अनाम प्रोफ़ाइल' : 'Unnamed Profile')}</Text>
             {myJobProfile?.id === item.id && (
               <Ionicons name="person-circle" size={16} color={COLORS.info} style={styles.vendorVerifiedIcon} />
             )}
@@ -714,16 +752,20 @@ export default function VendorScreen() {
 
           <View style={styles.categoriesRow}>
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{item.profession || 'Profession'}</Text>
+              <Text style={styles.categoryBadgeText}>{getCategoryTranslation(item.profession || 'Profession')}</Text>
             </View>
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{item.experience_years || 0} yrs</Text>
+              <Text style={styles.categoryBadgeText}>
+                {item.experience_years || 0} {t('language') === 'hi' ? 'वर्ष' : 'yrs'}
+              </Text>
             </View>
           </View>
 
           <View style={styles.distanceRow}>
             <Ionicons name="location" size={12} color={COLORS.textLight} />
-            <Text style={styles.distanceText}>{item.preferred_work_city || 'Preferred city not set'}</Text>
+            <Text style={styles.distanceText}>
+              {item.preferred_work_city || (t('language') === 'hi' ? 'पसंदीदा शहर सेट नहीं है' : 'Preferred city not set')}
+            </Text>
           </View>
         </View>
 
@@ -739,17 +781,26 @@ export default function VendorScreen() {
               try {
                 const url = typeof item.cv_url === 'string' ? item.cv_url : '';
                 if (!url) {
-                  Alert.alert('Unavailable', 'CV link is not available.');
+                  Alert.alert(
+                    t('language') === 'hi' ? 'अनुपलब्ध' : 'Unavailable', 
+                    t('language') === 'hi' ? 'सीवी लिंक उपलब्ध नहीं है।' : 'CV link is not available.'
+                  );
                   return;
                 }
                 const canOpen = await Linking.canOpenURL(url);
                 if (!canOpen) {
-                  Alert.alert('Unavailable', 'Could not open CV link.');
+                  Alert.alert(
+                    t('language') === 'hi' ? 'अनुपलब्ध' : 'Unavailable', 
+                    t('language') === 'hi' ? 'सीवी लिंक नहीं खोला जा सका।' : 'Could not open CV link.'
+                  );
                   return;
                 }
                 await Linking.openURL(url);
               } catch {
-                Alert.alert('Unavailable', 'Could not open CV link.');
+                Alert.alert(
+                  t('language') === 'hi' ? 'अनुपलब्ध' : 'Unavailable', 
+                  t('language') === 'hi' ? 'सीवी लिंक नहीं खोला जा सका।' : 'Could not open CV link.'
+                );
               }
             }}
           >
@@ -786,7 +837,7 @@ export default function VendorScreen() {
               }}
             >
               <Text style={[styles.sectionTabText, activeSection === section && styles.sectionTabTextActive]}>
-                {section}
+                {getCategoryTranslation(section)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -807,7 +858,7 @@ export default function VendorScreen() {
               }}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab}
+                {getCategoryTranslation(tab)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -832,13 +883,17 @@ export default function VendorScreen() {
           >
             {!searchTerm && (
               <View style={styles.inlinePlaceholderRow} pointerEvents="box-none">
-                <Text style={styles.inlinePlaceholderText}>Search for "</Text>
+                <Text style={styles.inlinePlaceholderText}>
+                  {t('language') === 'hi' ? 'खोजें "' : 'Search for "'}
+                </Text>
                 <Pressable
                   onPress={handleSkillPlaceholderPress}
                   onHoverIn={() => setIsPlaceholderPaused(true)}
                   onHoverOut={() => setIsPlaceholderPaused(false)}
                 >
-                  <Text style={styles.inlinePlaceholderBold}>{typedSkillPlaceholder}</Text>
+                  <Text style={styles.inlinePlaceholderBold}>
+                    {getCategoryTranslation(typedSkillPlaceholder)}
+                  </Text>
                 </Pressable>
                 <Text style={styles.inlinePlaceholderText}>"</Text>
               </View>
@@ -910,7 +965,9 @@ export default function VendorScreen() {
                 setShowCategoryFilter(false);
               }}
             >
-              <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>All</Text>
+              <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>
+                {getCategoryTranslation('All')}
+              </Text>
             </TouchableOpacity>
             {(activeSection === 'Jobs' ? jobProfessionFilters : categories).map((cat) => (
               <TouchableOpacity
@@ -921,7 +978,9 @@ export default function VendorScreen() {
                   setShowCategoryFilter(false);
                 }}
               >
-                <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
+                <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>
+                  {getCategoryTranslation(cat)}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -950,10 +1009,10 @@ export default function VendorScreen() {
             >
               <Text style={styles.suggestionText}>
                 {suggestion.type === 'category'
-                  ? `Category: ${suggestion.label}`
+                  ? (t('language') === 'hi' ? `श्रेणी: ${getCategoryTranslation(suggestion.label)}` : `Category: ${suggestion.label}`)
                   : suggestion.type === 'profession'
-                    ? `Profession: ${suggestion.label}`
-                    : suggestion.label}
+                    ? (t('language') === 'hi' ? `पेशा: ${getCategoryTranslation(suggestion.label)}` : `Profession: ${suggestion.label}`)
+                    : getCategoryTranslation(suggestion.label)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -972,7 +1031,9 @@ export default function VendorScreen() {
             <Ionicons name="storefront" size={24} color={COLORS.primary} />
           </View>
           <View style={styles.myBusinessInfo}>
-            <Text style={styles.myBusinessLabel}>Manage My Service</Text>
+            <Text style={styles.myBusinessLabel}>
+              {t('language') === 'hi' ? 'मेरी सेवा का प्रबंधन करें' : 'Manage My Service'}
+            </Text>
             <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
             {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
               <View style={{ marginTop: SPACING.xs }}>
@@ -988,10 +1049,10 @@ export default function VendorScreen() {
                     { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
                   ]}>
                     {myVendor.kyc_status === 'rejected'
-                      ? 'KYC Rejected'
+                      ? (t('language') === 'hi' ? 'केवाईसी अस्वीकृत' : 'KYC Rejected')
                       : myVendor.kyc_status === 'manual_review'
-                        ? 'Verification In Review'
-                        : 'Pending KYC'}
+                        ? (t('language') === 'hi' ? 'सत्यापन समीक्षा में है' : 'Verification In Review')
+                        : (t('language') === 'hi' ? 'लंबित केवाईसी' : 'Pending KYC')}
                   </Text>
                 </View>
                 {myVendor.kyc_status !== 'manual_review' && (
@@ -1010,7 +1071,7 @@ export default function VendorScreen() {
                     }}
                   >
                     <Text style={{ color: COLORS.surface, fontSize: 12, fontWeight: '600' }}>
-                      Complete Verification
+                      {t('language') === 'hi' ? 'सत्यापन पूरा करें' : 'Complete Verification'}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -1043,7 +1104,9 @@ export default function VendorScreen() {
           onPress={() => setShowRegistrationModal(true)}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.registerText}>Register Your Service</Text>
+          <Text style={styles.registerText}>
+            {t('language') === 'hi' ? 'अपनी सेवा पंजीकृत करें' : 'Register Your Service'}
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -1053,7 +1116,11 @@ export default function VendorScreen() {
           onPress={() => setShowJobProfileModal(true)}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.registerText}>{myJobProfile ? 'Update Job Profile' : 'Create Job Profile'}</Text>
+          <Text style={styles.registerText}>
+            {myJobProfile 
+              ? (t('language') === 'hi' ? 'नौकरी प्रोफ़ाइल अपडेट करें' : 'Update Job Profile') 
+              : (t('language') === 'hi' ? 'नौकरी प्रोफ़ाइल बनाएं' : 'Create Job Profile')}
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -1084,12 +1151,16 @@ export default function VendorScreen() {
               <Ionicons name={activeSection === 'Jobs' ? 'briefcase-outline' : 'storefront-outline'} size={48} color={COLORS.textLight} />
               <Text style={styles.emptyText}>
                 {searchTerm
-                  ? `No '${searchTerm}' in your area.`
-                  : (activeSection === 'Jobs' ? 'No jobs found' : 'No services found')}
+                  ? (t('language') === 'hi' ? `आपके क्षेत्र में कोई '${getCategoryTranslation(searchTerm)}' नहीं मिला।` : `No '${searchTerm}' in your area.`)
+                  : (activeSection === 'Jobs' 
+                    ? (t('language') === 'hi' ? 'कोई नौकरी नहीं मिली' : 'No jobs found') 
+                    : (t('language') === 'hi' ? 'कोई सेवा नहीं मिली' : 'No services found'))}
               </Text>
               {!searchTerm && (
                 <Text style={styles.emptySubtext}>
-                  {activeSection === 'Jobs' ? 'Create a job profile to appear here.' : 'Be the first to register in this area!'}
+                  {activeSection === 'Jobs' 
+                    ? (t('language') === 'hi' ? 'यहाँ दिखने के लिए एक नौकरी प्रोफ़ाइल बनाएं।' : 'Create a job profile to appear here.') 
+                    : (t('language') === 'hi' ? 'इस क्षेत्र में पंजीकरण करने वाले पहले व्यक्ति बनें!' : 'Be the first to register in this area!')}
                 </Text>
               )}
             </View>

@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getTemples } from '../../src/services/api';
 import { FONTS } from '../../src/constants/theme';
 import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } from '../../src/constants/templeImages';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ const JYOTIRLING_TEMPLES = [
 
 export default function TempleScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [selectedTempleSection, setSelectedTempleSection] = useState<'Jyotirling' | 'Others'>('Jyotirling');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -121,13 +123,13 @@ export default function TempleScreen() {
             style={styles.topTabButton}
             onPress={() => router.push('/jaap' as any)}
           >
-            <Text style={styles.topTabText}>Jaap</Text>
+            <Text style={styles.topTabText}>{t('jaap')}</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.topTabButton, styles.topTabButtonActive]}
             activeOpacity={1}
           >
-            <Text style={[styles.topTabText, styles.topTabTextActive]}>Temple</Text>
+            <Text style={[styles.topTabText, styles.topTabTextActive]}>{t('temple')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -152,9 +154,9 @@ export default function TempleScreen() {
               <Ionicons name="arrow-back" size={28} color="#2D1B13" />
             </TouchableOpacity>
             
-            <Text style={styles.heroDiscoverText}>Discover</Text>
-            <Text style={styles.heroSacredText}>Sacred</Text>
-            <Text style={styles.heroSacredText}>Temples</Text>
+            <Text style={styles.heroDiscoverText}>{t('language') === 'hi' ? 'खोजें' : 'Discover'}</Text>
+            <Text style={styles.heroSacredText}>{t('language') === 'hi' ? 'पवित्र' : 'Sacred'}</Text>
+            <Text style={styles.heroSacredText}>{t('language') === 'hi' ? 'मंदिर' : 'Temples'}</Text>
             
             <View style={styles.ornateDivider}>
               <LinearGradient
@@ -175,7 +177,9 @@ export default function TempleScreen() {
             </View>
 
             <Text style={styles.heroSubtitleBlended}>
-              Explore divine places, seek blessings{"\n"}and connect with spirituality.
+              {t('language') === 'hi' 
+                ? 'दिव्य स्थानों की यात्रा करें, आशीर्वाद लें\nऔर आध्यात्मिकता से जुड़ें।' 
+                : 'Explore divine places, seek blessings\nand connect with spirituality.'}
             </Text>
           </View>
 
@@ -199,7 +203,7 @@ export default function TempleScreen() {
           <View style={styles.searchBarWrapper}>
             <Ionicons name="search-outline" size={22} color="#111" style={{ marginRight: 12 }} />
             <TextInput 
-              placeholder="Search temple name..."
+              placeholder={t('language') === 'hi' ? 'मंदिर का नाम खोजें...' : 'Search temple name...'}
               style={styles.searchInputField}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -218,21 +222,21 @@ export default function TempleScreen() {
             onPress={() => setSelectedCategory('All')}
           >
             <MaterialCommunityIcons name="home-variant" size={18} color={selectedCategory === 'All' ? "#FF6600" : "#555"} style={{ marginRight: 6 }} />
-            <Text style={[styles.catPillText, selectedCategory === 'All' && styles.catPillTextActive]}>All Temples</Text>
+            <Text style={[styles.catPillText, selectedCategory === 'All' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'सभी मंदिर' : 'All Temples'}</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.catPill, selectedCategory === 'Jyotirlinga' && styles.catPillActive]}
             onPress={() => setSelectedCategory('Jyotirlinga')}
           >
             <Text style={{ fontSize: 18, marginRight: 6 }}>🔱</Text>
-            <Text style={[styles.catPillText, selectedCategory === 'Jyotirlinga' && styles.catPillTextActive]}>Jyotirlinga</Text>
+            <Text style={[styles.catPillText, selectedCategory === 'Jyotirlinga' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'ज्योतिर्लिंग' : 'Jyotirlinga'}</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.catPill, selectedCategory === 'Sacred' && styles.catPillActive]}
             onPress={() => setSelectedCategory('Sacred')}
           >
             <Ionicons name="sparkles-outline" size={16} color={selectedCategory === 'Sacred' ? "#FF6600" : "#555"} style={{ marginRight: 6 }} />
-            <Text style={[styles.catPillText, selectedCategory === 'Sacred' && styles.catPillTextActive]}>Sacred</Text>
+            <Text style={[styles.catPillText, selectedCategory === 'Sacred' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'पवित्र' : 'Sacred'}</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -257,10 +261,14 @@ export default function TempleScreen() {
                       <Ionicons name="location" size={14} color="#888" />
                       <Text style={styles.templeItemLocText}>{getTempleLocation(item)}</Text>
                     </View>
-                    <Text style={styles.templeItemDeity}>Dedicated to {getTempleDeityLabel(item)}</Text>
+                    <Text style={styles.templeItemDeity}>
+                      {t('language') === 'hi' ? `${getTempleDeityLabel(item)} को समर्पित` : `Dedicated to ${getTempleDeityLabel(item)}`}
+                    </Text>
                     <View style={styles.templeItemTag}>
                       <Ionicons name="sparkles" size={12} color="#D35400" />
-                      <Text style={styles.templeItemTagText}>{item.category || 'Sacred'}</Text>
+                      <Text style={styles.templeItemTagText}>
+                        {t('language') === 'hi' && item.category === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (item.category || 'Sacred')}
+                      </Text>
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#BBB" />
@@ -269,7 +277,9 @@ export default function TempleScreen() {
             ))
           ) : (
             <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Text style={{ color: '#888', fontFamily: FONTS.medium }}>No temples found matching your search.</Text>
+              <Text style={{ color: '#888', fontFamily: FONTS.medium }}>
+                {t('language') === 'hi' ? 'आपकी खोज से मेल खाता कोई मंदिर नहीं मिला।' : 'No temples found matching your search.'}
+              </Text>
             </View>
           )}
         </View>
@@ -289,7 +299,7 @@ export default function TempleScreen() {
         >
           <View style={styles.filterModalContent}>
             <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>Filter by Location</Text>
+              <Text style={styles.filterModalTitle}>{t('language') === 'hi' ? 'स्थान अनुसार फ़िल्टर करें' : 'Filter by Location'}</Text>
               <TouchableOpacity onPress={() => setShowFilterModal(false)}>
                 <Ionicons name="close" size={24} color="#111" />
               </TouchableOpacity>

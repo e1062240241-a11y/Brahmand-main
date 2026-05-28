@@ -15,150 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
-import * as Location from 'expo-location';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-
-let MapView: any = null;
-let PROVIDER_GOOGLE: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    const Maps = require('react-native-maps');
-    MapView = Maps.default || Maps;
-    PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
-  } catch (e) {
-    console.warn('Native maps failed to load:', e);
-  }
-}
-
-const getWebMapHtml = (lat: number, lng: number) => `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs&libraries=places"></script>
-    <style>
-      body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: sans-serif; }
-      #map { width: 100%; height: calc(100% - 70px); }
-      #search-box {
-        position: absolute; top: 10px; left: 10px; right: 10px; z-index: 5;
-        background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      }
-      #search-input {
-        width: 100%; border: none; outline: none; font-size: 16px;
-      }
-      #footer {
-        position: absolute; bottom: 0; left: 0; right: 0; height: 70px;
-        background: #fff; display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-      }
-      button {
-        background: #FF3B30; color: #fff; border: none; padding: 14px 24px;
-        border-radius: 8px; font-size: 16px; font-weight: bold; width: 90%; cursor: pointer;
-      }
-      .center-marker {
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%);
-        z-index: 1000; margin-top: -35px; pointer-events: none;
-      }
-      .pac-container {
-        z-index: 10000 !important;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="search-box">
-      <input id="search-input" type="text" placeholder="Search for location" />
-    </div>
-    <div id="map"></div>
-    <div class="center-marker">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="#FF3B30">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-      </svg>
-    </div>
-    <div id="footer">
-      <button onclick="confirmLocation()" id="confirmBtn">Confirm Location</button>
-    </div>
-    <script>
-      let map;
-      let centerPos = { lat: ${lat}, lng: ${lng} };
-      
-      function initMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
-          center: centerPos,
-          zoom: 15,
-          disableDefaultUI: true,
-          zoomControl: true,
-        });
-
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
-            },
-            () => {},
-            { timeout: 5000 }
-          );
-        }
-
-        const input = document.getElementById('search-input');
-        const searchBox = new google.maps.places.SearchBox(input);
-
-        map.addListener('bounds_changed', () => {
-          searchBox.setBounds(map.getBounds());
-        });
-
-        searchBox.addListener('places_changed', () => {
-          const places = searchBox.getPlaces();
-          if (places.length == 0) return;
-          const bounds = new google.maps.LatLngBounds();
-          places.forEach((place) => {
-            if (!place.geometry || !place.geometry.location) return;
-            if (place.geometry.viewport) {
-              bounds.union(place.geometry.viewport);
-            } else {
-              bounds.extend(place.geometry.location);
-            }
-          });
-          map.fitBounds(bounds);
-        });
-      }
-
-      function confirmLocation() {
-        var btn = document.getElementById('confirmBtn');
-        btn.innerText = "Loading...";
-        btn.disabled = true;
-
-        const center = map.getCenter();
-        const lat = center.lat();
-        const lng = center.lng();
-        
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-          if (status === 'OK' && results[0]) {
-            const address = results[0].formatted_address;
-            window.parent.postMessage(JSON.stringify({
-              type: 'capture',
-              latitude: lat,
-              longitude: lng,
-              address: address
-            }), '*');
-          } else {
-            window.parent.postMessage(JSON.stringify({
-              type: 'error',
-              message: 'Could not fetch address'
-            }), '*');
-            btn.innerText = "Confirm Location";
-            btn.disabled = false;
-          }
-        });
-      }
-      
-      window.onload = initMap;
-    </script>
-  </body>
-</html>
-`;
-
-const WEB_MAP_HTML_DEFAULT = getWebMapHtml(19.0760, 72.8777);
+import { useTranslation } from '../utils/i18n';
 
 interface VendorRegistrationModalProps {
   visible: boolean;
@@ -171,6 +28,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   onClose,
   onSubmit,
 }) => {
+  const { t } = useTranslation();
+  const isHi = t('language') === 'hi';
+
   const [loading, setLoading] = useState<boolean>(false);
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -179,112 +39,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [address, setAddress] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [categoryInput, setCategoryInput] = useState('');
-
-  const [mapPickerVisible, setMapPickerVisible] = useState(false);
-  const [mapRegion, setMapRegion] = useState<any>(null);
-
-  React.useEffect(() => {
-    if (Platform.OS === 'web' && mapPickerVisible) {
-      const handleWebMessage = (event: any) => {
-        try {
-          if (typeof event.data !== 'string') return;
-          const payload = JSON.parse(event.data);
-          if (payload.type === 'capture') {
-            setAddress(payload.address);
-            setMapPickerVisible(false);
-          } else if (payload.type === 'error') {
-            Alert.alert('Error', payload.message);
-          }
-        } catch (e) {}
-      };
-      window.addEventListener('message', handleWebMessage);
-      return () => window.removeEventListener('message', handleWebMessage);
-    }
-  }, [mapPickerVisible]);
-
-  const detectLocation = async () => {
-    setLoading(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required.');
-        return;
-      }
-      const location = await Location.getCurrentPositionAsync({});
-      const lat = location.coords.latitude;
-      const lng = location.coords.longitude;
-      
-      const geocoded = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-      if (geocoded.length > 0) {
-        const place = geocoded[0];
-        const addr = [place.name, place.street, place.city, place.region, place.country].filter(Boolean).join(', ');
-        setAddress(addr);
-      } else {
-        Alert.alert('Error', 'Could not determine address from location.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Unable to get location.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openMap = async () => {
-    if (Platform.OS !== 'web' && !MapView) {
-      Alert.alert('Unavailable', 'Map functionality is currently unavailable.');
-      return;
-    }
-    
-    // Open immediately to prevent blocking UI
-    setMapPickerVisible(true);
-
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const locationPromise = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        const timeoutPromise = new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
-        
-        const location: any = await Promise.race([locationPromise, timeoutPromise]);
-        
-        setMapRegion({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        });
-      } else {
-        if (!mapRegion) setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
-      }
-    } catch (e) {
-      if (!mapRegion) setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
-    }
-  };
-
-  const handleMapConfirm = async () => {
-    if (!mapRegion) {
-      setMapPickerVisible(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const geocoded = await Location.reverseGeocodeAsync({ 
-        latitude: mapRegion.latitude, 
-        longitude: mapRegion.longitude 
-      });
-      if (geocoded.length > 0) {
-        const place = geocoded[0];
-        const addr = [place.name, place.street, place.city, place.region, place.country].filter(Boolean).join(', ');
-        setAddress(addr);
-      } else {
-        Alert.alert('Error', 'Could not get address for selected location.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Could not get address for selected location.');
-    } finally {
-      setLoading(false);
-      setMapPickerVisible(false);
-    }
-  };
 
   const resetForm = () => {
     setBusinessName('');
@@ -315,55 +69,95 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     });
 
     // Regex patterns
-    const businessNameRegex = /^[a-zA-Z0-9\s&.,'-\/]{2,50}$/;
-    const ownerNameRegex = /^[a-zA-Z\s.'-]{2,50}$/;
+    const businessNameRegex = /^[a-zA-Z0-9\u0900-\u097F\s&.,'-\/]{2,50}$/; // allow devanagari letters
+    const ownerNameRegex = /^[a-zA-Z\u0900-\u097F\s.'-]{2,50}$/;
     const phoneRegex = /^[6-9]\d{9}$/;
     const yearsRegex = /^(0|[1-9]\d?)$/;
-    const addressRegex = /^[a-zA-Z0-9\s.,'#\-\/()]{5,150}$/;
+    const addressRegex = /^[a-zA-Z0-9\u0900-\u097F\s.,'#\-\/()]{5,150}$/;
 
     // Validation
     if (!trimmedBusinessName) {
-      Alert.alert('Error', 'Business name is required');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi ? 'व्यवसाय का नाम आवश्यक है' : 'Business name is required'
+      );
       return;
     }
     if (!businessNameRegex.test(trimmedBusinessName)) {
-      Alert.alert('Error', 'Business name must be 2 to 50 characters and can only contain letters, numbers, spaces, and standard punctuation (& . , \' - /)');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi 
+          ? 'व्यवसाय का नाम 2 से 50 वर्णों का होना चाहिए और इसमें केवल अक्षर, संख्याएं, रिक्त स्थान और मानक विराम चिह्न (& . , \' - /) हो सकते हैं' 
+          : 'Business name must be 2 to 50 characters and can only contain letters, numbers, spaces, and standard punctuation (& . , \' - /)'
+      );
       return;
     }
 
     if (!trimmedOwnerName) {
-      Alert.alert('Error', 'Owner name is required');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi ? 'मालिक का नाम आवश्यक है' : 'Owner name is required'
+      );
       return;
     }
     if (!ownerNameRegex.test(trimmedOwnerName)) {
-      Alert.alert('Error', 'Owner name must be 2 to 50 characters and contain only letters, spaces, dots, and hyphens');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi 
+          ? 'मालिक का नाम 2 से 50 वर्णों का होना चाहिए और इसमें केवल अक्षर, रिक्त स्थान, बिंदु और हाइफ़न होने चाहिए' 
+          : 'Owner name must be 2 to 50 characters and contain only letters, spaces, dots, and hyphens'
+      );
       return;
     }
 
     if (!trimmedPhone) {
-      Alert.alert('Error', 'Phone number is required');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi ? 'फ़ोन नंबर आवश्यक है' : 'Phone number is required'
+      );
       return;
     }
     if (!phoneRegex.test(trimmedPhone)) {
-      Alert.alert('Error', 'Phone number must be a valid 10-digit mobile number starting with 6, 7, 8, or 9');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi 
+          ? 'फ़ोन नंबर 6, 7, 8, या 9 से शुरू होने वाला एक वैध 10-अंकीय मोबाइल नंबर होना चाहिए' 
+          : 'Phone number must be a valid 10-digit mobile number starting with 6, 7, 8, or 9'
+      );
       return;
     }
 
     if (!yearsInBusiness) {
-      Alert.alert('Error', 'Years in business is required');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi ? 'व्यवसाय में वर्ष आवश्यक है' : 'Years in business is required'
+      );
       return;
     }
     if (!yearsRegex.test(yearsInBusiness)) {
-      Alert.alert('Error', 'Years in business must be a valid number between 0 and 99');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi 
+          ? 'व्यवसाय में वर्ष 0 और 99 के बीच एक वैध संख्या होनी चाहिए' 
+          : 'Years in business must be a valid number between 0 and 99'
+      );
       return;
     }
 
     if (!trimmedAddress) {
-      Alert.alert('Error', 'Address is required');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi ? 'पता आवश्यक है' : 'Address is required'
+      );
       return;
     }
     if (!addressRegex.test(trimmedAddress)) {
-      Alert.alert('Error', 'Address must be between 5 and 150 characters and can only contain letters, numbers, spaces, and basic symbols (.,\'#-/())');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi 
+          ? 'पता 5 से 150 वर्णों के बीच होना चाहिए और इसमें केवल अक्षर, संख्याएं, रिक्त स्थान और मूल प्रतीक (.,\'#-/()) हो सकते हैं' 
+          : 'Address must be between 5 and 150 characters and can only contain letters, numbers, spaces, and basic symbols (.,\'#-/())'
+      );
       return;
     }
 
@@ -380,7 +174,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
     if (!onSubmit) {
       console.error('onSubmit is undefined!');
-      Alert.alert('Error', 'Submit function is not available');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi ? 'सबमिट फ़ंक्शन उपलब्ध नहीं है' : 'Submit function is not available'
+      );
       return;
     }
 
@@ -388,7 +185,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     try {
       await onSubmit(payload);
       resetForm();
-      // Only close if successful (onSubmit might also close it, but good to be safe)
       onClose();
     } catch (error: any) {
       console.error('Submit error:', error);
@@ -398,10 +194,27 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           ? error.response.data.detail[0].msg 
           : error.response.data.detail;
       }
-      Alert.alert('Registration Error', String(errMsg));
+      Alert.alert(
+        isHi ? 'पंजीकरण त्रुटि' : 'Registration Error',
+        String(errMsg)
+      );
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCategoryTranslation = (cat: string) => {
+    const map: { [key: string]: string } = {
+      'Carpenter': 'बढ़ई',
+      'Housemaid': 'कामवाली बाई',
+      'Plumber': 'नलसाज',
+      'Electrician': 'बिजली मिस्त्री',
+      'Cook': 'रसोइया',
+      'Teacher': 'शिक्षक',
+      'Painter': 'रंगसाज',
+      'Beautician': 'ब्यूटीशियन',
+    };
+    return isHi ? (map[cat] || cat) : cat;
   };
 
   return (
@@ -417,7 +230,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               <View style={styles.iconBg}>
                 <Ionicons name="storefront" size={20} color={COLORS.primary} />
               </View>
-              <Text style={styles.headerTitle}>Register Your Business</Text>
+              <Text style={styles.headerTitle}>
+                {isHi ? 'अपना व्यवसाय पंजीकृत करें' : 'Register Your Business'}
+              </Text>
             </View>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={COLORS.text} />
@@ -430,30 +245,30 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             keyboardShouldPersistTaps="handled"
           >
             {/* Business Name */}
-            <Text style={styles.label}>Business Name *</Text>
+            <Text style={styles.label}>{isHi ? 'व्यवसाय का नाम *' : 'Business Name *'}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter business name"
+              placeholder={isHi ? 'व्यवसाय का नाम दर्ज करें' : 'Enter business name'}
               placeholderTextColor={COLORS.textLight}
               value={businessName}
               onChangeText={setBusinessName}
             />
 
             {/* Owner Name */}
-            <Text style={styles.label}>Owner Name *</Text>
+            <Text style={styles.label}>{isHi ? 'मालिक का नाम *' : 'Owner Name *'}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter owner name"
+              placeholder={isHi ? 'मालिक का नाम दर्ज करें' : 'Enter owner name'}
               placeholderTextColor={COLORS.textLight}
               value={ownerName}
               onChangeText={setOwnerName}
             />
 
             {/* Phone Number */}
-            <Text style={styles.label}>Phone Number *</Text>
+            <Text style={styles.label}>{isHi ? 'फ़ोन नंबर *' : 'Phone Number *'}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter 10-digit phone number"
+              placeholder={isHi ? '10-अंकीय फ़ोन नंबर दर्ज करें' : 'Enter 10-digit phone number'}
               placeholderTextColor={COLORS.textLight}
               value={phoneNumber}
               onChangeText={(text) => {
@@ -465,10 +280,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             />
 
             {/* Years in Business */}
-            <Text style={styles.label}>Years in Business *</Text>
+            <Text style={styles.label}>{isHi ? 'व्यवसाय के वर्ष *' : 'Years in Business *'}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter years (e.g., 5)"
+              placeholder={isHi ? 'वर्ष दर्ज करें (जैसे, 5)' : 'Enter years (e.g., 5)'}
               placeholderTextColor={COLORS.textLight}
               value={yearsInBusiness}
               onChangeText={(text) => {
@@ -480,11 +295,13 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             />
 
             {/* Categories */}
-            <Text style={styles.label}>Categories (e.g. Plumber, Electrician) *</Text>
+            <Text style={styles.label}>
+              {isHi ? 'श्रेणियाँ (जैसे नलसाज, बिजली मिस्त्री) *' : 'Categories (e.g. Plumber, Electrician) *'}
+            </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md }}>
               <TextInput
                 style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="Enter a category and press Add"
+                placeholder={isHi ? 'एक श्रेणी दर्ज करें और जोड़ें दबाएं' : 'Enter a category and press Add'}
                 placeholderTextColor={COLORS.textLight}
                 value={categoryInput}
                 onChangeText={setCategoryInput}
@@ -513,7 +330,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   setCategoryInput('');
                 }}
               >
-                <Text style={{ color: '#FFF', fontWeight: '600' }}>Add</Text>
+                <Text style={{ color: '#FFF', fontWeight: '600' }}>{isHi ? 'जोड़ें' : 'Add'}</Text>
               </TouchableOpacity>
             </View>
             {categories.length > 0 && (
@@ -529,7 +346,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     marginRight: SPACING.xs,
                     marginBottom: SPACING.xs,
                   }}>
-                    <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '500' }}>{cat}</Text>
+                    <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '500' }}>
+                      {getCategoryTranslation(cat)}
+                    </Text>
                     <TouchableOpacity onPress={() => setCategories(categories.filter(c => c !== cat))}>
                       <Ionicons name="close-circle" size={16} color={COLORS.primary} style={{ marginLeft: 4 }} />
                     </TouchableOpacity>
@@ -539,10 +358,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             )}
 
             {/* Address */}
-            <Text style={styles.label}>Full Address *</Text>
+            <Text style={styles.label}>{isHi ? 'पूरा पता *' : 'Full Address *'}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Enter complete business address"
+              placeholder={isHi ? 'व्यवसाय का पूरा पता दर्ज करें' : 'Enter complete business address'}
               placeholderTextColor={COLORS.textLight}
               value={address}
               onChangeText={setAddress}
@@ -550,26 +369,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               numberOfLines={3}
               textAlignVertical="top"
             />
-
-            <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.md }}>
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: `${COLORS.primary}15`, padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
-                onPress={detectLocation}
-                disabled={loading}
-              >
-                <Ionicons name="locate" size={18} color={COLORS.primary} />
-                <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Detect</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: `${COLORS.primary}15`, padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
-                onPress={openMap}
-                disabled={loading}
-              >
-                <Ionicons name="map" size={18} color={COLORS.primary} />
-                <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Map</Text>
-              </TouchableOpacity>
-            </View>
 
             {/* Submit Button */}
             <TouchableOpacity
@@ -580,98 +379,16 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.submitBtnText}>Register Business</Text>
+                <Text style={styles.submitBtnText}>
+                  {isHi ? 'व्यवसाय पंजीकृत करें' : 'Register Business'}
+                </Text>
               )}
             </TouchableOpacity>
-
 
             <View style={{ height: 40 }} />
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-
-      {/* Map Picker Modal */}
-      <Modal visible={mapPickerVisible} animationType="slide" onRequestClose={() => setMapPickerVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={() => setMapPickerVisible(false)} style={{ marginRight: SPACING.md }}>
-                <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>Select Location</Text>
-            </View>
-          </View>
-          
-          {Platform.OS === 'web' ? (
-            <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-              {React.createElement('iframe', {
-                title: 'Web Map Picker',
-                srcDoc: WEB_MAP_HTML_DEFAULT,
-                style: {
-                  width: '100%',
-                  height: '100%',
-                  border: '0',
-                  display: 'block',
-                },
-              } as any)}
-            </View>
-          ) : MapView && mapRegion ? (
-            <View style={{ flex: 1 }}>
-              <MapView
-                provider={PROVIDER_GOOGLE}
-                style={{ flex: 1 }}
-                initialRegion={mapRegion}
-                region={mapRegion}
-                onRegionChangeComplete={(region: any) => setMapRegion(region)}
-                showsUserLocation
-                showsMyLocationButton={false}
-              />
-              <View style={{ position: 'absolute', top: 10, left: 10, right: 10, zIndex: 10 }}>
-                <GooglePlacesAutocomplete
-                  placeholder="Search for location"
-                  fetchDetails={true}
-                  keyboardShouldPersistTaps="handled"
-                  onPress={(data, details = null) => {
-                    if (details?.geometry?.location) {
-                      setMapRegion({
-                        latitude: details.geometry.location.lat,
-                        longitude: details.geometry.location.lng,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      });
-                    }
-                  }}
-                  query={{
-                    key: 'AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs',
-                    language: 'en',
-                  }}
-                  styles={{
-                    container: { flex: 1 },
-                    listView: { position: 'absolute', top: 50, backgroundColor: 'white', borderRadius: 8, elevation: 5, zIndex: 20, width: '100%' },
-                    textInput: { height: 44, borderRadius: 8, paddingHorizontal: 12, backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
-                  }}
-                />
-              </View>
-              <View style={{ position: 'absolute', top: '50%', left: '50%', marginLeft: -16, marginTop: -32 }} pointerEvents="none">
-                <Ionicons name="location" size={36} color={COLORS.primary} />
-              </View>
-              <View style={{ position: 'absolute', bottom: 30, left: 20, right: 20 }}>
-                <TouchableOpacity
-                  style={[styles.submitBtn, { marginTop: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }, loading && styles.submitBtnDisabled]}
-                  onPress={handleMapConfirm}
-                  disabled={loading}
-                >
-                  {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Confirm Location</Text>}
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ color: COLORS.text }}>Map unavailable.</Text>
-            </View>
-          )}
-        </View>
-      </Modal>
     </Modal>
   );
 };

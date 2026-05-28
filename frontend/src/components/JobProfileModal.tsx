@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
+import { useTranslation } from '../utils/i18n';
 
 let hasLoggedDocumentPickerError = false;
 const getDocumentPickerModule = async () => {
@@ -72,6 +73,9 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const { t } = useTranslation();
+  const isHi = t('language') === 'hi';
+
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [currentAddress, setCurrentAddress] = useState('');
@@ -89,17 +93,82 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   const [photoFile, setPhotoFile] = useState<LocalFile | undefined>(undefined);
   const [cvFile, setCvFile] = useState<LocalFile | undefined>(undefined);
 
+  const getRoleTranslation = (role: string) => {
+    const map: { [key: string]: string } = {
+      'App Developer': 'ऐप डेवलपर',
+      'Accountant': 'मुनीम (अकाउंटेंट)',
+      'Cook': 'रसोइया (कुक)',
+      'Driver': 'चालक (ड्राइवर)',
+      'Electrician': 'बिजली मिस्त्री (इलेक्ट्रीशियन)',
+      'Plumber': 'नलसाज (प्लंबर)',
+      'Carpenter': 'बढ़ई (कारपेंटर)',
+      'Teacher': 'शिक्षक (टीचर)',
+      'Nurse': 'नर्स',
+      'Pharmacist': 'दवा विक्रेता (फार्मासिस्ट)',
+      'Office Assistant': 'कार्यालय सहायक',
+      'Sales Executive': 'बिक्री कार्यकारी',
+      'Store Manager': 'दुकान प्रबंधक',
+      'Receptionist': 'रिसेप्शनिस्ट',
+      'Data Entry Operator': 'डेटा एंट्री ऑपरेटर',
+      'Graphic Designer': 'ग्राफिक डिजाइनर',
+      'Digital Marketing Executive': 'डिजिटल मार्केटिंग',
+      'Tailor': 'दर्जी (टेलर)',
+      'Beautician': 'ब्यूटीशियन',
+      'Housekeeping Staff': 'हाउसकीपिंग स्टाफ',
+      'Delivery Partner': 'डिलिवरी पार्टनर',
+      'Security Guard': 'सुरक्षा गार्ड',
+      'Welder': 'वेल्डर',
+      'Machine Operator': 'मशीन ऑपरेटर',
+      'Helper': 'सहायक (हेल्पर)',
+      'Lab Technician': 'लैब तकनीशियन',
+      'Customer Support Executive': 'ग्राहक सेवा कार्यकारी',
+    };
+    return isHi ? (map[role] || role) : role;
+  };
+
+  const getCityTranslation = (city: string) => {
+    const map: { [key: string]: string } = {
+      'Mumbai': 'मुंबई',
+      'Delhi': 'दिल्ली',
+      'Bengaluru': 'बेंगलुरु',
+      'Hyderabad': 'हैदराबाद',
+      'Chennai': 'चेन्नई',
+      'Kolkata': 'कोलकाता',
+      'Pune': 'पुणे',
+      'Ahmedabad': 'अहमदाबाद',
+      'Jaipur': 'जयपुर',
+      'Lucknow': 'लखनऊ',
+      'Indore': 'इंदौर',
+      'Bhopal': 'भोपाल',
+      'Nagpur': 'नागपुर',
+      'Chandigarh': 'चंडीगढ़',
+      'Surat': 'सूरत',
+      'Kanpur': 'कानपुर',
+      'Patna': 'पटना',
+      'Ranchi': 'रांची',
+      'Noida': 'नोएडा',
+      'Gurugram': 'गुरुग्राम',
+    };
+    return isHi ? (map[city] || city) : city;
+  };
+
   const filteredRoles = useMemo(() => {
     const term = professionSearch.trim().toLowerCase();
     if (!term) return JOB_ROLE_OPTIONS;
-    return JOB_ROLE_OPTIONS.filter((role) => role.toLowerCase().includes(term));
-  }, [professionSearch]);
+    return JOB_ROLE_OPTIONS.filter((role) => {
+      const translated = getRoleTranslation(role).toLowerCase();
+      return role.toLowerCase().includes(term) || translated.includes(term);
+    });
+  }, [professionSearch, isHi]);
 
   const filteredCities = useMemo(() => {
     const term = citySearch.trim().toLowerCase();
     if (!term) return CITY_OPTIONS;
-    return CITY_OPTIONS.filter((city) => city.toLowerCase().includes(term));
-  }, [citySearch]);
+    return CITY_OPTIONS.filter((city) => {
+      const translated = getCityTranslation(city).toLowerCase();
+      return city.toLowerCase().includes(term) || translated.includes(term);
+    });
+  }, [citySearch, isHi]);
 
   const resetForm = () => {
     setName('');
@@ -128,7 +197,10 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
     try {
       if (Platform.OS === 'web') {
         if (!navigator.geolocation) {
-          Alert.alert('Error', 'Geolocation is not supported in this browser.');
+          Alert.alert(
+            isHi ? 'त्रुटि' : 'Error',
+            isHi ? 'इस ब्राउज़र में जियोलोकेशन समर्थित नहीं है।' : 'Geolocation is not supported in this browser.'
+          );
           return;
         }
         await new Promise<void>((resolve, reject) => {
@@ -156,7 +228,10 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
       } else {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Location permission is required.');
+          Alert.alert(
+            isHi ? 'अनुमति अस्वीकृत' : 'Permission Denied',
+            isHi ? 'स्थान की अनुमति आवश्यक है।' : 'Location permission is required.'
+          );
           return;
         }
 
@@ -177,7 +252,10 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
         }
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to get current location.');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        isHi ? 'वर्तमान स्थान प्राप्त करने में असमर्थ।' : 'Unable to get current location.'
+      );
     } finally {
       setLocationLoading(false);
     }
@@ -186,7 +264,10 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   const pickPhotoFromGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== 'granted') {
-      Alert.alert('Permission Denied', 'Media library access is required.');
+      Alert.alert(
+        isHi ? 'अनुमति अस्वीकृत' : 'Permission Denied',
+        isHi ? 'मीडिया लाइब्रेरी तक पहुँच आवश्यक है।' : 'Media library access is required.'
+      );
       return;
     }
 
@@ -210,7 +291,10 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   const capturePhotoFromCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.status !== 'granted') {
-      Alert.alert('Permission Denied', 'Camera access is required.');
+      Alert.alert(
+        isHi ? 'अनुमति अस्वीकृत' : 'Permission Denied',
+        isHi ? 'कैमरा तक पहुँच आवश्यक है।' : 'Camera access is required.'
+      );
       return;
     }
 
@@ -233,7 +317,12 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   const pickCvDocument = async () => {
     const DocumentPickerModule = await getDocumentPickerModule();
     if (!DocumentPickerModule) {
-      Alert.alert('Unavailable', 'Document picker is not installed. You can still capture CV as an image.');
+      Alert.alert(
+        isHi ? 'अनुपलब्ध' : 'Unavailable',
+        isHi 
+          ? 'दस्तावेज़ चयनकर्ता स्थापित नहीं है। आप अभी भी छवि के रूप में सीवी कैप्चर कर सकते हैं।' 
+          : 'Document picker is not installed. You can still capture CV as an image.'
+      );
       return;
     }
 
@@ -258,7 +347,10 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   const captureCvFromCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.status !== 'granted') {
-      Alert.alert('Permission Denied', 'Camera access is required.');
+      Alert.alert(
+        isHi ? 'अनुमति अस्वीकृत' : 'Permission Denied',
+        isHi ? 'कैमरा तक पहुँच आवश्यक है।' : 'Camera access is required.'
+      );
       return;
     }
 
@@ -282,46 +374,76 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    const nameRegex = /^[a-zA-Z\s.'-]{2,50}$/;
-    const addressRegex = /^[a-zA-Z0-9\s.,'#\-\/()]{5,150}$/;
+    const nameRegex = /^[a-zA-Z\u0900-\u097F\s.'-]{2,50}$/;
+    const addressRegex = /^[a-zA-Z0-9\u0900-\u097F\s.,'#\-\/()]{5,150}$/;
     const experienceRegex = /^(0|[1-9]\d?)$/;
 
     const trimmedName = name.trim();
     const trimmedAddress = currentAddress.trim();
 
     if (!trimmedName) {
-      Alert.alert('Required Field', 'Please enter your name.');
+      Alert.alert(
+        isHi ? 'आवश्यक फ़ील्ड' : 'Required Field',
+        isHi ? 'कृपया अपना नाम दर्ज करें।' : 'Please enter your name.'
+      );
       return;
     }
     if (!nameRegex.test(trimmedName)) {
-      Alert.alert('Invalid Name', 'Name must be 2 to 50 characters and contain only letters, spaces, dots, and hyphens.');
+      Alert.alert(
+        isHi ? 'अमान्य नाम' : 'Invalid Name',
+        isHi 
+          ? 'नाम 2 से 50 वर्णों का होना चाहिए और इसमें केवल अक्षर, रिक्त स्थान, बिंदु और हाइफ़न होने चाहिए।' 
+          : 'Name must be 2 to 50 characters and contain only letters, spaces, dots, and hyphens.'
+      );
       return;
     }
 
     if (!trimmedAddress) {
-      Alert.alert('Required Field', 'Please enter current address.');
+      Alert.alert(
+        isHi ? 'आवश्यक फ़ील्ड' : 'Required Field',
+        isHi ? 'कृपया वर्तमान पता दर्ज करें।' : 'Please enter current address.'
+      );
       return;
     }
     if (!addressRegex.test(trimmedAddress)) {
-      Alert.alert('Invalid Address', 'Address must be between 5 and 150 characters and can only contain letters, numbers, spaces, and basic symbols (.,\'#-/()).');
+      Alert.alert(
+        isHi ? 'अमान्य पता' : 'Invalid Address',
+        isHi 
+          ? 'पता 5 से 150 वर्णों के बीच होना चाहिए और इसमें केवल अक्षर, संख्याएं, रिक्त स्थान और मूल प्रतीक (.,\'#-/()) हो सकते हैं।' 
+          : 'Address must be between 5 and 150 characters and can only contain letters, numbers, spaces, and basic symbols (.,\'#-/()).'
+      );
       return;
     }
 
     if (experienceYears && !experienceRegex.test(experienceYears)) {
-      Alert.alert('Invalid Experience', 'Experience must be a valid number of years between 0 and 99.');
+      Alert.alert(
+        isHi ? 'अमान्य अनुभव' : 'Invalid Experience',
+        isHi 
+          ? 'अनुभव 0 और 99 के बीच वर्षों की एक वैध संख्या होनी चाहिए।' 
+          : 'Experience must be a valid number of years between 0 and 99.'
+      );
       return;
     }
 
     if (!profession.trim()) {
-      Alert.alert('Required Field', 'Please select work profession.');
+      Alert.alert(
+        isHi ? 'आवश्यक फ़ील्ड' : 'Required Field',
+        isHi ? 'कृपया कार्य पेशा चुनें।' : 'Please select work profession.'
+      );
       return;
     }
     if (!preferredWorkCity.trim()) {
-      Alert.alert('Required Field', 'Please select preferred work city.');
+      Alert.alert(
+        isHi ? 'आवश्यक फ़ील्ड' : 'Required Field',
+        isHi ? 'कृपया पसंदीदा कार्य शहर चुनें।' : 'Please select preferred work city.'
+      );
       return;
     }
     if (!cvFile) {
-      Alert.alert('Required Field', 'Please upload CV (doc/image/pdf) or capture it.');
+      Alert.alert(
+        isHi ? 'आवश्यक फ़ील्ड' : 'Required Field',
+        isHi ? 'कृपया सीवी (दस्तावेज़/छवि/पीडीएफ) अपलोड करें या इसे कैप्चर करें।' : 'Please upload CV (doc/image/pdf) or capture it.'
+      );
       return;
     }
 
@@ -341,7 +463,10 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
       });
       closeWithReset();
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to save job profile.');
+      Alert.alert(
+        isHi ? 'त्रुटि' : 'Error',
+        error?.message || (isHi ? 'नौकरी प्रोफ़ाइल सहेजने में विफल।' : 'Failed to save job profile.')
+      );
     } finally {
       setLoading(false);
     }
@@ -352,22 +477,24 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Create Job Profile</Text>
+            <Text style={styles.headerTitle}>
+              {isHi ? 'नौकरी प्रोफ़ाइल बनाएं' : 'Create Job Profile'}
+            </Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <Text style={styles.label}>Name *</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Enter full name" placeholderTextColor={COLORS.textLight} />
+            <Text style={styles.label}>{isHi ? 'नाम *' : 'Name *'}</Text>
+            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={isHi ? 'पूरा नाम दर्ज करें' : 'Enter full name'} placeholderTextColor={COLORS.textLight} />
 
-            <Text style={styles.label}>Current Address *</Text>
+            <Text style={styles.label}>{isHi ? 'वर्तमान पता *' : 'Current Address *'}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={currentAddress}
               onChangeText={setCurrentAddress}
-              placeholder="Enter current address"
+              placeholder={isHi ? 'वर्तमान पता दर्ज करें' : 'Enter current address'}
               placeholderTextColor={COLORS.textLight}
               multiline
               numberOfLines={3}
@@ -375,24 +502,26 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
 
             <TouchableOpacity style={styles.locationButton} onPress={getCurrentLocation} disabled={locationLoading}>
               {locationLoading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="locate" size={18} color={COLORS.primary} />}
-              <Text style={styles.locationButtonText}>Use Current Location</Text>
+              <Text style={styles.locationButtonText}>
+                {isHi ? 'वर्तमान स्थान का उपयोग करें' : 'Use Current Location'}
+              </Text>
             </TouchableOpacity>
 
             {!!locationLink && (
               <Text style={styles.locationLinkText} numberOfLines={1}>{locationLink}</Text>
             )}
 
-            <Text style={styles.label}>Work Experience (Years)</Text>
+            <Text style={styles.label}>{isHi ? 'कार्य अनुभव (वर्ष)' : 'Work Experience (Years)'}</Text>
             <TextInput
               style={styles.input}
               value={experienceYears}
               onChangeText={setExperienceYears}
-              placeholder="e.g. 3"
+              placeholder={isHi ? 'जैसे: 3' : 'e.g. 3'}
               placeholderTextColor={COLORS.textLight}
               keyboardType="numeric"
             />
 
-            <Text style={styles.label}>Work Profession *</Text>
+            <Text style={styles.label}>{isHi ? 'कार्य पेशा *' : 'Work Profession *'}</Text>
             <TextInput
               style={styles.input}
               value={professionSearch}
@@ -401,7 +530,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
                 setShowProfessionDropdown(true);
               }}
               onFocus={() => setShowProfessionDropdown(true)}
-              placeholder={profession || 'Search profession'}
+              placeholder={profession ? getRoleTranslation(profession) : (isHi ? 'पेशा खोजें' : 'Search profession')}
               placeholderTextColor={COLORS.textLight}
             />
             {showProfessionDropdown && (
@@ -413,18 +542,18 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
                       style={styles.dropdownItem}
                       onPress={() => {
                         setProfession(role);
-                        setProfessionSearch(role);
+                        setProfessionSearch(getRoleTranslation(role));
                         setShowProfessionDropdown(false);
                       }}
                     >
-                      <Text style={styles.dropdownItemText}>{role}</Text>
+                      <Text style={styles.dropdownItemText}>{getRoleTranslation(role)}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
               </View>
             )}
 
-            <Text style={styles.label}>Preferred Work City *</Text>
+            <Text style={styles.label}>{isHi ? 'पसंदीदा कार्य शहर *' : 'Preferred Work City *'}</Text>
             <TextInput
               style={styles.input}
               value={citySearch}
@@ -433,7 +562,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
                 setShowCityDropdown(true);
               }}
               onFocus={() => setShowCityDropdown(true)}
-              placeholder={preferredWorkCity || 'Search city'}
+              placeholder={preferredWorkCity ? getCityTranslation(preferredWorkCity) : (isHi ? 'शहर खोजें' : 'Search city')}
               placeholderTextColor={COLORS.textLight}
             />
             {showCityDropdown && (
@@ -445,26 +574,26 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
                       style={styles.dropdownItem}
                       onPress={() => {
                         setPreferredWorkCity(city);
-                        setCitySearch(city);
+                        setCitySearch(getCityTranslation(city));
                         setShowCityDropdown(false);
                       }}
                     >
-                      <Text style={styles.dropdownItemText}>{city}</Text>
+                      <Text style={styles.dropdownItemText}>{getCityTranslation(city)}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
               </View>
             )}
 
-            <Text style={styles.label}>Upload Profile Photo</Text>
+            <Text style={styles.label}>{isHi ? 'प्रोफ़ाइल फ़ोटो अपलोड करें' : 'Upload Profile Photo'}</Text>
             <View style={styles.rowButtons}>
               <TouchableOpacity style={styles.secondaryButton} onPress={pickPhotoFromGallery}>
                 <Ionicons name="images" size={16} color={COLORS.primary} />
-                <Text style={styles.secondaryButtonText}>Gallery</Text>
+                <Text style={styles.secondaryButtonText}>{isHi ? 'गैलरी' : 'Gallery'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={capturePhotoFromCamera}>
                 <Ionicons name="camera" size={16} color={COLORS.primary} />
-                <Text style={styles.secondaryButtonText}>Camera</Text>
+                <Text style={styles.secondaryButtonText}>{isHi ? 'कैमरा' : 'Camera'}</Text>
               </TouchableOpacity>
             </View>
             {photoFile && (
@@ -476,15 +605,17 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
               </View>
             )}
 
-            <Text style={styles.label}>Upload CV (doc/image/pdf) *</Text>
+            <Text style={styles.label}>
+              {isHi ? 'सीवी अपलोड करें (दस्तावेज़/छवि/पीडीएफ) *' : 'Upload CV (doc/image/pdf) *'}
+            </Text>
             <View style={styles.rowButtons}>
               <TouchableOpacity style={styles.secondaryButton} onPress={pickCvDocument}>
                 <Ionicons name="document-attach" size={16} color={COLORS.primary} />
-                <Text style={styles.secondaryButtonText}>Choose File</Text>
+                <Text style={styles.secondaryButtonText}>{isHi ? 'फ़ाइल चुनें' : 'Choose File'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={captureCvFromCamera}>
                 <Ionicons name="camera" size={16} color={COLORS.primary} />
-                <Text style={styles.secondaryButtonText}>Capture Doc</Text>
+                <Text style={styles.secondaryButtonText}>{isHi ? 'दस्तावेज़ कैप्चर करें' : 'Capture Doc'}</Text>
               </TouchableOpacity>
             </View>
             {cvFile && (
@@ -497,7 +628,9 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
             )}
 
             <TouchableOpacity style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={handleSubmit} disabled={loading}>
-              {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Save Job Profile</Text>}
+              {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>
+                {isHi ? 'नौकरी प्रोफ़ाइल सहेजें' : 'Save Job Profile'}
+              </Text>}
             </TouchableOpacity>
 
             <View style={{ height: 40 }} />

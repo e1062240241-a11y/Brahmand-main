@@ -23,7 +23,7 @@ import {
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../src/store/authStore';
@@ -34,7 +34,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
-
+import { useTranslation } from '../../src/utils/i18n';
 function KundliSirenIcon() {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -364,10 +364,60 @@ const AnimatedSkeleton = ({ children, style }: { children: React.ReactNode; styl
 };
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
+
+  const translateFeature = (label: string, subtitle?: string) => {
+    const isHi = t('language') === 'hi';
+    if (!isHi) return { label, subtitle };
+    switch(label) {
+      case 'My Krishna':
+        return { label: 'मेरे कृष्ण', subtitle: 'एआई धर्म मार्गदर्शन' };
+      case 'SOS':
+        return { label: 'आपातकालीन सहायता (SOS)', subtitle: 'आपके आस-पास सनातनी लोग' };
+      case 'Panchang':
+        return { label: 'पंचांग', subtitle: 'वैदिक समय-सारणी' };
+      case 'Kundli':
+        return { label: 'कुंडली', subtitle: 'आपकी दैनिक वैदिक ऊर्जा' };
+      case 'Jyotish':
+        return { label: 'ज्योतिष', subtitle: 'आपका ब्रह्मांडीय खाका' };
+      case 'Brahmand Passport':
+        return { label: 'ब्रह्मांड पासपोर्ट', subtitle: 'आपकी मंदिर यात्रा का रिकॉर्ड' };
+      case 'Festival Days':
+        return { label: 'त्योहार के दिन', subtitle: 'आगामी त्योहार और अनुष्ठान' };
+      case 'Brahmand Library':
+        return { label: 'ब्रह्मांड पुस्तकालय', subtitle: 'ज्ञान और ग्रंथ खोजें' };
+      default:
+        return { label, subtitle };
+    }
+  };
+
+  const translateMenuLabel = (label: string) => {
+    const isHi = t('language') === 'hi';
+    if (!isHi) return label;
+    const cleanLabel = label.replace('\n', ' ');
+    switch(cleanLabel) {
+      case 'Festival':
+        return 'त्योहार';
+      case 'Kundli':
+        return 'कुंडली';
+      case 'Brahmand Passport':
+        return 'ब्रह्मांड\nपासपोर्ट';
+      case 'My Krishna':
+        return 'मेरे कृष्ण';
+      case 'Panchang':
+        return 'पंचांग';
+      case 'Brahmand Library':
+        return 'ब्रह्मांड\nपुस्तकालय';
+      case 'Jyotish':
+        return 'ज्योतिष';
+      default:
+        return label;
+    }
+  };
 
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
@@ -395,6 +445,61 @@ export default function HomeScreen() {
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
   const [showUploadPostModal, setShowUploadPostModal] = useState(false);
   const [showProfileActions, setShowProfileActions] = useState(false);
+  const [fabExpanded, setFabExpanded] = useState(false);
+  const fabScale = useRef(new Animated.Value(0)).current;
+  const fabRotation = useRef(new Animated.Value(0)).current;
+  const fabItemAnims = useRef(
+    Array.from({ length: 8 }, () => new Animated.Value(0))
+  ).current;
+
+  const toggleFab = useCallback(() => {
+    const toOpen = !fabExpanded;
+    setFabExpanded(toOpen);
+    if (toOpen) {
+      Animated.parallel([
+        Animated.spring(fabScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabRotation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        ...fabItemAnims.map((anim, i) =>
+          Animated.spring(anim, {
+            toValue: 1,
+            friction: 5,
+            tension: 50,
+            delay: i * 40,
+            useNativeDriver: true,
+          })
+        ),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(fabScale, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fabRotation, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        ...fabItemAnims.map((anim) =>
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          })
+        ),
+      ]).start();
+    }
+  }, [fabExpanded, fabScale, fabRotation, fabItemAnims]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -432,7 +537,7 @@ export default function HomeScreen() {
         x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
         animated: true,
       });
-    }, 4000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [isFocused]);
 
@@ -1546,8 +1651,8 @@ export default function HomeScreen() {
           onPostMenuPress={handlePostMenuPress}
           postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
           isActive={activePostKey === postKey}
-          theme="light"
-          isBlackBackground={false}
+          theme="dark"
+          isBlackBackground={true}
         />
       </View>
     );
@@ -1659,7 +1764,7 @@ export default function HomeScreen() {
 
                   <View style={styles.greetingBlock}>
                     <View style={styles.nameRow}>
-                      <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
+                      <Text style={styles.greeting}>{t('language') === 'hi' ? 'नमस्ते' : 'Namaste'} {firstName} 🙏</Text>
                     </View>
                     <TouchableOpacity
                       activeOpacity={0.8}
@@ -1703,11 +1808,11 @@ export default function HomeScreen() {
                     <Ionicons name="notifications-outline" size={18} color="#FFF" />
                   </View>
                   <View style={styles.festivalAlertTextWrapper}>
-                    <Text style={styles.festivalAlertTitle}>Festival Reminder</Text>
+                    <Text style={styles.festivalAlertTitle}>{t('language') === 'hi' ? 'त्योहार अनुस्मारक' : 'Festival Reminder'}</Text>
                     <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
                       {nextFestival.days_until === 0
-                        ? `${nextFestival.name} is today! Click to see festival details.`
-                        : `${nextFestival.name} is tomorrow (${nextFestival.date}). Don't miss it!`}
+                        ? (t('language') === 'hi' ? `${nextFestival.name} आज है! विवरण देखने के लिए क्लिक करें।` : `${nextFestival.name} is today! Click to see festival details.`)
+                        : (t('language') === 'hi' ? `${nextFestival.name} कल (${nextFestival.date}) है। भूलना मत!` : `${nextFestival.name} is tomorrow (${nextFestival.date}). Don't miss it!`)}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#FFF" />
@@ -1722,7 +1827,7 @@ export default function HomeScreen() {
                       style={styles.searchInput}
                       value={searchTerm}
                       onChangeText={setSearchTerm}
-                      placeholder="Recent Search..."
+                      placeholder={t('language') === 'hi' ? 'खोजें...' : 'Recent Search...'}
                       placeholderTextColor="#8E7D90"
                       autoFocus
                     />
@@ -1731,7 +1836,7 @@ export default function HomeScreen() {
                     <View style={styles.searchResultsSection}>
                       {searchTerm.trim().startsWith('#') ? (
                         loadingHashtags ? (
-                          <Text style={styles.searchStatusText}>Loading hashtags...</Text>
+                          <Text style={styles.searchStatusText}>{t('language') === 'hi' ? 'हैशटैग लोड हो रहे हैं...' : 'Loading hashtags...'}</Text>
                         ) : hashtagResults.length > 0 ? (
                           <TouchableOpacity
                             style={styles.userResultItem}
@@ -1746,14 +1851,14 @@ export default function HomeScreen() {
                             </View>
                             <View style={styles.userResultText}>
                               <Text style={styles.userResultName}>#{searchTerm.trim().replace('#', '')}</Text>
-                              <Text style={styles.userResultMeta}>{hashtagResults.length} posts</Text>
+                              <Text style={styles.userResultMeta}>{hashtagResults.length} {t('posts')}</Text>
                             </View>
                           </TouchableOpacity>
                         ) : (
-                          <Text style={styles.searchStatusText}>No posts found for this hashtag.</Text>
+                          <Text style={styles.searchStatusText}>{t('language') === 'hi' ? 'इस हैशटैग के लिए कोई पोस्ट नहीं मिली।' : 'No posts found for this hashtag.'}</Text>
                         )
                       ) : loadingUsers ? (
-                        <Text style={styles.searchStatusText}>Loading users...</Text>
+                        <Text style={styles.searchStatusText}>{t('language') === 'hi' ? 'उपयोगकर्ता लोड हो रहे हैं...' : 'Loading users...'}</Text>
                       ) : searchResults.length > 0 ? (
                         searchResults.map((item) => {
                           const isFollowing = followingIds.includes(item.id);
@@ -1769,10 +1874,7 @@ export default function HomeScreen() {
                               >
                                 <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
                                 <View style={styles.userResultText}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
-                                    {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-                                  </View>
+                                  <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
                                   <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
                                 </View>
                               </TouchableOpacity>
@@ -1782,27 +1884,27 @@ export default function HomeScreen() {
                                 onPress={() => handleFollowUser(item.id)}
                               >
                                 <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                                  {isFollowing ? 'Following' : 'Follow'}
+                                  {isFollowing ? (t('language') === 'hi' ? 'फ़ॉलो कर रहे हैं' : 'Following') : (t('language') === 'hi' ? 'फ़ॉलो करें' : 'Follow')}
                                 </Text>
                               </TouchableOpacity>
                             </View>
                           );
                         })
                       ) : (
-                        <Text style={styles.searchStatusText}>No users found.</Text>
+                        <Text style={styles.searchStatusText}>{t('language') === 'hi' ? 'कोई उपयोगकर्ता नहीं मिला।' : 'No users found.'}</Text>
                       )}
                     </View>
                   ) : recentSearches.length > 0 ? (
                     <View style={styles.recentSearchSection}>
                       <View style={styles.recentSearchHeader}>
-                        <Text style={styles.recentSearchesTitle}>Recent Search</Text>
+                        <Text style={styles.recentSearchesTitle}>{t('language') === 'hi' ? 'हाल की खोज' : 'Recent Search'}</Text>
                         <TouchableOpacity onPress={async () => {
                           if (user?.id) {
                             setRecentSearches([]);
                             await AsyncStorage.removeItem(`recent_searches_${user.id}`);
                           }
                         }}>
-                          <Text style={styles.clearHistoryText}>Clear History</Text>
+                          <Text style={styles.clearHistoryText}>{t('language') === 'hi' ? 'इतिहास साफ़ करें' : 'Clear History'}</Text>
                         </TouchableOpacity>
                       </View>
                       <ScrollView
@@ -1874,37 +1976,37 @@ export default function HomeScreen() {
                           ) : item.label === 'My Krishna' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Panchang' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Kundli' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Jyotish' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Passport' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Festival Days' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Library' ? (
@@ -1919,10 +2021,17 @@ export default function HomeScreen() {
                             </View>
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle} numberOfLines={2}>{item.label}</Text>
-                            {item.subtitle ? (
-                              <Text style={styles.featureSubtitle} numberOfLines={2}>{item.subtitle}</Text>
-                            ) : null}
+                            {(() => {
+                              const feat = translateFeature(item.label, item.subtitle);
+                              return (
+                                <>
+                                  <Text style={styles.featureTitle} numberOfLines={2}>{feat.label}</Text>
+                                  {feat.subtitle ? (
+                                    <Text style={styles.featureSubtitle} numberOfLines={2}>{feat.subtitle}</Text>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
@@ -1947,86 +2056,49 @@ export default function HomeScreen() {
                 scrollEventThrottle={16}
               >
                 <TouchableOpacity activeOpacity={0.95} style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}>
-                  <ImageBackground source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
+                  <ImageBackground source={require('../../assets/images/hanuman_orange.png')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15, transform: [{ scale: 1.1 }] }}>
                     <LinearGradient 
-                      colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']} 
+                      colors={['transparent', 'transparent']} 
                       style={styles.featuredLiveOverlay}
                     >
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        
-                        {/* Top Left Content */}
-                        <View style={{ paddingTop: 0, paddingLeft: 0 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                            <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                            <Text style={[
-                              styles.featuredLiveTitle,
-                              {
-                                color: '#FFF',
-                                fontFamily: 'System',
-                                fontSize: 15,
-                                fontStyle: 'normal',
-                                fontWeight: '700',
-                                letterSpacing: 1,
-                                textShadowColor: 'rgba(0,0,0,0.9)',
-                                textShadowOffset: { width: 0, height: 1 },
-                                textShadowRadius: 6,
-                              }
-                            ]}>Hanuman Chalisa</Text>
-                          </View>
-                          
-                          <Text style={[styles.featuredDevotees, { 
-                            color: '#FFF', 
-                            fontWeight: '600', 
-                            opacity: 0.9, 
-                            textShadowColor: 'rgba(0,0,0,0.8)', 
-                            textShadowOffset: { width: 0, height: 1 }, 
-                            textShadowRadius: 4,
-                            marginLeft: 14,
-                            marginTop: 0,
-                            marginBottom: 2,
-                            fontSize: 13
-                          }]}>1,248 devotees are chanting</Text>
-                          
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                            <Ionicons name="time-outline" size={13} color="#FFF" />
-                            <Text style={[styles.featuredTime, { 
-                              marginTop: 0, 
-                              marginLeft: 4, 
-                              color: '#FFF', 
-                              fontWeight: '600',
-                              fontSize: 12
-                            }]}>Live until 5:00 PM</Text>
-                          </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                          <Text style={[
+                            styles.featuredLiveTitle,
+                            {
+                              color: '#111',
+                              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+                              fontSize: 15,
+                              fontStyle: 'normal',
+                              fontWeight: '900',
+                              letterSpacing: 1,
+                              textShadowColor: 'rgba(255,255,255,0.8)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 4,
+                            }
+                          ]}>{t('language') === 'hi' ? 'हनुमान चालीसा' : 'Hanuman Chalisa'}</Text>
                         </View>
-
-                        {/* Top Right LIVE Badge */}
-                        <View style={[styles.liveBadge, { alignSelf: 'flex-start' }]}>
+                        <View style={styles.liveBadge}>
                           <View style={styles.liveDot} />
-                          <Text style={styles.liveBadgeText}>LIVE</Text>
+                          <Text style={styles.liveBadgeText}>{t('language') === 'hi' ? 'लाइव' : 'LIVE'}</Text>
                         </View>
                       </View>
 
-                      {/* Bottom Button */}
-                      <View style={{ alignItems: 'center', paddingBottom: 0 }}>
-                        <TouchableOpacity 
-                          style={[
-                            styles.joinJaapButton, 
-                            { 
-                              backgroundColor: '#FF5100',
-                              display: 'flex',
-                              width: 138,
-                              height: 36,
-                              paddingHorizontal: 12,
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              gap: 10,
-                            }
-                          ]} 
-                          onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}
-                        >
-                          <Text style={styles.joinJaapText}>Join Live Jaap</Text>
-                        </TouchableOpacity>
+                      <View style={styles.featuredLiveContent}>
+                        <Text style={[styles.featuredDevotees, { color: '#111', fontWeight: '700', textShadowColor: 'rgba(255,255,255,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>{t('language') === 'hi' ? '5,420 भक्त जप कर रहे हैं' : '5,420 devotees are chanting'}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
+                          <Ionicons name="time-outline" size={14} color="#111" />
+                          <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6, color: '#111', fontWeight: '700' }]}>{t('language') === 'hi' ? 'शाम 7:30 बजे तक लाइव' : 'Live until 7:30 PM'}</Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}>
+                            <Ionicons name="volume-medium" size={16} color="#FFF" />
+                            <Text style={styles.joinJaapText}>{t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap'}</Text>
+                            <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </LinearGradient>
                   </ImageBackground>
@@ -2035,84 +2107,47 @@ export default function HomeScreen() {
                 <TouchableOpacity activeOpacity={0.95} style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}>
                   <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                     <LinearGradient 
-                      colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']} 
+                      colors={['transparent', 'transparent']} 
                       style={styles.featuredLiveOverlay}
                     >
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        
-                        {/* Top Left Content */}
-                        <View style={{ paddingTop: 0, paddingLeft: 0 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                            <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                            <Text style={[
-                              styles.featuredLiveTitle,
-                              {
-                                color: '#FFF',
-                                fontFamily: 'System',
-                                fontSize: 15,
-                                fontStyle: 'normal',
-                                fontWeight: '700',
-                                letterSpacing: 1,
-                                textShadowColor: 'rgba(0,0,0,0.9)',
-                                textShadowOffset: { width: 0, height: 1 },
-                                textShadowRadius: 6,
-                              }
-                            ]}>Mahamrityunjaya Mantra</Text>
-                          </View>
-                          
-                          <Text style={[styles.featuredDevotees, { 
-                            color: '#FFF', 
-                            fontWeight: '600', 
-                            opacity: 0.9, 
-                            textShadowColor: 'rgba(0,0,0,0.8)', 
-                            textShadowOffset: { width: 0, height: 1 }, 
-                            textShadowRadius: 4,
-                            marginLeft: 14,
-                            marginTop: 0,
-                            marginBottom: 2,
-                            fontSize: 13
-                          }]}>1,248 devotees are chanting</Text>
-                          
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                            <Ionicons name="time-outline" size={13} color="#FFF" />
-                            <Text style={[styles.featuredTime, { 
-                              marginTop: 0, 
-                              marginLeft: 4, 
-                              color: '#FFF', 
-                              fontWeight: '600',
-                              fontSize: 12
-                            }]}>Live until 5:00 PM</Text>
-                          </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                          <Text style={[
+                            styles.featuredLiveTitle,
+                            {
+                              color: '#111',
+                              fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+                              fontSize: 14,
+                              fontStyle: 'normal',
+                              fontWeight: '900',
+                              letterSpacing: 1,
+                              textShadowColor: 'rgba(255,255,255,0.8)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 4,
+                            }
+                          ]}>{t('language') === 'hi' ? 'महामृत्युंजय मंत्र' : 'Mahamrityunjaya Mantra'}</Text>
                         </View>
-
-                        {/* Top Right LIVE Badge */}
-                        <View style={[styles.liveBadge, { alignSelf: 'flex-start' }]}>
+                        <View style={styles.liveBadge}>
                           <View style={styles.liveDot} />
-                          <Text style={styles.liveBadgeText}>LIVE</Text>
+                          <Text style={styles.liveBadgeText}>{t('language') === 'hi' ? 'लाइव' : 'LIVE'}</Text>
                         </View>
                       </View>
 
-                      {/* Bottom Button */}
-                      <View style={{ alignItems: 'center', paddingBottom: 0 }}>
-                        <TouchableOpacity 
-                          style={[
-                            styles.joinJaapButton, 
-                            { 
-                              backgroundColor: '#FF5100',
-                              display: 'flex',
-                              width: 138,
-                              height: 36,
-                              paddingHorizontal: 12,
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              gap: 10,
-                            }
-                          ]} 
-                          onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}
-                        >
-                          <Text style={styles.joinJaapText}>Join Live Jaap</Text>
-                        </TouchableOpacity>
+                      <View style={styles.featuredLiveContent}>
+                        <Text style={[styles.featuredDevotees, { color: '#111', fontWeight: '700', textShadowColor: 'rgba(255,255,255,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>{t('language') === 'hi' ? '1,248 भक्त जप कर रहे हैं' : '1,248 devotees are chanting'}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
+                          <Ionicons name="time-outline" size={14} color="#111" />
+                          <Text style={[styles.featuredTime, { marginTop: 0, marginLeft: 6, color: '#111', fontWeight: '700' }]}>{t('language') === 'hi' ? 'शाम 5:00 बजे तक लाइव' : 'Live until 5:00 PM'}</Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <TouchableOpacity style={[styles.joinJaapButton, { backgroundColor: '#FF5100' }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}>
+                            <Ionicons name="volume-medium" size={16} color="#FFF" />
+                            <Text style={styles.joinJaapText}>{t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap'}</Text>
+                            <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </LinearGradient>
                   </ImageBackground>
@@ -2145,8 +2180,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Need Blood?'}</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{bloodRequest ? `${bloodRequest.hospital_name || 'Emergency'}\n${bloodRequest.location || 'Nearby'}` : 'Create an urgent\nrequest here'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? (t('language') === 'hi' ? `${bloodRequest.blood_group || 'रक्त'} आवश्यक` : `${bloodRequest.blood_group || 'Blood'} Required`) : (t('language') === 'hi' ? 'रक्त की आवश्यकता है?' : 'Need Blood?')}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{bloodRequest ? `${bloodRequest.hospital_name || (t('language') === 'hi' ? 'आपातकाल' : 'Emergency')}\n${bloodRequest.location || (t('language') === 'hi' ? 'आस-पास' : 'Nearby')}` : (t('language') === 'hi' ? 'यहाँ एक तत्काल\nअनुरोध बनाएँ' : 'Create an urgent\nrequest here')}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -2178,14 +2213,14 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('language') === 'hi' ? 'देखें' : 'View'}</Text>
                     </TouchableOpacity>
                     </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>Your Community</Text>
+                      <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('language') === 'hi' ? 'आपका समुदाय' : 'Your Community'}</Text>
                     </View>
                   </View>
                 </View>
@@ -2198,8 +2233,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <ShopIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? 'Manage Your' : 'Become a Verified'}</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? 'Business Profile' : 'Sanatan Vendor'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? (t('language') === 'hi' ? 'प्रबंधन करें' : 'Manage Your') : (t('language') === 'hi' ? 'सत्यापित विक्रेता' : 'Become a Verified')}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? (t('language') === 'hi' ? 'व्यवसाय प्रोफ़ाइल' : 'Business Profile') : (t('language') === 'hi' ? 'सनातन विक्रेता बनें' : 'Sanatan Vendor')}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -2225,14 +2260,14 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? 'Manage' : 'Register'}</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? (t('language') === 'hi' ? 'प्रबंधन' : 'Manage') : (t('language') === 'hi' ? 'पंजीकरण' : 'Register')}</Text>
                     </TouchableOpacity>
                     </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 65, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? 'Approved' : 'Pending') : 'Free'}</Text>
+                      <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? (t('language') === 'hi' ? 'स्वीकृत' : 'Approved') : (t('language') === 'hi' ? 'लंबित' : 'Pending')) : (t('language') === 'hi' ? 'निःशुल्क' : 'Free')}</Text>
                     </View>
                   </View>
                 </View>
@@ -2240,10 +2275,10 @@ export default function HomeScreen() {
                 {/* Verified Vendor */}
                 {(() => {
                   const displayVendor = vendors.find(v => v.kyc_status === 'verified') || vendors[0];
-                  const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
+                  const businessName = displayVendor ? displayVendor.business_name : (t('language') === 'hi' ? 'साईं पुष्प डेकोरेटर' : 'Sai Flower Decorator');
                   const categoryAndLoc = displayVendor 
-                    ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
-                    : 'Flower Decor\nAndheri West';
+                    ? `${displayVendor.categories?.[0] || (t('language') === 'hi' ? 'सजावट' : 'Decor')}\n${displayVendor.full_address || (t('language') === 'hi' ? 'आस-पास' : 'Nearby')}`
+                    : (t('language') === 'hi' ? 'फूलों की सजावट\nअंधेरी पश्चिम' : 'Flower Decor\nAndheri West');
                   
                   return (
                     <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
@@ -2280,14 +2315,14 @@ export default function HomeScreen() {
                             }
                           }}
                         >
-                          <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
+                          <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('language') === 'hi' ? 'देखें' : 'View'}</Text>
                         </TouchableOpacity>
                         </HomeCardTextureBg>
                       </View>
                       {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                       <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                         <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                          <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Verified vendor</Text>
+                          <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('language') === 'hi' ? 'सत्यापित विक्रेता' : 'Verified vendor'}</Text>
                         </View>
                       </View>
                     </View>
@@ -2302,13 +2337,13 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>Live Kedarnath Aarti</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{t('language') === 'hi' ? 'लाइव केदारनाथ आरती' : 'Live Kedarnath Aarti'}</Text>
                       <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
-                        <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>Notify</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('language') === 'hi' ? 'मुझे' : 'Notify'}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>me</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('language') === 'hi' ? 'बताएं' : 'me'}</Text>
                           <TouchableOpacity
-                            onPress={() => Alert.alert('Notification Set', "We'll notify you when Kedarnath Aarti starts.")}
+                            onPress={() => Alert.alert(t('language') === 'hi' ? 'अधिसूचना सेट' : 'Notification Set', t('language') === 'hi' ? 'केदारनाथ आरती शुरू होने पर हम आपको सूचित करेंगे।' : "We'll notify you when Kedarnath Aarti starts.")}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             style={{ marginLeft: 3 }}
                           >
@@ -2341,14 +2376,14 @@ export default function HomeScreen() {
                         }
                       })}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Watch</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('language') === 'hi' ? 'देखें' : 'Watch'}</Text>
                     </TouchableOpacity>
                     </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Temple</Text>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('language') === 'hi' ? 'मंदिर' : 'Temple'}</Text>
                     </View>
                   </View>
                 </View>
@@ -2373,11 +2408,11 @@ export default function HomeScreen() {
                     >
                       <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
-                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>CITY COMMUNITY</Text>
+                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY'}</Text>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                           {cityName}
                         </Text>
-                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 members</Text>
+                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 {t('language') === 'hi' ? 'सदस्य' : 'members'}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                     </TouchableOpacity>
@@ -2389,7 +2424,7 @@ export default function HomeScreen() {
                   const localComm = 
                     communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area' || c.type === 'user_group' || c.type === 'local') ||
                     localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
-                  const localName = 'Local Community';
+                  const localName = t('language') === 'hi' ? 'स्थानीय समुदाय' : 'Local Community';
                   const localId = localComm?.id || 'food_pune';
                   const realGroupName = localComm?.name || 'Pune Food Sharing Group';
                   const localMembers = localComm ? (localComm.member_count || localComm.members_count || 12) : 236;
@@ -2413,9 +2448,9 @@ export default function HomeScreen() {
                           {localName}
                         </Text>
                         <View style={styles.miniCardBottomRow}>
-                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} members</Text>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('language') === 'hi' ? 'सदस्य' : 'members'}</Text>
                           <View style={styles.sevaBadgeMini}>
-                            <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                            <Text style={styles.sevaBadgeTextMini}>{t('language') === 'hi' ? 'सेवा' : 'Seva'}</Text>
                           </View>
                         </View>
                       </View>
@@ -2516,7 +2551,7 @@ export default function HomeScreen() {
                         style={isFarOffScreen ? { height: cardHeight } : undefined}
                       >
                         {isFarOffScreen ? (
-                          <View style={{ height: cardHeight, backgroundColor: '#F9F9F9', borderRadius: 16, marginVertical: 8, opacity: 0.5 }} />
+                          <View style={{ height: cardHeight, backgroundColor: '#000', borderRadius: 16, marginVertical: 8, opacity: 0.5 }} />
                         ) : (
                           <PostFeedCard
                             post={post}
@@ -2528,8 +2563,8 @@ export default function HomeScreen() {
                             onPostMenuPress={handlePostMenuPress}
                             postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
                             isActive={activePostKey === postKey}
-                            theme="light"
-                            isBlackBackground={false}
+                            theme="dark"
+                            isBlackBackground={true}
                           />
                         )}
                       </View>
@@ -2543,25 +2578,195 @@ export default function HomeScreen() {
                 </>
               ) : (
                 <View style={styles.emptyFeed}>
-                  <Text style={styles.emptyFeedText}>No posts yet</Text>
+                  <Text style={styles.emptyFeedText}>{t('language') === 'hi' ? 'अभी कोई पोस्ट नहीं है' : 'No posts yet'}</Text>
                 </View>
               )}
             </View>
             )}
           </ScrollView>
 
+          {/* ─── Floating Action Button (FAB) ─── */}
+          {fabExpanded && (
+            <TouchableOpacity
+              style={fabStyles.overlay}
+              activeOpacity={1}
+              onPress={toggleFab}
+            >
+              <Animated.View
+                style={[
+                  fabStyles.menuContainer,
+                  {
+                    transform: [{ scale: fabScale }],
+                    opacity: fabScale,
+                  },
+                ]}
+              >
+                {/* Outer decorative ring */}
+                <View style={fabStyles.outerRing}>
+                  {/* Inner circle with items */}
+                  <View style={fabStyles.innerCircle}>
+                    {/* Decorative dotted ring */}
+                    <View style={fabStyles.dottedRing} />
+
+                    {/* Menu items arranged in a circle */}
+                    {[
+                      { label: 'Festival', icon: 'calendar-outline' as const, route: '/festivals' },
+                      { label: 'Kundli', icon: 'planet-outline' as const, route: '/astrology' },
+                      { label: 'Brahmand\nPassport', icon: 'compass-outline' as const, route: '/passport' },
+                      { label: 'My Krishna', icon: 'heart-outline' as const, route: '/my-krishna' },
+                      { label: 'Panchang', icon: 'today-outline' as const, route: '/panchang' },
+                      { label: 'Brahmand\nLibrary', icon: 'library-outline' as const, route: '/library' },
+                      { label: 'Jyotish', icon: 'star-outline' as const, route: '/horoscope' },
+                    ].map((item, index) => {
+                      // Position items in a circle (7 items, starting from top)
+                      const totalItems = 7;
+                      const angleStep = (2 * Math.PI) / totalItems;
+                      const startAngle = -Math.PI / 2; // Start from top
+                      const angle = startAngle + index * angleStep;
+                      const radius = 120;
+                      const centerX = 180 - 40; // center of 360 - half of 80
+                      const centerY = 180 - 40;
+                      const x = centerX + radius * Math.cos(angle);
+                      const y = centerY + radius * Math.sin(angle);
+
+                      return (
+                        <Animated.View
+                          key={item.label}
+                          style={[
+                            fabStyles.menuItem,
+                            {
+                              left: x,
+                              top: y,
+                              transform: [
+                                { scale: fabItemAnims[index] },
+                              ],
+                              opacity: fabItemAnims[index],
+                            },
+                          ]}
+                        >
+                          <TouchableOpacity
+                            style={[
+                              fabStyles.menuItemButton,
+                              item.isSos && { ...fabStyles.menuItemSos, backgroundColor: 'transparent', shadowOpacity: 0 },
+                              { backgroundColor: 'transparent', shadowOpacity: 0 }
+                            ]}
+                            activeOpacity={0.8}
+                            onPress={() => {
+                              toggleFab();
+                              setTimeout(() => {
+                                router.push(item.route as any);
+                              }, 200);
+                            }}
+                          >
+                            {item.label === 'My Krishna' ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label === 'Festival' ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label === 'Kundli' ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label.includes('Passport') ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label === 'Panchang' ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image
+                                  source={require('../../assets/images/panchang_icon_3.png')}
+                                  style={{ width: 44, height: 44 }}
+                                  resizeMode="contain"
+                                />
+                              </ImageBackground>
+                            ) : item.label.includes('Library') ? (
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : item.label === 'Jyotish' ? (
+                              <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              </ImageBackground>
+                            ) : (
+                              <Ionicons name={item.icon} size={28} color="#FFF" />
+                            )}
+                          </TouchableOpacity>
+                          <Text style={[
+                            fabStyles.menuItemLabel,
+                            item.isSos && { marginTop: 4 },
+                          ]}>
+                            {translateMenuLabel(item.label)}
+                          </Text>
+                        </Animated.View>
+                      );
+                    })}
+
+                    {/* Center - SOS */}
+                    <Animated.View
+                      style={[
+                        fabStyles.centerButton,
+                        {
+                          transform: [{ scale: fabItemAnims[7] }],
+                          opacity: fabItemAnims[7],
+                        },
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={fabStyles.centerButtonInner}
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          toggleFab();
+                          setTimeout(() => {
+                            router.push('/sos');
+                          }, 200);
+                        }}
+                      >
+                        <Image
+                          source={require('../../assets/images/sos_icon_3.png')}
+                          style={{ width: 102, height: 102, borderRadius: 51, alignSelf: 'center' }}
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+                      <Text style={fabStyles.centerLabel}>{t('language') === 'hi' ? 'आपातकालीन (SOS)' : 'SOS'}</Text>
+                    </Animated.View>
+                  </View>
+                </View>
+              </Animated.View>
+            </TouchableOpacity>
+          )}
+
+          {/* FAB trigger button */}
+          <TouchableOpacity
+            style={[
+              fabStyles.fab,
+              { bottom: 90 + insets.bottom },
+              fabExpanded && { opacity: 0 },
+            ]}
+            activeOpacity={0.85}
+            onPress={toggleFab}
+          >
+            <Image
+              source={require('../../assets/images/peacock_feather_icon.png')}
+              style={fabStyles.fabIcon}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+
 
           <Modal visible={isEditingBio} transparent animationType="fade">
             <View style={styles.bioModalOverlay}>
               <View style={styles.bioModalCard}>
-                <Text style={styles.bioModalTitle}>Edit Bio</Text>
+                <Text style={styles.bioModalTitle}>{t('language') === 'hi' ? 'बायो संपादित करें' : 'Edit Bio'}</Text>
                 <TextInput
                   style={styles.bioModalInput}
                   value={bioText}
                   onChangeText={setBioText}
                   multiline
                   autoFocus
-                  placeholder="Tell us about yourself..."
+                  placeholder={t('language') === 'hi' ? 'अपने बारे में कुछ बताएं...' : 'Tell us about yourself...'}
                   placeholderTextColor="#8A7B89"
                 />
                 <View style={styles.bioModalActions}>
@@ -2572,10 +2777,10 @@ export default function HomeScreen() {
                     }}
                     style={styles.bioModalBtnCancel}
                   >
-                    <Text style={styles.bioModalBtnCancelText}>Cancel</Text>
+                    <Text style={styles.bioModalBtnCancelText}>{t('language') === 'hi' ? 'रद्द करें' : 'Cancel'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={handleSaveBio} style={styles.bioModalBtn}>
-                    <Text style={styles.bioModalBtnText}>Save</Text>
+                    <Text style={styles.bioModalBtnText}>{t('language') === 'hi' ? 'सहेजें' : 'Save'}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -2586,7 +2791,7 @@ export default function HomeScreen() {
             <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={() => setShowProfileActions(false)}>
               <View style={styles.actionSheet}>
                 <View style={styles.bottomSheetHandle} />
-                <Text style={styles.actionSheetTitle}>Create</Text>
+                <Text style={styles.actionSheetTitle}>{t('language') === 'hi' ? 'बनाएं' : 'Create'}</Text>
 
                 <TouchableOpacity
                   style={styles.profileActionItem}
@@ -2600,8 +2805,8 @@ export default function HomeScreen() {
                     <Ionicons name="add-circle" size={24} color="#4CAF50" />
                   </View>
                   <View style={styles.profileActionTextWrap}>
-                    <Text style={styles.profileActionTitle}>New Post</Text>
-                    <Text style={styles.profileActionDesc}>Share a photo or video</Text>
+                    <Text style={styles.profileActionTitle}>{t('language') === 'hi' ? 'नई पोस्ट' : 'New Post'}</Text>
+                    <Text style={styles.profileActionDesc}>{t('language') === 'hi' ? 'फ़ोटो या वीडियो साझा करें' : 'Share a photo or video'}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
                 </TouchableOpacity>
@@ -2611,14 +2816,14 @@ export default function HomeScreen() {
                     <Ionicons name="camera" size={24} color="#2196F3" />
                   </View>
                   <View style={styles.profileActionTextWrap}>
-                    <Text style={styles.profileActionTitle}>Change Profile Photo</Text>
-                    <Text style={styles.profileActionDesc}>Update your profile picture</Text>
+                    <Text style={styles.profileActionTitle}>{t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो बदलें' : 'Change Profile Photo'}</Text>
+                    <Text style={styles.profileActionDesc}>{t('language') === 'hi' ? 'अपनी प्रोफ़ाइल पिक्चर अपडेट करें' : 'Update your profile picture'}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionCancelButton} onPress={() => setShowProfileActions(false)}>
-                  <Text style={styles.actionCancelText}>Cancel</Text>
+                  <Text style={styles.actionCancelText}>{t('language') === 'hi' ? 'रद्द करें' : 'Cancel'}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -2706,7 +2911,7 @@ export default function HomeScreen() {
               <View style={styles.commentSheet}>
                 <View style={styles.bottomSheetHandle} />
                 <View style={styles.commentSheetHeader}>
-                  <Text style={styles.commentTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
+                  <Text style={styles.commentTitle}>{t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
                   <TouchableOpacity
                     onPress={() => {
                       setCommentModalVisible(false);
@@ -2726,7 +2931,7 @@ export default function HomeScreen() {
                   {commentsLoading ? (
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                       <ActivityIndicator size="small" color="#FF6B00" />
-                      <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>Loading comments...</Text>
+                      <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>{t('language') === 'hi' ? 'टिप्पणियां लोड हो रही हैं...' : 'Loading comments...'}</Text>
                     </View>
                   ) : postComments.length > 0 ? (
                     <FlatList
@@ -2761,8 +2966,8 @@ export default function HomeScreen() {
                   ) : (
                     <View style={styles.commentEmptyState}>
                       <Ionicons name="chatbubble-ellipses-outline" size={42} color="#D5C8D6" />
-                      <Text style={styles.commentEmptyText}>No comments yet.</Text>
-                      <Text style={styles.commentEmptySubtext}>Be the first to comment!</Text>
+                      <Text style={styles.commentEmptyText}>{t('language') === 'hi' ? 'अभी कोई टिप्पणी नहीं है।' : 'No comments yet.'}</Text>
+                      <Text style={styles.commentEmptySubtext}>{t('language') === 'hi' ? 'पहली टिप्पणी करने वाले बनें!' : 'Be the first to comment!'}</Text>
                     </View>
                   )}
                 </View>
@@ -3060,7 +3265,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   featuredLiveContent: {
-    marginBottom: 25,
+    marginBottom: 10,
   },
   featuredLiveTitle: {
     fontFamily: 'Outfit_700Bold',
@@ -3483,7 +3688,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   feedPanel: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#000',
     overflow: 'hidden',
   },
   feedLoading: {
@@ -4079,5 +4284,139 @@ const styles = StyleSheet.create({
   },
   modalBackgroundDismiss: {
     ...StyleSheet.absoluteFillObject,
+  },
+});
+
+const fabStyles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    zIndex: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuContainer: {
+    width: 380,
+    height: 380,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outerRing: {
+    width: 380,
+    height: 380,
+    borderRadius: 190,
+    backgroundColor: '#FFD5B8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF7B00',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  innerCircle: {
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: '#FFEEE7',
+    position: 'relative',
+  },
+  dottedRing: {
+    position: 'absolute',
+    top: 40,
+    left: 40,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 123, 0, 0.15)',
+    borderStyle: 'dashed',
+  },
+  menuItem: {
+    position: 'absolute',
+    width: 80,
+    alignItems: 'center',
+  },
+  menuItemButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF5100',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  menuItemSos: {
+    backgroundColor: '#FF0000',
+  },
+  sosButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  menuItemLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 13,
+  },
+  centerButton: {
+    position: 'absolute',
+    left: 126,
+    top: 126,
+    alignItems: 'center',
+    width: 108,
+  },
+  centerButtonInner: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF7B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: '#FFD5B8',
+  },
+  centerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF5100',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 10,
+    zIndex: 998,
+    borderWidth: 3,
+    borderColor: '#FFD5B8',
+  },
+  fabIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
 });

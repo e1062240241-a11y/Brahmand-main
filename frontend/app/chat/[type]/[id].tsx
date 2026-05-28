@@ -58,6 +58,23 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
     }
   }, [player, isPlaying]);
 
+  // Clean up player on unmount to prevent audio leaks
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'web') {
+        if (videoRef.current) {
+          try {
+            videoRef.current.pause();
+          } catch (e) {}
+        }
+      } else if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
+
   if (Platform.OS === 'web') {
     return (
       <video
