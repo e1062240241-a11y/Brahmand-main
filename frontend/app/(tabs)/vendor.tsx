@@ -81,6 +81,7 @@ export default function VendorScreen() {
   const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
   const [searchCategory, setSearchCategory] = useState<string>('All');
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [showExpandedCategories, setShowExpandedCategories] = useState(false);
   const [searchPlaceholderIndex, setSearchPlaceholderIndex] = useState(0);
   const [typedSkillPlaceholder, setTypedSkillPlaceholder] = useState('');
   const [isPlaceholderPaused, setIsPlaceholderPaused] = useState(false);
@@ -662,7 +663,7 @@ export default function VendorScreen() {
 
         <View style={styles.vendorInfo}>
           <View style={styles.vendorNameRow}>
-            <Text style={styles.vendorName}>{item.business_name || 'Unnamed Business'}</Text>
+            <Text style={styles.vendorName} numberOfLines={1}>{item.business_name || 'Unnamed Business'}</Text>
             {isApprovedVendor && (
               <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={styles.vendorVerifiedIcon} />
             )}
@@ -673,7 +674,7 @@ export default function VendorScreen() {
             <View style={styles.categoriesRow}>
               {vendorCategories.slice(0, 2).map((cat, idx) => (
                 <View key={idx} style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{cat}</Text>
+                  <Text style={styles.categoryBadgeText} numberOfLines={1}>{cat}</Text>
                 </View>
               ))}
               {vendorCategories.length > 2 && (
@@ -891,9 +892,9 @@ export default function VendorScreen() {
           styles.inlineFilterPanelWrapper,
           {
             opacity: filterAnim,
-            height: filterAnim.interpolate({
+            maxHeight: filterAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 76],
+              outputRange: [0, 500],
             }),
             overflow: 'hidden',
           },
@@ -901,7 +902,7 @@ export default function VendorScreen() {
         pointerEvents={showCategoryFilter ? 'auto' : 'none'}
       >
         <View style={styles.filterPanel}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
+          <View style={[styles.chipsContainer, { flexWrap: 'wrap' }]}>
             <TouchableOpacity
               style={[styles.categoryChip, searchCategory === 'All' && styles.categoryChipActive]}
               onPress={() => {
@@ -911,7 +912,10 @@ export default function VendorScreen() {
             >
               <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>All</Text>
             </TouchableOpacity>
-            {(activeSection === 'Jobs' ? jobProfessionFilters : categories).map((cat) => (
+            
+            {(activeSection === 'Jobs' ? jobProfessionFilters : categories)
+              .slice(0, showExpandedCategories ? undefined : 7)
+              .map((cat) => (
               <TouchableOpacity
                 key={cat}
                 style={[styles.categoryChip, searchCategory === cat && styles.categoryChipActive]}
@@ -923,7 +927,25 @@ export default function VendorScreen() {
                 <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+            
+            {!showExpandedCategories && (activeSection === 'Jobs' ? jobProfessionFilters : categories).length > 7 && (
+              <TouchableOpacity
+                style={styles.categoryChip}
+                onPress={() => setShowExpandedCategories(true)}
+              >
+                <Text style={styles.categoryChipText}>+ More</Text>
+              </TouchableOpacity>
+            )}
+            
+            {showExpandedCategories && (
+              <TouchableOpacity
+                style={styles.categoryChip}
+                onPress={() => setShowExpandedCategories(false)}
+              >
+                <Text style={styles.categoryChipText}>Show Less</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </Animated.View>
 
@@ -1526,6 +1548,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
+    flexShrink: 1,
   },
   categoriesRow: {
     flexDirection: 'row',
@@ -1540,6 +1563,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginRight: 4,
     marginBottom: 2,
+    flexShrink: 1,
   },
   categoryBadgeText: {
     fontSize: 11,
