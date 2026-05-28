@@ -8,8 +8,10 @@ import { useVendorStore } from '../src/store/vendorStore';
 import { useAuthStore } from '../src/store/authStore';
 import { VendorKYCModal } from '../src/components/VendorKYCModal';
 import { getKYCStatus } from '../src/services/api';
+import { useTranslation } from '../src/utils/i18n';
 
 export default function KYCStatusScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { myVendor, fetchMyVendor } = useVendorStore();
   const { user, updateUser } = useAuthStore();
@@ -35,6 +37,7 @@ export default function KYCStatusScreen() {
   useEffect(() => {
     refreshKycStatus();
   }, [refreshKycStatus]);
+
 
   const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
   const isVendorVerified = (myVendor as any)?.kyc_status === 'verified';
@@ -109,7 +112,9 @@ export default function KYCStatusScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>KYC Verification</Text>
+        <Text style={styles.title}>
+          {t('language') === 'hi' ? 'केवाईसी सत्यापन' : 'KYC Verification'}
+        </Text>
         <TouchableOpacity style={styles.refreshBtn} onPress={() => { setLoadingStatus(true); refreshKycStatus(); }}>
           <Ionicons name="refresh" size={20} color={COLORS.text} />
         </TouchableOpacity>

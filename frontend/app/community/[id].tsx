@@ -1232,7 +1232,16 @@ export default function CommunityDetailScreen() {
 
       let finalPosts: any[] = [];
       setCommunityPosts((prev: any[]) => {
-        const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
+        const serverIds = new Set([
+          ...formattedMsgs.map((p: any) => p.id),
+          ...recentStateMsgs.map((p: any) => p.id),
+          ...olderStateMsgs.map((p: any) => p.id),
+          ...recentNationalMsgs.map((p: any) => p.id),
+          ...olderNationalMsgs.map((p: any) => p.id)
+        ]);
+
+        // Keep local optimistic posts (either pending with 'post-' ID, or completed but not yet in server fetch)
+        const localPosts = prev.filter((p: any) => (String(p.id).startsWith('post-') || p.isUniversal) && !serverIds.has(p.id));
         const seenIds = new Set(localPosts.map((p: any) => p.id));
 
         const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id));
@@ -2592,6 +2601,9 @@ export default function CommunityDetailScreen() {
       sevaDetails: index === 0 ? (sevaDetails || undefined) : undefined,
       isUniversal: true, // Flag to show in general Feed
       sender_id: user?.id, // Track ownership of local posts
+      isCommunityMsg: true,
+      subgroupType: community?.type === 'state' ? 'state' : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city'),
+      communityId: id as string,
     }));
 
     setCommunityPosts(prev => {
@@ -2741,7 +2753,7 @@ export default function CommunityDetailScreen() {
       avatar: user?.photo,
     };
 
-    setActiveComments(prev => [...prev, optimisticComment]);
+    setActiveComments(prev => [optimisticComment, ...prev]);
     setCommentText('');
 
     try {
@@ -2846,7 +2858,7 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={90}
     >
       {renderHeader()}
@@ -3031,7 +3043,7 @@ export default function CommunityDetailScreen() {
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>

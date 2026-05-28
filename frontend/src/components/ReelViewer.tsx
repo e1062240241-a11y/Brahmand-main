@@ -14,6 +14,7 @@ import {
   Animated,
   PanResponder,
   Alert,
+  AppState,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,6 +77,7 @@ const ReelVideoItem = React.memo(({
   onOpenOptions,
   shouldLoad,
 }: any) => {
+  const { t } = useTranslation();
   const [showPlayPause, setShowPlayPause] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -129,6 +131,17 @@ const ReelVideoItem = React.memo(({
     }
   };
 
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      setAppState(nextAppState);
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   useEffect(() => {
     if (!isActive) setIsPaused(false);
   }, [isActive]);
@@ -148,7 +161,7 @@ const ReelVideoItem = React.memo(({
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = !autoScroll;
     p.muted = isMuted;
-    p.staysActiveInBackground = true;
+    p.staysActiveInBackground = false;
     if (Platform.OS !== 'web') {
       p.bufferOptions = {
         preferredForwardBufferDuration: 2, // Smaller look-ahead to prioritize start
@@ -178,7 +191,7 @@ const ReelVideoItem = React.memo(({
   useEffect(() => {
     if (Platform.OS === 'web') {
       if (videoRef.current) {
-        if (isActive && !isPaused) {
+        if (isActive && !isPaused && appState === 'active') {
           videoRef.current.playbackRate = playbackSpeed;
           videoRef.current.play().catch(() => { });
         } else {
@@ -187,17 +200,34 @@ const ReelVideoItem = React.memo(({
       }
     } else if (player) {
       player.playbackRate = playbackSpeed;
-      if (isActive && !isPaused) {
+      if (isActive && !isPaused && appState === 'active') {
         player.play();
       } else {
         player.pause();
       }
     }
-  }, [isActive, isPaused, player, playbackSpeed]);
+  }, [isActive, isPaused, player, playbackSpeed, appState]);
 
   useEffect(() => {
     if (player) player.muted = isMuted;
   }, [isMuted, player]);
+
+  // Clean up player on unmount to prevent audio leaks
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'web') {
+        if (videoRef.current) {
+          try {
+            videoRef.current.pause();
+          } catch (e) {}
+        }
+      } else if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
 
   useEffect(() => {
     if (player) {
@@ -696,13 +726,13 @@ const ReelVideoItem = React.memo(({
             </Text>
             {isLongCaption && !isCaptionExpanded && (
               <Text style={{ color: '#ccc', fontSize: 13, fontWeight: '700', marginTop: 2 }}>
-                ...more
+                {t('language') === 'hi' ? '...और देखें' : '...more'}
               </Text>
             )}
             {isCaptionExpanded && (
               <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ color: '#ccc', fontSize: 13, fontWeight: '700' }}>
-                  Show less
+                  {t('language') === 'hi' ? 'कम दिखाएं' : 'Show less'}
                 </Text>
               </View>
             )}
@@ -965,7 +995,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     } catch (e) {
       // Rollback on failure
       setLocalComments(prev => prev.filter(c => c.id !== tempId));
-      Alert.alert('Error', 'Could not post comment. Please try again.');
+      Alert.alert(
+        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        t('language') === 'hi' ? 'टिप्पणी पोस्ट नहीं की जा सकी। कृपया पुनः प्रयास करें।' : 'Could not post comment. Please try again.'
+      );
     } finally {
       setIsSubmittingComment(false);
     }
@@ -1008,7 +1041,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       setSelectedPost(originalSelectedPost);
       setVideos(originalVideos);
       const detail = error.response?.data?.detail || error.message;
-      Alert.alert('Error', detail || 'Could not delete comment. Please try again.');
+      Alert.alert(
+        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        detail || (t('language') === 'hi' ? 'टिप्पणी हटाई नहीं जा सकी। कृपया पुनः प्रयास करें।' : 'Could not delete comment. Please try again.')
+      );
     }
   }, [localComments, selectedPost, videos]);
 
@@ -1017,7 +1053,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     if (!postId) return;
     const link = `sanatanlok://post/${postId}`;
     await Clipboard.setStringAsync(link);
-    Alert.alert('Link Copied', 'The post link has been copied to your clipboard.');
+    Alert.alert(
+      t('language') === 'hi' ? 'लिंक कॉपी हो गया' : 'Link Copied', 
+      t('language') === 'hi' ? 'पोस्ट लिंक आपके क्लिपबोर्ड पर कॉपी हो गया है।' : 'The post link has been copied to your clipboard.'
+    );
   };
 
   const handleExternalShare = async () => {
@@ -1025,7 +1064,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     try {
       const link = `sanatanlok://post/${selectedPost.id}`;
       await Share.share({
-        message: `${selectedPost.caption || 'Check this reel on Brahmand!'}\n\n${link}`,
+        message: `${selectedPost.caption || (t('language') === 'hi' ? 'ब्रह्मांड पर इस रील को देखें!' : 'Check this reel on Brahmand!')}\n\n${link}`,
         url: link,
       });
     } catch (e) {
@@ -1356,7 +1395,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
               }}
             >
               <View style={{ width: 40, height: 5, backgroundColor: '#DDD', borderRadius: 3, alignSelf: 'center', marginBottom: 15 }} />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>Comments ({selectedPost?.comments_count ?? localComments.length ?? 0})</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>{t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedPost?.comments_count ?? localComments.length ?? 0})</Text>
 
               <FlatList
                 data={localComments}

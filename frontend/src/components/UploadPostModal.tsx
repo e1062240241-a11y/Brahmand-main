@@ -23,6 +23,7 @@ import { COLORS, SPACING } from '../constants/theme';
 import { uploadUserPost, getAllUsers } from '../services/api';
 import { MentionInput } from './MentionInput';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
+import { useTranslation } from '../utils/i18n';
 
 let ExpoVideoModule: any = null;
 try {
@@ -164,6 +165,7 @@ const M3OutlinedInput = ({ label, value, onChangeText, multiline = false, placeh
 };
 
 export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadStart }: UploadPostModalProps) => {
+  const { t } = useTranslation();
   const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null);
   const [caption, setCaption] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Normal');
@@ -562,7 +564,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             <TouchableOpacity onPress={resetAndClose} style={styles.iconBtn}>
               <MaterialIcons name="close" size={28} color={COLORS.text} />
             </TouchableOpacity>
-            <Text style={styles.title}>Create New Post</Text>
+            <Text style={styles.title}>{t('language') === 'hi' ? 'नई पोस्ट बनाएं' : 'Create New Post'}</Text>
             <View style={styles.iconBtn} />
           </View>
 
@@ -579,7 +581,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                 {!selectedMedia ? (
                   <View style={styles.emptyPreview}>
                     <MaterialIcons name="add-photo-alternate" size={48} color={COLORS.textSecondary} />
-                    <Text style={styles.previewPlaceholder}>Upload Photos or Videos</Text>
+                    <Text style={styles.previewPlaceholder}>{t('uploadPlaceholder')}</Text>
                   </View>
                 ) : aspectRatioMode === 'original' ? (
                   <View style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -649,7 +651,15 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                 {selectedMedia && aspectRatioMode !== 'original' && (
                   <View style={styles.dragTooltip} pointerEvents="none">
                     <Ionicons name="move" size={14} color="#FFF" />
-                    <Text style={styles.dragTooltipText}>{tooltipText}</Text>
+                    <Text style={styles.dragTooltipText}>
+                      {t('language') === 'hi' 
+                        ? (isCroppedHorizontally 
+                            ? "← फिट समायोजित करने के लिए बाएं/दाएं खींचें →" 
+                            : isCroppedVertically 
+                              ? "↑ फिट समायोजित करने के लिए ऊपर/नीचे खींचें ↓" 
+                              : "फिट समायोजित करने के लिए खींचें") 
+                        : tooltipText}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -661,35 +671,35 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                     style={[styles.aspectRatioBtn, aspectRatioMode === 'original' && styles.aspectRatioBtnActive]}
                   >
                     <Ionicons name="image-outline" size={13} color="#fff" />
-                    <Text style={styles.aspectRatioBtnText}>Original</Text>
+                    <Text style={styles.aspectRatioBtnText}>{t('original')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode('1:1')}
                     style={[styles.aspectRatioBtn, aspectRatioMode === '1:1' && styles.aspectRatioBtnActive]}
                   >
                     <Ionicons name="square-outline" size={13} color="#fff" />
-                    <Text style={styles.aspectRatioBtnText}>1:1</Text>
+                    <Text style={styles.aspectRatioBtnText}>{t('language') === 'hi' ? 'चौकोर (1:1)' : '1:1'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode('4:5')}
                     style={[styles.aspectRatioBtn, aspectRatioMode === '4:5' && styles.aspectRatioBtnActive]}
                   >
                     <Ionicons name="resize-outline" size={13} color="#fff" />
-                    <Text style={styles.aspectRatioBtnText}>4:5</Text>
+                    <Text style={styles.aspectRatioBtnText}>{t('language') === 'hi' ? 'पोर्ट्रेट (4:5)' : '4:5'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode('1.91:1')}
                     style={[styles.aspectRatioBtn, aspectRatioMode === '1.91:1' && styles.aspectRatioBtnActive]}
                   >
                     <Ionicons name="tablet-landscape-outline" size={13} color="#fff" />
-                    <Text style={styles.aspectRatioBtnText}>1.91:1</Text>
+                    <Text style={styles.aspectRatioBtnText}>{t('language') === 'hi' ? 'लैंडस्केप (1.91:1)' : '1.91:1'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode('9:16')}
                     style={[styles.aspectRatioBtn, aspectRatioMode === '9:16' && styles.aspectRatioBtnActive]}
                   >
                     <Ionicons name="phone-portrait-outline" size={13} color="#fff" />
-                    <Text style={styles.aspectRatioBtnText}>9:16</Text>
+                    <Text style={styles.aspectRatioBtnText}>{t('language') === 'hi' ? 'रील्स (9:16)' : '9:16'}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -697,22 +707,22 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
               <View style={styles.sourceRow}>
                 <TouchableOpacity style={styles.sourceCard} onPress={captureFromCamera}>
                   <MaterialIcons name="camera-alt" size={24} color={COLORS.primary} />
-                  <Text style={styles.sourceCardText}>Camera</Text>
+                  <Text style={styles.sourceCardText}>{t('camera')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sourceCard} onPress={selectFromPhotoGallery}>
                   <MaterialIcons name="photo-library" size={24} color={COLORS.primary} />
-                  <Text style={styles.sourceCardText}>Gallery</Text>
+                  <Text style={styles.sourceCardText}>{t('gallery')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.sourceCard} onPress={selectFromFiles}>
                   <MaterialIcons name="folder" size={24} color={COLORS.primary} />
-                  <Text style={styles.sourceCardText}>Files</Text>
+                  <Text style={styles.sourceCardText}>{t('files')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {selectedMedia && (
               <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>Apply Filter</Text>
+                <Text style={styles.sectionTitle}>{t('applyFilter')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
                   {FILTERS.map((filter) => (
                     <TouchableOpacity
@@ -721,7 +731,14 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                       onPress={() => setSelectedFilter(filter)}
                     >
                       <Text style={[styles.filterChipText, selectedFilter === filter && styles.filterChipTextActive]}>
-                        {filter}
+                        {filter === 'Normal' ? (t('language') === 'hi' ? 'सामान्य' : 'Normal') :
+                         filter === 'Warm' ? (t('language') === 'hi' ? 'गर्म' : 'Warm') :
+                         filter === 'Cool' ? (t('language') === 'hi' ? 'ठंडा' : 'Cool') :
+                         filter === 'Chrome' ? (t('language') === 'hi' ? 'क्रोम' : 'Chrome') :
+                         filter === 'Fade' ? (t('language') === 'hi' ? 'धुंधला' : 'Fade') :
+                         filter === 'Mono' ? (t('language') === 'hi' ? 'मोनो' : 'Mono') :
+                         filter === 'Noir' ? (t('language') === 'hi' ? 'ब्लैक एंड व्हाइट' : 'Noir') :
+                         filter}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -730,8 +747,8 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             )}
 
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Post Details</Text>
-              <M3OutlinedInput label="Caption / Description" value={caption} onChangeText={setCaption} multiline />
+              <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'पोस्ट विवरण' : 'Post Details'}</Text>
+              <M3OutlinedInput label={t('language') === 'hi' ? 'कैप्शन / विवरण' : 'Caption / Description'} value={caption} onChangeText={setCaption} multiline />
             </View>
 
 
@@ -741,7 +758,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: 8 }}>
                     <ActivityIndicator color={COLORS.primary} size="small" />
                     <Text style={{color: COLORS.primary, fontWeight: '600'}}>
-                      {isCompressing ? 'Processing...' : uploadProgress > 0 && uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : 'Uploading...'}
+                      {isCompressing ? (t('language') === 'hi' ? 'प्रक्रिया चल रही है...' : 'Processing...') : uploadProgress > 0 && uploadProgress < 100 ? (t('language') === 'hi' ? `अपलोड हो रहा है ${uploadProgress}%...` : `Uploading ${uploadProgress}%...`) : (t('language') === 'hi' ? 'अपलोड हो रहा है...' : 'Uploading...')}
                     </Text>
                   </View>
                   <View style={styles.progressBarBackground}>
@@ -751,10 +768,10 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
               ) : (
                 <View style={styles.actionButtons}>
                   <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
-                    <Text style={styles.draftBtnText}>Save Draft</Text>
+                    <Text style={styles.draftBtnText}>{t('language') === 'hi' ? 'ड्राफ्ट सहेजें' : 'Save Draft'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.submitBtn, !canUpload && styles.uploadBtnDisabled]} onPress={handleUpload} disabled={!canUpload}>
-                    <Text style={styles.submitBtnText}>Create Post</Text>
+                    <Text style={styles.submitBtnText}>{t('createPost')}</Text>
                   </TouchableOpacity>
                 </View>
               )}

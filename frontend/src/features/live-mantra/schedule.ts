@@ -340,6 +340,20 @@ export type OtherJaapStatus =
     };
 
 export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string): OtherJaapStatus => {
+  if (mantraType === 'krishna') {
+    const sessionStart = new Date(now);
+    sessionStart.setHours(0, 0, 0, 0);
+    const sessionEnd = new Date(now);
+    sessionEnd.setHours(24, 0, 0, 0);
+    const elapsedSeconds = (now.getTime() - sessionStart.getTime()) / 1000;
+    return {
+      isActive: true,
+      sessionName: 'Morning',
+      sessionEnd,
+      elapsedSeconds,
+    };
+  }
+
   for (const session of OTHER_JAAP_SESSIONS) {
     const sessionStart = new Date(now);
     sessionStart.setHours(session.startHour, 0, 0, 0);
@@ -409,6 +423,29 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
       }
     }
     return { currentIndex: words.length - 1, isHolding: true };
+  }
+
+  if (mantraType === 'krishna') {
+    const totalDuration = 22.77;
+    const position = elapsedSeconds % totalDuration;
+    if (position < 11.7) {
+      const cycle1Ends = [0.8, 1.4, 2.0, 2.7, 3.2, 3.6, 4.3, 5.8, 6.4, 7.1, 7.9, 8.7, 9.4, 10.0, 10.5, 11.7];
+      for (let i = 0; i < cycle1Ends.length; i++) {
+        if (position < cycle1Ends[i]) {
+          return { currentIndex: i, isHolding: false };
+        }
+      }
+      return { currentIndex: 15, isHolding: true };
+    } else {
+      const relPos = position - 11.7;
+      const cycle2Ends = [0.7, 1.3, 1.9, 2.6, 3.1, 3.5, 4.2, 5.9, 6.5, 7.2, 8.0, 8.7, 9.3, 9.9, 10.5, 11.07];
+      for (let i = 0; i < cycle2Ends.length; i++) {
+        if (relPos < cycle2Ends[i]) {
+          return { currentIndex: i, isHolding: false };
+        }
+      }
+      return { currentIndex: 15, isHolding: true };
+    }
   }
 
   const wordDurations = words.map(w => (w.length > 7 ? 3.0 : 1.2));

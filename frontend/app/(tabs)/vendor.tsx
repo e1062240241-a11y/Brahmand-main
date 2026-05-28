@@ -792,28 +792,8 @@ export default function VendorScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.sectionTabsContainer, { paddingTop: insets.top || SPACING.sm }]}>
-        <View style={styles.sectionTabsInner}>
-          {MAIN_SECTIONS.map((section) => (
-            <TouchableOpacity
-              key={section}
-              style={[styles.sectionTab, activeSection === section && styles.sectionTabActive]}
-              onPress={() => {
-                requestAnimationFrame(() => {
-                  setActiveSection(section);
-                });
-              }}
-            >
-              <Text style={[styles.sectionTabText, activeSection === section && styles.sectionTabTextActive]}>
-                {section}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
       {/* Top Tabs */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { paddingTop: insets.top || SPACING.sm }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
           {TABS.map((tab) => (
             <TouchableOpacity

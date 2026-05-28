@@ -8,6 +8,7 @@ import { Button } from '../../src/components/Button';
 import { setupDualLocation, reverseGeocode } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useTranslation } from '../../src/utils/i18n';
 
 interface LocationData {
   country: string;
@@ -33,6 +34,7 @@ const normalizeUserLocation = (location: any): LocationData | null => {
 };
 
 export default function ChangeLocationScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const handleBack = useCallback(() => {
     // Try to go back in navigation stack; if unavailable, navigate to profile screen
@@ -71,11 +73,15 @@ export default function ChangeLocationScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        const msg = 'Please enable location access to detect your area.';
+        const msg = t('language') === 'hi' ? 'अपने क्षेत्र का पता लगाने के लिए कृपया स्थान पहुंच सक्षम करें।' : 'Please enable location access to detect your area.';
         if (Platform.OS === 'web') {
           window.alert(msg);
         } else {
-          Alert.alert('Location Permission Required', msg, [{ text: 'OK' }]);
+          Alert.alert(
+            t('language') === 'hi' ? 'स्थान अनुमति आवश्यक है' : 'Location Permission Required', 
+            msg, 
+            [{ text: 'OK' }]
+          );
         }
         return false;
       }
@@ -83,7 +89,9 @@ export default function ChangeLocationScreen() {
     } catch (error) {
       console.error('Permission request error:', error);
       if (Platform.OS === 'web') {
-        window.alert('Location permission request failed. Please check your browser settings.');
+        window.alert(
+          t('language') === 'hi' ? 'स्थान अनुमति अनुरोध विफल रहा। कृपया अपनी ब्राउज़र सेटिंग्स जांचें।' : 'Location permission request failed. Please check your browser settings.'
+        );
       }
       return false;
     }
@@ -93,7 +101,7 @@ export default function ChangeLocationScreen() {
     try {
       if (Platform.OS === 'web') {
         if (!navigator.geolocation) {
-           setError('Geolocation is not supported by your browser');
+           setError(t('language') === 'hi' ? 'भू-स्थान आपके ब्राउज़र द्वारा समर्थित नहीं है' : 'Geolocation is not supported by your browser');
            return;
         }
         
@@ -121,7 +129,7 @@ export default function ChangeLocationScreen() {
               setHasChanges(true);
             } catch (apiErr: any) {
               console.error('Reverse geocode error:', apiErr);
-              setError('Could not decode location. Please enter manually.');
+              setError(t('language') === 'hi' ? 'स्थान का पता नहीं लगाया जा सका। कृपया मैन्युअल रूप से दर्ज करें।' : 'Could not decode location. Please enter manually.');
             } finally {
               if (type === 'home') setDetectingHome(false);
               else setDetectingOffice(false);
@@ -129,7 +137,11 @@ export default function ChangeLocationScreen() {
           },
           (geoError) => {
             console.error('Browser geolocation error:', geoError);
-            setError(`Location error: ${geoError.message}. Please check browser permissions.`);
+            setError(
+              t('language') === 'hi' 
+                ? `स्थान त्रुटि: ${geoError.message}। कृपया ब्राउज़र अनुमतियाँ जांचें।` 
+                : `Location error: ${geoError.message}. Please check browser permissions.`
+            );
             if (type === 'home') setDetectingHome(false);
             else setDetectingOffice(false);
           },
@@ -167,7 +179,11 @@ export default function ChangeLocationScreen() {
       setHasChanges(true);
     } catch (err: any) {
       console.error('Location detection error:', err);
-      setError(`Location detection failed: ${err.message || 'Unknown error'}`);
+      setError(
+        t('language') === 'hi'
+          ? `स्थान का पता लगाना विफल रहा: ${err.message || 'अज्ञात त्रुटि'}`
+          : `Location detection failed: ${err.message || 'Unknown error'}`
+      );
     } finally {
       if (Platform.OS !== 'web') {
         if (type === 'home') setDetectingHome(false);
@@ -178,7 +194,7 @@ export default function ChangeLocationScreen() {
 
   const handleUpdateLocations = async () => {
     if (!homeLocation || !officeLocation) {
-      setError('Both home and office locations are required');
+      setError(t('language') === 'hi' ? 'घर और कार्यालय दोनों स्थान आवश्यक हैं' : 'Both home and office locations are required');
       return;
     }
 
@@ -194,12 +210,12 @@ export default function ChangeLocationScreen() {
       updateUser(response.data.user);
       
       Alert.alert(
-        'Location Updated',
-        'Your communities have been updated based on your new locations.',
+        t('language') === 'hi' ? 'स्थान अपडेट कर दिया गया' : 'Location Updated',
+        t('language') === 'hi' ? 'आपके नए स्थानों के आधार पर आपके समुदायों को अपडेट कर दिया गया है।' : 'Your communities have been updated based on your new locations.',
         [{ text: 'OK', onPress: handleBack }]
       );
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to update locations. Please try again.');
+      setError(err.response?.data?.detail || (t('language') === 'hi' ? 'स्थान अपडेट करने में विफल। कृपया पुन: प्रयास करें।' : 'Failed to update locations. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -212,52 +228,65 @@ export default function ChangeLocationScreen() {
     onDetect: () => void,
     icon: keyof typeof Ionicons.glyphMap,
     color: string
-  ) => (
-    <View style={styles.locationCard}>
-      <View style={styles.locationHeader}>
-        <View style={[styles.locationIcon, { backgroundColor: `${color}20` }]}>
-          <Ionicons name={icon} size={24} color={color} />
-        </View>
-        <Text style={styles.locationTitle}>{title}</Text>
-      </View>
+  ) => {
+    const displayTitle = 
+      title === 'Home Location' 
+        ? (t('language') === 'hi' ? 'घर का स्थान' : 'Home Location') 
+        : (t('language') === 'hi' ? 'कार्यालय का स्थान' : 'Office Location');
 
-      {location ? (
-        <View style={styles.locationDetails}>
-          <View style={styles.locationRow}>
-            <Ionicons name="location" size={16} color={COLORS.success} />
-            <Text style={styles.areaText}>{location.area}</Text>
+    return (
+      <View style={styles.locationCard}>
+        <View style={styles.locationHeader}>
+          <View style={[styles.locationIcon, { backgroundColor: `${color}20` }]}>
+            <Ionicons name={icon} size={24} color={color} />
           </View>
-          <Text style={styles.addressText}>
-            {location.city}, {location.state}
-          </Text>
-          <Text style={styles.countryText}>{location.country}</Text>
-          
-          <TouchableOpacity style={styles.changeButton} onPress={onDetect}>
-            <Ionicons name="navigate" size={16} color={COLORS.primary} />
-            <Text style={styles.changeText}>Detect New Location</Text>
-          </TouchableOpacity>
+          <Text style={styles.locationTitle}>{displayTitle}</Text>
         </View>
-      ) : (
-        <TouchableOpacity 
-          style={styles.detectButton} 
-          onPress={onDetect}
-          disabled={isDetecting}
-        >
-          {isDetecting ? (
-            <>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.detectingText}>Detecting your location...</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="navigate" size={20} color={COLORS.primary} />
-              <Text style={styles.detectText}>Detect Location</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+
+        {location ? (
+          <View style={styles.locationDetails}>
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={16} color={COLORS.success} />
+              <Text style={styles.areaText}>{location.area}</Text>
+            </View>
+            <Text style={styles.addressText}>
+              {location.city}, {location.state}
+            </Text>
+            <Text style={styles.countryText}>{location.country}</Text>
+            
+            <TouchableOpacity style={styles.changeButton} onPress={onDetect}>
+              <Ionicons name="navigate" size={16} color={COLORS.primary} />
+              <Text style={styles.changeText}>
+                {t('language') === 'hi' ? 'नए स्थान का पता लगाएं' : 'Detect New Location'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity 
+            style={styles.detectButton} 
+            onPress={onDetect}
+            disabled={isDetecting}
+          >
+            {isDetecting ? (
+              <>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+                <Text style={styles.detectingText}>
+                  {t('language') === 'hi' ? 'आपके स्थान का पता लगाया जा रहा है...' : 'Detecting your location...'}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="navigate" size={20} color={COLORS.primary} />
+                <Text style={styles.detectText}>
+                  {t('language') === 'hi' ? 'स्थान का पता लगाएं' : 'Detect Location'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -266,7 +295,9 @@ export default function ChangeLocationScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Change Location</Text>
+        <Text style={styles.headerTitle}>
+          {t('language') === 'hi' ? 'स्थान बदलें' : 'Change Location'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -276,7 +307,7 @@ export default function ChangeLocationScreen() {
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color={COLORS.info} />
             <Text style={styles.infoText}>
-              Changing your location will automatically update your community memberships. You will leave old location communities and join new ones.
+              {t('language') === 'hi' ? 'अपना स्थान बदलने से आपकी समुदाय सदस्यताएँ स्वचालित रूप से अपडेट हो जाएँगी। आप पुराने स्थान के समुदायों को छोड़ देंगे और नए समुदायों में शामिल हो जाएँगे।' : 'Changing your location will automatically update your community memberships. You will leave old location communities and join new ones.'}
             </Text>
           </View>
 
@@ -306,26 +337,38 @@ export default function ChangeLocationScreen() {
           {/* Community Preview */}
           {homeLocation && officeLocation && (
             <View style={styles.previewBox}>
-              <Text style={styles.previewTitle}>Your Communities After Update:</Text>
+              <Text style={styles.previewTitle}>
+                {t('language') === 'hi' ? 'अपडेट के बाद आपके समुदाय:' : 'Your Communities After Update:'}
+              </Text>
               <View style={styles.previewItem}>
                 <Ionicons name="home" size={16} color={COLORS.success} />
-                <Text style={styles.previewText}>{homeLocation.area} Community</Text>
+                <Text style={styles.previewText}>
+                  {homeLocation.area} {t('language') === 'hi' ? 'समुदाय' : 'Community'}
+                </Text>
               </View>
               <View style={styles.previewItem}>
                 <Ionicons name="business" size={16} color={COLORS.info} />
-                <Text style={styles.previewText}>{officeLocation.area} Office Community</Text>
+                <Text style={styles.previewText}>
+                  {officeLocation.area} {t('language') === 'hi' ? 'कार्यालय समुदाय' : 'Office Community'}
+                </Text>
               </View>
               <View style={styles.previewItem}>
                 <Ionicons name="location" size={16} color="#9B59B6" />
-                <Text style={styles.previewText}>{homeLocation.city} Community</Text>
+                <Text style={styles.previewText}>
+                  {homeLocation.city} {t('language') === 'hi' ? 'समुदाय' : 'Community'}
+                </Text>
               </View>
               <View style={styles.previewItem}>
                 <Ionicons name="map" size={16} color={COLORS.warning} />
-                <Text style={styles.previewText}>{homeLocation.state} Community</Text>
+                <Text style={styles.previewText}>
+                  {homeLocation.state} {t('language') === 'hi' ? 'समुदाय' : 'Community'}
+                </Text>
               </View>
               <View style={styles.previewItem}>
                 <Ionicons name="flag" size={16} color={COLORS.primary} />
-                <Text style={styles.previewText}>Bharat Community</Text>
+                <Text style={styles.previewText}>
+                  {t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community'}
+                </Text>
               </View>
             </View>
           )}
@@ -333,7 +376,7 @@ export default function ChangeLocationScreen() {
           {/* Update Button */}
           {homeLocation && officeLocation && hasChanges && (
             <Button
-              title="Update Location & Communities"
+              title={t('language') === 'hi' ? 'स्थान और समुदाय अपडेट करें' : 'Update Location & Communities'}
               onPress={handleUpdateLocations}
               loading={loading}
               style={styles.button}

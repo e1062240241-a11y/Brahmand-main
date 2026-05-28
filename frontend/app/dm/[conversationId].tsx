@@ -120,6 +120,23 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
     }
   }, [player, isPlaying]);
 
+  // Clean up player on unmount to prevent audio leaks
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'web') {
+        if (videoRef.current) {
+          try {
+            videoRef.current.pause();
+          } catch (e) {}
+        }
+      } else if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
+
   if (Platform.OS === 'web') {
     return (
       <video
@@ -1564,7 +1581,7 @@ const DirectMessageScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
         {renderContent()}
       </KeyboardAvoidingView>
     </SafeAreaView>

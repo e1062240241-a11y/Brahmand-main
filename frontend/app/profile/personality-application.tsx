@@ -14,10 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePersonalityStore } from '../../src/store/personalityStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
 
 export default function PersonalityApplicationScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data, updateData } = usePersonalityStore();
@@ -29,7 +31,10 @@ export default function PersonalityApplicationScreen() {
 
   const handleStartApplication = () => {
     if (!selectedLevel) {
-      Alert.alert('Selection Required', 'Please choose a group level to apply for.');
+      Alert.alert(
+        t('language') === 'hi' ? 'चयन आवश्यक है' : 'Selection Required', 
+        t('language') === 'hi' ? 'कृपया आवेदन करने के लिए एक समूह स्तर चुनें।' : 'Please choose a group level to apply for.'
+      );
       return;
     }
     updateData({ level: selectedLevel });
@@ -51,11 +56,13 @@ export default function PersonalityApplicationScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Main Title */}
-          <Text style={styles.mainTitle}>Apply for Verified Personality</Text>
+          <Text style={styles.mainTitle}>
+            {t('language') === 'hi' ? 'सत्यापित व्यक्तित्व के लिए आवेदन करें' : 'Apply for Verified Personality'}
+          </Text>
           
           {/* Subtitle */}
           <Text style={styles.subtitle}>
-            Choose the group level you want to apply for.
+            {t('language') === 'hi' ? 'उस समूह स्तर का चयन करें जिसके लिए आप आवेदन करना चाहते हैं।' : 'Choose the group level you want to apply for.'}
           </Text>
 
           {/* Level Options */}
@@ -84,9 +91,13 @@ export default function PersonalityApplicationScreen() {
                 </View>
               </View>
               
-              <Text style={styles.optionTitle}>State Level Personality</Text>
+              <Text style={styles.optionTitle}>
+                {t('language') === 'hi' ? 'राज्य स्तर का व्यक्तित्व' : 'State Level Personality'}
+              </Text>
               <Text style={styles.optionDescription}>
-                Your message will be visible to all City Groups, Area Groups and members across the entire state.
+                {t('language') === 'hi' 
+                  ? 'आपका संदेश पूरे राज्य में सभी शहर समूहों, क्षेत्र समूहों और सदस्यों को दिखाई देगा।' 
+                  : 'Your message will be visible to all City Groups, Area Groups and members across the entire state.'}
               </Text>
             </TouchableOpacity>
 
@@ -110,9 +121,13 @@ export default function PersonalityApplicationScreen() {
                 </View>
               </View>
               
-              <Text style={styles.optionTitle}>National (India) Level Personality</Text>
+              <Text style={styles.optionTitle}>
+                {t('language') === 'hi' ? 'राष्ट्रीय (भारत) स्तर का व्यक्तित्व' : 'National (India) Level Personality'}
+              </Text>
               <Text style={styles.optionDescription}>
-                Your message will be visible to all State Groups and every member across India.
+                {t('language') === 'hi' 
+                  ? 'आपका संदेश भारत भर के सभी राज्य समूहों और हर सदस्य तक पहुंचेगा।' 
+                  : 'Your message will be visible to all State Groups and every member across India.'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -126,7 +141,9 @@ export default function PersonalityApplicationScreen() {
             ]}
             onPress={handleStartApplication}
           >
-            <Text style={styles.actionButtonText}>Start Application</Text>
+            <Text style={styles.actionButtonText}>
+              {t('language') === 'hi' ? 'आवेदन शुरू करें' : 'Start Application'}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>

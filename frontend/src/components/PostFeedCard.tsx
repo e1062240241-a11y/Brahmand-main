@@ -25,6 +25,7 @@ import { ReelViewer } from './ReelViewer';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
+import { useTranslation } from '../utils/i18n';
 
 const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 
@@ -93,6 +94,7 @@ export const PostFeedCard = memo(({
   openCommentsOnCaptionPress = false,
   isBlackBackground = false,
 }: PostFeedCardProps) => {
+  const { t } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
   const [isPausedByUser, setIsPausedByUser] = useState(false);
@@ -243,6 +245,23 @@ export const PostFeedCard = memo(({
     }
   }, [shouldPlay, player]);
 
+  // Clean up player on unmount to prevent audio leaks
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'web') {
+        if (videoRef.current) {
+          try {
+            videoRef.current.pause();
+          } catch (e) {}
+        }
+      } else if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
+
   const prevIsActive = useRef(isActive);
   useEffect(() => {
     if (isActive && !prevIsActive.current && post?.id) {
@@ -385,16 +404,16 @@ export const PostFeedCard = memo(({
               <View style={styles.dropdownMenu}>
                 {postMenuType === 'delete' && onEdit && (
                   <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onEdit?.(post); }}>
-                    <Text style={styles.dropdownText}>Edit</Text>
+                    <Text style={styles.dropdownText}>{t('language') === 'hi' ? 'संपादित करें' : 'Edit'}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onPostMenuPress?.(post); }}>
                   <Text style={[styles.dropdownText, postMenuType !== 'delete' && styles.dropdownDangerText]}>
-                    {postMenuType === 'delete' ? 'Delete post' : 'Report'}
+                    {postMenuType === 'delete' ? (t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post') : (t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => setMenuVisible(false)}>
-                  <Text style={styles.dropdownText}>Cancel</Text>
+                  <Text style={styles.dropdownText}>{t('cancel')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -493,7 +512,7 @@ export const PostFeedCard = memo(({
                   ) : (
                     <Ionicons name="videocam-outline" size={32} color="#444" />
                   )}
-                  {isActive && !player && <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>Player unavailable</Text>}
+                  {isActive && !player && <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>{t('language') === 'hi' ? 'प्लेयर अनुपलब्ध' : 'Player unavailable'}</Text>}
                 </View>
               )}
               <Pressable
@@ -538,7 +557,7 @@ export const PostFeedCard = memo(({
                 }}
                 onError={(e) => {
                   setMediaLoading(false);
-                  setMediaError('Failed to load image');
+                  setMediaError(t('language') === 'hi' ? 'छवि लोड करने में विफल' : 'Failed to load image');
                   console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', mediaUrl);
                 }}
               />
@@ -550,7 +569,7 @@ export const PostFeedCard = memo(({
         ) : (
           <View style={[styles.media, { backgroundColor: theme === 'light' ? '#FAFAFA' : '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
             <Ionicons name="image-outline" size={40} color="rgba(0,0,0,0.05)" />
-            <Text style={{ color: '#888', fontSize: 12, marginTop: 8 }}>Content removed or missing</Text>
+            <Text style={{ color: '#888', fontSize: 12, marginTop: 8 }}>{t('language') === 'hi' ? 'सामग्री हटा दी गई है या गायब है' : 'Content removed or missing'}</Text>
           </View>
         )}
 
@@ -562,7 +581,7 @@ export const PostFeedCard = memo(({
               style={{ marginTop: 15, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }}
               onPress={() => { setMediaError(null); setMediaLoading(true); }}
             >
-              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '900' }}>RETRY</Text>
+              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '900' }}>{t('language') === 'hi' ? 'पुनः प्रयास करें' : 'RETRY'}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -623,7 +642,13 @@ export const PostFeedCard = memo(({
           fontWeight: '900',
           fontSize: 14
         }}>
-          {likesCount > 0 ? `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}` : 'Be the first to like'}
+          {likesCount > 0 ? (
+            t('language') === 'hi' 
+              ? `${likesCount.toLocaleString()} पसंद` 
+              : `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}`
+          ) : (
+            t('language') === 'hi' ? 'पसंद करने वाले पहले बनें' : 'Be the first to like'
+          )}
         </Text>
       </View>
 
@@ -660,18 +685,20 @@ export const PostFeedCard = memo(({
             </Text>
             {isLongCaption && (
               <Text style={{ color: COLORS.primary, marginTop: 4, fontWeight: '900' }}>
-                {isCaptionExpanded ? 'Show less' : 'More'}
+                {isCaptionExpanded ? (t('language') === 'hi' ? 'कम दिखाएं' : 'Show less') : (t('language') === 'hi' ? 'अधिक' : 'More')}
               </Text>
             )}
           </Pressable>
         </View>
       )}
 
-      {viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} views</Text>}
+      {viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} {t('language') === 'hi' ? 'व्यूज' : 'views'}</Text>}
 
       <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
         <Text style={{ color: theme === 'light' ? '#666' : 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '700' }}>
-          {commentsCount > 0 ? `View all ${commentsCount} comments` : 'Add a comment...'}
+          {commentsCount > 0 
+            ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)
+            : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
         </Text>
       </TouchableOpacity>
 

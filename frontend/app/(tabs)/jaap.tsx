@@ -117,11 +117,13 @@ export default function JaapLandingScreen() {
         mantra_title: title,
       });
       setInvitedJaapId(jaapId);
-      Alert.alert('🙏 Invite Sent!', `All devotees have been notified to join ${title}!`);
+      const alertTitle = t('language') === 'hi' ? '🙏 निमंत्रण भेजा गया!' : '🙏 Invite Sent!';
+      const alertMsg = t('language') === 'hi' ? `सभी भक्तों को ${title} में शामिल होने की सूचना दे दी गई है!` : `All devotees have been notified to join ${title}!`;
+      Alert.alert(alertTitle, alertMsg);
       setTimeout(() => setInvitedJaapId(null), 10000);
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || 'Could not send invite. Please try again.';
-      Alert.alert('Invite failed', msg);
+      const msg = err?.response?.data?.detail || (t('language') === 'hi' ? 'निमंत्रण नहीं भेजा जा सका। कृपया पुनः प्रयास करें।' : 'Could not send invite. Please try again.');
+      Alert.alert(t('language') === 'hi' ? 'निमंत्रण विफल' : 'Invite failed', msg);
     }
   };
 
@@ -158,16 +160,39 @@ export default function JaapLandingScreen() {
       });
       const active = response.data.active;
       setReminders(prev => ({ ...prev, [jaapId]: active }));
-      if (active) {
-        const readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Jaap`;
-        Alert.alert('🔔 Reminders Set!', `You will now receive notifications 5 minutes before any session starts for ${readableMantra}.`);
+      
+      let readableMantra = '';
+      if (t('language') === 'hi') {
+        if (mantraType === 'shiva') readableMantra = 'ॐ नमः शिवाय';
+        else if (mantraType === 'hanuman') readableMantra = 'हनुमान चालीसा';
+        else if (mantraType === 'krishna') readableMantra = 'कृष्णा जाप';
+        else if (mantraType === 'gayatri') readableMantra = 'गायत्री मंत्र';
+        else if (mantraType === 'ganesh') readableMantra = 'गणेश मंत्र';
+        else if (mantraType === 'laxmi') readableMantra = 'लक्ष्मी मंत्र';
+        else readableMantra = `${mantraType} जाप`;
       } else {
-        const readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Jaap`;
-        Alert.alert('🔔 Reminders Removed', `You have unsubscribed from notifications for ${readableMantra}.`);
+        readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Jaap`;
+      }
+
+      if (active) {
+        const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर सेट!' : '🔔 Reminders Set!';
+        const msgText = t('language') === 'hi' 
+          ? `अब आपको ${readableMantra} सत्र शुरू होने से 5 मिनट पहले सूचना प्राप्त होगी।` 
+          : `You will now receive notifications 5 minutes before any session starts for ${readableMantra}.`;
+        Alert.alert(titleText, msgText);
+      } else {
+        const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर हटाया गया' : '🔔 Reminders Removed';
+        const msgText = t('language') === 'hi'
+          ? `आपने ${readableMantra} की सूचनाओं को बंद कर दिया है।`
+          : `You have unsubscribed from notifications for ${readableMantra}.`;
+        Alert.alert(titleText, msgText);
       }
     } catch (err: any) {
       console.error('Failed to toggle reminder:', err);
-      Alert.alert('Error', 'Could not toggle reminder. Please login again.');
+      Alert.alert(
+        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
+      );
     }
   };
 
@@ -428,16 +453,16 @@ export default function JaapLandingScreen() {
                   showLive = hanumanActive;
                   if (hanumanActive) {
                     if (hanumanStatus.isCompleted) {
-                      liveLabel = 'COMPLETED';
+                      liveLabel = t('language') === 'hi' ? 'पूरा हुआ' : 'COMPLETED';
                     } else {
-                      liveLabel = `LIVE • ${hanumanStatus.roundOfDay}/51`;
+                      liveLabel = t('language') === 'hi' ? `लाइव • ${hanumanStatus.roundOfDay}/51` : `LIVE • ${hanumanStatus.roundOfDay}/51`;
                     }
                   } else {
                     if (hanumanStatus.nextSessionStart) {
                       const timeStr = hanumanStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                      liveLabel = `SOON • ${timeStr}`;
+                      liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
                     } else {
-                      liveLabel = 'SOON';
+                      liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
                     }
                   }
                 } else if (isOtherLiveJaap) {
@@ -445,15 +470,27 @@ export default function JaapLandingScreen() {
                   const otherStatus = getCurrentOtherJaapStatus(now, mType);
                   showLive = otherStatus.isActive;
                   if (otherStatus.isActive) {
-                    liveLabel = 'LIVE';
+                    liveLabel = t('language') === 'hi' ? 'लाइव' : 'LIVE';
                   } else {
                     if (otherStatus.nextSessionStart) {
                       const timeStr = otherStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                      liveLabel = `SOON • ${timeStr}`;
+                      liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
                     } else {
-                      liveLabel = 'SOON';
+                      liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
                     }
                   }
+                }
+
+                // Simple Hindi translation of titles
+                let translatedTitle = jaap.title;
+                if (t('language') === 'hi') {
+                  if (jaap.id === '1') translatedTitle = 'हनुमान\nचालीसा';
+                  else if (jaap.id === '2') translatedTitle = 'हरे कृष्णा\nजाप';
+                  else if (jaap.id === '3') translatedTitle = 'ॐ नमः\nशिवाय';
+                  else if (jaap.id === '4') translatedTitle = 'गायत्री\nमंत्र';
+                  else if (jaap.id === '5') translatedTitle = 'गणेश\nमंत्र';
+                  else if (jaap.id === '6') translatedTitle = 'लक्ष्मी\nमंत्र';
+                  else if (jaap.id === '7') translatedTitle = 'कृष्णा\nजाप';
                 }
 
                 return (
@@ -481,7 +518,9 @@ export default function JaapLandingScreen() {
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                           <View style={styles.exactCountBadge}>
-                            <Text style={styles.exactCountText}>{jaap.devotees}</Text>
+                            <Text style={styles.exactCountText}>
+                              {t('language') === 'hi' ? `${jaap.devotees.replace('K', ' हजार')} भक्त` : `${jaap.devotees} devotees`}
+                            </Text>
                           </View>
                           <TouchableOpacity
                             testID={`jaap-bell-${jaap.id}`}
@@ -505,7 +544,7 @@ export default function JaapLandingScreen() {
                         </View>
                       </View>
                     <View style={styles.jaapCardBottomArea}>
-                      <Text style={styles.jaapCardTitleExact}>{jaap.title}</Text>
+                      <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
                       <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
                       <TouchableOpacity
                         style={styles.exactJoinBtn}
@@ -540,34 +579,70 @@ export default function JaapLandingScreen() {
             </View>
 
             <View style={styles.sessionsColPadding}>
-              {UPCOMING_SESSIONS.map((session) => (
-                <View key={session.id} style={styles.sessionCard}>
-                  {/* Image + Text row */}
-                  <View style={styles.sessionTopRow}>
-                    <Image source={session.image} style={styles.sessionImg} resizeMode="cover" />
-                    <View style={styles.sessionTextCol}>
-                      <Text style={styles.sessionCat}>{session.category}</Text>
-                      <Text style={styles.sessionTitle}>{session.title}</Text>
-                      <Text style={styles.sessionDesc}>{session.desc}</Text>
+              {UPCOMING_SESSIONS.map((session) => {
+                let catText = session.category;
+                let titleText = session.title;
+                let descText = session.desc;
+                let dateText = session.date;
+                let goingText = session.going;
+
+                if (t('language') === 'hi') {
+                  if (session.id === '1') {
+                    catText = 'योग क्लास';
+                    titleText = 'प्रातःकाल योग प्रवाह';
+                    descText = 'अपने दिन की शुरुआत ऊर्जा और सकारात्मकता से करें।';
+                    dateText = 'कल';
+                    goingText = '2.4K लोग जा रहे हैं';
+                  } else if (session.id === '2') {
+                    catText = 'गीता पाठ';
+                    titleText = 'भगवद गीता - अध्याय २';
+                    descText = 'ज्ञान की गहराई में उतरें।';
+                    dateText = 'कल';
+                    goingText = '3.2K लोग जा रहे हैं';
+                  } else if (session.id === '3') {
+                    catText = 'संस्कृत क्लास';
+                    titleText = 'संस्कृत भाषा के मूल नियम';
+                    descText = 'सीखें। जपें। जुड़ें।';
+                    dateText = '21 मई';
+                    goingText = '1.9K लोग जा रहे हैं';
+                  } else if (session.id === '4') {
+                    catText = 'ध्यान';
+                    titleText = 'श्वास और ध्यान';
+                    descText = 'अपने भीतर शांति का अनुभव करें।';
+                    dateText = '22 मई';
+                    goingText = '2.1K लोग जा रहे हैं';
+                  }
+                }
+
+                return (
+                  <View key={session.id} style={styles.sessionCard}>
+                    {/* Image + Text row */}
+                    <View style={styles.sessionTopRow}>
+                      <Image source={session.image} style={styles.sessionImg} resizeMode="cover" />
+                      <View style={styles.sessionTextCol}>
+                        <Text style={styles.sessionCat}>{catText}</Text>
+                        <Text style={styles.sessionTitle}>{titleText}</Text>
+                        <Text style={styles.sessionDesc}>{descText}</Text>
+                      </View>
                     </View>
+                    {/* Reminder button */}
+                    <TouchableOpacity
+                      style={styles.reminderBtn}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        const alertTitle = t('language') === 'hi' ? '🔔 रिमाइंडर सेट!' : '🔔 Reminder Set!';
+                        const alertMsg = t('language') === 'hi' 
+                          ? `आपको ${dateText} को ${session.time} पर "${titleText}" के लिए याद दिलाया जाएगा।`
+                          : `You will be reminded for "${session.title}" on ${session.date} at ${session.time}.`;
+                        Alert.alert(alertTitle, alertMsg, [{ text: t('language') === 'hi' ? 'ठीक है' : 'OK', style: 'default' }]);
+                      }}
+                    >
+                      <Ionicons name="notifications-outline" size={16} color="#FF6600" />
+                      <Text style={styles.reminderBtnText}>{t('language') === 'hi' ? 'रिमाइंडर' : 'Reminder'}</Text>
+                    </TouchableOpacity>
                   </View>
-                  {/* Reminder button */}
-                  <TouchableOpacity
-                    style={styles.reminderBtn}
-                    activeOpacity={0.8}
-                    onPress={() =>
-                      Alert.alert(
-                        '🔔 Reminder Set!',
-                        `You will be reminded for "${session.title}" on ${session.date} at ${session.time}.`,
-                        [{ text: 'OK', style: 'default' }]
-                      )
-                    }
-                  >
-                    <Ionicons name="notifications-outline" size={16} color="#FF6600" />
-                    <Text style={styles.reminderBtnText}>Reminder</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+                );
+              })}
             </View>
         </ScrollView>
       ) : (
@@ -596,22 +671,30 @@ export default function JaapLandingScreen() {
                     <View style={styles.bannerTopSpacer} />
                     <View style={styles.mockupLiveBadge}>
                       <View style={styles.liveDot} />
-                      <Text style={styles.mockupLiveText}>LIVE</Text>
+                      <Text style={styles.mockupLiveText}>{t('language') === 'hi' ? 'लाइव' : 'LIVE'}</Text>
                     </View>
                   </View>
                   <View style={[styles.bannerTextBlock, { marginBottom: 15 }]}>
-                    <Text style={styles.mockupMainTitle} numberOfLines={2}>Somnath Mandir</Text>
-                    <Text style={styles.mockupTagline} numberOfLines={1}>1,248 devotees are chanting</Text>
+                    <Text style={styles.mockupMainTitle} numberOfLines={2}>
+                      {t('language') === 'hi' ? 'सोमनाथ मंदिर' : 'Somnath Mandir'}
+                    </Text>
+                    <Text style={styles.mockupTagline} numberOfLines={1}>
+                      {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
+                    </Text>
                     <View style={styles.bannerTimeRow}>
                       <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.92)" />
-                      <Text style={styles.bannerTimeText}>Live until 5:00 PM</Text>
+                      <Text style={styles.bannerTimeText}>
+                        {t('language') === 'hi' ? 'शाम 5:00 बजे तक लाइव' : 'Live until 5:00 PM'}
+                      </Text>
                     </View>
                   </View>
                   <View style={[styles.bannerFooter, { paddingBottom: 0 }]}>
                     <TouchableOpacity style={styles.mockupJoinNowBtn} activeOpacity={0.9}>
                       <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
                         <MaterialCommunityIcons name="waveform" size={17} color="#FFF" />
-                        <Text style={styles.mockupJoinJaapText}>Join Live Aarti</Text>
+                        <Text style={styles.mockupJoinJaapText}>
+                          {t('language') === 'hi' ? 'लाइव आरती में शामिल हों' : 'Join Live Aarti'}
+                        </Text>
                         <Ionicons name="chevron-forward" size={15} color="#FFF" />
                       </LinearGradient>
                     </TouchableOpacity>
@@ -646,15 +729,23 @@ export default function JaapLandingScreen() {
             {/* Temple Category Pills (Restored) */}
             <View style={styles.templeCatPillsRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
-                {(['All', 'Jyotirlinga', 'Sacred'] as const).map((cat) => (
-                  <TouchableOpacity 
-                    key={cat} 
-                    style={[styles.templeCatPill, selectedCategory === cat && styles.templeCatPillActive]}
-                    onPress={() => setSelectedCategory(cat)}
-                  >
-                    <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
+                {(['All', 'Jyotirlinga', 'Sacred'] as const).map((cat) => {
+                  let displayCat = cat;
+                  if (t('language') === 'hi') {
+                    if (cat === 'All') displayCat = 'सभी';
+                    else if (cat === 'Jyotirlinga') displayCat = 'ज्योतिर्लिंग';
+                    else if (cat === 'Sacred') displayCat = 'पवित्र';
+                  }
+                  return (
+                    <TouchableOpacity 
+                      key={cat} 
+                      style={[styles.templeCatPill, selectedCategory === cat && styles.templeCatPillActive]}
+                      onPress={() => setSelectedCategory(cat)}
+                    >
+                      <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{displayCat}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </View>
           </View>
@@ -683,7 +774,9 @@ export default function JaapLandingScreen() {
               ) : (
                 <View style={styles.noTemplesFound}>
                   <MaterialCommunityIcons name="temple-hindu-outline" size={60} color="#F5E0C3" />
-                  <Text style={styles.noTemplesText}>No sacred temples found.</Text>
+                  <Text style={styles.noTemplesText}>
+                    {t('language') === 'hi' ? 'कोई पवित्र मंदिर नहीं मिला।' : 'No sacred temples found.'}
+                  </Text>
                 </View>
               )}
             </View>

@@ -12,11 +12,13 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { DEFAULT_CATEGORIES } from '../store/vendorStore';
 
 let MapView: any = null;
 let PROVIDER_GOOGLE: any = null;
@@ -179,6 +181,14 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [address, setAddress] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [categoryInput, setCategoryInput] = useState('');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  const filteredCategories = categoryInput.trim()
+    ? DEFAULT_CATEGORIES.filter(c => 
+        c.toLowerCase().includes(categoryInput.toLowerCase()) && 
+        !categories.includes(c)
+      )
+    : DEFAULT_CATEGORIES.filter(c => !categories.includes(c));
 
   const [mapPickerVisible, setMapPickerVisible] = useState(false);
   const [mapRegion, setMapRegion] = useState<any>(null);
@@ -217,7 +227,19 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       const geocoded = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
       if (geocoded.length > 0) {
         const place = geocoded[0];
-        const addr = [place.name, place.street, place.city, place.region, place.country].filter(Boolean).join(', ');
+        const components = [
+          place.name,
+          place.streetNumber,
+          place.street,
+          place.district,
+          place.city,
+          place.subregion,
+          place.region,
+          place.postalCode,
+          place.country
+        ];
+        const uniqueComponents = [...new Set(components.filter(Boolean))];
+        const addr = uniqueComponents.join(', ');
         setAddress(addr);
       } else {
         Alert.alert('Error', 'Could not determine address from location.');
@@ -273,7 +295,19 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       });
       if (geocoded.length > 0) {
         const place = geocoded[0];
-        const addr = [place.name, place.street, place.city, place.region, place.country].filter(Boolean).join(', ');
+        const components = [
+          place.name,
+          place.streetNumber,
+          place.street,
+          place.district,
+          place.city,
+          place.subregion,
+          place.region,
+          place.postalCode,
+          place.country
+        ];
+        const uniqueComponents = [...new Set(components.filter(Boolean))];
+        const addr = uniqueComponents.join(', ');
         setAddress(addr);
       } else {
         Alert.alert('Error', 'Could not get address for selected location.');
@@ -447,7 +481,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.overlay}
       >
         <View style={styles.container}>
@@ -559,7 +593,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   paddingHorizontal: SPACING.md,
                   height: 50,
                   justifyContent: 'center',
-                  borderRadius: BORDER_RADIUS.md,
+                  borderRadius: 12,
                   marginLeft: SPACING.sm,
                 }}
                 onPress={() => {
@@ -573,25 +607,77 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 <Text style={{ color: '#FFF', fontWeight: '600' }}>Add</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Selected Categories */}
             {categories.length > 0 && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: SPACING.md }}>
+              <View style={styles.selectedCategories}>
                 {categories.map((cat, idx) => (
-                  <View key={idx} style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: `${COLORS.primary}15`,
-                    paddingHorizontal: SPACING.sm,
-                    paddingVertical: SPACING.xs,
-                    borderRadius: BORDER_RADIUS.sm,
-                    marginRight: SPACING.xs,
-                    marginBottom: SPACING.xs,
-                  }}>
-                    <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '500' }}>{cat}</Text>
+                  <View key={idx} style={styles.categoryTag}>
+                    <Text style={styles.categoryTagText}>{cat}</Text>
                     <TouchableOpacity onPress={() => setCategories(categories.filter(c => c !== cat))}>
-                      <Ionicons name="close-circle" size={16} color={COLORS.primary} style={{ marginLeft: 4 }} />
+                      <Ionicons name="close-circle" size={16} color={COLORS.primary} />
                     </TouchableOpacity>
                   </View>
                 ))}
+              </View>
+            )}
+
+            {/* Category Search */}
+            <View style={styles.categorySearchContainer}>
+              <Ionicons name="search" size={18} color={COLORS.textLight} />
+              <TextInput
+                style={styles.categorySearchInput}
+                placeholder="Search categories (Gym, Yoga, Restaurant...)"
+                placeholderTextColor={COLORS.textLight}
+                value={categoryInput}
+                onChangeText={(text) => {
+                  setCategoryInput(text);
+                  setShowCategoryDropdown(true);
+                }}
+                onFocus={() => setShowCategoryDropdown(true)}
+              />
+            </View>
+
+            {/* Category Dropdown (Pills) */}
+            {showCategoryDropdown && categoryInput.trim().length > 0 && filteredCategories.length > 0 && (
+              <View style={styles.categoryDropdown}>
+                {filteredCategories.slice(0, 10).map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={styles.suggestionPill}
+                    onPress={() => {
+                      if (categories.length >= 5) {
+                        Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                        return;
+                      }
+                      setCategories([...categories, cat]);
+                      setCategoryInput('');
+                      setShowCategoryDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.suggestionPillText}>{cat}</Text>
+                    <Ionicons name="add" size={14} color={COLORS.text} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                ))}
+                
+                {/* Custom Category Add */}
+                {categoryInput.trim() && !filteredCategories.includes(categoryInput.trim()) && (
+                  <TouchableOpacity
+                    style={[styles.suggestionPill, { backgroundColor: `${COLORS.primary}15`, borderColor: COLORS.primary }]}
+                    onPress={() => {
+                      if (categories.length >= 5) {
+                        Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                        return;
+                      }
+                      setCategories([...categories, categoryInput.trim()]);
+                      setCategoryInput('');
+                      setShowCategoryDropdown(false);
+                    }}
+                  >
+                    <Text style={[styles.suggestionPillText, { color: COLORS.primary }]}>Add "{categoryInput.trim()}"</Text>
+                    <Ionicons name="add-circle" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -652,7 +738,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
       {/* Map Picker Modal */}
       <Modal visible={mapPickerVisible} animationType="slide" onRequestClose={() => setMapPickerVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <TouchableOpacity onPress={() => setMapPickerVisible(false)} style={{ marginRight: SPACING.md }}>
@@ -678,7 +764,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           ) : MapView && mapRegion ? (
             <View style={{ flex: 1 }}>
               <MapView
-                provider={PROVIDER_GOOGLE}
+                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                 style={{ flex: 1 }}
                 initialRegion={mapRegion}
                 region={mapRegion}
@@ -730,7 +816,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               <Text style={{ color: COLORS.text }}>Map unavailable.</Text>
             </View>
           )}
-        </View>
+        </SafeAreaView>
       </Modal>
     </Modal>
   );
@@ -796,6 +882,64 @@ const styles = StyleSheet.create({
   textArea: {
     height: 80,
     paddingTop: SPACING.md,
+  },
+  selectedCategories: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  categoryTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 16,
+    gap: 4,
+  },
+  categoryTagText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  categorySearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    marginBottom: SPACING.sm,
+  },
+  categorySearchInput: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  categoryDropdown: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  suggestionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  suggestionPillText: {
+    fontSize: 13,
+    color: COLORS.text,
+    fontWeight: '500',
   },
   submitBtn: {
     backgroundColor: COLORS.primary,

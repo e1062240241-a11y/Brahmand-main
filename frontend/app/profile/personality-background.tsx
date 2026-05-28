@@ -17,10 +17,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePersonalityStore } from '../../src/store/personalityStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
 
 export default function PersonalityBackgroundScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data, updateData } = usePersonalityStore();
@@ -73,6 +75,32 @@ export default function PersonalityBackgroundScreen() {
     router.back();
   };
 
+  const getProfessionText = (prof: string) => {
+    const map: { [key: string]: string } = {
+      'Spiritual Guru / Acharya': 'आध्यात्मिक गुरु / आचार्य',
+      'Social Worker / NGO Founder': 'सामाजिक कार्यकर्ता / एनजीओ संस्थापक',
+      'Educator / Author': 'शिक्षक / लेखक',
+      'Doctor / Health Expert': 'डॉक्टर / स्वास्थ्य विशेषज्ञ',
+      'Artist / Cultural Icon': 'कलाकार / सांस्कृतिक प्रतीक',
+      'Influencer / Speaker': 'प्रभावशाली व्यक्ति / वक्ता',
+      'Other': 'अन्य',
+    };
+    return t('language') === 'hi' ? (map[prof] || prof) : prof;
+  };
+
+  const getAreaText = (area: string) => {
+    const map: { [key: string]: string } = {
+      'Spiritual / Religious': 'आध्यात्मिक / धार्मिक',
+      'Social Service': 'समाज सेवा',
+      'Education': 'शिक्षा',
+      'Health / Medical': 'स्वास्थ्य / चिकित्सा',
+      'Culture & Heritage': 'संस्कृति और विरासत',
+      'Environment': 'पर्यावरण',
+      'Other': 'अन्य',
+    };
+    return t('language') === 'hi' ? (map[area] || area) : area;
+  };
+
   const toggleArea = (area: string) => {
     if (formData.areas.includes(area)) {
       setFormData({ ...formData, areas: formData.areas.filter((a) => a !== area) });
@@ -83,10 +111,11 @@ export default function PersonalityBackgroundScreen() {
 
   const validate = () => {
     const newErrors: any = {};
-    if (!formData.profession) newErrors.profession = 'Required';
-    if (formData.areas.length === 0) newErrors.areas = 'Required';
-    if (!formData.experience) newErrors.experience = 'Required';
-    if (!formData.bio) newErrors.bio = 'Required';
+    const reqText = t('language') === 'hi' ? 'आवश्यक' : 'Required';
+    if (!formData.profession) newErrors.profession = reqText;
+    if (formData.areas.length === 0) newErrors.areas = reqText;
+    if (!formData.experience) newErrors.experience = reqText;
+    if (!formData.bio) newErrors.bio = reqText;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -115,19 +144,25 @@ export default function PersonalityBackgroundScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.mainTitle}>Identity & Background</Text>
-            <Text style={styles.subtitle}>Tell us more about yourself and your work.</Text>
+            <Text style={styles.mainTitle}>
+              {t('language') === 'hi' ? 'पहचान और पृष्ठभूमि' : 'Identity & Background'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {t('language') === 'hi' ? 'हमें अपने और अपने काम के बारे में अधिक बताएं।' : 'Tell us more about yourself and your work.'}
+            </Text>
 
             <View style={styles.form}>
               {/* Profession / Role */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Profession / Role <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'पेशा / भूमिका' : 'Profession / Role'} <Text style={styles.required}>*</Text>
+                </Text>
                 <TouchableOpacity
                   style={[styles.inputWrapper, errors.profession && styles.inputError]}
                   onPress={() => setShowProfessionPicker(true)}
                 >
                   <Text style={[styles.inputText, !formData.profession && styles.placeholderText]}>
-                    {formData.profession || 'Select your profession / role'}
+                    {getProfessionText(formData.profession) || (t('language') === 'hi' ? 'अपने पेशे / भूमिका का चयन करें' : 'Select your profession / role')}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color="#2D2D2D" />
                 </TouchableOpacity>
@@ -135,11 +170,14 @@ export default function PersonalityBackgroundScreen() {
 
               {/* Organization */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Organization / Institution <Text style={styles.subLabel}>(If applicable)</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'संगठन / संस्था' : 'Organization / Institution'}{' '}
+                  <Text style={styles.subLabel}>{t('language') === 'hi' ? '(यदि लागू हो)' : '(If applicable)'}</Text>
+                </Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter organization name"
+                    placeholder={t('language') === 'hi' ? 'संगठन का नाम दर्ज करें' : 'Enter organization name'}
                     placeholderTextColor="#999"
                     value={formData.organization}
                     onChangeText={(val) => setFormData({ ...formData, organization: val })}
@@ -149,8 +187,12 @@ export default function PersonalityBackgroundScreen() {
 
               {/* Area of Influence */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Area of Influence / Work <Text style={styles.required}>*</Text></Text>
-                <Text style={styles.subLabel}>(Select all that apply)</Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'प्रभाव / कार्य का क्षेत्र' : 'Area of Influence / Work'} <Text style={styles.required}>*</Text>
+                </Text>
+                <Text style={styles.subLabel}>
+                  {t('language') === 'hi' ? '(लागू होने वाले सभी का चयन करें)' : '(Select all that apply)'}
+                </Text>
                 <View style={styles.checkboxContainer}>
                   {areaOptions.map((option) => (
                     <TouchableOpacity
@@ -166,20 +208,26 @@ export default function PersonalityBackgroundScreen() {
                           <Ionicons name="checkmark" size={14} color="#FFF" />
                         )}
                       </View>
-                      <Text style={styles.checkboxLabel}>{option}</Text>
+                      <Text style={styles.checkboxLabel}>{getAreaText(option)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-                {errors.areas && <Text style={styles.errorText}>Please select at least one area.</Text>}
+                {errors.areas && (
+                  <Text style={styles.errorText}>
+                    {t('language') === 'hi' ? 'कृपया कम से कम एक क्षेत्र चुनें।' : 'Please select at least one area.'}
+                  </Text>
+                )}
               </View>
 
               {/* Years of Experience */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Years of Experience / Contribution <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'अनुभव / योगदान के वर्ष' : 'Years of Experience / Contribution'} <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={[styles.inputWrapper, errors.experience && styles.inputError]}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter years of experience"
+                    placeholder={t('language') === 'hi' ? 'अनुभव के वर्ष दर्ज करें' : 'Enter years of experience'}
                     placeholderTextColor="#999"
                     keyboardType="numeric"
                     value={formData.experience}
@@ -190,11 +238,13 @@ export default function PersonalityBackgroundScreen() {
 
               {/* Brief About Yourself */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Brief About Yourself <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'अपने बारे में संक्षेप में' : 'Brief About Yourself'} <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={[styles.textAreaWrapper, errors.about && styles.inputError]}>
                   <TextInput
                     style={styles.textArea}
-                    placeholder="Write a short note about your journey, work and impact..."
+                    placeholder={t('language') === 'hi' ? 'अपनी यात्रा, काम और प्रभाव के बारे में एक संक्षिप्त नोट लिखें...' : 'Write a short note about your journey, work and impact...'}
                     placeholderTextColor="#999"
                     multiline
                     numberOfLines={6}
@@ -209,7 +259,9 @@ export default function PersonalityBackgroundScreen() {
             </View>
 
             <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-              <Text style={styles.continueButtonText}>Continue</Text>
+              <Text style={styles.continueButtonText}>
+                {t('language') === 'hi' ? 'जारी रखें' : 'Continue'}
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -220,13 +272,14 @@ export default function PersonalityBackgroundScreen() {
         onClose={() => setShowProfessionPicker(false)}
         options={professionOptions}
         onSelect={(val: string) => setFormData({ ...formData, profession: val })}
-        title="Select Profession"
+        title={t('language') === 'hi' ? 'पेशा चुनें' : 'Select Profession'}
+        getOptionLabel={getProfessionText}
       />
     </View>
   );
 }
 
-const SelectionModal = ({ visible, onClose, options, onSelect, title }: any) => (
+const SelectionModal = ({ visible, onClose, options, onSelect, title, getOptionLabel }: any) => (
   <Modal visible={visible} transparent animationType="slide">
     <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
@@ -247,7 +300,9 @@ const SelectionModal = ({ visible, onClose, options, onSelect, title }: any) => 
                 onClose();
               }}
             >
-              <Text style={styles.optionText}>{item}</Text>
+              <Text style={styles.optionText}>
+                {getOptionLabel ? getOptionLabel(item) : item}
+              </Text>
             </TouchableOpacity>
           )}
         />
