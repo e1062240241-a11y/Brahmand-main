@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import { 
   createVendor as createVendorAPI,
   getVendors,
@@ -112,10 +113,11 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   loading: false,
   
   fetchVendors: async (params) => {
-    // 1. Try to load from WatermelonDB first
-    try {
-      const { database } = require('../database');
-      if (database && database.collections) {
+    // 1. Try to load from WatermelonDB first (Skip on web to prevent crashes)
+    if (Platform.OS !== 'web') {
+      try {
+        const { database } = require('../database');
+        if (database && database.collections) {
         const localVendorsCollection = database.collections.get('vendors');
         if (localVendorsCollection) {
           const localVendors = await localVendorsCollection.query().fetch();
@@ -148,8 +150,9 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
           }
         }
       }
-    } catch (dbErr) {
-      console.warn('Failed to load vendors from WatermelonDB:', dbErr);
+      } catch (dbErr) {
+        console.warn('Failed to load vendors from WatermelonDB:', dbErr);
+      }
     }
 
     if (get().vendors.length === 0) {
@@ -161,10 +164,11 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
       const fetchedVendors = response?.data || [];
       set({ vendors: fetchedVendors });
       
-      // 2. Sync to WatermelonDB
-      try {
-        const { database } = require('../database');
-        if (database && database.collections) {
+      // 2. Sync to WatermelonDB (Skip on web to prevent lag/crashes)
+      if (Platform.OS !== 'web') {
+        try {
+          const { database } = require('../database');
+          if (database && database.collections) {
           const collection = database.collections.get('vendors');
           if (collection) {
             await database.write(async () => {
@@ -242,8 +246,9 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
             });
           }
         }
-      } catch (dbSyncErr) {
-        console.warn('Failed to sync vendors to WatermelonDB:', dbSyncErr);
+        } catch (dbSyncErr) {
+          console.warn('Failed to sync vendors to WatermelonDB:', dbSyncErr);
+        }
       }
       
     } catch (error: any) {
