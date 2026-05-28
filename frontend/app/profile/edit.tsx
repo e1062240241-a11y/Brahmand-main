@@ -40,7 +40,7 @@ export default function EditProfileScreen() {
   const [kuldevi, setKuldevi] = useState('');
   const [kuldeviTempleArea, setKuldeviTempleArea] = useState('');
   const [gotra, setGotra] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState(''); // stored as DD/MM/YYYY for display
   const [timeOfBirth, setTimeOfBirth] = useState('');
   const [placeOfBirth, setPlaceOfBirth] = useState('');
 
@@ -56,7 +56,14 @@ export default function EditProfileScreen() {
         setKuldevi(data.kuldevi || '');
         setKuldeviTempleArea(data.kuldevi_temple_area || '');
         setGotra(data.gotra || '');
-        setDateOfBirth(data.date_of_birth || '');
+        // Convert YYYY-MM-DD from backend → DD/MM/YYYY for Indian format display
+        const rawDob = data.date_of_birth || '';
+        if (rawDob && /^\d{4}-\d{2}-\d{2}$/.test(rawDob)) {
+          const [y, m, d] = rawDob.split('-');
+          setDateOfBirth(`${d}/${m}/${y}`);
+        } else {
+          setDateOfBirth(rawDob);
+        }
         setTimeOfBirth(data.time_of_birth || '');
         setPlaceOfBirth(
           data.place_of_birth ||
@@ -76,9 +83,25 @@ export default function EditProfileScreen() {
     return Boolean(dateOfBirth.trim() && timeOfBirth.trim() && placeOfBirth.trim());
   }, [dateOfBirth, placeOfBirth, timeOfBirth]);
 
+  // Convert DD/MM/YYYY → YYYY-MM-DD for API
+  const convertDobForApi = (dob: string): string => {
+    const trimmed = dob.trim();
+    if (!trimmed) return '';
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      const [d, m, y] = trimmed.split('/');
+      return `${y}-${m}-${d}`;
+    }
+    return trimmed; // already in YYYY-MM-DD or other format
+  };
+
   const validate = () => {
-    if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) {
-      return t('language') === 'hi' ? 'जन्म तिथि YYYY-MM-DD प्रारूप में होनी चाहिए' : 'Date of birth must be in YYYY-MM-DD format';
+    if (dateOfBirth) {
+      const dob = dateOfBirth.trim();
+      const isIndianFormat = /^\d{2}\/\d{2}\/\d{4}$/.test(dob);
+      const isIsoFormat = /^\d{4}-\d{2}-\d{2}$/.test(dob);
+      if (!isIndianFormat && !isIsoFormat) {
+        return t('language') === 'hi' ? 'जन्म तिथि DD/MM/YYYY प्रारूप में होनी चाहिए' : 'Date of birth must be in DD/MM/YYYY format';
+      }
     }
     if (timeOfBirth && !/^\d{2}:\d{2}$/.test(timeOfBirth.trim())) {
       return t('language') === 'hi' ? 'जन्म का समय HH:MM प्रारूप में होना चाहिए' : 'Time of birth must be in HH:MM format';
@@ -183,7 +206,7 @@ export default function EditProfileScreen() {
         kuldevi: kuldevi.trim() || undefined,
         kuldevi_temple_area: kuldeviTempleArea.trim() || undefined,
         gotra: gotra.trim() || undefined,
-        date_of_birth: dateOfBirth.trim() || undefined,
+        date_of_birth: dateOfBirth.trim() ? convertDobForApi(dateOfBirth) : undefined,
         time_of_birth: timeOfBirth.trim() || undefined,
         place_of_birth: placeText || undefined,
         place_of_birth_latitude: lat,
@@ -286,7 +309,7 @@ export default function EditProfileScreen() {
                   label={t('language') === 'hi' ? 'जन्म तिथि' : 'Date of Birth'}
                   value={dateOfBirth}
                   onChangeText={setDateOfBirth}
-                  placeholder="YYYY-MM-DD"
+                  placeholder="DD/MM/YYYY"
                   keyboardType="numbers-and-punctuation"
                 />
                 <Input

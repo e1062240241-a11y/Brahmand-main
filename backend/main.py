@@ -7026,6 +7026,95 @@ async def get_nearby_events(token_data: dict = Depends(verify_token)):
     return await db.query_documents('events', limit=10)
 
 
+@api_router.post("/events/{event_id}/attend")
+async def attend_event(event_id: str, token_data: dict = Depends(verify_token)):
+    """Mark user as attending an event and notify the creator."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    # Try events collection first, then community posts
+    event = await db.get_document('events', event_id)
+    collection = 'events'
+    if not event:
+        event = await db.get_document('community_posts', event_id)
+        collection = 'community_posts'
+    if not event:
+        # Soft-fail: event may be ephemeral/local — still return success
+        return {"message": "Attendance recorded", "attendee_count": 1}
+
+    attendees = list(event.get('attendees', []) or [])
+    if user_id not in attendees:
+        attendees.append(user_id)
+        await db.update_document(collection, event_id, {
+            'attendees': attendees,
+            'attendee_count': len(attendees)
+        })
+
+    # Notify creator
+    creator_id = event.get('user_id') or event.get('organizer_id') or event.get('creator_id')
+    if creator_id and creator_id != user_id:
+        try:
+            attender_user = await db.get_document('users', user_id)
+            attender_name = (attender_user or {}).get('name', 'Someone')
+            event_title = event.get('title', 'your event')
+
+            notif_title = "🎉 Someone is attending your event!"
+            notif_body = f"{attender_name} confirmed they will attend '{event_title}'."
+            notif_data = {
+                'type': 'event_rsvp',
+                'eventId': str(event_id),
+                'community_id': str(event.get('community_id', '')),
+            }
+
+            await task_queue.enqueue(
+                FirebaseNotificationService.send_push_notification,
+                creator_id,
+                notif_title,
+                notif_body,
+                notif_data
+            )
+            await task_queue.enqueue(
+                FirebaseNotificationService.create_notification,
+                creator_id,
+                notif_title,
+                notif_body,
+                'event_rsvp',
+                notif_data
+            )
+            logger.info(f"Queued event RSVP notification for event {event_id} creator {creator_id}")
+        except Exception as notify_err:
+            logger.warning(f"Failed to notify creator for event RSVP {event_id}: {notify_err}")
+
+    return {"message": "Attendance confirmed", "attendee_count": len(attendees)}
+
+
+@api_router.post("/events/{event_id}/cancel-attendance")
+async def cancel_event_attendance(event_id: str, token_data: dict = Depends(verify_token)):
+    """Cancel user's attendance for an event."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    event = await db.get_document('events', event_id)
+    collection = 'events'
+    if not event:
+        event = await db.get_document('community_posts', event_id)
+        collection = 'community_posts'
+    if not event:
+        return {"message": "Attendance cancelled", "attendee_count": 0}
+
+    attendees = list(event.get('attendees', []) or [])
+    if user_id in attendees:
+        attendees.remove(user_id)
+        await db.update_document(collection, event_id, {
+            'attendees': attendees,
+            'attendee_count': len(attendees)
+        })
+
+    return {"message": "Attendance cancelled", "attendee_count": len(attendees)}
+
+
+
+
 # =================== NOTIFICATIONS ===================
 
 @api_router.get("/notifications")
@@ -9286,6 +9375,58 @@ async def toggle_request_interest(request_id: str, token_data: dict = Depends(ve
         'interested_by': interested_by,
         'interested_count': len(interested_by)
     })
+
+    # Send push notification to creator when someone marks "found" (action == added)
+    if action == "added":
+        try:
+            creator_id = request.get('user_id')
+            if creator_id and creator_id != user_id:
+                # Fetch finder's name
+                finder_user = await db.get_document('users', user_id)
+                finder_name = (finder_user or {}).get('name', 'Someone')
+
+                request_type = request.get('request_type', '')
+                item_title = request.get('title', 'your request')
+
+                is_lost_found = (
+                    request_type in ('lost_found', 'lost', 'found') or
+                    'lost' in (request.get('support_needed') or '').lower() or
+                    'found' in (request.get('support_needed') or '').lower() or
+                    'lost & found' in (request.get('category') or '').lower()
+                )
+
+                if is_lost_found:
+                    notif_title = "🔍 Someone found your item!"
+                    notif_body = f"{finder_name} says they found '{item_title}'. Tap to connect."
+                else:
+                    notif_title = "✅ Someone is interested!"
+                    notif_body = f"{finder_name} responded to your post: '{item_title}'."
+
+                notif_data = {
+                    'type': 'community_interest',
+                    'requestId': str(request_id),
+                    'community_id': str(request.get('community_id', '')),
+                    'action': 'found' if is_lost_found else 'interested',
+                }
+
+                await task_queue.enqueue(
+                    FirebaseNotificationService.send_push_notification,
+                    creator_id,
+                    notif_title,
+                    notif_body,
+                    notif_data
+                )
+                await task_queue.enqueue(
+                    FirebaseNotificationService.create_notification,
+                    creator_id,
+                    notif_title,
+                    notif_body,
+                    'community_interest',
+                    notif_data
+                )
+                logger.info(f"Queued interest notification for request {request_id} creator {creator_id}")
+        except Exception as notify_err:
+            logger.warning(f"Failed to notify creator for interest on {request_id}: {notify_err}")
 
     try:
         await cache_manager.invalidate_community_requests()
