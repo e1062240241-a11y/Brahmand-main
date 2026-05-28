@@ -1051,7 +1051,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const handleCopyLink = async () => {
     const postId = selectedPost?.id;
     if (!postId) return;
-    const link = `sanatanlok://post/${postId}`;
+    const link = `https://brahmand.app/post/${postId}`;
     await Clipboard.setStringAsync(link);
     Alert.alert(
       t('language') === 'hi' ? 'लिंक कॉपी हो गया' : 'Link Copied', 
@@ -1062,7 +1062,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const handleExternalShare = async () => {
     if (!selectedPost) return;
     try {
-      const link = `sanatanlok://post/${selectedPost.id}`;
+      const link = `https://brahmand.app/post/${selectedPost.id}`;
       await Share.share({
         message: `${selectedPost.caption || (t('language') === 'hi' ? 'ब्रह्मांड पर इस रील को देखें!' : 'Check this reel on Brahmand!')}\n\n${link}`,
         url: link,

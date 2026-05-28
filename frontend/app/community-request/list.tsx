@@ -357,7 +357,7 @@ export default function ActiveRequestsList() {
   const handleShare = async (request: CommunityRequest) => {
     try {
       // Create a deep link using the app scheme targeting the list page with the request ID
-      const deepLink = `sanatanlok://community-request/list?requestId=${request.id}`;
+      const deepLink = `https://brahmand.app/community-request/list?requestId=${request.id}`;
       const typeLabel = getRequestTheme(request).label.toUpperCase();
       
       await Share.share({

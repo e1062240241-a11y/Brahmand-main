@@ -1285,7 +1285,7 @@ export default function HomeScreen() {
   };
 
   const handleShareExternal = async (post: any) => {
-    const appLink = post?.id ? `sanatanlok://post/${post.id}` : 'sanatanlok://';
+    const appLink = post?.id ? `https://brahmand.app/post/${post.id}` : 'https://brahmand.app/';
     const mediaUrl = post?.media_url || '';
     const caption = post?.caption ? `\nCaption: ${post.caption}` : '';
     const message = `Check this post on Brahmand!${caption}\n\n${appLink}`;
@@ -2649,7 +2649,7 @@ export default function HomeScreen() {
             onCopyLink={async () => {
               if (selectedSharePost?.id) {
                 const Clipboard = await import('expo-clipboard');
-                await Clipboard.setStringAsync(`sanatanlok://post/${selectedSharePost.id}`);
+                await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
                 alert('Link copied to clipboard');
                 setShareModalVisible(false);
               }
