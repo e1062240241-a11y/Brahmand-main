@@ -107,11 +107,11 @@ export default function PersonalityBackgroundScreen() {
           </TouchableOpacity>
         </View>
 
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
@@ -122,7 +122,7 @@ export default function PersonalityBackgroundScreen() {
               {/* Profession / Role */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Profession / Role <Text style={styles.required}>*</Text></Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.inputWrapper, errors.profession && styles.inputError]}
                   onPress={() => setShowProfessionPicker(true)}
                 >
@@ -153,8 +153,8 @@ export default function PersonalityBackgroundScreen() {
                 <Text style={styles.subLabel}>(Select all that apply)</Text>
                 <View style={styles.checkboxContainer}>
                   {areaOptions.map((option) => (
-                    <TouchableOpacity 
-                      key={option} 
+                    <TouchableOpacity
+                      key={option}
                       style={styles.checkboxItem}
                       onPress={() => toggleArea(option)}
                     >
@@ -215,9 +215,9 @@ export default function PersonalityBackgroundScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      <SelectionModal 
-        visible={showProfessionPicker} 
-        onClose={() => setShowProfessionPicker(false)} 
+      <SelectionModal
+        visible={showProfessionPicker}
+        onClose={() => setShowProfessionPicker(false)}
         options={professionOptions}
         onSelect={(val: string) => setFormData({ ...formData, profession: val })}
         title="Select Profession"
@@ -240,7 +240,7 @@ const SelectionModal = ({ visible, onClose, options, onSelect, title }: any) => 
           data={options}
           keyExtractor={(item) => item}
           renderItem={({ item }) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.optionItem}
               onPress={() => {
                 onSelect(item);

@@ -77,7 +77,7 @@ export default function CommunityRequestBloodReviewPage() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <View style={styles.iconCircle}>
-              <MaterialCommunityIcons name="blood-drop" size={24} color="#E53935" />
+              <MaterialCommunityIcons name="water" size={24} color="#E53935" />
             </View>
             <Text style={styles.summaryTitle}>Request Type</Text>
           </View>

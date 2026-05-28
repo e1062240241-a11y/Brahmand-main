@@ -94,6 +94,8 @@ function useAppBackHandler() {
   }, [pathname, router]);
 }
 
+import * as ExpoLinking from 'expo-linking';
+
 // Handle deep links for circle invites
 function useDeepLinkHandler() {
   const { token } = useAuthStore();
@@ -105,7 +107,7 @@ function useDeepLinkHandler() {
       
       try {
         // Use expo-linking to parse the URL correctly
-        const parsed = Linking.parse(event.url);
+        const parsed = ExpoLinking.parse(event.url);
         const path = parsed.path;
         
         if (!path) return;

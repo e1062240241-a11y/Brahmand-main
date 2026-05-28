@@ -17,6 +17,7 @@ import {
   Image,
   ImageBackground,
   Dimensions,
+  Keyboard,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,7 +30,7 @@ import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
-import { VendorKYCModal } from '../../src/components/VendorKYCModal';
+
 import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import { ToastContainer } from '../../src/components/ToastContainer';
@@ -363,9 +364,7 @@ export default function CommunityDetailScreen() {
   const [postCategory, setPostCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [sevaDetails, setSevaDetails] = useState('');
-  const [showKycModal, setShowKycModal] = useState(false);
-  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
-  const [pendingPostAfterKyc, setPendingPostAfterKyc] = useState(false);
+
   const [showInlineCategories, setShowInlineCategories] = useState(false);
 
   const isKycVerified =
@@ -378,6 +377,20 @@ export default function CommunityDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [activeComments, setActiveComments] = useState<any[]>([]);
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const dynamicTabs = useMemo(() => {
     return COMMUNITY_TABS;
@@ -1534,7 +1547,7 @@ export default function CommunityDetailScreen() {
             ) : null}
 
             {item.image && (
-              <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof item.image === 'string' ? item.image : item.image.uri)}>
+              <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof item.image === 'string' ? item.image : ((item.image as any)?.uri || ''))}>
                 <Image
                   source={typeof item.image === 'string' ? { uri: item.image } : item.image}
                   style={styles.postMediaImage}
@@ -2531,15 +2544,8 @@ export default function CommunityDetailScreen() {
 
     // If user selected Requests, check KYC
     if (selectedCategory === 'Requests' && !isKycVerified) {
-      // Need KYC verification for Requests
-      let vendorId = myVendor?.id || null;
-      if (!vendorId) {
-        await fetchMyVendor();
-        vendorId = useVendorStore.getState().myVendor?.id || null;
-      }
-      setKycModalVendorId(vendorId || '');
-      setPendingPostAfterKyc(true);
-      setShowKycModal(true);
+      setShowCategorySelector(false);
+      router.push('/kyc');
       return;
     }
 
@@ -2547,24 +2553,7 @@ export default function CommunityDetailScreen() {
     await executeCreatePost(selectedCategory);
   };
 
-  const handleKycSuccess = async () => {
-    setShowKycModal(false);
-    try {
-      const response = await getKYCStatus();
-      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
-      updateUser({
-        kyc_status: serverStatus,
-        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
-      } as any);
-    } catch (error) {
-      console.warn('Failed to refresh KYC status:', error);
-    }
 
-    if (pendingPostAfterKyc) {
-      setPendingPostAfterKyc(false);
-      await executeCreatePost(postCategory || 'Events');
-    }
-  };
 
   const executeCreatePost = async (categoryOverride?: string) => {
     if (!newMessage.trim() && !selectedImage) return;
@@ -3383,17 +3372,7 @@ export default function CommunityDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* KYC Modal for Events verification */}
-      <VendorKYCModal
-        visible={showKycModal}
-        vendorId={kycModalVendorId || ''}
-        allowUserKycFallback
-        onClose={() => {
-          setShowKycModal(false);
-          setPendingPostAfterKyc(false);
-        }}
-        onKycUpdated={handleKycSuccess}
-      />
+
 
       {/* Full Screen Media Modal */}
       <Modal visible={!!fullScreenMedia} transparent={true} animationType="fade" onRequestClose={() => setFullScreenMedia(null)}>
@@ -3415,12 +3394,12 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           style={styles.modalOverlay}
         >
           <ToastContainer />
-          <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+          <View style={[styles.commentModalContent, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 20) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments ({showCommentModal?.comments ?? activeComments.length ?? 0})</Text>
               <TouchableOpacity onPress={() => setShowCommentModal(null)}>

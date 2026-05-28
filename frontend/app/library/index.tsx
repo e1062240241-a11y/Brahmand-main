@@ -902,6 +902,16 @@ const styles = StyleSheet.create({
     color: '#AAA',
     fontFamily: FONTS.medium,
   },
+  bookCardTitle: {
+    fontSize: 16,
+    color: '#2D1B13',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontWeight: 'bold',
+  },
+  highlightText: {
+    backgroundColor: '#FFE600',
+    color: '#000000',
+  },
 });
 
 export default LibraryPage;

@@ -44,11 +44,13 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   const { user } = useAuthStore();
   const isVendorFlow = !!vendorId;
   const isUserFlow = !vendorId && allowUserKycFallback;
-  const hasVerifiedKyc = Boolean(
-    (user as any)?.kyc_status === 'verified' ||
-    Boolean((user as any)?.is_verified) ||
-    myVendor?.kyc_status === 'verified'
-  );
+  const hasVerifiedKyc = isVendorFlow
+    ? myVendor?.kyc_status === 'verified'
+    : Boolean(
+        (user as any)?.kyc_status === 'verified' ||
+        Boolean((user as any)?.is_verified)
+      );
+
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);

@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { useAuthStore } from '../../../src/store/authStore';
 import { useVendorStore } from '../../../src/store/vendorStore';
-import { VendorKYCModal } from '../../../src/components/VendorKYCModal';
+
 import { getKYCStatus } from '../../../src/services/api';
 
 export default function CommunityRequestBloodVerifyPage() {
@@ -24,8 +24,7 @@ export default function CommunityRequestBloodVerifyPage() {
   const { myVendor, fetchMyVendor } = useVendorStore();
 
   const [phoneNumber, setPhoneNumber] = React.useState((params.contactNumber || user?.phone || '').replace(/[^0-9]/g, ''));
-  const [showKycModal, setShowKycModal] = React.useState(false);
-  const [kycModalVendorId, setKycModalVendorId] = React.useState<string | null>(myVendor?.id || null);
+
 
   React.useEffect(() => {
     fetchMyVendor();
@@ -37,39 +36,12 @@ export default function CommunityRequestBloodVerifyPage() {
     myVendor?.kyc_status === 'verified';
 
   const handleCompleteKyc = async () => {
-    let vendorId = myVendor?.id || null;
-    if (!vendorId) {
-      await fetchMyVendor();
-      vendorId = useVendorStore.getState().myVendor?.id || null;
-    }
-    setKycModalVendorId(vendorId || '');
-    setShowKycModal(true);
-  };
-
-  const handleKycSuccess = async () => {
-    setShowKycModal(false);
-    try {
-      const response = await getKYCStatus();
-      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
-      updateUser({
-        kyc_status: serverStatus,
-        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
-      } as any);
-    } catch (error) {
-      console.warn('Failed to refresh KYC status:', error);
-    }
+    router.push('/kyc');
   };
 
   const handleSendOtp = () => {
     if (!isKycVerified) {
-      Alert.alert(
-        'KYC Required',
-        'Please complete your KYC verification first to create a community request.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Complete KYC', onPress: handleCompleteKyc }
-        ]
-      );
+      router.push('/kyc');
       return;
     }
     if (!phoneNumber || phoneNumber.length < 10) {
@@ -154,16 +126,6 @@ export default function CommunityRequestBloodVerifyPage() {
           <Text style={styles.noteText}>Your information is secure and never shared with anyone.</Text>
         </View>
       </ScrollView>
-
-      <VendorKYCModal
-        visible={showKycModal}
-        vendorId={kycModalVendorId || ''}
-        allowUserKycFallback
-        onClose={() => {
-          setShowKycModal(false);
-        }}
-        onKycUpdated={handleKycSuccess}
-      />
     </SafeAreaView>
   );
 }

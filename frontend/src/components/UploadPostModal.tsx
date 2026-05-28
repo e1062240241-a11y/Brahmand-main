@@ -58,7 +58,19 @@ type UploadPostModalProps = {
   visible: boolean;
   onClose: () => void;
   onUploadSuccess: (post: any) => void;
-  onUploadStart?: (media: SelectedMedia, caption: string, filterName?: string, communityLevel?: string, category?: string) => void;
+  onUploadStart?: (
+    media: SelectedMedia,
+    caption: string,
+    filterName?: string,
+    communityLevel?: string,
+    category?: string,
+    mediaWidth?: number,
+    mediaHeight?: number,
+    cropOffsetX?: number,
+    cropOffsetY?: number,
+    originalWidth?: number,
+    originalHeight?: number
+  ) => void;
 };
 
 const ACCEPTED_MEDIA_TYPES = ['image/*', 'video/*'];

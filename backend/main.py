@@ -6757,6 +6757,32 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
         if kyc_role in badge_map:
             await db.array_union_update('users', user_id, 'badges', [badge_map[kyc_role]])
 
+        # If user is vendor, also update their vendor profile to verified status
+        if target_user.get('is_vendor') or target_user.get('vendor_id'):
+            vendor_id = target_user.get('vendor_id')
+            if not vendor_id:
+                # Find vendor where owner_id = user_id
+                v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+                if v_list:
+                    vendor_id = v_list[0]['id']
+            if vendor_id:
+                vendor = await db.get_document('vendors', vendor_id)
+                if vendor:
+                    await db.update_document('vendors', vendor_id, {
+                        'kyc_status': 'verified',
+                        'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
+                        'kyc_reviewed_by': token_data.get("user_id"),
+                        'kyc_review_note': 'Automatically verified via user KYC approval',
+                    })
+                    await db.set_document('vendor_admin_reviews', vendor_id, {
+                        **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'verified'}),
+                        'review_status': 'approved',
+                        'review_state': 'closed',
+                        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
+                        'reviewed_by': token_data.get("user_id"),
+                        'review_note': 'Automatically verified via user KYC approval',
+                    })
+
         # Notify user about verification
         try:
             await NotificationService.create_notification(
@@ -8604,6 +8630,17 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
         'reviewed_by': admin_user_id,
         'review_note': data.get('note'),
     })
+
+    # Update owner user's KYC status to verified
+    owner_id = vendor.get('owner_id')
+    if owner_id:
+        await db.update_document('users', owner_id, {
+            'kyc_status': 'verified',
+            'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
+            'is_verified': True,
+            'kyc_role': 'vendor'
+        })
+        await db.array_union_update('users', owner_id, 'badges', ['Verified Vendor'])
 
     return {
         'message': 'Vendor approved successfully',

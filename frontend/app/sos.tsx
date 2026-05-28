@@ -395,7 +395,7 @@ export default function SOSScreen() {
 
             <TouchableOpacity 
               style={[styles.primaryButton, !emergencyType && styles.primaryButtonDisabled]} 
-              onPress={handleContinueToLocation}
+              onPress={() => handleContinueToLocation()}
               disabled={!emergencyType}
               activeOpacity={0.8}
             >

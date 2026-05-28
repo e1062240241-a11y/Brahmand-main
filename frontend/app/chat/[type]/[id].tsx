@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated } from 'react-native';
+import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated, Keyboard } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -207,7 +207,20 @@ const ChatScreen = () => {
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const roomKey = type === 'community' ? `community_${id}_${subgroup}` : `circle_${id}`;
 
@@ -371,7 +384,7 @@ const ChatScreen = () => {
     try {
       let response;
       if (type === 'community') {
-        response = await getCommunityMessages(id!, subgroup);
+        response = await getCommunityMessages(id!, subgroup || 'city');
         // All users can post in community chats - no KYC required
         setIsVerified(true);
       } else {
@@ -505,7 +518,7 @@ const ChatScreen = () => {
           await sendCircleMessage(id!, mediaUrl, selected.mediaType);
         }
         if (type === 'community') {
-          await sendCommunityMessage(id!, subgroup, mediaUrl, selected.mediaType);
+          await sendCommunityMessage(id!, subgroup || 'city', mediaUrl, selected.mediaType);
         }
 
         setSelectedMedia(null);
@@ -548,7 +561,7 @@ const ChatScreen = () => {
     try {
       let response;
       if (type === 'community') {
-        response = await sendCommunityMessage(id!, subgroup, messageText);
+        response = await sendCommunityMessage(id!, subgroup || 'city', messageText);
       } else {
         response = await sendCircleMessage(id!, messageText);
       }
@@ -1183,7 +1196,7 @@ const ChatScreen = () => {
       if (type === 'circle') {
         await sendCircleMessage(id!, payload, 'contact');
       } else if (type === 'community') {
-        await sendCommunityMessage(id!, subgroup, payload, 'contact');
+        await sendCommunityMessage(id!, subgroup || 'city', payload, 'contact');
       }
       setShowContactModal(false);
       setContactShareName('');
@@ -1415,7 +1428,7 @@ const ChatScreen = () => {
             <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
           </TouchableOpacity>
         ) : (
-          <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={[styles.inputWrapperContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) }]}>
             {selectedMedia && (
               <View style={styles.mediaPreviewContainer}>
                 <View style={styles.mediaPreviewHeader}>
@@ -1907,6 +1920,37 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  mediaPreviewContainer: {
+    padding: SPACING.sm,
+    backgroundColor: '#000000',
+    borderRadius: BORDER_RADIUS.md,
+    marginHorizontal: 12,
+    marginVertical: 8,
+  },
+  mediaPreviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  mediaPreviewLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  mediaPreviewClose: {
+    padding: 2,
+  },
+  mediaPreviewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  mediaPreviewVideo: {
+    width: '100%',
+    height: 150,
+    borderRadius: BORDER_RADIUS.sm,
   },
   restrictedOverlay: {
     ...StyleSheet.absoluteFillObject,

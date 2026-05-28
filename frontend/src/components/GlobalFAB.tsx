@@ -11,11 +11,12 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function GlobalFAB() {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const [fabExpanded, setFabExpanded] = useState(false);
   const fabScale = useRef(new Animated.Value(0)).current;
@@ -23,6 +24,7 @@ export function GlobalFAB() {
   const fabItemAnims = useRef(
     Array.from({ length: 8 }, () => new Animated.Value(0))
   ).current;
+
 
   const pan = useRef(new Animated.ValueXY()).current;
   const panResponder = useRef(
@@ -96,6 +98,11 @@ export function GlobalFAB() {
       ]).start();
     }
   }, [fabExpanded, fabScale, fabRotation, fabItemAnims]);
+
+  // Do not show FAB on authentication screens
+  if (!pathname || pathname === '/' || pathname === '/index' || pathname.startsWith('/auth')) {
+    return null;
+  }
 
   return (
     <>

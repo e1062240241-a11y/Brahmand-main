@@ -326,8 +326,24 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Error', 'Business name is required');
       return;
     }
+    if (trimmedBusinessName.length < 3 || trimmedBusinessName.length > 50) {
+      Alert.alert('Error', 'Business name must be between 3 and 50 characters');
+      return;
+    }
+    if (!/^[a-zA-Z0-9]/.test(trimmedBusinessName)) {
+      Alert.alert('Error', 'Business name must start with a letter or number');
+      return;
+    }
+    if (/\s{2,}/.test(trimmedBusinessName)) {
+      Alert.alert('Error', 'Business name cannot contain consecutive spaces');
+      return;
+    }
     if (!businessNameRegex.test(trimmedBusinessName)) {
-      Alert.alert('Error', 'Business name must be 2 to 50 characters and can only contain letters, numbers, spaces, and standard punctuation (& . , \' - /)');
+      Alert.alert('Error', 'Business name contains invalid characters. Can only contain letters, numbers, spaces, and & . , \' - /');
+      return;
+    }
+    if (!trimmedBusinessName.split(/\s+/).every(word => /^[A-Z0-9]/.test(word))) {
+      Alert.alert('Error', 'Each word in the business name must start with a capital letter or number (e.g. "Swiggy Delivery")');
       return;
     }
 
@@ -335,8 +351,24 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Error', 'Owner name is required');
       return;
     }
+    if (trimmedOwnerName.length < 3 || trimmedOwnerName.length > 50) {
+      Alert.alert('Error', 'Owner name must be between 3 and 50 characters');
+      return;
+    }
+    if (!/^[a-zA-Z]/.test(trimmedOwnerName)) {
+      Alert.alert('Error', 'Owner name must start with a letter');
+      return;
+    }
+    if (/\s{2,}/.test(trimmedOwnerName)) {
+      Alert.alert('Error', 'Owner name cannot contain consecutive spaces');
+      return;
+    }
     if (!ownerNameRegex.test(trimmedOwnerName)) {
-      Alert.alert('Error', 'Owner name must be 2 to 50 characters and contain only letters, spaces, dots, and hyphens');
+      Alert.alert('Error', 'Owner name must contain only letters, spaces, dots, and hyphens');
+      return;
+    }
+    if (!trimmedOwnerName.split(/\s+/).every(word => /^[A-Z]/.test(word))) {
+      Alert.alert('Error', 'Each word in the owner name must start with a capital letter');
       return;
     }
 
@@ -362,8 +394,16 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Error', 'Address is required');
       return;
     }
+    if (trimmedAddress.length < 10 || trimmedAddress.length > 150) {
+      Alert.alert('Error', 'Address must be between 10 and 150 characters');
+      return;
+    }
+    if (/\s{2,}/.test(trimmedAddress)) {
+      Alert.alert('Error', 'Address cannot contain consecutive spaces');
+      return;
+    }
     if (!addressRegex.test(trimmedAddress)) {
-      Alert.alert('Error', 'Address must be between 5 and 150 characters and can only contain letters, numbers, spaces, and basic symbols (.,\'#-/())');
+      Alert.alert('Error', 'Address must contain only alphanumeric characters, spaces, and basic symbols (.,\'#-/())');
       return;
     }
 
@@ -436,7 +476,14 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               placeholder="Enter business name"
               placeholderTextColor={COLORS.textLight}
               value={businessName}
-              onChangeText={setBusinessName}
+              onChangeText={(text) => {
+                const filtered = text.replace(/[^a-zA-Z0-9\s&.,'-\/]/g, '');
+                const capitalized = filtered
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+                setBusinessName(capitalized.slice(0, 50));
+              }}
             />
 
             {/* Owner Name */}
@@ -446,7 +493,14 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               placeholder="Enter owner name"
               placeholderTextColor={COLORS.textLight}
               value={ownerName}
-              onChangeText={setOwnerName}
+              onChangeText={(text) => {
+                const filtered = text.replace(/[^a-zA-Z\s.'-]/g, '');
+                const capitalized = filtered
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+                setOwnerName(capitalized.slice(0, 50));
+              }}
             />
 
             {/* Phone Number */}
@@ -487,7 +541,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 placeholder="Enter a category and press Add"
                 placeholderTextColor={COLORS.textLight}
                 value={categoryInput}
-                onChangeText={setCategoryInput}
+                onChangeText={(text) => {
+                  const filtered = text.replace(/[^a-zA-Z\s]/g, '');
+                  setCategoryInput(filtered.slice(0, 30));
+                }}
                 onSubmitEditing={() => {
                   const cat = categoryInput.trim();
                   if (cat && !categories.includes(cat)) {
@@ -545,7 +602,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               placeholder="Enter complete business address"
               placeholderTextColor={COLORS.textLight}
               value={address}
-              onChangeText={setAddress}
+              onChangeText={(text) => {
+                const filtered = text.replace(/[^a-zA-Z0-9\s.,'#\-\/()]/g, '');
+                setAddress(filtered.slice(0, 150));
+              }}
               multiline
               numberOfLines={3}
               textAlignVertical="top"

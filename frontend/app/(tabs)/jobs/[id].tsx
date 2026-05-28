@@ -17,7 +17,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { getJobProfile, getKYCStatus } from '../../../src/services/api';
 import { useAuthStore } from '../../../src/store/authStore';
 import { useVendorStore } from '../../../src/store/vendorStore';
-import { VendorKYCModal } from '../../../src/components/VendorKYCModal';
+
 
 interface JobProfile {
   id: string;
@@ -76,8 +76,7 @@ export default function JobProfileDetailScreen() {
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<JobProfile | null>(null);
-  const [showKycModal, setShowKycModal] = useState(false);
-  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
+
 
   const isKycVerified =
     (user as any)?.kyc_status === 'verified' ||
@@ -115,26 +114,13 @@ export default function JobProfileDetailScreen() {
       return true;
     }
 
-    let vendorId = myVendor?.id || null;
-    if (!vendorId) {
-      await fetchMyVendor();
-      vendorId = useVendorStore.getState().myVendor?.id || null;
-    }
-
-    setKycModalVendorId(vendorId || '');
-    setShowKycModal(true);
+    router.push('/kyc');
     return false;
-  }, [loadKycStatus, user, myVendor?.id, fetchMyVendor]);
+  }, [loadKycStatus, user, myVendor?.kyc_status, router]);
 
   useEffect(() => {
     loadKycStatus();
   }, [loadKycStatus]);
-
-  useEffect(() => {
-    if (myVendor?.id) {
-      setKycModalVendorId(myVendor.id);
-    }
-  }, [myVendor?.id]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -178,10 +164,7 @@ export default function JobProfileDetailScreen() {
     await Linking.openURL(profile.cv_url);
   };
 
-  const handleKycSuccess = () => {
-    setShowKycModal(false);
-    loadKycStatus();
-  };
+
 
   if (loading) {
     return (
@@ -278,13 +261,7 @@ export default function JobProfileDetailScreen() {
               : 'Complete your vendor KYC to access CVs.'}
           </Text>
         </View>
-        <VendorKYCModal
-          visible={showKycModal}
-          vendorId={kycModalVendorId || ''}
-          allowUserKycFallback
-          onClose={() => setShowKycModal(false)}
-          onKycUpdated={handleKycSuccess}
-        />
+
       </ScrollView>
     </SafeAreaView>
   );
