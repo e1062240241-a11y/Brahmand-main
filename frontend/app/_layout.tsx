@@ -423,8 +423,9 @@ export default function RootLayout() {
     });
   }, [isLoading, token, isAuthenticated, initPushNotifications]);
 
-  // Synchronize WatermelonDB local database on startup/authentication
+  // Synchronize WatermelonDB local database on startup/authentication (native only)
   useEffect(() => {
+    if (Platform.OS === 'web') return; // WatermelonDB is native-only; skip on web
     if (!isLoading && isAuthenticated && token) {
       console.log('[Sync] Initializing local database sync...');
       syncDatabase()
@@ -432,6 +433,7 @@ export default function RootLayout() {
         .catch((err) => console.warn('[Sync] WatermelonDB sync failed on startup:', err));
     }
   }, [isLoading, isAuthenticated, token]);
+
 
   if (isLoading || !fontsLoaded) {
     return (
