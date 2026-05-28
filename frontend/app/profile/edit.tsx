@@ -54,7 +54,12 @@ export default function EditProfileScreen() {
         setKuldevi(data.kuldevi || '');
         setKuldeviTempleArea(data.kuldevi_temple_area || '');
         setGotra(data.gotra || '');
-        setDateOfBirth(data.date_of_birth || '');
+        if (data.date_of_birth) {
+          const parts = data.date_of_birth.split('-');
+          setDateOfBirth(parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : data.date_of_birth);
+        } else {
+          setDateOfBirth('');
+        }
         setTimeOfBirth(data.time_of_birth || '');
         setPlaceOfBirth(
           data.place_of_birth ||
@@ -75,8 +80,8 @@ export default function EditProfileScreen() {
   }, [dateOfBirth, placeOfBirth, timeOfBirth]);
 
   const validate = () => {
-    if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) {
-      return 'Date of birth must be in YYYY-MM-DD format';
+    if (dateOfBirth && !/^\d{2}\/\d{2}\/\d{4}$/.test(dateOfBirth.trim())) {
+      return 'Date of birth must be in DD/MM/YYYY format';
     }
     if (timeOfBirth && !/^\d{2}:\d{2}$/.test(timeOfBirth.trim())) {
       return 'Time of birth must be in HH:MM format';
@@ -177,7 +182,7 @@ export default function EditProfileScreen() {
         kuldevi: kuldevi.trim() || undefined,
         kuldevi_temple_area: kuldeviTempleArea.trim() || undefined,
         gotra: gotra.trim() || undefined,
-        date_of_birth: dateOfBirth.trim() || undefined,
+        date_of_birth: dateOfBirth.trim() ? dateOfBirth.trim().split('/').reverse().join('-') : undefined,
         time_of_birth: timeOfBirth.trim() || undefined,
         place_of_birth: placeText || undefined,
         place_of_birth_latitude: lat,
@@ -258,7 +263,7 @@ export default function EditProfileScreen() {
                   label="Date of Birth"
                   value={dateOfBirth}
                   onChangeText={setDateOfBirth}
-                  placeholder="YYYY-MM-DD"
+                  placeholder="DD/MM/YYYY"
                   keyboardType="numbers-and-punctuation"
                 />
                 <Input

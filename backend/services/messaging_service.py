@@ -242,9 +242,13 @@ class MessagingService:
                     "conversation_id": conv["conversation_id"],
                     "user": {
                         "id": other_id,
-                        "sl_id": other_user["sl_id"],
-                        "name": other_user["name"],
-                        "photo": other_user.get("photo")
+                        "sl_id": other_user.get("sl_id"),
+                        "name": other_user.get("name"),
+                        "photo": other_user.get("photo"),
+                        "online_status": other_user.get("online_status"),
+                        "last_seen_at": other_user.get("last_seen_at"),
+                        "last_active": other_user.get("last_active"),
+                        "is_verified": other_user.get("is_verified", False)
                     },
                     "last_message": conv.get("last_message", ""),
                     "last_message_at": conv.get("last_message_at"),
