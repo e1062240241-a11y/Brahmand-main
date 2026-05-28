@@ -4915,10 +4915,8 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
 
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
-
-    if community_id not in user.get('communities', []) and user_id not in community.get('members', []):
-        raise HTTPException(status_code=403, detail="Not authorized to view this chat")
         
+
     chat_id = f"community_{community_id}_{subgroup_type}"
     before_dt = None
     if before_timestamp:
