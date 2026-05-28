@@ -1032,7 +1032,7 @@ const styles = StyleSheet.create({
   sectionTitleText: { fontSize: 22, fontWeight: '900', color: '#2D1400' },
   viewAllSaffronRefined: { color: '#FF6600', fontSize: 16, fontWeight: '800' },
   miniCardsRowPadding: { paddingLeft: 25 },
-  jaapCardContainer: { width: 220, height: 320, marginRight: 22, borderRadius: 32, overflow: 'hidden', elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 15 },
+  jaapCardContainer: { width: 220, height: 320, marginRight: 22, borderRadius: 32, overflow: 'hidden' },
   jaapCardOverlayExact: { flex: 1, padding: 15, justifyContent: 'space-between' },
   jaapCardTopRow: { flexDirection: 'row', justifyContent: 'space-between' },
   exactLiveBadge: { backgroundColor: '#E31E24', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },

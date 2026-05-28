@@ -255,7 +255,7 @@ const PostScreen = () => {
     if (!post) return;
     const mediaUrl = post.media_url || post.mediaUrl || post.image_url || post.imageUrl || '';
     const caption = post.caption || post.description || '';
-    const link = `sanatanlok://post/${post.id}`;
+    const link = `https://brahmand.app/post/${post.id}`;
     const message = `Check this post on Brahmand!${caption ? `\nCaption: ${caption}` : ''}\n\n${link}`;
     try {
       await Share.share({ message, url: link || undefined, title: 'Share via Brahmand' });
@@ -268,7 +268,7 @@ const PostScreen = () => {
     if (!selectedSharePost?.id) return;
     try {
       const Clipboard = await import('expo-clipboard');
-      await Clipboard.setStringAsync(`sanatanlok://post/${selectedSharePost.id}`);
+      await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
       alert('Link copied to clipboard');
       setShareModalVisible(false);
     } catch {

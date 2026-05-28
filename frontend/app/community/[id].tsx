@@ -2210,7 +2210,7 @@ export default function CommunityDetailScreen() {
 
   const handleShareRequest = async (item: any) => {
     try {
-      const deepLink = `sanatanlok://community-request/list?requestId=${item.id}`;
+      const deepLink = `https://brahmand.app/community-request/list?requestId=${item.id}`;
       const typeLabel = (item.request_type || 'Help').toUpperCase();
 
       await Share.share({
@@ -2335,7 +2335,7 @@ export default function CommunityDetailScreen() {
 
   const handleShareCommunity = async () => {
     try {
-      const appLink = `sanatanlok://community/${id}`;
+      const appLink = `https://brahmand.app/community/${id}`;
       await Share.share({
         message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${appLink}`,
       });
@@ -2693,7 +2693,7 @@ export default function CommunityDetailScreen() {
 
   const handleShare = async (postId: string) => {
     try {
-      const appLink = `sanatanlok://community/${id}?postId=${postId}`;
+      const appLink = `https://brahmand.app/community/${id}?postId=${postId}`;
 
       await Share.share({
         message: `Check out this community post on Brahmand!\n\n${appLink}`,

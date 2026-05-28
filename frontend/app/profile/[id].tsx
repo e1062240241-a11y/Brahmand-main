@@ -481,7 +481,7 @@ const UserProfileScreen = () => {
   }, [loadPosts]);
 
   const handleShareExternal = async (post: any) => {
-    const appLink = post?.id ? `sanatanlok://post/${post.id}` : 'sanatanlok://';
+    const appLink = post?.id ? `https://brahmand.app/post/${post.id}` : 'https://brahmand.app/';
     const mediaUrl = post?.media_url || '';
     const caption = post?.caption ? `\nCaption: ${post.caption}` : '';
     const message = `Check this post on Brahmand!${caption}\n\n${appLink}`;
