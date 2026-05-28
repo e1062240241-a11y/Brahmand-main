@@ -391,7 +391,7 @@ export const PostFeedCard = memo(({
               <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
               {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
             </View>
-            <Text style={[styles.timeText, theme === 'light' ? styles.timeTextLight : {}]}>{postTimeText}</Text>
+            <Text style={[styles.timeText, theme === 'light' ? styles.timeTextLight : { color: '#FFFFFF', fontWeight: '900' }]}>{postTimeText}</Text>
           </View>
         </TouchableOpacity>
 
@@ -638,7 +638,7 @@ export const PostFeedCard = memo(({
       {/* Stats Summary */}
       <View style={{ paddingHorizontal: SPACING.md, paddingBottom: 2 }}>
         <Text style={{
-          color: theme === 'light' ? '#000' : '#FFF',
+          color: theme === 'light' ? '#000' : '#FFFFFF',
           fontWeight: '900',
           fontSize: 14
         }}>
@@ -666,7 +666,7 @@ export const PostFeedCard = memo(({
             }}
           >
             <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
-              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFF' }}>
+              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>
                 {post?.username || 'User'} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
               </Text> 
               {isCaptionExpanded ? captionSegments.map((seg, idx) =>
@@ -679,7 +679,7 @@ export const PostFeedCard = memo(({
                     {seg.text}
                   </Text>
                 ) : (
-                  <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#EEE', fontWeight: '700' }}>{seg.text}</Text>
+                  <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#FFFFFF', fontWeight: '900' }}>{seg.text}</Text>
                 )
               ) : collapsedCaption}
             </Text>
@@ -695,7 +695,7 @@ export const PostFeedCard = memo(({
       {viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} {t('language') === 'hi' ? 'व्यूज' : 'views'}</Text>}
 
       <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
-        <Text style={{ color: theme === 'light' ? '#666' : 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '700' }}>
+        <Text style={{ color: theme === 'light' ? '#666' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
           {commentsCount > 0 
             ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)
             : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
@@ -709,7 +709,7 @@ export const PostFeedCard = memo(({
               <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>
                 {comment?.username || 'User'} {comment?.is_verified && <MaterialCommunityIcons name="check-decagram" size={12} color="#FF6B00" style={{ marginRight: 2 }} />}
               </Text> 
-              <Text style={{ color: theme === 'light' ? '#444' : '#DDD', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
+              <Text style={{ color: theme === 'light' ? '#444' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>{comment?.text || ''}</Text>
             </Text>
           ))}
         </View>

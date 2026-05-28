@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-  version: 3,
+  version: 4,
   tables: [
     tableSchema({
       name: 'users',
@@ -69,6 +69,34 @@ export default appSchema({
         { name: 'name', type: 'string' },
         { name: 'description', type: 'string', isOptional: true },
         { name: 'photo', type: 'string', isOptional: true },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ]
+    }),
+    tableSchema({
+      name: 'vendors',
+      columns: [
+        { name: 'vendor_id', type: 'string', isIndexed: true },
+        { name: 'owner_id', type: 'string' },
+        { name: 'business_name', type: 'string' },
+        { name: 'owner_name', type: 'string' },
+        { name: 'years_in_business', type: 'number' },
+        { name: 'categories', type: 'string' },
+        { name: 'full_address', type: 'string' },
+        { name: 'location_link', type: 'string', isOptional: true },
+        { name: 'phone_number', type: 'string' },
+        { name: 'latitude', type: 'number', isOptional: true },
+        { name: 'longitude', type: 'number', isOptional: true },
+        { name: 'photos', type: 'string' },
+        { name: 'business_description', type: 'string', isOptional: true },
+        { name: 'business_gallery_images', type: 'string', isOptional: true },
+        { name: 'menu_items', type: 'string', isOptional: true },
+        { name: 'offers_home_delivery', type: 'boolean', isOptional: true },
+        { name: 'offers_cash_on_delivery', type: 'boolean', isOptional: true },
+        { name: 'business_hours', type: 'string', isOptional: true },
+        { name: 'offers', type: 'string', isOptional: true },
+        { name: 'kyc_status', type: 'string', isOptional: true },
+        { name: 'distance', type: 'number', isOptional: true },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
       ]

@@ -112,18 +112,145 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   loading: false,
   
   fetchVendors: async (params) => {
-    // Stale-While-Revalidate: Only show loading if we don't have cached data
+    // 1. Try to load from WatermelonDB first
+    try {
+      const { database } = require('../database');
+      if (database && database.collections) {
+        const localVendorsCollection = database.collections.get('vendors');
+        if (localVendorsCollection) {
+          const localVendors = await localVendorsCollection.query().fetch();
+          if (localVendors && localVendors.length > 0) {
+            const mappedVendors = localVendors.map((v: any) => ({
+              id: v.vendorId,
+              owner_id: v.ownerId,
+              business_name: v.businessName,
+              owner_name: v.ownerName,
+              years_in_business: v.yearsInBusiness,
+              categories: v.categories,
+              full_address: v.fullAddress,
+              location_link: v.locationLink,
+              phone_number: v.phoneNumber,
+              latitude: v.latitude,
+              longitude: v.longitude,
+              photos: v.photos,
+              business_description: v.businessDescription,
+              business_gallery_images: v.businessGalleryImages,
+              menu_items: v.menuItems,
+              offers_home_delivery: v.offersHomeDelivery,
+              offers_cash_on_delivery: v.offersCashOnDelivery,
+              business_hours: v.businessHours,
+              offers: v.offers,
+              kyc_status: v.kycStatus,
+              distance: v.distance,
+              created_at: v.createdAt ? new Date(v.createdAt).toISOString() : new Date().toISOString()
+            }));
+            set({ vendors: mappedVendors });
+          }
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Failed to load vendors from WatermelonDB:', dbErr);
+    }
+
     if (get().vendors.length === 0) {
       set({ loading: true });
     }
+    
     try {
       const response = await getVendors(params);
-      set({ vendors: response?.data || [] });
+      const fetchedVendors = response?.data || [];
+      set({ vendors: fetchedVendors });
+      
+      // 2. Sync to WatermelonDB
+      try {
+        const { database } = require('../database');
+        if (database && database.collections) {
+          const collection = database.collections.get('vendors');
+          if (collection) {
+            await database.write(async () => {
+              // Get existing
+              const existingRecords = await collection.query().fetch();
+              const existingMap = new Map(existingRecords.map((r: any) => [r.vendorId, r]));
+              
+              const operations: any[] = [];
+              
+              fetchedVendors.forEach((v: any) => {
+                const existing = existingMap.get(v.id);
+                if (existing) {
+                  operations.push(
+                    existing.prepareUpdate((record: any) => {
+                      record.ownerId = v.owner_id;
+                      record.businessName = v.business_name;
+                      record.ownerName = v.owner_name;
+                      record.yearsInBusiness = v.years_in_business;
+                      record.categoriesStr = JSON.stringify(v.categories || []);
+                      record.fullAddress = v.full_address;
+                      record.locationLink = v.location_link;
+                      record.phoneNumber = v.phone_number;
+                      record.latitude = v.latitude;
+                      record.longitude = v.longitude;
+                      record.photosStr = JSON.stringify(v.photos || []);
+                      record.businessDescription = v.business_description;
+                      record.businessGalleryImagesStr = JSON.stringify(v.business_gallery_images || []);
+                      record.menuItemsStr = JSON.stringify(v.menu_items || []);
+                      record.offersHomeDelivery = v.offers_home_delivery;
+                      record.offersCashOnDelivery = v.offers_cash_on_delivery;
+                      record.businessHours = v.business_hours;
+                      record.offers = v.offers;
+                      record.kycStatus = v.kyc_status;
+                      record.distance = v.distance;
+                    })
+                  );
+                  existingMap.delete(v.id);
+                } else {
+                  operations.push(
+                    collection.prepareCreate((record: any) => {
+                      record.vendorId = v.id;
+                      record.ownerId = v.owner_id;
+                      record.businessName = v.business_name;
+                      record.ownerName = v.owner_name;
+                      record.yearsInBusiness = v.years_in_business;
+                      record.categoriesStr = JSON.stringify(v.categories || []);
+                      record.fullAddress = v.full_address;
+                      record.locationLink = v.location_link;
+                      record.phoneNumber = v.phone_number;
+                      record.latitude = v.latitude;
+                      record.longitude = v.longitude;
+                      record.photosStr = JSON.stringify(v.photos || []);
+                      record.businessDescription = v.business_description;
+                      record.businessGalleryImagesStr = JSON.stringify(v.business_gallery_images || []);
+                      record.menuItemsStr = JSON.stringify(v.menu_items || []);
+                      record.offersHomeDelivery = v.offers_home_delivery;
+                      record.offersCashOnDelivery = v.offers_cash_on_delivery;
+                      record.businessHours = v.business_hours;
+                      record.offers = v.offers;
+                      record.kycStatus = v.kyc_status;
+                      record.distance = v.distance;
+                    })
+                  );
+                }
+              });
+              
+              // Delete stale records
+              existingMap.forEach((record: any) => {
+                operations.push(record.prepareDestroyPermanently());
+              });
+              
+              if (operations.length > 0) {
+                await database.batch(...operations);
+              }
+            });
+          }
+        }
+      } catch (dbSyncErr) {
+        console.warn('Failed to sync vendors to WatermelonDB:', dbSyncErr);
+      }
+      
     } catch (error: any) {
       if (error?.response?.status !== 404 && error?.response?.status !== 503) {
         console.warn('Error fetching vendors:', error?.message || error);
       }
-      set({ vendors: [] });
+      // Keep existing vendors on error (which might be from local DB)
     } finally {
       set({ loading: false });
     }
