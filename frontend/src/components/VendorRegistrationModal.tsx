@@ -59,6 +59,9 @@ const getWebMapHtml = (lat: number, lng: number) => `
         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%);
         z-index: 1000; margin-top: -35px; pointer-events: none;
       }
+      .pac-container {
+        z-index: 10000 !important;
+      }
     </style>
   </head>
   <body>
@@ -76,7 +79,7 @@ const getWebMapHtml = (lat: number, lng: number) => `
     </div>
     <script>
       let map;
-      let centerPos = { lat: \${lat}, lng: \${lng} };
+      let centerPos = { lat: ${lat}, lng: ${lng} };
       
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
@@ -85,6 +88,16 @@ const getWebMapHtml = (lat: number, lng: number) => `
           disableDefaultUI: true,
           zoomControl: true,
         });
+
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              map.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
+            },
+            () => {},
+            { timeout: 5000 }
+          );
+        }
 
         const input = document.getElementById('search-input');
         const searchBox = new google.maps.places.SearchBox(input);
@@ -144,6 +157,8 @@ const getWebMapHtml = (lat: number, lng: number) => `
   </body>
 </html>
 `;
+
+const WEB_MAP_HTML_DEFAULT = getWebMapHtml(19.0760, 72.8777);
 
 interface VendorRegistrationModalProps {
   visible: boolean;
@@ -219,10 +234,18 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Unavailable', 'Map functionality is currently unavailable.');
       return;
     }
+    
+    // Open immediately to prevent blocking UI
+    setMapPickerVisible(true);
+
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
+        const locationPromise = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const timeoutPromise = new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
+        
+        const location: any = await Promise.race([locationPromise, timeoutPromise]);
+        
         setMapRegion({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
@@ -230,12 +253,11 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           longitudeDelta: 0.01,
         });
       } else {
-        setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
+        if (!mapRegion) setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
       }
     } catch (e) {
-      setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
+      if (!mapRegion) setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
     }
-    setMapPickerVisible(true);
   };
 
   const handleMapConfirm = async () => {
@@ -584,7 +606,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
               {React.createElement('iframe', {
                 title: 'Web Map Picker',
-                srcDoc: getWebMapHtml(mapRegion?.latitude ?? 19.076, mapRegion?.longitude ?? 72.8777),
+                srcDoc: WEB_MAP_HTML_DEFAULT,
                 style: {
                   width: '100%',
                   height: '100%',
@@ -608,6 +630,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 <GooglePlacesAutocomplete
                   placeholder="Search for location"
                   fetchDetails={true}
+                  keyboardShouldPersistTaps="handled"
                   onPress={(data, details = null) => {
                     if (details?.geometry?.location) {
                       setMapRegion({
@@ -623,7 +646,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     language: 'en',
                   }}
                   styles={{
-                    container: { flex: 0 },
+                    container: { flex: 1 },
+                    listView: { position: 'absolute', top: 50, backgroundColor: 'white', borderRadius: 8, elevation: 5, zIndex: 20, width: '100%' },
                     textInput: { height: 44, borderRadius: 8, paddingHorizontal: 12, backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
                   }}
                 />
