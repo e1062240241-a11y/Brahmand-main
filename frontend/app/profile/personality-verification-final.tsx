@@ -17,10 +17,12 @@ import { usePersonalityStore } from '../../src/store/personalityStore';
 import axios from 'axios'; // Import axios for API requests
 import { API_URL } from '../../src/services/api';
 import { COLORS } from '../../src/constants/theme';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
 
 export default function PersonalityFinalScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { data, resetData } = usePersonalityStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,7 +33,7 @@ export default function PersonalityFinalScreen() {
     setIsSubmitting(true);
     try {
       const authToken = await AsyncStorage.getItem('auth_token');
-      if (!authToken) throw new Error('Session expired. Please login again.');
+      if (!authToken) throw new Error(t('language') === 'hi' ? 'सत्र समाप्त हो गया। कृपया पुनः लॉगिन करें।' : 'Session expired. Please login again.');
 
       // Final submission to backend
       console.log('[Final] Submitting application for user:', data.fullName);
@@ -65,18 +67,30 @@ export default function PersonalityFinalScreen() {
       router.replace('/profile/personality-verification-success');
     } catch (error: any) {
       console.error('[Final] Submission failed:', error);
-      const errorMsg = error.response?.data?.detail || error.message || 'Something went wrong while submitting your application.';
-      Alert.alert('Submission Failed', errorMsg);
+      const errorMsg = error.response?.data?.detail || error.message || (t('language') === 'hi' ? 'आपका आवेदन सबमिट करते समय कुछ गलत हो गया।' : 'Something went wrong while submitting your application.');
+      Alert.alert(t('language') === 'hi' ? 'सबमिशन विफल' : 'Submission Failed', errorMsg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const steps = [
-    { icon: 'person-outline', text: 'We will verify your information' },
-    { icon: 'call-outline', text: 'You may be contacted for additional details' },
-    { icon: 'shield-checkmark-outline', text: 'Your application will be reviewed by our verification team' },
-    { icon: 'notifications-outline', text: 'You will be notified once your application is approved' },
+    { 
+      icon: 'person-outline', 
+      text: t('language') === 'hi' ? 'हम आपकी जानकारी सत्यापित करेंगे' : 'We will verify your information' 
+    },
+    { 
+      icon: 'call-outline', 
+      text: t('language') === 'hi' ? 'अतिरिक्त विवरण के लिए आपसे संपर्क किया जा सकता है' : 'You may be contacted for additional details' 
+    },
+    { 
+      icon: 'shield-checkmark-outline', 
+      text: t('language') === 'hi' ? 'आपके आवेदन की समीक्षा हमारी सत्यापन टीम द्वारा की जाएगी' : 'Your application will be reviewed by our verification team' 
+    },
+    { 
+      icon: 'notifications-outline', 
+      text: t('language') === 'hi' ? 'आपका आवेदन स्वीकृत होने पर आपको सूचित किया जाएगा' : 'You will be notified once your application is approved' 
+    },
   ];
 
   return (
@@ -100,7 +114,9 @@ export default function PersonalityFinalScreen() {
           </View>
 
           {/* Title - Exact wording from reference */}
-          <Text style={styles.mainTitle}>After you submit</Text>
+          <Text style={styles.mainTitle}>
+            {t('language') === 'hi' ? 'सबमिट करने के बाद' : 'After you submit'}
+          </Text>
           
           {/* List Items - Exact icons and spacing from reference */}
           <View style={styles.stepsContainer}>
@@ -125,7 +141,9 @@ export default function PersonalityFinalScreen() {
             {isSubmitting ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.submitButtonText}>Submit & Continue</Text>
+              <Text style={styles.submitButtonText}>
+                {t('language') === 'hi' ? 'सबमिट करें और जारी रखें' : 'Submit & Continue'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>

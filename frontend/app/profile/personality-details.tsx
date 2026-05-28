@@ -17,10 +17,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePersonalityStore } from '../../src/store/personalityStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
 
 export default function PersonalityDetailsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { level } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -68,6 +70,32 @@ export default function PersonalityDetailsScreen() {
     router.back();
   };
 
+  const getGenderText = (gender: string) => {
+    if (gender === 'Male') return t('language') === 'hi' ? 'पुरुष' : 'Male';
+    if (gender === 'Female') return t('language') === 'hi' ? 'महिला' : 'Female';
+    if (gender === 'Other') return t('language') === 'hi' ? 'अन्य' : 'Other';
+    if (gender === 'Prefer not to say') return t('language') === 'hi' ? 'बताना नहीं चाहते' : 'Prefer not to say';
+    return gender;
+  };
+
+  const getMonthText = (month: string) => {
+    const monthsHi: { [key: string]: string } = {
+      'January': 'जनवरी', 'February': 'फ़रवरी', 'March': 'मार्च', 'April': 'अप्रैल',
+      'May': 'मई', 'June': 'जून', 'July': 'जुलाई', 'August': 'अगस्त',
+      'September': 'सितंबर', 'October': 'अक्टूबर', 'November': 'नवंबर', 'December': 'दिसंबर'
+    };
+    return t('language') === 'hi' ? (monthsHi[month] || month) : month;
+  };
+
+  const getFormattedDob = (dobString: string) => {
+    if (!dobString) return '';
+    const parts = dobString.split(' ');
+    if (parts.length === 3) {
+      return `${parts[0]} ${getMonthText(parts[1])} ${parts[2]}`;
+    }
+    return dobString;
+  };
+
   const handleDateConfirm = () => {
     setFormData({ ...formData, dob: `${dateParts.day} ${dateParts.month} ${dateParts.year}` });
     setShowDatePicker(false);
@@ -75,11 +103,12 @@ export default function PersonalityDetailsScreen() {
 
   const validate = () => {
     const newErrors: any = {};
-    if (!formData.fullName) newErrors.fullName = 'Required';
-    if (!formData.dob) newErrors.dob = 'Required';
-    if (!formData.gender) newErrors.gender = 'Required';
-    if (!formData.mobile) newErrors.mobile = 'Required';
-    if (!formData.city) newErrors.city = 'Required';
+    const reqText = t('language') === 'hi' ? 'आवश्यक' : 'Required';
+    if (!formData.fullName) newErrors.fullName = reqText;
+    if (!formData.dob) newErrors.dob = reqText;
+    if (!formData.gender) newErrors.gender = reqText;
+    if (!formData.mobile) newErrors.mobile = reqText;
+    if (!formData.city) newErrors.city = reqText;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -115,17 +144,23 @@ export default function PersonalityDetailsScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.mainTitle}>Personal Details</Text>
-            <Text style={styles.subtitle}>Please enter your personal information.</Text>
+            <Text style={styles.mainTitle}>
+              {t('language') === 'hi' ? 'व्यक्तिगत विवरण' : 'Personal Details'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {t('language') === 'hi' ? 'कृपया अपनी व्यक्तिगत जानकारी दर्ज करें।' : 'Please enter your personal information.'}
+            </Text>
 
             <View style={styles.form}>
               {/* Full Name */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Full Name <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'पूरा नाम' : 'Full Name'} <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={[styles.inputWrapper, errors.fullName && styles.inputError]}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter your full name"
+                    placeholder={t('language') === 'hi' ? 'अपना पूरा नाम दर्ज करें' : 'Enter your full name'}
                     placeholderTextColor="#999"
                     value={formData.fullName}
                     onChangeText={(val) => setFormData({ ...formData, fullName: val })}
@@ -135,13 +170,15 @@ export default function PersonalityDetailsScreen() {
 
               {/* Date of Birth */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Date of Birth <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'जन्म तिथि' : 'Date of Birth'} <Text style={styles.required}>*</Text>
+                </Text>
                 <TouchableOpacity 
                   style={[styles.inputWrapper, errors.dob && styles.inputError]}
                   onPress={() => setShowDatePicker(true)}
                 >
                   <Text style={[styles.inputText, !formData.dob && styles.placeholderText]}>
-                    {formData.dob || 'Select date'}
+                    {getFormattedDob(formData.dob) || (t('language') === 'hi' ? 'तिथि चुनें' : 'Select date')}
                   </Text>
                   <Ionicons name="calendar-outline" size={20} color="#2D2D2D" />
                 </TouchableOpacity>
@@ -149,13 +186,15 @@ export default function PersonalityDetailsScreen() {
 
               {/* Gender */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Gender <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'लिंग' : 'Gender'} <Text style={styles.required}>*</Text>
+                </Text>
                 <TouchableOpacity 
                   style={[styles.inputWrapper, errors.gender && styles.inputError]}
                   onPress={() => setShowGenderPicker(true)}
                 >
                   <Text style={[styles.inputText, !formData.gender && styles.placeholderText]}>
-                    {formData.gender || 'Select gender'}
+                    {getGenderText(formData.gender) || (t('language') === 'hi' ? 'लिंग चुनें' : 'Select gender')}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color="#2D2D2D" />
                 </TouchableOpacity>
@@ -163,14 +202,16 @@ export default function PersonalityDetailsScreen() {
 
               {/* Mobile Number */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Mobile Number <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'} <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={[styles.inputWrapper, errors.mobile && styles.inputError]}>
                   <View style={styles.countryCode}>
                     <Text style={styles.countryCodeText}>+91</Text>
                   </View>
                   <TextInput
                     style={[styles.input, { flex: 1 }]}
-                    placeholder="Enter your mobile number"
+                    placeholder={t('language') === 'hi' ? 'अपना मोबाइल नंबर दर्ज करें' : 'Enter your mobile number'}
                     placeholderTextColor="#999"
                     keyboardType="phone-pad"
                     value={formData.mobile}
@@ -181,11 +222,13 @@ export default function PersonalityDetailsScreen() {
 
               {/* Email ID */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email ID (Optional)</Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'ईमेल आईडी (वैकल्पिक)' : 'Email ID (Optional)'}
+                </Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter your email id"
+                    placeholder={t('language') === 'hi' ? 'अपनी ईमेल आईडी दर्ज करें' : 'Enter your email id'}
                     placeholderTextColor="#999"
                     keyboardType="email-address"
                     value={formData.email}
@@ -196,13 +239,15 @@ export default function PersonalityDetailsScreen() {
 
               {/* City */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>City <Text style={styles.required}>*</Text></Text>
+                <Text style={styles.label}>
+                  {t('language') === 'hi' ? 'शहर' : 'City'} <Text style={styles.required}>*</Text>
+                </Text>
                 <TouchableOpacity 
                   style={[styles.inputWrapper, errors.city && styles.inputError]}
                   onPress={() => setShowCityPicker(true)}
                 >
                   <Text style={[styles.inputText, !formData.city && styles.placeholderText]}>
-                    {formData.city || 'Select your city'}
+                    {formData.city || (t('language') === 'hi' ? 'अपना शहर चुनें' : 'Select your city')}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color="#2D2D2D" />
                 </TouchableOpacity>
@@ -210,7 +255,9 @@ export default function PersonalityDetailsScreen() {
             </View>
 
             <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-              <Text style={styles.continueButtonText}>Continue</Text>
+              <Text style={styles.continueButtonText}>
+                {t('language') === 'hi' ? 'जारी रखें' : 'Continue'}
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -221,7 +268,9 @@ export default function PersonalityDetailsScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Date of Birth</Text>
+              <Text style={styles.modalTitle}>
+                {t('language') === 'hi' ? 'जन्म तिथि चुनें' : 'Select Date of Birth'}
+              </Text>
               <TouchableOpacity onPress={() => setShowDatePicker(false)}>
                 <Ionicons name="close" size={24} color="#2D2D2D" />
               </TouchableOpacity>
@@ -229,7 +278,9 @@ export default function PersonalityDetailsScreen() {
             
             <View style={styles.datePickerContainer}>
               <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Day</Text>
+                <Text style={styles.pickerLabel}>
+                  {t('language') === 'hi' ? 'दिन' : 'Day'}
+                </Text>
                 <FlatList
                   data={days}
                   renderItem={({ item }) => (
@@ -241,19 +292,25 @@ export default function PersonalityDetailsScreen() {
                 />
               </View>
               <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Month</Text>
+                <Text style={styles.pickerLabel}>
+                  {t('language') === 'hi' ? 'महीना' : 'Month'}
+                </Text>
                 <FlatList
                   data={months}
                   renderItem={({ item }) => (
                     <TouchableOpacity onPress={() => setDateParts({ ...dateParts, month: item })}>
-                      <Text style={[styles.pickerItem, dateParts.month === item && styles.pickerItemActive]}>{item}</Text>
+                      <Text style={[styles.pickerItem, dateParts.month === item && styles.pickerItemActive]}>
+                        {getMonthText(item)}
+                      </Text>
                     </TouchableOpacity>
                   )}
                   keyExtractor={i => i}
                 />
               </View>
               <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Year</Text>
+                <Text style={styles.pickerLabel}>
+                  {t('language') === 'hi' ? 'वर्ष' : 'Year'}
+                </Text>
                 <FlatList
                   data={years}
                   renderItem={({ item }) => (
@@ -267,7 +324,9 @@ export default function PersonalityDetailsScreen() {
             </View>
 
             <TouchableOpacity style={styles.modalConfirmButton} onPress={handleDateConfirm}>
-              <Text style={styles.modalConfirmButtonText}>Confirm Date</Text>
+              <Text style={styles.modalConfirmButtonText}>
+                {t('language') === 'hi' ? 'तिथि की पुष्टि करें' : 'Confirm Date'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -279,7 +338,8 @@ export default function PersonalityDetailsScreen() {
         onClose={() => setShowGenderPicker(false)} 
         options={genderOptions}
         onSelect={(val: string) => setFormData({ ...formData, gender: val })}
-        title="Select Gender"
+        title={t('language') === 'hi' ? 'लिंग चुनें' : 'Select Gender'}
+        getOptionLabel={getGenderText}
       />
 
       {/* City Picker Modal */}
@@ -288,13 +348,13 @@ export default function PersonalityDetailsScreen() {
         onClose={() => setShowCityPicker(false)} 
         options={cityOptions}
         onSelect={(val: string) => setFormData({ ...formData, city: val })}
-        title="Select City"
+        title={t('language') === 'hi' ? 'शहर चुनें' : 'Select City'}
       />
     </View>
   );
 }
 
-const SelectionModal = ({ visible, onClose, options, onSelect, title }: any) => (
+const SelectionModal = ({ visible, onClose, options, onSelect, title, getOptionLabel }: any) => (
   <Modal visible={visible} transparent animationType="slide">
     <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
@@ -315,7 +375,9 @@ const SelectionModal = ({ visible, onClose, options, onSelect, title }: any) => 
                 onClose();
               }}
             >
-              <Text style={styles.optionText}>{item}</Text>
+              <Text style={styles.optionText}>
+                {getOptionLabel ? getOptionLabel(item) : item}
+              </Text>
             </TouchableOpacity>
           )}
         />

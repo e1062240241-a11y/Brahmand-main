@@ -57,7 +57,8 @@ export const translations = {
     privacy: 'Privacy',
     aboutUs: 'About Us',
     location: 'Location',
-    language: 'Language',
+    language: 'en',
+    languageLabel: 'Language',
     communityGuidelines: 'Community Guidelines',
     myCultureGroup: 'My Culture Group',
     logout: 'Logout',
@@ -187,7 +188,8 @@ export const translations = {
     privacy: 'गोपनीयता',
     aboutUs: 'हमारे बारे में',
     location: 'स्थान',
-    language: 'भाषा',
+    language: 'hi',
+    languageLabel: 'भाषा',
     communityGuidelines: 'सामुदायिक दिशानिर्देश',
     myCultureGroup: 'मेरा सांस्कृतिक समूह',
     logout: 'लॉगआउट',
@@ -299,7 +301,10 @@ export const useTranslation = () => {
   const setLanguage = useLanguageStore((state) => state.setLanguage);
   
   const t = (key: keyof typeof translations['en']): string => {
-    return translations[language][key] || translations['en'][key] || String(key);
+    if (key === 'language') {
+      return language;
+    }
+    return (translations[language] as any)[key] || (translations['en'] as any)[key] || String(key);
   };
   
   return { t, language, setLanguage };

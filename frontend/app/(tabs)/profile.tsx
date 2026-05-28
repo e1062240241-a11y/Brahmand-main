@@ -116,15 +116,16 @@ export default function ProfileScreen() {
         { id: 'kyc', icon: 'shield-checkmark', label: t('kycVerification'), route: '/kyc', color: '#FB923C' },
         { id: 'personality_verification', icon: 'ribbon', label: t('personalityVerification'), route: '/profile/personality-verification', color: '#D4AF37' },
         { id: 'notifications', icon: 'notifications', label: t('notifications'), route: '/settings/notifications', color: '#F59E0B' },
-        { id: 'privacy', icon: 'lock-closed', label: t('privacy'), route: '/settings/privacy', disabled: true, subLabel: 'Coming soon', color: '#D97706' },
+        { id: 'privacy', icon: 'lock-closed', label: t('privacy'), route: '/settings/privacy', disabled: true, subLabel: t('language') === 'hi' ? 'जल्द आ रहा है' : 'Coming soon', color: '#D97706' },
       ],
     },
     {
       id: 'preferences',
       title: t('preferences'),
       items: [
-        { id: 'location', icon: 'location', label: t('location'), route: '/settings/location', disabled: true, subLabel: 'Coming soon', color: '#EA580C' },
-        { id: 'language', icon: 'language', label: t('language'), value: language === 'en' ? t('english') : t('hindi'), disabled: false, color: '#B45309' },
+        { id: 'about', icon: 'information-circle', label: t('aboutUs'), route: '/settings/guidelines', color: '#C2410C' },
+        { id: 'location', icon: 'location', label: t('location'), route: '/settings/location', disabled: true, subLabel: t('language') === 'hi' ? 'जल्द आ रहा है' : 'Coming soon', color: '#EA580C' },
+        { id: 'language', icon: 'language', label: t('languageLabel'), value: language === 'en' ? t('english') : t('hindi'), disabled: false, color: '#B45309' },
       ],
     },
     {
@@ -132,7 +133,7 @@ export default function ProfileScreen() {
       title: t('support'),
       items: [
         { id: 'guidelines', icon: 'document-text', label: t('communityGuidelines'), route: '/settings/guidelines', color: '#92400E' },
-        { id: 'culture', icon: 'people', label: t('myCultureGroup'), value: user?.cultural_community || 'Not set', color: '#854D0E' },
+        { id: 'culture', icon: 'people', label: t('myCultureGroup'), value: user?.cultural_community || (t('language') === 'hi' ? 'सेट नहीं है' : 'Not set'), color: '#854D0E' },
         { id: 'logout', icon: 'log-out', label: t('logout'), action: 'logout', color: '#B91C1C' },
       ],
     },
@@ -329,7 +330,10 @@ export default function ProfileScreen() {
     if (!url) throw new Error('Upload failed');
     await updateProfile({ [field]: url } as any);
     await fetchProfile(false);
-    showToast(field === 'photo' ? 'Profile photo updated!' : 'Cover photo updated!');
+    showToast(field === 'photo' 
+      ? (t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो अपडेट हो गई!' : 'Profile photo updated!') 
+      : (t('language') === 'hi' ? 'कवर फ़ोटो अपडेट हो गई!' : 'Cover photo updated!')
+    );
   };
 
   const pickProfileImage = async (field: 'photo' | 'cover_photo', source: 'library' | 'camera') => {
@@ -337,7 +341,10 @@ export default function ProfileScreen() {
       if (source === 'camera') {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          Alert.alert('Permission needed', 'Allow camera access to take a photo.');
+          Alert.alert(
+            t('language') === 'hi' ? 'अनुमति की आवश्यकता है' : 'Permission needed', 
+            t('language') === 'hi' ? 'फ़ोटो लेने के लिए कैमरा एक्सेस की अनुमति दें।' : 'Allow camera access to take a photo.'
+          );
           return;
         }
       }
@@ -356,30 +363,36 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error(error);
-      showToast('Failed to upload image');
+      showToast(t('language') === 'hi' ? 'छवि अपलोड करने में विफल' : 'Failed to upload image');
     }
   };
 
   const showImageSourcePicker = (field: 'photo' | 'cover_photo') => {
-    const title = field === 'photo' ? 'Profile photo' : 'Cover photo';
+    const title = field === 'photo' 
+      ? (t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile photo') 
+      : (t('language') === 'hi' ? 'कवर फ़ोटो' : 'Cover photo');
     if (Platform.OS === 'web') {
       pickProfileImage(field, 'library');
       return;
     }
-    Alert.alert(title, 'Choose a source', [
-      { text: 'Gallery', onPress: () => pickProfileImage(field, 'library') },
-      { text: 'Camera', onPress: () => pickProfileImage(field, 'camera') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    Alert.alert(
+      title, 
+      t('language') === 'hi' ? 'स्रोत चुनें' : 'Choose a source', 
+      [
+        { text: t('language') === 'hi' ? 'गैलरी' : 'Gallery', onPress: () => pickProfileImage(field, 'library') },
+        { text: t('language') === 'hi' ? 'कैमरा' : 'Camera', onPress: () => pickProfileImage(field, 'camera') },
+        { text: t('cancel'), style: 'cancel' },
+      ]
+    );
   };
 
   const handleRemoveProfilePhoto = async () => {
     try {
       await updateProfile({ photo: '' } as any);
       await fetchProfile(false);
-      showToast('Profile photo removed');
+      showToast(t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो हटा दी गई' : 'Profile photo removed');
     } catch {
-      showToast('Could not remove profile photo');
+      showToast(t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो नहीं हटाई जा सकी' : 'Could not remove profile photo');
     }
   };
 
@@ -389,33 +402,39 @@ export default function ProfileScreen() {
       showImageSourcePicker('photo');
       return;
     }
-    Alert.alert('Profile photo', undefined, [
-      ...(hasPhoto
-        ? [{ text: 'View photo', onPress: () => setAvatarModalVisible(true) }]
-        : []),
-      { text: 'Choose from gallery', onPress: () => pickProfileImage('photo', 'library') },
-      { text: 'Take photo', onPress: () => pickProfileImage('photo', 'camera') },
-      ...(hasPhoto
-        ? [{ text: 'Remove photo', style: 'destructive' as const, onPress: handleRemoveProfilePhoto }]
-        : []),
-      { text: 'Cancel', style: 'cancel' as const },
-    ]);
+    Alert.alert(
+      t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile photo', 
+      undefined, 
+      [
+        ...(hasPhoto
+          ? [{ text: t('language') === 'hi' ? 'फ़ोटो देखें' : 'View photo', onPress: () => setAvatarModalVisible(true) }]
+          : []),
+        { text: t('language') === 'hi' ? 'गैलरी से चुनें' : 'Choose from gallery', onPress: () => pickProfileImage('photo', 'library') },
+        { text: t('language') === 'hi' ? 'फ़ोटो खींचें' : 'Take photo', onPress: () => pickProfileImage('photo', 'camera') },
+        ...(hasPhoto
+          ? [{ text: t('language') === 'hi' ? 'फ़ोटो हटाएं' : 'Remove photo', style: 'destructive' as const, onPress: handleRemoveProfilePhoto }]
+          : []),
+        { text: t('cancel'), style: 'cancel' as const },
+      ]
+    );
   };
 
   const handleShareProfile = async () => {
     const username = profile?.sl_id || user?.sl_id || 'profile';
     const displayName = profile?.name || user?.name || 'User';
-    const message = `Check out ${displayName} (@${username}) on Brahmand!`;
+    const message = t('language') === 'hi' 
+      ? `ब्रह्मांड पर ${displayName} (@${username}) को देखें!`
+      : `Check out ${displayName} (@${username}) on Brahmand!`;
     try {
       await Share.share({
         message,
         url: `https://brahmand.app/profile/${userId}`,
-        title: `${displayName} on Brahmand`,
+        title: t('language') === 'hi' ? `ब्रह्मांड पर ${displayName}` : `${displayName} on Brahmand`,
       });
     } catch (error: any) {
       const msg = String(error?.message || '').toLowerCase();
       if (!msg.includes('cancel') && !msg.includes('dismiss')) {
-        showToast('Could not share profile');
+        showToast(t('language') === 'hi' ? 'प्रोफ़ाइल साझा नहीं की जा सकी' : 'Could not share profile');
       }
     }
   };
@@ -437,9 +456,9 @@ export default function ProfileScreen() {
       await updateProfile({ bio: bioDraft.trim() });
       await fetchProfile(false);
       setShowBioModal(false);
-      showToast('Bio updated');
+      showToast(t('language') === 'hi' ? 'बायो अपडेट हो गया' : 'Bio updated');
     } catch {
-      showToast('Failed to update bio');
+      showToast(t('language') === 'hi' ? 'बायो अपडेट करने में विफल' : 'Failed to update bio');
     } finally {
       setSavingProfileField(false);
     }
@@ -448,7 +467,10 @@ export default function ProfileScreen() {
   const saveLocation = async () => {
     const parts = locationDraft.split(',').map((p) => p.trim()).filter(Boolean);
     if (parts.length < 2) {
-      Alert.alert('Location', 'Enter location as City, State');
+      Alert.alert(
+        t('language') === 'hi' ? 'स्थान' : 'Location', 
+        t('language') === 'hi' ? 'स्थान को शहर, राज्य के रूप में दर्ज करें' : 'Enter location as City, State'
+      );
       return;
     }
     setSavingProfileField(true);
@@ -463,9 +485,9 @@ export default function ProfileScreen() {
       });
       await fetchProfile(false);
       setShowLocationModal(false);
-      showToast('Location updated');
+      showToast(t('language') === 'hi' ? 'स्थान अपडेट हो गया' : 'Location updated');
     } catch {
-      showToast('Failed to update location');
+      showToast(t('language') === 'hi' ? 'स्थान अपडेट करने में विफल' : 'Failed to update location');
     } finally {
       setSavingProfileField(false);
     }
@@ -624,7 +646,7 @@ export default function ProfileScreen() {
         updateUser({ ...user, cultural_community: community });
       }
       setShowCGModal(false);
-      showToast('Culture group updated!');
+      showToast(t('language') === 'hi' ? 'संस्कृति समूह अपडेट हो गया!' : 'Culture group updated!');
     } catch (error: any) {
       console.error('Error updating culture group:', error);
       if (error.response?.data) {
@@ -658,11 +680,11 @@ export default function ProfileScreen() {
     }
 
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
+      t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: performLogout },
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('language') === 'hi' ? 'लॉगआउट' : 'Logout', style: 'destructive', onPress: performLogout },
       ]
     );
   };
@@ -681,29 +703,32 @@ export default function ProfileScreen() {
 
     try {
       await deletePost(postId);
-      showToast('Post deleted successfully');
+      showToast(t('language') === 'hi' ? 'पोस्ट सफलतापूर्वक हटा दी गई' : 'Post deleted successfully');
     } catch (error) {
       console.warn('Failed to delete post:', error);
       setPosts((prev) => (prev.some((item) => item.id === postId) ? prev : [removedPost, ...prev]));
       setPostsCount((prev) => prev + 1);
-      Alert.alert('Unable to delete post', 'Please try again later.');
+      Alert.alert(
+        t('language') === 'hi' ? 'पोस्ट हटाने में असमर्थ' : 'Unable to delete post', 
+        t('language') === 'hi' ? 'कृपया बाद में पुनः प्रयास करें।' : 'Please try again later.'
+      );
     }
   };
 
   const confirmDeletePost = (post: any) => {
     if (Platform.OS === 'web') {
-      if (window.confirm('Delete this post?')) {
+      if (window.confirm(t('language') === 'hi' ? 'इस पोस्ट को हटाएं?' : 'Delete this post?')) {
         handleDeletePost(post);
       }
       return;
     }
 
     Alert.alert(
-      'Delete post',
-      'Are you sure you want to delete this post?',
+      t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post',
+      t('language') === 'hi' ? 'क्या आप सचमुच इस पोस्ट को हटाना चाहते हैं?' : 'Are you sure you want to delete this post?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => handleDeletePost(post) },
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('language') === 'hi' ? 'हटाएं' : 'Delete', style: 'destructive', onPress: () => handleDeletePost(post) },
       ]
     );
   };
@@ -1268,7 +1293,9 @@ export default function ProfileScreen() {
             </View>
           ) : !hasMore && posts.length > 0 ? (
             <View style={styles.endOfFeed}>
-              <Text style={styles.endOfFeedText}>You&apos;ve reached the end</Text>
+              <Text style={styles.endOfFeedText}>
+                {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "You've reached the end"}
+              </Text>
             </View>
           ) : null
         }
@@ -1278,7 +1305,9 @@ export default function ProfileScreen() {
               <View style={styles.emptyIconCircle}>
                 <Ionicons name="camera-outline" size={40} color="#FFFFFF" />
               </View>
-              <Text style={[styles.emptyTitle, { color: '#FFFFFF' }]}>No Posts Yet</Text>
+              <Text style={[styles.emptyTitle, { color: '#FFFFFF' }]}>
+                {t('language') === 'hi' ? 'अभी तक कोई पोस्ट नहीं' : 'No Posts Yet'}
+              </Text>
             </View>
           ) : null
         }
@@ -1366,7 +1395,9 @@ export default function ProfileScreen() {
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
-            <Text style={styles.postDetailTitle}>Posts</Text>
+            <Text style={styles.postDetailTitle}>
+              {t('language') === 'hi' ? 'पोस्ट' : 'Posts'}
+            </Text>
           </View>
           {posts.length > 0 ? (
             <FlatList
@@ -1404,15 +1435,17 @@ export default function ProfileScreen() {
                           onChangeText={setEditedCaption}
                           style={styles.editCaptionInput}
                           multiline
-                          placeholder="Edit caption..."
+                          placeholder={t('language') === 'hi' ? 'कैप्शन संपादित करें...' : 'Edit caption...'}
                           placeholderTextColor="rgba(255,255,255,0.4)"
                         />
                         <View style={styles.editPostActions}>
                           <TouchableOpacity style={styles.cancelEditBtn} onPress={cancelEdit}>
-                            <Text style={styles.cancelEditText}>Cancel</Text>
+                            <Text style={styles.cancelEditText}>{t('cancel')}</Text>
                           </TouchableOpacity>
                           <TouchableOpacity style={styles.saveEditBtn} onPress={savePostEdit}>
-                            <Text style={styles.saveEditBtnText}>Save</Text>
+                            <Text style={styles.saveEditBtnText}>
+                              {t('language') === 'hi' ? 'सहेजें' : 'Save'}
+                            </Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -1472,7 +1505,9 @@ export default function ProfileScreen() {
               <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
                 <View style={styles.sheetHandle} />
                 <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
+                  <Text style={styles.sheetTitle}>
+                    {t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})
+                  </Text>
                   <TouchableOpacity onPress={() => { setCommentModalVisible(false); }}>
                     <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>
@@ -1509,7 +1544,9 @@ export default function ProfileScreen() {
                   ListEmptyComponent={
                     <View style={styles.emptyComments}>
                       <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-                      <Text style={styles.emptyCommentsText}>No comments yet. Be the first!</Text>
+                      <Text style={styles.emptyCommentsText}>
+                        {t('language') === 'hi' ? 'अभी तक कोई टिप्पणी नहीं। पहले बनें!' : 'No comments yet. Be the first!'}
+                      </Text>
                     </View>
                   }
                   contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
@@ -1521,7 +1558,7 @@ export default function ProfileScreen() {
                   <MentionInput
                     value={commentText}
                     onChangeText={setCommentText}
-                    placeholder="Add a comment..."
+                    placeholder={t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...'}
                     multiline
                     inputStyle={styles.commentInput}
                   />
@@ -1532,7 +1569,9 @@ export default function ProfileScreen() {
                     <Text style={[
                       styles.commentPostButton,
                       (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
-                    ]}>Post</Text>
+                    ]}>
+                      {t('language') === 'hi' ? 'पोस्ट करें' : 'Post'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1546,7 +1585,9 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.cgModalContent}>
             <View style={styles.cgModalHeader}>
-              <Text style={styles.cgModalTitle}>Select Culture Group</Text>
+              <Text style={styles.cgModalTitle}>
+                {t('language') === 'hi' ? 'संस्कृति समूह चुनें' : 'Select Culture Group'}
+              </Text>
               <TouchableOpacity onPress={() => setShowCGModal(false)}>
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
@@ -1555,7 +1596,9 @@ export default function ProfileScreen() {
             {(userCG?.change_count ?? 0) >= 2 && (
               <View style={styles.limitReachedContainer}>
                 <Ionicons name="alert-circle" size={20} color="#991B1B" />
-                <Text style={styles.limitReachedText}>Change limit reached. You cannot change your culture group again.</Text>
+                <Text style={styles.limitReachedText}>
+                  {t('language') === 'hi' ? 'परिवर्तन सीमा समाप्त। आप दोबारा अपना संस्कृति समूह नहीं बदल सकते।' : 'Change limit reached. You cannot change your culture group again.'}
+                </Text>
               </View>
             )}
 
@@ -1563,7 +1606,7 @@ export default function ProfileScreen() {
               <Ionicons name="search" size={20} color={COLORS.textLight} />
               <TextInput
                 style={styles.cgSearchInput}
-                placeholder="Search culture groups..."
+                placeholder={t('language') === 'hi' ? 'संस्कृति समूह खोजें...' : 'Search culture groups...'}
                 placeholderTextColor={COLORS.textLight}
                 value={cgSearch}
                 onChangeText={(text) => {
@@ -1588,7 +1631,10 @@ export default function ProfileScreen() {
                     ]}
                     onPress={() => {
                       if ((userCG?.change_count ?? 0) >= 2 && userCG?.cultural_community !== item) {
-                        Alert.alert("Limit Reached", "You have already reached the limit for changing your culture group.");
+                        Alert.alert(
+                          t('language') === 'hi' ? 'सीमा समाप्त' : 'Limit Reached',
+                          t('language') === 'hi' ? 'आप अपने संस्कृति समूह को बदलने की सीमा तक पहले ही पहुँच चुके हैं।' : 'You have already reached the limit for changing your culture group.'
+                        );
                         return;
                       }
                       handleSelectCG(item);
@@ -1607,7 +1653,9 @@ export default function ProfileScreen() {
                 )}
                 style={styles.cgList}
                 ListEmptyComponent={
-                  <Text style={styles.emptyText}>No communities found</Text>
+                  <Text style={styles.emptyText}>
+                    {t('language') === 'hi' ? 'कोई समुदाय नहीं मिला' : 'No communities found'}
+                  </Text>
                 }
               />
             )}
@@ -1691,22 +1739,28 @@ export default function ProfileScreen() {
       <Modal visible={showBioModal} transparent animationType="fade">
         <View style={styles.editFieldOverlay}>
           <View style={styles.editFieldCard}>
-            <Text style={styles.editFieldTitle}>Edit bio</Text>
+            <Text style={styles.editFieldTitle}>
+              {t('language') === 'hi' ? 'बायो संपादित करें' : 'Edit bio'}
+            </Text>
             <TextInput
               value={bioDraft}
               onChangeText={setBioDraft}
               style={styles.editFieldInput}
-              placeholder="Write something about you..."
+              placeholder={t('language') === 'hi' ? 'अपने बारे में कुछ लिखें...' : 'Write something about you...'}
               placeholderTextColor="#888"
               multiline
               maxLength={500}
             />
             <View style={styles.editFieldActions}>
               <TouchableOpacity onPress={() => setShowBioModal(false)}>
-                <Text style={styles.editFieldCancel}>Cancel</Text>
+                <Text style={styles.editFieldCancel}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={saveBio} disabled={savingProfileField}>
-                <Text style={styles.editFieldSave}>{savingProfileField ? 'Saving...' : 'Save'}</Text>
+                <Text style={styles.editFieldSave}>
+                  {savingProfileField 
+                    ? (t('language') === 'hi' ? 'सहेज रहे हैं...' : 'Saving...') 
+                    : (t('language') === 'hi' ? 'सहेजें' : 'Save')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1716,7 +1770,9 @@ export default function ProfileScreen() {
       <Modal visible={showLocationModal} transparent animationType="fade">
         <View style={styles.editFieldOverlay}>
           <View style={styles.editFieldCard}>
-            <Text style={styles.editFieldTitle}>Edit location</Text>
+            <Text style={styles.editFieldTitle}>
+              {t('language') === 'hi' ? 'स्थान संपादित करें' : 'Edit location'}
+            </Text>
             <TextInput
               value={locationDraft}
               onChangeText={setLocationDraft}
@@ -1726,10 +1782,14 @@ export default function ProfileScreen() {
             />
             <View style={styles.editFieldActions}>
               <TouchableOpacity onPress={() => setShowLocationModal(false)}>
-                <Text style={styles.editFieldCancel}>Cancel</Text>
+                <Text style={styles.editFieldCancel}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={saveLocation} disabled={savingProfileField}>
-                <Text style={styles.editFieldSave}>{savingProfileField ? 'Saving...' : 'Save'}</Text>
+                <Text style={styles.editFieldSave}>
+                  {savingProfileField 
+                    ? (t('language') === 'hi' ? 'सहेज रहे हैं...' : 'Saving...') 
+                    : (t('language') === 'hi' ? 'सहेजें' : 'Save')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

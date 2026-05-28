@@ -69,7 +69,7 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
 const MANTRA_BG_AUDIO: Record<string, any> = {
   gayatri: require('../../../assets/audio/audio ekant/Gayatri Mantra.m4a.mp4'),
   hanuman: require('../../../assets/audio/audio ekant/Hanuman chalisa.mp3'),
-  krishna: require('../../../assets/audio/audio ekant/eisenkern1982-waterfall-176958.mp3'),
+  krishna: require('../../../assets/audio/audio ekant/Krishna jaap.m4a.mp4'),
   shiva: require('../../../assets/audio/audio ekant/Final Om Namah Shivaay 2026-05-23 17_09.m4a.mp4'),
   mrityunjaya: require('../../../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
   ganesh: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
@@ -333,7 +333,7 @@ export default function LiveJaapRoomView() {
   const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
   const agoraJoinedRef = useRef(false);
   
-  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri);
+  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 50 });
   const audioStatus = useAudioPlayerStatus(bgPlayer);
 
 
@@ -497,6 +497,8 @@ export default function LiveJaapRoomView() {
         totalDuration = 31.068;
       } else if (mantraType === 'shiva') {
         totalDuration = 8.48; // 8.48s loop contains 1 main chant + instrumental tail, so 1 loop = 1 count
+      } else if (mantraType === 'krishna') {
+        totalDuration = 11.385; // 22.77s / 2 repetitions
       } else {
         const wordDurations = WORDS.map(w => (w.length > 7 ? 3.0 : 1.2));
         totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
@@ -557,7 +559,7 @@ export default function LiveJaapRoomView() {
           } else {
             const status = getCurrentOtherJaapStatus(new Date(), mantraType);
             if (status.isActive) {
-              const totalDuration = mantraType === 'gayatri' ? 31.068 : 8.48;
+              const totalDuration = mantraType === 'gayatri' ? 31.068 : (mantraType === 'krishna' ? 22.77 : 8.48);
               expected = status.elapsedSeconds % totalDuration;
             }
           }
@@ -597,7 +599,7 @@ export default function LiveJaapRoomView() {
           const current = bgPlayer.currentTime || 0;
           const diff = Math.abs(current - expected);
           
-          if (!hasInitiallySynced || diff > 0.5) {
+          if (!hasInitiallySynced || diff > 1.5) {
             bgPlayer.seekTo(expected);
             hasInitiallySynced = true;
           }
@@ -609,7 +611,7 @@ export default function LiveJaapRoomView() {
           const current = bgPlayer.currentTime || 0;
           const diff = Math.abs(current - expected);
           
-          if (!hasInitiallySynced || diff > 0.5) {
+          if (!hasInitiallySynced || diff > 1.5) {
             bgPlayer.seekTo(expected);
             hasInitiallySynced = true;
           }
@@ -617,20 +619,45 @@ export default function LiveJaapRoomView() {
       } else if (mantraType === 'shiva') {
         const status = getCurrentOtherJaapStatus(new Date(), mantraType);
         if (status.isActive) {
-          const expected = status.elapsedSeconds % 8.48;
-          const current = bgPlayer.currentTime || 0;
-          const diff = Math.abs(current - expected);
-          
-          if (!hasInitiallySynced || diff > 0.5) {
-            bgPlayer.seekTo(expected);
-            hasInitiallySynced = true;
-          }
+           const expected = status.elapsedSeconds % 8.48;
+           const current = bgPlayer.currentTime || 0;
+           const diff = Math.abs(current - expected);
+           
+           if (!hasInitiallySynced || diff > 1.5) {
+             bgPlayer.seekTo(expected);
+             hasInitiallySynced = true;
+           }
+        }
+      } else if (mantraType === 'krishna') {
+        const status = getCurrentOtherJaapStatus(new Date(), mantraType);
+        if (status.isActive) {
+           const expected = status.elapsedSeconds % 22.77;
+           const current = bgPlayer.currentTime || 0;
+           const diff = Math.abs(current - expected);
+           
+           if (!hasInitiallySynced || diff > 1.5) {
+             bgPlayer.seekTo(expected);
+             hasInitiallySynced = true;
+           }
         }
       }
     }, 1500);
     
     return () => clearInterval(syncTimer);
   }, [bgPlayer, mantraType]);
+
+  // Explicit unmount cleanup for native background audio player
+  useEffect(() => {
+    return () => {
+      if (bgPlayer) {
+        try {
+          bgPlayer.pause();
+        } catch (e) {
+          console.warn('Failed to pause bgPlayer on unmount:', e);
+        }
+      }
+    };
+  }, [bgPlayer]);
 
   useEffect(() => {
     const initAudioMode = async () => {

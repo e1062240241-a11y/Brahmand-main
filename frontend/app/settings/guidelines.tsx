@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useTranslation } from '../../src/utils/i18n';
 
 const GUIDELINES = [
   {
@@ -49,6 +50,7 @@ const GUIDELINES = [
 ];
 
 export default function GuidelinesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const handleBack = useCallback(() => {
@@ -64,6 +66,48 @@ export default function GuidelinesScreen() {
     return () => subscription.remove();
   }, [handleBack]);
 
+  const getGuidelineTranslation = (index: number) => {
+    const hiData = [
+      {
+        title: 'सनातन धर्म परंपराओं का सम्मान करें',
+        description: 'सनातन धर्म की शिक्षाओं, अनुष्ठानों और परंपराओं का आदर और सम्मान करें। यह समुदाय हिंदू संस्कृति के संरक्षण और प्रचार के लिए समर्पित है।',
+      },
+      {
+        title: 'हिंदू विरोधी या अपमानजनक सामग्री नहीं',
+        description: 'हिंदू धर्म, देवताओं, शास्त्रों या प्रथाओं का अनादर, मज़ाक उड़ाने या हमला करने वाली सामग्री सख्त वर्जित है।',
+      },
+      {
+        title: 'धार्मिक हमले नहीं',
+        description: 'किसी भी धर्म या धार्मिक समुदाय के खिलाफ हमलों में शामिल न हों। सद्भाव और आपसी सम्मान बनाए रखें।',
+      },
+      {
+        title: 'मंदिरों और भक्तों का सम्मान करें',
+        description: 'मंदिरों, पुजारियों और साथी भक्तों के प्रति सम्मान दिखाएं। मंदिरों के बारे में भ्रामक या गलत जानकारी साझा न करें।',
+      },
+      {
+        title: 'मॉडरेटर के निर्देशों का पालन करें',
+        description: 'समुदाय मॉडरेटर सकारात्मक माहौल बनाए रखने में मदद करते हैं। उनके मार्गदर्शन और निर्णयों का पालन करें।',
+      },
+      {
+        title: 'सकारात्मक बातचीत',
+        description: 'सार्थक चर्चाओं में शामिल हों। अन्य सदस्यों के खिलाफ स्पैम, उत्पीड़न और व्यक्तिगत हमलों से बचें।',
+      },
+      {
+        title: 'प्रामाणिक जानकारी',
+        description: 'आयोजनों, मंदिरों और धार्मिक मामलों के बारे में केवल सत्यापित और प्रामाणिक जानकारी साझा करें।',
+      },
+      {
+        title: 'गोपनीयता और सुरक्षा',
+        description: 'दूसरों की गोपनीयता का सम्मान करें। सहमति के बिना अन्य सदस्यों की व्यक्तिगत जानकारी साझा न करें।',
+      },
+    ];
+    
+    if (t('language') === 'hi') {
+      return hiData[index] || GUIDELINES[index];
+    }
+    return GUIDELINES[index];
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -71,39 +115,50 @@ export default function GuidelinesScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Community Guidelines</Text>
+        <Text style={styles.headerTitle}>
+          {t('language') === 'hi' ? 'समुदाय के नियम' : 'Community Guidelines'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Introduction */}
         <View style={styles.introCard}>
-          <Text style={styles.introTitle}>Welcome to Sanatan Lok</Text>
+          <Text style={styles.introTitle}>
+            {t('language') === 'hi' ? 'सनातन लोक में आपका स्वागत है' : 'Welcome to Sanatan Lok'}
+          </Text>
           <Text style={styles.introText}>
-            These guidelines help us maintain a respectful and positive community for all devotees. By using Sanatan Lok, you agree to follow these guidelines.
+            {t('language') === 'hi' 
+              ? 'ये नियम हमें सभी भक्तों के लिए एक सम्मानजनक और सकारात्मक समुदाय बनाए रखने में मदद करते हैं। सनातन लोक का उपयोग करके, आप इन नियमों का पालन करने के लिए सहमत हैं।' 
+              : 'These guidelines help us maintain a respectful and positive community for all devotees. By using Sanatan Lok, you agree to follow these guidelines.'}
           </Text>
         </View>
 
         {/* Guidelines List */}
         <View style={styles.guidelinesContainer}>
-          {GUIDELINES.map((guideline, index) => (
-            <View key={index} style={styles.guidelineCard}>
-              <View style={styles.guidelineIcon}>
-                <Ionicons name={guideline.icon as any} size={24} color={COLORS.primary} />
+          {GUIDELINES.map((guideline, index) => {
+            const translated = getGuidelineTranslation(index);
+            return (
+              <View key={index} style={styles.guidelineCard}>
+                <View style={styles.guidelineIcon}>
+                  <Ionicons name={guideline.icon as any} size={24} color={COLORS.primary} />
+                </View>
+                <View style={styles.guidelineContent}>
+                  <Text style={styles.guidelineTitle}>{translated.title}</Text>
+                  <Text style={styles.guidelineDescription}>{translated.description}</Text>
+                </View>
               </View>
-              <View style={styles.guidelineContent}>
-                <Text style={styles.guidelineTitle}>{guideline.title}</Text>
-                <Text style={styles.guidelineDescription}>{guideline.description}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Footer Note */}
         <View style={styles.footerCard}>
           <Ionicons name="information-circle" size={24} color={COLORS.warning} />
           <Text style={styles.footerText}>
-            Violation of these guidelines may result in content removal, account suspension, or permanent ban. If you see content that violates these guidelines, please report it.
+            {t('language') === 'hi' 
+              ? 'इन नियमों के उल्लंघन के परिणामस्वरूप सामग्री को हटाया जा सकता है, खाता निलंबित किया जा सकता है, या स्थायी प्रतिबंध लगाया जा सकता है। यदि आप ऐसी सामग्री देखते हैं जो इन नियमों का उल्लंघन करती है, तो कृपया इसकी रिपोर्ट करें।' 
+              : 'Violation of these guidelines may result in content removal, account suspension, or permanent ban. If you see content that violates these guidelines, please report it.'}
           </Text>
         </View>
 

@@ -383,6 +383,19 @@ const EkantJaapPage = () => {
         }
     }, [player, isRunning, isAudioEnabled]);
 
+    // Clean up player on unmount to prevent audio leaks
+    useEffect(() => {
+        return () => {
+            if (player) {
+                try {
+                    player.pause();
+                } catch (e) {
+                    console.warn('Failed to pause player on unmount', e);
+                }
+            }
+        };
+    }, [player]);
+
     useEffect(() => {
         if (!player || !isKaraokeMode) return;
         if (hasAutoPlayedRef.current) return;
