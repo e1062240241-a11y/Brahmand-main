@@ -1946,7 +1946,7 @@ export default function HomeScreen() {
                 }}
                 scrollEventThrottle={16}
               >
-                <TouchableOpacity activeOpacity={0.95} style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}>
+                <View style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]}>
                   <ImageBackground source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                     <LinearGradient 
                       colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']} 
@@ -2030,9 +2030,9 @@ export default function HomeScreen() {
                       </View>
                     </LinearGradient>
                   </ImageBackground>
-                </TouchableOpacity>
+                </View>
 
-                <TouchableOpacity activeOpacity={0.95} style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]} onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}>
+                <View style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]}>
                   <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                     <LinearGradient 
                       colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']} 
@@ -2116,7 +2116,7 @@ export default function HomeScreen() {
                       </View>
                     </LinearGradient>
                   </ImageBackground>
-                </TouchableOpacity>
+                </View>
               </ScrollView>
               
               <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, zIndex: 10 }}>
@@ -2409,15 +2409,11 @@ export default function HomeScreen() {
                         <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
                       </View>
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>FOOD SHARING</Text>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                          {localName}
+                          {realGroupName}
                         </Text>
-                        <View style={styles.miniCardBottomRow}>
-                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} members</Text>
-                          <View style={styles.sevaBadgeMini}>
-                            <Text style={styles.sevaBadgeTextMini}>Seva</Text>
-                          </View>
-                        </View>
+                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} members</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                     </TouchableOpacity>

@@ -1219,7 +1219,16 @@ export default function CommunityDetailScreen() {
 
       let finalPosts: any[] = [];
       setCommunityPosts((prev: any[]) => {
-        const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
+        const serverIds = new Set([
+          ...formattedMsgs.map((p: any) => p.id),
+          ...recentStateMsgs.map((p: any) => p.id),
+          ...olderStateMsgs.map((p: any) => p.id),
+          ...recentNationalMsgs.map((p: any) => p.id),
+          ...olderNationalMsgs.map((p: any) => p.id)
+        ]);
+
+        // Keep local optimistic posts (either pending with 'post-' ID, or completed but not yet in server fetch)
+        const localPosts = prev.filter((p: any) => (String(p.id).startsWith('post-') || p.isUniversal) && !serverIds.has(p.id));
         const seenIds = new Set(localPosts.map((p: any) => p.id));
 
         const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id));
@@ -2603,6 +2612,9 @@ export default function CommunityDetailScreen() {
       sevaDetails: index === 0 ? (sevaDetails || undefined) : undefined,
       isUniversal: true, // Flag to show in general Feed
       sender_id: user?.id, // Track ownership of local posts
+      isCommunityMsg: true,
+      subgroupType: community?.type === 'state' ? 'state' : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city'),
+      communityId: id as string,
     }));
 
     setCommunityPosts(prev => {
@@ -2752,7 +2764,7 @@ export default function CommunityDetailScreen() {
       avatar: user?.photo,
     };
 
-    setActiveComments(prev => [...prev, optimisticComment]);
+    setActiveComments(prev => [optimisticComment, ...prev]);
     setCommentText('');
 
     try {

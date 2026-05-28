@@ -4964,8 +4964,7 @@ async def toggle_community_message_like(
     user_id = token_data['user_id']
     chat_id = f"community_{community_id}_{subgroup_type}"
     
-    messages = await db.get_chat_messages(chat_id, 100)
-    msg = next((m for m in messages if m.get('id') == message_id), None)
+    msg = await db.get_chat_message(chat_id, message_id)
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
@@ -5043,8 +5042,7 @@ async def add_community_message_comment(
     user_id = token_data['user_id']
     chat_id = f"community_{community_id}_{subgroup_type}"
     
-    messages = await db.get_chat_messages(chat_id, 100)
-    msg = next((m for m in messages if m.get('id') == message_id), None)
+    msg = await db.get_chat_message(chat_id, message_id)
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         

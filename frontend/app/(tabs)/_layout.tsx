@@ -65,7 +65,18 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 3. Temple (jaap screen) */}
+      {/* 3. Service (Vendors/Jobs) */}
+      <Tabs.Screen
+        name="vendor"
+        options={{
+          tabBarLabel: t('service') as any,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon IconComponent={MaterialCommunityIcons} name={focused ? "hand-heart" : "hand-heart-outline"} color={color} />
+          ),
+        }}
+      />
+
+      {/* 4. Temple (jaap screen) */}
       <Tabs.Screen
         name="jaap"
         options={{
@@ -78,17 +89,6 @@ export default function TabLayout() {
                 resizeMode="contain"
               />
             </View>
-          ),
-        }}
-      />
-      
-      {/* 4. Service (Vendors/Jobs) */}
-      <Tabs.Screen
-        name="vendor"
-        options={{
-          tabBarLabel: t('service') as any,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={MaterialCommunityIcons} name={focused ? "hand-heart" : "hand-heart-outline"} color={color} />
           ),
         }}
       />
