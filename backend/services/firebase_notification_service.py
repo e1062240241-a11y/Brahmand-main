@@ -183,7 +183,7 @@ class FirebaseNotificationService:
                         headers={'apns-priority': '10'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='soundreality_mayday_166011.mp3',
+                                sound='soundreality_mayday_166011.caf',
                                 badge=1,
                                 content_available=True,
                                 mutable_content=True,
@@ -204,7 +204,7 @@ class FirebaseNotificationService:
                         headers={'apns-priority': '10'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='bell.mp3',
+                                sound='bell.caf',
                                 content_available=True,
                                 mutable_content=True
                             )
@@ -224,7 +224,7 @@ class FirebaseNotificationService:
                         headers={'apns-priority': '10'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='bell.mp3',
+                                sound='bell.caf',
                                 content_available=True,
                                 mutable_content=True
                             )
@@ -346,7 +346,7 @@ class FirebaseNotificationService:
                                 headers={'apns-priority': '10'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='soundreality_mayday_166011.mp3',
+                                        sound='soundreality_mayday_166011.caf',
                                         badge=1,
                                         content_available=True,
                                         mutable_content=True,
@@ -367,7 +367,7 @@ class FirebaseNotificationService:
                                 headers={'apns-priority': '10'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='bell.mp3',
+                                        sound='bell.caf',
                                         content_available=True,
                                         mutable_content=True
                                     )
@@ -387,7 +387,7 @@ class FirebaseNotificationService:
                                 headers={'apns-priority': '10'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='bell.mp3',
+                                        sound='bell.caf',
                                         content_available=True,
                                         mutable_content=True
                                     )

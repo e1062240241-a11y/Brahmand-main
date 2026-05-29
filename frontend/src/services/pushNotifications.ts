@@ -281,8 +281,9 @@ export async function scheduleLocalNotification(
     notificationType === 'community_request';
   const isMsg = notificationType === 'message' || notificationType === 'dm';
 
-  // iOS requires filename WITH extension; Android WITHOUT extension.
-  const iosSoundFile = isSos ? 'soundreality_mayday_166011.mp3' : 'bell.mp3';
+  // iOS requires filename WITH extension; prefer .caf (Apple's native audio format, most reliable for APNs).
+  // Android WITHOUT extension (references res/raw/ filename).
+  const iosSoundFile = isSos ? 'soundreality_mayday_166011.caf' : 'bell.caf';
   const androidSoundFile = isSos ? 'soundreality_mayday_166011' : 'bell';
 
   const channelId = isSos
