@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../src/store/authStore';
@@ -22,6 +22,8 @@ import { syncDatabase } from '../src/database/sync';
 import { GlobalFAB } from '../src/components/GlobalFAB';
 
 import { originalAlert } from '../src/utils/nativeAlert';
+
+LogBox.ignoreLogs(['UIKitCore] RCTScrollViewComponentView']);
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
   const titleStr = typeof title === 'string' ? title : '';
