@@ -959,8 +959,8 @@ export default function MessagesScreen() {
 
   return (
     <LinearGradient
-      colors={['#FF8D57', '#EA9B76', '#FFFFFF']}
-      locations={[0, 0.0481, 0.2404]}
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.09, 0.25]}
       style={styles.container}
     >
       <View style={styles.headerPadding}>
