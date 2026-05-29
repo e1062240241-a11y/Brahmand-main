@@ -17,3 +17,5 @@ requests
 groq
 agora-token-builder
 pymongo
+
+google-genai==2.6.0

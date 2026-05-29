@@ -730,7 +730,7 @@ export default function JaapLandingScreen() {
             <View style={styles.templeCatPillsRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
                 {(['All', 'Jyotirlinga', 'Sacred'] as const).map((cat) => {
-                  let displayCat = cat;
+                  let displayCat: string = cat;
                   if (t('language') === 'hi') {
                     if (cat === 'All') displayCat = 'सभी';
                     else if (cat === 'Jyotirlinga') displayCat = 'ज्योतिर्लिंग';

@@ -1300,7 +1300,7 @@ export default function HomeScreen() {
           return;
         }
       }
-      await Share.share({ message: `${message}\n${mediaUrl}`, url: mediaUrl || appLink, title: 'Share via Brahmand' });
+      await Share.share({ message: `${message}\n${mediaUrl}`, url: appLink, title: 'Share via Brahmand' });
     } catch (error: any) {
       const msg = String(error?.message || error || '').toLowerCase();
       if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;

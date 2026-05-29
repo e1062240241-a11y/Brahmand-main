@@ -147,13 +147,16 @@ export default function MyKrishnaChat() {
           <View style={{ width: 40 }} />
         </View>
 
-        <SafeAreaView style={styles.chatContainer} edges={['bottom']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <FlatList
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 60 }]}
+            contentContainerStyle={[styles.listContent, { paddingTop: insets.top + 70 }]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />
 
@@ -164,32 +167,27 @@ export default function MyKrishnaChat() {
             </View>
           )}
 
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-          >
-            <View style={styles.inputWrapper}>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ask Krishna anything..."
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={inputText}
-                  onChangeText={setInputText}
-                  multiline
-                  maxLength={500}
-                />
-                <TouchableOpacity 
-                  style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]} 
-                  onPress={handleSend}
-                  disabled={!inputText.trim() || isLoading}
-                >
-                  <Ionicons name="send" size={20} color={inputText.trim() ? "#FFF" : "rgba(255,255,255,0.3)"} />
-                </TouchableOpacity>
-              </View>
+          <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Ask Krishna anything..."
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+              />
+              <TouchableOpacity 
+                style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]} 
+                onPress={handleSend}
+                disabled={!inputText.trim() || isLoading}
+              >
+                <Ionicons name="send" size={20} color={inputText.trim() ? "#FFF" : "rgba(255,255,255,0.3)"} />
+              </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+          </View>
+        </KeyboardAvoidingView>
       </ImageBackground>
     </View>
   );
