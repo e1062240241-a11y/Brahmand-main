@@ -27,6 +27,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
+import { useTranslation } from '../../src/utils/i18n';
 import {
   getCircles,
   getCommunities,
@@ -116,6 +117,7 @@ export default function MessagesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
   const { user, logout } = useAuthStore();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
 
@@ -568,8 +570,12 @@ export default function MessagesScreen() {
       <View style={styles.heroBannerContent}>
         {/* Foreground Content */}
         <View style={styles.heroTextCol}>
-          <Text style={styles.heroTitle}>Help your community</Text>
-          <Text style={styles.heroSubtitle}>Together we can make a difference</Text>
+          <Text style={styles.heroTitle}>
+            {t('language') === 'hi' ? 'अपने समुदाय की मदद करें' : 'Help your community'}
+          </Text>
+          <Text style={styles.heroSubtitle}>
+            {t('language') === 'hi' ? 'हम मिलकर बदलाव ला सकते हैं' : 'Together we can make a difference'}
+          </Text>
         </View>
 
         {/* Centered Background Illustration */}
@@ -585,7 +591,9 @@ export default function MessagesScreen() {
             activeOpacity={0.9}
             onPress={() => router.push('/community-request')}
           >
-            <Text style={styles.heroButtonText}>+ Create Request</Text>
+            <Text style={styles.heroButtonText}>
+              {t('language') === 'hi' ? '+ अनुरोध बनाएं' : '+ Create Request'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -596,19 +604,19 @@ export default function MessagesScreen() {
     const { city, state, national, others } = partitionVerifiedCommunities();
     const fallbackCity: Community = {
       id: 'mumbai-fallback',
-      name: 'Mumbai Community',
+      name: t('language') === 'hi' ? 'मुंबई समुदाय' : 'Mumbai Community',
       type: 'city',
       member_count: 13000,
     };
     const fallbackState: Community = {
       id: 'maharashtra-fallback',
-      name: 'Maharashtra Community',
+      name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
       type: 'state',
       member_count: 14000,
     };
     const fallbackNational: Community = {
       id: 'bharat-fallback',
-      name: 'Bharat Community',
+      name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
       type: 'country',
       member_count: 14000,
     };
@@ -622,7 +630,10 @@ export default function MessagesScreen() {
           <View style={styles.sectionTitleRow}>
             <Ionicons name="shield-checkmark" size={18} color="#FF6600" />
             <Text style={styles.sectionTitle}>
-              Our Communities <Text style={styles.verifiedInline}>(Verified)</Text>
+              {t('language') === 'hi' ? 'हमारे समुदाय ' : 'Our Communities '}
+              <Text style={styles.verifiedInline}>
+                {t('language') === 'hi' ? '(सत्यापित)' : '(Verified)'}
+              </Text>
             </Text>
           </View>
         </View>
@@ -948,8 +959,8 @@ export default function MessagesScreen() {
 
   return (
     <LinearGradient
-      colors={['#FF8D57', '#EA9B76', '#FFFFFF']}
-      locations={[0, 0.0481, 0.2404]}
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.09, 0.25]}
       style={styles.container}
     >
       <View style={styles.headerPadding}>
@@ -966,7 +977,7 @@ export default function MessagesScreen() {
                   activeTopTab === 'Community' && styles.segmentTextActive,
                 ]}
               >
-                Community
+                {t('language') === 'hi' ? 'समुदाय' : 'Community'}
               </Text>
             </TouchableOpacity>
 
@@ -981,7 +992,7 @@ export default function MessagesScreen() {
                   activeTopTab === 'Private Chat' && styles.segmentTextActive,
                 ]}
               >
-                Private Chat
+                {t('language') === 'hi' ? 'व्यक्तिगत चैट' : 'Private Chat'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1004,11 +1015,14 @@ export default function MessagesScreen() {
               <View style={styles.sectionTitleRow}>
                 <MaterialCommunityIcons name="account-group-outline" size={22} color="#FF6600" />
                 <Text style={styles.sectionTitle}>
-                  Local Communities <Text style={styles.subTitleSmall}>(User groups)</Text>
+                  {t('language') === 'hi' ? 'स्थानीय समुदाय ' : 'Local Communities '}
+                  <Text style={styles.subTitleSmall}>
+                    {t('language') === 'hi' ? '(उपयोगकर्ता समूह)' : '(User groups)'}
+                  </Text>
                 </Text>
               </View>
               <TouchableOpacity onPress={() => router.push('/community/discover')}>
-                <Text style={styles.viewAllText}>View All</Text>
+                <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -1025,7 +1039,9 @@ export default function MessagesScreen() {
               </View>
             ) : (
               <View style={styles.localCommEmptyBox}>
-                <Text style={styles.localCommEmptyText}>No user groups created yet. Be the first to start one!</Text>
+                <Text style={styles.localCommEmptyText}>
+                  {t('language') === 'hi' ? 'अभी तक कोई उपयोगकर्ता समूह नहीं बनाया गया है। शुरुआत करने वाले पहले बनें!' : 'No user groups created yet. Be the first to start one!'}
+                </Text>
               </View>
             )}
 
@@ -1033,9 +1049,11 @@ export default function MessagesScreen() {
             {requestsToRender.length > 0 && (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Active Community Requests</Text>
+                  <Text style={styles.sectionTitle}>
+                    {t('language') === 'hi' ? 'सक्रिय सामुदायिक अनुरोध' : 'Active Community Requests'}
+                  </Text>
                   <TouchableOpacity onPress={() => router.push('/community-request/list')}>
-                    <Text style={styles.viewAllText}>View All</Text>
+                    <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={{ marginTop: 10 }}>
@@ -1064,26 +1082,32 @@ export default function MessagesScreen() {
         ) : (
           <View style={styles.chatContent}>
             <View style={styles.chatSectionHeader}>
-              <Text style={styles.chatSectionTitle}>Groups & Circles</Text>
+              <Text style={styles.chatSectionTitle}>
+                {t('language') === 'hi' ? 'समूह और मंडल' : 'Groups & Circles'}
+              </Text>
               <TouchableOpacity
                 onPress={() => router.push('/dm/new')}
                 style={styles.newChatHeaderButton}
               >
                 <Ionicons name="chatbubbles-outline" size={16} color="#FF6600" />
-                <Text style={styles.newChatHeaderText}>New Chat</Text>
+                <Text style={styles.newChatHeaderText}>
+                  {t('language') === 'hi' ? 'नई चैट' : 'New Chat'}
+                </Text>
               </TouchableOpacity>
             </View>
             {circles.length > 0 ? (
               circles.map(circle => (
                 <TouchableOpacity
-                  key={circle.id}
-                  style={styles.chatItem}
-                  onPress={() => router.push(`/chat/circle/${circle.id}`)}
+                   key={circle.id}
+                   style={styles.chatItem}
+                   onPress={() => router.push(`/chat/circle/${circle.id}`)}
                 >
                   <Avatar name={circle.name} photo={circle.photo} size={50} />
                   <View style={styles.chatItemInfo}>
                     <Text style={styles.chatItemName}>{circle.name}</Text>
-                    <Text style={styles.chatItemLastMsg} numberOfLines={1}>{circle.last_message || 'Start a conversation'}</Text>
+                    <Text style={styles.chatItemLastMsg} numberOfLines={1}>
+                      {circle.last_message || (t('language') === 'hi' ? 'बातचीत शुरू करें' : 'Start a conversation')}
+                    </Text>
                   </View>
                   <View style={styles.chatItemRight}>
                     <Text style={styles.chatItemTime}>{circle.last_message_time || ''}</Text>
@@ -1093,12 +1117,16 @@ export default function MessagesScreen() {
               ))
             ) : (
               <View style={styles.emptyChat}>
-                <Text style={styles.emptyChatText}>No group chats yet</Text>
+                <Text style={styles.emptyChatText}>
+                  {t('language') === 'hi' ? 'अभी तक कोई ग्रुप चैट नहीं है' : 'No group chats yet'}
+                </Text>
               </View>
             )}
 
             <View style={styles.chatSectionHeader}>
-              <Text style={styles.chatSectionTitle}>Direct Messages</Text>
+              <Text style={styles.chatSectionTitle}>
+                {t('language') === 'hi' ? 'सीधे संदेश' : 'Direct Messages'}
+              </Text>
             </View>
             {conversations.length > 0 ? (
               conversations.map(conv => {
@@ -1112,8 +1140,15 @@ export default function MessagesScreen() {
                   >
                     <Avatar name={conv.user?.name || '?'} photo={conv.user?.photo} size={50} />
                     <View style={styles.chatItemInfo}>
-                      <Text style={styles.chatItemName}>{conv.user?.name}</Text>
-                      <Text style={[styles.chatItemLastMsg, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>{conv.last_message || 'Send a message'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.chatItemName}>{conv.user?.name}</Text>
+                        {(conv.user as any)?.is_verified && (
+                          <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 4 }} />
+                        )}
+                      </View>
+                      <Text style={[styles.chatItemLastMsg, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>
+                        {conv.last_message || (t('language') === 'hi' ? 'एक संदेश भेजें' : 'Send a message')}
+                      </Text>
                     </View>
                     <View style={styles.chatItemRight}>
                       <Text style={styles.chatItemTime}>{formatTime(conv.last_message_at)}</Text>
@@ -1124,7 +1159,9 @@ export default function MessagesScreen() {
               })
             ) : (
               <View style={styles.emptyChat}>
-                <Text style={styles.emptyChatText}>No private messages yet</Text>
+                <Text style={styles.emptyChatText}>
+                  {t('language') === 'hi' ? 'अभी तक कोई निजी संदेश नहीं है' : 'No private messages yet'}
+                </Text>
               </View>
             )}
 
@@ -1146,8 +1183,14 @@ export default function MessagesScreen() {
               <Ionicons name="lock-closed" size={20} color="#FF6600" />
             </View>
             <View style={styles.lockedBannerTextCol}>
-              <Text style={styles.lockedBannerTitle}>Access Restricted</Text>
-              <Text style={styles.lockedBannerSub}>This {showLockedBanner} is for verified personalities. Click to verify yourself.</Text>
+              <Text style={styles.lockedBannerTitle}>
+                {t('language') === 'hi' ? 'पहुंच प्रतिबंधित' : 'Access Restricted'}
+              </Text>
+              <Text style={styles.lockedBannerSub}>
+                {t('language') === 'hi' 
+                  ? `यह ${showLockedBanner === 'National Community' ? 'राष्ट्रीय समुदाय' : 'राज्य समुदाय'} सत्यापित व्यक्तियों के लिए है। खुद को सत्यापित करने के लिए क्लिक करें।` 
+                  : `This ${showLockedBanner} is for verified personalities. Click to verify yourself.`}
+              </Text>
             </View>
             <TouchableOpacity onPress={() => setShowLockedBanner(null)} style={styles.lockedBannerClose}>
               <Ionicons name="close" size={20} color="#AAA" />
@@ -1178,7 +1221,16 @@ export default function MessagesScreen() {
                 </View>
                 <View style={{ marginLeft: 12, flex: 1 }}>
                   <Text style={[styles.sheetTypeLabel, { color: getRequestTheme(selectedRequest).iconColor }]}>
-                    {(getRequestTheme(selectedRequest).label || selectedRequest.request_type || 'Help Request').toUpperCase()}
+                    {(() => {
+                      const engLabel = getRequestTheme(selectedRequest).label || selectedRequest.request_type || 'Help Request';
+                      if (t('language') === 'hi') {
+                        if (engLabel === 'Blood Request') return 'रक्त की आवश्यकता';
+                        if (engLabel === 'Food Request') return 'भोजन की आवश्यकता';
+                        if (engLabel === 'Cow Seva') return 'गौ सेवा';
+                        return 'मदद की आवश्यकता';
+                      }
+                      return engLabel.toUpperCase();
+                    })()}
                   </Text>
                   <Text style={styles.sheetTime}>{getTimeAgo(selectedRequest.created_at)}</Text>
                 </View>
@@ -1200,7 +1252,16 @@ export default function MessagesScreen() {
                   borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border
                 }]}>
                   <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
-                    {selectedRequest.urgency_level.toUpperCase()} URGENCY
+                    {(() => {
+                      const lvl = (selectedRequest.urgency_level || '').toLowerCase();
+                      if (t('language') === 'hi') {
+                        if (lvl === 'critical' || lvl === 'urgent') return 'अति आवश्यक';
+                        if (lvl === 'high') return 'उच्च प्राथमिकता';
+                        if (lvl === 'medium') return 'मध्यम';
+                        return 'सामान्य';
+                      }
+                      return `${selectedRequest.urgency_level.toUpperCase()} URGENCY`;
+                    })()}
                   </Text>
                 </View>
                 <View style={styles.sheetLocBadge}>
@@ -1209,14 +1270,22 @@ export default function MessagesScreen() {
                 </View>
               </View>
 
-              <Text style={styles.sheetDescSectionTitle}>Details / Description</Text>
-              <Text style={styles.sheetDesc}>{selectedRequest.description || 'No description provided.'}</Text>
+              <Text style={styles.sheetDescSectionTitle}>
+                {t('language') === 'hi' ? 'विवरण' : 'Details / Description'}
+              </Text>
+              <Text style={styles.sheetDesc}>
+                {selectedRequest.description || (t('language') === 'hi' ? 'कोई विवरण नहीं दिया गया है।' : 'No description provided.')}
+              </Text>
 
               <View style={styles.requesterCard}>
                 <Ionicons name="person-circle" size={40} color="#E2E8F0" />
                 <View style={{ marginLeft: 10 }}>
-                  <Text style={styles.requesterName}>{selectedRequest.user_name || 'Verified Neighbor'}</Text>
-                  <Text style={styles.requesterLabel}>Community Member</Text>
+                  <Text style={styles.requesterName}>
+                    {selectedRequest.user_name || (t('language') === 'hi' ? 'सत्यापित पड़ोसी' : 'Verified Neighbor')}
+                  </Text>
+                  <Text style={styles.requesterLabel}>
+                    {t('language') === 'hi' ? 'समुदाय के सदस्य' : 'Community Member'}
+                  </Text>
                 </View>
               </View>
 
@@ -1226,7 +1295,9 @@ export default function MessagesScreen() {
                   onPress={() => handleCall(selectedRequest.contact_number)}
                 >
                   <Ionicons name="call" size={20} color="#FFF" />
-                  <Text style={styles.sheetCallBtnText}>Call Now</Text>
+                  <Text style={styles.sheetCallBtnText}>
+                    {t('language') === 'hi' ? 'कॉल करें' : 'Call Now'}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1243,7 +1314,9 @@ export default function MessagesScreen() {
                     onPress={() => handleResolveRequest(selectedRequest.id)}
                   >
                     <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
-                    <Text style={styles.sheetFulfillBtnText}>Fulfill Request</Text>
+                    <Text style={styles.sheetFulfillBtnText}>
+                      {t('language') === 'hi' ? 'अनुरोध पूरा करें' : 'Fulfill Request'}
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>

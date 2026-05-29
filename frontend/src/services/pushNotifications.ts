@@ -84,8 +84,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   try {
-    // Web requires a VAPID key in app.json. If it's missing, getDevicePushTokenAsync will throw.
-    // We skip this on web unless we are sure we want web push.
     if (Platform.OS === 'web') {
       console.log('[Push] Skipping push token registration on web platform.');
       return null;
@@ -97,12 +95,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
       token = deviceToken.data;
       console.log('[Push] Device Push Token retrieved successfully.');
     } else {
-      // Fallback: Expo push token can work only with Expo push service.
+      // Fallback: Expo push token
       const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
       if (projectId) {
         const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
         token = pushToken.data;
-        console.warn('[Push] Received Expo push token; backend uses FCM and this token may not be deliverable. Use a standalone/custom client build to get a real FCM device token.');
+        console.warn('[Push] Received Expo push token; FCM native token preferred for production.');
       } else {
         console.warn('[Push] Unable to get device push token and no Expo projectId fallback available.');
       }
@@ -115,37 +113,61 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
   }
 
-  // Configure Android notification channel
+  // Configure Android notification channels
   if (Platform.OS === 'android') {
     try {
+      // ── Default channel (community requests, system) ──────────────────────
       await Notifications.setNotificationChannelAsync('default_v4', {
-        name: 'Default v4',
-        importance: Notifications.AndroidImportance?.MAX ?? 5,
+        name: 'General Notifications',
+        description: 'App alerts, updates and general notifications',
+        importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
-        sound: 'nornal',
+        // 'bell' MP3 for default notifications
+        sound: 'bell',
       });
 
+      // ── Messages channel ──────────────────────────────────────────────────
       await Notifications.setNotificationChannelAsync('messages_v4', {
-        name: 'Messages v4',
+        name: 'Messages',
         description: 'Private and community message notifications',
         importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
-        sound: 'nornal',
+        sound: 'bell',
       });
 
+      // ── Community channel (Lost & Found, Events, Seva) ────────────────────
+      await Notifications.setNotificationChannelAsync('community_v1', {
+        name: 'Community Alerts',
+        description: 'Lost & Found, Event RSVPs and community activity',
+        importance: Notifications.AndroidImportance?.HIGH ?? 4,
+        vibrationPattern: [0, 300, 200, 300],
+        lightColor: '#FF6B35',
+        sound: 'bell',
+      });
+
+      // ── SOS channel – ALWAYS delete & recreate to enforce vibration/sound ─
+      // Android caches channel settings after first creation; deleting forces update.
+      try {
+        await Notifications.deleteNotificationChannelAsync('sos_alerts_v3');
+      } catch (_) { /* ok if it doesn't exist yet */ }
+
       await Notifications.setNotificationChannelAsync('sos_alerts_v3', {
-        name: 'Emergency SOS Alerts v3',
-        description: 'High-priority notifications for emergency SOS requests nearby',
+        name: 'Emergency SOS Alerts',
+        description: 'CRITICAL — high-priority SOS emergency alerts from people nearby',
         importance: Notifications.AndroidImportance?.MAX ?? 5,
-        vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
+        vibrationPattern: [0, 1000, 300, 1000, 300, 1000, 300, 1000],
         lightColor: '#FF0000',
         bypassDnd: true,
         showBadge: true,
         enableVibrate: true,
+        enableLights: true,
+        lockscreenVisibility: 1, // VISIBILITY_PUBLIC
         sound: 'soundreality_mayday_166011',
       });
+
+      console.log('[Push] Android channels configured successfully');
     } catch (e) {
       console.warn('[Push] Failed to configure Android channels', e);
     }
@@ -153,6 +175,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   return token;
 }
+
 
 /**
  * Save the FCM/Expo token to the backend/Firestore
@@ -231,11 +254,23 @@ export async function scheduleLocalNotification(
   
   const notificationType = data?.type;
   const isSos = !!notificationType?.startsWith('sos');
+  const isCommunity = notificationType === 'community_interest' || notificationType === 'event_rsvp' || notificationType === 'community_request';
   const isMsg = notificationType === 'message';
 
-  const soundName = isSos 
+  // iOS: must include file extension; Android: no extension (matches raw/ filename without .mp3)
+  const soundName = isSos
     ? (Platform.OS === 'ios' ? 'soundreality_mayday_166011.mp3' : 'soundreality_mayday_166011')
-    : (Platform.OS === 'ios' ? 'nornal.aiff' : 'nornal');
+    : isCommunity
+      ? (Platform.OS === 'ios' ? 'bell.mp3' : 'bell')
+      : (Platform.OS === 'ios' ? 'bell.mp3' : 'bell');
+
+  const channelId = isSos
+    ? 'sos_alerts_v3'
+    : isCommunity
+      ? 'community_v1'
+      : isMsg
+        ? 'messages_v4'
+        : 'default_v4';
 
   await Notifications.scheduleNotificationAsync({
     content: {
@@ -245,10 +280,11 @@ export async function scheduleLocalNotification(
       sound: soundName,
     },
     trigger: {
-      channelId: isSos ? 'sos_alerts_v3' : (isMsg ? 'messages_v4' : 'default_v4'),
+      channelId,
     },
   });
 }
+
 
 /**
  * Clear all notifications

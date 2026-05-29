@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { Image } from 'expo-image';
 import {
   Pressable,
@@ -15,7 +15,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -24,6 +24,8 @@ import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
+import { getFilterStyle, getOverlayStyle } from '../utils/filters';
+import { useTranslation } from '../utils/i18n';
 
 const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 
@@ -92,7 +94,9 @@ export const PostFeedCard = memo(({
   openCommentsOnCaptionPress = false,
   isBlackBackground = false,
 }: PostFeedCardProps) => {
+  const { t } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -100,8 +104,18 @@ export const PostFeedCard = memo(({
   const [mediaLoading, setMediaLoading] = useState(true);
   const [showSpinner, setShowSpinner] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  const [dynamicRatio, setDynamicRatio] = useState(4 / 5);
+  const w = Number(post?.media_width || post?.metadata?.width);
+  const h = Number(post?.media_height || post?.metadata?.height);
+  const initialRawRatio = (w && h) ? (w / h) : null;
+
+  const [dynamicRatio, setDynamicRatio] = useState(initialRawRatio || 4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+
+  useEffect(() => {
+    if (initialRawRatio) {
+      setDynamicRatio(initialRawRatio);
+    }
+  }, [initialRawRatio]);
 
   const rawMediaUrl =
     post?.media_url ||
@@ -126,12 +140,48 @@ export const PostFeedCard = memo(({
 
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
-  const w = Number(post?.media_width);
-  const h = Number(post?.media_height);
-  const initialRawRatio = (w && h) ? (w / h) : null;
-
-  const displayRatio = dynamicRatio < 1 ? dynamicRatio : Math.max(4 / 5, dynamicRatio);
+  const displayRatio = dynamicRatio;
   const feedHeight = SCREEN_WIDTH / displayRatio;
+
+  const cropStyle = useMemo(() => {
+    const cropX = post?.crop_offset_x ?? post?.metadata?.crop_offset_x;
+    const cropY = post?.crop_offset_y ?? post?.metadata?.crop_offset_y;
+    
+    if (cropX === undefined && cropY === undefined) {
+      return null;
+    }
+
+    const origW = post?.original_width ?? post?.metadata?.original_width;
+    const origH = post?.original_height ?? post?.metadata?.original_height;
+
+    if (!origW || !origH) {
+      return null;
+    }
+
+    const rOrig = origW / origH;
+    const cardHeight = feedHeight;
+
+    const imgWidth = displayRatio < rOrig ? cardHeight * rOrig : SCREEN_WIDTH;
+    const imgHeight = displayRatio > rOrig ? SCREEN_WIDTH / rOrig : cardHeight;
+
+    const maxDragX = imgWidth - SCREEN_WIDTH;
+    const maxDragY = imgHeight - cardHeight;
+
+    const targetCropX = cropX !== undefined ? cropX : 0.5;
+    const targetCropY = cropY !== undefined ? cropY : 0.5;
+
+    const translateX = maxDragX > 0 ? -targetCropX * maxDragX : 0;
+    const translateY = maxDragY > 0 ? -targetCropY * maxDragY : 0;
+
+    return {
+      width: imgWidth,
+      height: imgHeight,
+      transform: [
+        { translateX },
+        { translateY }
+      ]
+    };
+  }, [post, displayRatio, feedHeight]);
 
   const isFocused = useIsFocused();
   const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen;
@@ -194,6 +244,23 @@ export const PostFeedCard = memo(({
       }
     }
   }, [shouldPlay, player]);
+
+  // Clean up player on unmount to prevent audio leaks
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'web') {
+        if (videoRef.current) {
+          try {
+            videoRef.current.pause();
+          } catch (e) {}
+        }
+      } else if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
 
   const prevIsActive = useRef(isActive);
   useEffect(() => {
@@ -320,8 +387,11 @@ export const PostFeedCard = memo(({
         <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
           <View style={styles.userMeta}>
-            <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
-            <Text style={[styles.timeText, theme === 'light' ? styles.timeTextLight : {}]}>{postTimeText}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+              {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+            </View>
+            <Text style={[styles.timeText, theme === 'light' ? styles.timeTextLight : { color: '#FFFFFF', fontWeight: '900' }]}>{postTimeText}</Text>
           </View>
         </TouchableOpacity>
 
@@ -334,16 +404,16 @@ export const PostFeedCard = memo(({
               <View style={styles.dropdownMenu}>
                 {postMenuType === 'delete' && onEdit && (
                   <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onEdit?.(post); }}>
-                    <Text style={styles.dropdownText}>Edit</Text>
+                    <Text style={styles.dropdownText}>{t('language') === 'hi' ? 'संपादित करें' : 'Edit'}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onPostMenuPress?.(post); }}>
                   <Text style={[styles.dropdownText, postMenuType !== 'delete' && styles.dropdownDangerText]}>
-                    {postMenuType === 'delete' ? 'Delete post' : 'Report'}
+                    {postMenuType === 'delete' ? (t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post') : (t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => setMenuVisible(false)}>
-                  <Text style={styles.dropdownText}>Cancel</Text>
+                  <Text style={styles.dropdownText}>{t('cancel')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -365,7 +435,7 @@ export const PostFeedCard = memo(({
 
         {mediaUrl ? (
           isVideo ? (
-            <View style={styles.videoContainer}>
+            <View style={[styles.videoContainer, { overflow: 'hidden' }]}>
               {Platform.OS === 'web' ? (
                 <>
                   <video
@@ -381,7 +451,6 @@ export const PostFeedCard = memo(({
                     onLoadedData={() => setMediaLoading(false)}
                     onCanPlay={() => setMediaLoading(false)}
                     onWaiting={() => {
-                      // Only show loader if we haven't started playing or if it stays stuck
                       if (videoRef.current && videoRef.current.currentTime === 0) {
                         setMediaLoading(true);
                       }
@@ -399,7 +468,7 @@ export const PostFeedCard = memo(({
                       setMediaError('Video failed to load');
                       console.warn('[PostFeedCard] Web Video Load Error:', e);
                     }}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={cropStyle ? { ...cropStyle, objectFit: 'cover', ...getFilterStyle(filterName) } : { width: '100%', height: '100%', objectFit: 'cover', ...getFilterStyle(filterName) } as any}
                     poster={posterUrl || undefined}
                   />
                   {mediaLoading && (
@@ -407,12 +476,15 @@ export const PostFeedCard = memo(({
                       <ActivityIndicator color={theme === 'light' ? '#FF8F00' : '#FFD26C'} />
                     </View>
                   )}
+                  {(Platform.OS as string) !== 'web' && filterName !== 'Normal' && (
+                    <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
+                  )}
                 </>
               ) : ExpoVideoModule?.VideoView && player && isActive ? (
                 <>
                   <ExpoVideoModule.VideoView
                     player={player}
-                    style={styles.videoBackground}
+                    style={cropStyle || styles.videoBackground}
                     contentFit="cover"
                     nativeControls={false}
                     onFirstFrameRender={() => setMediaLoading(false)}
@@ -421,6 +493,9 @@ export const PostFeedCard = memo(({
                       setMediaError('Video player error');
                     }}
                   />
+                  {(Platform.OS as string) !== 'web' && filterName !== 'Normal' && (
+                    <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
+                  )}
                   {mediaLoading && posterUrl ? (
                     <Image
                       source={{ uri: posterUrl }}
@@ -437,7 +512,7 @@ export const PostFeedCard = memo(({
                   ) : (
                     <Ionicons name="videocam-outline" size={32} color="#444" />
                   )}
-                  {isActive && !player && <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>Player unavailable</Text>}
+                  {isActive && !player && <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>{t('language') === 'hi' ? 'प्लेयर अनुपलब्ध' : 'Player unavailable'}</Text>}
                 </View>
               )}
               <Pressable
@@ -460,14 +535,14 @@ export const PostFeedCard = memo(({
             </View>
           ) : (
             <Pressable
-              style={styles.media}
+              style={[styles.media, { overflow: 'hidden' }]}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
               onPress={handleMediaPress}
             >
               <Image
                 source={{ uri: mediaUrl }}
-                style={StyleSheet.absoluteFill}
+                style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
                 contentFit="cover"
                 transition={300}
                 onLoadStart={() => setMediaLoading(true)}
@@ -482,16 +557,19 @@ export const PostFeedCard = memo(({
                 }}
                 onError={(e) => {
                   setMediaLoading(false);
-                  setMediaError('Failed to load image');
+                  setMediaError(t('language') === 'hi' ? 'छवि लोड करने में विफल' : 'Failed to load image');
                   console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', mediaUrl);
                 }}
               />
+              {((Platform.OS as string) !== 'web') && filterName !== 'Normal' && (
+                <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
+              )}
             </Pressable>
           )
         ) : (
           <View style={[styles.media, { backgroundColor: theme === 'light' ? '#FAFAFA' : '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
             <Ionicons name="image-outline" size={40} color="rgba(0,0,0,0.05)" />
-            <Text style={{ color: '#888', fontSize: 12, marginTop: 8 }}>Content removed or missing</Text>
+            <Text style={{ color: '#888', fontSize: 12, marginTop: 8 }}>{t('language') === 'hi' ? 'सामग्री हटा दी गई है या गायब है' : 'Content removed or missing'}</Text>
           </View>
         )}
 
@@ -503,7 +581,7 @@ export const PostFeedCard = memo(({
               style={{ marginTop: 15, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }}
               onPress={() => { setMediaError(null); setMediaLoading(true); }}
             >
-              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '900' }}>RETRY</Text>
+              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '900' }}>{t('language') === 'hi' ? 'पुनः प्रयास करें' : 'RETRY'}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -560,11 +638,17 @@ export const PostFeedCard = memo(({
       {/* Stats Summary */}
       <View style={{ paddingHorizontal: SPACING.md, paddingBottom: 2 }}>
         <Text style={{
-          color: theme === 'light' ? '#000' : '#FFF',
+          color: theme === 'light' ? '#000' : '#FFFFFF',
           fontWeight: '900',
           fontSize: 14
         }}>
-          {likesCount > 0 ? `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}` : 'Be the first to like'}
+          {likesCount > 0 ? (
+            t('language') === 'hi' 
+              ? `${likesCount.toLocaleString()} पसंद` 
+              : `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}`
+          ) : (
+            t('language') === 'hi' ? 'पसंद करने वाले पहले बनें' : 'Be the first to like'
+          )}
         </Text>
       </View>
 
@@ -582,7 +666,9 @@ export const PostFeedCard = memo(({
             }}
           >
             <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
-              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFF' }}>{post?.username || 'User'} </Text>
+              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>
+                {post?.username || 'User'} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
+              </Text> 
               {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                 seg.isHashtag ? (
                   <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
@@ -593,24 +679,26 @@ export const PostFeedCard = memo(({
                     {seg.text}
                   </Text>
                 ) : (
-                  <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#EEE', fontWeight: '700' }}>{seg.text}</Text>
+                  <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#FFFFFF', fontWeight: '900' }}>{seg.text}</Text>
                 )
               ) : collapsedCaption}
             </Text>
             {isLongCaption && (
               <Text style={{ color: COLORS.primary, marginTop: 4, fontWeight: '900' }}>
-                {isCaptionExpanded ? 'Show less' : 'More'}
+                {isCaptionExpanded ? (t('language') === 'hi' ? 'कम दिखाएं' : 'Show less') : (t('language') === 'hi' ? 'अधिक' : 'More')}
               </Text>
             )}
           </Pressable>
         </View>
       )}
 
-      {viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} views</Text>}
+      {viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} {t('language') === 'hi' ? 'व्यूज' : 'views'}</Text>}
 
       <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
-        <Text style={{ color: theme === 'light' ? '#666' : 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '700' }}>
-          {commentsCount > 0 ? `View all ${commentsCount} comments` : 'Add a comment...'}
+        <Text style={{ color: theme === 'light' ? '#666' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
+          {commentsCount > 0 
+            ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)
+            : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
         </Text>
       </TouchableOpacity>
 
@@ -618,8 +706,10 @@ export const PostFeedCard = memo(({
         <View style={styles.topCommentsWrap}>
           {topComments.map((comment: any, index: number) => (
             <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
-              <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>{comment?.username || 'User'} </Text>
-              <Text style={{ color: theme === 'light' ? '#444' : '#DDD', fontSize: 13, fontWeight: '600' }}>{comment?.text || ''}</Text>
+              <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>
+                {comment?.username || 'User'} {comment?.is_verified && <MaterialCommunityIcons name="check-decagram" size={12} color="#FF6B00" style={{ marginRight: 2 }} />}
+              </Text> 
+              <Text style={{ color: theme === 'light' ? '#444' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>{comment?.text || ''}</Text>
             </Text>
           ))}
         </View>

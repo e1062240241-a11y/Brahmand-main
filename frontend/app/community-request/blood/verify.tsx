@@ -5,6 +5,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { useAuthStore } from '../../../src/store/authStore';
+import { useVendorStore } from '../../../src/store/vendorStore';
+
+import { getKYCStatus } from '../../../src/services/api';
 
 export default function CommunityRequestBloodVerifyPage() {
   const router = useRouter();
@@ -17,12 +20,30 @@ export default function CommunityRequestBloodVerifyPage() {
     contactPreference?: string;
     contactNumber?: string;
   }>();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
+  const { myVendor, fetchMyVendor } = useVendorStore();
 
   const [phoneNumber, setPhoneNumber] = React.useState((params.contactNumber || user?.phone || '').replace(/[^0-9]/g, ''));
-  const isKycVerified = true; // Auto-verify for development / testing bypass
+
+
+  React.useEffect(() => {
+    fetchMyVendor();
+  }, [fetchMyVendor]);
+
+  const isKycVerified =
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified';
+
+  const handleCompleteKyc = async () => {
+    router.push('/kyc');
+  };
 
   const handleSendOtp = () => {
+    if (!isKycVerified) {
+      router.push('/kyc');
+      return;
+    }
     if (!phoneNumber || phoneNumber.length < 10) {
       Alert.alert('Enter Phone', 'Please enter a valid phone number before sending OTP.');
       return;
@@ -41,11 +62,6 @@ export default function CommunityRequestBloodVerifyPage() {
       },
     });
   };
-
-  const handleCompleteKyc = () => {
-    router.push('/kyc');
-  };
-
 
 
   return (
@@ -91,11 +107,18 @@ export default function CommunityRequestBloodVerifyPage() {
             <Text style={styles.stepDescription}>KYC helps us maintain trust and safety in the community.</Text>
             <View style={styles.detailBox}>
               <Text style={styles.detailLabel}>KYC Status</Text>
-              <Text style={[styles.detailValue, isKycVerified ? styles.verifiedText : styles.pendingText]}>{isKycVerified ? 'Verified' : 'Not KYC Verified'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {isKycVerified && <Ionicons name="checkmark-circle" size={18} color="#2E7D32" />}
+                <Text style={[styles.detailValue, isKycVerified ? styles.verifiedText : styles.pendingText]}>
+                  {isKycVerified ? 'Verified' : 'Not KYC Verified'}
+                </Text>
+              </View>
             </View>
-            <TouchableOpacity style={styles.outlineButton} onPress={handleCompleteKyc} activeOpacity={0.8}>
-              <Text style={styles.outlineButtonText}>Complete KYC Now</Text>
-            </TouchableOpacity>
+            {!isKycVerified && (
+              <TouchableOpacity style={styles.outlineButton} onPress={handleCompleteKyc} activeOpacity={0.8}>
+                <Text style={styles.outlineButtonText}>Complete KYC Now</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

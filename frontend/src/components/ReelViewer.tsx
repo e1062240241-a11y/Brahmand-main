@@ -14,6 +14,7 @@ import {
   Animated,
   PanResponder,
   Alert,
+  AppState,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,11 +29,13 @@ import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { useRouter } from 'expo-router';
 import SharePostModal from './SharePostModal';
+import { getFilterStyle, getOverlayStyle } from '../utils/filters';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MentionInput } from './MentionInput';
 import { MentionText } from './MentionText';
 import * as Clipboard from 'expo-clipboard';
 import { Share, KeyboardAvoidingView, Keyboard } from 'react-native';
-
+import { useTranslation } from '../utils/i18n';
 let ExpoVideoModule: any = null;
 try {
   ExpoVideoModule = require('expo-video');
@@ -69,7 +72,12 @@ const ReelVideoItem = React.memo(({
   screenSize,
   onShareLocal,
   onCommentLocal,
+  autoScroll,
+  onVideoEnded,
+  onOpenOptions,
+  shouldLoad,
 }: any) => {
+  const { t } = useTranslation();
   const [showPlayPause, setShowPlayPause] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -82,6 +90,7 @@ const ReelVideoItem = React.memo(({
     setLocalPost(post);
   }, [post]);
   const videoRef = useRef<any>(null);
+  const filterName = localPost?.filter_name || localPost?.metadata?.filter_name || 'Normal';
   const captionText = String(localPost?.caption || '');
   const captionWords = captionText.trim().split(/\s+/).filter(Boolean);
   const isLongCaption = captionWords.length > 4 || captionText.length > 45;
@@ -122,6 +131,17 @@ const ReelVideoItem = React.memo(({
     }
   };
 
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      setAppState(nextAppState);
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   useEffect(() => {
     if (!isActive) setIsPaused(false);
   }, [isActive]);
@@ -140,11 +160,11 @@ const ReelVideoItem = React.memo(({
   const isPortrait = aspectRatio ? (aspectRatio < 1) : (mediaHeight > mediaWidth);
   const contentFitMode = isVideo ? 'cover' : (isPortrait ? 'cover' : 'contain');
 
-  const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
+  const playerSource = (Platform.OS === 'web' || !isVideo || !shouldLoad) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {
-    p.loop = true;
+    p.loop = !autoScroll;
     p.muted = isMuted;
-    p.staysActiveInBackground = true;
+    p.staysActiveInBackground = false;
     if (Platform.OS !== 'web') {
       p.bufferOptions = {
         preferredForwardBufferDuration: 2, // Smaller look-ahead to prioritize start
@@ -174,7 +194,7 @@ const ReelVideoItem = React.memo(({
   useEffect(() => {
     if (Platform.OS === 'web') {
       if (videoRef.current) {
-        if (isActive && !isPaused) {
+        if (isActive && !isPaused && appState === 'active') {
           videoRef.current.playbackRate = playbackSpeed;
           videoRef.current.play().catch(() => { });
         } else {
@@ -183,17 +203,50 @@ const ReelVideoItem = React.memo(({
       }
     } else if (player) {
       player.playbackRate = playbackSpeed;
-      if (isActive && !isPaused) {
+      if (isActive && !isPaused && appState === 'active') {
         player.play();
       } else {
         player.pause();
       }
     }
-  }, [isActive, isPaused, player, playbackSpeed]);
+  }, [isActive, isPaused, player, playbackSpeed, appState]);
 
   useEffect(() => {
     if (player) player.muted = isMuted;
   }, [isMuted, player]);
+
+  // Clean up player on unmount to prevent audio leaks
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'web') {
+        if (videoRef.current) {
+          try {
+            videoRef.current.pause();
+          } catch (e) {}
+        }
+      } else if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
+
+  useEffect(() => {
+    if (player) {
+      player.loop = !autoScroll;
+    }
+  }, [player, autoScroll]);
+
+  useEffect(() => {
+    if (!player) return;
+    const subscription = player.addListener('playToEnd', () => {
+      onVideoEnded?.();
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [player, onVideoEnded]);
 
   useEffect(() => {
     if (!player || !isActive || !isVideo) return;
@@ -331,7 +384,7 @@ const ReelVideoItem = React.memo(({
           {!isVideo ? (
             <Image
               source={{ uri: mediaUrl }}
-              style={{ width: '100%', height: '100%' }}
+              style={[{ width: '100%', height: '100%' }, getFilterStyle(filterName)]}
               contentFit={contentFitMode}
               transition={300}
               onLoad={(e) => {
@@ -347,9 +400,9 @@ const ReelVideoItem = React.memo(({
             <>
               <video
                 ref={videoRef}
-                src={mediaUrl}
+                src={shouldLoad ? mediaUrl : undefined}
                 preload="auto"
-                loop
+                loop={!autoScroll}
                 muted={isMuted}
                 playsInline
                 autoPlay={isActive && !isPaused}
@@ -359,7 +412,8 @@ const ReelVideoItem = React.memo(({
                 onCanPlay={() => setIsVideoLoading(false)}
                 onWaiting={() => setIsVideoLoading(true)}
                 onPlaying={() => setIsVideoLoading(false)}
-                style={{ width: '100%', height: '100%', objectFit: contentFitMode }}
+                onEnded={onVideoEnded}
+                style={{ width: '100%', height: '100%', objectFit: contentFitMode, ...getFilterStyle(filterName) }}
               />
               {isVideoLoading && posterUrl && (
                 <Image
@@ -393,6 +447,9 @@ const ReelVideoItem = React.memo(({
             </>
           ) : (
             <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />
+          )}
+          {Platform.OS !== 'web' && filterName !== 'Normal' && (
+            <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
           )}
         </View>
 
@@ -680,13 +737,13 @@ const ReelVideoItem = React.memo(({
             </Text>
             {isLongCaption && !isCaptionExpanded && (
               <Text style={{ color: '#ccc', fontSize: 13, fontWeight: '700', marginTop: 2 }}>
-                ...more
+                {t('language') === 'hi' ? '...और देखें' : '...more'}
               </Text>
             )}
             {isCaptionExpanded && (
               <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ color: '#ccc', fontSize: 13, fontWeight: '700' }}>
-                  Show less
+                  {t('language') === 'hi' ? 'कम दिखाएं' : 'Show less'}
                 </Text>
               </View>
             )}
@@ -782,12 +839,27 @@ const ReelVideoItem = React.memo(({
             }}
           />
         </TouchableOpacity>
+
+        {/* Options (Three Dots) */}
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={onOpenOptions}>
+          <Ionicons 
+            name="ellipsis-horizontal" 
+            size={32} 
+            color="#FFF"
+            style={{
+              textShadowColor: 'rgba(0, 0, 0, 0.4)',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 4,
+            }}
+          />
+        </TouchableOpacity>
       </View>
     </View>
   );
 });
 
 export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuthStore();
   const [videos, setVideos] = useState<any[]>([initialPost]);
@@ -830,6 +902,45 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
+
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [isOptionsVisible, setIsOptionsVisible] = useState(false);
+
+  useEffect(() => {
+    const loadAutoScrollPref = async () => {
+      try {
+        const val = await AsyncStorage.getItem('@reel_auto_scroll');
+        if (val !== null) {
+          setAutoScroll(val === 'true');
+        } else {
+          setAutoScroll(true);
+        }
+      } catch (e) {
+        console.warn('Failed to load autoScroll preference', e);
+      }
+    };
+    if (isVisible) {
+      loadAutoScrollPref();
+    }
+  }, [isVisible]);
+
+  const toggleAutoScroll = async () => {
+    try {
+      const newVal = !autoScroll;
+      setAutoScroll(newVal);
+      await AsyncStorage.setItem('@reel_auto_scroll', newVal ? 'true' : 'false');
+    } catch (e) {
+      console.warn('Failed to save autoScroll preference', e);
+    }
+  };
+
+  const handleVideoEnded = useCallback(() => {
+    if (!autoScroll) return;
+    const nextIndex = activeIndexRef.current + 1;
+    if (nextIndex < videosRef.current.length) {
+      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+    }
+  }, [autoScroll]);
 
   const handleShareLocal = useCallback((post: any) => {
     setSelectedPost(post);
@@ -895,7 +1006,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     } catch (e) {
       // Rollback on failure
       setLocalComments(prev => prev.filter(c => c.id !== tempId));
-      Alert.alert('Error', 'Could not post comment. Please try again.');
+      Alert.alert(
+        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        t('language') === 'hi' ? 'टिप्पणी पोस्ट नहीं की जा सकी। कृपया पुनः प्रयास करें।' : 'Could not post comment. Please try again.'
+      );
     } finally {
       setIsSubmittingComment(false);
     }
@@ -938,24 +1052,30 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       setSelectedPost(originalSelectedPost);
       setVideos(originalVideos);
       const detail = error.response?.data?.detail || error.message;
-      Alert.alert('Error', detail || 'Could not delete comment. Please try again.');
+      Alert.alert(
+        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        detail || (t('language') === 'hi' ? 'टिप्पणी हटाई नहीं जा सकी। कृपया पुनः प्रयास करें।' : 'Could not delete comment. Please try again.')
+      );
     }
   }, [localComments, selectedPost, videos]);
 
   const handleCopyLink = async () => {
     const postId = selectedPost?.id;
     if (!postId) return;
-    const link = `sanatanlok://post/${postId}`;
+    const link = `https://brahmand.app/post/${postId}`;
     await Clipboard.setStringAsync(link);
-    Alert.alert('Link Copied', 'The post link has been copied to your clipboard.');
+    Alert.alert(
+      t('language') === 'hi' ? 'लिंक कॉपी हो गया' : 'Link Copied', 
+      t('language') === 'hi' ? 'पोस्ट लिंक आपके क्लिपबोर्ड पर कॉपी हो गया है।' : 'The post link has been copied to your clipboard.'
+    );
   };
 
   const handleExternalShare = async () => {
     if (!selectedPost) return;
     try {
-      const link = `sanatanlok://post/${selectedPost.id}`;
+      const link = `https://brahmand.app/post/${selectedPost.id}`;
       await Share.share({
-        message: `${selectedPost.caption || 'Check this reel on Brahmand!'}\n\n${link}`,
+        message: `${selectedPost.caption || (t('language') === 'hi' ? 'ब्रह्मांड पर इस रील को देखें!' : 'Check this reel on Brahmand!')}\n\n${link}`,
         url: link,
       });
     } catch (e) {
@@ -1186,6 +1306,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     <ReelVideoItem
       post={item}
       isActive={index === activeIndex}
+      shouldLoad={Math.abs(index - activeIndex) <= 1}
       onClose={callbacksRef.current.onClose}
       onLike={callbacksRef.current.onLike}
       onComment={callbacksRef.current.onComment}
@@ -1195,8 +1316,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       screenSize={screenSize}
       onShareLocal={handleShareLocal}
       onCommentLocal={handleCommentLocal}
+      autoScroll={autoScroll}
+      onVideoEnded={handleVideoEnded}
+      onOpenOptions={() => setIsOptionsVisible(true)}
     />
-  ), [activeIndex, isMuted, screenSize, handleShareLocal, handleCommentLocal]);
+  ), [activeIndex, isMuted, screenSize, handleShareLocal, handleCommentLocal, autoScroll, handleVideoEnded]);
 
   return (
     <Modal
@@ -1282,7 +1406,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
               }}
             >
               <View style={{ width: 40, height: 5, backgroundColor: '#DDD', borderRadius: 3, alignSelf: 'center', marginBottom: 15 }} />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>Comments ({selectedPost?.comments_count ?? localComments.length ?? 0})</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>{t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedPost?.comments_count ?? localComments.length ?? 0})</Text>
 
               <FlatList
                 data={localComments}
@@ -1327,7 +1451,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                   ) : (
                     <View style={{ marginTop: 60, alignItems: 'center' }}>
                       <Ionicons name="chatbubbles-outline" size={48} color="#CCC" />
-                      <Text style={{ color: '#999', marginTop: 10 }}>No comments yet. Be the first!</Text>
+                      <Text style={{ color: '#999', marginTop: 10 }}>{t('noCommentsYet')}</Text>
                     </View>
                   )
                 }
@@ -1338,7 +1462,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                   <MentionInput
                     value={newCommentText}
                     onChangeText={setNewCommentText}
-                    placeholder="Add a comment..."
+                    placeholder={t('addComment')}
                     style={{ flex: 1 }}
                     inputStyle={{ fontSize: 14, color: '#111', maxHeight: 100 }}
                     multiline
@@ -1352,12 +1476,59 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                       fontWeight: 'bold',
                       marginLeft: 10
                     }}>
-                      {isSubmittingComment ? '...' : 'Post'}
+                      {isSubmittingComment ? '...' : t('post')}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </KeyboardAvoidingView>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Options Settings Modal */}
+        <Modal
+          visible={isOptionsVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsOptionsVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.sheetBackdrop}
+            activeOpacity={1}
+            onPress={() => setIsOptionsVisible(false)}
+          >
+            <View style={styles.sheetContainer}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>{t('reelSettings')}</Text>
+
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={() => {
+                  toggleAutoScroll();
+                  setIsOptionsVisible(false);
+                }}
+              >
+                <View style={styles.sheetRowLeft}>
+                  <Ionicons
+                    name={autoScroll ? 'repeat' : 'infinite-outline'}
+                    size={22}
+                    color="#FFF"
+                    style={styles.sheetIcon}
+                  />
+                  <Text style={styles.sheetRowText}>{t('autoScrollNextReel')}</Text>
+                </View>
+                <View style={[styles.toggleTrack, autoScroll && styles.toggleTrackActive]}>
+                  <View style={[styles.toggleThumb, autoScroll && styles.toggleThumbActive]} />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.sheetCancelBtn, { marginTop: 16 }]}
+                onPress={() => setIsOptionsVisible(false)}
+              >
+                <Text style={styles.sheetCancelText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </Modal>
       </View>
@@ -1391,5 +1562,86 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginLeft: 6,
+  },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: '#1E1E24',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  sheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  sheetRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sheetIcon: {
+    opacity: 0.9,
+  },
+  sheetRowText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  toggleTrack: {
+    width: 46,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleTrackActive: {
+    backgroundColor: COLORS.primary,
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+  },
+  toggleThumbActive: {
+    transform: [{ translateX: 22 }],
+  },
+  sheetCancelBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetCancelText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

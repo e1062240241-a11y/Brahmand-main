@@ -17,13 +17,14 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance from '../../src/utils/formatDistance';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
-import { VendorKYCModal } from '../../src/components/VendorKYCModal';
+
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore, Vendor, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
@@ -68,20 +69,20 @@ export default function VendorScreen() {
     fetchCategories,
     createVendor 
   } = useVendorStore();
-  const hasVerifiedKyc = myVendor?.kyc_status === 'verified';
+  const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
   
   const [activeTab, setActiveTab] = useState('Nearby');
   const [activeSection, setActiveSection] = useState('Services');
   const [refreshing, setRefreshing] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [showJobProfileModal, setShowJobProfileModal] = useState(false);
-  const [showKycModal, setShowKycModal] = useState(false);
-  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
   const [searchCategory, setSearchCategory] = useState<string>('All');
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [showExpandedCategories, setShowExpandedCategories] = useState(false);
   const [searchPlaceholderIndex, setSearchPlaceholderIndex] = useState(0);
   const [typedSkillPlaceholder, setTypedSkillPlaceholder] = useState('');
   const [isPlaceholderPaused, setIsPlaceholderPaused] = useState(false);
@@ -110,16 +111,19 @@ export default function VendorScreen() {
 
   const ensureKycVerifiedForCv = useCallback(async () => {
     const latestStatus = await loadKycStatus();
-    const effectiveStatus = latestStatus || currentKycStatus;
+    const isVerified =
+      latestStatus === 'verified' ||
+      (user as any)?.kyc_status === 'verified' ||
+      Boolean((user as any)?.is_verified) ||
+      myVendor?.kyc_status === 'verified';
 
-    if (effectiveStatus === 'verified') {
+    if (isVerified) {
       return true;
     }
 
-    setKycModalVendorId(myVendor?.id || '');
-    setShowKycModal(true);
+    router.push('/kyc');
     return false;
-  }, [loadKycStatus, currentKycStatus, myVendor?.id]);
+  }, [loadKycStatus, user, myVendor?.kyc_status, router]);
   const filterAnim = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput | null>(null);
 
@@ -558,9 +562,7 @@ export default function VendorScreen() {
             { 
               text: 'Complete KYC', 
               onPress: () => {
-                console.log('Opening KYC modal with vendor ID:', newVendor?.id);
-                setKycModalVendorId(newVendor?.id);
-                setShowKycModal(true);
+                router.push('/kyc');
               }
             }
           ]
@@ -574,28 +576,47 @@ export default function VendorScreen() {
 
   const handleDeleteVendor = () => {
     if (!myVendor?.id) return;
-    Alert.alert(
-      'Delete Service Profile',
-      'Are you sure you want to permanently delete your service business profile? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Permanently',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const store = useVendorStore.getState();
-              await store.deleteVendor(myVendor.id);
-              Alert.alert('Deleted', 'Your service registration was deleted successfully.');
-              await loadData();
-            } catch (error: any) {
-              Alert.alert('Error', error?.message || 'Failed to delete service.');
-            }
-          }
+
+    const performDelete = async () => {
+      try {
+        const store = useVendorStore.getState();
+        await store.deleteVendor(myVendor.id);
+        if (Platform.OS === 'web') {
+          window.alert('Your service registration was deleted successfully.');
+        } else {
+          Alert.alert('Deleted', 'Your service registration was deleted successfully.');
         }
-      ]
-    );
+        await loadData();
+      } catch (error: any) {
+        if (Platform.OS === 'web') {
+          window.alert(error?.message || 'Failed to delete service.');
+        } else {
+          Alert.alert('Error', error?.message || 'Failed to delete service.');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirm = window.confirm('Are you sure you want to permanently delete your service business profile? This action cannot be undone.');
+      if (confirm) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Service Profile',
+        'Are you sure you want to permanently delete your service business profile? This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete Permanently',
+            style: 'destructive',
+            onPress: performDelete
+          }
+        ]
+      );
+    }
   };
+
 
   const handleCall = (phone: string) => {
     Linking.openURL(`tel:${phone}`);
@@ -643,7 +664,7 @@ export default function VendorScreen() {
 
         <View style={styles.vendorInfo}>
           <View style={styles.vendorNameRow}>
-            <Text style={styles.vendorName}>{item.business_name || 'Unnamed Business'}</Text>
+            <Text style={styles.vendorName} numberOfLines={1}>{item.business_name || 'Unnamed Business'}</Text>
             {isApprovedVendor && (
               <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={styles.vendorVerifiedIcon} />
             )}
@@ -654,7 +675,7 @@ export default function VendorScreen() {
             <View style={styles.categoriesRow}>
               {vendorCategories.slice(0, 2).map((cat, idx) => (
                 <View key={idx} style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{cat}</Text>
+                  <Text style={styles.categoryBadgeText} numberOfLines={1}>{cat}</Text>
                 </View>
               ))}
               {vendorCategories.length > 2 && (
@@ -772,29 +793,13 @@ export default function VendorScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.sectionTabsContainer, { paddingTop: insets.top || SPACING.sm }]}>
-        <View style={styles.sectionTabsInner}>
-          {MAIN_SECTIONS.map((section) => (
-            <TouchableOpacity
-              key={section}
-              style={[styles.sectionTab, activeSection === section && styles.sectionTabActive]}
-              onPress={() => {
-                requestAnimationFrame(() => {
-                  setActiveSection(section);
-                });
-              }}
-            >
-              <Text style={[styles.sectionTabText, activeSection === section && styles.sectionTabTextActive]}>
-                {section}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.09, 0.25]}
+      style={styles.container}
+    >
       {/* Top Tabs */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { paddingTop: insets.top || SPACING.sm }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
           {TABS.map((tab) => (
             <TouchableOpacity
@@ -892,9 +897,9 @@ export default function VendorScreen() {
           styles.inlineFilterPanelWrapper,
           {
             opacity: filterAnim,
-            height: filterAnim.interpolate({
+            maxHeight: filterAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 76],
+              outputRange: [0, 500],
             }),
             overflow: 'hidden',
           },
@@ -902,7 +907,7 @@ export default function VendorScreen() {
         pointerEvents={showCategoryFilter ? 'auto' : 'none'}
       >
         <View style={styles.filterPanel}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
+          <View style={[styles.chipsContainer, { flexWrap: 'wrap' }]}>
             <TouchableOpacity
               style={[styles.categoryChip, searchCategory === 'All' && styles.categoryChipActive]}
               onPress={() => {
@@ -912,7 +917,10 @@ export default function VendorScreen() {
             >
               <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>All</Text>
             </TouchableOpacity>
-            {(activeSection === 'Jobs' ? jobProfessionFilters : categories).map((cat) => (
+            
+            {(activeSection === 'Jobs' ? jobProfessionFilters : categories)
+              .slice(0, showExpandedCategories ? undefined : 7)
+              .map((cat) => (
               <TouchableOpacity
                 key={cat}
                 style={[styles.categoryChip, searchCategory === cat && styles.categoryChipActive]}
@@ -924,7 +932,25 @@ export default function VendorScreen() {
                 <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+            
+            {!showExpandedCategories && (activeSection === 'Jobs' ? jobProfessionFilters : categories).length > 7 && (
+              <TouchableOpacity
+                style={styles.categoryChip}
+                onPress={() => setShowExpandedCategories(true)}
+              >
+                <Text style={styles.categoryChipText}>+ More</Text>
+              </TouchableOpacity>
+            )}
+            
+            {showExpandedCategories && (
+              <TouchableOpacity
+                style={styles.categoryChip}
+                onPress={() => setShowExpandedCategories(false)}
+              >
+                <Text style={styles.categoryChipText}>Show Less</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </Animated.View>
 
@@ -962,62 +988,77 @@ export default function VendorScreen() {
 
       {/* My Business Section (if vendor owner) */}
       {activeSection === 'Services' && myVendor && (
-        <TouchableOpacity 
-          style={styles.myBusinessCard}
-          onPress={() => {
-            router.push('/vendor/dashboard');
-          }}
-        >
-          <View style={styles.myBusinessIcon}>
-            <Ionicons name="storefront" size={24} color={COLORS.primary} />
-          </View>
-          <View style={styles.myBusinessInfo}>
-            <Text style={styles.myBusinessLabel}>Manage My Service</Text>
-            <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
-            {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
-              <View style={{ marginTop: SPACING.xs }}>
-                <View style={styles.kycStatusBadge}>
-                  <View style={[
-                    styles.kycStatusDot,
-                    { 
-                      backgroundColor: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning 
-                    }
-                  ]} />
-                  <Text style={[
-                    styles.kycStatusText,
-                    { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
-                  ]}>
-                    {myVendor.kyc_status === 'rejected'
-                      ? 'KYC Rejected'
-                      : myVendor.kyc_status === 'manual_review'
-                        ? 'Verification In Review'
-                        : 'Pending KYC'}
-                  </Text>
-                </View>
-                {myVendor.kyc_status !== 'manual_review' && (
-                  <TouchableOpacity
-                    style={{
-                      marginTop: SPACING.xs,
-                      backgroundColor: COLORS.primary,
-                      paddingVertical: 4,
-                      paddingHorizontal: 12,
-                      borderRadius: 12,
-                      alignSelf: 'flex-start',
-                    }}
-                    onPress={() => {
-                      setKycModalVendorId(myVendor.id);
-                      setShowKycModal(true);
-                    }}
-                  >
-                    <Text style={{ color: COLORS.surface, fontSize: 12, fontWeight: '600' }}>
-                      Complete Verification
+        <View style={styles.myBusinessCard}>
+          <TouchableOpacity 
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+            onPress={() => {
+              router.push('/vendor/dashboard');
+            }}
+          >
+            <View style={styles.myBusinessIcon}>
+              <Ionicons name="storefront" size={24} color={COLORS.primary} />
+            </View>
+            <View style={styles.myBusinessInfo}>
+              <Text style={styles.myBusinessLabel}>Manage My Service</Text>
+              <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
+              {hasVerifiedKyc ? (
+                <View style={{ marginTop: SPACING.xs }}>
+                  <View style={styles.kycStatusBadge}>
+                    <Ionicons name="checkmark-circle" size={12} color="#2E7D32" style={{ marginRight: SPACING.xs }} />
+                    <Text style={[styles.kycStatusText, { color: '#2E7D32' }]}>
+                      KYC Verified
                     </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+                  </View>
+                </View>
+              ) : (
+                (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
+                  <View style={{ marginTop: SPACING.xs }}>
+                    <View style={styles.kycStatusBadge}>
+                      <View style={[
+                        styles.kycStatusDot,
+                        { 
+                          backgroundColor: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning 
+                        }
+                      ]} />
+                      <Text style={[
+                        styles.kycStatusText,
+                        { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
+                      ]}>
+                        {myVendor.kyc_status === 'rejected'
+                          ? 'KYC Rejected'
+                          : myVendor.kyc_status === 'manual_review'
+                            ? 'Verification In Review'
+                            : 'Pending KYC'}
+                      </Text>
+                    </View>
+                  </View>
+                )
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} style={{ marginRight: 8 }} />
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: COLORS.divider }}>
+            {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
+              <TouchableOpacity
+                style={{
+                  backgroundColor: COLORS.primary,
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+                onPress={() => {
+                  router.push('/kyc');
+                }}
+              >
+                <Text style={{ color: COLORS.surface, fontSize: 11, fontWeight: '700' }}>
+                  Verify
+                </Text>
+              </TouchableOpacity>
             )}
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+
             <TouchableOpacity
               style={{
                 width: 36,
@@ -1031,10 +1072,10 @@ export default function VendorScreen() {
             >
               <Ionicons name="trash" size={18} color={COLORS.error} />
             </TouchableOpacity>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
           </View>
-        </TouchableOpacity>
+        </View>
       )}
+
 
       {/* Create button */}
       {activeSection === 'Services' && !myVendor && (
@@ -1110,25 +1151,15 @@ export default function VendorScreen() {
         onSubmit={handleCreateJobProfile}
       />
 
-      <VendorKYCModal
-        visible={showKycModal}
-        vendorId={kycModalVendorId || ''}
-        allowUserKycFallback
-        onClose={() => setShowKycModal(false)}
-        onKycUpdated={() => {
-          setShowKycModal(false);
-          loadKycStatus();
-          router.push('/vendor/dashboard');
-        }}
-      />
-    </View>
+
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   sectionTabsContainer: {
     paddingHorizontal: SPACING.md,
@@ -1169,9 +1200,9 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
     paddingVertical: SPACING.sm,
   },
   tabsScroll: {
@@ -1522,6 +1553,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
+    flexShrink: 1,
   },
   categoriesRow: {
     flexDirection: 'row',
@@ -1536,6 +1568,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginRight: 4,
     marginBottom: 2,
+    flexShrink: 1,
   },
   categoryBadgeText: {
     fontSize: 11,

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, FlatList, Image, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../../src/components/Button';
 import { getAllUsers, getConversations, sendDirectMessage } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -166,7 +166,12 @@ export default function NewDMScreen() {
         )}
       </View>
       <View style={styles.userMeta}>
-        <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
+          {item.is_verified && (
+            <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />
+          )}
+        </View>
         <Text style={styles.userSl}>SL: {item.sl_id}</Text>
       </View>
       <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
@@ -189,81 +194,99 @@ export default function NewDMScreen() {
         </View>
 
         <View style={styles.content}>
-          <View style={styles.topActions}>
-            <TouchableOpacity
-              style={styles.createGroupPill}
-              onPress={() => router.push('/circle/create')}
-            >
-              <Ionicons name="add" size={16} color={COLORS.primary} />
-              <Text style={styles.createGroupText}>Create Group</Text>
-            </TouchableOpacity>
-          </View>
 
-          <View style={styles.searchWrap}>
-            <Ionicons name="search" size={18} color={COLORS.textLight} />
-            <TextInput
-              style={styles.searchInputText}
-              placeholder="Search users by name or SL number"
-              placeholderTextColor={COLORS.textLight}
-              value={userSearchQuery}
-              onChangeText={handleUserSearch}
-            />
-            {userSearchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => handleUserSearch('')}>
-                <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <Text style={styles.label}>All Registered Users</Text>
-
-          {loadingUsers ? (
-            <ActivityIndicator size="large" color={COLORS.primary} style={{ marginVertical: SPACING.lg }} />
-          ) : (
-            <FlatList
-              data={filteredUsers}
-              renderItem={renderUserItem}
-              keyExtractor={(item) => item.id}
-              style={styles.usersList}
-              contentContainerStyle={{ paddingBottom: SPACING.lg }}
-              ListEmptyComponent={
-                <Text style={styles.emptyUsersText}>No users found</Text>
-              }
-            />
-          )}
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {/* Found User */}
-          {foundUser && (
-            <View style={styles.userCard}>
-              <Avatar name={foundUser.name} photo={foundUser.photo} size={50} />
-              <View style={styles.userInfo}>
-                <Text style={styles.selectedUserName}>{foundUser.name}</Text>
-                <Text style={styles.userSlId}>{foundUser.sl_id}</Text>
+          {/* If no user is selected yet, show search + list */}
+          {!foundUser && (
+            <>
+              <View style={styles.topActions}>
+                <TouchableOpacity
+                  style={styles.createGroupPill}
+                  onPress={() => router.push('/circle/create')}
+                >
+                  <Ionicons name="add" size={16} color={COLORS.primary} />
+                  <Text style={styles.createGroupText}>Create Group</Text>
+                </TouchableOpacity>
               </View>
-              <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
-            </View>
+
+              <View style={styles.searchWrap}>
+                <Ionicons name="search" size={18} color={COLORS.textLight} />
+                <TextInput
+                  style={styles.searchInputText}
+                  placeholder="Search users by name or SL number"
+                  placeholderTextColor={COLORS.textLight}
+                  value={userSearchQuery}
+                  onChangeText={handleUserSearch}
+                />
+                {userSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => handleUserSearch('')}>
+                    <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.label}>All Registered Users</Text>
+
+              {loadingUsers ? (
+                <ActivityIndicator size="large" color={COLORS.primary} style={{ marginVertical: SPACING.lg }} />
+              ) : (
+                <FlatList
+                  data={filteredUsers}
+                  renderItem={renderUserItem}
+                  keyExtractor={(item) => item.id}
+                  style={styles.usersList}
+                  contentContainerStyle={{ paddingBottom: SPACING.lg }}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyUsersText}>No users found</Text>
+                  }
+                />
+              )}
+
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+            </>
           )}
 
-          {/* Message Input */}
+          {/* Compose view: shown when a user is selected */}
           {foundUser && (
-            <View style={styles.messageSection}>
-              <Text style={styles.label}>Message</Text>
-              <TextInput
-                placeholder="Type your message..."
-                placeholderTextColor={COLORS.textLight}
-                value={message}
-                onChangeText={setMessage}
-                multiline
-                style={styles.messageInput}
-              />
-              <Button
-                title="Send Message"
-                onPress={handleSend}
-                loading={sending}
-                disabled={!message.trim()}
-              />
+            <View style={styles.composeContainer}>
+              {/* Selected User Card */}
+              <View style={styles.userCard}>
+                <Avatar name={foundUser.name} photo={foundUser.photo} size={50} />
+                <View style={styles.userInfo}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.selectedUserName}>{foundUser.name}</Text>
+                    {(foundUser.is_verified || foundUser.isVerified) && (
+                      <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />
+                    )}
+                  </View>
+                  <Text style={styles.userSlId}>{foundUser.sl_id}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setFoundUser(null)}>
+                  <Ionicons name="close-circle" size={24} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              {/* Message Input */}
+              <View style={styles.messageSection}>
+                <Text style={styles.label}>Message</Text>
+                <TextInput
+                  placeholder="Type your message..."
+                  placeholderTextColor={COLORS.textLight}
+                  value={message}
+                  onChangeText={setMessage}
+                  multiline
+                  autoFocus
+                  style={styles.messageInput}
+                  textAlignVertical="top"
+                />
+                <Button
+                  title="Send Message"
+                  onPress={handleSend}
+                  loading={sending}
+                  disabled={!message.trim()}
+                />
+              </View>
             </View>
           )}
 
@@ -344,6 +367,9 @@ const styles = StyleSheet.create({
   usersList: {
     flex: 1,
     marginBottom: 0,
+  },
+  composeContainer: {
+    flex: 1,
   },
   emptyUsersText: {
     textAlign: 'center',

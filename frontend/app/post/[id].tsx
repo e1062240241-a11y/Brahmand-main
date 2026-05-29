@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Share, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, Alert } from 'react-native';
+import { View, Text, Share, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, Alert, Keyboard } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,20 @@ const PostScreen = () => {
   const insets = useSafeAreaInsets();
   const routePostId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { user } = useAuthStore();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const [feedPosts, setFeedPosts] = useState<any[]>([]);
   const [loadingFeed, setLoadingFeed] = useState(true);
@@ -241,7 +255,7 @@ const PostScreen = () => {
     if (!post) return;
     const mediaUrl = post.media_url || post.mediaUrl || post.image_url || post.imageUrl || '';
     const caption = post.caption || post.description || '';
-    const link = `sanatanlok://post/${post.id}`;
+    const link = `https://brahmand.app/post/${post.id}`;
     const message = `Check this post on Brahmand!${caption ? `\nCaption: ${caption}` : ''}\n\n${link}`;
     try {
       await Share.share({ message, url: link || undefined, title: 'Share via Brahmand' });
@@ -254,7 +268,7 @@ const PostScreen = () => {
     if (!selectedSharePost?.id) return;
     try {
       const Clipboard = await import('expo-clipboard');
-      await Clipboard.setStringAsync(`sanatanlok://post/${selectedSharePost.id}`);
+      await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
       alert('Link copied to clipboard');
       setShareModalVisible(false);
     } catch {
@@ -397,9 +411,9 @@ const PostScreen = () => {
         <KeyboardAvoidingView
           style={styles.commentModalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          keyboardVerticalOffset={0}
         >
-          <View style={styles.commentModalSheet}>
+          <View style={[styles.commentModalSheet, { paddingBottom: keyboardVisible ? 8 : (Platform.OS === 'ios' ? SPACING.lg : SPACING.md) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments ({commentPost?.comments_count ?? postComments.length ?? 0})</Text>
               <TouchableOpacity onPress={() => { setCommentModalVisible(false); }} style={styles.commentCloseBtn}>

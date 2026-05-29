@@ -15,10 +15,12 @@ import { useFocusEffect } from 'expo-router';
 import { usePersonalityStore } from '../../src/store/personalityStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { getProfile } from '../../src/services/api';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
 
 export default function PersonalitySuccessScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { resetData } = usePersonalityStore();
   const { user, setUser } = useAuthStore();
@@ -77,32 +79,38 @@ export default function PersonalitySuccessScreen() {
 
           {/* Title */}
           <Text style={styles.mainTitle}>
-            {isApproved ? 'Verification Success!' : isRejected ? 'Verification Rejected' : 'Thank You!'}
+            {isApproved 
+              ? (t('language') === 'hi' ? 'सत्यापन सफल!' : 'Verification Success!') 
+              : isRejected 
+                ? (t('language') === 'hi' ? 'सत्यापन अस्वीकृत' : 'Verification Rejected') 
+                : (t('language') === 'hi' ? 'धन्यवाद!' : 'Thank You!')}
           </Text>
           
           {/* Subtitle */}
           <Text style={styles.subtitle}>
             {isApproved 
-              ? 'Your identity has been verified. You now have access to elite community groups.' 
+              ? (t('language') === 'hi' ? 'आपकी पहचान सत्यापित हो गई है। अब आपके पास विशिष्ट समुदाय समूहों तक पहुंच है।' : 'Your identity has been verified. You now have access to elite community groups.') 
               : isRejected 
-                ? 'Unfortunately, your application was not approved. Please contact support for details.'
-                : 'Your application has been submitted successfully.'}
+                ? (t('language') === 'hi' ? 'दुर्भाग्य से, आपका आवेदन स्वीकृत नहीं हुआ था। विवरण के लिए कृपया सहायता टीम से संपर्क करें।' : 'Unfortunately, your application was not approved. Please contact support for details.')
+                : (t('language') === 'hi' ? 'आपका आवेदन सफलतापूर्वक सबमिट कर दिया गया है।' : 'Your application has been submitted successfully.')}
           </Text>
 
           {/* Highlighted Status Box */}
           <View style={[styles.statusBox, isApproved && { backgroundColor: '#E8F5E9', borderColor: '#C8E6C9' }, isRejected && { backgroundColor: '#FFEBEE', borderColor: '#FFCDD2' }]}>
             <Text style={[styles.statusText, isApproved && { color: '#2E7D32' }, isRejected && { color: '#C62828' }]}>
               {isApproved 
-                ? 'Congratulations! You are now a Verified Personality.' 
+                ? (t('language') === 'hi' ? 'बधाई हो! अब आप एक सत्यापित व्यक्तित्व हैं।' : 'Congratulations! You are now a Verified Personality.') 
                 : isRejected 
-                  ? 'Application Rejected' 
-                  : 'You will be notified here once your application is approved.'}
+                  ? (t('language') === 'hi' ? 'आवेदन अस्वीकृत' : 'Application Rejected') 
+                  : (t('language') === 'hi' ? 'आपका आवेदन स्वीकृत होने पर आपको यहां सूचित किया जाएगा।' : 'You will be notified here once your application is approved.')}
             </Text>
           </View>
 
           {/* Amazon-style Tracking Section */}
           <View style={styles.trackingContainer}>
-            <Text style={styles.trackingTitle}>Application Tracking</Text>
+            <Text style={styles.trackingTitle}>
+              {t('language') === 'hi' ? 'आवेदन ट्रैकिंग' : 'Application Tracking'}
+            </Text>
             
             <View style={styles.stepperContainer}>
               {/* Step 1: Submitted */}
@@ -114,8 +122,12 @@ export default function PersonalitySuccessScreen() {
                   <View style={[styles.stepLine, (isPending || isApproved || isRejected) && styles.completedLine]} />
                 </View>
                 <View style={styles.stepTextContainer}>
-                  <Text style={styles.stepLabel}>Application Submitted</Text>
-                  <Text style={styles.stepDesc}>Your application has been received</Text>
+                  <Text style={styles.stepLabel}>
+                    {t('language') === 'hi' ? 'आवेदन सबमिट किया गया' : 'Application Submitted'}
+                  </Text>
+                  <Text style={styles.stepDesc}>
+                    {t('language') === 'hi' ? 'आपका आवेदन प्राप्त हो गया है' : 'Your application has been received'}
+                  </Text>
                 </View>
               </View>
 
@@ -135,9 +147,13 @@ export default function PersonalitySuccessScreen() {
                   <View style={[styles.stepLine, (isApproved || isRejected) && styles.completedLine]} />
                 </View>
                 <View style={styles.stepTextContainer}>
-                  <Text style={styles.stepLabel}>Verification in Progress</Text>
+                  <Text style={styles.stepLabel}>
+                    {t('language') === 'hi' ? 'सत्यापन प्रगति पर है' : 'Verification in Progress'}
+                  </Text>
                   <Text style={styles.stepDesc}>
-                    {isApproved || isRejected ? 'Review completed' : 'Our team is reviewing your details'}
+                    {isApproved || isRejected 
+                      ? (t('language') === 'hi' ? 'समीक्षा पूरी हुई' : 'Review completed') 
+                      : (t('language') === 'hi' ? 'हमारी टीम आपके विवरण की समीक्षा कर रही है' : 'Our team is reviewing your details')}
                   </Text>
                 </View>
               </View>
@@ -159,9 +175,15 @@ export default function PersonalitySuccessScreen() {
                   </View>
                 </View>
                 <View style={styles.stepTextContainer}>
-                  <Text style={styles.stepLabel}>Final Decision</Text>
+                  <Text style={styles.stepLabel}>
+                    {t('language') === 'hi' ? 'अंतिम निर्णय' : 'Final Decision'}
+                  </Text>
                   <Text style={styles.stepDesc}>
-                    {isApproved ? 'Approved!' : isRejected ? 'Not Approved' : 'Result pending'}
+                    {isApproved 
+                      ? (t('language') === 'hi' ? 'स्वीकृत!' : 'Approved!') 
+                      : isRejected 
+                        ? (t('language') === 'hi' ? 'स्वीकृत नहीं' : 'Not Approved') 
+                        : (t('language') === 'hi' ? 'परिणाम लंबित है' : 'Result pending')}
                   </Text>
                 </View>
               </View>
@@ -171,8 +193,8 @@ export default function PersonalitySuccessScreen() {
           {/* Footer Info Text */}
           <Text style={styles.infoText}>
             {isApproved 
-              ? 'Check the Communities tab to join your new groups.' 
-              : 'You can continue using the app and track updates in your profile.'}
+              ? (t('language') === 'hi' ? 'अपने नए समूहों में शामिल होने के लिए समुदाय टैब देखें।' : 'Check the Communities tab to join your new groups.') 
+              : (t('language') === 'hi' ? 'आप ऐप का उपयोग करना जारी रख सकते हैं और अपने प्रोफ़ाइल में अपडेट ट्रैक कर सकते हैं।' : 'You can continue using the app and track updates in your profile.')}
           </Text>
         </ScrollView>
       </SafeAreaView>

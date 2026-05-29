@@ -19,13 +19,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useVendorStore, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { useAuthStore } from '../../src/store/authStore';
-import { VendorKYCModal } from '../../src/components/VendorKYCModal';
-import { sendOTP, verifyOTP } from '../../src/services/api';
+
+import { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
 
 export default function VendorDashboardScreen() {
   const router = useRouter();
   const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile, deleteVendor } = useVendorStore();
-  const { user, isLoading: authLoading, isAuthenticated } = useAuthStore();
+  const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
   const [phoneOtpStage, setPhoneOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
@@ -50,7 +50,7 @@ export default function VendorDashboardScreen() {
       router.replace('/auth' as any);
     }
   }, [authLoading, isAuthenticated, router]);
-  const [kycVisible, setKycVisible] = useState(false);
+
   
   // Edit modals
   const [editModal, setEditModal] = useState<string | null>(null);
@@ -61,11 +61,24 @@ export default function VendorDashboardScreen() {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    // Refresh myVendor on mount and when this component re-renders.
-    fetchMyVendor()
-      .catch((e) => console.warn('fetchMyVendor failed', e))
-      .finally(() => setIsInitializing(false));
-  }, [fetchMyVendor]);
+    // Refresh myVendor and KYC status on mount and when this component re-renders.
+    const initialize = async () => {
+      try {
+        await fetchMyVendor();
+        const response = await getKYCStatus();
+        const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+        updateUser({
+          kyc_status: serverStatus,
+          is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+        } as any);
+      } catch (e) {
+        console.warn('Initialization failed', e);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    initialize();
+  }, [fetchMyVendor, updateUser]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -151,7 +164,7 @@ export default function VendorDashboardScreen() {
   const formatKycStatus = (status?: string) => {
     switch (status) {
       case 'verified':
-        return 'Approved';
+        return 'KYC Verified';
       case 'manual_review':
         return 'Admin Review';
       case 'rejected':
@@ -284,24 +297,26 @@ export default function VendorDashboardScreen() {
       ).slice(0, 5)
     : [];
 
-  const isVerified = myVendor?.kyc_status === 'verified';
-  const isManualReview = myVendor?.kyc_status === 'manual_review';
-  const isUserKycVerified = false;
-  const effectiveKycStatus = isVerified ? 'verified' : myVendor?.kyc_status;
-  const isReviewOrVerified = isManualReview || effectiveKycStatus === 'verified';
+  const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+  const isVendorVerified = myVendor?.kyc_status === 'verified';
+  const isVerified = isUserVerified || isVendorVerified;
+
+  const isUserManualReview = (user as any)?.kyc_status === 'manual_review';
+  const isVendorManualReview = myVendor?.kyc_status === 'manual_review';
+  const isManualReview = isUserManualReview || isVendorManualReview;
+
+  const isUserKycVerified = isUserVerified;
+  const effectiveKycStatus = isVerified ? 'verified' : (isManualReview ? 'manual_review' : (myVendor?.kyc_status || (user as any)?.kyc_status || 'pending'));
+  const isReviewOrVerified = isManualReview || isVerified;
   const isVendorApproved = isVerified;
-  const hasVerifiedKyc = isVendorApproved;
+  const hasVerifiedKyc = isVerified;
 
   const handleTellBusiness = () => {
     router.push('/vendor/business-details');
   };
 
   const handleOpenKyc = () => {
-    if (hasVerifiedKyc || isReviewOrVerified) {
-      router.push('/kyc');
-      return;
-    }
-    setKycVisible(true);
+    router.push('/kyc');
   };
 
   const handleDeleteBusiness = () => {
@@ -357,22 +372,19 @@ export default function VendorDashboardScreen() {
     emphasis?: boolean;
   };
 
-  const menuItems: MenuItem[] = isVendorApproved
-    ? [
-        { icon: 'create', label: 'Tell about your business', action: handleTellBusiness },
-      ]
-    : isReviewOrVerified
-    ? [
-        { icon: '', label: 'KYC & Verification', action: handleOpenKyc, emphasis: true },
-      ]
-    : [
-        { icon: 'create', label: 'Edit Business Name', action: handleEditBusinessName },
-        { icon: 'document-text', label: 'Edit Business Description', action: handleEditDescription },
-        { icon: 'location', label: 'Update Address', action: handleEditAddress },
-        { icon: 'pricetags', label: 'Update Categories', action: handleEditCategories },
-        { icon: 'call', label: 'Manage Contact Number', action: handleEditPhone },
-        { icon: 'id-card', label: 'Complete KYC & Verification', action: handleOpenKyc },
-      ];
+  const menuItems: MenuItem[] = [
+    { icon: 'create', label: 'Tell about your business', action: handleTellBusiness },
+    { icon: 'create', label: 'Edit Business Name', action: handleEditBusinessName },
+    { icon: 'document-text', label: 'Edit Business Description', action: handleEditDescription },
+    { icon: 'location', label: 'Update Address', action: handleEditAddress },
+    { icon: 'pricetags', label: 'Update Categories', action: handleEditCategories },
+    { icon: 'call', label: 'Manage Contact Number', action: handleEditPhone },
+    isVendorApproved
+      ? { icon: 'checkmark-circle', label: 'KYC Verified', action: handleOpenKyc }
+      : isReviewOrVerified
+      ? { icon: 'time', label: 'KYC Under Review', action: handleOpenKyc, emphasis: true }
+      : { icon: 'id-card', label: 'Complete KYC & Verification', action: handleOpenKyc }
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -669,12 +681,7 @@ export default function VendorDashboardScreen() {
       </KeyboardAvoidingView>
       </Modal>
 
-      <VendorKYCModal 
-        visible={kycVisible}
-        onClose={() => setKycVisible(false)}
-        vendorId={myVendor.id}
-        onKycUpdated={fetchMyVendor}
-      />
+
     </SafeAreaView>
   );
 }

@@ -17,19 +17,20 @@ import {
   Image,
   ImageBackground,
   Dimensions,
+  Keyboard,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest } from '../../src/services/api';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
-import { VendorKYCModal } from '../../src/components/VendorKYCModal';
+
 import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import { ToastContainer } from '../../src/components/ToastContainer';
@@ -313,6 +314,23 @@ export default function CommunityDetailScreen() {
     return cachedData?.events || [];
   });
   const [discussionPosts, setDiscussionPosts] = useState<DiscussionPost[]>(MOCK_DISCUSSION);
+
+  // interest state: requestId -> { count, userInterested }
+  const [interestMap, setInterestMap] = useState<Record<string, { count: number; userInterested: boolean }>>({});
+
+  const handleToggleInterest = async (item: any) => {
+    const id = item.id;
+    if (!id || String(id).startsWith('dummy')) return;
+    const prev = interestMap[id] ?? { count: item.interested_count || 0, userInterested: (item.interested_by || []).includes(user?.id) };
+    const next = { count: prev.userInterested ? prev.count - 1 : prev.count + 1, userInterested: !prev.userInterested };
+    setInterestMap(m => ({ ...m, [id]: next }));
+    try {
+      await toggleRequestInterest(id);
+    } catch {
+      setInterestMap(m => ({ ...m, [id]: prev }));
+    }
+  };
+
   const [communityPosts, setCommunityPosts] = useState<any[]>(() => {
     const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
     return cachedData?.communityPosts || [];
@@ -327,6 +345,7 @@ export default function CommunityDetailScreen() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
+  const [rsvpStates, setRsvpStates] = useState<Record<string, 'yes' | 'no'>>({});
   useEffect(() => {
     const timer = setInterval(() => {
       setTick(t => t + 1);
@@ -345,9 +364,7 @@ export default function CommunityDetailScreen() {
   const [postCategory, setPostCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [sevaDetails, setSevaDetails] = useState('');
-  const [showKycModal, setShowKycModal] = useState(false);
-  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
-  const [pendingPostAfterKyc, setPendingPostAfterKyc] = useState(false);
+
   const [showInlineCategories, setShowInlineCategories] = useState(false);
 
   const isKycVerified =
@@ -356,9 +373,24 @@ export default function CommunityDetailScreen() {
     myVendor?.kyc_status === 'verified';
 
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
+  const [fullScreenMedia, setFullScreenMedia] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [activeComments, setActiveComments] = useState<any[]>([]);
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const dynamicTabs = useMemo(() => {
     return COMMUNITY_TABS;
@@ -716,7 +748,7 @@ export default function CommunityDetailScreen() {
             organizer: {
               name: p.user?.name || 'Devotee',
               photo: p.user?.photo || null,
-              isVerified: p.user?.isVerified || false
+              isVerified: p.user?.isVerified || p.user?.is_verified || p.is_verified || false
             },
             timeAgo: timeAgoStr,
             type: 'festival_event',
@@ -1129,8 +1161,8 @@ export default function CommunityDetailScreen() {
         user: {
           name: msg.sender_name || 'Anonymous',
           photo: msg.sender_photo,
-          isVerified: true,
-          verificationLabel: 'State Verified',
+          isVerified: msg.is_verified || false,
+          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
         },
         content: msg.content,
         image: msg.media_url || msg.mediaUrl || msg.image,
@@ -1157,8 +1189,8 @@ export default function CommunityDetailScreen() {
         user: {
           name: msg.sender_name || 'Anonymous',
           photo: msg.sender_photo,
-          isVerified: true,
-          verificationLabel: 'Bharat Verified',
+          isVerified: msg.is_verified || false,
+          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
         },
         content: msg.content,
         image: msg.media_url || msg.mediaUrl || msg.image,
@@ -1200,7 +1232,16 @@ export default function CommunityDetailScreen() {
 
       let finalPosts: any[] = [];
       setCommunityPosts((prev: any[]) => {
-        const localPosts = prev.filter((p: any) => String(p.id).startsWith('post-'));
+        const serverIds = new Set([
+          ...formattedMsgs.map((p: any) => p.id),
+          ...recentStateMsgs.map((p: any) => p.id),
+          ...olderStateMsgs.map((p: any) => p.id),
+          ...recentNationalMsgs.map((p: any) => p.id),
+          ...olderNationalMsgs.map((p: any) => p.id)
+        ]);
+
+        // Keep local optimistic posts (either pending with 'post-' ID, or completed but not yet in server fetch)
+        const localPosts = prev.filter((p: any) => (String(p.id).startsWith('post-') || p.isUniversal) && !serverIds.has(p.id));
         const seenIds = new Set(localPosts.map((p: any) => p.id));
 
         const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id));
@@ -1392,6 +1433,8 @@ export default function CommunityDetailScreen() {
           <Text style={[styles.pillTabText, activeTab === 'My Posts' && styles.pillTabTextActive]}>My Posts</Text>
         </TouchableOpacity>
 
+        <View style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
+
         {dynamicTabs.map(tab => (
           <TouchableOpacity
             key={tab}
@@ -1473,8 +1516,8 @@ export default function CommunityDetailScreen() {
                   </View>
                 )}
                 {(item as any).category && (item as any).category !== 'Feed' && (item as any).category !== 'Others' && (
-                  <View style={{ backgroundColor: '#F0F9FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#BAE6FD' }}>
-                    <Text style={{ fontSize: 10, color: '#0369A1', fontWeight: 'bold' }}>{(item as any).category.toUpperCase()}</Text>
+                  <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>{(item as any).category.toUpperCase()}</Text>
                   </View>
                 )}
               </View>
@@ -1513,11 +1556,13 @@ export default function CommunityDetailScreen() {
             ) : null}
 
             {item.image && (
-              <Image
-                source={typeof item.image === 'string' ? { uri: item.image } : item.image}
-                style={styles.postMediaImage}
-                resizeMode="cover"
-              />
+              <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof item.image === 'string' ? item.image : ((item.image as any)?.uri || ''))}>
+                <Image
+                  source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                  style={styles.postMediaImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
             )}
 
             <View style={styles.postActionRow}>
@@ -1618,15 +1663,23 @@ export default function CommunityDetailScreen() {
       <View style={styles.festEventCard}>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (
-            <Image
-              source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
-              style={styles.festEventImage}
-            />
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}>
+              <Image
+                source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
+                style={styles.festEventImage}
+              />
+            </TouchableOpacity>
           )}
           <View style={styles.festEventInfo}>
             <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Seva'}</Text>
-            {item.description || item.content || item.sevaDetails ? (
-              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description || item.content || item.sevaDetails}</Text>
+            {item.description || item.content ? (
+              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description || item.content}</Text>
+            ) : null}
+            {item.sevaDetails ? (
+              <View style={[styles.sevaInfoCard, { marginTop: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }]}>
+                <Text style={[styles.sevaInfoLabel, { fontSize: 10, marginBottom: 2 }]}>Seva Details</Text>
+                <Text style={[styles.sevaInfoText, { fontSize: 13, lineHeight: 18 }]}>{item.sevaDetails}</Text>
+              </View>
             ) : null}
             <View style={styles.festEventMeta}>
               <View style={styles.festMetaRow}>
@@ -1647,7 +1700,7 @@ export default function CommunityDetailScreen() {
             <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.festOrgNameRow}>
                 <Text style={styles.festOrgName} numberOfLines={1}>{item.user?.name || item.user_name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
               </View>
               <Text style={styles.festOrgLabel}>Volunteer • {item.location || 'Local'}</Text>
             </View>
@@ -1697,18 +1750,51 @@ export default function CommunityDetailScreen() {
     );
   };
 
+  const handleAttendPress = async (eventId: string, wantsToAttend: boolean) => {
+    setRsvpStates(prev => ({
+      ...prev,
+      [eventId]: wantsToAttend ? 'yes' : 'no'
+    }));
+
+    try {
+      if (typeof eventId === 'string' && !eventId.startsWith('post-') && !eventId.startsWith('dummy-')) {
+        const { attendEvent } = require('../../src/services/api');
+        if (wantsToAttend) {
+          await attendEvent(eventId);
+        } else {
+          const { api: axiosInstance } = require('../../src/services/api');
+          await axiosInstance.post(`/events/${eventId}/cancel-attendance`);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to update event attendance on backend:', err);
+    }
+  };
+
   const renderEventItem = ({ item }: { item: any }) => {
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     const phone = item.contact_number || item.contact || item.user_phone;
+
+    const userIsAttendee = Array.isArray(item.attendees) && item.attendees.includes(user?.id);
+    const rsvp = rsvpStates[item.id] || (userIsAttendee ? 'yes' : undefined);
+    
+    let displayGoingCount = item.attendee_count || 0;
+    if (rsvpStates[item.id] === 'yes' && !userIsAttendee) {
+      displayGoingCount += 1;
+    } else if (rsvpStates[item.id] === 'no' && userIsAttendee) {
+      displayGoingCount = Math.max(0, displayGoingCount - 1);
+    }
 
     return (
       <View style={styles.festEventCard}>
         <View style={styles.festEventMain}>
           {(item.image_url || item.image || item.media_url) && (
-            <Image
-              source={typeof (item.image_url || item.image || item.media_url) === 'string' ? { uri: (item.image_url || item.image || item.media_url) } : (item.image_url || item.image || item.media_url)}
-              style={styles.festEventImage}
-            />
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof (item.image_url || item.image || item.media_url) === 'string' ? (item.image_url || item.image || item.media_url) : (item.image_url || item.image || item.media_url).uri)}>
+              <Image
+                source={typeof (item.image_url || item.image || item.media_url) === 'string' ? { uri: (item.image_url || item.image || item.media_url) } : (item.image_url || item.image || item.media_url)}
+                style={styles.festEventImage}
+              />
+            </TouchableOpacity>
           )}
           <View style={styles.festEventInfo}>
             <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || 'Event'}</Text>
@@ -1722,7 +1808,7 @@ export default function CommunityDetailScreen() {
               </View>
               <View style={styles.festMetaRow}>
                 <Ionicons name="people" size={14} color="#00C853" />
-                <Text style={styles.festMetaText} numberOfLines={1}>{item.attendee_count || 0} Going</Text>
+                <Text style={styles.festMetaText} numberOfLines={1}>{displayGoingCount} Going</Text>
               </View>
             </View>
           </View>
@@ -1734,7 +1820,7 @@ export default function CommunityDetailScreen() {
             <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.festOrgNameRow}>
                 <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
               </View>
               <Text style={styles.festOrgLabel}>Organizer • {getTimeAgo(item.start_time || item.created_at || item.timestamp)}</Text>
             </View>
@@ -1775,12 +1861,54 @@ export default function CommunityDetailScreen() {
             <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
         </View>
+
+        {!(item.user_id === user?.id || item.sender_id === user?.id || item.organizer_id === user?.id) && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 12,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: '#F0F0F0',
+          }}>
+            <Text style={{ fontSize: 13, color: '#64748B', fontFamily: FONTS.regular }}>
+              Do you want to attend?
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 14 }}>
+              <TouchableOpacity
+                onPress={() => handleAttendPress(item.id, true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={rsvp === 'yes' ? "checkmark-circle" : "checkmark-circle-outline"}
+                  size={22}
+                  color={rsvp === 'yes' ? "#16A34A" : "#94A3B8"}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleAttendPress(item.id, false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={rsvp === 'no' ? "close-circle" : "close-circle-outline"}
+                  size={22}
+                  color={rsvp === 'no' ? "#DC2626" : "#94A3B8"}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     );
   };
 
-  const renderFestivalItem = ({ item }: { item: any }) => (
-    <View style={[styles.festivalTypeCard, { backgroundColor: item.color }]}>
+  const renderFestivalItem = ({ item, index }: { item: any; index: number }) => (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => router.push(`/festival-detail?index=${index}`)}
+      style={[styles.festivalTypeCard, { backgroundColor: item.color }]}
+    >
       <View style={styles.festivalIconCircle}>
         <Ionicons name={item.icon} size={24} color={item.iconColor} />
       </View>
@@ -1789,7 +1917,7 @@ export default function CommunityDetailScreen() {
         <Text style={styles.festivalEventCountNum}>{item.events}</Text>
         <Text style={styles.festivalEventCountText}>Events</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const handleFestivalInterest = async (item: any) => {
@@ -1860,7 +1988,7 @@ export default function CommunityDetailScreen() {
           <View style={{ marginLeft: 8, flex: 1 }}>
             <View style={styles.festOrgNameRow}>
               <Text style={styles.festOrgName} numberOfLines={1}>{item.organizer.name}</Text>
-              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
             </View>
             <Text style={styles.festOrgLabel}>Organizer • {item.timeAgo}</Text>
           </View>
@@ -1869,8 +1997,12 @@ export default function CommunityDetailScreen() {
           <TouchableOpacity style={styles.attendBtn} onPress={() => handleFestivalInterest(item)}>
             <Text style={styles.attendBtnText}>Set a reminder</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.festMiniBtn}>
-            <Ionicons name="share-social-outline" size={20} color="#536471" />
+          <TouchableOpacity
+            style={[styles.festMiniBtn, { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, backgroundColor: '#F0F9FF', borderRadius: 8, borderWidth: 1, borderColor: '#BAE6FD' }]}
+            onPress={() => setActiveTab('Requests')}
+          >
+            <Ionicons name="people-outline" size={16} color="#0369A1" />
+            <Text style={{ fontSize: 11, color: '#0369A1', fontWeight: '700' }}>View Requests</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1914,10 +2046,12 @@ export default function CommunityDetailScreen() {
       <View style={styles.festEventCard}>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (
-            <Image
-              source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
-              style={styles.festEventImage}
-            />
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}>
+              <Image
+                source={typeof (item.image || item.image_url || item.media_url) === 'string' ? { uri: (item.image || item.image_url || item.media_url) } : (item.image || item.image_url || item.media_url)}
+                style={styles.festEventImage}
+              />
+            </TouchableOpacity>
           )}
           <View style={styles.festEventInfo}>
             <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Request'}</Text>
@@ -1940,12 +2074,12 @@ export default function CommunityDetailScreen() {
         <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
           <View style={styles.festOrgDetailsRow}>
             <Avatar name={item.user_name || item.user?.name || 'User'} size={32} photo={item.user?.photo} />
-            <View style={{ marginLeft: 8, flex: 1 }}>
+              <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.festOrgNameRow}>
                 <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#007AFF" style={{ marginLeft: 4 }} />}
+                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
               </View>
-              <Text style={styles.festOrgLabel}>{item.request_type ? item.request_type.toUpperCase() : 'Requester'} • {item.interested_count || 0} Interested</Text>
+              <Text style={styles.festOrgLabel}>{item.request_type ? item.request_type.toUpperCase() : 'Requester'}</Text>
             </View>
           </View>
         </View>
@@ -1971,6 +2105,37 @@ export default function CommunityDetailScreen() {
                   <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
                 </TouchableOpacity>
               )
+            ) : !isFulfilled ? (
+              (() => {
+                const isLostFound = isLostFoundRequest(item);
+                const isTemple = isTempleUpdateRequest(item);
+                if (!isLostFound && !isTemple) return null;
+                const interest = interestMap[item.id] ?? { count: item.interested_count || 0, userInterested: (item.interested_by || []).includes(user?.id) };
+                return (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 12, color: '#666', flex: 1 }}>
+                      {isLostFound ? 'Did you find this?' : 'Will you attend?'}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleToggleInterest(item)}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: interest.userInterested ? '#D1FAE5' : '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: interest.userInterested ? '#059669' : '#BBF7D0' }}
+                    >
+                      <Ionicons name="checkmark" size={16} color={interest.userInterested ? '#059669' : '#34D399'} />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: interest.userInterested ? '#059669' : '#34D399' }}>
+                        {interest.count > 0 ? `${interest.count} ${isLostFound ? 'found' : 'going'}` : isLostFound ? 'Found' : 'Going'}
+                      </Text>
+                    </TouchableOpacity>
+                    {isTemple && !interest.userInterested && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#FEF2F2', padding: 6, borderRadius: 20, borderWidth: 1, borderColor: '#FECACA' }}
+                        onPress={() => {}}
+                      >
+                        <Ionicons name="close" size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })()
             ) : null}
 
             {isFulfilled ? (
@@ -2045,7 +2210,7 @@ export default function CommunityDetailScreen() {
 
   const handleShareRequest = async (item: any) => {
     try {
-      const deepLink = `sanatanlok://community-request/list?requestId=${item.id}`;
+      const deepLink = `https://brahmand.app/community-request/list?requestId=${item.id}`;
       const typeLabel = (item.request_type || 'Help').toUpperCase();
 
       await Share.share({
@@ -2170,7 +2335,7 @@ export default function CommunityDetailScreen() {
 
   const handleShareCommunity = async () => {
     try {
-      const appLink = `sanatanlok://community/${id}`;
+      const appLink = `https://brahmand.app/community/${id}`;
       await Share.share({
         message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${appLink}`,
       });
@@ -2185,7 +2350,7 @@ export default function CommunityDetailScreen() {
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
       quality: 0.8,
     });
@@ -2388,15 +2553,8 @@ export default function CommunityDetailScreen() {
 
     // If user selected Requests, check KYC
     if (selectedCategory === 'Requests' && !isKycVerified) {
-      // Need KYC verification for Requests
-      let vendorId = myVendor?.id || null;
-      if (!vendorId) {
-        await fetchMyVendor();
-        vendorId = useVendorStore.getState().myVendor?.id || null;
-      }
-      setKycModalVendorId(vendorId || '');
-      setPendingPostAfterKyc(true);
-      setShowKycModal(true);
+      setShowCategorySelector(false);
+      router.push('/kyc');
       return;
     }
 
@@ -2404,24 +2562,7 @@ export default function CommunityDetailScreen() {
     await executeCreatePost(selectedCategory);
   };
 
-  const handleKycSuccess = async () => {
-    setShowKycModal(false);
-    try {
-      const response = await getKYCStatus();
-      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
-      updateUser({
-        kyc_status: serverStatus,
-        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
-      } as any);
-    } catch (error) {
-      console.warn('Failed to refresh KYC status:', error);
-    }
 
-    if (pendingPostAfterKyc) {
-      setPendingPostAfterKyc(false);
-      await executeCreatePost(postCategory || 'Events');
-    }
-  };
 
   const executeCreatePost = async (categoryOverride?: string) => {
     if (!newMessage.trim() && !selectedImage) return;
@@ -2460,6 +2601,9 @@ export default function CommunityDetailScreen() {
       sevaDetails: index === 0 ? (sevaDetails || undefined) : undefined,
       isUniversal: true, // Flag to show in general Feed
       sender_id: user?.id, // Track ownership of local posts
+      isCommunityMsg: true,
+      subgroupType: community?.type === 'state' ? 'state' : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city'),
+      communityId: id as string,
     }));
 
     setCommunityPosts(prev => {
@@ -2549,7 +2693,7 @@ export default function CommunityDetailScreen() {
 
   const handleShare = async (postId: string) => {
     try {
-      const appLink = `sanatanlok://community/${id}?postId=${postId}`;
+      const appLink = `https://brahmand.app/community/${id}?postId=${postId}`;
 
       await Share.share({
         message: `Check out this community post on Brahmand!\n\n${appLink}`,
@@ -2587,6 +2731,7 @@ export default function CommunityDetailScreen() {
         text: c.text || c.content || '',
         avatar: c.user_photo || c.sender_photo || null,
         userId: c.user_id,
+        isVerified: c.is_verified || false,
       }));
       setActiveComments(mappedComments);
     } catch (error) {
@@ -2608,7 +2753,7 @@ export default function CommunityDetailScreen() {
       avatar: user?.photo,
     };
 
-    setActiveComments(prev => [...prev, optimisticComment]);
+    setActiveComments(prev => [optimisticComment, ...prev]);
     setCommentText('');
 
     try {
@@ -2713,7 +2858,7 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={90}
     >
       {renderHeader()}
@@ -2898,7 +3043,7 @@ export default function CommunityDetailScreen() {
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
@@ -2924,28 +3069,112 @@ export default function CommunityDetailScreen() {
               <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
                 <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
+                  {!postCategory ? (
+                    <TouchableOpacity
+                      onPress={() => setShowInlineCategories(!showInlineCategories)}
+                      activeOpacity={0.7}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        alignSelf: 'flex-start',
+                        gap: 6,
+                        backgroundColor: '#FF6600',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                        marginBottom: 10,
+                      }}
+                    >
+                      <Ionicons name="pricetag-outline" size={14} color="#FFF" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF', fontFamily: FONTS.bold }}>
+                        Choose Category *
+                      </Text>
+                      <Ionicons name={showInlineCategories ? "chevron-up" : "chevron-down"} size={12} color="#FFF" />
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={[styles.selectedCategoryBadge, { marginBottom: 10, marginTop: 0 }]}>
+                      <Ionicons name="pricetag-outline" size={14} color="#FF6600" />
+                      <Text style={styles.selectedCategoryText}>Category: {postCategory}</Text>
+                      <TouchableOpacity onPress={() => { setPostCategory(''); }}>
+                        <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {showInlineCategories && (
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>Select Category</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {POST_CATEGORIES.map((cat) => {
+                          let iconColor = '#536471';
+                          if (cat === 'Others') iconColor = '#1D9BF0';
+                          else if (cat === 'Seva') iconColor = '#E91E63';
+                          else if (cat === 'Requests') iconColor = '#FF6B00';
+                          else if (cat === 'Events') iconColor = '#00C853';
+                          else if (cat === 'Lost & Found') iconColor = '#9C27B0';
+                          else if (cat === 'Festivals') iconColor = '#FF9800';
+                          else if (cat === 'Temple Updates') iconColor = '#795548';
+
+                          return (
+                            <TouchableOpacity
+                              key={cat}
+                              onPress={() => {
+                                handleInlineCategorySelect(cat);
+                                setShowInlineCategories(false);
+                              }}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#FFF',
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: 20,
+                                borderWidth: 1,
+                                borderColor: `${iconColor}30`,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.05,
+                                shadowRadius: 2,
+                                elevation: 1,
+                              }}
+                            >
+                              <View style={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: 10,
+                                backgroundColor: `${iconColor}15`,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                marginRight: 6
+                              }}>
+                                <Ionicons
+                                  name={
+                                    cat === 'Others' ? 'chatbubble-ellipses-outline' :
+                                    cat === 'Seva' ? 'heart-outline' :
+                                    cat === 'Requests' ? 'alert-circle-outline' :
+                                    cat === 'Events' ? 'calendar-outline' :
+                                    cat === 'Lost & Found' ? 'search-outline' :
+                                    cat === 'Festivals' ? 'flame-outline' :
+                                    'home-outline'
+                                  }
+                                  size={12}
+                                  color={iconColor}
+                                />
+                              </View>
+                              <Text style={{ fontSize: 12, fontFamily: FONTS.medium, color: '#333' }}>{cat}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
                   <MentionInput
                     value={newMessage}
-                    onChangeText={(text) => {
-                      if (!postCategory) {
-                        if (text === '' || text === '@') {
-                          setNewMessage(text);
-                          if (text === '@') setShowInlineCategories(true);
-                          else setShowInlineCategories(false);
-                        }
-                        return;
-                      }
-                      setNewMessage(text);
-                      if (text.endsWith('@') || text.includes(' @')) {
-                        setShowInlineCategories(true);
-                      } else {
-                        setShowInlineCategories(false);
-                      }
-                    }}
-                    placeholder={postCategory ? "What's happening?" : "Type @ to select a category"}
+                    onChangeText={setNewMessage}
+                    placeholder={postCategory ? "What's happening?" : "Select a category above to start writing..."}
                     placeholderTextColor="#536471"
                     multiline
-                    editable={true}
+                    editable={!!postCategory}
                     disableMentions={true}
                     inputStyle={{
                       fontSize: 18,
@@ -2954,54 +3183,10 @@ export default function CommunityDetailScreen() {
                       textAlignVertical: 'top',
                       paddingTop: 4,
                       lineHeight: 24,
+                      opacity: postCategory ? 1 : 0.6
                     }}
-                    autoFocus={true}
+                    autoFocus={!!postCategory}
                   />
-
-                  {postCategory ? (
-                    <View style={styles.selectedCategoryBadge}>
-                      <Ionicons name="pricetag-outline" size={14} color="#FF6600" />
-                      <Text style={styles.selectedCategoryText}>Category: {postCategory}</Text>
-                      <TouchableOpacity onPress={() => { setPostCategory(''); }}>
-                        <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-
-                  {showInlineCategories && (
-                    <View style={styles.inlineCategoriesContainer}>
-                      <Text style={styles.inlineCategoriesTitle}>Select Category</Text>
-                      {POST_CATEGORIES.map((cat) => {
-                        let iconName: any = 'ellipse-outline';
-                        let iconColor = '#536471';
-                        let desc = '';
-                        if (cat === 'Others') { iconName = 'chatbubble-ellipses-outline'; iconColor = '#1D9BF0'; desc = 'General discussion'; }
-                        else if (cat === 'Seva') { iconName = 'heart-outline'; iconColor = '#E91E63'; desc = 'Volunteer & seva'; }
-                        else if (cat === 'Requests') { iconName = 'alert-circle-outline'; iconColor = '#FF6B00'; desc = 'Help & emergency'; }
-                        else if (cat === 'Events') { iconName = 'calendar-outline'; iconColor = '#00C853'; desc = 'Gatherings'; }
-                        else if (cat === 'Lost & Found') { iconName = 'search-outline'; iconColor = '#9C27B0'; desc = 'Lost items'; }
-                        else if (cat === 'Festivals') { iconName = 'flame-outline'; iconColor = '#FF9800'; desc = 'Fest Celebrations'; }
-                        else if (cat === 'Temple Updates') { iconName = 'home-outline'; iconColor = '#795548'; desc = 'Temple news'; }
-
-                        return (
-                          <TouchableOpacity
-                            key={cat}
-                            style={styles.inlineCategoryItem}
-                            onPress={() => handleInlineCategorySelect(cat)}
-                          >
-                            <View style={[styles.inlineCategoryIconBg, { backgroundColor: `${iconColor}15` }]}>
-                              <Ionicons name={iconName} size={16} color={iconColor} />
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 10 }}>
-                              <Text style={styles.inlineCategoryName}>{cat}</Text>
-                              <Text style={styles.inlineCategoryDesc}>{desc}</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={14} color="#CCC" />
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
 
                   {/* Add Photo option directly beneath the input box for better accessibility */}
                   {!selectedImage ? (
@@ -3022,9 +3207,9 @@ export default function CommunityDetailScreen() {
                         borderColor: 'rgba(255, 102, 0, 0.2)',
                       }}
                     >
-                      <Ionicons name="image-outline" size={18} color="#FF6600" />
+                      <Ionicons name="images-outline" size={18} color="#FF6600" />
                       <Text style={{ fontSize: 13, fontWeight: '700', color: '#FF6600', fontFamily: FONTS.bold }}>
-                        Add Photo
+                        Add Media
                       </Text>
                     </TouchableOpacity>
                   ) : (
@@ -3041,55 +3226,6 @@ export default function CommunityDetailScreen() {
                 </View>
               </View>
 
-
-              <View style={[styles.infoBox, { backgroundColor: 'rgba(255,255,255,0.5)', alignItems: 'flex-start' }]}>
-                <Ionicons name="information-circle-outline" size={20} color="#FF6B00" style={{ marginRight: 10, marginTop: 2 }} />
-                <Text style={[styles.infoBoxText, { color: '#0F1419' }]}>When you tap Post, you&apos;ll choose a category for your post. It will appear in that category and the general feed.</Text>
-              </View>
-
-              <View style={styles.createSection}>
-                <Text style={styles.createSectionTitle}>Contact Number <Text style={{ color: '#888' }}>(Optional)</Text></Text>
-                <View style={[styles.phoneInputContainer, { backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.8)' }]}>
-                  <TouchableOpacity style={[styles.phonePrefix, { borderRightColor: 'rgba(255,255,255,0.8)' }]}>
-                    <Image source={{ uri: 'https://flagcdn.com/w40/in.png' }} style={styles.flagIcon} />
-                    <Text style={styles.prefixText}>+91</Text>
-                    <Ionicons name="chevron-down" size={14} color="#888" />
-                  </TouchableOpacity>
-                  <TextInput
-                    style={styles.phoneInput}
-                    placeholder="Enter phone number (optional)"
-                    value={contactNumber}
-                    onChangeText={setContactNumber}
-                    keyboardType="phone-pad"
-                  />
-                </View>
-                <Text style={styles.phoneSub}>Providing your number is optional. Others can contact you if you choose to share it.</Text>
-              </View>
-
-              <View style={styles.createSection}>
-                <Text style={styles.createSectionTitle}>Seva Details <Text style={{ color: '#888' }}>(Optional)</Text></Text>
-                <TextInput
-                  style={[styles.phoneInput, { minHeight: 100, textAlignVertical: 'top', backgroundColor: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.8)', borderWidth: 1, borderRadius: 16, padding: 12 }]}
-                  placeholder="Who donated, what amount, or what service was performed"
-                  value={sevaDetails}
-                  onChangeText={setSevaDetails}
-                  multiline
-                  numberOfLines={4}
-                />
-                <Text style={styles.phoneSub}>Use this field to capture seva contributions such as donations, support, or service details.</Text>
-              </View>
-
-              <View style={styles.createDivider} />
-
-              <View style={styles.trustBox}>
-                <View style={styles.trustIconBg}>
-                  <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.trustTitle}>Stay safe. Be trustworthy.</Text>
-                  <Text style={styles.trustSub}>We encourage respectful and helpful posts that uplift our community.</Text>
-                </View>
-              </View>
             </ScrollView>
 
             {/* Keyboard-docked toolbar with minimalist layout matching premium look */}
@@ -3248,17 +3384,19 @@ export default function CommunityDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* KYC Modal for Events verification */}
-      <VendorKYCModal
-        visible={showKycModal}
-        vendorId={kycModalVendorId || ''}
-        allowUserKycFallback
-        onClose={() => {
-          setShowKycModal(false);
-          setPendingPostAfterKyc(false);
-        }}
-        onKycUpdated={handleKycSuccess}
-      />
+
+
+      {/* Full Screen Media Modal */}
+      <Modal visible={!!fullScreenMedia} transparent={true} animationType="fade" onRequestClose={() => setFullScreenMedia(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10 }} onPress={() => setFullScreenMedia(null)}>
+            <Ionicons name="close" size={32} color="#FFF" />
+          </TouchableOpacity>
+          {fullScreenMedia && (
+            <Image source={{ uri: fullScreenMedia }} style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.8 }} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
 
       {/* Comment Modal */}
       <Modal
@@ -3268,12 +3406,12 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           style={styles.modalOverlay}
         >
           <ToastContainer />
-          <View style={[styles.commentModalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+          <View style={[styles.commentModalContent, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 20) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments ({showCommentModal?.comments ?? activeComments.length ?? 0})</Text>
               <TouchableOpacity onPress={() => setShowCommentModal(null)}>
@@ -3294,7 +3432,10 @@ export default function CommunityDetailScreen() {
                     </View>
                     <View style={{ flex: 1, backgroundColor: '#F7F9F9', padding: 12, borderRadius: 16 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419', flex: 1, marginRight: 8 }} numberOfLines={1}>{comment.userName}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                          <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419' }} numberOfLines={1}>{comment.userName}</Text>
+                          {comment.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+                        </View>
                         {comment.userId === user?.id && (
                           <TouchableOpacity
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -3694,7 +3835,7 @@ const styles = StyleSheet.create({
   feedPostUserName: { fontSize: 15, fontWeight: '700', color: '#0F1419', maxWidth: '65%' },
   postHandle: { fontSize: 15, color: '#536471', marginLeft: 4, flexShrink: 1 },
   postDot: { fontSize: 15, color: '#536471', marginHorizontal: 4 },
-  postContentText: { fontSize: 15, color: '#0F1419', lineHeight: 22, marginTop: 2 },
+  postContentText: { fontSize: 16, color: '#0F1419', lineHeight: 22, marginTop: 4 },
   postMediaImage: { width: '100%', maxWidth: '100%', height: 250, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#EFF3F4', overflow: 'hidden' },
   postActionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingRight: 40 },
   postActionCount: { fontSize: 13, color: '#536471' },
@@ -3877,5 +4018,60 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8899A6',
     marginTop: 1,
+  },
+  attendPromptContainer: {
+    backgroundColor: '#F8FAF5',
+    padding: 12,
+    borderRadius: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  attendPromptText: {
+    fontSize: 13,
+    color: '#334155',
+    fontFamily: FONTS.medium,
+    flex: 1,
+    marginRight: 8,
+  },
+  attendPromptButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  attendPromptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  attendYesBtn: {
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
+  },
+  attendYesBtnActive: {
+    borderColor: '#16A34A',
+    backgroundColor: '#16A34A',
+  },
+  attendNoBtn: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
+  },
+  attendNoBtnActive: {
+    borderColor: '#DC2626',
+    backgroundColor: '#DC2626',
+  },
+  attendPromptBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  attendPromptBtnTextActive: {
+    color: '#FFF',
   },
 });

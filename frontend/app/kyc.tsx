@@ -1,34 +1,96 @@
-import React, { useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, BackHandler, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { useVendorStore } from '../src/store/vendorStore';
+import { useAuthStore } from '../src/store/authStore';
+import { VendorKYCModal } from '../src/components/VendorKYCModal';
+import { getKYCStatus } from '../src/services/api';
+import { useTranslation } from '../src/utils/i18n';
 
 export default function KYCStatusScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { myVendor, fetchMyVendor } = useVendorStore();
+  const { user, updateUser } = useAuthStore();
+  const [kycVisible, setKycVisible] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+
+  const refreshKycStatus = useCallback(async () => {
+    try {
+      await fetchMyVendor();
+      const response = await getKYCStatus();
+      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      updateUser({
+        kyc_status: serverStatus,
+        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+      } as any);
+    } catch (error) {
+      console.warn('Failed to refresh KYC status:', error);
+    } finally {
+      setLoadingStatus(false);
+    }
+  }, [fetchMyVendor, updateUser]);
 
   useEffect(() => {
-    fetchMyVendor();
-  }, [fetchMyVendor]);
+    refreshKycStatus();
+  }, [refreshKycStatus]);
 
-  const getStatusMessage = () => {
-    const vendorKycStatus = (myVendor as any)?.kyc_status as string | undefined;
-    if (!myVendor) {
-      return 'No vendor profile found. Please complete business registration first.';
+
+  const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+  const isVendorVerified = (myVendor as any)?.kyc_status === 'verified';
+  const isVerified = isUserVerified || isVendorVerified;
+
+  const isUserReview = (user as any)?.kyc_status === 'manual_review';
+  const isVendorReview = (myVendor as any)?.kyc_status === 'manual_review';
+  const isReview = isUserReview || isVendorReview;
+
+  const isUserRejected = (user as any)?.kyc_status === 'rejected';
+  const isVendorRejected = (myVendor as any)?.kyc_status === 'rejected';
+  const isRejected = isUserRejected || isVendorRejected;
+
+  const getStatusTitle = () => {
+    if (isVerified) return 'Verified & Approved';
+    if (isReview) return 'Under Review';
+    if (isRejected) return 'Verification Rejected';
+    return 'Verification Pending';
+  };
+
+  const getStatusDescription = () => {
+    if (isVerified) {
+      return 'Your identity has been successfully verified. You now have full access to all features.';
     }
-    if (vendorKycStatus === 'manual_review') {
-      return 'Your application is under review.';
+    if (isReview) {
+      return 'Your KYC documents are currently being processed by our admin team. This usually takes 24-48 hours.';
     }
-    if (vendorKycStatus === 'verified') {
-      return 'Your KYC is verified.';
+    if (isRejected) {
+      const reason = (myVendor as any)?.kyc_rejection_reason || 'Denied by admin. Please upload clear documents and try again.';
+      return `Reason: ${reason}`;
     }
-    if (vendorKycStatus === 'rejected') {
-      return 'Your KYC was rejected. Please update and resubmit.';
-    }
-    return 'KYC is pending. Please complete verification from Manage Business.';
+    return 'Verify your identity using Aadhaar or PAN card to enable secure community features and listings.';
+  };
+
+  const getStatusColor = () => {
+    if (isVerified) return '#2E7D32'; // Green
+    if (isReview) return '#E65100'; // Amber/Orange
+    if (isRejected) return '#C62828'; // Red
+    return '#1565C0'; // Blue
+  };
+
+  const getStatusBgColor = () => {
+    if (isVerified) return '#E8F5E9';
+    if (isReview) return '#FFF3E0';
+    if (isRejected) return '#FFEBEE';
+    return '#E3F2FD';
+  };
+
+  const getStatusIcon = () => {
+    if (isVerified) return 'shield-checkmark';
+    if (isReview) return 'time';
+    if (isRejected) return 'close-circle';
+    return 'alert-circle';
   };
 
   const handleBack = useCallback(() => {
@@ -47,20 +109,65 @@ export default function KYCStatusScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>KYC Verification</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <View style={styles.card}>
-        <Ionicons name="shield-checkmark" size={44} color={COLORS.primary} />
-        <Text style={styles.message}>{getStatusMessage()}</Text>
-        <TouchableOpacity style={styles.btn} onPress={() => router.push('/vendor/dashboard')}>
-          <Text style={styles.btnText}>Open Manage Business</Text>
+        <Text style={styles.title}>
+          {t('language') === 'hi' ? 'केवाईसी सत्यापन' : 'KYC Verification'}
+        </Text>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => { setLoadingStatus(true); refreshKycStatus(); }}>
+          <Ionicons name="refresh" size={20} color={COLORS.text} />
         </TouchableOpacity>
       </View>
+
+      {loadingStatus ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <View style={styles.content}>
+          <View style={[styles.card, { backgroundColor: getStatusBgColor() }]}>
+            <View style={[styles.iconContainer, { backgroundColor: `${getStatusColor()}15` }]}>
+              <Ionicons name={getStatusIcon()} size={48} color={getStatusColor()} />
+            </View>
+            <Text style={[styles.statusTitle, { color: getStatusColor() }]}>
+              {getStatusTitle()}
+            </Text>
+            <Text style={styles.statusDescription}>
+              {getStatusDescription()}
+            </Text>
+          </View>
+
+          {!isVerified && !isReview && (
+            <TouchableOpacity style={styles.actionBtn} onPress={() => setKycVisible(true)}>
+              <Text style={styles.actionBtnText}>
+                {isRejected ? 'Resubmit Verification' : 'Start Verification'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {isReview && (
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
+              <Text style={styles.infoText}>
+                You will be notified as soon as our team reviews your documents.
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      <VendorKYCModal
+        visible={kycVisible}
+        onClose={() => setKycVisible(false)}
+        vendorId={myVendor?.id || ''}
+        allowUserKycFallback
+        onKycUpdated={() => {
+          setKycVisible(false);
+          setLoadingStatus(true);
+          refreshKycStatus();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -73,29 +180,90 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  backBtn: {
+    padding: SPACING.xs,
+  },
+  refreshBtn: {
+    padding: SPACING.xs,
   },
   title: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  card: {
-    margin: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    flex: 1,
     padding: SPACING.lg,
     alignItems: 'center',
-    gap: 14,
+    justifyContent: 'center',
   },
-  message: {
-    color: COLORS.text,
-    fontSize: 15,
+  card: {
+    width: '100%',
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+  },
+  statusTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: SPACING.sm,
     textAlign: 'center',
-    lineHeight: 22,
-    fontWeight: '500',
   },
-  btn: {
-    marginTop: 8,
+  statusDescription: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: SPACING.sm,
+  },
+  actionBtn: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: 10,
-    borderRadius: BORDER_RADIUS.md,
+    width: '100%',
+    paddingVertical: SPACING.lg,
+    borderRadius: BORDER_RADIUS.xl,
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  btnText: { color: '#fff', fontWeight: '700' },
+  actionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    marginTop: SPACING.md,
+  },
+  infoText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    flex: 1,
+  },
 });

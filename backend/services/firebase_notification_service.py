@@ -65,8 +65,9 @@ class FirebaseNotificationService:
         url = "https://exp.host/--/api/v2/push/send"
         
         notification_type = data.get('type') if data else None
-        is_sos = bool(notification_type and notification_type.startswith('sos'))
-        is_msg = bool(notification_type and notification_type == 'message')
+        is_sos = bool(notification_type and notification_type == 'sos_alert')
+        is_msg = bool(notification_type and notification_type in ('message', 'dm'))
+        is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
         
         payloads = []
         for token in tokens:
@@ -74,9 +75,9 @@ class FirebaseNotificationService:
                 "to": token,
                 "title": title,
                 "body": body,
-                "sound": "soundreality_mayday_166011" if is_sos else "nornal.aiff",
-                "priority": "high" if is_sos else "default",
-                "channelId": "sos_alerts_v3" if is_sos else ("messages_v4" if is_msg else "default_v4"),
+                "sound": "soundreality_mayday_166011" if is_sos else "bell",
+                "priority": "high",
+                "channelId": "sos_alerts_v3" if is_sos else ("community_v1" if is_community else ("messages_v4" if is_msg else "default_v4")),
                 "badge": 1 if is_sos else 0,
                 "categoryIdentifier": "SOS_ALERT" if is_sos else None,
                 "data": data or {}
@@ -164,8 +165,9 @@ class FirebaseNotificationService:
                 apns_config = None
                 notification_type = data.get('type') if data else None
                 
-                is_sos = bool(notification_type and notification_type.startswith('sos'))
-                is_msg = bool(notification_type and notification_type == 'message')
+                is_sos = bool(notification_type and notification_type == 'sos_alert')
+                is_msg = bool(notification_type and notification_type in ('message', 'dm'))
+                is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
                 
                 if is_sos:
                     android_config = fcm.AndroidConfig(
@@ -174,7 +176,7 @@ class FirebaseNotificationService:
                             channel_id='sos_alerts_v3',
                             sound='soundreality_mayday_166011',
                             priority='max',
-                            vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
+                            vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000]
                         )
                     )
                     apns_config = fcm.APNSConfig(
@@ -189,20 +191,40 @@ class FirebaseNotificationService:
                             )
                         )
                     )
-                else:
-                    channel_id = 'messages_v4' if is_msg else 'default_v4'
+                elif is_community:
                     android_config = fcm.AndroidConfig(
-                        priority='normal',
+                        priority='high',
                         notification=fcm.AndroidNotification(
-                            channel_id=channel_id,
-                            sound='nornal',
-                            priority='default'
+                            channel_id='community_v1',
+                            sound='bell',
+                            priority='high'
                         )
                     )
                     apns_config = fcm.APNSConfig(
+                        headers={'apns-priority': '10'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='nornal.aiff',
+                                sound='bell.mp3',
+                                content_available=True,
+                                mutable_content=True
+                            )
+                        )
+                    )
+                else:
+                    channel_id = 'messages_v4' if is_msg else 'default_v4'
+                    android_config = fcm.AndroidConfig(
+                        priority='high',
+                        notification=fcm.AndroidNotification(
+                            channel_id=channel_id,
+                            sound='bell',
+                            priority='high'
+                        )
+                    )
+                    apns_config = fcm.APNSConfig(
+                        headers={'apns-priority': '10'},
+                        payload=fcm.APNSPayload(
+                            aps=fcm.Aps(
+                                sound='bell.mp3',
                                 content_available=True,
                                 mutable_content=True
                             )
@@ -305,18 +327,19 @@ class FirebaseNotificationService:
                         apns_config = None
                         
                         notification_type = data.get('type') if data else None
-                        is_sos = bool(notification_type and notification_type.startswith('sos'))
-                        is_msg = bool(notification_type and notification_type == 'message')
+                        is_sos = bool(notification_type and notification_type == 'sos_alert')
+                        is_msg = bool(notification_type and notification_type in ('message', 'dm'))
+                        is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
                         
                         # High-priority for SOS
                         if is_sos:
                             android_config = fcm.AndroidConfig(
                                 priority='high',
                                 notification=fcm.AndroidNotification(
-                                    channel_id='sos_alerts',
+                                    channel_id='sos_alerts_v3',
                                     sound='soundreality_mayday_166011',
                                     priority='max',
-                                    vibrate_timings_millis=[0, 1000, 500, 1000, 500, 1000]
+                                    vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000]
                                 )
                             )
                             apns_config = fcm.APNSConfig(
@@ -331,20 +354,40 @@ class FirebaseNotificationService:
                                     )
                                 )
                             )
-                        else:
-                            channel_id = 'messages_v4' if is_msg else 'default_v4'
+                        elif is_community:
                             android_config = fcm.AndroidConfig(
-                                priority='normal',
+                                priority='high',
                                 notification=fcm.AndroidNotification(
-                                    channel_id=channel_id,
-                                    sound='nornal',
-                                    priority='default'
+                                    channel_id='community_v1',
+                                    sound='bell',
+                                    priority='high'
                                 )
                             )
                             apns_config = fcm.APNSConfig(
+                                headers={'apns-priority': '10'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='nornal.aiff',
+                                        sound='bell.mp3',
+                                        content_available=True,
+                                        mutable_content=True
+                                    )
+                                )
+                            )
+                        else:
+                            channel_id = 'messages_v4' if is_msg else 'default_v4'
+                            android_config = fcm.AndroidConfig(
+                                priority='high',
+                                notification=fcm.AndroidNotification(
+                                    channel_id=channel_id,
+                                    sound='bell',
+                                    priority='high'
+                                )
+                            )
+                            apns_config = fcm.APNSConfig(
+                                headers={'apns-priority': '10'},
+                                payload=fcm.APNSPayload(
+                                    aps=fcm.Aps(
+                                        sound='bell.mp3',
                                         content_available=True,
                                         mutable_content=True
                                     )

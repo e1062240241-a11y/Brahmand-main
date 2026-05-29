@@ -471,6 +471,10 @@ async def _create_post_document(
         # Flatten for easier frontend access
         if 'width' in metadata: post_doc['media_width'] = metadata['width']
         if 'height' in metadata: post_doc['media_height'] = metadata['height']
+        if 'crop_offset_x' in metadata: post_doc['crop_offset_x'] = metadata['crop_offset_x']
+        if 'crop_offset_y' in metadata: post_doc['crop_offset_y'] = metadata['crop_offset_y']
+        if 'original_width' in metadata: post_doc['original_width'] = metadata['original_width']
+        if 'original_height' in metadata: post_doc['original_height'] = metadata['original_height']
         if 'duration_seconds' in metadata: post_doc['duration'] = metadata['duration_seconds']
         if 'thumbnail_url' in metadata: post_doc['thumbnail_url'] = metadata['thumbnail_url']
 
@@ -1919,7 +1923,9 @@ async def get_users_batch(
             "id": user.get('id'),
             "name": user.get('name'),
             "sl_id": user.get('sl_id'),
-            "photo": user.get('photo')
+            "photo": user.get('photo'),
+            "is_verified": user.get('is_verified', False),
+            "verification_level": user.get('verification_level', 'state')
         })
     return result
 
@@ -1947,6 +1953,8 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
         'following': user.get('following', []),
         'followers_count': user.get('followers_count', len(user.get('followers', []))),
         'following_count': user.get('following_count', len(user.get('following', []))),
+        'is_verified': user.get('is_verified', False),
+        'verification_level': user.get('verification_level', 'state')
     }
     return safe_user
 
@@ -2019,6 +2027,8 @@ async def get_user_posts(
         async with semaphore:
             post['user_photo'] = user.get('photo')
             post['username'] = user.get('name') or user.get('sl_id') or post.get('username')
+            post['is_verified'] = user.get('is_verified', False)
+            post['verification_level'] = user.get('verification_level', 'state')
 
             liked_by = post.get('liked_by', []) or []
             post['likes_count'] = post.get('likes_count', len(liked_by))
@@ -2206,6 +2216,12 @@ async def upload_post(
     filter_name: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     community_level: str = Form('city'),
+    media_width: Optional[int] = Form(None),
+    media_height: Optional[int] = Form(None),
+    crop_offset_x: Optional[float] = Form(None),
+    crop_offset_y: Optional[float] = Form(None),
+    original_width: Optional[int] = Form(None),
+    original_height: Optional[int] = Form(None),
     file: UploadFile = File(...),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit)
@@ -2215,7 +2231,9 @@ async def upload_post(
     global_semaphore = get_global_upload_semaphore()
     async with global_semaphore:
         async with user_lock:
-            return await _upload_post_impl(caption, source, filter_name, file, token_data, request, category, community_level)
+            return await _upload_post_impl(
+                caption, source, filter_name, file, token_data, request, category, community_level, media_width, media_height, crop_offset_x, crop_offset_y, original_width, original_height
+            )
 
 async def _upload_post_impl(
     caption: str,
@@ -2225,7 +2243,13 @@ async def _upload_post_impl(
     token_data: dict,
     request: Request,
     category: Optional[str] = None,
-    community_level: str = 'city'
+    community_level: str = 'city',
+    passed_media_width: Optional[int] = None,
+    passed_media_height: Optional[int] = None,
+    crop_offset_x: Optional[float] = None,
+    crop_offset_y: Optional[float] = None,
+    original_width: Optional[int] = None,
+    original_height: Optional[int] = None,
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2410,16 +2434,31 @@ async def _upload_post_impl(
             raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
     media_type = 'video' if content_type.startswith('video/') else 'image'
 
-    video_metadata = None
+    video_metadata = {}
     if content_type.startswith('video/'):
         video_metadata = {
             'original_size_bytes': original_size_bytes,
             'compressed_size_bytes': compressed_size_bytes,
             'duration_seconds': duration_seconds,
-            'width': media_width,
-            'height': media_height,
+            'width': passed_media_width if passed_media_width else media_width,
+            'height': passed_media_height if passed_media_height else media_height,
             'thumbnail_url': thumbnail_url,
         }
+    else:
+        if passed_media_width and passed_media_height:
+            video_metadata = {
+                'width': passed_media_width,
+                'height': passed_media_height,
+            }
+
+    if crop_offset_x is not None:
+        video_metadata['crop_offset_x'] = crop_offset_x
+    if crop_offset_y is not None:
+        video_metadata['crop_offset_y'] = crop_offset_y
+    if original_width is not None:
+        video_metadata['original_width'] = original_width
+    if original_height is not None:
+        video_metadata['original_height'] = original_height
 
     post_doc = await _create_post_document(
         db=db,
@@ -2483,20 +2522,24 @@ async def _upload_chat_media_impl(
             content_type = 'image/heic'
         elif filename_lower.endswith('.gif'):
             content_type = 'image/gif'
+        elif filename_lower.endswith('.mp4'):
+            content_type = 'video/mp4'
+        elif filename_lower.endswith('.mov'):
+            content_type = 'video/quicktime'
 
-    # Broaden allowed types to support all common images
-    if not content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail='Unsupported media type. Please upload an image (jpg, png, webp, heic, gif).')
+    # Broaden allowed types to support all common images and videos
+    if not (content_type.startswith('image/') or content_type.startswith('video/')):
+        raise HTTPException(status_code=400, detail='Unsupported media type. Please upload an image or video.')
 
     file_bytes = await file.read()
     if not file_bytes:
         raise HTTPException(status_code=400, detail='Empty upload file')
 
-    max_image_bytes = 30 * 1024 * 1024
-    if len(file_bytes) > max_image_bytes:
-        raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 30MB')
+    max_media_bytes = 100 * 1024 * 1024
+    if len(file_bytes) > max_media_bytes:
+        raise HTTPException(status_code=413, detail='Media file too large. Max allowed size is 100MB')
 
-    media_url, object_path = await _upload_chat_media_to_storage(user_id, file_bytes, content_type)
+    media_url, object_path = await _upload_post_media_to_bunny(user_id, file_bytes, content_type, "")
     await file.close()
 
     return {
@@ -2515,13 +2558,19 @@ async def upload_post_from_storage(
     filter_name: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     community_level: str = Form('city'),
+    media_width: Optional[int] = Form(None),
+    media_height: Optional[int] = Form(None),
+    crop_offset_x: Optional[float] = Form(None),
+    crop_offset_y: Optional[float] = Form(None),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit),
 ):
     user_id = token_data['user_id']
     lock = await get_user_upload_lock(user_id)
     async with lock:
-        return await _upload_post_from_storage_impl(storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url))
+        return await _upload_post_from_storage_impl(
+            storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url), media_width, media_height, crop_offset_x, crop_offset_y
+        )
 
 async def _upload_post_from_storage_impl(
     storage_path: str,
@@ -2532,6 +2581,10 @@ async def _upload_post_from_storage_impl(
     category: Optional[str] = None,
     community_level: str = 'city',
     base_url: str = '',
+    passed_media_width: Optional[int] = None,
+    passed_media_height: Optional[int] = None,
+    crop_offset_x: Optional[float] = None,
+    crop_offset_y: Optional[float] = None,
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2623,6 +2676,10 @@ async def _upload_post_from_storage_impl(
                 'original_size_bytes': original_size_bytes,
                 'compressed_size_bytes': compressed_size_bytes,
                 'duration_seconds': duration_seconds,
+                'width': passed_media_width if passed_media_width else metadata.get('width', 0),
+                'height': passed_media_height if passed_media_height else metadata.get('height', 0),
+                'crop_offset_x': crop_offset_x,
+                'crop_offset_y': crop_offset_y,
             },
             category=category,
             community_level=community_level,
@@ -3537,7 +3594,21 @@ async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = D
         return datetime.min
 
     comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    return comments[:safe_limit]
+    comments = comments[:safe_limit]
+    
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+                    c['is_verified'] = user_doc.get('is_verified', False)
+                    
+    return comments
 
 
 @api_router.delete('/posts/{post_id}/comments/{comment_id}')
@@ -4408,22 +4479,27 @@ async def create_community(
         db = await get_db()
         owner_id = token_data["user_id"]
         
-        # 1. Validation: Must have exactly 2 admins and 2 members
-        # Make sure owner is not in either, and no duplicates
+        # 1. Validation: Ensure owner is not in either, and no duplicates
         admin_ids = list(set(data.admin_ids))
         member_ids = list(set(data.member_ids))
         
-        if len(admin_ids) != 2 or len(member_ids) != 2:
+        if owner_id in admin_ids or owner_id in member_ids:
             raise HTTPException(
                 status_code=400,
-                detail="A local community group requires exactly 1 owner, 2 admins, and 2 members to initiate consensus creation."
+                detail="Owner cannot be invited as an admin or member."
             )
             
-        all_members_set = set([owner_id] + admin_ids + member_ids)
-        if len(all_members_set) != 5:
+        duplicate_ids = set(admin_ids).intersection(set(member_ids))
+        if duplicate_ids:
             raise HTTPException(
                 status_code=400,
-                detail="Owner, admins, and members must all be unique users."
+                detail="A user cannot be both an admin and a member."
+            )
+
+        if len(admin_ids) + len(member_ids) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="A local community group requires at least one invited admin or member to initiate consensus creation."
             )
 
         # 2. Upload photos to Firebase Storage if provided as base64
@@ -4839,10 +4915,8 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
 
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
-
-    if community_id not in user.get('communities', []) and user_id not in community.get('members', []):
-        raise HTTPException(status_code=403, detail="Not authorized to view this chat")
         
+
     chat_id = f"community_{community_id}_{subgroup_type}"
     before_dt = None
     if before_timestamp:
@@ -4852,7 +4926,31 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
         except ValueError:
             pass
             
-    return await db.get_chat_messages(chat_id, limit, before_timestamp=before_dt)
+    messages = await db.get_chat_messages(chat_id, limit, before_timestamp=before_dt)
+
+    # Decorate messages with live verification data so old posts also show the badge
+    sender_ids = list({m.get('sender_id') for m in messages if m.get('sender_id')})
+    sender_map: dict = {}
+    for sid in sender_ids:
+        try:
+            u = await db.get_document('users', sid)
+            if u:
+                sender_map[sid] = {
+                    'is_verified': u.get('is_verified', False),
+                    'verification_level': u.get('verification_level', 'state'),
+                }
+        except Exception:
+            pass
+
+    for msg in messages:
+        sid = msg.get('sender_id')
+        if sid and sid in sender_map:
+            msg['is_verified'] = sender_map[sid]['is_verified']
+            msg['verification_level'] = sender_map[sid]['verification_level']
+        elif 'is_verified' not in msg:
+            msg['is_verified'] = False
+
+    return messages
 
 
 @api_router.post("/messages/community/{community_id}/{subgroup_type}/{message_id}/like")
@@ -4864,8 +4962,7 @@ async def toggle_community_message_like(
     user_id = token_data['user_id']
     chat_id = f"community_{community_id}_{subgroup_type}"
     
-    messages = await db.get_chat_messages(chat_id, 100)
-    msg = next((m for m in messages if m.get('id') == message_id), None)
+    msg = await db.get_chat_message(chat_id, message_id)
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
@@ -4943,8 +5040,7 @@ async def add_community_message_comment(
     user_id = token_data['user_id']
     chat_id = f"community_{community_id}_{subgroup_type}"
     
-    messages = await db.get_chat_messages(chat_id, 100)
-    msg = next((m for m in messages if m.get('id') == message_id), None)
+    msg = await db.get_chat_message(chat_id, message_id)
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
@@ -4987,6 +5083,19 @@ async def get_community_message_comments(
     def _sort_key(c):
         return c.get('created_at', '')
     comments.sort(key=_sort_key, reverse=True)
+    
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+                    c['is_verified'] = user_doc.get('is_verified', False)
+                    
     return {
         'status': 'success',
         'data': comments
@@ -5261,7 +5370,9 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
                     "id": other_id,
                     "name": other.get('name', 'Unknown'),
                     "sl_id": other.get('sl_id', ''),
-                    "photo": other.get('photo')
+                    "photo": other.get('photo'),
+                    "is_verified": other.get('is_verified', False),
+                    "verification_level": other.get('verification_level', 'state')
                 },
                 "last_message": chat.get('last_message', ''),
                 "last_message_at": chat.get('updated_at', chat.get('created_at')),
@@ -5308,6 +5419,20 @@ async def get_dm_messages(chat_id: str, limit: int = 50, token_data: dict = Depe
         raise HTTPException(status_code=403, detail="Access denied")
 
     messages = await db.get_chat_messages(chat_id, limit)
+    
+    # Dynamically decorate with current sender verification status
+    if messages:
+        sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+        if sender_ids:
+            users_list = await db.get_documents_batch('users', sender_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for msg in messages:
+                sender_id = msg.get('sender_id')
+                if sender_id and sender_id in users_map:
+                    user_doc = users_map[sender_id]
+                    msg['is_verified'] = user_doc.get('is_verified', False)
+                    msg['verification_level'] = user_doc.get('verification_level', 'state')
+                    
     return messages
 
 
@@ -6628,6 +6753,32 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
         if kyc_role in badge_map:
             await db.array_union_update('users', user_id, 'badges', [badge_map[kyc_role]])
 
+        # If user is vendor, also update their vendor profile to verified status
+        if target_user.get('is_vendor') or target_user.get('vendor_id'):
+            vendor_id = target_user.get('vendor_id')
+            if not vendor_id:
+                # Find vendor where owner_id = user_id
+                v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+                if v_list:
+                    vendor_id = v_list[0]['id']
+            if vendor_id:
+                vendor = await db.get_document('vendors', vendor_id)
+                if vendor:
+                    await db.update_document('vendors', vendor_id, {
+                        'kyc_status': 'verified',
+                        'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
+                        'kyc_reviewed_by': token_data.get("user_id"),
+                        'kyc_review_note': 'Automatically verified via user KYC approval',
+                    })
+                    await db.set_document('vendor_admin_reviews', vendor_id, {
+                        **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'verified'}),
+                        'review_status': 'approved',
+                        'review_state': 'closed',
+                        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
+                        'reviewed_by': token_data.get("user_id"),
+                        'review_note': 'Automatically verified via user KYC approval',
+                    })
+
         # Notify user about verification
         try:
             await NotificationService.create_notification(
@@ -6871,6 +7022,95 @@ async def get_events(token_data: dict = Depends(verify_token)):
 async def get_nearby_events(token_data: dict = Depends(verify_token)):
     db = await get_db()
     return await db.query_documents('events', limit=10)
+
+
+@api_router.post("/events/{event_id}/attend")
+async def attend_event(event_id: str, token_data: dict = Depends(verify_token)):
+    """Mark user as attending an event and notify the creator."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    # Try events collection first, then community posts
+    event = await db.get_document('events', event_id)
+    collection = 'events'
+    if not event:
+        event = await db.get_document('community_posts', event_id)
+        collection = 'community_posts'
+    if not event:
+        # Soft-fail: event may be ephemeral/local — still return success
+        return {"message": "Attendance recorded", "attendee_count": 1}
+
+    attendees = list(event.get('attendees', []) or [])
+    if user_id not in attendees:
+        attendees.append(user_id)
+        await db.update_document(collection, event_id, {
+            'attendees': attendees,
+            'attendee_count': len(attendees)
+        })
+
+    # Notify creator
+    creator_id = event.get('user_id') or event.get('organizer_id') or event.get('creator_id')
+    if creator_id and creator_id != user_id:
+        try:
+            attender_user = await db.get_document('users', user_id)
+            attender_name = (attender_user or {}).get('name', 'Someone')
+            event_title = event.get('title', 'your event')
+
+            notif_title = "🎉 Someone is attending your event!"
+            notif_body = f"{attender_name} confirmed they will attend '{event_title}'."
+            notif_data = {
+                'type': 'event_rsvp',
+                'eventId': str(event_id),
+                'community_id': str(event.get('community_id', '')),
+            }
+
+            await task_queue.enqueue(
+                FirebaseNotificationService.send_push_notification,
+                creator_id,
+                notif_title,
+                notif_body,
+                notif_data
+            )
+            await task_queue.enqueue(
+                FirebaseNotificationService.create_notification,
+                creator_id,
+                notif_title,
+                notif_body,
+                'event_rsvp',
+                notif_data
+            )
+            logger.info(f"Queued event RSVP notification for event {event_id} creator {creator_id}")
+        except Exception as notify_err:
+            logger.warning(f"Failed to notify creator for event RSVP {event_id}: {notify_err}")
+
+    return {"message": "Attendance confirmed", "attendee_count": len(attendees)}
+
+
+@api_router.post("/events/{event_id}/cancel-attendance")
+async def cancel_event_attendance(event_id: str, token_data: dict = Depends(verify_token)):
+    """Cancel user's attendance for an event."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    event = await db.get_document('events', event_id)
+    collection = 'events'
+    if not event:
+        event = await db.get_document('community_posts', event_id)
+        collection = 'community_posts'
+    if not event:
+        return {"message": "Attendance cancelled", "attendee_count": 0}
+
+    attendees = list(event.get('attendees', []) or [])
+    if user_id in attendees:
+        attendees.remove(user_id)
+        await db.update_document(collection, event_id, {
+            'attendees': attendees,
+            'attendee_count': len(attendees)
+        })
+
+    return {"message": "Attendance cancelled", "attendee_count": len(attendees)}
+
+
 
 
 # =================== NOTIFICATIONS ===================
@@ -8476,6 +8716,17 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
         'review_note': data.get('note'),
     })
 
+    # Update owner user's KYC status to verified
+    owner_id = vendor.get('owner_id')
+    if owner_id:
+        await db.update_document('users', owner_id, {
+            'kyc_status': 'verified',
+            'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
+            'is_verified': True,
+            'kyc_role': 'vendor'
+        })
+        await db.array_union_update('users', owner_id, 'badges', ['Verified Vendor'])
+
     return {
         'message': 'Vendor approved successfully',
         'vendor_id': vendor_id,
@@ -9037,34 +9288,23 @@ async def get_community_requests(
             return 0
         return 1
 
-    filtered_clean_requests.sort(key=lambda x: (_request_priority(x), x.get('created_at', '')), reverse=True)
-    # Correcting priority 0 to be at start (0 < 1, but we reverse=True for dates)
-    # Actually, using a tuple for sort: priority ASC, created_at DESC
-    filtered_clean_requests.sort(key=lambda x: (_request_priority(x), x.get('created_at', '') if isinstance(x.get('created_at'), str) else ''))
-    # Wait, created_at might be datetime or string.
-    
-    def _sort_key(r):
+    def _final_sort_key(r):
         priority = _request_priority(r)
-        # Convert created_at to timestamp string for sorting
         c_at = r.get('created_at')
-        if isinstance(c_at, datetime):
-            ts = c_at.isoformat()
-        else:
-            ts = str(c_at or "")
-        return (priority, ts)
+        
+        ts = 0
+        if hasattr(c_at, 'timestamp'):
+            ts = c_at.timestamp()
+        elif isinstance(c_at, str) and 'T' in c_at:
+            try:
+                ts = datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+            except Exception:
+                pass
+                
+        # Priority ASC (0 before 1), created_at DESC (higher timestamp first)
+        return (priority, -ts)
 
-    # Priority 0 first, then 1. Within each, latest first (so we need priority ASC, date DESC)
-    # To do that, we can use a reverse sort with negative priority or something.
-    # Simpler:
-    filtered_clean_requests.sort(key=lambda r: _sort_key(r))
-    # Wait, this will put priority 0 first (ASC), then created_at ASC. We want created_at DESC.
-    
-    # Final robust sort:
-    filtered_clean_requests.sort(key=lambda r: (
-        _request_priority(r), 
-        -(r.get('created_at').timestamp() if isinstance(r.get('created_at'), datetime) else 
-          (datetime.fromisoformat(r.get('created_at').replace('Z', '+00:00')).timestamp() if isinstance(r.get('created_at'), str) and 'T' in r.get('created_at') else 0))
-    ))
+    filtered_clean_requests.sort(key=_final_sort_key)
             
     # 2. Store in cache with 30-second TTL
     await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)
@@ -9109,6 +9349,89 @@ async def resolve_community_request(request_id: str, token_data: dict = Depends(
     logger.info(f"Community request {request_id} resolved by {user_id}")
     
     return {"message": "Request resolved successfully"}
+
+
+@api_router.post("/community-requests/{request_id}/interest")
+async def toggle_request_interest(request_id: str, token_data: dict = Depends(verify_token)):
+    """Toggle a user's interest/attendance on a Lost&Found or Temple Updates request"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    request = await db.get_document('community_requests', request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    interested_by = list(request.get('interested_by', []) or [])
+    if user_id in interested_by:
+        interested_by.remove(user_id)
+        action = "removed"
+    else:
+        interested_by.append(user_id)
+        action = "added"
+
+    await db.update_document('community_requests', request_id, {
+        'interested_by': interested_by,
+        'interested_count': len(interested_by)
+    })
+
+    # Send push notification to creator when someone marks "found" (action == added)
+    if action == "added":
+        try:
+            creator_id = request.get('user_id')
+            if creator_id and creator_id != user_id:
+                # Fetch finder's name
+                finder_user = await db.get_document('users', user_id)
+                finder_name = (finder_user or {}).get('name', 'Someone')
+
+                request_type = request.get('request_type', '')
+                item_title = request.get('title', 'your request')
+
+                is_lost_found = (
+                    request_type in ('lost_found', 'lost', 'found') or
+                    'lost' in (request.get('support_needed') or '').lower() or
+                    'found' in (request.get('support_needed') or '').lower() or
+                    'lost & found' in (request.get('category') or '').lower()
+                )
+
+                if is_lost_found:
+                    notif_title = "🔍 Someone found your item!"
+                    notif_body = f"{finder_name} says they found '{item_title}'. Tap to connect."
+                else:
+                    notif_title = "✅ Someone is interested!"
+                    notif_body = f"{finder_name} responded to your post: '{item_title}'."
+
+                notif_data = {
+                    'type': 'community_interest',
+                    'requestId': str(request_id),
+                    'community_id': str(request.get('community_id', '')),
+                    'action': 'found' if is_lost_found else 'interested',
+                }
+
+                await task_queue.enqueue(
+                    FirebaseNotificationService.send_push_notification,
+                    creator_id,
+                    notif_title,
+                    notif_body,
+                    notif_data
+                )
+                await task_queue.enqueue(
+                    FirebaseNotificationService.create_notification,
+                    creator_id,
+                    notif_title,
+                    notif_body,
+                    'community_interest',
+                    notif_data
+                )
+                logger.info(f"Queued interest notification for request {request_id} creator {creator_id}")
+        except Exception as notify_err:
+            logger.warning(f"Failed to notify creator for interest on {request_id}: {notify_err}")
+
+    try:
+        await cache_manager.invalidate_community_requests()
+    except Exception:
+        pass
+
+    return {"interested_count": len(interested_by), "action": action, "user_interested": action == "added"}
 
 
 @api_router.delete("/community-requests/{request_id}")

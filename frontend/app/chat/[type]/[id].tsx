@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated } from 'react-native';
+import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated, Keyboard } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { MentionInput } from '../../../src/components/MentionInput';
 import * as ExpoLinking from 'expo-linking';
 import * as ImagePicker from 'expo-image-picker';
@@ -38,8 +38,9 @@ const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void)
 };
 
 const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contain', isLooping = false }: any) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<any>(null);
-  const playerSource = Platform.OS === 'web' ? null : uri;
+  const playerSource = (Platform.OS === 'web' || !isPlaying) ? null : uri;
   const player = useSafeVideoPlayer(playerSource, (p) => {
     p.loop = isLooping;
   });
@@ -50,6 +51,29 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
       videoRef.current.loop = isLooping;
     }
   }, [isLooping]);
+
+  useEffect(() => {
+    if (player && isPlaying) {
+      player.play();
+    }
+  }, [player, isPlaying]);
+
+  // Clean up player on unmount to prevent audio leaks
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'web') {
+        if (videoRef.current) {
+          try {
+            videoRef.current.pause();
+          } catch (e) {}
+        }
+      } else if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
 
   if (Platform.OS === 'web') {
     return (
@@ -62,20 +86,27 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
     );
   }
 
-  if (ExpoVideoModule?.VideoView && player) {
+  if (isPlaying && ExpoVideoModule?.VideoView && player) {
     return (
       <ExpoVideoModule.VideoView
         player={player}
         style={style}
         contentFit={resizeMode}
         allowsPictureInPicture={false}
-        nativeControls={useNativeControls}
+        nativeControls={true}
         playsInline
       />
     );
   }
 
-  return <View style={[style, { backgroundColor: '#000' }]} />;
+  return (
+    <TouchableOpacity 
+      style={[style, { backgroundColor: '#1C1C1E', justifyContent: 'center', alignItems: 'center', position: 'relative' }]}
+      onPress={() => setIsPlaying(true)}
+    >
+      <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.85)" />
+    </TouchableOpacity>
+  );
 };
 
 const getTimeAgo = (dateString?: string) => {
@@ -140,6 +171,9 @@ const ChatMessageItem = React.memo(({
             <Text style={[styles.senderName, { marginBottom: 0 }, isOwnMessage && { color: COLORS.surface }]}>
               {isOwnMessage ? 'You' : item.sender_name}
             </Text>
+            {!isOwnMessage && (item as any).is_verified && (
+              <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />
+            )}
             <Text style={{ fontSize: 10, color: isOwnMessage ? 'rgba(255,255,255,0.7)' : COLORS.textSecondary, marginLeft: 4 }}>
               · {getTimeAgo(item.created_at)}
             </Text>
@@ -190,7 +224,20 @@ const ChatScreen = () => {
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const roomKey = type === 'community' ? `community_${id}_${subgroup}` : `circle_${id}`;
 
@@ -354,7 +401,7 @@ const ChatScreen = () => {
     try {
       let response;
       if (type === 'community') {
-        response = await getCommunityMessages(id!, subgroup);
+        response = await getCommunityMessages(id!, subgroup || 'city');
         // All users can post in community chats - no KYC required
         setIsVerified(true);
       } else {
@@ -364,8 +411,15 @@ const ChatScreen = () => {
       const fetchedMsgs = applyClientClearFilter(response.data || []);
       setMessages(fetchedMsgs);
       useChatStore.getState().setChatCache(roomKey, { messages: response.data || [], lastFetched: Date.now() });
-    } catch (error) {
+      return true;
+    } catch (error: any) {
       console.error('Error fetching messages:', error);
+      if (error?.response?.status === 404) {
+        // Stop fetching if the circle/community is not found (deleted or removed)
+        setLoading(false);
+        return false;
+      }
+      return true;
     } finally {
       setLoading(false);
     }
@@ -419,8 +473,11 @@ const ChatScreen = () => {
       } catch (error) {
         console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
         if (!pollingInterval) {
-          pollingInterval = setInterval(() => {
-            fetchMessages(true);
+          pollingInterval = setInterval(async () => {
+            const shouldContinue = await fetchMessages(true);
+            if (shouldContinue === false && pollingInterval) {
+              clearInterval(pollingInterval);
+            }
           }, 3000);
         }
       }
@@ -430,8 +487,11 @@ const ChatScreen = () => {
 
     if (Platform.OS === 'web') {
       // Web uses polling only for group/community chat; socket transport is unreliable in this setup.
-      pollingInterval = setInterval(() => {
-        fetchMessages(true);
+      pollingInterval = setInterval(async () => {
+        const shouldContinue = await fetchMessages(true);
+        if (shouldContinue === false && pollingInterval) {
+          clearInterval(pollingInterval);
+        }
       }, 3000);
     } else {
       setupSocket();
@@ -475,7 +535,7 @@ const ChatScreen = () => {
           await sendCircleMessage(id!, mediaUrl, selected.mediaType);
         }
         if (type === 'community') {
-          await sendCommunityMessage(id!, subgroup, mediaUrl, selected.mediaType);
+          await sendCommunityMessage(id!, subgroup || 'city', mediaUrl, selected.mediaType);
         }
 
         setSelectedMedia(null);
@@ -518,7 +578,7 @@ const ChatScreen = () => {
     try {
       let response;
       if (type === 'community') {
-        response = await sendCommunityMessage(id!, subgroup, messageText);
+        response = await sendCommunityMessage(id!, subgroup || 'city', messageText);
       } else {
         response = await sendCircleMessage(id!, messageText);
       }
@@ -1153,7 +1213,7 @@ const ChatScreen = () => {
       if (type === 'circle') {
         await sendCircleMessage(id!, payload, 'contact');
       } else if (type === 'community') {
-        await sendCommunityMessage(id!, subgroup, payload, 'contact');
+        await sendCommunityMessage(id!, subgroup || 'city', payload, 'contact');
       }
       setShowContactModal(false);
       setContactShareName('');
@@ -1332,7 +1392,7 @@ const ChatScreen = () => {
 
       {/* Messages */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.chatContainer}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
       >
@@ -1385,7 +1445,7 @@ const ChatScreen = () => {
             <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
           </TouchableOpacity>
         ) : (
-          <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={[styles.inputWrapperContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) }]}>
             {selectedMedia && (
               <View style={styles.mediaPreviewContainer}>
                 <View style={styles.mediaPreviewHeader}>
@@ -1877,6 +1937,37 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  mediaPreviewContainer: {
+    padding: SPACING.sm,
+    backgroundColor: '#000000',
+    borderRadius: BORDER_RADIUS.md,
+    marginHorizontal: 12,
+    marginVertical: 8,
+  },
+  mediaPreviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  mediaPreviewLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  mediaPreviewClose: {
+    padding: 2,
+  },
+  mediaPreviewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  mediaPreviewVideo: {
+    width: '100%',
+    height: 150,
+    borderRadius: BORDER_RADIUS.sm,
   },
   restrictedOverlay: {
     ...StyleSheet.absoluteFillObject,

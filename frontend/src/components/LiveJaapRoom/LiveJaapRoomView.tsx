@@ -198,7 +198,7 @@ const HANUMAN_CHALISA_SEGMENTS = [
 const MANTRA_AUDIO: Record<string, any> = {
   hanuman: require('../../../assets/audio/audio ekant/Hanuman chalisa.mp3'),
   gayatri: require('../../../assets/audio/audio ekant/Gayatri Mantra.m4a.mp4'),
-  krishna: require('../../../assets/audio/audio ekant/leberch-yoga-509709.mp3'),
+  krishna: require('../../../assets/audio/audio ekant/Krishna jaap.m4a.mp4'),
   shiva: require('../../../assets/audio/audio ekant/Final Om Namah Shivaay 2026-05-23 17_09.m4a.mp4'),
   mrityunjaya: require('../../../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
   ganesh: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
@@ -495,6 +495,8 @@ export default function LiveJaapRoomView() {
           totalDuration = 31.068;
         } else if (mantraType === 'shiva') {
           totalDuration = 8.48; // 8.48s loop contains 1 main chant + instrumental tail, so 1 loop = 1 count
+        } else if (mantraType === 'krishna') {
+          totalDuration = 11.385; // 22.77s / 2 repetitions
         } else {
           const wordDurations = WORDS.map(w => (w.length > 7 ? 3.0 : 1.2));
           totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
@@ -552,7 +554,7 @@ export default function LiveJaapRoomView() {
             } else {
               const status = getCurrentOtherJaapStatus(new Date(), mantraType);
               if (status.isActive) {
-                const totalDuration = mantraType === 'gayatri' ? 31.068 : 8.48;
+                const totalDuration = mantraType === 'gayatri' ? 31.068 : (mantraType === 'krishna' ? 22.77 : 8.48);
                 audio.currentTime = status.elapsedSeconds % totalDuration;
               }
               await audio.play();
@@ -614,7 +616,7 @@ export default function LiveJaapRoomView() {
           const current = audio.currentTime;
           const diff = Math.abs(current - expected);
           
-          if (!initialSynced || diff > 0.5) {
+          if (!initialSynced || diff > 1.5) {
             if (audio.readyState >= 1) {
               audio.currentTime = expected;
               initialSynced = true;
@@ -628,7 +630,7 @@ export default function LiveJaapRoomView() {
           const current = audio.currentTime;
           const diff = Math.abs(current - expected);
           
-          if (!initialSynced || diff > 0.5) {
+          if (!initialSynced || diff > 1.5) {
             if (audio.readyState >= 1) {
               audio.currentTime = expected;
               initialSynced = true;
@@ -642,7 +644,21 @@ export default function LiveJaapRoomView() {
           const current = audio.currentTime;
           const diff = Math.abs(current - expected);
           
-          if (!initialSynced || diff > 0.5) {
+          if (!initialSynced || diff > 1.5) {
+            if (audio.readyState >= 1) {
+              audio.currentTime = expected;
+              initialSynced = true;
+            }
+          }
+        }
+      } else if (mantraType === 'krishna') {
+        const status = getCurrentOtherJaapStatus(new Date(), mantraType);
+        if (status.isActive) {
+          const expected = status.elapsedSeconds % 22.77;
+          const current = audio.currentTime;
+          const diff = Math.abs(current - expected);
+          
+          if (!initialSynced || diff > 1.5) {
             if (audio.readyState >= 1) {
               audio.currentTime = expected;
               initialSynced = true;
@@ -654,6 +670,20 @@ export default function LiveJaapRoomView() {
     
     return () => clearInterval(syncTimer);
   }, [mantraType]);
+
+  // Polling loop for smooth subtitle highlight updates on Web
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const interval = setInterval(() => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused && isSessionActive) {
+        setCurrentTimeState(audio.currentTime);
+      }
+    }, 50);
+    
+    return () => clearInterval(interval);
+  }, [isSessionActive]);
 
   useEffect(() => {
     Animated.loop(

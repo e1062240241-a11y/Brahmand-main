@@ -5,8 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
+import { useTranslation } from '../../src/utils/i18n';
 
 function NotificationsSettingsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { fcmToken, initPushNotifications } = useAuthStore();
 
@@ -50,20 +52,32 @@ function NotificationsSettingsScreen() {
     }
   };
 
+  const getStatusText = (status: string) => {
+    if (status === 'Enabled') return t('language') === 'hi' ? 'सक्षम' : 'Enabled';
+    if (status === 'Disabled') return t('language') === 'hi' ? 'अक्षम' : 'Disabled';
+    if (status === 'Enabling...') return t('language') === 'hi' ? 'सक्षम किया जा रहा है...' : 'Enabling...';
+    if (status === 'Unable to enable push notifications') return t('language') === 'hi' ? 'पुश सूचनाएं सक्षम करने में असमर्थ' : 'Unable to enable push notifications';
+    return status;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>
+          {t('language') === 'hi' ? 'सूचनाएं' : 'Notifications'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.content}>
         <View style={styles.settingItem}>
           <View>
-            <Text style={styles.settingLabel}>Push Notifications</Text>
+            <Text style={styles.settingLabel}>
+              {t('language') === 'hi' ? 'पुश सूचनाएं' : 'Push Notifications'}
+            </Text>
           </View>
           <Switch
             value={receivePush}
@@ -75,7 +89,7 @@ function NotificationsSettingsScreen() {
         </View>
 
         <View style={styles.pushStatusContainer}>
-          <Text style={styles.pushStatusText}>{pushStatus}</Text>
+          <Text style={styles.pushStatusText}>{getStatusText(pushStatus)}</Text>
           <TouchableOpacity
             style={[styles.pushButton, pushLoading && styles.pushButtonDisabled]}
             onPress={handleEnablePush}
@@ -85,7 +99,9 @@ function NotificationsSettingsScreen() {
               <ActivityIndicator color={COLORS.background} />
             ) : (
               <Text style={styles.pushButtonText}>
-                {receivePush ? 'Push Enabled' : 'Enable Push Notifications'}
+                {receivePush 
+                  ? (t('language') === 'hi' ? 'पुश सक्षम' : 'Push Enabled') 
+                  : (t('language') === 'hi' ? 'पुश सूचनाएं सक्षम करें' : 'Enable Push Notifications')}
               </Text>
             )}
           </TouchableOpacity>
@@ -93,7 +109,9 @@ function NotificationsSettingsScreen() {
 
         <View style={styles.settingItem}>
           <View>
-            <Text style={styles.settingLabel}>Email Notifications</Text>
+            <Text style={styles.settingLabel}>
+              {t('language') === 'hi' ? 'ईमेल सूचनाएं' : 'Email Notifications'}
+            </Text>
           </View>
           <Switch
             value={receiveEmail}

@@ -156,7 +156,7 @@ const CreateCircleScreen = () => {
   const shareCircleLink = async () => {
     if (!createdCircle?.code) return;
     
-    const shareUrl = `sanatanlok://join-circle/${createdCircle.code}`;
+    const shareUrl = `https://brahmand.app/join-circle/${createdCircle.code}`;
     const shareMessage = `Join my circle "${createdCircle.name}" on Sanatan Lok!\n\nCircle Code: ${createdCircle.code}\n\nOr use this link: ${shareUrl}`;
 
     try {

@@ -20,6 +20,7 @@ import { ref, uploadBytes, getDownloadURL as getStorageDownloadURL } from 'fireb
 import { usePersonalityStore } from '../../src/store/personalityStore';
 import axios from 'axios';
 import { COLORS } from '../../src/constants/theme';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ const DOC_TYPES = [
 ];
 
 export default function DocumentUploadScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { updateData } = usePersonalityStore();
   const [selectedDocType, setSelectedDocType] = useState('aadhaar');
@@ -41,6 +43,15 @@ export default function DocumentUploadScreen() {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleBack = () => router.back();
+
+  const getDocTypeLabel = (id: string, label: string) => {
+    if (id === 'aadhaar') return t('language') === 'hi' ? 'आधार कार्ड' : 'Aadhaar Card';
+    if (id === 'pan') return t('language') === 'hi' ? 'पैन कार्ड' : 'PAN Card';
+    if (id === 'voter') return t('language') === 'hi' ? 'वोटर आईडी' : 'Voter ID';
+    if (id === 'passport') return t('language') === 'hi' ? 'पासपोर्ट' : 'Passport';
+    if (id === 'dl') return t('language') === 'hi' ? 'ड्राइविंग लाइसेंस' : 'Driving License';
+    return label;
+  };
 
   const pickImage = async (side: 'front' | 'back' | 'additional') => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -92,7 +103,10 @@ export default function DocumentUploadScreen() {
 
   const handleContinue = async () => {
     if (!frontImage) {
-      Alert.alert('Incomplete', 'Please upload at least the front side of your ID.');
+      Alert.alert(
+        t('language') === 'hi' ? 'अपूर्ण' : 'Incomplete', 
+        t('language') === 'hi' ? 'कृपया अपनी आईडी का कम से कम फ्रंट साइड अपलोड करें।' : 'Please upload at least the front side of your ID.'
+      );
       return;
     }
 
@@ -131,8 +145,8 @@ export default function DocumentUploadScreen() {
       
       // Navigate immediately with a success message
       Alert.alert(
-        'Upload Successful', 
-        'Documents uploaded! Taking you to the review page...',
+        t('language') === 'hi' ? 'अपलोड सफल' : 'Upload Successful', 
+        t('language') === 'hi' ? 'दस्तावेज़ अपलोड हो गए! आपको समीक्षा पृष्ठ पर ले जाया जा रहा है...' : 'Documents uploaded! Taking you to the review page...',
         [{ text: 'OK', onPress: () => router.replace('/profile/personality-verification-review') }]
       );
       
@@ -143,7 +157,10 @@ export default function DocumentUploadScreen() {
     } catch (error: any) {
       setIsUploading(false);
       console.error('[Docs] Upload failed:', error);
-      Alert.alert('Upload Failed', error.message || 'Something went wrong while uploading documents.');
+      Alert.alert(
+        t('language') === 'hi' ? 'अपलोड विफल' : 'Upload Failed', 
+        error.message || (t('language') === 'hi' ? 'दस्तावेज़ अपलोड करते समय कुछ गलत हो गया।' : 'Something went wrong while uploading documents.')
+      );
     }
   };
 
@@ -157,11 +174,17 @@ export default function DocumentUploadScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.mainTitle}>Documents Upload</Text>
-          <Text style={styles.subtitle}>Please upload valid documents for verification.</Text>
+          <Text style={styles.mainTitle}>
+            {t('language') === 'hi' ? 'दस्तावेज़ अपलोड' : 'Documents Upload'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {t('language') === 'hi' ? 'कृपया सत्यापन के लिए वैध दस्तावेज़ अपलोड करें।' : 'Please upload valid documents for verification.'}
+          </Text>
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Identity Proof <Text style={styles.subLabel}>(Any one)</Text></Text>
+            <Text style={styles.sectionLabel}>
+              {t('language') === 'hi' ? 'पहचान प्रमाण' : 'Identity Proof'} <Text style={styles.subLabel}>{t('language') === 'hi' ? '(कोई एक)' : '(Any one)'}</Text>
+            </Text>
             <View style={styles.docTypeContainer}>
               {DOC_TYPES.map((doc) => (
                 <TouchableOpacity 
@@ -175,7 +198,7 @@ export default function DocumentUploadScreen() {
                   ]}>
                     {selectedDocType === doc.id && <View style={styles.radioInner} />}
                   </View>
-                  <Text style={styles.radioLabel}>{doc.label}</Text>
+                  <Text style={styles.radioLabel}>{getDocTypeLabel(doc.id, doc.label)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -183,7 +206,9 @@ export default function DocumentUploadScreen() {
 
           {/* Front Side Upload */}
           <View style={styles.uploadSection}>
-            <Text style={styles.uploadLabel}>Upload Front Side <Text style={styles.required}>*</Text></Text>
+            <Text style={styles.uploadLabel}>
+              {t('language') === 'hi' ? 'सामने का भाग अपलोड करें' : 'Upload Front Side'} <Text style={styles.required}>*</Text>
+            </Text>
             <TouchableOpacity 
               style={styles.uploadBox} 
               onPress={() => pickImage('front')}
@@ -193,8 +218,12 @@ export default function DocumentUploadScreen() {
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Ionicons name="cloud-upload-outline" size={32} color="#FF6600" />
-                  <Text style={styles.uploadText}>Tap to upload image</Text>
-                  <Text style={styles.uploadHint}>JPG, PNG or PDF (Max. 5MB)</Text>
+                  <Text style={styles.uploadText}>
+                    {t('language') === 'hi' ? 'छवि अपलोड करने के लिए टैप करें' : 'Tap to upload image'}
+                  </Text>
+                  <Text style={styles.uploadHint}>
+                    {t('language') === 'hi' ? 'जेपीजी, पीएनजी या पीडीएफ (अधिकतम 5 एमबी)' : 'JPG, PNG or PDF (Max. 5MB)'}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -202,7 +231,10 @@ export default function DocumentUploadScreen() {
 
           {/* Back Side Upload */}
           <View style={styles.uploadSection}>
-            <Text style={styles.uploadLabel}>Upload Back Side <Text style={styles.subLabel}>(If applicable)</Text></Text>
+            <Text style={styles.uploadLabel}>
+              {t('language') === 'hi' ? 'पीछे का भाग अपलोड करें' : 'Upload Back Side'}{' '}
+              <Text style={styles.subLabel}>{t('language') === 'hi' ? '(यदि लागू हो)' : '(If applicable)'}</Text>
+            </Text>
             <TouchableOpacity 
               style={styles.uploadBox} 
               onPress={() => pickImage('back')}
@@ -212,8 +244,12 @@ export default function DocumentUploadScreen() {
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Ionicons name="cloud-upload-outline" size={32} color="#FF6600" />
-                  <Text style={styles.uploadText}>Tap to upload image</Text>
-                  <Text style={styles.uploadHint}>JPG, PNG or PDF (Max. 5MB)</Text>
+                  <Text style={styles.uploadText}>
+                    {t('language') === 'hi' ? 'छवि अपलोड करने के लिए टैप करें' : 'Tap to upload image'}
+                  </Text>
+                  <Text style={styles.uploadHint}>
+                    {t('language') === 'hi' ? 'जेपीजी, पीएनजी या पीडीएफ (अधिकतम 5 एमबी)' : 'JPG, PNG or PDF (Max. 5MB)'}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -221,16 +257,23 @@ export default function DocumentUploadScreen() {
 
           {/* Additional Docs */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Additional Supporting Documents <Text style={styles.subLabel}>(Optional)</Text></Text>
+            <Text style={styles.sectionLabel}>
+              {t('language') === 'hi' ? 'अअतिरिक्त सहायक दस्तावेज़' : 'Additional Supporting Documents'}{' '}
+              <Text style={styles.subLabel}>{t('language') === 'hi' ? '(वैकल्पिक)' : '(Optional)'}</Text>
+            </Text>
             <TouchableOpacity 
               style={styles.addFilesButton}
               onPress={() => pickImage('additional')}
             >
               <Ionicons name="cloud-upload-outline" size={20} color="#333" />
-              <Text style={styles.addFilesText}>Tap to upload files</Text>
+              <Text style={styles.addFilesText}>
+                {t('language') === 'hi' ? 'फ़ाइलें अपलोड करने के लिए टैप करें' : 'Tap to upload files'}
+              </Text>
             </TouchableOpacity>
             {additionalFiles.length > 0 && (
-              <Text style={styles.fileCountText}>{additionalFiles.length} additional file(s) selected</Text>
+              <Text style={styles.fileCountText}>
+                {additionalFiles.length} {t('language') === 'hi' ? 'अतिरिक्त फ़ाइल(स) चुनी गईं' : 'additional file(s) selected'}
+              </Text>
             )}
           </View>
 
@@ -242,7 +285,9 @@ export default function DocumentUploadScreen() {
             {isUploading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.continueButtonText}>Continue</Text>
+              <Text style={styles.continueButtonText}>
+                {t('language') === 'hi' ? 'जारी रखें' : 'Continue'}
+              </Text>
             )}
           </TouchableOpacity>
         </ScrollView>

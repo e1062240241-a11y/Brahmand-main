@@ -34,7 +34,10 @@
           "audio"
         ],
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:brahmand.app"
+      ]
     },
     "android": {
       "package": "com.brahmand.app",
@@ -67,6 +70,24 @@
           "data": [
             {
               "scheme": "sanatanlok"
+            }
+          ],
+          "category": [
+            "android.intent.category.DEFAULT",
+            "android.intent.category.BROWSABLE"
+          ]
+        },
+        {
+          "action": "android.intent.action.VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "brahmand.app"
+            },
+            {
+              "scheme": "http",
+              "host": "brahmand.app"
             }
           ],
           "category": [

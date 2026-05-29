@@ -32,6 +32,7 @@ import {
 } from 'react-native-agora';
 import { getAgoraToken } from '../../services/api';
 import { usePassportStore } from '../../store/passportStore';
+import { useTranslation } from '../../utils/i18n';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
@@ -68,7 +69,7 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
 const MANTRA_BG_AUDIO: Record<string, any> = {
   gayatri: require('../../../assets/audio/audio ekant/Gayatri Mantra.m4a.mp4'),
   hanuman: require('../../../assets/audio/audio ekant/Hanuman chalisa.mp3'),
-  krishna: require('../../../assets/audio/audio ekant/eisenkern1982-waterfall-176958.mp3'),
+  krishna: require('../../../assets/audio/audio ekant/Krishna jaap.m4a.mp4'),
   shiva: require('../../../assets/audio/audio ekant/Final Om Namah Shivaay 2026-05-23 17_09.m4a.mp4'),
   mrityunjaya: require('../../../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
   ganesh: require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3'),
@@ -234,6 +235,7 @@ const getSlotId = (date: Date, mType: string): string => {
 };
 
 export default function LiveJaapRoomView() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { initialMic, mantraType, title: roomTitle, fromHome } = useLocalSearchParams<{ 
     initialMic?: string, 
@@ -331,7 +333,7 @@ export default function LiveJaapRoomView() {
   const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
   const agoraJoinedRef = useRef(false);
   
-  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri);
+  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 50 });
   const audioStatus = useAudioPlayerStatus(bgPlayer);
 
 
@@ -495,6 +497,8 @@ export default function LiveJaapRoomView() {
         totalDuration = 31.068;
       } else if (mantraType === 'shiva') {
         totalDuration = 8.48; // 8.48s loop contains 1 main chant + instrumental tail, so 1 loop = 1 count
+      } else if (mantraType === 'krishna') {
+        totalDuration = 11.385; // 22.77s / 2 repetitions
       } else {
         const wordDurations = WORDS.map(w => (w.length > 7 ? 3.0 : 1.2));
         totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
@@ -555,7 +559,7 @@ export default function LiveJaapRoomView() {
           } else {
             const status = getCurrentOtherJaapStatus(new Date(), mantraType);
             if (status.isActive) {
-              const totalDuration = mantraType === 'gayatri' ? 31.068 : 8.48;
+              const totalDuration = mantraType === 'gayatri' ? 31.068 : (mantraType === 'krishna' ? 22.77 : 8.48);
               expected = status.elapsedSeconds % totalDuration;
             }
           }
@@ -595,7 +599,7 @@ export default function LiveJaapRoomView() {
           const current = bgPlayer.currentTime || 0;
           const diff = Math.abs(current - expected);
           
-          if (!hasInitiallySynced || diff > 0.5) {
+          if (!hasInitiallySynced || diff > 1.5) {
             bgPlayer.seekTo(expected);
             hasInitiallySynced = true;
           }
@@ -607,7 +611,7 @@ export default function LiveJaapRoomView() {
           const current = bgPlayer.currentTime || 0;
           const diff = Math.abs(current - expected);
           
-          if (!hasInitiallySynced || diff > 0.5) {
+          if (!hasInitiallySynced || diff > 1.5) {
             bgPlayer.seekTo(expected);
             hasInitiallySynced = true;
           }
@@ -615,20 +619,45 @@ export default function LiveJaapRoomView() {
       } else if (mantraType === 'shiva') {
         const status = getCurrentOtherJaapStatus(new Date(), mantraType);
         if (status.isActive) {
-          const expected = status.elapsedSeconds % 8.48;
-          const current = bgPlayer.currentTime || 0;
-          const diff = Math.abs(current - expected);
-          
-          if (!hasInitiallySynced || diff > 0.5) {
-            bgPlayer.seekTo(expected);
-            hasInitiallySynced = true;
-          }
+           const expected = status.elapsedSeconds % 8.48;
+           const current = bgPlayer.currentTime || 0;
+           const diff = Math.abs(current - expected);
+           
+           if (!hasInitiallySynced || diff > 1.5) {
+             bgPlayer.seekTo(expected);
+             hasInitiallySynced = true;
+           }
+        }
+      } else if (mantraType === 'krishna') {
+        const status = getCurrentOtherJaapStatus(new Date(), mantraType);
+        if (status.isActive) {
+           const expected = status.elapsedSeconds % 22.77;
+           const current = bgPlayer.currentTime || 0;
+           const diff = Math.abs(current - expected);
+           
+           if (!hasInitiallySynced || diff > 1.5) {
+             bgPlayer.seekTo(expected);
+             hasInitiallySynced = true;
+           }
         }
       }
     }, 1500);
     
     return () => clearInterval(syncTimer);
   }, [bgPlayer, mantraType]);
+
+  // Explicit unmount cleanup for native background audio player
+  useEffect(() => {
+    return () => {
+      if (bgPlayer) {
+        try {
+          bgPlayer.pause();
+        } catch (e) {
+          console.warn('Failed to pause bgPlayer on unmount:', e);
+        }
+      }
+    };
+  }, [bgPlayer]);
 
   useEffect(() => {
     const initAudioMode = async () => {
@@ -748,8 +777,8 @@ export default function LiveJaapRoomView() {
       }
       const config = await getAgoraToken(ROOM_NAME);
       if (!config.enabled || !config.token || !config.appId) {
-        setMicStatus('Audio room not available');
-        setParticipantLabel('Agora Not Configured');
+        setMicStatus(t('audioRoomNotAvailable'));
+        setParticipantLabel(t('agoraNotConfigured'));
         return;
       }
       await engine.current.initialize({
@@ -760,8 +789,8 @@ export default function LiveJaapRoomView() {
       engine.current.registerEventHandler({
         onJoinChannelSuccess: (connection: RtcConnection) => {
           agoraJoinedRef.current = true;
-          setParticipantLabel(`Connected to ${roomTitle || 'Sangat'}`);
-          setMicStatus('Audio room live');
+          setParticipantLabel(`${t('connectedTo')} ${roomTitle || 'Sangat'}`);
+          setMicStatus(t('audioRoomLive'));
           engine.current.muteLocalAudioStream(!isMicEnabled);
           
           // Create data stream for reactions
@@ -817,7 +846,7 @@ export default function LiveJaapRoomView() {
         autoSubscribeAudio: true,
       });
     } catch (error) {
-      setMicStatus('Audio unavailable');
+      setMicStatus(t('audioUnavailable'));
     }
   };
 
@@ -917,7 +946,7 @@ export default function LiveJaapRoomView() {
               </TouchableOpacity>
             </View>
             <View style={styles.countPillNew}>
-              <Text style={styles.countLabelNew}>{isHanuman ? `Your\ncount` : `Mala\ncount`}</Text>
+              <Text style={styles.countLabelNew}>{isHanuman ? t('yourCount') : t('malaCount')}</Text>
               <Text style={styles.countValueNew}>{isHanuman ? personalCount : Math.floor(personalCount / 108)}</Text>
             </View>
           </View>
@@ -926,11 +955,11 @@ export default function LiveJaapRoomView() {
             <View style={styles.countdownContainer}>
               <View style={styles.countdownGlassCard}>
                 <Text style={styles.countdownOmSymbol}>🕉️</Text>
-                <Text style={styles.countdownTitle}>Live {roomTitle || 'Mantra'} Chanting</Text>
-                <Text style={styles.countdownSubtitle}>Communal Live Jaap is currently offline</Text>
+                <Text style={styles.countdownTitle}>{roomTitle ? `${roomTitle} ${t('liveChanting')}` : t('liveChanting')}</Text>
+                <Text style={styles.countdownSubtitle}>{t('liveJaapOffline')}</Text>
                 
                 <View style={styles.countdownTimerBox}>
-                  <Text style={styles.countdownLabel}>NEXT LIVE SESSION STARTS IN</Text>
+                  <Text style={styles.countdownLabel}>{t('nextSessionStartsIn')}</Text>
                   <Text style={styles.countdownTimerText}>
                     {(() => {
                       const nextStart = (isHanuman && !hanumanStatus.isActive) 
@@ -946,10 +975,16 @@ export default function LiveJaapRoomView() {
                     })()}
                   </Text>
                   <Text style={styles.nextSessionNameText}>
-                    Session: {(() => {
+                    {t('language') === 'hi' ? 'सत्र' : 'Session'}: {(() => {
                       const nextName = (isHanuman && !hanumanStatus.isActive) 
                         ? hanumanStatus.nextSessionName 
                         : ((!isHanuman && !otherStatus.isActive) ? otherStatus.nextSessionName : '');
+                      if (t('language') === 'hi') {
+                        if (nextName.includes('Morning')) return nextName.replace('Morning', 'सुबह का');
+                        if (nextName.includes('Afternoon')) return nextName.replace('Afternoon', 'दोपहर का');
+                        if (nextName.includes('Evening')) return nextName.replace('Evening', 'शाम का');
+                        if (nextName.includes('Night')) return nextName.replace('Night', 'रात का');
+                      }
                       return nextName;
                     })()}
                   </Text>
@@ -957,23 +992,23 @@ export default function LiveJaapRoomView() {
 
                 <View style={styles.personalOfflineStatsBox}>
                   <Ionicons name="person-circle-outline" size={24} color="#FFEBB5" />
-                  <Text style={styles.personalOfflineStatsTitle}>Your Completed Chanting Count</Text>
+                  <Text style={styles.personalOfflineStatsTitle}>{t('completedChantingCount')}</Text>
                   <Text style={styles.personalOfflineStatsCount}>{personalCount}</Text>
                 </View>
 
                 <View style={styles.scheduleDetailsBox}>
-                  <Text style={styles.scheduleTitle}>Daily Live Schedule:</Text>
+                  <Text style={styles.scheduleTitle}>{t('dailyLiveSchedule')}</Text>
                   {isHanuman ? (
                     <>
-                      <Text style={styles.scheduleItem}>• Morning (13 rounds): 5:30 AM – 9:00 AM</Text>
-                      <Text style={styles.scheduleItem}>• Afternoon (13 rounds): 12:00 PM – 3:30 PM</Text>
-                      <Text style={styles.scheduleItem}>• Evening (13 rounds): 4:00 PM – 7:30 PM</Text>
-                      <Text style={styles.scheduleItem}>• Night (12 rounds): 9:00 PM – 12:15 AM</Text>
+                      <Text style={styles.scheduleItem}>{t('morningSchedule')}</Text>
+                      <Text style={styles.scheduleItem}>{t('afternoonSchedule')}</Text>
+                      <Text style={styles.scheduleItem}>{t('eveningSchedule')}</Text>
+                      <Text style={styles.scheduleItem}>{t('nightSchedule')}</Text>
                     </>
                   ) : (
                     <>
-                      <Text style={styles.scheduleItem}>• Morning Session: 6:00 AM – 12:00 PM</Text>
-                      <Text style={styles.scheduleItem}>• Evening Session: 1:00 PM – 8:00 PM</Text>
+                      <Text style={styles.scheduleItem}>{t('morningGaneshSchedule')}</Text>
+                      <Text style={styles.scheduleItem}>{t('eveningGaneshSchedule')}</Text>
                     </>
                   )}
                 </View>
@@ -989,7 +1024,7 @@ export default function LiveJaapRoomView() {
                     end={{ x: 1, y: 0 }}
                   >
                     <Ionicons name="person" size={18} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.ekantRedirectBtnText}>Chant in Ekant (Solo) Mode</Text>
+                    <Text style={styles.ekantRedirectBtnText}>{t('chantInEkantMode')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -999,8 +1034,8 @@ export default function LiveJaapRoomView() {
               {/* CHANTING WITH YOU PILL */}
               <View style={styles.chantingWithYouContainer}>
                 <View style={styles.chantingWithYouPill}>
-                  <Text style={styles.chantingLabelNew}>CHANTING WITH YOU  </Text>
-                  <Text style={styles.chantingValueNew}>{(remotePeers + 1) * 18} souls </Text>
+                  <Text style={styles.chantingLabelNew}>{t('chantingWithYou')}</Text>
+                  <Text style={styles.chantingValueNew}>{(remotePeers + 1) * 18} {t('souls')} </Text>
                   <Ionicons name="cellular" size={14} color="#FF8A00" />
                 </View>
               </View>
@@ -1013,7 +1048,7 @@ export default function LiveJaapRoomView() {
                 >
                   <View style={styles.malaHeaderRow}>
                     <MaterialCommunityIcons name="dharmachakra" size={20} color="#FF6600" />
-                    <Text style={styles.malaTitleText}>Personal Mala Progress</Text>
+                    <Text style={styles.malaTitleText}>{t('personalMalaProgress')}</Text>
                   </View>
                   
                   {/* Beads Progress Bar */}
@@ -1021,7 +1056,7 @@ export default function LiveJaapRoomView() {
                     <View style={styles.beadsProgressBarBg}>
                       <View style={[styles.beadsProgressBarFill, { width: `${((personalCount % 108) / 108) * 100}%` }]} />
                     </View>
-                    <Text style={styles.beadsText}>{personalCount % 108} / 108 Beads</Text>
+                    <Text style={styles.beadsText}>{personalCount % 108} / 108 {t('beads')}</Text>
                   </View>
 
                   {/* Completed Mala Section */}
@@ -1035,7 +1070,7 @@ export default function LiveJaapRoomView() {
                       >
                         <Ionicons name="sparkles" size={14} color="#FFF" />
                         <Text style={styles.completedMalaText}>
-                          {Math.floor(personalCount / 108)} {Math.floor(personalCount / 108) === 1 ? 'Mala' : 'Malas'} Done
+                          {Math.floor(personalCount / 108)} {t('language') === 'hi' ? 'माला पूर्ण' : (Math.floor(personalCount / 108) === 1 ? 'Mala Done' : 'Malas Done')}
                         </Text>
                         <Ionicons name="sparkles" size={14} color="#FFF" />
                       </LinearGradient>
@@ -1048,8 +1083,8 @@ export default function LiveJaapRoomView() {
               <View style={styles.lyricsAreaNew}>
                 {isHanuman && hanumanStatus.isActive && hanumanStatus.isBreak ? (
                    <View style={styles.breakMessageContainer}>
-                     <Text style={[styles.breakTextMain, { color: '#000' }]}>Have a deep breath.</Text>
-                     <Text style={[styles.breakTextSub, { color: '#555' }]}>Next jaap is starting soon...</Text>
+                     <Text style={[styles.breakTextMain, { color: '#000' }]}>{t('deepBreath')}</Text>
+                     <Text style={[styles.breakTextSub, { color: '#555' }]}>{t('nextJaapStartingSoon')}</Text>
                    </View>
                 ) : (
                    <View style={styles.lyricsBoxNew}>
@@ -1095,11 +1130,11 @@ export default function LiveJaapRoomView() {
                 {/* Metrics */}
                 <View style={styles.metricsRowNew}>
                   <View style={styles.metricItemNew}>
-                    <Text style={styles.metricLabelNew}>JAAP</Text>
+                    <Text style={styles.metricLabelNew}>{t('jaap').toUpperCase()}</Text>
                     <Text style={styles.metricValueNew}>{(isHanuman && hanumanStatus.isActive) ? hanumanStatus.roundOfSession : 1}<Text style={styles.metricSlashNew}> / {(isHanuman && hanumanStatus.isActive) ? hanumanStatus.totalRepsInSession : 21}</Text></Text>
                   </View>
                   <View style={styles.metricItemNew}>
-                    <Text style={styles.metricLabelNew}>REMAINING</Text>
+                    <Text style={styles.metricLabelNew}>{t('remaining').toUpperCase()}</Text>
                     <Text style={styles.metricValueNew}>{(() => {
                         const nextEnd = (isHanuman && hanumanStatus.isActive) ? hanumanStatus.sessionEnd : (otherStatus.isActive ? otherStatus.sessionEnd : null);
                         if (!nextEnd) return '0h 0m';
@@ -1108,10 +1143,10 @@ export default function LiveJaapRoomView() {
                         const hrs = Math.floor(diffMs / 3600000);
                         const mins = Math.floor((diffMs % 3600000) / 60000);
                         return `${hrs}h ${mins}m`;
-                      })()} <Text style={styles.metricSlashNew}>remaining</Text></Text>
+                      })()} <Text style={styles.metricSlashNew}>{t('remaining')}</Text></Text>
                   </View>
                   <View style={styles.metricItemNew}>
-                    <Text style={styles.metricLabelNew}>LINE</Text>
+                    <Text style={styles.metricLabelNew}>{t('line').toUpperCase()}</Text>
                     <Text style={styles.metricValueNew}>{isHanuman ? Math.floor((audioStatus?.currentTime || 0)/15) + 1 : currentIndex + 1}<Text style={styles.metricSlashNew}> / {isHanuman ? 46 : Math.ceil(WORDS.length / 4)}</Text></Text>
                   </View>
                 </View>

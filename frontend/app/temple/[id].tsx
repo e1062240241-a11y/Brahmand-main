@@ -7,6 +7,7 @@ import { WebView } from 'react-native-webview';
 import { getTemple, getTemplePosts, followTemple, unfollowTemple } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { getTempleImageById } from '../../src/constants/templeImages';
+import { useTranslation } from '../../src/utils/i18n';
 
 const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
  'ISKCON Mira Road': 'Mira Road, Thane',
@@ -668,6 +669,7 @@ const checkIsAartiLive = (sessions: [string, string][]) => {
 
 export default function TempleDetailScreen() {
  const { id } = useLocalSearchParams<{ id: string }>();
+ const { t } = useTranslation();
  const resolvedTempleId = decodeURIComponent(String(id || '')).trim();
  const router = useRouter();
  const [temple, setTemple] = useState<any>(null);
@@ -762,7 +764,9 @@ if (!temple) {
       <SafeAreaView style={styles.container}>
       <View style={styles.errorContainer}>
       <Ionicons name="alert-circle" size={48} color="#999" />
-      <Text style={styles.errorText}>Temple not found</Text>
+      <Text style={styles.errorText}>
+        {t('language') === 'hi' ? 'मंदिर नहीं मिला' : 'Temple not found'}
+      </Text>
       </View>
       </SafeAreaView>
     );
@@ -863,37 +867,56 @@ if (!temple) {
  {temple.is_verified && (
  <View style={styles.verifiedBadge}>
  <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
- <Text style={styles.verifiedText}>Verified Temple</Text>
+ <Text style={styles.verifiedText}>
+  {t('language') === 'hi' ? 'सत्यापित मंदिर' : 'Verified Temple'}
+ </Text>
  </View>
  )}
  </View>
 
  {/* Aarti */}                                     
  <View style={styles.section}>
- <Text style={styles.sectionTitle}>Aarti</Text>
+ <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'आरती' : 'Aarti'}</Text>
  {aartiSessions.length === 0 ? (
- <Text style={styles.noPostsText}>No aarti updates yet</Text>
+ <Text style={styles.noPostsText}>
+  {t('language') === 'hi' ? 'अभी कोई आरती अपडेट नहीं है' : 'No aarti updates yet'}
+ </Text>
  ) : (
  <>
  {isMiraRoadTemple && (
- <Text style={styles.morningAartiText}>Morning Aarti</Text>
+ <Text style={styles.morningAartiText}>
+  {t('language') === 'hi' ? 'सुबह की आरती' : 'Morning Aarti'}
+ </Text>
  )}
  <View style={styles.aartiGrid}>
- {aartiSessions.map(([key, value]) => (
- <View key={key} style={styles.aartiCard}>
- <Text style={styles.aartiLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
- <Text style={styles.aartiTime}>{value}</Text>
- </View>
- ))}
+ {aartiSessions.map(([key, value]) => {
+   let displayKey = key.charAt(0).toUpperCase() + key.slice(1);
+   if (t('language') === 'hi') {
+     if (key.toLowerCase() === 'morning') displayKey = 'सुबह की आरती';
+     else if (key.toLowerCase() === 'afternoon') displayKey = 'दोपहर की आरती';
+     else if (key.toLowerCase() === 'evening') displayKey = 'शाम की आरती';
+     else if (key.toLowerCase() === 'night') displayKey = 'रात की आरती';
+   }
+   return (
+     <View key={key} style={styles.aartiCard}>
+     <Text style={styles.aartiLabel}>{displayKey}</Text>
+     <Text style={styles.aartiTime}>{value}</Text>
+     </View>
+   );
+ })}
  </View>
  {isMiraRoadTemple && (
  <>
- <Text style={styles.afternoonAartiText}>Afternoon Aarti</Text>
+ <Text style={styles.afternoonAartiText}>
+  {t('language') === 'hi' ? 'दोपहर की आरती' : 'Afternoon Aarti'}
+ </Text>
  <View style={styles.aartiCard}>
  <Text style={styles.aartiLabel}>Raj Bhoga Aarti</Text>
  <Text style={styles.aartiTime}>12:30 PM</Text>
  </View>
- <Text style={styles.eveningAartiText}>Evening Aarti</Text>
+ <Text style={styles.eveningAartiText}>
+  {t('language') === 'hi' ? 'शाम की आरती' : 'Evening Aarti'}
+ </Text>
  <View style={styles.aartiGrid}>
  <View style={styles.aartiCard}>
  <Text style={styles.aartiLabel}>Usthapana Aarti</Text>
@@ -917,18 +940,20 @@ if (!temple) {
  {/* Description */}
   {templeDescription ? (
   <View style={styles.section}>
-  <Text style={styles.sectionTitle}>About</Text>
+  <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'विवरण' : 'About'}</Text>
   <Text style={styles.descriptionText}>{templeDescription}</Text>
   </View>
   ) : (
   <View style={styles.section}>
-  <Text style={styles.sectionTitle}>About</Text>
-  <Text style={styles.noPostsText}>No description yet</Text>
+  <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'विवरण' : 'About'}</Text>
+  <Text style={styles.noPostsText}>
+    {t('language') === 'hi' ? 'अभी कोई विवरण नहीं है' : 'No description yet'}
+  </Text>
   </View>
   )}
  {templeGuidance ? (
  <View style={styles.section}>
- <Text style={styles.sectionTitle}>Guidance</Text>
+ <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'मार्गदर्शन' : 'Guidance'}</Text>
  <Text style={styles.descriptionText}>{templeGuidance}</Text>
  </View>
  ) : null}
@@ -941,23 +966,27 @@ if (!temple) {
  activeOpacity={0.75}
  >
  {isCurrentlyLive ? (
-   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-     <Animated.View style={{ opacity: pulseAnim, width: 10, height: 10, borderRadius: 5, backgroundColor: '#FFF', marginRight: 8 }} />
-     <Text style={styles.youtubeLinkText}>🔴 LIVE: Watch Aarti on YouTube</Text>
-   </View>
- ) : (
-   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-     <Ionicons name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
-     <Text style={styles.youtubeLinkText}>Watch Aarti on YouTube</Text>
-   </View>
- )}
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Animated.View style={{ opacity: pulseAnim, width: 10, height: 10, borderRadius: 5, backgroundColor: '#FFF', marginRight: 8 }} />
+      <Text style={styles.youtubeLinkText}>
+        {t('language') === 'hi' ? '🔴 लाइव: यूट्यूब पर आरती देखें' : '🔴 LIVE: Watch Aarti on YouTube'}
+      </Text>
+    </View>
+  ) : (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Ionicons name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
+      <Text style={styles.youtubeLinkText}>
+        {t('language') === 'hi' ? 'यूट्यूब पर आरती देखें' : 'Watch Aarti on YouTube'}
+      </Text>
+    </View>
+  )}
  </TouchableOpacity>
  </View>
  ) : null}
 
  {hasSpecialMap && (
  <View style={styles.mapSection}>
- <Text style={styles.sectionTitle}>Location</Text>
+ <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'स्थान' : 'Location'}</Text>
  <TouchableOpacity style={styles.mapWrapper} onPress={() => setIsMapModalVisible(true)} activeOpacity={0.9}>
  {isWeb ? (
  <iframe
@@ -977,7 +1006,9 @@ if (!temple) {
  />
  )}
  <View style={styles.mapOverlay}>
- <Text style={styles.mapOverlayText}>Tap to view map</Text>
+ <Text style={styles.mapOverlayText}>
+    {t('language') === 'hi' ? 'मैप देखने के लिए टैप करें' : 'Tap to view map'}
+  </Text>
  </View>
  </TouchableOpacity>
  </View>
@@ -996,7 +1027,7 @@ if (!temple) {
   <View style={styles.modalBackdrop}>
   <View style={styles.modalCard}>
   <View style={styles.modalHeader}>
-  <Text style={styles.modalTitle}>Live Aarti</Text>
+  <Text style={styles.modalTitle}>{t('language') === 'hi' ? 'लाइव आरती' : 'Live Aarti'}</Text>
   <TouchableOpacity onPress={() => setIsYoutubeModalVisible(false)} style={styles.modalClose}>
   <Ionicons name="close" size={20} color={COLORS.text} />
   </TouchableOpacity>
@@ -1035,7 +1066,9 @@ if (!temple) {
   <View style={styles.modalBackdrop}>
   <View style={styles.modalCard}>
   <View style={styles.modalHeader}>
-  <Text style={styles.modalTitle}>{displayName} Location</Text>
+  <Text style={styles.modalTitle}>
+    {t('language') === 'hi' ? `${displayName} स्थान` : `${displayName} Location`}
+  </Text>
   <TouchableOpacity onPress={() => setIsMapModalVisible(false)} style={styles.modalClose}>
   <Ionicons name="close" size={20} color={COLORS.text} />
   </TouchableOpacity>
@@ -1061,7 +1094,9 @@ if (!temple) {
  </TouchableOpacity>
  <View style={styles.modalActions}>
  <TouchableOpacity style={styles.primaryButton} onPress={openTempleLocation}>
- <Text style={styles.primaryButtonText}>Open in Maps</Text>
+ <Text style={styles.primaryButtonText}>
+   {t('language') === 'hi' ? 'मैप्स में खोलें' : 'Open in Maps'}
+ </Text>
  </TouchableOpacity>
  </View>
  </View>

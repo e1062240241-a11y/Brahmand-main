@@ -16,10 +16,12 @@ import { useFocusEffect } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { getProfile } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useTranslation } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
 
 export default function PersonalityVerificationScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, setUser } = useAuthStore();
@@ -66,11 +68,15 @@ export default function PersonalityVerificationScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Main Title */}
-          <Text style={styles.mainTitle}>Who can apply?</Text>
+          <Text style={styles.mainTitle}>
+            {t('language') === 'hi' ? 'कौन आवेदन कर सकता है?' : 'Who can apply?'}
+          </Text>
           
           {/* Hero Subtitle */}
           <Text style={styles.heroSubtitle}>
-            State and National groups are for verified Sanatan personalities who have a positive impact in society.
+            {t('language') === 'hi' 
+              ? 'राज्य और राष्ट्रीय समूह उन सत्यापित सनातन हस्तियों के लिए हैं जिनका समाज में सकारात्मक प्रभाव है।' 
+              : 'State and National groups are for verified Sanatan personalities who have a positive impact in society.'}
           </Text>
 
           {/* Hero Illustration */}
@@ -84,44 +90,56 @@ export default function PersonalityVerificationScreen() {
 
           {/* Who can apply? Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Who can apply?</Text>
+            <Text style={styles.sectionTitle}>
+              {t('language') === 'hi' ? 'कौन आवेदन कर सकता है?' : 'Who can apply?'}
+            </Text>
             
             <View style={styles.checklist}>
-              <CheckItem text="Spiritual Gurus, Acharyas, Speakers" />
-              <CheckItem text="Social Workers, NGO Founders" />
-              <CheckItem text="Educators, Authors, Thinkers" />
-              <CheckItem text="Doctors, Environment & Health Experts" />
-              <CheckItem text="Artists, Cultural Icons, Influencers" />
-              <CheckItem text="Any personality with positive impact in society" />
+              <CheckItem text={t('language') === 'hi' ? 'आध्यात्मिक गुरु, आचार्य, वक्ता' : 'Spiritual Gurus, Acharyas, Speakers'} />
+              <CheckItem text={t('language') === 'hi' ? 'सामाजिक कार्यकर्ता, एनजीओ संस्थापक' : 'Social Workers, NGO Founders'} />
+              <CheckItem text={t('language') === 'hi' ? 'शिक्षक, लेखक, विचारक' : 'Educators, Authors, Thinkers'} />
+              <CheckItem text={t('language') === 'hi' ? 'डॉक्टर, पर्यावरण और स्वास्थ्य विशेषज्ञ' : 'Doctors, Environment & Health Experts'} />
+              <CheckItem text={t('language') === 'hi' ? 'कलाकार, सांस्कृतिक प्रतीक, प्रभावशाली व्यक्ति' : 'Artists, Cultural Icons, Influencers'} />
+              <CheckItem text={t('language') === 'hi' ? 'समाज में सकारात्मक प्रभाव डालने वाला कोई भी व्यक्ति' : 'Any personality with positive impact in society'} />
             </View>
           </View>
 
           {/* Benefits Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Benefits of Joining State / National Group</Text>
+            <Text style={styles.sectionTitle}>
+              {t('language') === 'hi' ? 'राज्य / राष्ट्रीय समूह में शामिल होने के लाभ' : 'Benefits of Joining State / National Group'}
+            </Text>
             
             <BenefitCard 
               icon="megaphone" 
-              title="Your message will reach all groups" 
-              description="If you are part of a State Group, your message will be visible to all City Groups, Area Groups and all members across the state."
+              title={t('language') === 'hi' ? 'आपका संदेश सभी समूहों तक पहुंचेगा' : 'Your message will reach all groups'} 
+              description={t('language') === 'hi' 
+                ? 'यदि आप राज्य समूह का हिस्सा हैं, तो आपका संदेश राज्य भर के सभी शहर समूहों, क्षेत्र समूहों और सभी सदस्यों को दिखाई देगा।' 
+                : 'If you are part of a State Group, your message will be visible to all City Groups, Area Groups and all members across the state.'}
             />
             
             <BenefitCard 
               icon="globe-outline" 
-              title="Wider Impact" 
-              description="If you are part of the National (India) Group, your message will reach all State Groups and every member across India."
+              title={t('language') === 'hi' ? 'व्यापक प्रभाव' : 'Wider Impact'} 
+              description={t('language') === 'hi' 
+                ? 'यदि आप राष्ट्रीय (भारत) समूह का हिस्सा हैं, तो आपका संदेश भारत भर के सभी राज्य समूहों और हर सदस्य तक पहुंचेगा।' 
+                : 'If you are part of the National (India) Group, your message will reach all State Groups and every member across India.'}
             />
             
             <BenefitCard 
               icon="people" 
-              title="Build Trust & Credibility" 
-              description="Verified personalities get a verified badge and people trust your message more."
+              title={t('language') === 'hi' ? 'विश्वास और विश्वसनीयता बनाएं' : 'Build Trust & Credibility'} 
+              description={t('language') === 'hi' 
+                ? 'सत्यापित हस्तियों को एक सत्यापित बैज मिलता है और लोग आपके संदेश पर अधिक भरोसा करते हैं।' 
+                : 'Verified personalities get a verified badge and people trust your message more.'}
             />
             
             <BenefitCard 
               icon="heart" 
-              title="Collaborate & Create Change" 
-              description="Connect with like-minded leaders and work together for Dharma and society."
+              title={t('language') === 'hi' ? 'सहयोग करें और बदलाव लाएं' : 'Collaborate & Create Change'} 
+              description={t('language') === 'hi' 
+                ? 'समान विचारधारा वाले नेताओं से जुड़ें और धर्म तथा समाज के लिए मिलकर काम करें।' 
+                : 'Connect with like-minded leaders and work together for Dharma and society.'}
             />
           </View>
 
@@ -131,7 +149,9 @@ export default function PersonalityVerificationScreen() {
               <Ionicons name="shield-checkmark" size={24} color="#FF6600" />
             </View>
             <Text style={styles.footerText}>
-              All applications are manually reviewed. Providing false information may lead to rejection and account action.
+              {t('language') === 'hi' 
+                ? 'सभी आवेदनों की मैन्युअल रूप से समीक्षा की जाती है। गलत जानकारी देने से अस्वीकृति और खाते पर कार्रवाई हो सकती है।' 
+                : 'All applications are manually reviewed. Providing false information may lead to rejection and account action.'}
             </Text>
           </View>
 
@@ -139,7 +159,9 @@ export default function PersonalityVerificationScreen() {
             style={styles.proceedButton}
             onPress={() => router.push('/profile/personality-application')}
           >
-            <Text style={styles.proceedButtonText}>Proceed</Text>
+            <Text style={styles.proceedButtonText}>
+              {t('language') === 'hi' ? 'आगे बढ़ें' : 'Proceed'}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>

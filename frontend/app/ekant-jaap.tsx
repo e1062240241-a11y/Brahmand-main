@@ -349,7 +349,11 @@ const EkantJaapPage = () => {
             } else if (selectedNaam) {
                 setSelectedNaam(null);
             } else {
-                router.back();
+                if (router.canGoBack()) {
+                    router.back();
+                } else {
+                    router.replace('/(tabs)/jaap');
+                }
             }
         }
     };
@@ -378,6 +382,19 @@ const EkantJaapPage = () => {
             }
         }
     }, [player, isRunning, isAudioEnabled]);
+
+    // Clean up player on unmount to prevent audio leaks
+    useEffect(() => {
+        return () => {
+            if (player) {
+                try {
+                    player.pause();
+                } catch (e) {
+                    console.warn('Failed to pause player on unmount', e);
+                }
+            }
+        };
+    }, [player]);
 
     useEffect(() => {
         if (!player || !isKaraokeMode) return;
@@ -444,7 +461,16 @@ const EkantJaapPage = () => {
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                        <TouchableOpacity 
+                            style={styles.backButton} 
+                            onPress={() => {
+                                if (router.canGoBack()) {
+                                    router.back();
+                                } else {
+                                    router.replace('/(tabs)/jaap');
+                                }
+                            }}
+                        >
                             <Ionicons name="arrow-back" size={24} color="#D4A017" />
                         </TouchableOpacity>
                         <View style={styles.headerCenter}>

@@ -314,7 +314,7 @@ export default function SOSScreen() {
       </View>
 
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
         style={styles.content}
       >
@@ -395,7 +395,7 @@ export default function SOSScreen() {
 
             <TouchableOpacity 
               style={[styles.primaryButton, !emergencyType && styles.primaryButtonDisabled]} 
-              onPress={handleContinueToLocation}
+              onPress={() => handleContinueToLocation()}
               disabled={!emergencyType}
               activeOpacity={0.8}
             >

@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost, deletePostComment } from '../../src/services/api';
@@ -481,7 +481,7 @@ const UserProfileScreen = () => {
   }, [loadPosts]);
 
   const handleShareExternal = async (post: any) => {
-    const appLink = post?.id ? `sanatanlok://post/${post.id}` : 'sanatanlok://';
+    const appLink = post?.id ? `https://brahmand.app/post/${post.id}` : 'https://brahmand.app/';
     const mediaUrl = post?.media_url || '';
     const caption = post?.caption ? `\nCaption: ${post.caption}` : '';
     const message = `Check this post on Brahmand!${caption}\n\n${appLink}`;
@@ -606,11 +606,7 @@ const UserProfileScreen = () => {
             ) : (
               <Avatar name={profile?.name || 'User'} size={86} />
             )}
-            {profile?.id !== currentUserId && isFollowing && (
-              <View style={styles.followingIndicator}>
-                <Ionicons name="checkmark" size={12} color="#FFF" />
-              </View>
-            )}
+
           </View>
         </TouchableOpacity>
 
@@ -641,7 +637,7 @@ const UserProfileScreen = () => {
         <View style={styles.nameRow}>
           <Text style={styles.displayName}>{profile?.name || 'User'}</Text>
           {profile?.is_verified && (
-            <Ionicons name="checkmark-circle" size={16} color="#0095f6" style={{ marginLeft: 4 }} />
+            <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 4 }} />
           )}
         </View>
         <Text style={styles.slId}>@{profile?.sl_id || ''}</Text>
@@ -788,19 +784,7 @@ const UserProfileScreen = () => {
           </View>
           <FlatList
             ref={detailFlatListRef}
-            data={posts}
-            initialScrollIndex={posts.findIndex(p => p.id === selectedPost?.id) !== -1 ? posts.findIndex(p => p.id === selectedPost?.id) : 0}
-            getItemLayout={(data, index) => ({
-              length: SCREEN_WIDTH * 1.25 + 180,
-              offset: (SCREEN_WIDTH * 1.25 + 180) * index,
-              index,
-            })}
-            onScrollToIndexFailed={(info) => {
-              const wait = new Promise(resolve => setTimeout(resolve, 500));
-              wait.then(() => {
-                detailFlatListRef.current?.scrollToIndex({ index: info.index, animated: false });
-              });
-            }}
+            data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
             renderItem={({ item }) => (
               <PostFeedCard
                 post={item}

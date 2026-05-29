@@ -16,7 +16,7 @@ import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../src/store/authStore';
 import { useVendorStore } from '../src/store/vendorStore';
-import { VendorKYCModal } from '../src/components/VendorKYCModal';
+
 import { getKYCStatus } from '../src/services/api';
 
 const { width } = Dimensions.get('window');
@@ -40,9 +40,7 @@ export default function CommunityRequestHub() {
   const { user, updateUser } = useAuthStore();
   const { myVendor, fetchMyVendor } = useVendorStore();
 
-  const [showKycModal, setShowKycModal] = useState(false);
-  const [kycModalVendorId, setKycModalVendorId] = useState<string | null>(myVendor?.id || null);
-  const [pendingCategory, setPendingCategory] = useState<string | null>(null);
+
 
   const isKycVerified =
     (user as any)?.kyc_status === 'verified' ||
@@ -63,43 +61,15 @@ export default function CommunityRequestHub() {
       default: break;
     }
   };
-
   const handleSelectCategory = async (categoryId: string) => {
     if (!isKycVerified) {
-      let vendorId = myVendor?.id || null;
-      if (!vendorId) {
-        await fetchMyVendor();
-        vendorId = useVendorStore.getState().myVendor?.id || null;
-      }
-      setKycModalVendorId(vendorId || '');
-      setPendingCategory(categoryId);
-      setShowKycModal(true);
+      router.push('/kyc');
       return;
     }
 
     requestAnimationFrame(() => {
       navigateToCategory(categoryId);
     });
-  };
-
-  const handleKycSuccess = async () => {
-    setShowKycModal(false);
-    try {
-      const response = await getKYCStatus();
-      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
-      updateUser({
-        kyc_status: serverStatus,
-        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
-      } as any);
-    } catch (error) {
-      console.warn('Failed to refresh KYC status:', error);
-    }
-
-    if (pendingCategory) {
-      const cat = pendingCategory;
-      setPendingCategory(null);
-      navigateToCategory(cat);
-    }
   };
 
   const renderIcon = (cat: typeof CATEGORIES[0]) => {
@@ -177,17 +147,7 @@ export default function CommunityRequestHub() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* KYC Modal for Community Request verification */}
-      <VendorKYCModal
-        visible={showKycModal}
-        vendorId={kycModalVendorId || ''}
-        allowUserKycFallback
-        onClose={() => {
-          setShowKycModal(false);
-          setPendingCategory(null);
-        }}
-        onKycUpdated={handleKycSuccess}
-      />
+
     </View>
   );
 }

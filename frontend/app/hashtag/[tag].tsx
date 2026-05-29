@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -289,7 +289,11 @@ const HashtagPage = () => {
           setPostComments([]);
         }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
           <View style={styles.bottomSheet}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentSheetHeader}>
@@ -380,7 +384,7 @@ const HashtagPage = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
 

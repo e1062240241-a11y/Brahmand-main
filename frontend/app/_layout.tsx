@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../src/store/authStore';
@@ -10,7 +10,6 @@ import { addNotificationResponseReceivedListener, addNotificationReceivedListene
 import { sendDirectMessage } from '../src/services/api';
 import { getAllMutedConversations } from '../src/services/mutedChats';
 import { COLORS } from '../src/constants/theme';
-import { FloatingUtilityButton } from '../src/components/FloatingUtilityButton';
 import { useAdminStore } from '../src/store/adminStore';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
@@ -20,8 +19,11 @@ import { ToastContainer } from '../src/components/ToastContainer';
 import { toast } from '../src/store/toastStore';
 import { Alert as RNAlert } from 'react-native';
 import { syncDatabase } from '../src/database/sync';
+import { GlobalFAB } from '../src/components/GlobalFAB';
 
 import { originalAlert } from '../src/utils/nativeAlert';
+
+LogBox.ignoreLogs(['UIKitCore] RCTScrollViewComponentView']);
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
   const titleStr = typeof title === 'string' ? title : '';
@@ -94,6 +96,8 @@ function useAppBackHandler() {
   }, [pathname, router]);
 }
 
+import * as ExpoLinking from 'expo-linking';
+
 // Handle deep links for circle invites
 function useDeepLinkHandler() {
   const { token } = useAuthStore();
@@ -105,7 +109,7 @@ function useDeepLinkHandler() {
       
       try {
         // Use expo-linking to parse the URL correctly
-        const parsed = Linking.parse(event.url);
+        const parsed = ExpoLinking.parse(event.url);
         const path = parsed.path;
         
         if (!path) return;
@@ -361,6 +365,8 @@ function SafeSlot() {
   }
 }
 
+import { useLanguageStore } from '../src/utils/i18n';
+
 export default function RootLayout() {
   const pathname = usePathname();
   const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
@@ -384,6 +390,7 @@ export default function RootLayout() {
   useMutedNotificationFilter();
 
   useEffect(() => {
+    useLanguageStore.getState().loadLanguage();
     Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {
       const authErr = results[0].status === 'rejected' ? results[0].reason : null;
       const adminErr = results[1].status === 'rejected' ? results[1].reason : null;
@@ -418,8 +425,9 @@ export default function RootLayout() {
     });
   }, [isLoading, token, isAuthenticated, initPushNotifications]);
 
-  // Synchronize WatermelonDB local database on startup/authentication
+  // Synchronize WatermelonDB local database on startup/authentication (native only)
   useEffect(() => {
+    if (Platform.OS === 'web') return; // WatermelonDB is native-only; skip on web
     if (!isLoading && isAuthenticated && token) {
       console.log('[Sync] Initializing local database sync...');
       syncDatabase()
@@ -427,6 +435,7 @@ export default function RootLayout() {
         .catch((err) => console.warn('[Sync] WatermelonDB sync failed on startup:', err));
     }
   }, [isLoading, isAuthenticated, token]);
+
 
   if (isLoading || !fontsLoaded) {
     return (
@@ -463,8 +472,100 @@ export default function RootLayout() {
                   gestureEnabled: false
                 }} 
               />
+              {/* Modals and Creation Forms - Slide from Bottom */}
+              <Stack.Screen 
+                name="community-request/blood" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/food" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/gau-seva" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/animal-care" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/temple-help" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/emergency" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-request/other" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="sos" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="kyc-submit" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="live-jaap-welcome" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="circle/create" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community/create" 
+                options={{ 
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical'
+                }} 
+              />
+              <Stack.Screen 
+                name="community-tweets" 
+                options={{ 
+                  animation: 'slide_from_right',
+                }} 
+              />
+              {/* Other standard stack navigations will inherit default slide_from_right */}
             </Stack>
-            {token && !pathname.startsWith('/admin') && <FloatingUtilityButton />}
+            <GlobalFAB />
             <ToastContainer />
           </MuteProvider>
         </View>

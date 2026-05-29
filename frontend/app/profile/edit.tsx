@@ -20,8 +20,10 @@ import { Input } from '../../src/components/Input';
 import { BORDER_RADIUS, COLORS, SPACING } from '../../src/constants/theme';
 import { getUserProfile, updateExtendedProfile, deleteUserProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { useTranslation } from '../../src/utils/i18n';
 
 export default function EditProfileScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { updateUser, logout } = useAuthStore();
   const [deleting, setDeleting] = useState(false);
@@ -38,7 +40,7 @@ export default function EditProfileScreen() {
   const [kuldevi, setKuldevi] = useState('');
   const [kuldeviTempleArea, setKuldeviTempleArea] = useState('');
   const [gotra, setGotra] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState(''); // stored as DD/MM/YYYY for display
   const [timeOfBirth, setTimeOfBirth] = useState('');
   const [placeOfBirth, setPlaceOfBirth] = useState('');
 
@@ -54,7 +56,14 @@ export default function EditProfileScreen() {
         setKuldevi(data.kuldevi || '');
         setKuldeviTempleArea(data.kuldevi_temple_area || '');
         setGotra(data.gotra || '');
-        setDateOfBirth(data.date_of_birth || '');
+        // Convert YYYY-MM-DD from backend → DD/MM/YYYY for Indian format display
+        const rawDob = data.date_of_birth || '';
+        if (rawDob && /^\d{4}-\d{2}-\d{2}$/.test(rawDob)) {
+          const [y, m, d] = rawDob.split('-');
+          setDateOfBirth(`${d}/${m}/${y}`);
+        } else {
+          setDateOfBirth(rawDob);
+        }
         setTimeOfBirth(data.time_of_birth || '');
         setPlaceOfBirth(
           data.place_of_birth ||
@@ -74,12 +83,28 @@ export default function EditProfileScreen() {
     return Boolean(dateOfBirth.trim() && timeOfBirth.trim() && placeOfBirth.trim());
   }, [dateOfBirth, placeOfBirth, timeOfBirth]);
 
+  // Convert DD/MM/YYYY → YYYY-MM-DD for API
+  const convertDobForApi = (dob: string): string => {
+    const trimmed = dob.trim();
+    if (!trimmed) return '';
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      const [d, m, y] = trimmed.split('/');
+      return `${y}-${m}-${d}`;
+    }
+    return trimmed; // already in YYYY-MM-DD or other format
+  };
+
   const validate = () => {
-    if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) {
-      return 'Date of birth must be in YYYY-MM-DD format';
+    if (dateOfBirth) {
+      const dob = dateOfBirth.trim();
+      const isIndianFormat = /^\d{2}\/\d{2}\/\d{4}$/.test(dob);
+      const isIsoFormat = /^\d{4}-\d{2}-\d{2}$/.test(dob);
+      if (!isIndianFormat && !isIsoFormat) {
+        return t('language') === 'hi' ? 'जन्म तिथि DD/MM/YYYY प्रारूप में होनी चाहिए' : 'Date of birth must be in DD/MM/YYYY format';
+      }
     }
     if (timeOfBirth && !/^\d{2}:\d{2}$/.test(timeOfBirth.trim())) {
-      return 'Time of birth must be in HH:MM format';
+      return t('language') === 'hi' ? 'जन्म का समय HH:MM प्रारूप में होना चाहिए' : 'Time of birth must be in HH:MM format';
     }
     return '';
   };
@@ -90,8 +115,8 @@ export default function EditProfileScreen() {
       try {
         await deleteUserProfile();
         Alert.alert(
-          'Account Deleted',
-          'Your account has been deleted successfully.',
+          t('language') === 'hi' ? 'खाता हटा दिया गया' : 'Account Deleted',
+          t('language') === 'hi' ? 'आपका खाता सफलतापूर्वक हटा दिया गया है।' : 'Your account has been deleted successfully.',
           [
             {
               text: 'OK',
@@ -103,7 +128,7 @@ export default function EditProfileScreen() {
           ]
         );
       } catch (err: any) {
-        Alert.alert('Error', err?.response?.data?.detail || err?.message || 'Failed to delete account');
+        Alert.alert(t('language') === 'hi' ? 'त्रुटि' : 'Error', err?.response?.data?.detail || err?.message || 'Failed to delete account');
       } finally {
         setDeleting(false);
       }
@@ -112,7 +137,9 @@ export default function EditProfileScreen() {
     if (Platform.OS === 'web') {
       if (
         window.confirm(
-          'WARNING: Are you sure you want to permanently delete your account? This action cannot be undone and all your data (posts, comments, profile information) will be completely removed.'
+          t('language') === 'hi' 
+            ? 'चेतावनी: क्या आप वाकई अपना खाता स्थायी रूप से हटाना चाहते हैं? इस कार्रवाई को पूर्ववत नहीं किया जा सकता है और आपका सारा डेटा (पोस्ट, टिप्पणियाँ, प्रोफ़ाइल जानकारी) पूरी तरह से हटा दिया जाएगा।' 
+            : 'WARNING: Are you sure you want to permanently delete your account? This action cannot be undone and all your data (posts, comments, profile information) will be completely removed.'
         )
       ) {
         performDeletion();
@@ -121,12 +148,14 @@ export default function EditProfileScreen() {
     }
 
     Alert.alert(
-      'Delete Account',
-      'WARNING: Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be completely removed.',
+      t('language') === 'hi' ? 'खाता हटाएं' : 'Delete Account',
+      t('language') === 'hi' 
+        ? 'चेतावनी: क्या आप वाकई अपना खाता स्थायी रूप से हटाना चाहते हैं? इस कार्रवाई को पूर्ववत नहीं किया जा सकता है और आपका सारा डेटा पूरी तरह से हटा दिया जाएगा।' 
+        : 'WARNING: Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be completely removed.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Delete Permanently',
+          text: t('language') === 'hi' ? 'स्थायी रूप से हटाएं' : 'Delete Permanently',
           style: 'destructive',
           onPress: performDeletion,
         },
@@ -177,7 +206,7 @@ export default function EditProfileScreen() {
         kuldevi: kuldevi.trim() || undefined,
         kuldevi_temple_area: kuldeviTempleArea.trim() || undefined,
         gotra: gotra.trim() || undefined,
-        date_of_birth: dateOfBirth.trim() || undefined,
+        date_of_birth: dateOfBirth.trim() ? convertDobForApi(dateOfBirth) : undefined,
         time_of_birth: timeOfBirth.trim() || undefined,
         place_of_birth: placeText || undefined,
         place_of_birth_latitude: lat,
@@ -186,10 +215,10 @@ export default function EditProfileScreen() {
 
       updateUser(response.data || {});
       Alert.alert(
-        'Profile Updated',
+        t('language') === 'hi' ? 'प्रोफ़ाइल अपडेट हो गई' : 'Profile Updated',
         astrologyReady
-          ? 'Your birth details are saved. Horoscope and astrology can reuse them across the app.'
-          : 'Your profile details were updated.',
+          ? (t('language') === 'hi' ? 'आपके जन्म के विवरण सहेज लिए गए हैं। कुंडली और ज्योतिष ऐप में हर जगह इनका उपयोग कर सकते हैं।' : 'Your birth details are saved. Horoscope and astrology can reuse them across the app.')
+          : (t('language') === 'hi' ? 'आपकी प्रोफ़ाइल का विवरण अपडेट कर दिया गया है।' : 'Your profile details were updated.'),
         [{ text: 'OK', onPress: handleBack }],
       );
     } catch (err: any) {
@@ -204,7 +233,9 @@ export default function EditProfileScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <Text style={styles.loadingText}>
+            {t('language') === 'hi' ? 'प्रोफ़ाइल लोड हो रही है...' : 'Loading profile...'}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -220,16 +251,20 @@ export default function EditProfileScreen() {
           <TouchableOpacity onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <Text style={styles.headerTitle}>
+            {t('language') === 'hi' ? 'प्रोफ़ाइल संपादित करें' : 'Edit Profile'}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
             <View style={styles.heroCard}>
-              <Text style={styles.heroTitle}>Astrology Profile</Text>
+              <Text style={styles.heroTitle}>
+                {t('language') === 'hi' ? 'ज्योतिष प्रोफ़ाइल' : 'Astrology Profile'}
+              </Text>
               <Text style={styles.heroText}>
-                Save your birth details once here. Horoscope and astrology pages will reuse them everywhere in the app.
+                {t('language') === 'hi' ? 'अपने जन्म का विवरण यहाँ एक बार सहेजें। राशिफल और ज्योतिष पेज ऐप में हर जगह इनका उपयोग करेंगे।' : 'Save your birth details once here. Horoscope and astrology pages will reuse them everywhere in the app.'}
               </Text>
               <View style={[styles.statusBadge, astrologyReady ? styles.statusBadgeReady : styles.statusBadgePending]}>
                 <Ionicons
@@ -238,71 +273,106 @@ export default function EditProfileScreen() {
                   color={astrologyReady ? COLORS.success : COLORS.warning}
                 />
                 <Text style={[styles.statusText, astrologyReady ? styles.statusTextReady : styles.statusTextPending]}>
-                  {astrologyReady ? 'Astrology ready' : 'Birth details missing'}
+                  {astrologyReady 
+                    ? (t('language') === 'hi' ? 'ज्योतिष तैयार है' : 'Astrology ready') 
+                    : (t('language') === 'hi' ? 'जन्म का विवरण गायब है' : 'Birth details missing')}
                 </Text>
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Basic Info</Text>
+              <Text style={styles.sectionTitle}>
+                {t('language') === 'hi' ? 'सामान्य जानकारी' : 'Basic Info'}
+              </Text>
               <View style={styles.card}>
-                <Input label="Name" value={name} onChangeText={setName} placeholder="Enter your name" />
-                <Input label="Language" value={language} onChangeText={setLanguage} placeholder="Preferred language" />
+                <Input 
+                  label={t('language') === 'hi' ? 'नाम' : 'Name'} 
+                  value={name} 
+                  onChangeText={setName} 
+                  placeholder={t('language') === 'hi' ? 'अपना नाम दर्ज करें' : 'Enter your name'} 
+                />
+                <Input 
+                  label={t('language') === 'hi' ? 'भाषा' : 'Language'} 
+                  value={language} 
+                  onChangeText={setLanguage} 
+                  placeholder={t('language') === 'hi' ? 'पसंदीदा भाषा' : 'Preferred language'} 
+                />
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Birth Details</Text>
+              <Text style={styles.sectionTitle}>
+                {t('language') === 'hi' ? 'जन्म का विवरण' : 'Birth Details'}
+              </Text>
               <View style={styles.card}>
                 <Input
-                  label="Date of Birth"
+                  label={t('language') === 'hi' ? 'जन्म तिथि' : 'Date of Birth'}
                   value={dateOfBirth}
                   onChangeText={setDateOfBirth}
-                  placeholder="YYYY-MM-DD"
+                  placeholder="DD/MM/YYYY"
                   keyboardType="numbers-and-punctuation"
                 />
                 <Input
-                  label="Time of Birth"
+                  label={t('language') === 'hi' ? 'जन्म का समय' : 'Time of Birth'}
                   value={timeOfBirth}
                   onChangeText={setTimeOfBirth}
                   placeholder="HH:MM"
                   keyboardType="numbers-and-punctuation"
                 />
                 <Input
-                  label="Place of Birth"
+                  label={t('language') === 'hi' ? 'जन्म स्थान' : 'Place of Birth'}
                   value={placeOfBirth}
                   onChangeText={setPlaceOfBirth}
-                  placeholder="City, State, Country"
+                  placeholder={t('language') === 'hi' ? 'शहर, राज्य, देश' : 'City, State, Country'}
                 />
                 <Text style={styles.helperText}>
-                  These three fields are what the horoscope and astrology features need. Once saved, the app uses them automatically.
+                  {t('language') === 'hi' ? 'ये तीन फ़ील्ड वे हैं जिनकी राशिफल और ज्योतिष सुविधाओं को आवश्यकता है। सहेजने के बाद, ऐप उनका स्वचालित रूप से उपयोग करता है।' : 'These three fields are what the horoscope and astrology features need. Once saved, the app uses them automatically.'}
                 </Text>
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Optional Spiritual Details</Text>
+              <Text style={styles.sectionTitle}>
+                {t('language') === 'hi' ? 'वैकल्पिक आध्यात्मिक विवरण' : 'Optional Spiritual Details'}
+              </Text>
               <View style={styles.card}>
-                <Input label="Kuldevi / Kuldevta" value={kuldevi} onChangeText={setKuldevi} placeholder="Optional" />
+                <Input 
+                  label={t('language') === 'hi' ? 'कुलदेवी / कुलदेवता' : 'Kuldevi / Kuldevta'} 
+                  value={kuldevi} 
+                  onChangeText={setKuldevi} 
+                  placeholder={t('language') === 'hi' ? 'वैकल्पिक' : 'Optional'} 
+                />
                 <Input
-                  label="Kuldevi Temple Area"
+                  label={t('language') === 'hi' ? 'कुलदेवी मंदिर क्षेत्र' : 'Kuldevi Temple Area'}
                   value={kuldeviTempleArea}
                   onChangeText={setKuldeviTempleArea}
-                  placeholder="Optional"
+                  placeholder={t('language') === 'hi' ? 'वैकल्पिक' : 'Optional'}
                 />
-                <Input label="Gotra" value={gotra} onChangeText={setGotra} placeholder="Optional" />
+                <Input 
+                  label={t('language') === 'hi' ? 'गोत्र' : 'Gotra'} 
+                  value={gotra} 
+                  onChangeText={setGotra} 
+                  placeholder={t('language') === 'hi' ? 'वैकल्पिक' : 'Optional'} 
+                />
               </View>
             </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            <Button title="Save Profile" onPress={handleSave} loading={saving} style={styles.saveButton} />
+            <Button 
+              title={t('language') === 'hi' ? 'प्रोफ़ाइल सहेजें' : 'Save Profile'} 
+              onPress={handleSave} 
+              loading={saving} 
+              style={styles.saveButton} 
+            />
 
             <View style={styles.dangerZoneSection}>
-              <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+              <Text style={styles.dangerZoneTitle}>
+                {t('language') === 'hi' ? 'खतरनाक क्षेत्र' : 'Danger Zone'}
+              </Text>
               <View style={styles.dangerZoneCard}>
                 <Text style={styles.dangerZoneText}>
-                  Permanently delete your Brahmand account. This action is irreversible, and all your posts, comments, and profile data will be permanently wiped.
+                  {t('language') === 'hi' ? 'अपने ब्रह्मांड खाते को स्थायी रूप से हटाएं। यह कार्रवाई अपरिवर्तनीय है, और आपके सभी पोस्ट, टिप्पणियाँ और प्रोफ़ाइल डेटा स्थायी रूप से मिटा दिए जाएंगे।' : 'Permanently delete your Brahmand account. This action is irreversible, and all your posts, comments, and profile data will be permanently wiped.'}
                 </Text>
                 <TouchableOpacity
                   style={[styles.deleteButton, deleting && styles.disabledBtn]}
@@ -315,7 +385,9 @@ export default function EditProfileScreen() {
                   ) : (
                     <>
                       <Ionicons name="trash-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                      <Text style={styles.deleteButtonText}>Delete Account</Text>
+                      <Text style={styles.deleteButtonText}>
+                        {t('language') === 'hi' ? 'खाता हटाएं' : 'Delete Account'}
+                      </Text>
                     </>
                   )}
                 </TouchableOpacity>

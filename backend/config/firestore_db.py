@@ -317,6 +317,18 @@ class FirestoreDB:
         
         return await self._run_sync(_get)
     
+    async def get_chat_message(self, chat_id: str, message_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific message from a chat"""
+        def _get():
+            doc = self.client.collection('chats').document(chat_id).collection('messages').document(message_id).get()
+            if doc.exists:
+                data = doc.to_dict()
+                data['id'] = doc.id
+                return data
+            return None
+        
+        return await self._run_sync(_get)
+    
     async def update_chat_message(self, chat_id: str, message_id: str, update_data: Dict[str, Any]) -> None:
         """Update a specific message in a chat"""
         def _update():
