@@ -3691,7 +3691,7 @@ const styles = StyleSheet.create({
   postRightCol: { flex: 1, overflow: 'hidden' },
   postHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   postNameContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  feedPostUserName: { fontSize: 15, fontWeight: '700', color: '#0F1419', maxWidth: '40%' },
+  feedPostUserName: { fontSize: 15, fontWeight: '700', color: '#0F1419', maxWidth: '65%' },
   postHandle: { fontSize: 15, color: '#536471', marginLeft: 4, flexShrink: 1 },
   postDot: { fontSize: 15, color: '#536471', marginHorizontal: 4 },
   postContentText: { fontSize: 15, color: '#0F1419', lineHeight: 22, marginTop: 2 },

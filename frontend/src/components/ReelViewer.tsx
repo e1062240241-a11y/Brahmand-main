@@ -134,8 +134,11 @@ const ReelVideoItem = React.memo(({
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
   const mediaWidth = Number(localPost?.media_width || localPost?.mediaWidth || 0);
   const mediaHeight = Number(localPost?.media_height || localPost?.mediaHeight || 0);
-  const isPortrait = mediaHeight > mediaWidth;
-  const contentFitMode = isVideo ? (isPortrait ? 'cover' : 'contain') : 'contain';
+  const [aspectRatio, setAspectRatio] = useState<number | null>(
+    (mediaWidth && mediaHeight && mediaHeight > 0) ? (mediaWidth / mediaHeight) : null
+  );
+  const isPortrait = aspectRatio ? (aspectRatio < 1) : (mediaHeight > mediaWidth);
+  const contentFitMode = isVideo ? 'cover' : (isPortrait ? 'cover' : 'contain');
 
   const playerSource = (Platform.OS === 'web' || !isVideo) ? null : mediaUrl;
   const player = useSafeVideoPlayer(playerSource, (p) => {
@@ -329,8 +332,16 @@ const ReelVideoItem = React.memo(({
             <Image
               source={{ uri: mediaUrl }}
               style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
+              contentFit={contentFitMode}
               transition={300}
+              onLoad={(e) => {
+                if (!aspectRatio) {
+                  const { width, height } = e.source;
+                  if (width && height) {
+                    setAspectRatio(width / height);
+                  }
+                }
+              }}
             />
           ) : Platform.OS === 'web' ? (
             <>
@@ -354,7 +365,7 @@ const ReelVideoItem = React.memo(({
                 <Image
                   source={{ uri: posterUrl }}
                   style={StyleSheet.absoluteFill}
-                  contentFit="cover"
+                  contentFit={contentFitMode}
                   pointerEvents="none"
                 />
               )}
@@ -375,7 +386,7 @@ const ReelVideoItem = React.memo(({
                 <Image
                   source={{ uri: posterUrl }}
                   style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
-                  contentFit="cover"
+                  contentFit={contentFitMode}
                   pointerEvents="none"
                 />
               )}
