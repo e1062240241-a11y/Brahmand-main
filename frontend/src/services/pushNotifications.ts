@@ -74,7 +74,15 @@ export async function registerForPushNotifications(): Promise<string | null> {
   let finalStatus = existingStatus;
 
   if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
+    const { status } = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+        allowProvisional: false,
+        allowAnnouncements: false,
+      },
+    });
     finalStatus = status;
   }
 
@@ -283,9 +291,9 @@ export async function scheduleLocalNotification(
       data: data || {},
       sound: soundName,
     },
-    trigger: {
-      channelId,
-    },
+    trigger: Platform.OS === 'android'
+      ? { channelId }
+      : { seconds: 1 },
   });
 }
 

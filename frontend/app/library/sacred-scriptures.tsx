@@ -16,11 +16,11 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
 
-const mahabharataCover = require('../../assets/images/user_upload_1.png');
-const geetaCover = require('../../assets/images/user_upload_2.png');
-const atharvavedCover = require('../../assets/images/user_upload_0.png');
-const rigvedaCover = require('../../assets/images/Rigveda.jpg');
-const ramayanCover = require('../../assets/images/Ramayan-hardcover-front-scaled.jpg');
+const mahabharataCover = require('../../assets/images/ancient_new_3.jpg');
+const geetaCover = require('../../assets/images/user_upload_geeta_new.jpg');
+const atharvavedCover = require('../../assets/images/ancient_new_1.jpg');
+const rigvedaCover = require('../../assets/images/ancient_new_2.jpg');
+const ramayanCover = require('../../assets/images/ancient_new_4.jpg');
 const ramcharitmanasCover = require('../../assets/images/Ramcharitmanas.jpg');
 const yajurvedaCover = require('../../assets/images/Yajurveda.jpg');
 
@@ -131,7 +131,7 @@ export default function SacredScripturesPage() {
         {/* ── Section Title ── */}
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Featured Collection</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/library/featured' as any)}>
             <Text style={styles.viewAll}>View All ›</Text>
           </TouchableOpacity>
         </View>
@@ -141,7 +141,7 @@ export default function SacredScripturesPage() {
           <View style={styles.featuredCard}>
             {/* Full-width cover image */}
             <View style={styles.featuredCoverBox}>
-              <Image source={geetaCover} style={styles.featuredCover} resizeMode="cover" />
+              <Image source={geetaCover} style={styles.featuredCover} resizeMode="stretch" />
               {/* Top overlay gradient */}
               <LinearGradient
                 colors={['rgba(0,0,0,0.30)', 'transparent']}
@@ -218,7 +218,7 @@ export default function SacredScripturesPage() {
               activeOpacity={0.88}
             >
               {/* Cover */}
-              <Image source={book.cover} style={styles.listCover} resizeMode="cover" />
+              <Image source={book.cover} style={styles.listCover} resizeMode="stretch" />
 
               {/* Text block */}
               <View style={styles.listTextBlock}>
@@ -487,24 +487,29 @@ const styles = StyleSheet.create({
   },
   listTitle: {
     fontSize: 18,
+    color: '#1B1C1C',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontStyle: 'normal',
     fontWeight: '700',
-    color: DARK,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     lineHeight: 24,
     marginBottom: 2,
   },
   listSubtitle: {
     fontSize: 16,
+    color: '#5A4136',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontStyle: 'normal',
     fontWeight: '600',
-    color: BROWN,
-    fontFamily: FONTS.medium,
     lineHeight: 24,
     marginBottom: 4,
   },
   listSnippet: {
+    alignSelf: 'stretch',
     fontSize: 14,
-    color: CLAY,
-    fontFamily: FONTS.medium,
+    color: '#8E7164',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontStyle: 'normal',
+    fontWeight: '400',
     lineHeight: 20,
     marginBottom: 6,
   },
