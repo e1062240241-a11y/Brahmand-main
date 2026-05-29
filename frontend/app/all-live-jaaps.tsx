@@ -15,6 +15,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
+import { useTranslation } from '../src/utils/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 52) / 2;
@@ -87,6 +88,7 @@ const LIVE_JAAPS = [
 
 export default function AllLiveJaapsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [now, setNow] = React.useState(new Date());
 
   React.useEffect(() => {
@@ -126,10 +128,10 @@ export default function AllLiveJaapsScreen() {
           <Ionicons name="chevron-back" size={24} color="#FF6600" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>All Live Jaaps</Text>
+          <Text style={styles.headerTitle}>{t('language') === 'hi' ? 'सभी लाइव जाप' : 'All Live Jaaps'}</Text>
           <View style={styles.livePill}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveText}>{LIVE_JAAPS.length} Live Now</Text>
+            <Text style={styles.liveText}>{LIVE_JAAPS.length} {t('language') === 'hi' ? 'अभी लाइव' : 'Live Now'}</Text>
           </View>
         </View>
         <View style={{ width: 40 }} />
@@ -144,7 +146,9 @@ export default function AllLiveJaapsScreen() {
       >
         <Ionicons name="people" size={18} color="#FF6600" />
         <Text style={styles.bannerText}>
-          Join <Text style={styles.bannerBold}>50,000+</Text> devotees chanting together right now
+          {t('language') === 'hi' 
+            ? <Text>जुड़ें <Text style={styles.bannerBold}>50,000+</Text> भक्त अभी एकसाथ जाप कर रहे हैं</Text>
+            : <Text>Join <Text style={styles.bannerBold}>50,000+</Text> devotees chanting together right now</Text>}
         </Text>
       </LinearGradient>
 
@@ -165,29 +169,29 @@ export default function AllLiveJaapsScreen() {
             showLive = hanumanActive;
             if (hanumanActive) {
               if (hanumanStatus.isCompleted) {
-                liveLabel = 'COMPLETED';
+                liveLabel = t('language') === 'hi' ? 'पूरा हुआ' : 'COMPLETED';
               } else {
-                liveLabel = `LIVE • ${hanumanStatus.roundOfDay}/51`;
+                liveLabel = t('language') === 'hi' ? `लाइव • ${hanumanStatus.roundOfDay}/51` : `LIVE • ${hanumanStatus.roundOfDay}/51`;
               }
             } else {
               if (hanumanStatus.nextSessionStart) {
                 const timeStr = hanumanStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                liveLabel = `SOON • ${timeStr}`;
+                liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
               } else {
-                liveLabel = 'SOON';
+                liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
               }
             }
           } else if (isOtherLiveJaap) {
             const otherStatus = getCurrentOtherJaapStatus(now, jaap.mantraType);
             showLive = otherStatus.isActive;
             if (otherStatus.isActive) {
-              liveLabel = 'LIVE';
+              liveLabel = t('language') === 'hi' ? 'लाइव' : 'LIVE';
             } else {
               if (otherStatus.nextSessionStart) {
                 const timeStr = otherStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                liveLabel = `SOON • ${timeStr}`;
+                liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
               } else {
-                liveLabel = 'SOON';
+                liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
               }
             }
           }
@@ -218,7 +222,18 @@ export default function AllLiveJaapsScreen() {
 
                 {/* Bottom content */}
                 <View style={styles.cardBottom}>
-                  <Text style={styles.cardTitle}>{jaap.title}</Text>
+                  <Text style={styles.cardTitle}>
+                    {t('language') === 'hi' ? (() => {
+                      if (jaap.id === '1') return 'हनुमान\nचालीसा';
+                      if (jaap.id === '2') return 'हरे कृष्ण\nजाप';
+                      if (jaap.id === '3') return 'ओम् नमः\nशिवाय';
+                      if (jaap.id === '4') return 'गायत्री\nमंत्र';
+                      if (jaap.id === '5') return 'गणेश\nमंत्र';
+                      if (jaap.id === '6') return 'लक्ष्मी\nमंत्र';
+                      if (jaap.id === '7') return 'कृष्ण\nजाप';
+                      return jaap.title;
+                    })() : jaap.title}
+                  </Text>
                   <Text style={styles.cardSlok} numberOfLines={2}>{jaap.slok}</Text>
                   <TouchableOpacity
                     activeOpacity={0.85}
@@ -231,7 +246,7 @@ export default function AllLiveJaapsScreen() {
                       end={{ x: 1, y: 0 }}
                       style={styles.joinBtnGradient}
                     >
-                      <Text style={styles.joinBtnText}>Join ॐ</Text>
+                      <Text style={styles.joinBtnText}>{t('language') === 'hi' ? 'जुड़ें ओम्' : 'Join ओम्'}</Text>
                       <MaterialCommunityIcons name="waveform" size={16} color="#FFF" />
                     </LinearGradient>
                   </TouchableOpacity>

@@ -20,6 +20,7 @@ import { toast } from '../src/store/toastStore';
 import { Alert as RNAlert } from 'react-native';
 import { syncDatabase } from '../src/database/sync';
 import { GlobalFAB } from '../src/components/GlobalFAB';
+import { initSyncQueueListener } from '../src/services/syncQueueService';
 
 import { originalAlert } from '../src/utils/nativeAlert';
 
@@ -387,6 +388,10 @@ export default function RootLayout() {
   useAppBackHandler();
   useNotificationResponseHandler();
   useMutedNotificationFilter();
+
+  useEffect(() => {
+    initSyncQueueListener();
+  }, []);
 
   useEffect(() => {
     useLanguageStore.getState().loadLanguage();

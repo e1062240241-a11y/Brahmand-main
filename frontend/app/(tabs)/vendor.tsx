@@ -394,6 +394,9 @@ export default function VendorScreen() {
       });
     }
 
+    // Filter to only show vendors within a 5km radius
+    filtered = filtered.filter((v) => typeof v.distance === 'number' && v.distance <= 5);
+
     return filtered.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
   }, [vendors, activeTab, searchTerm, searchCategory]);
 

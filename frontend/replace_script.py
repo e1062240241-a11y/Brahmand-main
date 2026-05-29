@@ -155,7 +155,6 @@ new_return = """  return (
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🙏')}>
                      <Text style={styles.reactionEmojiNew}>🙏</Text>
-                     <View style={styles.reactionBadgeNew}><Text style={styles.reactionBadgeTextNew}>434</Text></View>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('ॐ')}>
                      <Text style={styles.reactionEmojiNew}>ॐ</Text>
@@ -182,7 +181,7 @@ new_return = """  return (
                   </View>
                   <View style={styles.metricItemNew}>
                     <Text style={styles.metricLabelNew}>LINE</Text>
-                    <Text style={styles.metricValueNew}>{isHanuman ? Math.floor((audioStatus?.currentTime || 0)/15) + 1 : currentIndex + 1}<Text style={styles.metricSlashNew}> / {isHanuman ? 46 : Math.ceil(WORDS.length / 4)}</Text></Text>
+                    <Text style={styles.metricValueNew}>{isHanuman ? Math.floor((audioStatus?.currentTime || 0)/15) + 1 : currentIndex + 1}<Text style={styles.metricSlashNew}> / {isHanuman ? 65 : Math.ceil(WORDS.length / 4)}</Text></Text>
                   </View>
                 </View>
 

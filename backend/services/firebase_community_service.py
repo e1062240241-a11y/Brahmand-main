@@ -245,14 +245,65 @@ class FirebaseCommunityService:
         if not community:
             raise ValueError("Community not found")
         
+        owner_id = community.get('owner_id')
+        admin_ids = community.get('admin_ids', [])
+        member_ids = community.get('members', [])
+        
+        # Fetch all members' details
+        all_member_ids = list(set((member_ids if member_ids else []) + (admin_ids if admin_ids else []) + ([owner_id] if owner_id else [])))
+        user_docs = await db.get_documents_batch('users', all_member_ids)
+        user_map = {u['id']: u for u in user_docs if u}
+        
+        all_members_details = []
+        for mid in all_member_ids:
+            user_doc = user_map.get(mid)
+            name = user_doc.get('name', 'Unknown User') if user_doc else 'Unknown User'
+            photo = user_doc.get('photo') if user_doc else None
+            
+            # Determine role
+            if mid == owner_id:
+                role = 'Owner'
+            elif mid in admin_ids:
+                role = 'Admin'
+            else:
+                role = 'Member'
+                
+            all_members_details.append({
+                'id': mid,
+                'name': name,
+                'photo': photo,
+                'role': role
+            })
+            
+        # Sort so Owner is first, then Admins, then Members
+        role_priority = {'Owner': 0, 'Admin': 1, 'Member': 2}
+        all_members_details.sort(key=lambda x: role_priority.get(x['role'], 3))
+
+        owner_name = "Community Owner"
+        if owner_id and owner_id in user_map:
+            owner_name = user_map[owner_id].get('name', 'Community Owner')
+            
+        admin_names = [m['name'] for m in all_members_details if m['role'] == 'Admin']
+        member_names = [m['name'] for m in all_members_details if m['role'] == 'Member']
+        
         return {
             "id": community['id'],
             "name": community['name'],
             "type": community['type'],
             "location": community.get('location', {}),
             "code": community.get('code', ''),
-            "member_count": len(community.get('members', [])),
-            "subgroups": community.get('subgroups', [])
+            "member_count": len(all_member_ids),
+            "members": all_member_ids,
+            "subgroups": community.get('subgroups', []),
+            "owner_id": owner_id,
+            "owner_name": owner_name,
+            "admin_ids": admin_ids,
+            "admin_names": admin_names,
+            "member_names": member_names,
+            "photo": community.get('photo'),
+            "cover_photo": community.get('cover_photo'),
+            "description": community.get('description', ''),
+            "members_details": all_members_details
         }
     
     @staticmethod

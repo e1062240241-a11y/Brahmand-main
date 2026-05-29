@@ -34,6 +34,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
+import { useTranslation } from '../../src/utils/i18n';
 
 function KundliSirenIcon() {
   return (
@@ -365,6 +366,7 @@ const AnimatedSkeleton = ({ children, style }: { children: React.ReactNode; styl
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
@@ -387,6 +389,7 @@ export default function HomeScreen() {
   const [selectedCommentPost, setSelectedCommentPost] = useState<any | null>(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [postComments, setPostComments] = useState<any[]>([]);
+  const [replyingToComment, setReplyingToComment] = useState<any | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -534,6 +537,61 @@ export default function HomeScreen() {
 
       console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
 
+      // Save fetched items to local WatermelonDB (native only)
+      if (Platform.OS !== 'web' && incomingItems.length > 0) {
+        try {
+          const { database } = require('../../src/database');
+          if (database) {
+            await database.write(async () => {
+              const feedsCollection = database.get('feeds');
+              for (const item of incomingItems) {
+                const recordId = String(item.id || item.media_url);
+                if (!recordId) continue;
+                
+                let existingRecord;
+                try {
+                  existingRecord = await feedsCollection.find(recordId);
+                } catch {
+                  existingRecord = null;
+                }
+
+                if (existingRecord) {
+                  await existingRecord.update((record: any) => {
+                    record.username = item.username || '';
+                    record.userPhoto = item.user_photo || null;
+                    record.mediaUrl = item.media_url || null;
+                    record.mediaType = item.media_type || 'image';
+                    record.caption = item.caption || null;
+                    record.likesCount = item.likes_count || 0;
+                    record.commentsCount = item.comments_count || 0;
+                    record.likedByMe = !!item.liked_by_me;
+                    record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                  });
+                } else {
+                  await feedsCollection.create((record: any) => {
+                    record._raw.id = recordId;
+                    record.userId = item.user_id || '';
+                    record.username = item.username || '';
+                    record.userPhoto = item.user_photo || null;
+                    record.mediaUrl = item.media_url || null;
+                    record.mediaType = item.media_type || 'image';
+                    record.caption = item.caption || null;
+                    record.likesCount = item.likes_count || 0;
+                    record.commentsCount = item.comments_count || 0;
+                    record.likedByMe = !!item.liked_by_me;
+                    record.createdAt = item.created_at ? new Date(item.created_at).getTime() : Date.now();
+                    record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                  });
+                }
+              }
+            });
+            console.log(`[HomeFeed] Cached ${incomingItems.length} posts in local SQLite database`);
+          }
+        } catch (localWriteErr) {
+          console.warn('[HomeFeed] Failed to cache posts to database:', localWriteErr);
+        }
+      }
+
       const nextHasMore = typeof payload?.has_more === 'boolean'
         ? payload.has_more
         : incomingItems.length === FEED_PAGE_SIZE;
@@ -558,6 +616,44 @@ export default function HomeScreen() {
       }
     } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
+      // Fallback: if we fail to fetch from API (e.g. offline), try to load from local WatermelonDB
+      if (!append && tabToLoad === 'for_you' && Platform.OS !== 'web') {
+        try {
+          const { Q } = require('@nozbe/watermelondb');
+          const { database } = require('../../src/database');
+          if (database) {
+            const localFeeds = await database.get('feeds')
+              .query(Q.sortBy('created_at', Q.desc), Q.take(FEED_PAGE_SIZE))
+              .fetch();
+            if (localFeeds && localFeeds.length > 0) {
+              console.log(`[HomeFeed Fallback] Loaded ${localFeeds.length} local posts from WatermelonDB after API failure`);
+              const mappedFeeds = localFeeds.map((post: any) => ({
+                id: post.id,
+                user_id: post.userId,
+                username: post.username,
+                user_photo: post.userPhoto,
+                media_url: post.mediaUrl,
+                media_type: post.mediaType,
+                caption: post.caption,
+                likes_count: post.likesCount,
+                comments_count: post.commentsCount,
+                liked_by_me: post.likedByMe,
+                created_at: post.createdAt,
+                updated_at: post.updatedAt,
+              }));
+              setTabFeed(tabToLoad, {
+                posts: mappedFeeds,
+                offset: mappedFeeds.length,
+                hasMore: true,
+                lastFetched: Date.now(),
+              });
+              return; // Successfully loaded fallback
+            }
+          }
+        } catch (localErr) {
+          console.warn('[HomeFeed Fallback] Local database query failed:', localErr);
+        }
+      }
       if (!append) {
         setTabFeed(tabToLoad, {
           posts: [],
@@ -699,14 +795,12 @@ export default function HomeScreen() {
     };
   }, [isFocused, initializeHome, setUnreadCount]);
 
-  const handleNotificationPress = async () => {
-    try {
-      await markAllNotificationsRead();
-      setUnreadCount(0);
-    } catch (err) {
-      console.log('Failed to mark notifications as read:', err);
-    }
+  const handleNotificationPress = () => {
+    setUnreadCount(0);
     router.push('/notifications');
+    markAllNotificationsRead().catch((err) => {
+      console.log('Failed to mark notifications as read:', err);
+    });
   };
 
   const [loadingHashtags, setLoadingHashtags] = useState(false);
@@ -1134,6 +1228,26 @@ export default function HomeScreen() {
       posts: currentPosts.map((item) => (item.id === postId ? optimisticPost : item))
     });
 
+    // Update local database record optimistically
+    if (Platform.OS !== 'web') {
+      try {
+        const { database } = require('../../src/database');
+        if (database) {
+          database.write(async () => {
+            const feedRecord = await database.get('feeds').find(postId);
+            if (feedRecord) {
+              await feedRecord.update((record: any) => {
+                record.likedByMe = optimisticPost.liked_by_me;
+                record.likesCount = optimisticPost.likes_count;
+              });
+            }
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[Like DB Update] failed:', dbErr);
+      }
+    }
+
     // 3. Track original server state if not already tracking
     if (originalLikeStateRefs.current[postId] === undefined) {
       originalLikeStateRefs.current[postId] = liked;
@@ -1214,6 +1328,7 @@ export default function HomeScreen() {
 
     const textToPost = commentText.trim();
     const tempId = `temp-${Date.now()}`;
+    const parentId = replyingToComment?.id || null;
 
     // Create optimistic comment
     const optimisticComment = {
@@ -1223,15 +1338,17 @@ export default function HomeScreen() {
       user_photo: avatarUri || '',
       created_at: new Date().toISOString(),
       is_optimistic: true,
+      parent_id: parentId,
     };
 
     // Add immediately to UI
     setPostComments(prev => [optimisticComment, ...prev]);
     setCommentText('');
+    setReplyingToComment(null);
 
     setCommentSubmitting(true);
     try {
-      const response = await addPostComment(selectedCommentPostId, textToPost);
+      const response = await addPostComment(selectedCommentPostId, textToPost, parentId || undefined);
       const updatedPost = response.data?.post;
       const serverComment = response.data?.comment;
 
@@ -1659,7 +1776,7 @@ export default function HomeScreen() {
 
                   <View style={styles.greetingBlock}>
                     <View style={styles.nameRow}>
-                      <Text style={styles.greeting}>Namaste {firstName} 🙏</Text>
+                      <Text style={styles.greeting}>{t('namaste')} {firstName} 🙏</Text>
                     </View>
                     <TouchableOpacity
                       activeOpacity={0.8}
@@ -1703,11 +1820,11 @@ export default function HomeScreen() {
                     <Ionicons name="notifications-outline" size={18} color="#FFF" />
                   </View>
                   <View style={styles.festivalAlertTextWrapper}>
-                    <Text style={styles.festivalAlertTitle}>Festival Reminder</Text>
+                    <Text style={styles.festivalAlertTitle}>{t('festivalReminder')}</Text>
                     <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
                       {nextFestival.days_until === 0
-                        ? `${nextFestival.name} is today! Click to see festival details.`
-                        : `${nextFestival.name} is tomorrow (${nextFestival.date}). Don't miss it!`}
+                        ? `${nextFestival.name} ${t('isTodayClick')}`
+                        : `${nextFestival.name} ${t('isTomorrowClick')} (${nextFestival.date})`}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#FFF" />
@@ -1722,7 +1839,7 @@ export default function HomeScreen() {
                       style={styles.searchInput}
                       value={searchTerm}
                       onChangeText={setSearchTerm}
-                      placeholder="Recent Search..."
+                      placeholder={t('recentSearchPlaceholder')}
                       placeholderTextColor="#8E7D90"
                       autoFocus
                     />
@@ -1731,7 +1848,7 @@ export default function HomeScreen() {
                     <View style={styles.searchResultsSection}>
                       {searchTerm.trim().startsWith('#') ? (
                         loadingHashtags ? (
-                          <Text style={styles.searchStatusText}>Loading hashtags...</Text>
+                          <Text style={styles.searchStatusText}>{t('loadingHashtags')}</Text>
                         ) : hashtagResults.length > 0 ? (
                           <TouchableOpacity
                             style={styles.userResultItem}
@@ -1750,10 +1867,10 @@ export default function HomeScreen() {
                             </View>
                           </TouchableOpacity>
                         ) : (
-                          <Text style={styles.searchStatusText}>No posts found for this hashtag.</Text>
+                          <Text style={styles.searchStatusText}>{t('noPostsHashtag')}</Text>
                         )
                       ) : loadingUsers ? (
-                        <Text style={styles.searchStatusText}>Loading users...</Text>
+                        <Text style={styles.searchStatusText}>{t('loadingUsers')}</Text>
                       ) : searchResults.length > 0 ? (
                         searchResults.map((item) => {
                           const isFollowing = followingIds.includes(item.id);
@@ -1782,27 +1899,27 @@ export default function HomeScreen() {
                                 onPress={() => handleFollowUser(item.id)}
                               >
                                 <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                                  {isFollowing ? 'Following' : 'Follow'}
+                                  {isFollowing ? t('following') : t('follow')}
                                 </Text>
                               </TouchableOpacity>
                             </View>
                           );
                         })
                       ) : (
-                        <Text style={styles.searchStatusText}>No users found.</Text>
+                        <Text style={styles.searchStatusText}>{t('noUsersFound')}</Text>
                       )}
                     </View>
                   ) : recentSearches.length > 0 ? (
                     <View style={styles.recentSearchSection}>
                       <View style={styles.recentSearchHeader}>
-                        <Text style={styles.recentSearchesTitle}>Recent Search</Text>
+                        <Text style={styles.recentSearchesTitle}>{t('recentSearchTitle')}</Text>
                         <TouchableOpacity onPress={async () => {
                           if (user?.id) {
                             setRecentSearches([]);
                             await AsyncStorage.removeItem(`recent_searches_${user.id}`);
                           }
                         }}>
-                          <Text style={styles.clearHistoryText}>Clear History</Text>
+                          <Text style={styles.clearHistoryText}>{t('clearHistory')}</Text>
                         </TouchableOpacity>
                       </View>
                       <ScrollView
@@ -1849,6 +1966,37 @@ export default function HomeScreen() {
                       } else if (item.label === 'SOS') {
                         cardBg = '#FFF5F5';
                         iconBg = '#FF3B30';
+                      }
+
+                      let displayLabel = item.label;
+                      let displaySubtitle = item.subtitle;
+
+                      if (t('language') === 'hi') {
+                        if (item.label === 'My Krishna') {
+                          displayLabel = 'मेरे कृष्ण';
+                          displaySubtitle = 'एआई धर्म मार्गदर्शन';
+                        } else if (item.label === 'SOS') {
+                          displayLabel = 'एसओएस (SOS)';
+                          displaySubtitle = 'आपके आसपास के सनातनी लोग';
+                        } else if (item.label === 'Panchang') {
+                          displayLabel = 'पंचांग';
+                          displaySubtitle = 'वैदिक दर्शन';
+                        } else if (item.label === 'Kundli') {
+                          displayLabel = 'कुंडली';
+                          displaySubtitle = 'आपकी दैनिक वैदिक ऊर्जा';
+                        } else if (item.label === 'Jyotish') {
+                          displayLabel = 'ज्योतिष';
+                          displaySubtitle = 'आपका ब्रह्मांडीय खाका';
+                        } else if (item.label === 'Brahmand Passport') {
+                          displayLabel = 'ब्रह्मांड पासपोर्ट';
+                          displaySubtitle = 'आपकी मंदिर यात्रा का रिकॉर्ड';
+                        } else if (item.label === 'Festival Days') {
+                          displayLabel = 'त्योहार के दिन';
+                          displaySubtitle = 'अगला त्योहार और अनुष्ठान';
+                        } else if (item.label === 'Brahmand Library') {
+                          displayLabel = 'ब्रह्मांड पुस्तकालय';
+                          displaySubtitle = 'ज्ञान की खोज करें';
+                        }
                       }
 
                       return (
@@ -1919,9 +2067,9 @@ export default function HomeScreen() {
                             </View>
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle} numberOfLines={2}>{item.label}</Text>
-                            {item.subtitle ? (
-                              <Text style={styles.featureSubtitle} numberOfLines={2}>{item.subtitle}</Text>
+                            <Text style={styles.featureTitle} numberOfLines={2}>{displayLabel}</Text>
+                            {displaySubtitle ? (
+                              <Text style={styles.featureSubtitle} numberOfLines={2}>{displaySubtitle}</Text>
                             ) : null}
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
@@ -2025,7 +2173,7 @@ export default function HomeScreen() {
                           ]} 
                           onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}
                         >
-                          <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                          <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
                         </TouchableOpacity>
                       </View>
                     </LinearGradient>
@@ -2071,7 +2219,7 @@ export default function HomeScreen() {
                             marginTop: 0,
                             marginBottom: 2,
                             fontSize: 13
-                          }]}>1,248 devotees are chanting</Text>
+                          }]}>1,248 {t('devoteesChanting')}</Text>
                           
                           <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                             <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2081,7 +2229,7 @@ export default function HomeScreen() {
                               color: '#FFF', 
                               fontWeight: '600',
                               fontSize: 12
-                            }]}>Live until 5:00 PM</Text>
+                            }]}>{t('liveUntil')} 5:00 PM</Text>
                           </View>
                         </View>
 
@@ -2111,7 +2259,7 @@ export default function HomeScreen() {
                           ]} 
                           onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}
                         >
-                          <Text style={styles.joinJaapText}>Join Live Jaap</Text>
+                          <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
                         </TouchableOpacity>
                       </View>
                     </LinearGradient>
@@ -2145,8 +2293,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <BloodDropIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} Required` : 'Need Blood?'}</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{bloodRequest ? `${bloodRequest.hospital_name || 'Emergency'}\n${bloodRequest.location || 'Nearby'}` : 'Create an urgent\nrequest here'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} ${t('bloodRequired')}` : t('needBlood')}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{bloodRequest ? `${bloodRequest.hospital_name || t('emergency')}\n${bloodRequest.location || t('nearby')}` : t('createUrgentRequest')}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -2178,14 +2326,14 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
                     </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>Your Community</Text>
+                      <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
                     </View>
                   </View>
                 </View>
@@ -2198,8 +2346,8 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <ShopIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? 'Manage Your' : 'Become a Verified'}</Text>
-                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? 'Business Profile' : 'Sanatan Vendor'}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
                     </View>
                     <TouchableOpacity
                       style={{
@@ -2225,14 +2373,14 @@ export default function HomeScreen() {
                         }
                       }}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? 'Manage' : 'Register'}</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
                     </TouchableOpacity>
                     </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={{ width: 65, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? 'Approved' : 'Pending') : 'Free'}</Text>
+                      <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
                     </View>
                   </View>
                 </View>
@@ -2274,20 +2422,20 @@ export default function HomeScreen() {
                           }}
                           onPress={() => {
                             if (displayVendor) {
-                              router.push(`/vendor/${displayVendor.id}`);
+                               router.push(`/vendor/${displayVendor.id}`);
                             } else {
                               router.push('/(tabs)/vendor');
                             }
                           }}
                         >
-                          <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>View</Text>
+                          <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
                         </TouchableOpacity>
                         </HomeCardTextureBg>
                       </View>
                       {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                       <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                         <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                          <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Verified vendor</Text>
+                          <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('verifiedVendor')}</Text>
                         </View>
                       </View>
                     </View>
@@ -2302,11 +2450,11 @@ export default function HomeScreen() {
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
                       </View>
-                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>Live Kedarnath Aarti</Text>
+                      <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{t('liveKedarnathAarti')}</Text>
                       <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
-                        <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>Notify</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>me</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
                           <TouchableOpacity
                             onPress={() => Alert.alert('Notification Set', "We'll notify you when Kedarnath Aarti starts.")}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -2341,14 +2489,14 @@ export default function HomeScreen() {
                         }
                       })}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>Watch</Text>
+                      <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
                     </TouchableOpacity>
                     </HomeCardTextureBg>
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                     <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>Temple</Text>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                     </View>
                   </View>
                 </View>
@@ -2373,11 +2521,11 @@ export default function HomeScreen() {
                     >
                       <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
-                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>CITY COMMUNITY</Text>
+                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('cityCommunity').toUpperCase()}</Text>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                           {cityName}
                         </Text>
-                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 members</Text>
+                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 {t('members')}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                     </TouchableOpacity>
@@ -2409,11 +2557,11 @@ export default function HomeScreen() {
                         <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
                       </View>
                       <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
-                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>FOOD SHARING</Text>
+                        <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                           {realGroupName}
                         </Text>
-                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} members</Text>
+                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                     </TouchableOpacity>
@@ -2681,6 +2829,7 @@ export default function HomeScreen() {
               setSelectedCommentPost(null);
               setPostComments([]);
               setActiveCommentMenuId(null);
+              setReplyingToComment(null);
             }}
           >
             <KeyboardAvoidingView
@@ -2697,6 +2846,7 @@ export default function HomeScreen() {
                   setSelectedCommentPost(null);
                   setPostComments([]);
                   setActiveCommentMenuId(null);
+                  setReplyingToComment(null);
                 }}
               />
               <View style={styles.commentSheet}>
@@ -2709,6 +2859,7 @@ export default function HomeScreen() {
                       setSelectedCommentPostId(null);
                       setSelectedCommentPost(null);
                       setPostComments([]);
+                      setReplyingToComment(null);
                     }}
                     style={styles.commentCloseBtn}
                   >
@@ -2724,37 +2875,131 @@ export default function HomeScreen() {
                       <ActivityIndicator size="small" color="#FF6B00" />
                       <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>Loading comments...</Text>
                     </View>
-                  ) : postComments.length > 0 ? (
-                    <FlatList
-                      data={postComments}
-                      keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
-                      renderItem={({ item }) => {
-                        const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                        return (
-                          <View style={styles.commentItem}>
-                            <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
-                            <View style={styles.commentBubble}>
-                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                                {canDelete && (
-                                  <TouchableOpacity
-                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => handleDeleteComment(item)}
-                                  >
-                                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                                  </TouchableOpacity>
-                                )}
+                  ) : postComments.length > 0 ? (() => {
+                    const parentComments = postComments.filter(c => !c.parent_id);
+                    const repliesMap = postComments.reduce((acc, c) => {
+                      if (c.parent_id) {
+                        if (!acc[c.parent_id]) acc[c.parent_id] = [];
+                        acc[c.parent_id].push(c);
+                      }
+                      return acc;
+                    }, {} as Record<string, any[]>);
+
+                    return (
+                      <FlatList
+                        data={parentComments}
+                        keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
+                        renderItem={({ item }) => {
+                          const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                          const replies = repliesMap[item.id] || [];
+                          return (
+                            <View style={{ marginBottom: 12, position: 'relative' }}>
+                              {replies.length > 0 && (
+                                <View style={{
+                                  position: 'absolute',
+                                  left: 15,
+                                  top: 32,
+                                  bottom: 0,
+                                  width: 1.5,
+                                  backgroundColor: '#E6E1E8',
+                                  zIndex: 1,
+                                }} />
+                              )}
+                              <View style={styles.commentItem}>
+                                <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
+                                <View style={styles.commentBubble}>
+                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                                    {canDelete && (
+                                      <TouchableOpacity
+                                        style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                        onPress={() => handleDeleteComment(item)}
+                                      >
+                                        <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                      </TouchableOpacity>
+                                    )}
+                                  </View>
+                                  <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                    <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
+                                    <TouchableOpacity
+                                      style={{ marginLeft: 16 }}
+                                      onPress={() => {
+                                        setReplyingToComment(item);
+                                      }}
+                                    >
+                                      <Text style={{ fontSize: 12, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
                               </View>
-                              <MentionText style={styles.commentItemText} text={item?.text || ''} />
-                              <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
+                              
+                              {/* Render nested replies */}
+                              {replies.map((reply: any, index: number) => {
+                                const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                                const isLastReply = index === replies.length - 1;
+                                return (
+                                  <View key={reply.id || `${reply.user_id}-${reply.created_at}`} style={[styles.commentItem, { marginLeft: 42, marginTop: 8, position: 'relative' }]}>
+                                    {/* Thread vertical line segment */}
+                                    <View style={{
+                                      position: 'absolute',
+                                      left: -26,
+                                      top: 0,
+                                      bottom: isLastReply ? undefined : 0,
+                                      height: isLastReply ? 12 : undefined,
+                                      width: 1.5,
+                                      backgroundColor: '#E6E1E8',
+                                      zIndex: 1,
+                                    }} />
+                                    {/* Thread horizontal branch line */}
+                                    <View style={{
+                                      position: 'absolute',
+                                      left: -26,
+                                      top: 12,
+                                      width: 26,
+                                      height: 1.5,
+                                      backgroundColor: '#E6E1E8',
+                                      zIndex: 1,
+                                    }} />
+
+                                    <Avatar name={reply?.username || 'User'} photo={reply?.user_photo} size={24} />
+                                    <View style={[styles.commentBubble, { backgroundColor: '#F8F5F9' }]}>
+                                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <Text style={styles.commentItemUser}>{reply?.username || 'User'}</Text>
+                                        {canDeleteReply && (
+                                          <TouchableOpacity
+                                            style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                            onPress={() => handleDeleteComment(reply)}
+                                          >
+                                            <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                          </TouchableOpacity>
+                                        )}
+                                      </View>
+                                      <MentionText style={styles.commentItemText} text={reply?.text || ''} />
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                        <Text style={styles.commentTime}>{formatTimeAgo(reply?.created_at)}</Text>
+                                        <TouchableOpacity
+                                          style={{ marginLeft: 16 }}
+                                          onPress={() => {
+                                            setReplyingToComment(item); // Reply to top-level comment
+                                            setCommentText(`@${reply.username} `); // Mention specific user
+                                          }}
+                                        >
+                                          <Text style={{ fontSize: 11, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  </View>
+                                );
+                              })}
                             </View>
-                          </View>
-                        );
-                      }}
-                      showsVerticalScrollIndicator={false}
-                      contentContainerStyle={{ paddingBottom: 20 }}
-                    />
-                  ) : (
+                          );
+                        }}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 20 }}
+                      />
+                    );
+                  })() : (
                     <View style={styles.commentEmptyState}>
                       <Ionicons name="chatbubble-ellipses-outline" size={42} color="#D5C8D6" />
                       <Text style={styles.commentEmptyText}>No comments yet.</Text>
@@ -2763,11 +3008,31 @@ export default function HomeScreen() {
                   )}
                 </View>
 
+                {replyingToComment && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#F5EFF6',
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    borderTopWidth: 1,
+                    borderTopColor: '#EBE2EE'
+                  }}>
+                    <Text style={{ fontSize: 13, color: '#3B214E' }}>
+                      Replying to <Text style={{ fontWeight: 'bold', color: '#8C36DB' }}>@{replyingToComment.username}</Text>
+                    </Text>
+                    <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                      <Ionicons name="close-circle" size={18} color="#8A7B89" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
                 <View style={[styles.commentInputWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
                   <MentionInput
                     value={commentText}
                     onChangeText={setCommentText}
-                    placeholder="Add a comment..."
+                    placeholder={replyingToComment ? `Reply to @${replyingToComment.username}...` : "Add a comment..."}
                     placeholderTextColor="#8A7B89"
                     multiline
                     inputStyle={styles.commentInput}

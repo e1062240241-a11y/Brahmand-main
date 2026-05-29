@@ -1298,6 +1298,24 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
         user = await db.get_user_by_phone(phone)
         
         if user and user.get('sl_id'):
+            if user.get('is_blocked'):
+                from datetime import datetime, timezone
+                blocked_until_str = user.get('blocked_until')
+                if blocked_until_str:
+                    try:
+                        blocked_until = datetime.fromisoformat(blocked_until_str)
+                        if blocked_until.tzinfo is None:
+                            blocked_until = blocked_until.replace(tzinfo=timezone.utc)
+                        now = datetime.now(timezone.utc)
+                        if now < blocked_until:
+                            raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+                    except HTTPException:
+                        raise
+                    except Exception:
+                        raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+                else:
+                    raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
+
             # Existing user - return token
             token = create_jwt_token(user['id'], user['sl_id'])
             return {
@@ -2053,6 +2071,8 @@ async def get_user_posts(
                 return min_aware
         return min_aware
 
+    # Filter out hidden/non-public posts
+    candidate_posts = [p for p in candidate_posts if p.get('visibility', 'public') == 'public']
     candidate_posts.sort(key=_created_at_sort_key, reverse=True)
     total_count = len(candidate_posts)
 
@@ -2294,6 +2314,24 @@ async def _upload_post_impl(
     user = await db.get_document('users', user_id)
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
+
+    if user.get('is_blocked'):
+        from datetime import datetime, timezone
+        blocked_until_str = user.get('blocked_until')
+        if blocked_until_str:
+            try:
+                blocked_until = datetime.fromisoformat(blocked_until_str)
+                if blocked_until.tzinfo is None:
+                    blocked_until = blocked_until.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+                if now < blocked_until:
+                    raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+        else:
+            raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
 
     content_type = (file.content_type or '').lower()
     header = await file.read(32)
@@ -2629,6 +2667,24 @@ async def _upload_post_from_storage_impl(
     user = await db.get_document('users', user_id)
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
+
+    if user.get('is_blocked'):
+        from datetime import datetime, timezone
+        blocked_until_str = user.get('blocked_until')
+        if blocked_until_str:
+            try:
+                blocked_until = datetime.fromisoformat(blocked_until_str)
+                if blocked_until.tzinfo is None:
+                    blocked_until = blocked_until.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+                if now < blocked_until:
+                    raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+        else:
+            raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
 
     if not storage_path.startswith('raw-post-videos/'):
         raise HTTPException(status_code=400, detail='Invalid storage path')
@@ -3485,6 +3541,13 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
             detail=f"Offensive comment blocked: {offensive_check.get('reason', 'offensive content')}"
         )
 
+    parent_id = data.get('parent_id')
+    parent_comment = None
+    if parent_id:
+        parent_comment = await db.get_document('post_comments', parent_id)
+        if not parent_comment or parent_comment.get('post_id') != post_id:
+            raise HTTPException(status_code=400, detail='Parent comment not found')
+
     user = await db.get_document('users', user_id)
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
@@ -3497,6 +3560,10 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
         'text': text,
         'created_at': datetime.utcnow(),
     }
+    if parent_id:
+        comment_doc['parent_id'] = parent_id
+        comment_doc['reply_to_username'] = parent_comment.get('username')
+
     comment_id = await db.create_document('post_comments', comment_doc)
     comment_doc['id'] = comment_id
 
@@ -3541,8 +3608,54 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
     updated_post['top_comments'] = top_comments_raw[:5]
 
+    # 1. Notify the author of the parent comment if this is a reply
+    if parent_comment:
+        parent_owner_id = parent_comment.get('user_id')
+        if parent_owner_id and parent_owner_id != user_id:
+            try:
+                actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
+                preview_text = text if len(text) <= 80 else f"{text[:77]}..."
+
+                await db.create_document('notifications', {
+                    'user_id': parent_owner_id,
+                    'title': 'New reply to your comment',
+                    'body': f'{actor_name} replied: "{preview_text}"',
+                    'notification_type': 'social',
+                    'data': {
+                        'post_id': str(post_id),
+                        'comment_id': str(comment_id),
+                        'parent_id': str(parent_id),
+                        'actor_user_id': str(user_id),
+                        'actor_name': actor_name,
+                        'action': 'reply',
+                    },
+                    'is_read': False,
+                    'created_at': datetime.utcnow().isoformat() + 'Z',
+                })
+                logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
+
+                parent_owner_token = await push_service.get_user_fcm_token(parent_owner_id)
+                if parent_owner_token:
+                    push_service.send_notification(
+                        token=parent_owner_token,
+                        title='New reply to your comment',
+                        body=f'{actor_name} replied: "{preview_text}"',
+                        data={
+                            'type': 'post_comment_reply',
+                            'post_id': str(post_id),
+                            'comment_id': str(comment_id),
+                            'parent_id': str(parent_id),
+                            'actor_user_id': str(user_id),
+                        },
+                        channel_id='messages'
+                    )
+                    logger.info(f"Reply push sent to comment owner {parent_owner_id} for comment {parent_id}")
+            except Exception as reply_notify_err:
+                logger.warning(f"Parent comment reply notification failed: {reply_notify_err}")
+
+    # 2. Notify the post owner if they are not the replier and haven't already been notified as the parent owner
     post_owner_id = post.get('user_id')
-    if post_owner_id and post_owner_id != user_id:
+    if post_owner_id and post_owner_id != user_id and post_owner_id != (parent_comment.get('user_id') if parent_comment else None):
         try:
             actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
             preview_text = text if len(text) <= 80 else f"{text[:77]}..."
@@ -4814,6 +4927,19 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     comm = await db.get_document('communities', community_id)
     if not comm:
         raise HTTPException(status_code=404, detail="Community not found")
+        
+    # Populate owner name
+    if comm.get('owner_id'):
+        owner = await db.get_document('users', comm['owner_id'])
+        if owner:
+            comm['owner_name'] = owner.get('name', 'Community Owner')
+            
+    # Populate admin names
+    admin_ids = comm.get('admin_ids', [])
+    if admin_ids:
+        admins = await db.get_documents_batch('users', admin_ids)
+        comm['admin_names'] = [a.get('name', 'Admin') for a in admins if a]
+        
     return comm
 
 
@@ -11369,12 +11495,12 @@ async def _jaap_reminder_worker():
                         uid = r.get("user_id")
                         # Send notification via task queue
                         await task_queue.enqueue(
-                            FirebaseNotificationService.create_notification,
+                            FirebaseNotificationService.notify_jaap_reminder,
                             user_id=uid,
                             title="🙏 Jaap Starting Soon",
                             body=f"Your {session['name']} Hanuman Chalisa session starts in 5 minutes. Join now!",
-                            notification_type="jaap_reminder",
-                            data={"mantra_type": "hanuman", "session_name": session['name']}
+                            mantra_type="hanuman",
+                            session_name=session['name']
                         )
 
             # 2. Check other Live Jaap sessions (Gayatri, Shiva, Krishna, etc.)
@@ -11404,12 +11530,12 @@ async def _jaap_reminder_worker():
                         uid = r.get("user_id")
                         mantra_title = mantra_type.capitalize() + " Mantra" if mantra_type != "shiva" else "Om Namah Shivaya"
                         await task_queue.enqueue(
-                            FirebaseNotificationService.create_notification,
+                            FirebaseNotificationService.notify_jaap_reminder,
                             user_id=uid,
                             title="🙏 Live Jaap Starting Soon",
                             body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
-                            notification_type="jaap_reminder",
-                            data={"mantra_type": mantra_type, "session_name": session['name']}
+                            mantra_type=mantra_type,
+                            session_name=session['name']
                         )
                     
         except Exception as e:

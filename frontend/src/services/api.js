@@ -835,9 +835,9 @@ var togglePostLike = function (postId) {
     return exports.api.post("/posts/".concat(postId, "/like"));
 };
 exports.togglePostLike = togglePostLike;
-var addPostComment = function (postId, text) {
+var addPostComment = function (postId, text, parentId) {
     (0, exports.markPostAsSeen)(postId);
-    return exports.api.post("/posts/".concat(postId, "/comments"), { text: text });
+    return exports.api.post("/posts/".concat(postId, "/comments"), { text: text, parent_id: parentId });
 };
 exports.addPostComment = addPostComment;
 var getPostComments = function (postId, limit) {

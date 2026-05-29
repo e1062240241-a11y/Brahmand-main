@@ -31,6 +31,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useHelpRequestStore } from '../store/helpRequestStore';
 import { useAuthStore } from '../store/authStore';
+import { useTranslation } from '../utils/i18n';
 import {
   getWisdom,
   getGitaShloka,
@@ -173,6 +174,7 @@ const getFestivalsData = async () => {
 };
 
 export const FloatingUtilityButton = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
@@ -882,27 +884,27 @@ export const FloatingUtilityButton = () => {
                     <View style={styles.sosCircleIcon}>
                       <Text style={styles.sosHeaderText}>SOS</Text>
                     </View>
-                    <Text style={styles.sosActiveTitle}>YOUR SOS IS ACTIVE</Text>
-                    <Text style={styles.sosActiveSub}>We are notifying nearby users{"\n"}and keeping you safe.</Text>
+                    <Text style={styles.sosActiveTitle}>{t('yourSosIsActive')}</Text>
+                    <Text style={styles.sosActiveSub}>{t('sosActiveSub')}</Text>
                   </View>
-
+ 
                   <View style={styles.centerGuruContainerSOS}>
                     <View style={styles.guruImageWrapperSOS}>
                       <Image source={require('../../assets/images/krishna_guru.png')} style={styles.guruImage} />
                     </View>
                   </View>
-
+ 
                   <View style={styles.sosStatusCard}>
                     <View style={styles.sosStatusHeader}>
                       <View style={styles.peopleIconBox}>
                         <Ionicons name="people" size={24} color="#FFF" />
                       </View>
                       <View style={styles.sosStatusTextCol}>
-                        <Text style={styles.sosStatusTitle}>{(activeSOS.responders?.length || 0)} {(activeSOS.responders?.length === 1) ? 'PERSON IS' : 'PEOPLE ARE'}</Text>
-                        <Text style={styles.sosStatusTitle}>COMING TO HELP YOU</Text>
+                        <Text style={styles.sosStatusTitle}>{(activeSOS.responders?.length || 0)} {(activeSOS.responders?.length === 1) ? t('personIs') : t('peopleAre')}</Text>
+                        <Text style={styles.sosStatusTitle}>{t('comingToHelpYou')}</Text>
                         <View style={styles.sosVerifiedRow}>
                           <Ionicons name="checkmark-circle" size={12} color="#FFD54F" />
-                          <Text style={styles.sosVerifiedText}>{(activeSOS.responders?.length || 0)} responders confirmed nearby</Text>
+                          <Text style={styles.sosVerifiedText}>{(activeSOS.responders?.length || 0)} {t('respondersConfirmed')}</Text>
                         </View>
                       </View>
                     </View>
@@ -913,32 +915,32 @@ export const FloatingUtilityButton = () => {
                       <View style={styles.receivedHelpCheck}>
                         <Ionicons name="checkmark" size={18} color="#D32F2F" />
                       </View>
-                      <Text style={styles.receivedHelpText}>I HAVE RECEIVED HELP</Text>
+                      <Text style={styles.receivedHelpText}>{t('receivedHelp')}</Text>
                     </TouchableOpacity>
                   </View>
-
+ 
                   <TouchableOpacity style={styles.cancelSOSLink} onPress={() => handleResolveActiveSOS('cancelled')}>
-                    <Text style={styles.cancelSOSText}>Cancel SOS</Text>
+                    <Text style={styles.cancelSOSText}>{t('cancelSOS')}</Text>
                   </TouchableOpacity>
-
+ 
                   {/* Red Themed Menu Items in Background */}
                   <View style={[styles.menuItem, styles.posTopLeft, { opacity: 0.4 }]}>
                     <Image source={require('../../assets/images/custom_library_icon.png')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
-                    <Text style={styles.itemTitleSOSSmall}>Brahmand Library</Text>
+                    <Text style={styles.itemTitleSOSSmall}>{t('brahmandLibrary').replace('\n', ' ')}</Text>
                   </View>
                   <View style={[styles.menuItem, styles.posTopRight, { opacity: 0.4 }]}>
                     <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
-                    <Text style={styles.itemTitleSOSSmall}>Brahmand Passport</Text>
+                    <Text style={styles.itemTitleSOSSmall}>{t('brahmandPassport').replace('\n', ' ')}</Text>
                   </View>
                   <View style={[styles.menuItem, styles.posBottomLeft, { opacity: 0.4 }]}>
                     <Image source={require('../../assets/images/custom_festival_icon.png')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
-                    <Text style={styles.itemTitleSOSSmall}>Horoscope</Text>
+                    <Text style={styles.itemTitleSOSSmall}>{t('horoscope')}</Text>
                   </View>
                   <View style={[styles.menuItem, styles.posLeft, { opacity: 0.4 }]}>
                     <Image source={require('../../assets/images/custom_panchang_icon.png')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
-                    <Text style={styles.itemTitleSOSSmall}>Panchang</Text>
+                    <Text style={styles.itemTitleSOSSmall}>{t('panchang')}</Text>
                   </View>
-
+ 
                   <View style={styles.arrowTop}><Ionicons name="chevron-up" size={24} color="#FFF" /></View>
                   <View style={styles.arrowBottom}><Ionicons name="chevron-down" size={24} color="#FFF" /></View>
                 </View>
@@ -949,11 +951,11 @@ export const FloatingUtilityButton = () => {
                     <View style={styles.alertIconCircle}>
                       <MaterialCommunityIcons name="alarm-light" size={24} color="#D32F2F" />
                     </View>
-                    <Text style={styles.sosAlertTitle}>SOS ALERT</Text>
-                    <Text style={styles.sosAlertSub}>Someone nearby needs help</Text>
-                    <Text style={styles.sosAlertHighlight}>You are the nearest to respond</Text>
+                    <Text style={styles.sosAlertTitle}>{t('sosAlert')}</Text>
+                    <Text style={styles.sosAlertSub}>{t('someoneNeedsHelp')}</Text>
+                    <Text style={styles.sosAlertHighlight}>{t('nearestToRespond')}</Text>
                   </View>
-
+ 
                   <View style={styles.victimCard}>
                     <View style={styles.victimRow}>
                       <View style={styles.victimAvatarBox}>
@@ -967,7 +969,7 @@ export const FloatingUtilityButton = () => {
                         <Text style={styles.victimName}>{nearbySOSAlerts[0].creator_name || nearbySOSAlerts[0].user_name || 'Rahul Sharma'}</Text>
                         <View style={styles.victimTypeRow}>
                           <MaterialCommunityIcons name="medical-bag" size={14} color="#D32F2F" />
-                          <Text style={styles.victimTypeText}>{nearbySOSAlerts[0].emergency_type?.toUpperCase() || 'MEDICAL EMERGENCY'}</Text>
+                          <Text style={styles.victimTypeText}>{nearbySOSAlerts[0].emergency_type?.toUpperCase() === 'MEDICAL' ? t('medicalEmergency') : (nearbySOSAlerts[0].emergency_type?.toUpperCase() || t('medicalEmergency'))}</Text>
                         </View>
                         <View style={styles.victimLocRow}>
                           <Ionicons name="location-outline" size={12} color="#666" />
@@ -975,18 +977,18 @@ export const FloatingUtilityButton = () => {
                         </View>
                         <View style={styles.victimLocRow}>
                           <MaterialCommunityIcons name="target" size={12} color="#666" />
-                          <Text style={styles.victimLocText}>{nearbySOSAlerts[0].distance?.toFixed(2) || '0.04'} km away from you</Text>
+                          <Text style={styles.victimLocText}>{nearbySOSAlerts[0].distance?.toFixed(2) || '0.04'} {t('kmAwayFromYou')}</Text>
                         </View>
                       </View>
                       <Ionicons name="chevron-forward" size={20} color="#BBB" />
                     </View>
                   </View>
-
+ 
                   <View style={styles.communityCall}>
                     <Ionicons name="people-outline" size={16} color="#FFF" />
-                    <Text style={styles.communityCallText}>Please help your community.</Text>
+                    <Text style={styles.communityCallText}>{t('pleaseHelpCommunity')}</Text>
                   </View>
-
+ 
                   <View style={styles.responderActionRow}>
                     <TouchableOpacity
                       style={[styles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
@@ -998,7 +1000,7 @@ export const FloatingUtilityButton = () => {
                       ) : (
                         <>
                           <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
-                          <Text style={styles.responderBtnText}>I'M ON{"\n"}MY WAY</Text>
+                          <Text style={styles.responderBtnText}>{t('onMyWay')}</Text>
                         </>
                       )}
                     </TouchableOpacity>
@@ -1021,22 +1023,22 @@ export const FloatingUtilityButton = () => {
                       }}
                     >
                       <Ionicons name="call" size={22} color="#FFF" />
-                      <Text style={styles.responderBtnText}>CALL</Text>
+                      <Text style={styles.responderBtnText}>{t('call')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.responderBtn, { backgroundColor: '#2196F3' }]}
                       onPress={() => openNearbySOSLocation(nearbySOSAlerts[0])}
                     >
                       <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
-                      <Text style={styles.responderBtnText}>OPEN MAP</Text>
+                      <Text style={styles.responderBtnText}>{t('openMap')}</Text>
                     </TouchableOpacity>
                   </View>
-
+ 
                   <TouchableOpacity style={styles.closeAlertX} onPress={closeUtilityModal}>
                     <View style={styles.closeXCircle}>
                       <Ionicons name="close" size={20} color="#333" />
                     </View>
-                    <Text style={styles.closeXText}>Close Alert</Text>
+                    <Text style={styles.closeXText}>{t('closeAlert')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -1045,31 +1047,31 @@ export const FloatingUtilityButton = () => {
                   <View style={[styles.segmentLine, { transform: [{ rotate: '30deg' }] }]} />
                   <View style={[styles.segmentLine, { transform: [{ rotate: '90deg' }] }]} />
                   <View style={[styles.segmentLine, { transform: [{ rotate: '150deg' }] }]} />
-
+ 
                   <View style={styles.innerCircleBorder} />
-
+ 
                   <View style={styles.arrowTop}><Ionicons name="chevron-up" size={24} color="#FFF" /></View>
                   <View style={styles.arrowBottom}><Ionicons name="chevron-down" size={24} color="#FFF" /></View>
-
+ 
                   <View style={styles.wheelWrapper}>
                     <TouchableOpacity style={[styles.menuItem, styles.posTopLeft]} onPress={() => { setModalVisible(false); router.push('/library'); }}>
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_library_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
-                      <Text style={styles.itemTitle}>Brahmand{"\n"}Library</Text>
-                      <Text style={styles.itemSub}>Knowledge & Wisdom</Text>
+                      <Text style={styles.itemTitle}>{t('brahmandLibrary')}</Text>
+                      <Text style={styles.itemSub}>{t('knowledgeWisdom')}</Text>
                     </TouchableOpacity>
-
+ 
                     <TouchableOpacity style={[styles.menuItem, styles.posTopRight]} onPress={() => { setModalVisible(false); router.push('/passport'); }}>
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_passport_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
-                      <Text style={styles.itemTitle}>Brahmand{"\n"}Passport</Text>
-                      <Text style={styles.itemSub}>Spiritual Journey</Text>
+                      <Text style={styles.itemTitle}>{t('brahmandPassport')}</Text>
+                      <Text style={styles.itemSub}>{t('spiritualJourney')}</Text>
                     </TouchableOpacity>
-
+ 
                     <TouchableOpacity style={[styles.menuItem, styles.posRight]} onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}>
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
-                      <Text style={styles.itemTitle}>Kundli</Text>
-                      <Text style={styles.itemSub}>Planet{"\n"}View</Text>
+                      <Text style={styles.itemTitle}>{t('kundli')}</Text>
+                      <Text style={styles.itemSub}>{t('planetView')}</Text>
                     </TouchableOpacity>
-
+ 
                     <TouchableOpacity
                       style={[styles.menuItem, styles.posBottomRight]}
                       onPress={startSOSFlow}
@@ -1078,23 +1080,23 @@ export const FloatingUtilityButton = () => {
                       <View style={[styles.sosButtonLarge, activeSOS && styles.sosButtonActive]}>
                         <Text style={styles.sosButtonText}>SOS</Text>
                       </View>
-                      <Text style={styles.itemTitleSOS}>Emergency SOS</Text>
-                      <Text style={styles.itemSub}>Tap for Help</Text>
+                      <Text style={styles.itemTitleSOS}>{t('emergencySOS')}</Text>
+                      <Text style={styles.itemSub}>{t('tapForHelp')}</Text>
                     </TouchableOpacity>
-
+ 
                     <TouchableOpacity style={[styles.menuItem, styles.posBottomLeft]} onPress={() => { setModalVisible(false); router.push('/horoscope'); }}>
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
-                      <Text style={styles.itemTitle}>Horoscope</Text>
-                      <Text style={styles.itemSub}>Daily{"\n"}Predictions</Text>
+                      <Text style={styles.itemTitle}>{t('horoscope')}</Text>
+                      <Text style={styles.itemSub}>{t('dailyPredictions')}</Text>
                     </TouchableOpacity>
-
+ 
                     <TouchableOpacity style={[styles.menuItem, styles.posLeft]} onPress={openPanchangWithLocation}>
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_panchang_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
-                      <Text style={styles.itemTitle}>Panchang</Text>
-                      <Text style={styles.itemSub}>Daily{"\n"}Hindu Calendar</Text>
+                      <Text style={styles.itemTitle}>{t('panchang')}</Text>
+                      <Text style={styles.itemSub}>{t('dailyHinduCalendar')}</Text>
                     </TouchableOpacity>
                   </View>
-
+ 
                   <TouchableOpacity
                     style={styles.centerGuruContainer}
                     activeOpacity={0.9}
@@ -1105,10 +1107,10 @@ export const FloatingUtilityButton = () => {
                     </View>
                     <View style={styles.guruTitleBox}>
                       <Ionicons name="leaf" size={16} color="#FFD54F" style={{ marginBottom: -2 }} />
-                      <Text style={styles.guruName}>my Krishna</Text>
+                      <Text style={styles.guruName}>{t('myKrishnaSmall')}</Text>
                       <View style={styles.guruSubLine}>
                         <View style={styles.guruLine} />
-                        <Text style={styles.guruSubText}>AI Guru</Text>
+                        <Text style={styles.guruSubText}>{t('aiGuru')}</Text>
                         <View style={styles.guruLine} />
                       </View>
                     </View>

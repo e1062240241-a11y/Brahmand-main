@@ -62,10 +62,9 @@ export default function KycSubmitScreen() {
 
   const statusText = useMemo(() => {
     if (kycStatus === 'verified') return 'Your KYC is verified. You can now view CVs.';
-    if (kycStatus === 'pending' || kycStatus === 'manual_review') {
+    if (kycStatus === 'pending' || kycStatus === 'manual_review' || kycStatus === 'rejected') {
       return 'Your KYC request is submitted and pending admin approval.';
     }
-    if (kycStatus === 'rejected') return 'Your KYC was rejected. Please resubmit your details.';
     return 'Submit KYC to view candidate CVs.';
   }, [kycStatus]);
 
@@ -248,7 +247,7 @@ export default function KycSubmitScreen() {
               <Text style={styles.statusText}>{statusText}</Text>
             </View>
 
-            {kycStatus === 'verified' ? (
+            {kycStatus === 'verified' || kycStatus === 'pending' || kycStatus === 'manual_review' || kycStatus === 'rejected' ? (
               <Button title="Back" onPress={() => router.replace('/(tabs)/profile')} style={styles.submitButton} />
             ) : (
               <>

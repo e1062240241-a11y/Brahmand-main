@@ -19,6 +19,7 @@ import { SPACING } from '../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { KaraokeSyncEngine, KaraokeData, KaraokeSection } from '../src/components/Karaoke';
 import hanumanChalisaData from '../assets/data/hanuman-chalisa-karaoke.json';
+import { useTranslation } from '../src/utils/i18n';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -132,10 +133,10 @@ const TIME_SLOTS = [
 ];
 
 const MUSIC_OPTIONS = [
-    { id: 'waterfall', name: 'Peaceful Waterfall', icon: 'water', file: require('../assets/audio/audio ekant/eisenkern1982-waterfall-176958.mp3') },
-    { id: 'yoga-zen', name: 'Yoga Zen Ambience', icon: 'leaf', file: require('../assets/audio/audio ekant/leberch-yoga-509070.mp3') },
-    { id: 'yoga-meditation', name: 'Deep Meditation', icon: 'musical-notes', file: require('../assets/audio/audio ekant/leberch-yoga-509709.mp3') },
-    { id: 'nature', name: 'Birds & Waterfall', icon: 'sunny', file: require('../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3') },
+    { id: 'waterfall', name: 'Peaceful Waterfall', hindiName: 'शांत झरना', icon: 'water', file: require('../assets/audio/audio ekant/eisenkern1982-waterfall-176958.mp3') },
+    { id: 'yoga-zen', name: 'Yoga Zen Ambience', hindiName: 'योग ध्यान वातावरण', icon: 'leaf', file: require('../assets/audio/audio ekant/leberch-yoga-509070.mp3') },
+    { id: 'yoga-meditation', name: 'Deep Meditation', hindiName: 'गहरा ध्यान', icon: 'musical-notes', file: require('../assets/audio/audio ekant/leberch-yoga-509709.mp3') },
+    { id: 'nature', name: 'Birds & Waterfall', hindiName: 'पक्षी और झरना', icon: 'sunny', file: require('../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3') },
 ];
 
 const HANUMAN_CHALISA_AUDIO = require('../assets/audio/audio ekant/Hanuman chalisa.mp3');
@@ -154,6 +155,7 @@ const formatDuration = (seconds: number): string => {
 };
 
 const EkantJaapPage = () => {
+    const { t } = useTranslation();
     const router = useRouter();
     const [selectedNaam, setSelectedNaam] = useState<NaamJaap | null>(null);
     const [selectedSlot, setSelectedSlot] = useState<typeof TIME_SLOTS[0] | null>(null);
@@ -230,7 +232,7 @@ const EkantJaapPage = () => {
             setSelectedSlot({ id: 'karaoke', label: formatDuration(duration), seconds: duration, minutes: Math.ceil(duration / 60) });
             setAudioSource(HANUMAN_CHALISA_AUDIO);
             setIsKaraokeMode(true);
-            setChosenMusic({ id: 'hanuman-chalisa', name: 'Hanuman Chalisa', icon: 'book', file: HANUMAN_CHALISA_AUDIO });
+            setChosenMusic({ id: 'hanuman-chalisa', name: 'Hanuman Chalisa', hindiName: 'हनुमान चालीसा', icon: 'book', file: HANUMAN_CHALISA_AUDIO });
         }
     };
 
@@ -474,13 +476,13 @@ const EkantJaapPage = () => {
                             <Ionicons name="arrow-back" size={24} color="#D4A017" />
                         </TouchableOpacity>
                         <View style={styles.headerCenter}>
-                            <Text style={styles.headerTitle}>Ekant Jaap</Text>
-                            <Text style={styles.headerSubtitle}>Peaceful Spiritual Practice</Text>
+                            <Text style={styles.headerTitle}>{t('language') === 'hi' ? 'एकांत जाप' : 'Ekant Jaap'}</Text>
+                            <Text style={styles.headerSubtitle}>{t('language') === 'hi' ? 'शांतिपूर्ण आध्यात्मिक अभ्यास' : 'Peaceful Spiritual Practice'}</Text>
                         </View>
                         <Text style={styles.omSymbol}>🕉️</Text>
                     </View>
 
-                    <Text style={styles.sectionTitle}>Select Holy Name</Text>
+                    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'पवित्र नाम चुनें' : 'Select Holy Name'}</Text>
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                         {NAAM_JAAP_LIST.map((naam) => (
                             <TouchableOpacity
@@ -493,14 +495,14 @@ const EkantJaapPage = () => {
                                     <Ionicons name={naam.icon as any} size={24} color={naam.color} />
                                 </View>
                                 <View style={styles.naamInfo}>
-                                    <Text style={[styles.naamName, { color: naam.color }]}>{naam.name}</Text>
+                                    <Text style={[styles.naamName, { color: naam.color }]}>{t('language') === 'hi' ? naam.hindi.split(' ').slice(0,2).join(' ') || naam.name : naam.name}</Text>
                                     <Text style={styles.naamHindi}>{naam.hindi}</Text>
-                                    <Text style={styles.naamDeity}>{naam.deity}</Text>
+                                    <Text style={styles.naamDeity}>{t('language') === 'hi' ? (() => { const d = naam.deity; if (d === 'Lord Shiva') return 'भगवान शिव'; if (d === 'Lord Ram') return 'भगवान राम'; if (d === 'Lord Krishna') return 'भगवान कृष्ण'; if (d === 'Goddess Parvati') return 'माता पार्वती'; if (d === 'Gayatri Devi') return 'गायत्री देवी'; if (d === 'Lord Hanuman') return 'हनुमान जी'; if (d === 'Lord Ganesha') return 'भगवान गणेश'; if (d === 'Goddess Durga') return 'माता दुर्गा'; return d; })() : naam.deity}</Text>
                                 </View>
                                 {naam.id === 'hanuman' ? (
                                     <View style={styles.karaokeBadge}>
                                         <Ionicons name="sparkles" size={12} color="#FF6B00" />
-                                        <Text style={styles.karaokeBadgeText}>Karaoke</Text>
+                                        <Text style={styles.karaokeBadgeText}>{t('language') === 'hi' ? 'कराओके' : 'Karaoke'}</Text>
                                     </View>
                                 ) : (
                                     <Ionicons name="chevron-forward" size={20} color={naam.color} />
@@ -528,12 +530,12 @@ const EkantJaapPage = () => {
                         <Ionicons name={selectedNaam.icon as any} size={32} color={selectedNaam.color} />
                     </View>
 
-                    <Text style={styles.sectionTitle}>Choose Duration</Text>
+                    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'समय चुनें' : 'Choose Duration'}</Text>
                     <ScrollView showsVerticalScrollIndicator={false}>
                         <View style={[styles.naamBanner, { backgroundColor: selectedNaam.bgColor }]}>
                             <Text style={styles.bannerOm}>🙏</Text>
                             <Text style={[styles.bannerHindi, { color: selectedNaam.color }]}>{selectedNaam.hindi}</Text>
-                            <Text style={styles.bannerDeity}>{selectedNaam.deity}</Text>
+                            <Text style={styles.bannerDeity}>{t('language') === 'hi' ? (() => { const d = selectedNaam.deity; if (d === 'Lord Shiva') return 'भगवान शिव'; if (d === 'Lord Ram') return 'भगवान राम'; if (d === 'Lord Krishna') return 'भगवान कृष्ण'; if (d === 'Goddess Parvati') return 'माता पार्वती'; if (d === 'Gayatri Devi') return 'गायत्री देवी'; if (d === 'Lord Hanuman') return 'हनुमान जी'; if (d === 'Lord Ganesha') return 'भगवान गणेश'; if (d === 'Goddess Durga') return 'माता दुर्गा'; return d; })() : selectedNaam.deity}</Text>
                         </View>
 
                         {TIME_SLOTS.map((slot) => (
@@ -547,11 +549,11 @@ const EkantJaapPage = () => {
                                     <Ionicons name="time" size={28} color={selectedNaam.color} />
                                 </View>
                                 <View style={styles.slotInfo}>
-                                    <Text style={[styles.slotDuration, { color: selectedNaam.color }]}>{slot.label}</Text>
-                                    <Text style={styles.slotSub}>Complete focused session</Text>
+                                    <Text style={[styles.slotDuration, { color: selectedNaam.color }]}>{t('language') === 'hi' ? `${slot.minutes} मिनट` : slot.label}</Text>
+                                    <Text style={styles.slotSub}>{t('language') === 'hi' ? 'पूर्ण एकाग्रता सत्र' : 'Complete focused session'}</Text>
                                 </View>
                                 <View style={[styles.slotBadge, { backgroundColor: selectedNaam.iconBg }]}>
-                                    <Text style={[styles.slotBadgeText, { color: selectedNaam.color }]}>SELECT</Text>
+                                    <Text style={[styles.slotBadgeText, { color: selectedNaam.color }]}>{t('language') === 'hi' ? 'चुनें' : 'SELECT'}</Text>
                                 </View>
                             </TouchableOpacity>
                         ))}
@@ -559,12 +561,12 @@ const EkantJaapPage = () => {
                         <View style={styles.infoCard}>
                             <View style={styles.infoHeader}>
                                 <Text style={styles.infoOm}>🪔</Text>
-                                <Text style={styles.infoTitle}>How it works</Text>
+                                <Text style={styles.infoTitle}>{t('language') === 'hi' ? 'यह कैसे काम करता है' : 'How it works'}</Text>
                             </View>
-                            <Text style={styles.infoText}>1. Choose a time slot (10, 20, or 30 minutes)</Text>
-                            <Text style={styles.infoText}>2. Press Start to begin your Ekant Jaap</Text>
-                            <Text style={styles.infoText}>3. Chant the naam as the timer runs</Text>
-                            <Text style={styles.infoText}>4. Complete the full session for your practice</Text>
+                            <Text style={styles.infoText}>{t('language') === 'hi' ? '१. समय स्लॉट चुनें (10, 20 या 30 मिनट)' : '1. Choose a time slot (10, 20, or 30 minutes)'}</Text>
+                            <Text style={styles.infoText}>{t('language') === 'hi' ? '२. एकांत जाप शुरू करने के लिए Start दबाएं' : '2. Press Start to begin your Ekant Jaap'}</Text>
+                            <Text style={styles.infoText}>{t('language') === 'hi' ? '३. टाइमर चलते समय नाम जपें' : '3. Chant the naam as the timer runs'}</Text>
+                            <Text style={styles.infoText}>{t('language') === 'hi' ? '४. अपने अभ्यास के लिए पूरा सत्र पूरा करें' : '4. Complete the full session for your practice'}</Text>
                         </View>
                     </ScrollView>
                 </View>
@@ -579,14 +581,14 @@ const EkantJaapPage = () => {
                     <TouchableOpacity style={styles.jaapTopChip} onPress={() => setIsAudioEnabled(!isAudioEnabled)}>
                         <Ionicons name={isKaraokeMode ? "book" : "musical-notes"} size={14} color={isKaraokeMode ? "#FF6B00" : "#555"} />
                         <Text style={[styles.jaapTopChipText, isKaraokeMode && { color: '#FF6B00' }]} numberOfLines={1}>
-                            {isKaraokeMode ? 'Hanuman Chalisa' : (chosenMusic?.name || 'No Music')}
+                            {isKaraokeMode ? (t('language') === 'hi' ? 'हनुमान चालीसा' : 'Hanuman Chalisa') : ((t('language') === 'hi' ? (chosenMusic as any)?.hindiName : chosenMusic?.name) || (t('language') === 'hi' ? 'संगीत नहीं' : 'No Music'))}
                         </Text>
                         {isKaraokeMode && <View style={[styles.jaapTopChipIndicator, { backgroundColor: '#FF6B00' }]} />}
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.jaapTopChip} onPress={handleGoBack}>
                         <Ionicons name="stopwatch-outline" size={14} color="#555" />
-                        <Text style={styles.jaapTopChipText}>End Focus</Text>
+                        <Text style={styles.jaapTopChipText}>{t('language') === 'hi' ? 'जाप समाप्त करें' : 'End Focus'}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -662,13 +664,13 @@ const EkantJaapPage = () => {
                     <View style={styles.dialogOverlay}>
                         <View style={[styles.dialogBox, { borderColor: '#D4A017' }]}>
                             <Text style={styles.dialogOm}>🙏</Text>
-                            <Text style={styles.dialogTitle}>Stop Jaap?</Text>
+                            <Text style={styles.dialogTitle}>{t('language') === 'hi' ? 'जाप रोकें?' : 'Stop Jaap?'}</Text>
                             <View style={styles.dialogButtons}>
                                 <TouchableOpacity style={[styles.dialogCancel, { borderColor: '#D4A017' }]} onPress={cancelStop}>
-                                    <Text style={[styles.dialogCancelText, { color: '#D4A017' }]}>Continue</Text>
+                                    <Text style={[styles.dialogCancelText, { color: '#D4A017' }]}>{t('language') === 'hi' ? 'जारी रखें' : 'Continue'}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={[styles.dialogConfirm, { backgroundColor: '#B22222' }]} onPress={confirmStop}>
-                                    <Text style={styles.dialogConfirmText}>Stop</Text>
+                                    <Text style={styles.dialogConfirmText}>{t('language') === 'hi' ? 'रोकें' : 'Stop'}</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -679,12 +681,12 @@ const EkantJaapPage = () => {
                     <View style={styles.dialogOverlay}>
                         <View style={[styles.dialogBox, { borderColor: '#D4A017' }]}>
                             <Text style={styles.dialogOm}>🎵</Text>
-                            <Text style={styles.dialogTitle}>Choose Music</Text>
+                            <Text style={styles.dialogTitle}>{t('language') === 'hi' ? 'संगीत चुनें' : 'Choose Music'}</Text>
                             <ScrollView showsVerticalScrollIndicator={false}>
                                 {MUSIC_OPTIONS.map((music) => (
                                     <TouchableOpacity key={music.id} style={[styles.musicOptionCard, { borderColor: '#D4A017' }]} onPress={() => beginJaap(music)}>
                                         <View style={[styles.musicOptionIcon, { backgroundColor: '#FFF9F2' }]}><Ionicons name={music.icon as any} size={24} color="#D4A017" /></View>
-                                        <Text style={[styles.musicOptionName, { color: '#D4A017' }]}>{music.name}</Text>
+                                        <Text style={[styles.musicOptionName, { color: '#D4A017' }]}>{t('language') === 'hi' ? (music as any).hindiName || music.name : music.name}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
