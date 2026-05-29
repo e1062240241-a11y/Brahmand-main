@@ -296,6 +296,64 @@ class PushNotificationService:
         )
 
     @classmethod
+    async def notify_circle_message(
+        cls,
+        circle_id: str,
+        circle_name: str,
+        sender_name: str,
+        message_preview: str,
+        exclude_user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Send notification to all circle members for a new message
+        """
+        db = await _get_db()
+        circle = await db.get_document('circles', circle_id)
+        
+        if not circle:
+            return {'success_count': 0, 'failure_count': 0}
+            
+        member_ids = circle.get('members', [])
+        
+        # In circles, members might be dicts or strings depending on schema, let's handle strings. 
+        # Actually in circle_routes, they are strings or dicts with user_id?
+        # Looking at other routes, member_ids is list of user IDs or dicts. Let's extract IDs safely.
+        actual_member_ids = []
+        for m in member_ids:
+            if isinstance(m, str):
+                actual_member_ids.append(m)
+            elif isinstance(m, dict) and 'user_id' in m:
+                actual_member_ids.append(m['user_id'])
+                
+        if exclude_user_id:
+            actual_member_ids = [m for m in actual_member_ids if m != exclude_user_id]
+            
+        if not actual_member_ids:
+            return {'success_count': 0, 'failure_count': 0}
+            
+        tokens = []
+        for member_id in actual_member_ids:
+            token = await cls.get_user_fcm_token(member_id)
+            if token:
+                tokens.append(token)
+                
+        if not tokens:
+            return {'success_count': 0, 'failure_count': 0}
+            
+        preview = message_preview[:100] + '...' if len(message_preview) > 100 else message_preview
+        
+        return cls.send_multicast(
+            tokens=tokens,
+            title=f"{sender_name} in {circle_name}",
+            body=preview,
+            data={
+                'type': 'circle_message',
+                'circle_id': circle_id,
+                'circle_name': circle_name
+            }
+        )
+
+    @classmethod
     async def notify_circle_invite(
         cls,
         circle_id: str,

@@ -71,7 +71,7 @@ export default function MyKrishnaChat() {
       apiMessages.push({ role: userMessage.role, content: userMessage.content });
 
       const response = await aiChat(apiMessages);
-      
+
       if (response.data?.choices?.[0]?.message) {
         const assistantMsg = response.data.choices[0].message;
         const newAssistantMessage: Message = {
@@ -103,7 +103,7 @@ export default function MyKrishnaChat() {
       <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
         {!isUser && (
           <View style={styles.assistantAvatar}>
-             <Text style={{fontSize: 20}}>🪈</Text>
+            <Text style={{ fontSize: 20 }}>🪈</Text>
           </View>
         )}
         <View style={[
@@ -123,19 +123,19 @@ export default function MyKrishnaChat() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ImageBackground 
-        source={require('../assets/images/image temple/MahakalTemple.webp')} 
+      <ImageBackground
+        source={require('../assets/images/image temple/MahakalTemple.webp')}
         style={styles.container}
       >
-        <LinearGradient 
-          colors={['rgba(26, 35, 126, 0.9)', 'rgba(0, 0, 0, 0.85)']} 
-          style={StyleSheet.absoluteFill} 
+        <LinearGradient
+          colors={['rgba(26, 35, 126, 0.9)', 'rgba(0, 0, 0, 0.85)']}
+          style={StyleSheet.absoluteFill}
         />
-        
-        <Stack.Screen 
+
+        <Stack.Screen
           options={{
             headerShown: false,
-          }} 
+          }}
         />
 
         {/* Custom Header */}
@@ -178,8 +178,8 @@ export default function MyKrishnaChat() {
                 multiline
                 maxLength={500}
               />
-              <TouchableOpacity 
-                style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]} 
+              <TouchableOpacity
+                style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
                 onPress={handleSend}
                 disabled={!inputText.trim() || isLoading}
               >

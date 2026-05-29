@@ -534,6 +534,61 @@ export default function HomeScreen() {
 
       console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
 
+      // Save fetched items to local WatermelonDB (native only)
+      if (Platform.OS !== 'web' && incomingItems.length > 0) {
+        try {
+          const { database } = require('../../src/database');
+          if (database) {
+            await database.write(async () => {
+              const feedsCollection = database.get('feeds');
+              for (const item of incomingItems) {
+                const recordId = String(item.id || item.media_url);
+                if (!recordId) continue;
+                
+                let existingRecord;
+                try {
+                  existingRecord = await feedsCollection.find(recordId);
+                } catch {
+                  existingRecord = null;
+                }
+
+                if (existingRecord) {
+                  await existingRecord.update((record: any) => {
+                    record.username = item.username || '';
+                    record.userPhoto = item.user_photo || null;
+                    record.mediaUrl = item.media_url || null;
+                    record.mediaType = item.media_type || 'image';
+                    record.caption = item.caption || null;
+                    record.likesCount = item.likes_count || 0;
+                    record.commentsCount = item.comments_count || 0;
+                    record.likedByMe = !!item.liked_by_me;
+                    record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                  });
+                } else {
+                  await feedsCollection.create((record: any) => {
+                    record._raw.id = recordId;
+                    record.userId = item.user_id || '';
+                    record.username = item.username || '';
+                    record.userPhoto = item.user_photo || null;
+                    record.mediaUrl = item.media_url || null;
+                    record.mediaType = item.media_type || 'image';
+                    record.caption = item.caption || null;
+                    record.likesCount = item.likes_count || 0;
+                    record.commentsCount = item.comments_count || 0;
+                    record.likedByMe = !!item.liked_by_me;
+                    record.createdAt = item.created_at ? new Date(item.created_at).getTime() : Date.now();
+                    record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                  });
+                }
+              }
+            });
+            console.log(`[HomeFeed] Cached ${incomingItems.length} posts in local SQLite database`);
+          }
+        } catch (localWriteErr) {
+          console.warn('[HomeFeed] Failed to cache posts to database:', localWriteErr);
+        }
+      }
+
       const nextHasMore = typeof payload?.has_more === 'boolean'
         ? payload.has_more
         : incomingItems.length === FEED_PAGE_SIZE;
@@ -558,6 +613,44 @@ export default function HomeScreen() {
       }
     } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
+      // Fallback: if we fail to fetch from API (e.g. offline), try to load from local WatermelonDB
+      if (!append && tabToLoad === 'for_you' && Platform.OS !== 'web') {
+        try {
+          const { Q } = require('@nozbe/watermelondb');
+          const { database } = require('../../src/database');
+          if (database) {
+            const localFeeds = await database.get('feeds')
+              .query(Q.sortBy('created_at', Q.desc), Q.take(FEED_PAGE_SIZE))
+              .fetch();
+            if (localFeeds && localFeeds.length > 0) {
+              console.log(`[HomeFeed Fallback] Loaded ${localFeeds.length} local posts from WatermelonDB after API failure`);
+              const mappedFeeds = localFeeds.map((post: any) => ({
+                id: post.id,
+                user_id: post.userId,
+                username: post.username,
+                user_photo: post.userPhoto,
+                media_url: post.mediaUrl,
+                media_type: post.mediaType,
+                caption: post.caption,
+                likes_count: post.likesCount,
+                comments_count: post.commentsCount,
+                liked_by_me: post.likedByMe,
+                created_at: post.createdAt,
+                updated_at: post.updatedAt,
+              }));
+              setTabFeed(tabToLoad, {
+                posts: mappedFeeds,
+                offset: mappedFeeds.length,
+                hasMore: true,
+                lastFetched: Date.now(),
+              });
+              return; // Successfully loaded fallback
+            }
+          }
+        } catch (localErr) {
+          console.warn('[HomeFeed Fallback] Local database query failed:', localErr);
+        }
+      }
       if (!append) {
         setTabFeed(tabToLoad, {
           posts: [],
@@ -699,14 +792,12 @@ export default function HomeScreen() {
     };
   }, [isFocused, initializeHome, setUnreadCount]);
 
-  const handleNotificationPress = async () => {
-    try {
-      await markAllNotificationsRead();
-      setUnreadCount(0);
-    } catch (err) {
-      console.log('Failed to mark notifications as read:', err);
-    }
+  const handleNotificationPress = () => {
+    setUnreadCount(0);
     router.push('/notifications');
+    markAllNotificationsRead().catch((err) => {
+      console.log('Failed to mark notifications as read:', err);
+    });
   };
 
   const [loadingHashtags, setLoadingHashtags] = useState(false);
@@ -1133,6 +1224,26 @@ export default function HomeScreen() {
     setTabFeed(activeTab, {
       posts: currentPosts.map((item) => (item.id === postId ? optimisticPost : item))
     });
+
+    // Update local database record optimistically
+    if (Platform.OS !== 'web') {
+      try {
+        const { database } = require('../../src/database');
+        if (database) {
+          database.write(async () => {
+            const feedRecord = await database.get('feeds').find(postId);
+            if (feedRecord) {
+              await feedRecord.update((record: any) => {
+                record.likedByMe = optimisticPost.liked_by_me;
+                record.likesCount = optimisticPost.likes_count;
+              });
+            }
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[Like DB Update] failed:', dbErr);
+      }
+    }
 
     // 3. Track original server state if not already tracking
     if (originalLikeStateRefs.current[postId] === undefined) {

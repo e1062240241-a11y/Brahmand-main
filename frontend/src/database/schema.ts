@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-  version: 4,
+  version: 5,
   tables: [
     tableSchema({
       name: 'users',
@@ -99,6 +99,15 @@ export default appSchema({
         { name: 'distance', type: 'number', isOptional: true },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
+      ]
+    }),
+    tableSchema({
+      name: 'sync_queue',
+      columns: [
+        { name: 'url', type: 'string' },
+        { name: 'method', type: 'string' },
+        { name: 'payload', type: 'string' },
+        { name: 'created_at', type: 'number' },
       ]
     })
   ]
