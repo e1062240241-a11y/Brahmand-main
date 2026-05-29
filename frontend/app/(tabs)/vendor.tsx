@@ -17,6 +17,7 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -792,7 +793,11 @@ export default function VendorScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.09, 0.25]}
+      style={styles.container}
+    >
       {/* Top Tabs */}
       <View style={[styles.tabsContainer, { paddingTop: insets.top || SPACING.sm }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
@@ -1147,14 +1152,14 @@ export default function VendorScreen() {
       />
 
 
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   sectionTabsContainer: {
     paddingHorizontal: SPACING.md,
@@ -1195,9 +1200,9 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
     paddingVertical: SPACING.sm,
   },
   tabsScroll: {
