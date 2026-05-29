@@ -791,9 +791,9 @@ export const togglePostLike = (postId: string) => {
   return api.post(`/posts/${postId}/like`);
 };
 
-export const addPostComment = (postId: string, text: string) => {
+export const addPostComment = (postId: string, text: string, parentId?: string) => {
   markPostAsSeen(postId);
-  return api.post(`/posts/${postId}/comments`, { text });
+  return api.post(`/posts/${postId}/comments`, { text, parent_id: parentId });
 };
 
 export const getPostComments = (postId: string, limit: number = 200) =>

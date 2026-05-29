@@ -123,13 +123,13 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                     <View style={fabStyles.dottedRing} />
                     
                     {[
-                      { label: 'Festival', icon: 'calendar-outline' as const, route: '/festivals' },
-                      { label: 'Kundli', icon: 'planet-outline' as const, route: '/astrology' },
-                      { label: 'Brahmand\nPassport', icon: 'compass-outline' as const, route: '/passport' },
-                      { label: 'My Krishna', icon: 'heart-outline' as const, route: '/my-krishna' },
-                      { label: 'Panchang', icon: 'today-outline' as const, route: '/panchang' },
-                      { label: 'Brahmand\nLibrary', icon: 'library-outline' as const, route: '/library' },
-                      { label: 'Jyotish', icon: 'star-outline' as const, route: '/horoscope' },
+                      { key: 'festival', label: t('festival'), icon: 'calendar-outline' as const, route: '/festivals' },
+                      { key: 'kundli', label: t('kundli'), icon: 'planet-outline' as const, route: '/astrology' },
+                      { key: 'brahmandPassport', label: t('brahmandPassport'), icon: 'compass-outline' as const, route: '/passport' },
+                      { key: 'myKrishna', label: t('myKrishna'), icon: 'heart-outline' as const, route: '/my-krishna' },
+                      { key: 'panchang', label: t('panchang'), icon: 'today-outline' as const, route: '/panchang' },
+                      { key: 'brahmandLibrary', label: t('brahmandLibrary'), icon: 'library-outline' as const, route: '/library' },
+                      { key: 'jyotish', label: t('jyotish'), icon: 'star-outline' as const, route: '/horoscope' },
                     ].map((item, index) => {
                       const totalItems = 7;
                       const angleStep = (2 * Math.PI) / totalItems;
@@ -143,7 +143,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                       
                       return (
                         <Animated.View
-                          key={item.label}
+                          key={item.key}
                           style={[
                             fabStyles.menuItem,
                             {
@@ -169,23 +169,23 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                               }, 200);
                             }}
                           >
-                            {item.label === 'My Krishna' ? (
+                            {item.key === 'myKrishna' ? (
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>
-                            ) : item.label === 'Festival' ? (
+                            ) : item.key === 'festival' ? (
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>
-                            ) : item.label === 'Kundli' ? (
+                            ) : item.key === 'kundli' ? (
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>
-                            ) : item.label.includes('Passport') ? (
+                            ) : item.key === 'brahmandPassport' ? (
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>
-                            ) : item.label === 'Panchang' ? (
+                            ) : item.key === 'panchang' ? (
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image
                                   source={require('../../assets/images/panchang_icon_3.png')}
@@ -193,11 +193,11 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                                   resizeMode="contain"
                                 />
                               </ImageBackground>
-                            ) : item.label.includes('Library') ? (
+                            ) : item.key === 'brahmandLibrary' ? (
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>
-                            ) : item.label === 'Jyotish' ? (
+                            ) : item.key === 'jyotish' ? (
                               <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>

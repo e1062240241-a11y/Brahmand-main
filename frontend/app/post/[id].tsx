@@ -49,6 +49,7 @@ const PostScreen = () => {
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentPost, setCommentPost] = useState<any>(null);
   const [postComments, setPostComments] = useState<any[]>([]);
+  const [replyingToComment, setReplyingToComment] = useState<any | null>(null);
   const [commentText, setCommentText] = useState('');
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -163,20 +164,22 @@ const PostScreen = () => {
     if (!commentPost?.id || !commentText.trim()) return;
     setCommentSubmitting(true);
     try {
-      const response = await addPostComment(String(commentPost.id), commentText.trim());
+      const parentId = replyingToComment?.id || undefined;
+      const response = await addPostComment(String(commentPost.id), commentText.trim(), parentId);
       const updatedPost = response.data?.post || response.data;
       if (updatedPost) {
         setFeedPosts(prev => prev.map(p => p.id === commentPost.id ? { ...p, ...updatedPost } : p));
         setCommentPost((prev: any) => prev?.id === commentPost.id ? { ...prev, ...updatedPost } : prev);
       }
       setCommentText('');
+      setReplyingToComment(null);
       await loadComments(String(commentPost.id));
     } catch {
       alert('Unable to submit comment. Please try again.');
     } finally {
       setCommentSubmitting(false);
     }
-  }, [commentText, loadComments, commentPost]);
+  }, [commentText, loadComments, commentPost, replyingToComment]);
 
   const handleDeleteComment = useCallback(async (comment: any) => {
     const commentId = comment?.id;
@@ -407,16 +410,38 @@ const PostScreen = () => {
         />
       )}
 
-      <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
+      <Modal
+        visible={commentModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setCommentModalVisible(false);
+          setReplyingToComment(null);
+        }}
+      >
         <KeyboardAvoidingView
           style={styles.commentModalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
         >
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+            activeOpacity={1}
+            onPress={() => {
+              setCommentModalVisible(false);
+              setReplyingToComment(null);
+            }}
+          />
           <View style={[styles.commentModalSheet, { paddingBottom: keyboardVisible ? 8 : (Platform.OS === 'ios' ? SPACING.lg : SPACING.md) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>Comments ({commentPost?.comments_count ?? postComments.length ?? 0})</Text>
-              <TouchableOpacity onPress={() => { setCommentModalVisible(false); }} style={styles.commentCloseBtn}>
+              <TouchableOpacity
+                onPress={() => {
+                  setCommentModalVisible(false);
+                  setReplyingToComment(null);
+                }}
+                style={styles.commentCloseBtn}
+              >
                 <Ionicons name="close" size={20} color={COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -428,38 +453,135 @@ const PostScreen = () => {
                 </View>
               ) : postComments.length === 0 ? (
                 <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment.</Text>
-              ) : (
-                <FlatList
-                  data={postComments}
-                  keyExtractor={(item, idx) => String(item.id || idx)}
-                  renderItem={({ item }) => {
-                    const canDelete = item.user_id === user?.id || commentPost?.user_id === user?.id;
-                    return (
-                      <View style={styles.commentItem}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                          {canDelete && (
-                            <TouchableOpacity
-                              style={{ padding: 4, marginRight: -4 }}
-                              onPress={() => handleDeleteComment(item)}
-                            >
-                              <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                            </TouchableOpacity>
+              ) : (() => {
+                const parentComments = postComments.filter(c => !c.parent_id);
+                const repliesMap = postComments.reduce((acc, c) => {
+                  if (c.parent_id) {
+                    if (!acc[c.parent_id]) acc[c.parent_id] = [];
+                    acc[c.parent_id].push(c);
+                  }
+                  return acc;
+                }, {} as Record<string, any[]>);
+
+                return (
+                  <FlatList
+                    data={parentComments}
+                    keyExtractor={(item, idx) => String(item.id || idx)}
+                    renderItem={({ item }) => {
+                      const canDelete = item.user_id === user?.id || commentPost?.user_id === user?.id;
+                      const replies = repliesMap[item.id] || [];
+                      return (
+                        <View style={{ marginBottom: 12 }}>
+                          <View style={styles.commentItem}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                              {canDelete && (
+                                <TouchableOpacity
+                                  style={{ padding: 4, marginRight: -4 }}
+                                  onPress={() => handleDeleteComment(item)}
+                                >
+                                  <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                            <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setReplyingToComment(item);
+                                }}
+                              >
+                                <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+
+                          {/* Render replies */}
+                          {replies.length > 0 && (
+                            <View style={{
+                              marginLeft: 12,
+                              paddingLeft: 16,
+                              borderLeftWidth: 1.5,
+                              borderLeftColor: '#E6E1E8',
+                              marginTop: 8,
+                            }}>
+                              {replies.map((reply: any) => {
+                                const canDeleteReply = reply.user_id === user?.id || commentPost?.user_id === user?.id;
+                                return (
+                                  <View key={reply.id} style={[styles.commentItem, { position: 'relative', paddingLeft: 4, marginBottom: 10 }]}>
+                                    {/* Horizontal connection branch */}
+                                    <View style={{
+                                      position: 'absolute',
+                                      left: -16,
+                                      top: 10,
+                                      width: 12,
+                                      height: 1.5,
+                                      backgroundColor: '#E6E1E8',
+                                    }} />
+
+                                    <View style={{ flex: 1 }}>
+                                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={[styles.commentItemUser, { fontSize: 13 }]}>{reply?.username || 'User'}</Text>
+                                        {canDeleteReply && (
+                                          <TouchableOpacity
+                                            style={{ padding: 4, marginRight: -4 }}
+                                            onPress={() => handleDeleteComment(reply)}
+                                          >
+                                            <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                          </TouchableOpacity>
+                                        )}
+                                      </View>
+                                      <MentionText style={[styles.commentItemText, { fontSize: 13 }]} text={reply?.text || ''} />
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                        <TouchableOpacity
+                                          onPress={() => {
+                                            setReplyingToComment(item);
+                                            setCommentText(`@${reply.username} `);
+                                          }}
+                                        >
+                                          <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                            </View>
                           )}
                         </View>
-                        <MentionText style={styles.commentItemText} text={item?.text || ''} />
-                      </View>
-                    );
-                  }}
-                />
-              )}
+                      );
+                    }}
+                  />
+                );
+              })()}
             </View>
+
+            {replyingToComment && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: COLORS.background,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderTopWidth: 0.5,
+                borderTopColor: COLORS.divider,
+                marginBottom: 8,
+              }}>
+                <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
+                  Replying to <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
+                </Text>
+                <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                  <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.commentInputRow}>
               <TextInput
                 value={commentText}
                 onChangeText={setCommentText}
-                placeholder="Add a comment..."
+                placeholder={replyingToComment ? `Reply to @${replyingToComment.username}...` : "Add a comment..."}
                 placeholderTextColor={COLORS.textSecondary}
                 style={styles.commentTextInput}
                 multiline

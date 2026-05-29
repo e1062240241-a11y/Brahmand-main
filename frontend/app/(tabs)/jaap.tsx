@@ -267,6 +267,40 @@ export default function JaapLandingScreen() {
     return item.location || 'Unknown Location';
   };
 
+  const getTranslatedTempleName = (name: string) => {
+    if (t('language') === 'hi') {
+      if (name.includes('Kedarnath')) return 'श्री केदारनाथ मंदिर';
+      if (name.includes('Somnath')) return 'श्री सोमनाथ ज्योतिर्लिंग';
+      if (name.includes('Kashi')) return 'श्री काशी विश्वनाथ';
+      if (name.includes('Badrinath')) return 'श्री बद्रीनाथ मंदिर';
+      if (name.includes('Mahakaleshwar')) return 'श्री महाकालेश्वर ज्योतिर्लिंग';
+      if (name.includes('Omkareshwar')) return 'श्री ओंकारेश्वर ज्योतिर्लिंग';
+      if (name.includes('Rameshwaram')) return 'श्री रामेश्वरम ज्योतिर्लिंग';
+      if (name.includes('Mallikarjuna')) return 'श्री मल्लिकार्जुन ज्योतिर्लिंग';
+      if (name.includes('Bhimashankar')) return 'श्री भीमशंकर ज्योतिर्लिंग';
+      if (name.includes('Trimbakeshwar')) return 'श्री त्र्यंबकेश्वर ज्योतिर्लिंग';
+      if (name.includes('Vaidyanath')) return 'श्री बैद्यनाथ ज्योतिर्लिंग';
+      if (name.includes('Ghrishneshwar')) return 'श्री घृष्णेश्वर ज्योतिर्लिंग';
+    }
+    return name;
+  };
+
+  const getTranslatedTempleLocation = (loc: string) => {
+    if (t('language') === 'hi') {
+      let l = loc;
+      if (l.includes('Uttarakhand')) l = l.replace('Uttarakhand', 'उत्तराखंड');
+      if (l.includes('Gujarat')) l = l.replace('Gujarat', 'गुजरात');
+      if (l.includes('Uttar Pradesh')) l = l.replace('Uttar Pradesh', 'उत्तर प्रदेश');
+      if (l.includes('Madhya Pradesh')) l = l.replace('Madhya Pradesh', 'मध्य प्रदेश');
+      if (l.includes('Maharashtra')) l = l.replace('Maharashtra', 'महाराष्ट्र');
+      if (l.includes('Tamil Nadu')) l = l.replace('Tamil Nadu', 'तमिलनाडु');
+      if (l.includes('Andhra Pradesh')) l = l.replace('Andhra Pradesh', 'आंध्र प्रदेश');
+      if (l.includes('Jharkhand')) l = l.replace('Jharkhand', 'झारखंड');
+      return l;
+    }
+    return loc;
+  };
+
   const filteredTemples = (temples || []).filter(t => {
     const loc = getTempleLocation(t);
     const matchesSearch = (t.name?.toLowerCase().includes(templeSearch.toLowerCase()) || 
@@ -305,13 +339,23 @@ export default function JaapLandingScreen() {
     );
   };
 
-  const heroTitle = liveActive ? 'Mahamrityunjaya Mantra' : 'Evening Gayatri Chanting';
-  const heroTagline = liveActive
-    ? 'We chant. We heal. We rise together.'
-    : 'Connect with the divine light. Starting at 6:00 PM.';
-  const heroTimeLabel = liveActive
-    ? `Live until ${liveEnd ? formatTime(liveEnd) : '5:00 PM'}`
-    : 'Next Session: 6:00 PM Today';
+  const heroTitle = t('language') === 'hi'
+    ? (liveActive ? 'महामृत्युंजय मंत्र' : 'सायंकालीन गायत्री जाप')
+    : (liveActive ? 'Mahamrityunjaya Mantra' : 'Evening Gayatri Chanting');
+  const heroTagline = t('language') === 'hi'
+    ? (liveActive
+        ? 'हम जाप करते हैं। हम ठीक होते हैं। हम एक साथ उठते हैं।'
+        : 'दिव्य प्रकाश से जुड़ें। शाम 6:00 बजे से शुरू।')
+    : (liveActive
+        ? 'We chant. We heal. We rise together.'
+        : 'Connect with the divine light. Starting at 6:00 PM.');
+  const heroTimeLabel = t('language') === 'hi'
+    ? (liveActive
+        ? `शाम ${liveEnd ? formatTime(liveEnd) : '5:00'} बजे तक लाइव`
+        : 'अगला सत्र: आज शाम 6:00 बजे')
+    : (liveActive
+        ? `Live until ${liveEnd ? formatTime(liveEnd) : '5:00 PM'}`
+        : 'Next Session: 6:00 PM Today');
 
   return (
     <LinearGradient
@@ -357,7 +401,11 @@ export default function JaapLandingScreen() {
                     <View style={styles.bannerTopSpacer} />
                     <View style={[styles.mockupLiveBadge, !liveActive && styles.mockupScheduledBadge]}>
                       <View style={styles.liveDot} />
-                      <Text style={styles.mockupLiveText}>{liveActive ? 'LIVE' : 'SOON'}</Text>
+                      <Text style={styles.mockupLiveText}>
+                        {liveActive 
+                          ? (t('language') === 'hi' ? 'लाइव' : 'LIVE') 
+                          : (t('language') === 'hi' ? 'जल्द ही' : 'SOON')}
+                      </Text>
                     </View>
                   </View>
 
@@ -396,7 +444,9 @@ export default function JaapLandingScreen() {
                       >
                         <MaterialCommunityIcons name="broadcast" size={17} color="#FFF" />
                         <Text style={styles.mockupJoinJaapText}>
-                          {liveActive ? 'Join Live Jaap' : 'Set Reminder'}
+                          {liveActive 
+                            ? (t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap') 
+                            : (t('language') === 'hi' ? 'रिमाइंडर सेट करें' : 'Set Reminder')}
                         </Text>
                         <Ionicons name="chevron-forward" size={15} color="#FFF" />
                       </LinearGradient>
@@ -516,34 +566,33 @@ export default function JaapLandingScreen() {
                           <Ionicons name="radio" size={12} color="#FFF" style={{ marginRight: 4 }} />
                           <Text style={styles.exactLiveText}>{liveLabel}</Text>
                         </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <View style={styles.exactCountBadge}>
-                            <Text style={styles.exactCountText}>
-                              {t('language') === 'hi' ? `${jaap.devotees.replace('K', ' हजार')} भक्त` : `${jaap.devotees} devotees`}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            testID={`jaap-bell-${jaap.id}`}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            style={[
-                              styles.jaapCardBellBtn,
-                              reminders[jaap.id] && styles.jaapCardBellBtnActive
-                            ]}
-                            onPress={() => {
-                              const mantraType = jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
-                              // Toggle reminders for all sessions of this mantra
-                              handleSetReminder(jaap.id, mantraType, 'All');
-                            }}
-                          >
-                            <Ionicons
-                              name={reminders[jaap.id] ? 'notifications' : 'notifications-outline'}
-                              size={14}
-                              color={reminders[jaap.id] ? '#FFD700' : '#FFF'}
-                            />
-                          </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity
+                          testID={`jaap-bell-${jaap.id}`}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={[
+                            styles.jaapCardBellBtn,
+                            reminders[jaap.id] && styles.jaapCardBellBtnActive
+                          ]}
+                          onPress={() => {
+                            const mantraType = jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
+                            // Toggle reminders for all sessions of this mantra
+                            handleSetReminder(jaap.id, mantraType, 'All');
+                          }}
+                        >
+                          <Ionicons
+                            name={reminders[jaap.id] ? 'notifications' : 'notifications-outline'}
+                            size={16}
+                            color={reminders[jaap.id] ? '#FFD700' : '#FFF'}
+                          />
+                        </TouchableOpacity>
                       </View>
                     <View style={styles.jaapCardBottomArea}>
+                      <View style={styles.exactCountBadge}>
+                        <Ionicons name="people" size={12} color="#FFF" style={{ marginRight: 4 }} />
+                        <Text style={styles.exactCountText}>
+                          {t('language') === 'hi' ? `${jaap.devotees.replace('K', ' हजार')} भक्त` : `${jaap.devotees} devotees`}
+                        </Text>
+                      </View>
                       <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
                       <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
                       <TouchableOpacity
@@ -761,9 +810,23 @@ export default function JaapLandingScreen() {
                     <Image source={getTempleImageByName(item.name)} style={styles.newTempleCardImg} resizeMode="cover" />
                     <View style={styles.newTempleCardInfo}>
                       <View>
-                        <Text style={styles.newTempleCardDeity}>{item.deity || 'LORD SHIVA'}</Text>
-                        <Text style={styles.newTempleCardName}>{item.name}</Text>
-                        <Text style={styles.newTempleCardLoc}>{getTempleLocation(item)}</Text>
+                        <Text style={styles.newTempleCardDeity}>
+                          {(() => {
+                            const rawDeity = item.deity || 'LORD SHIVA';
+                            if (t('language') === 'hi') {
+                              const upper = rawDeity.toUpperCase();
+                              if (upper.includes('SHIVA')) return 'भगवान शिव';
+                              if (upper.includes('KRISHNA')) return 'भगवान कृष्ण';
+                              if (upper.includes('GANESHA') || upper.includes('GANESH')) return 'भगवान गणेश';
+                              if (upper.includes('HANUMAN')) return 'हनुमान जी';
+                              if (upper.includes('LAXMI') || upper.includes('LAKSHMI')) return 'माता लक्ष्मी';
+                              return rawDeity;
+                            }
+                            return rawDeity;
+                          })()}
+                        </Text>
+                        <Text style={styles.newTempleCardName}>{getTranslatedTempleName(item.name || '')}</Text>
+                        <Text style={styles.newTempleCardLoc}>{getTranslatedTempleLocation(getTempleLocation(item))}</Text>
                       </View>
                       <TouchableOpacity style={styles.newTempleOpenBtn} onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}>
                         <Text style={styles.newTempleOpenBtnText}>{t('openInMaps')}</Text>
@@ -1037,22 +1100,31 @@ const styles = StyleSheet.create({
   jaapCardTopRow: { flexDirection: 'row', justifyContent: 'space-between' },
   exactLiveBadge: { backgroundColor: '#E31E24', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },
   exactLiveText: { color: '#FFF', fontSize: 11, fontWeight: '900' },
-  exactCountBadge: { backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 },
+  exactCountBadge: {
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
   jaapCardBellBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   jaapCardBellBtnActive: {
     backgroundColor: 'rgba(255,215,0,0.2)',
     borderColor: '#FFD700',
   },
-  exactCountText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  exactCountText: { color: '#FFF', fontSize: 11, fontWeight: '800', marginLeft: 2 },
   jaapCardBottomArea: { width: '100%' },
   jaapCardTitleExact: { color: '#FFF', fontSize: 26, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, marginBottom: 8 },
   jaapCardSlokExact: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600', fontStyle: 'italic', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 12 },
