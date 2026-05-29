@@ -257,11 +257,21 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       return;
     }
     
+    // Set a default fallback immediately so the map renders while waiting
+    if (!mapRegion) {
+      setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
+    }
+    
     // Open immediately to prevent blocking UI
     setMapPickerVisible(true);
 
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      let { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const res = await Location.requestForegroundPermissionsAsync();
+        status = res.status;
+      }
+
       if (status === 'granted') {
         const locationPromise = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         const timeoutPromise = new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
@@ -274,11 +284,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         });
-      } else {
-        if (!mapRegion) setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
       }
     } catch (e) {
-      if (!mapRegion) setMapRegion({ latitude: 19.0760, longitude: 72.8777, latitudeDelta: 0.05, longitudeDelta: 0.05 });
+      // Keep default mapRegion if location fetching fails
+      console.warn('Location error in openMap:', e);
     }
   };
 
