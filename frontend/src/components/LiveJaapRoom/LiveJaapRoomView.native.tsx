@@ -45,7 +45,7 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
     bg: require('../../../assets/images/hanuman_jaap_card_v2.png'),
   },
   krishna: {
-    text: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे',
+    text: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे',
     bg: require('../../../assets/images/krishna_jaap_card_v2.png'),
   },
   shiva: {
@@ -303,15 +303,17 @@ export default function LiveJaapRoomView() {
   
   const MANTRA_LINES = useMemo(() => {
     const lines = [];
-    for (let i = 0; i < WORDS.length; i += 4) {
-      lines.push(WORDS.slice(i, i + 4).join(' '));
+    const wordsPerLine = mantraType === 'krishna' ? 8 : 4;
+    for (let i = 0; i < WORDS.length; i += wordsPerLine) {
+      lines.push(WORDS.slice(i, i + wordsPerLine).join(' '));
     }
     return lines;
-  }, [WORDS]);
+  }, [WORDS, mantraType]);
   
   const ROOM_NAME = `jaap-${mantraType || 'gayatri'}`;
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentTimeState, setCurrentTimeState] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(initialMic === 'true');
@@ -320,8 +322,6 @@ export default function LiveJaapRoomView() {
   const [remotePeers, setRemotePeers] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'chant' | 'path'>('chant');
   const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
-  const [inviteSent, setInviteSent] = useState(false);
-  
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
   const upcomingFade = useRef(new Animated.Value(0)).current;
@@ -335,6 +335,17 @@ export default function LiveJaapRoomView() {
   
   const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 50 });
   const audioStatus = useAudioPlayerStatus(bgPlayer);
+
+  // Polling loop for smooth subtitle highlight updates on Native
+  useEffect(() => {
+    if (!bgPlayer) return;
+    const interval = setInterval(() => {
+      if (bgPlayer.currentTime !== undefined && bgPlayer.currentTime !== null) {
+        setCurrentTimeState(bgPlayer.currentTime);
+      }
+    }, 50);
+    return () => clearInterval(interval);
+  }, [bgPlayer]);
 
 
   // Get active line and highlighted index
@@ -408,9 +419,10 @@ export default function LiveJaapRoomView() {
         nextLineText,
       };
     } else {
-      const lineIndex = Math.floor(currentIndex / 4);
+      const wordsPerLine = mantraType === 'krishna' ? 8 : 4;
+      const lineIndex = Math.floor(currentIndex / wordsPerLine);
       const lineItems = MANTRA_LINES[lineIndex] ? MANTRA_LINES[lineIndex].split(' ') : [];
-      const highlightedIdx = currentIndex % 4;
+      const highlightedIdx = currentIndex % wordsPerLine;
       
       const previousLineText = lineIndex - 1 >= 0 ? MANTRA_LINES[lineIndex - 1] : '';
       const nextLineText = MANTRA_LINES[lineIndex + 1] || MANTRA_LINES[0] || '';
@@ -465,7 +477,8 @@ export default function LiveJaapRoomView() {
         return HANUMAN_CHALISA_SEGMENTS[0].items.slice(0, 4).join(' ');
       }
     } else {
-      const nextLineIdx = Math.floor(currentIndex / 4) + 1;
+      const wordsPerLine = mantraType === 'krishna' ? 8 : 4;
+      const nextLineIdx = Math.floor(currentIndex / wordsPerLine) + 1;
       return MANTRA_LINES[nextLineIdx] || MANTRA_LINES[0];
     }
   };
@@ -731,12 +744,12 @@ export default function LiveJaapRoomView() {
   useEffect(() => {
     if (mantraType === 'hanuman') return;
     if (isSessionActive) {
-      const time = audioStatus?.currentTime || 0;
+      const time = currentTimeState || 0;
       const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, time, mantraType);
       setCurrentIndex(syncIdx);
       setIsHolding(syncHold);
     }
-  }, [mantraType, isSessionActive, WORDS, audioStatus?.currentTime]);
+  }, [mantraType, isSessionActive, WORDS, currentTimeState]);
 
   useEffect(() => {
     if (mantraType === 'hanuman' || isSessionActive) return;
@@ -911,36 +924,6 @@ export default function LiveJaapRoomView() {
                <Text style={styles.micStatusText}>{micStatus}</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                testID="jaap-invite-bell-btn"
-                style={[styles.headerBtn, inviteSent && { backgroundColor: 'rgba(255,200,50,0.25)' }]}
-                onPress={async () => {
-                  if (!isSessionActive) {
-                    Alert.alert('Jaap not active', 'Start the jaap first before inviting others.');
-                    return;
-                  }
-                  try {
-                    const { default: api } = await import('../../services/api');
-                    const mantraTitle = (roomTitle as string) || mantraType || 'Live Jaap';
-                    await api.post('/jaap/invite', {
-                      mantra_type: mantraType || 'hanuman',
-                      mantra_title: mantraTitle,
-                    });
-                    setInviteSent(true);
-                    Alert.alert('🙏 Invites Sent!', 'All devotees have been notified to join the jaap.');
-                    setTimeout(() => setInviteSent(false), 5000);
-                  } catch (err: any) {
-                    const msg = err?.response?.data?.detail || 'Could not send invite right now.';
-                    Alert.alert('Invite failed', msg);
-                  }
-                }}
-              >
-                <Ionicons
-                  name={inviteSent ? 'notifications' : 'notifications-outline'}
-                  size={22}
-                  color={inviteSent ? '#FFD700' : '#FFF'}
-                />
-              </TouchableOpacity>
               <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.headerBtn}>
                 <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
               </TouchableOpacity>
@@ -1117,7 +1100,6 @@ export default function LiveJaapRoomView() {
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🙏')}>
                      <Text style={styles.reactionEmojiNew}>🙏</Text>
-                     <View style={styles.reactionBadgeNew}><Text style={styles.reactionBadgeTextNew}>434</Text></View>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🔥')}>
                      <Text style={styles.reactionEmojiNew}>🔥</Text>
@@ -1147,7 +1129,17 @@ export default function LiveJaapRoomView() {
                   </View>
                   <View style={styles.metricItemNew}>
                     <Text style={styles.metricLabelNew}>{t('line').toUpperCase()}</Text>
-                    <Text style={styles.metricValueNew}>{isHanuman ? Math.floor((audioStatus?.currentTime || 0)/15) + 1 : currentIndex + 1}<Text style={styles.metricSlashNew}> / {isHanuman ? 46 : Math.ceil(WORDS.length / 4)}</Text></Text>
+                    <Text style={styles.metricValueNew}>
+                      {(() => {
+                        if (isHanuman) return Math.floor((audioStatus?.currentTime || 0)/15) + 1;
+                        const wordsPerLine = mantraType === 'krishna' ? 8 : 4;
+                        return Math.floor(currentIndex / wordsPerLine) + 1;
+                      })()}
+                      <Text style={styles.metricSlashNew}>
+                        {' '}
+                        / {isHanuman ? 65 : Math.ceil(WORDS.length / (mantraType === 'krishna' ? 8 : 4))}
+                      </Text>
+                    </Text>
                   </View>
                 </View>
 

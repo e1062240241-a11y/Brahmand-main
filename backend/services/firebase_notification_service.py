@@ -538,3 +538,26 @@ class FirebaseNotificationService:
             body=update_title,
             data={"temple_id": temple_id, "type": "temple"}
         )
+
+    @staticmethod
+    async def notify_jaap_reminder(
+        user_id: str,
+        title: str,
+        body: str,
+        mantra_type: str,
+        session_name: str
+    ):
+        """Store notification and send push notification to user's device"""
+        await FirebaseNotificationService.create_notification(
+            user_id=user_id,
+            title=title,
+            body=body,
+            notification_type="jaap_reminder",
+            data={"mantra_type": mantra_type, "session_name": session_name}
+        )
+        await FirebaseNotificationService.send_push_notification(
+            user_id=user_id,
+            title=title,
+            body=body,
+            data={"mantra_type": mantra_type, "session_name": session_name, "type": "jaap_reminder"}
+        )

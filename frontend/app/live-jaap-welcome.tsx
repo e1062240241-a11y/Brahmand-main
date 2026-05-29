@@ -16,16 +16,38 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
 import SwipeButton from '../src/components/SwipeButton';
+import { useTranslation } from '../src/utils/i18n';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const GUIDELINES = [
-  { id: '1', icon: 'volume-mute', title: 'Be Silent When Needed', desc: 'Avoid unnecessary background noise.' },
-  { id: '2', icon: 'heart', title: 'Respect the Sacred Space', desc: 'This is a devotional space.' },
-  { id: '3', icon: 'person', title: 'Chant with Devotion', desc: 'Focus on the mantra, chant sincerely.' },
-  { id: '4', icon: 'people', title: 'No Distractions', desc: 'Avoid chatting or switching apps.' },
-  { id: '5', icon: 'shield-checkmark', title: 'Stay Positive', desc: 'Only positive thoughts and vibrations.' },
+const getGuidelines = (lang: string) => [
+  { id: '1', icon: 'volume-mute', title: lang === 'hi' ? 'शांत रहें' : 'Be Silent When Needed', desc: lang === 'hi' ? 'अनावश्यक शोर करने से बचें।' : 'Avoid unnecessary background noise.' },
+  { id: '2', icon: 'heart', title: lang === 'hi' ? 'पवित्र स्थान का सम्मान करें' : 'Respect the Sacred Space', desc: lang === 'hi' ? 'यह एक भक्तिपूर्ण स्थान है।' : 'This is a devotional space.' },
+  { id: '3', icon: 'person', title: lang === 'hi' ? 'भक्ति भाव से जपें' : 'Chant with Devotion', desc: lang === 'hi' ? 'मंत्र पर ध्यान केंद्रित करें, सच्चे मन से जपें।' : 'Focus on the mantra, chant sincerely.' },
+  { id: '4', icon: 'people', title: lang === 'hi' ? 'ध्यान न भटकाएं' : 'No Distractions', desc: lang === 'hi' ? 'दूसरों से बात करने या ऐप्स बदलने से बचें।' : 'Avoid chatting or switching apps.' },
+  { id: '5', icon: 'shield-checkmark', title: lang === 'hi' ? 'सकारात्मक रहें' : 'Stay Positive', desc: lang === 'hi' ? 'केवल सकारात्मक विचार और कंपन रखें।' : 'Only positive thoughts and vibrations.' },
 ];
+
+const getTranslatedTitle = (title: string): string => {
+  const map: Record<string, string> = {
+    'Hanuman Chalisa': 'हनुमान चालीसा',
+    'Hare Krishna Jaap': 'हरे कृष्ण जाप',
+    'Hare Krishna\nJaap': 'हरे कृष्ण जाप',
+    'Om Namah Shivaya': 'ॐ नमः शिवाय',
+    'Om Namah\nShivaya': 'ॐ नमः शिवाय',
+    'Gayatri Mantra': 'गायत्री मंत्र',
+    'Gayatri\nMantra': 'गायत्री मंत्र',
+    'Ganesh Mantra': 'गणेश मंत्र',
+    'Ganesh\nMantra': 'गणेश मंत्र',
+    'Laxmi Mantra': 'लक्ष्मी मंत्र',
+    'Laxmi\nMantra': 'लक्ष्मी मंत्र',
+    'Krishna Jaap': 'कृष्ण जाप',
+    'Krishna\nJaap': 'कृष्ण जाप',
+    'Maha Mrityunjaya': 'महामृत्युंजय मंत्र',
+    'Kedarnath': 'केदारनाथ',
+  };
+  return map[title] || title;
+};
 
 const MANTRA_PREVIEW: Record<string, string> = {
   gayatri: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात् । ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्...',
@@ -37,6 +59,7 @@ const MANTRA_PREVIEW: Record<string, string> = {
 };
 
 export default function LiveJaapWelcomeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { mantraType, title, fromHome } = useLocalSearchParams<{ mantraType?: string, title?: string, fromHome?: string }>();
@@ -86,8 +109,8 @@ export default function LiveJaapWelcomeScreen() {
 
           {/* HEADER OM */}
           <View style={styles.headerContainer}>
-             <Text style={styles.welcomeText}>Welcome to</Text>
-             <Text style={styles.liveJaapText}>{title || 'Hanuman Chalisa'}</Text>
+             <Text style={styles.welcomeText}>{t('language') === 'hi' ? 'स्वागत है' : 'Welcome to'}</Text>
+             <Text style={styles.liveJaapText}>{t('language') === 'hi' ? getTranslatedTitle(title || 'Hanuman Chalisa') : (title || 'Hanuman Chalisa')}</Text>
              <View style={styles.ornateDivider}>
                <Text style={styles.lotusIcon}>🪷</Text>
              </View>
@@ -99,15 +122,26 @@ export default function LiveJaapWelcomeScreen() {
                   <View style={styles.liveDotRing} />
                   <Text style={styles.statusTextActive}>
                     {hanumanStatus.isCompleted
-                      ? `Session Completed (Waiting for next)`
-                      : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
+                      ? (t('language') === 'hi' ? 'सत्र समाप्त (अगले सत्र की प्रतीक्षा)' : 'Session Completed (Waiting for next)')
+                      : t('language') === 'hi'
+                        ? `${hanumanStatus.sessionName === 'Morning' ? 'सुबह का' : hanumanStatus.sessionName === 'Afternoon' ? 'दोपहर का' : hanumanStatus.sessionName === 'Evening' ? 'शाम का' : 'रात का'} सत्र • राउंड ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} (कुल राउंड ${hanumanStatus.roundOfDay}/51)`
+                        : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
                   </Text>
                 </View>
               ) : (
                 <View style={styles.inactiveBannerInner}>
                   <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
                   <Text style={styles.statusTextInactive}>
-                    Next Live: {hanumanStatus.nextSessionName} Session Starts in {(() => {
+                    {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
+                      const sName = hanumanStatus.nextSessionName;
+                      if (t('language') === 'hi') {
+                        if (sName === 'Morning') return 'सुबह';
+                        if (sName === 'Afternoon') return 'दोपहर';
+                        if (sName === 'Evening') return 'शाम';
+                        if (sName === 'Night') return 'रात';
+                      }
+                      return sName;
+                    })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Session Starts in'} {(() => {
                       if (!hanumanStatus.nextSessionStart) return '';
                       const diffMs = hanumanStatus.nextSessionStart.getTime() - now.getTime();
                       const hrs = Math.floor(diffMs / 3600000);
@@ -127,14 +161,23 @@ export default function LiveJaapWelcomeScreen() {
                 <View style={styles.activeBannerInner}>
                   <View style={styles.liveDotRing} />
                   <Text style={styles.statusTextActive}>
-                    {`${otherStatus.sessionName} Session • Live (6 AM - 12 PM & 1 PM - 8 PM)`}
+                    {t('language') === 'hi'
+                      ? `${otherStatus.sessionName === 'Morning' ? 'सुबह का' : 'शाम का'} सत्र • लाइव (सुबह 6 - दोपहर 12 और दोपहर 1 - रात 8)`
+                      : `${otherStatus.sessionName} Session • Live (6 AM - 12 PM & 1 PM - 8 PM)`}
                   </Text>
                 </View>
               ) : (
                 <View style={styles.inactiveBannerInner}>
                   <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
                   <Text style={styles.statusTextInactive}>
-                    Next Live: {otherStatus.nextSessionName} Session Starts in {(() => {
+                    {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
+                      const sName = otherStatus.nextSessionName;
+                      if (t('language') === 'hi') {
+                        if (sName === 'Morning') return 'सुबह';
+                        if (sName === 'Evening') return 'शाम';
+                      }
+                      return sName;
+                    })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Session Starts in'} {(() => {
                       if (!otherStatus.nextSessionStart) return '';
                       const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
                       const hrs = Math.floor(diffMs / 3600000);
@@ -151,20 +194,25 @@ export default function LiveJaapWelcomeScreen() {
           {/* MANTRA PREVIEW - SCROLLABLE FOR LONG TEXTS LIKE HANUMAN CHALISA */}
           <View style={styles.mantraPreviewBox}>
             <Text style={styles.mantraPreviewText}>
-              श्रीगुरु चरन सरोज रज, निज मनु मुकुर सुधारि{'\n'}
-              बरनऊँ रघुबर बिमल जसु, जो दायकु फल चारि
+              {t('language') === 'hi' 
+                ? `श्रीगुरु चरन सरोज रज, निज मनु मुकुर सुधारि\nबरनऊँ रघुबर बिमल जसु, जो दायकु फल चारि`
+                : `Shree Guru Charan Saroj Raj, Nij Manu Mukur Sudhaari\nBarnau Raghuvar Bimal Jasu, Jo Dayaku Phal Chaari`}
             </Text>
           </View>
 
           {/* SUBTITLE */}
           <View style={styles.subtitleContainer}>
-            <Text style={styles.subtitleMain}>A sacred space for collective chanting.</Text>
+            <Text style={styles.subtitleMain}>
+              {t('language') === 'hi'
+                ? 'सामूहिक जाप के लिए एक पवित्र स्थान।'
+                : 'A sacred space for collective chanting.'}
+            </Text>
           </View>
 
           {/* GUIDELINES LIST */}
           <View style={styles.guidelinesContainer}>
-            {GUIDELINES.map((item, index) => (
-              <View key={item.id} style={[styles.card, index === GUIDELINES.length - 1 ? styles.cardNoBorder : null]}>
+            {getGuidelines(t('language')).map((item, index, arr) => (
+              <View key={item.id} style={[styles.card, index === arr.length - 1 ? styles.cardNoBorder : null]}>
                 <View style={styles.cardTextContent}>
                   <Text style={styles.cardTitle}>{item.title}</Text>
                   <Text style={styles.cardDesc}>{item.desc}</Text>
@@ -176,7 +224,7 @@ export default function LiveJaapWelcomeScreen() {
           {/* JOIN BUTTON */}
           <View style={styles.footerContainer}>
             <SwipeButton 
-              title="Join Live Jaap Now" 
+              title={t('language') === 'hi' ? 'अभी लाइव जाप में शामिल हों' : 'Join Live Jaap Now'} 
               onSwipeComplete={() => {
                 router.push({
                   pathname: '/live-jaap-room',
@@ -194,7 +242,9 @@ export default function LiveJaapWelcomeScreen() {
 
             <View style={styles.privacyNote}>
               <Ionicons name="lock-closed-outline" size={14} color="#7B6A58" />
-              <Text style={styles.privacyText}>Private & Secure Sacred Space</Text>
+              <Text style={styles.privacyText}>
+                {t('language') === 'hi' ? 'निजी और सुरक्षित आध्यात्मिक स्थान' : 'Private & Secure Sacred Space'}
+              </Text>
             </View>
           </View>
         </View>
