@@ -27,7 +27,7 @@ const mahabharataCover = require('../../assets/images/user_upload_1.png');
 const rigvedaCover = require('../../assets/images/Rigveda.jpg');
 const ramayanCover = require('../../assets/images/Ramayan-hardcover-front-scaled.jpg');
 const yajurvedaCover = require('../../assets/images/Yajurveda.jpg');
-const heroImage = require('../../assets/images/final_sacred_hero_complete.png');
+const heroImage = require('../../assets/images/library_banner_new.jpg');
 const diyaImage = require('../../assets/images/library_diya_new.jpg');
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -40,13 +40,13 @@ const BROWN = '#5A4136';
 
 // ── Book data ─────────────────────────────────────────────────────────────
 const BOOKS = [
-  { id: 'atharvaved',      title: 'Atharvaved',       subtitle: 'THE ATHARVA VEDA',   cover: atharvavedCover,      route: '/library/atharvaved',       progress: 0.45 },
-  { id: 'mahabharata',     title: 'Mahabharata',      subtitle: 'THE GREAT EPIC',      cover: mahabharataCover,     route: '/library/mahabharata',      progress: 0.25 },
-  { id: 'ramayan',         title: 'Ramayan',          subtitle: 'VALMIKI RAMAYAN',     cover: ramayanCover,         route: '/library/ramayan',          progress: 0.60 },
-  { id: 'geeta',           title: 'Bhagvad Geeta',    subtitle: 'M. KRISHNA',          cover: geetaCover,           route: '/library/bhagvad-geeta',    progress: 0.30 },
-  { id: 'rigveda',         title: 'Rigveda',          subtitle: 'RIGVEDA SAMHITA',     cover: rigvedaCover,         route: '/library/rigveda',          progress: 0.15 },
-  { id: 'yajurveda',       title: 'Yajurveda',        subtitle: 'YAJURVEDA',           cover: yajurvedaCover,       route: '/library/yajurveda',        progress: 0.50 },
-  { id: 'ramcharitmanas',  title: 'Ramcharitmanas',   subtitle: 'TULSIDAS',            cover: ramcharitmanasCover,  route: '/library/ramcharitmanas',   progress: 0.20 },
+  { id: 'atharvaved', title: 'Atharvaved', subtitle: 'THE ATHARVA VEDA', cover: atharvavedCover, route: '/library/atharvaved', progress: 0.45 },
+  { id: 'mahabharata', title: 'Mahabharata', subtitle: 'THE GREAT EPIC', cover: mahabharataCover, route: '/library/mahabharata', progress: 0.25 },
+  { id: 'ramayan', title: 'Ramayan', subtitle: 'VALMIKI RAMAYAN', cover: ramayanCover, route: '/library/ramayan', progress: 0.60 },
+  { id: 'upanishads', title: 'Upanishads', subtitle: 'VEDIC TEXTS', cover: geetaCover, route: '/library/upanishads', progress: 0.30 },
+  { id: 'rigveda', title: 'Rigveda', subtitle: 'RIGVEDA SAMHITA', cover: rigvedaCover, route: '/library/rigveda', progress: 0.15 },
+  { id: 'yajurveda', title: 'Yajurveda', subtitle: 'YAJURVEDA', cover: yajurvedaCover, route: '/library/yajurveda', progress: 0.50 },
+  { id: 'ramcharitmanas', title: 'Ramcharitmanas', subtitle: 'TULSIDAS', cover: ramcharitmanasCover, route: '/library/ramcharitmanas', progress: 0.20 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ export default function LibraryPage() {
             <Image source={heroImage} style={styles.heroImg} resizeMode="cover" />
             {/* Gradient overlay for readable text on left */}
             <LinearGradient
-              colors={['rgba(16,12,8,0.97)', 'rgba(16,12,8,0.88)', 'rgba(16,12,8,0.15)']}
+              colors={['rgba(16,12,8,0.7)', 'rgba(16,12,8,0.35)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFillObject}
@@ -126,7 +126,10 @@ export default function LibraryPage() {
               <Text style={styles.heroBody}>
                 Explore timeless scriptures that guide{'\n'}your mind, nourish your soul and{'\n'}enrich your life.
               </Text>
-              <TouchableOpacity style={styles.continueBtn}>
+              <TouchableOpacity
+                style={styles.continueBtn}
+                onPress={() => router.push('/library/continue-reading' as any)}
+              >
                 <Text style={styles.continueTxt}>Continue Reading</Text>
                 <Ionicons name="arrow-forward" size={15} color="#FFF" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
@@ -142,7 +145,7 @@ export default function LibraryPage() {
               <View style={styles.accentBar} />
               <Text style={styles.sectionTitle}>Featured Collection</Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/library/featured' as any)}>
               <Text style={styles.viewAll}>View All ›</Text>
             </TouchableOpacity>
           </View>
@@ -199,12 +202,14 @@ export default function LibraryPage() {
         <View style={styles.quoteWrapper}>
           <View style={styles.quoteCard}>
             {/* Opening quotation mark icon (orange) */}
-            <MaterialCommunityIcons
-              name="format-quote-close"
-              size={44}
-              color={ORANGE}
-              style={styles.quoteIcon}
-            />
+            <View style={[styles.quoteIcon, { width: 25.5, height: 18, justifyContent: 'center', alignItems: 'center', overflow: 'visible' }]}>
+              <MaterialCommunityIcons
+                name="format-quote-close"
+                size={34}
+                color={ORANGE}
+                style={{ marginTop: -12 }} // Adjust icon to perfectly fit the 18px height visually
+              />
+            </View>
             <Text style={styles.quoteText}>
               {'"A library is not just a collection of\nbooks, but a journey towards a better you."'}
             </Text>
@@ -310,16 +315,16 @@ const styles = StyleSheet.create({
   },
   heroImg: {
     position: 'absolute',
+    left: 0,
     right: 0,
     top: 0,
-    width: '65%',
+    width: '100%',
     height: '100%',
   },
   heroContent: {
     flex: 1,
-    justifyContent: 'center',
-    paddingLeft: 24,
-    paddingRight: '38%',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
     paddingVertical: 22,
   },
   heroGreeting: {
@@ -345,8 +350,8 @@ const styles = StyleSheet.create({
     backgroundColor: ORANGE,
     borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 30,
+    alignSelf: 'center',
     shadowColor: ORANGE,
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -405,19 +410,18 @@ const styles = StyleSheet.create({
   bookCard: {
     width: CARD_W,
     marginRight: 16,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOpacity: 0.10,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 18 },
-    elevation: 8,
-    overflow: 'hidden',
   },
   coverBox: {
     width: '100%',
     height: CARD_COVER_H,
     position: 'relative',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   coverImg: {
     width: '100%',
@@ -443,32 +447,33 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 0.8,
-    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   bookMeta: {
-    paddingHorizontal: 14,
-    paddingTop: 10,
+    paddingHorizontal: 4,
+    paddingTop: 14,
     paddingBottom: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
   },
   bookName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     color: DARK,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    marginBottom: 3,
-    lineHeight: 24,
+    fontFamily: FONTS.medium,
+    marginBottom: 4,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   bookSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: BROWN,
     fontFamily: FONTS.medium,
     letterSpacing: 0.2,
-    lineHeight: 20,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 
   /* Quote */

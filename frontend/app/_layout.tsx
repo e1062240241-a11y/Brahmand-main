@@ -23,7 +23,7 @@ import { GlobalFAB } from '../src/components/GlobalFAB';
 
 import { originalAlert } from '../src/utils/nativeAlert';
 
-LogBox.ignoreLogs(['UIKitCore] RCTScrollViewComponentView']);
+LogBox.ignoreLogs(['UIKitCore] RCTScrollViewComponentView', 'RCTScrollViewComponentView implements focusItemsInRect:']);
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
   const titleStr = typeof title === 'string' ? title : '';
