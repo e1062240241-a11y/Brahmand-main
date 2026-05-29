@@ -4814,6 +4814,19 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     comm = await db.get_document('communities', community_id)
     if not comm:
         raise HTTPException(status_code=404, detail="Community not found")
+        
+    # Populate owner name
+    if comm.get('owner_id'):
+        owner = await db.get_document('users', comm['owner_id'])
+        if owner:
+            comm['owner_name'] = owner.get('name', 'Community Owner')
+            
+    # Populate admin names
+    admin_ids = comm.get('admin_ids', [])
+    if admin_ids:
+        admins = await db.get_documents_batch('users', admin_ids)
+        comm['admin_names'] = [a.get('name', 'Admin') for a in admins if a]
+        
     return comm
 
 
