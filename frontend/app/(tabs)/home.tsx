@@ -2524,8 +2524,8 @@ export default function HomeScreen() {
                             onPostMenuPress={handlePostMenuPress}
                             postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
                             isActive={activePostKey === postKey}
-                            theme="light"
-                            isBlackBackground={false}
+                            theme="dark"
+                            isBlackBackground={true}
                           />
                         )}
                       </View>

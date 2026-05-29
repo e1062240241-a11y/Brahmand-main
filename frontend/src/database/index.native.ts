@@ -8,6 +8,7 @@ import Chat from './models/Chat'
 import CommunityMessage from './models/CommunityMessage'
 import Follow from './models/Follow'
 import Community from './models/Community'
+import Vendor from './models/Vendor'
 
 const adapter = new SQLiteAdapter({
   schema,
@@ -20,5 +21,5 @@ const adapter = new SQLiteAdapter({
 
 export const database = new Database({
   adapter,
-  modelClasses: [User, Feed, Chat, CommunityMessage, Follow, Community],
+  modelClasses: [User, Feed, Chat, CommunityMessage, Follow, Community, Vendor],
 })
