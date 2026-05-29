@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
+import { useGitaStore } from '../../src/store/gitaStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -128,14 +129,51 @@ export default function LibraryPage() {
               </Text>
               <TouchableOpacity
                 style={styles.continueBtn}
-                onPress={() => router.push('/library/continue-reading' as any)}
+                onPress={() => router.push('/library/sacred-scriptures' as any)}
               >
-                <Text style={styles.continueTxt}>Continue Reading</Text>
+                <Text style={styles.continueTxt}>Explore Collection</Text>
                 <Ionicons name="arrow-forward" size={15} color="#FFF" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             </View>
           </View>
         </View>
+
+        {/* ── Dynamic Continue Reading (Bhagavad Gita) ── */}
+        {(() => {
+          const { lastReadChapter, progressPercent } = useGitaStore();
+          // Only show if the user has started reading
+          if (progressPercent > 0 || lastReadChapter > 1) {
+            return (
+              <View style={[styles.sectionWrapper, { marginTop: 16 }]}>
+                <View style={styles.sectionHead}>
+                  <View style={styles.headLeft}>
+                    <View style={styles.accentBar} />
+                    <Text style={styles.sectionTitle}>Continue Reading</Text>
+                  </View>
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.gitaProgressCard}
+                  onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
+                  activeOpacity={0.9}
+                >
+                  <Image source={require('../../assets/images/bhagavad_gita_3d_new.png')} style={styles.gitaProgressImg} />
+                  <View style={styles.gitaProgressContent}>
+                    <Text style={styles.gitaProgressTitle}>Bhagavad Gita</Text>
+                    <Text style={styles.gitaProgressSub}>Chapter {lastReadChapter}</Text>
+                    
+                    <View style={styles.gitaProgressBarContainer}>
+                      <View style={[styles.gitaProgressBarFill, { width: `${Math.max(progressPercent, 5)}%` }]} />
+                    </View>
+                    <Text style={styles.gitaProgressText}>{Math.round(progressPercent)}% Completed</Text>
+                  </View>
+                  <Ionicons name="play-circle" size={36} color="#FF6B00" style={{ marginRight: 16 }} />
+                </TouchableOpacity>
+              </View>
+            );
+          }
+          return null;
+        })()}
 
         {/* ── Featured Collection ── */}
         <View style={styles.sectionWrapper}>
@@ -225,6 +263,17 @@ export default function LibraryPage() {
               </View>
             </View>
           </View>
+        </View>
+
+        {/* ── 3D Book Button ── */}
+        <View style={styles.book3dWrapper}>
+          <TouchableOpacity
+            style={styles.book3dBtn}
+            onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
+          >
+            <Text style={styles.book3dBtnTxt}>View 3D Bhagavad Gita</Text>
+            <Ionicons name="book" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -364,6 +413,61 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: FONTS.bold,
     letterSpacing: 0.1,
+  },
+
+  gitaProgressCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF3EB',
+    borderRadius: 16,
+    padding: 12,
+    marginHorizontal: H_PADDING,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.1)',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  gitaProgressImg: {
+    width: 60,
+    height: 80,
+    borderRadius: 8,
+  },
+  gitaProgressContent: {
+    flex: 1,
+    marginLeft: 16,
+    justifyContent: 'center',
+  },
+  gitaProgressTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: DARK,
+    marginBottom: 4,
+  },
+  gitaProgressSub: {
+    fontSize: 13,
+    color: BROWN,
+    marginBottom: 10,
+  },
+  gitaProgressBarContainer: {
+    height: 6,
+    backgroundColor: '#EED9C4',
+    borderRadius: 3,
+    overflow: 'hidden',
+    width: '80%',
+    marginBottom: 6,
+  },
+  gitaProgressBarFill: {
+    height: '100%',
+    backgroundColor: ORANGE,
+    borderRadius: 3,
+  },
+  gitaProgressText: {
+    fontSize: 11,
+    color: BROWN,
+    fontWeight: '500',
   },
 
   /* Section */
@@ -541,5 +645,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFF',
+  },
+  book3dWrapper: {
+    paddingHorizontal: H_PADDING,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  book3dBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BROWN,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  book3dBtnTxt: {
+    color: '#FFF',
+    fontSize: 15,
+    fontFamily: FONTS.bold,
+    fontWeight: '600',
   },
 });

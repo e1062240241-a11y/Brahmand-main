@@ -191,7 +191,7 @@ export default function SacredScripturesPage() {
               {/* CTA */}
               <TouchableOpacity
                 style={styles.startBtn}
-                onPress={() => router.push('/library/bhagvad-geeta' as any)}
+                onPress={() => router.push('/library/continue-reading' as any)}
               >
                 <Text style={styles.startBtnTxt}>Start Reading</Text>
                 <Ionicons name="arrow-forward" size={16} color={PEACHISH} style={{ marginLeft: 8 }} />
