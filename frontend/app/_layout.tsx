@@ -112,7 +112,6 @@ function useDeepLinkHandler() {
         
         if (!path) return;
 
-        console.log('[DeepLink] Navigating to:', path);
         // Navigate to the path directly - expo-router handles the rest
         router.push(`/${path}` as any);
         

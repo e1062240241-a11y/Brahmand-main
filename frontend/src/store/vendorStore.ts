@@ -174,7 +174,7 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
             await database.write(async () => {
               // Get existing
               const existingRecords = await collection.query().fetch();
-              const existingMap = new Map(existingRecords.map((r: any) => [r.vendorId, r]));
+              const existingMap = new Map<string, any>(existingRecords.map((r: any) => [r.vendorId, r]));
               
               const operations: any[] = [];
               

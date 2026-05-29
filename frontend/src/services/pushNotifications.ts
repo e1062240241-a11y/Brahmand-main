@@ -85,7 +85,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   try {
     if (Platform.OS === 'web') {
-      console.log('[Push] Skipping push token registration on web platform.');
       return null;
     }
 
@@ -236,9 +235,14 @@ export async function addNotificationResponseReceivedListener(
  * Get the last notification response (for handling deep links on app launch)
  */
 export async function getLastNotificationResponse() {
+  if (Platform.OS === 'web') return null;
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
-  return await Notifications.getLastNotificationResponseAsync();
+  try {
+    return await Notifications.getLastNotificationResponseAsync();
+  } catch (error) {
+    return null;
+  }
 }
 
 /**

@@ -124,7 +124,7 @@ export default function ProfileScreen() {
       title: t('preferences'),
       items: [
         { id: 'about', icon: 'information-circle', label: t('aboutUs'), route: '/settings/guidelines', color: '#C2410C' },
-        { id: 'location', icon: 'location', label: t('location'), route: '/settings/location', disabled: true, subLabel: t('language') === 'hi' ? 'जल्द आ रहा है' : 'Coming soon', color: '#EA580C' },
+        { id: 'location', icon: 'location', label: t('location'), route: '/settings/location', disabled: false, color: '#EA580C' },
         { id: 'language', icon: 'language', label: t('languageLabel'), value: language === 'en' ? t('english') : t('hindi'), disabled: false, color: '#B45309' },
       ],
     },
@@ -422,13 +422,14 @@ export default function ProfileScreen() {
   const handleShareProfile = async () => {
     const username = profile?.sl_id || user?.sl_id || 'profile';
     const displayName = profile?.name || user?.name || 'User';
+    const profileUrl = `https://brahmand.app/profile/${userId}`;
     const message = t('language') === 'hi' 
-      ? `ब्रह्मांड पर ${displayName} (@${username}) को देखें!`
-      : `Check out ${displayName} (@${username}) on Brahmand!`;
+      ? `ब्रह्मांड पर ${displayName} (@${username}) को देखें!\n\n${profileUrl}`
+      : `Check out ${displayName} (@${username}) on Brahmand!\n\n${profileUrl}`;
     try {
       await Share.share({
         message,
-        url: `https://brahmand.app/profile/${userId}`,
+        url: profileUrl,
         title: t('language') === 'hi' ? `ब्रह्मांड पर ${displayName}` : `${displayName} on Brahmand`,
       });
     } catch (error: any) {
@@ -981,7 +982,7 @@ export default function ProfileScreen() {
           return;
         }
       }
-      await Share.share({ message: `${message}\n${mediaUrl}`, url: mediaUrl || appLink, title: 'Share via Brahmand' });
+      await Share.share({ message: `${message}\n${mediaUrl}`, url: appLink, title: 'Share via Brahmand' });
     } catch (error: any) {
       const msg = String(error?.message || error || '').toLowerCase();
       if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;

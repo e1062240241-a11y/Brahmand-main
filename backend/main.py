@@ -1738,6 +1738,40 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     user = await db.get_document('users', user_id)
     if user and user.get('anonymous_account'):
         raise HTTPException(status_code=403, detail="Anonymous accounts cannot update dual location")
+        
+    # Get user's currently joined communities to find old location-based ones
+    current_communities = user.get('communities', []) or []
+    non_location_community_ids = []
+    old_location_community_ids = []
+    
+    for cid in current_communities:
+        comm = await db.get_document('communities', cid)
+        if comm:
+            if comm.get('type') in ['city', 'state', 'country', 'home_area', 'office_area']:
+                old_location_community_ids.append(cid)
+            else:
+                non_location_community_ids.append(cid)
+                
+    # Remove user from the old location-based communities in the communities collection
+    for cid in old_location_community_ids:
+        try:
+            comm_ref = db.client.collection('communities').document(cid)
+            def _remove_member():
+                doc = comm_ref.get()
+                if doc.exists:
+                    data = doc.to_dict()
+                    members = data.get('members', [])
+                    if user_id in members:
+                        members.remove(user_id)
+                        comm_ref.update({
+                            'members': members,
+                            'member_count': len(members)
+                        })
+            await db._run_sync(_remove_member)
+            await db._cache.delete(f"communities:{cid}")
+        except Exception as e:
+            logger.error(f"Failed to remove user from old community {cid}: {e}")
+            
     update_data = {}
     default_community_ids = []  # Track the 5 default communities (cannot leave)
     
@@ -1821,11 +1855,14 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         update_data['office_location'] = office_loc
         
         # Office Area Group
-        office_area_name = f"{office_loc['area'].title()} Group"
-        # Check if it's different from home area
-        home_area_name = f"{locations.home_location['area'].title()} Group" if locations.home_location else ""
+        office_area_val = office_loc.get('area')
+        office_area_name = f"{office_area_val.title()} Group" if office_area_val else ""
         
-        if office_area_name != home_area_name:
+        # Check if it's different from home area
+        home_area_val = locations.home_location.get('area') if locations.home_location else None
+        home_area_name = f"{home_area_val.title()} Group" if home_area_val else ""
+        
+        if office_area_name and office_area_name != home_area_name:
             office_area_id = await create_or_get_community(office_area_name, 'office_area', office_loc)
             # Insert office area after home area (index 1)
             if len(default_community_ids) >= 1:
@@ -1847,7 +1884,7 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     # Update user with locations and default communities
     update_data['default_communities'] = unique_community_ids  # Store IDs of default communities (cannot leave)
-    update_data['communities'] = unique_community_ids
+    update_data['communities'] = list(set(non_location_community_ids + unique_community_ids))
     
     await db.update_document('users', user_id, update_data)
     
@@ -7176,45 +7213,70 @@ async def ai_chat(
     data: dict,
     token_data: dict = Depends(verify_token)
 ):
-    """Handle AI chat via OpenRouter with reasoning support."""
+    """Handle AI chat via Gemini API."""
+    import os
+    import asyncio
+    from google import genai
+    from google.genai import types
+
     messages = data.get("messages", [])
-    system_prompt = {
-        "role": "system",
-        "content": "You are 'My Krishna', a spiritual guide and embodiment of the wisdom found in the Bhagavad Gita. Your purpose is to guide users through their life challenges using the eternal teachings of Lord Krishna. Always respond with compassion, wisdom, and clarity. Whenever relevant, cite specific shlokas from the Bhagavad Gita. These shlokas MUST be written in their original Sanskrit (Devanagari script) or Hindi. Do NOT use any markdown formatting like asterisks (*), hashtags (#), or bolding in your response. Provide the response in clean, plain text format. Maintain a serene and divine tone. Always address the user as 'Parth' or 'Arjun' in your replies, ensuring these names appear frequently in your guidance."
-    }
-    # Ensure system prompt is at the beginning
-    if not messages or messages[0].get("role") != "system":
-        messages.insert(0, system_prompt)
+    system_prompt = "You are 'My Krishna', a spiritual guide and embodiment of the wisdom found in the Bhagavad Gita. Your purpose is to guide users through their life challenges using the eternal teachings of Lord Krishna. Always respond with compassion, wisdom, and clarity. Whenever relevant, cite specific shlokas from the Bhagavad Gita. These shlokas MUST be written in their original Sanskrit (Devanagari script) or Hindi. Do NOT use any markdown formatting like asterisks (*), hashtags (#), or bolding in your response. Provide the response in clean, plain text format. Maintain a serene and divine tone. Always address the user as 'Parth' or 'Arjun' in your replies, ensuring these names appear frequently in your guidance."
     
-    model = data.get("model", "google/gemma-4-26b-a4b-it:free")
-    enable_reasoning = data.get("reasoning", {}).get("enabled", True)
+    contents = []
+    contents.append(
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=f"System Instructions: {system_prompt}")]
+        )
+    )
+    contents.append(
+        types.Content(
+            role="model",
+            parts=[types.Part.from_text(text="I understand. I am My Krishna. I am ready to guide you, Parth.")]
+        )
+    )
     
-    # Use API key from environment variable
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    
-    import httpx
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "reasoning": {"enabled": enable_reasoning}
-                },
-                timeout=120.0
+    for msg in messages:
+        if msg.get("role") == "system":
+            continue
+        role = "user" if msg.get("role") == "user" else "model"
+        contents.append(
+            types.Content(
+                role=role,
+                parts=[types.Part.from_text(text=msg.get("content", ""))]
             )
-            
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
-                
-            return response.json()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        )
+        
+    def _call_gemini():
+        client = genai.Client(
+            api_key=os.environ.get("GEMINI_API_KEY"),
+        )
+        model = "gemma-4-26b-a4b-it"
+        tools = [
+            types.Tool(googleSearch=types.GoogleSearch()),
+        ]
+        generate_content_config = types.GenerateContentConfig(
+            tools=tools,
+        )
+        return client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=generate_content_config,
+        )
+        
+    try:
+        response = await asyncio.to_thread(_call_gemini)
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": response.text
+                    }
+                }
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =================== WISDOM & PANCHANG ===================
@@ -10429,23 +10491,51 @@ RASHI_TO_ENGLISH = {
     "Dhanu": "sagittarius", "Makar": "capricorn", "Kumbh": "aquarius", "Meen": "pisces"
 }
 
+async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
+    import os
+    import asyncio
+    import json
+    from google import genai
+    from google.genai import types
+    
+    def _call():
+        client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+        model = "gemma-4-26b-a4b-it"
+        prompt = f"Generate a personalized, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. Return ONLY a valid JSON object in this exact format, with no markdown formatting: {{\"prediction\": \"Your horoscope text here\", \"lucky_number\": 7, \"lucky_color\": \"Blue\"}}"
+        
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+        )
+        return response.text
+        
+    try:
+        text = await asyncio.to_thread(_call)
+        text = text.replace("```json", "").replace("```", "").strip()
+        return json.loads(text)
+    except Exception as e:
+        import random
+        return {
+            "prediction": f"Today is a day of spiritual growth and inner peace for {zodiac_name}. Stay positive and focus on your spiritual journey.",
+            "lucky_number": random.randint(1, 9),
+            "lucky_color": "White"
+        }
+
+
 @api_router.get("/horoscope/daily/{zodiac_name}")
 async def get_daily_horoscope_api(
     zodiac_name: str,
     timezone: float = 5.5,
     token_data: dict = Depends(verify_token),
 ):
-    """Get daily horoscope for a sun sign from Astrology API."""
+    """Get daily horoscope for a sun sign using Gemini API."""
     try:
         # Normalize zodiac name
         name = zodiac_name.lower().strip()
         # Handle case where user passes Hindi name
         name = RASHI_TO_ENGLISH.get(zodiac_name, name)
         
-        payload = await astrology_api_service.get_daily_horoscope(
-            zodiac_name=name,
-            timezone=timezone
-        )
+        payload = await _generate_horoscope_with_gemini(name)
         return payload
     except Exception as exc:
         logger.error("Horoscope fetch failed: %s", exc)
@@ -10454,10 +10544,10 @@ async def get_daily_horoscope_api(
 
 @api_router.get("/spiritual/horoscope/{rashi}")
 async def get_horoscope(rashi: str):
-    """Get daily horoscope for a rashi (兼容旧接口)"""
+    """Get daily horoscope for a rashi (using Gemini)"""
     english_name = RASHI_TO_ENGLISH.get(rashi, rashi.lower())
     try:
-        horoscope = await astrology_api_service.get_daily_horoscope(english_name)
+        horoscope = await _generate_horoscope_with_gemini(english_name)
         # Return in a format compatible with old structure if needed, or just the new one
         return {
             "rashi": rashi,
@@ -10489,7 +10579,7 @@ async def get_user_horoscope(token_data: dict = Depends(verify_token)):
     
     english_name = RASHI_TO_ENGLISH.get(user_rashi, user_rashi.lower())
     try:
-        horoscope = await astrology_api_service.get_daily_horoscope(english_name)
+        horoscope = await _generate_horoscope_with_gemini(english_name)
         return {
             "has_profile": True,
             "rashi": user_rashi,
