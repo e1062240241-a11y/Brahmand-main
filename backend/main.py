@@ -5027,6 +5027,9 @@ async def join_community_direct(
         await db.array_union_update('communities', community_id, 'members', [user_id])
         # Add community to user's communities
         await db.array_union_update('users', user_id, 'communities', [community_id])
+        # Invalidate user community cache so next discover call returns is_member=true
+        from utils.cache import cache_manager
+        await cache_manager.invalidate_user_communities(user_id)
         return {"message": "Successfully joined the community.", "community_id": community_id}
     except HTTPException:
         raise
@@ -5038,7 +5041,7 @@ async def join_community_direct(
 @api_router.get("/communities/discover")
 async def discover_communities(token_data: dict = Depends(verify_token)):
     """Discover popular communities"""
-    return await FirebaseCommunityService.discover_communities()
+    return await FirebaseCommunityService.discover_communities(token_data["user_id"])
 
 
 @api_router.get("/communities/{community_id}")
