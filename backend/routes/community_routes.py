@@ -35,7 +35,7 @@ async def create_community(
 @router.get("/discover")
 async def discover_communities(token_data: dict = Depends(verify_token)):
     """Discover popular communities"""
-    return await CommunityService.discover_communities()
+    return await CommunityService.discover_communities(token_data["user_id"])
 
 
 @router.get("/{community_id}")

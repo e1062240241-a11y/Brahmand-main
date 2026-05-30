@@ -344,7 +344,7 @@ class FirebaseCommunityService:
         return {"message": "Rules agreed"}
     
     @staticmethod
-    async def discover_communities() -> List[Dict[str, Any]]:
+    async def discover_communities(user_id: str = None) -> List[Dict[str, Any]]:
         """Discover popular communities"""
         db = await FirebaseCommunityService.get_db()
         communities = await db.query_documents(
@@ -353,13 +353,24 @@ class FirebaseCommunityService:
             order_direction='DESCENDING',
             limit=100
         )
-        
+
+        # Fetch user's joined communities to mark is_member
+        joined_set: set = set()
+        if user_id:
+            try:
+                user = await db.get_document('users', user_id)
+                if user:
+                    joined_set = set(user.get('communities', []))
+            except Exception as e:
+                logger.warning(f"Could not fetch user communities for is_member flag: {e}")
+
         return [{
             "id": c['id'],
             "name": c['name'],
             "type": c['type'],
             "code": c.get('code', ''),
-            "member_count": len(c.get('members', []))
+            "member_count": len(c.get('members', [])),
+            "is_member": c['id'] in joined_set
         } for c in communities]
     
     @staticmethod
