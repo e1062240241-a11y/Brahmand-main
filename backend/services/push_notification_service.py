@@ -46,26 +46,60 @@ class PushNotificationService:
     
     @staticmethod
     async def save_user_fcm_token(user_id: str, fcm_token: str) -> bool:
-        """Save or update a user's FCM token in Firestore"""
+        """Save or update a user's FCM token in Firestore.
+
+        On iOS the frontend previously sent raw APNs hex tokens (64 lowercase hex chars)
+        which firebase-admin messaging.send() cannot use. This method detects and evicts
+        those stale tokens whenever a valid new token arrives.
+        """
         try:
             db = await _get_db()
+
             def _update_tokens():
-                from google.cloud import firestore
-                # Update both singular (legacy/compatibility) and plural (current/multiple devices) fields
-                db.client.collection('users').document(user_id).update({
+                import re
+                from google.cloud import firestore as fs
+
+                doc_ref = db.client.collection('users').document(user_id)
+                user_doc = doc_ref.get()
+                existing_tokens = []
+                if user_doc.exists:
+                    existing_tokens = user_doc.to_dict().get('fcm_tokens', []) or []
+
+                # A raw APNs device token looks like 64 lowercase hex characters.
+                # Expo/FCM tokens contain letters, digits, brackets or colons — never
+                # purely 64-char hex, so this regex is safe to use as a filter.
+                raw_apns_pattern = re.compile(r'^[0-9a-f]{64}$')
+                stale_tokens = [t for t in existing_tokens if raw_apns_pattern.match(t)]
+
+                update_payload = {
                     'fcm_token': fcm_token,
-                    'fcm_tokens': firestore.ArrayUnion([fcm_token]),
-                    'last_fcm_update': firestore.SERVER_TIMESTAMP
-                })
-            
+                    'last_fcm_update': fs.SERVER_TIMESTAMP,
+                }
+
+                if stale_tokens:
+                    logger.info(
+                        f"Evicting {len(stale_tokens)} stale APNs hex token(s) for user {user_id}"
+                    )
+                    doc_ref.update({
+                        **update_payload,
+                        'fcm_tokens': fs.ArrayRemove(stale_tokens),
+                    })
+                    # Now add the valid new token
+                    doc_ref.update({'fcm_tokens': fs.ArrayUnion([fcm_token])})
+                else:
+                    doc_ref.update({
+                        **update_payload,
+                        'fcm_tokens': fs.ArrayUnion([fcm_token]),
+                    })
+
             await db._run_sync(_update_tokens)
-            
+
             logger.info(f"FCM token saved and synced for user {user_id}")
             return True
         except Exception as e:
             logger.error(f"Error saving FCM token: {e}")
             return False
-    
+
     @staticmethod
     def send_notification(
         token: str,
@@ -99,7 +133,7 @@ class PushNotificationService:
             
             # Detect notification type for custom sound / channel selection
             notification_type = (data or {}).get('type', '')
-            is_sos = bool(notification_type and notification_type.startswith('sos'))
+            is_sos = bool(notification_type and (notification_type.startswith('sos') or notification_type == 'sos_alert'))
             
             # Map legacy channel IDs to versioned ones if needed
             channel_map = {
@@ -129,8 +163,9 @@ class PushNotificationService:
             )
             
             # iOS APNs configuration — custom .caf sound bundled in app
+            # apns-push-type: alert is required on iOS 13+ for notifications to display.
             apns_config = messaging.APNSConfig(
-                headers={'apns-priority': '10'},
+                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                 payload=messaging.APNSPayload(
                     aps=messaging.Aps(
                         sound=ios_sound,

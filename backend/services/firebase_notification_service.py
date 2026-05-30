@@ -65,17 +65,22 @@ class FirebaseNotificationService:
         url = "https://exp.host/--/api/v2/push/send"
         
         notification_type = data.get('type') if data else None
-        is_sos = bool(notification_type and notification_type == 'sos_alert')
+        # Match both 'sos_alert' and any 'sos_' subtype
+        is_sos = bool(notification_type and (notification_type == 'sos_alert' or notification_type.startswith('sos_')))
         is_msg = bool(notification_type and notification_type in ('message', 'dm'))
         is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
-        
+
+        # iOS requires the .caf extension for custom sounds via the Expo Push API.
+        # Without the extension iOS silently falls back to the default system sound.
+        ios_sound = 'soundreality_mayday_166011.caf' if is_sos else 'bell.caf'
+
         payloads = []
         for token in tokens:
             payload = {
                 "to": token,
                 "title": title,
                 "body": body,
-                "sound": "soundreality_mayday_166011" if is_sos else "bell",
+                "sound": ios_sound,
                 "priority": "high",
                 "channelId": "sos_alerts_v3" if is_sos else ("community_v1" if is_community else ("messages_v4" if is_msg else "default_v4")),
                 "badge": 1 if is_sos else 0,
@@ -165,7 +170,7 @@ class FirebaseNotificationService:
                 apns_config = None
                 notification_type = data.get('type') if data else None
                 
-                is_sos = bool(notification_type and notification_type == 'sos_alert')
+                is_sos = bool(notification_type and (notification_type == 'sos_alert' or notification_type.startswith('sos_')))
                 is_msg = bool(notification_type and notification_type in ('message', 'dm'))
                 is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
                 
@@ -180,7 +185,8 @@ class FirebaseNotificationService:
                         )
                     )
                     apns_config = fcm.APNSConfig(
-                        headers={'apns-priority': '10'},
+                        # apns-push-type required by Apple on iOS 13+ for display
+                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
                                 sound='soundreality_mayday_166011.caf',
@@ -201,7 +207,7 @@ class FirebaseNotificationService:
                         )
                     )
                     apns_config = fcm.APNSConfig(
-                        headers={'apns-priority': '10'},
+                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
                                 sound='bell.caf',
@@ -221,7 +227,7 @@ class FirebaseNotificationService:
                         )
                     )
                     apns_config = fcm.APNSConfig(
-                        headers={'apns-priority': '10'},
+                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
                                 sound='bell.caf',
@@ -327,7 +333,7 @@ class FirebaseNotificationService:
                         apns_config = None
                         
                         notification_type = data.get('type') if data else None
-                        is_sos = bool(notification_type and notification_type == 'sos_alert')
+                        is_sos = bool(notification_type and (notification_type == 'sos_alert' or notification_type.startswith('sos_')))
                         is_msg = bool(notification_type and notification_type in ('message', 'dm'))
                         is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
                         
@@ -343,7 +349,7 @@ class FirebaseNotificationService:
                                 )
                             )
                             apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10'},
+                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
                                         sound='soundreality_mayday_166011.caf',
@@ -364,7 +370,7 @@ class FirebaseNotificationService:
                                 )
                             )
                             apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10'},
+                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
                                         sound='bell.caf',
@@ -384,7 +390,7 @@ class FirebaseNotificationService:
                                 )
                             )
                             apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10'},
+                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
                                         sound='bell.caf',
