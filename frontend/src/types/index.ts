@@ -46,6 +46,7 @@ export interface User {
   created_at: string;
   personality_verification_status?: 'pending' | 'approved' | 'verified' | 'rejected' | 'none';
   verification_level?: 'state' | 'national' | null;
+  rashi?: string;
 }
 
 export interface Location {

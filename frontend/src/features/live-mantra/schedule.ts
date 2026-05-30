@@ -398,17 +398,29 @@ export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string)
 
 export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, mantraType?: string): { currentIndex: number; isHolding: boolean } => {
   if (mantraType === 'gayatri') {
-    const wordDurations = [3.0, 3.0, 3.0, 6.0, 2.3, 2.3, 2.4, 1.2, 1.3, 1.3, 2.936];
-    const totalDuration = 28.736;
+    const totalDuration = 29.276;
     const position = elapsedSeconds % totalDuration;
-    let accumulated = 0;
-    for (let i = 0; i < wordDurations.length; i++) {
-      accumulated += wordDurations[i];
-      if (position < accumulated) {
-        return { currentIndex: i, isHolding: false };
-      }
-    }
-    return { currentIndex: words.length - 1, isHolding: true };
+    
+    // First chant
+    if (position < 2.4) return { currentIndex: 0, isHolding: false }; // Om
+    if (position < 3.1) return { currentIndex: 1, isHolding: false }; // Bhur
+    if (position < 4.0) return { currentIndex: 2, isHolding: false }; // Bhuvah (Swaha)
+    if (position < 8.45) return { currentIndex: 3, isHolding: false }; // Tat Savitur Varenyam
+    if (position < 9.75) return { currentIndex: 4, isHolding: false }; // Bhargo
+    if (position < 11.0) return { currentIndex: 5, isHolding: false }; // Devasya
+    if (position < 14.2) return { currentIndex: 6, isHolding: false }; // Dheemahi
+    if (position < 14.95) return { currentIndex: 7, isHolding: false }; // Dhiyo
+    if (position < 16.0) return { currentIndex: 8, isHolding: false }; // Yo
+    if (position < 17.0) return { currentIndex: 9, isHolding: false }; // Nah
+    if (position < 20.4) return { currentIndex: 10, isHolding: false }; // Prachodayat (first time)
+    
+    // Second chant repeat
+    if (position < 21.4) return { currentIndex: 7, isHolding: false }; // Dhiyo
+    if (position < 22.4) return { currentIndex: 8, isHolding: false }; // Yo
+    if (position < 23.6) return { currentIndex: 9, isHolding: false }; // Nah
+    if (position < 27.6) return { currentIndex: 10, isHolding: false }; // Prachodayat (second time)
+    
+    return { currentIndex: 10, isHolding: true }; // holding at the end
   }
 
   if (mantraType === 'shiva') {

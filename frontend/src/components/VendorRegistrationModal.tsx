@@ -192,6 +192,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
   const [mapPickerVisible, setMapPickerVisible] = useState(false);
   const [mapRegion, setMapRegion] = useState<any>(null);
+  const vendorMapRef = React.useRef<any>(null);
 
   React.useEffect(() => {
     if (Platform.OS === 'web' && mapPickerVisible) {
@@ -277,13 +278,22 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
         const timeoutPromise = new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
         
         const location: any = await Promise.race([locationPromise, timeoutPromise]);
-        
-        setMapRegion({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        });
+        const lat = parseFloat(location.coords.latitude as any);
+        const lng = parseFloat(location.coords.longitude as any);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const newRegion = {
+            latitude: lat,
+            longitude: lng,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          };
+          setMapRegion(newRegion);
+          setTimeout(() => {
+            if (vendorMapRef.current) {
+              vendorMapRef.current.animateToRegion(newRegion, 1000);
+            }
+          }, 500);
+        }
       }
     } catch (e) {
       // Keep default mapRegion if location fetching fails
@@ -745,10 +755,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           ) : MapView && mapRegion ? (
             <View style={{ flex: 1 }}>
               <MapView
+                ref={vendorMapRef}
                 provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                 style={{ flex: 1 }}
                 initialRegion={mapRegion}
-                region={mapRegion}
                 onRegionChangeComplete={(region: any) => setMapRegion(region)}
                 showsUserLocation
                 showsMyLocationButton={false}
@@ -760,12 +770,20 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   keyboardShouldPersistTaps="handled"
                   onPress={(data, details = null) => {
                     if (details?.geometry?.location) {
-                      setMapRegion({
-                        latitude: details.geometry.location.lat,
-                        longitude: details.geometry.location.lng,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      });
+                      const lat = parseFloat(details.geometry.location.lat as any);
+                      const lng = parseFloat(details.geometry.location.lng as any);
+                      if (!isNaN(lat) && !isNaN(lng)) {
+                        const newRegion = {
+                          latitude: lat,
+                          longitude: lng,
+                          latitudeDelta: 0.01,
+                          longitudeDelta: 0.01,
+                        };
+                        setMapRegion(newRegion);
+                        if (vendorMapRef.current) {
+                          vendorMapRef.current.animateToRegion(newRegion, 1000);
+                        }
+                      }
                     }
                   }}
                   query={{

@@ -14,8 +14,8 @@
 		CA9EE26167D6474FA0F85237 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A7F28BB3527F4635A90F8F1E /* GoogleService-Info.plist */; };
 		2D2F4AEE32994395A852EFA7 /* bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 5FC662A48F4C46EEB1C0B187 /* bell.mp3 */; };
 		63BDE259C8D549A2B79739C3 /* soundreality_mayday_166011.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = CD47AA25C06D4ED9B6E87518 /* soundreality_mayday_166011.mp3 */; };
-		35F7A954F3EB4415A12E39F2 /* bell.caf in Resources */ = {isa = PBXBuildFile; fileRef = 7F0A76C43B1648268C0184D5 /* bell.caf */; };
-		589C0EABEB4F463B9E420345 /* soundreality_mayday_166011.caf in Resources */ = {isa = PBXBuildFile; fileRef = F32AA41F9CF4432887BE532E /* soundreality_mayday_166011.caf */; };
+		35F7A954F3EB4415A12E39F2 /* bell_ios.caf in Resources */ = {isa = PBXBuildFile; fileRef = 7F0A76C43B1648268C0184D5 /* bell_ios.caf */; };
+		589C0EABEB4F463B9E420345 /* soundreality_mayday_166011_ios.caf in Resources */ = {isa = PBXBuildFile; fileRef = F32AA41F9CF4432887BE532E /* soundreality_mayday_166011_ios.caf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,18 +30,18 @@
 		9376DBE25FCB428F9DF0760B /* soundreality_mayday_166011.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = audio.mp3; name = soundreality_mayday_166011.mp3; path = Brahmand/soundreality_mayday_166011.mp3; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Brahmand/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C1D2E3F4A5B6C7D8E9F0A1B2 /* bell.caf */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; name = bell.caf; path = Brahmand/bell.caf; sourceTree = "<group>"; };
+		C1D2E3F4A5B6C7D8E9F0A1B2 /* bell_ios.caf */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; name = bell_ios.caf; path = Brahmand/bell_ios.caf; sourceTree = "<group>"; };
 		D8C2189A68D8ECC897303128 /* Pods_Brahmand.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Brahmand.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E0F091FB110A114364F5BFC5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Brahmand/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		E1F2A3B4C5D6E7F8A9B0C1D2 /* soundreality_mayday_166011.caf */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; name = soundreality_mayday_166011.caf; path = Brahmand/soundreality_mayday_166011.caf; sourceTree = "<group>"; };
+		E1F2A3B4C5D6E7F8A9B0C1D2 /* soundreality_mayday_166011_ios.caf */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; name = soundreality_mayday_166011_ios.caf; path = Brahmand/soundreality_mayday_166011_ios.caf; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Brahmand/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Brahmand-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Brahmand-Bridging-Header.h"; path = "Brahmand/Brahmand-Bridging-Header.h"; sourceTree = "<group>"; };
 		A7F28BB3527F4635A90F8F1E /* GoogleService-Info.plist */ = {isa = PBXFileReference; name = "GoogleService-Info.plist"; path = "Brahmand/GoogleService-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
 		5FC662A48F4C46EEB1C0B187 /* bell.mp3 */ = {isa = PBXFileReference; name = "bell.mp3"; path = "Brahmand/bell.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		CD47AA25C06D4ED9B6E87518 /* soundreality_mayday_166011.mp3 */ = {isa = PBXFileReference; name = "soundreality_mayday_166011.mp3"; path = "Brahmand/soundreality_mayday_166011.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		7F0A76C43B1648268C0184D5 /* bell.caf */ = {isa = PBXFileReference; name = "bell.caf"; path = "Brahmand/bell.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		F32AA41F9CF4432887BE532E /* soundreality_mayday_166011.caf */ = {isa = PBXFileReference; name = "soundreality_mayday_166011.caf"; path = "Brahmand/soundreality_mayday_166011.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		7F0A76C43B1648268C0184D5 /* bell_ios.caf */ = {isa = PBXFileReference; name = "bell_ios.caf"; path = "Brahmand/bell_ios.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		F32AA41F9CF4432887BE532E /* soundreality_mayday_166011_ios.caf */ = {isa = PBXFileReference; name = "soundreality_mayday_166011_ios.caf"; path = "Brahmand/soundreality_mayday_166011_ios.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,8 +67,8 @@
 				A7F28BB3527F4635A90F8F1E /* GoogleService-Info.plist */,
 				5FC662A48F4C46EEB1C0B187 /* bell.mp3 */,
 				CD47AA25C06D4ED9B6E87518 /* soundreality_mayday_166011.mp3 */,
-				7F0A76C43B1648268C0184D5 /* bell.caf */,
-				F32AA41F9CF4432887BE532E /* soundreality_mayday_166011.caf */,
+				7F0A76C43B1648268C0184D5 /* bell_ios.caf */,
+				F32AA41F9CF4432887BE532E /* soundreality_mayday_166011_ios.caf */,
 			);
 			name = Brahmand;
 			sourceTree = "<group>";
@@ -193,8 +193,8 @@
 				CA9EE26167D6474FA0F85237 /* GoogleService-Info.plist in Resources */,
 				2D2F4AEE32994395A852EFA7 /* bell.mp3 in Resources */,
 				63BDE259C8D549A2B79739C3 /* soundreality_mayday_166011.mp3 in Resources */,
-				35F7A954F3EB4415A12E39F2 /* bell.caf in Resources */,
-				589C0EABEB4F463B9E420345 /* soundreality_mayday_166011.caf in Resources */,
+				35F7A954F3EB4415A12E39F2 /* bell_ios.caf in Resources */,
+				589C0EABEB4F463B9E420345 /* soundreality_mayday_166011_ios.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

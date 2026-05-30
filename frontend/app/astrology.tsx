@@ -138,8 +138,8 @@ export default function AstrologyScreen() {
         <View style={styles.profileSection}>
           <View style={styles.profileRow}>
             <View style={styles.avatarWrap}>
-              {user?.profile_image ? (
-                <Image source={{ uri: user.profile_image }} style={styles.avatar} />
+              {user?.photo ? (
+                <Image source={{ uri: user.photo }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
                   <Ionicons name="person" size={28} color="#C67C4E" />

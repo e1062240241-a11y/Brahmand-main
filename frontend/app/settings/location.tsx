@@ -101,6 +101,7 @@ export default function ChangeLocationScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const mapRef = React.useRef<any>(null);
 
   const requestLocationPermission = async () => {
     try {
@@ -231,9 +232,13 @@ export default function ChangeLocationScreen() {
     let initialLng = 78.9629;
     
     const targetLoc = type === 'home' ? homeLocation : officeLocation;
-    if (targetLoc && targetLoc.latitude && targetLoc.longitude) {
-      initialLat = targetLoc.latitude;
-      initialLng = targetLoc.longitude;
+    if (targetLoc && targetLoc.latitude !== undefined && targetLoc.longitude !== undefined) {
+      const parsedLat = parseFloat(targetLoc.latitude as any);
+      const parsedLng = parseFloat(targetLoc.longitude as any);
+      if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+        initialLat = parsedLat;
+        initialLng = parsedLng;
+      }
     } else {
       // Try to get current device location as starting point if available
       try {
@@ -246,16 +251,25 @@ export default function ChangeLocationScreen() {
       } catch (e) {}
     }
 
-    setMapRegion({
+    const newRegion = {
       latitude: initialLat,
       longitude: initialLng,
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
-    });
+    };
+
+    setMapRegion(newRegion);
     
     setSearchQuery('');
     setSearchResults([]);
     setMapPickerVisible(true);
+
+    // Animate map after it mounts
+    setTimeout(() => {
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(newRegion, 500);
+      }
+    }, 500);
   };
 
   const handleSearchLocation = async (text: string) => {
@@ -278,12 +292,20 @@ export default function ChangeLocationScreen() {
   };
 
   const handleSelectSearchResult = (item: any) => {
-    setMapRegion({
-      latitude: item.latitude,
-      longitude: item.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
+    const lat = parseFloat(item.latitude as any);
+    const lng = parseFloat(item.longitude as any);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      const newRegion = {
+        latitude: lat,
+        longitude: lng,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      setMapRegion(newRegion);
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(newRegion, 1000);
+      }
+    }
     setSearchResults([]);
     setSearchQuery(item.display_name || '');
     Keyboard.dismiss();
@@ -621,10 +643,10 @@ export default function ChangeLocationScreen() {
             ) : MapView && mapRegion ? (
               <>
                 <MapView
+                  ref={mapRef}
                   provider={PROVIDER_GOOGLE}
                   style={styles.map}
                   initialRegion={mapRegion}
-                  region={mapRegion}
                   onRegionChangeComplete={(region: any) => setMapRegion(region)}
                   showsUserLocation
                   showsMyLocationButton={true}

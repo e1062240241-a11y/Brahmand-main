@@ -32,7 +32,7 @@ interface LocationData {
 export default function LocationVerifyScreen() {
   const router = useRouter();
   const { updateUser } = useAuthStore();
-  
+
   const [enteredAddress, setEnteredAddress] = useState<{ home: AddressData; office: AddressData | null } | null>(null);
   const [detectedLocation, setDetectedLocation] = useState<LocationData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,11 +47,11 @@ export default function LocationVerifyScreen() {
     try {
       const enteredStr = await AsyncStorage.getItem('entered_addresses');
       const detectedStr = await AsyncStorage.getItem('detected_location');
-      
+
       if (enteredStr) {
         setEnteredAddress(JSON.parse(enteredStr));
       }
-      
+
       if (detectedStr) {
         setDetectedLocation(JSON.parse(detectedStr));
       }
@@ -60,10 +60,10 @@ export default function LocationVerifyScreen() {
       if (enteredStr && detectedStr) {
         const entered = JSON.parse(enteredStr);
         const detected = JSON.parse(detectedStr);
-        
+
         const cityMatch = entered.home.city.toLowerCase() === detected.city.toLowerCase();
         const areaMatch = entered.home.area.toLowerCase() === detected.area.toLowerCase();
-        
+
         if (!cityMatch || !areaMatch) {
           setMismatch(true);
           // Show alert for mismatch
@@ -71,7 +71,7 @@ export default function LocationVerifyScreen() {
             Alert.alert(
               'Location Mismatch',
               `Your entered address (${entered.home.area}, ${entered.home.city}) doesn't match your detected location (${detected.area}, ${detected.city}). Please verify which location you want to use.`,
-              [{ text: 'OK', onPress: () => {} }]
+              [{ text: 'OK', onPress: () => { } }]
             );
           }, 500);
         }
@@ -105,7 +105,7 @@ export default function LocationVerifyScreen() {
 
   const saveLocation = async (homeLocation: LocationData, officeLocation: LocationData | null) => {
     setSaving(true);
-    
+
     try {
       const response = await setupDualLocation({
         home_location: homeLocation,
@@ -151,7 +151,7 @@ export default function LocationVerifyScreen() {
           <Ionicons name="checkmark-circle" size={48} color={COLORS.success} />
           <Text style={styles.title}>Verify Your Location</Text>
           <Text style={styles.subtitle}>
-            {mismatch 
+            {mismatch
               ? 'We detected a different location. Please choose which address to use.'
               : 'Confirm your location to join local communities'
             }

@@ -46,24 +46,49 @@ const getActionBadge = (item: any) => {
   const itemData = typeof item.data === 'string'
     ? (() => { try { return JSON.parse(item.data); } catch { return null; } })()
     : item.data;
-  const action = itemData?.action || item.type || '';
+  const action = (itemData?.action || item.type || '').toLowerCase();
   
-  switch (action) {
-    case 'like':
-      return { name: 'heart', color: '#FFF', bg: '#FF3B30' };
-    case 'comment':
-      return { name: 'chatbubble', color: '#FFF', bg: '#0095F6' };
-    case 'follow':
-      return { name: 'person-add', color: '#FFF', bg: '#4CAF50' };
-    case 'sos':
-      return { name: 'alert-circle', color: '#FFF', bg: '#E53935' };
-    case 'help':
-      return { name: 'hand-left', color: '#FFF', bg: '#FF6600' };
-    case 'community_creation_invite':
-      return { name: 'people', color: '#FFF', bg: '#9933FF' };
-    default:
-      return { name: 'notifications', color: '#FFF', bg: '#8E8E93' };
+  if (action.includes('like')) {
+    return { name: 'heart', color: '#FFF', bg: '#FF3B30' };
   }
+  if (action.includes('comment')) {
+    return { name: 'chatbubble', color: '#FFF', bg: '#0095F6' };
+  }
+  if (action.includes('follow')) {
+    return { name: 'person-add', color: '#FFF', bg: '#4CAF50' };
+  }
+  if (action.includes('sos')) {
+    return { name: 'alert-circle', color: '#FFF', bg: '#E53935' };
+  }
+  if (action.includes('help') || action.includes('respond')) {
+    return { name: 'hand-left', color: '#FFF', bg: '#FF6600' };
+  }
+  if (action.includes('invite') || action.includes('community')) {
+    return { name: 'people', color: '#FFF', bg: '#9933FF' };
+  }
+  if (action.includes('jaap') || action.includes('chant')) {
+    return { name: 'leaf', color: '#FFF', bg: '#4CAF50' };
+  }
+  if (action.includes('kyc')) {
+    return { name: 'shield-checkmark', color: '#FFF', bg: '#3F51B5' };
+  }
+  if (action.includes('vendor') || action.includes('business')) {
+    return { name: 'briefcase', color: '#FFF', bg: '#E91E63' };
+  }
+  if (action.includes('astrology') || action.includes('horoscope') || action.includes('kundli')) {
+    return { name: 'star', color: '#FFF', bg: '#9C27B0' };
+  }
+  if (action.includes('chat') || action.includes('dm') || action.includes('message')) {
+    return { name: 'mail', color: '#FFF', bg: '#00BCD4' };
+  }
+  if (action.includes('festival')) {
+    return { name: 'calendar', color: '#FFF', bg: '#FF5722' };
+  }
+  if (action.includes('library') || action.includes('book')) {
+    return { name: 'book', color: '#FFF', bg: '#795548' };
+  }
+
+  return { name: 'notifications', color: '#FFF', bg: '#8E8E93' };
 };
 
 export default function NotificationsScreen() {
@@ -92,16 +117,7 @@ export default function NotificationsScreen() {
       setUnreadCount(countValue || 0);
       
       let notificationsList = Array.isArray(notificationsRes.data) ? notificationsRes.data : [];
-      // Deduplicate by actor + action
-      const seen = new Set<string>();
-      notificationsList = notificationsList.filter(n => {
-        const itemData = typeof n.data === 'string' ? (() => { try { return JSON.parse(n.data); } catch { return null; } })() : n.data;
-        const key = `${itemData?.action || n.type}_${itemData?.actor_user_id}`;
-        if (!key || key === '_undefined') return true;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      // Show all notifications for all functionalities without deduplication filter
       setNotifications(notificationsList);
 
       // Batch fetch actor details
@@ -186,17 +202,34 @@ export default function NotificationsScreen() {
       ? (() => { try { return JSON.parse(item.data); } catch { return null; } })()
       : item.data;
 
-    const typeKey = item?.type?.toLowerCase() || item?.notification_type?.toLowerCase() || 'default';
-    if (typeKey === 'sos' || itemData?.sos_id) {
+    const typeKey = (item?.type || item?.notification_type || '').toLowerCase();
+    const actionKey = (itemData?.action || '').toLowerCase();
+
+    if (typeKey.includes('sos') || actionKey.includes('sos') || itemData?.sos_id) {
       return '/sos';
     }
-
-    if (itemData?.actor_user_id) {
-      return `/profile/${itemData.actor_user_id}`;
+    if (typeKey.includes('jaap') || typeKey.includes('chant') || actionKey.includes('jaap') || actionKey.includes('chant')) {
+      return '/live-jaap-welcome';
+    }
+    if (typeKey.includes('kyc') || actionKey.includes('kyc')) {
+      return '/kyc';
+    }
+    if (typeKey.includes('astrology') || typeKey.includes('horoscope') || typeKey.includes('kundli') || actionKey.includes('astrology') || actionKey.includes('horoscope') || actionKey.includes('kundli')) {
+      return '/astrology';
+    }
+    if (typeKey.includes('festival') || actionKey.includes('festival')) {
+      return '/festivals';
+    }
+    if (typeKey.includes('chat') || typeKey.includes('dm') || typeKey.includes('message') || actionKey.includes('chat') || actionKey.includes('dm') || actionKey.includes('message')) {
+      return '/dm';
     }
 
     if (itemData?.post_id) {
       return `/post/${itemData.post_id}`;
+    }
+
+    if (itemData?.actor_user_id) {
+      return `/profile/${itemData.actor_user_id}`;
     }
 
     return undefined;

@@ -55,8 +55,9 @@ export default function HoroscopeScreen() {
   // Set default rashi on mount if user profile has one
   useEffect(() => {
     isMountedRef.current = true;
-    if (user?.rashi) {
-      const match = ZODIAC_SIGNS.find(z => z.hindi.toLowerCase() === user.rashi.toLowerCase() || z.name.toLowerCase() === user.rashi.toLowerCase());
+    const rashi = user?.rashi;
+    if (rashi) {
+      const match = ZODIAC_SIGNS.find(z => z.hindi.toLowerCase() === rashi.toLowerCase() || z.name.toLowerCase() === rashi.toLowerCase());
       if (match) {
         setSelectedZodiac(match);
       }

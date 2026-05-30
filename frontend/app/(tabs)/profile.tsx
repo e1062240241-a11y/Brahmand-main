@@ -566,12 +566,18 @@ export default function ProfileScreen() {
 
   const handleMenuPress = (item: SettingItem) => {
     if (item.id === 'culture') {
-      handleOpenCGModal();
+      setShowSettingsModal(false);
+      setTimeout(() => {
+        handleOpenCGModal();
+      }, Platform.OS === 'ios' ? 400 : 50);
       return;
     }
 
     if (item.id === 'language') {
-      setShowLanguageModal(true);
+      setShowSettingsModal(false);
+      setTimeout(() => {
+        setShowLanguageModal(true);
+      }, Platform.OS === 'ios' ? 400 : 50);
       return;
     }
 

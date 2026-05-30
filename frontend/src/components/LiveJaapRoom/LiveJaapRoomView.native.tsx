@@ -67,7 +67,7 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
 };
 
 const MANTRA_BG_AUDIO: Record<string, any> = {
-  gayatri: require('../../../assets/audio/audio ekant/gayantri mantra mix.m4a.mp4'),
+  gayatri: require('../../../assets/audio/audio ekant/gaytry mantra.wav'),
   hanuman: require('../../../assets/audio/audio ekant/Hanuman chalisa.mp3'),
   krishna: require('../../../assets/audio/audio ekant/Krishna jaap.m4a.mp4'),
   shiva: require('../../../assets/audio/audio ekant/Final Om Namah Shivaay 2026-05-23 17_09.m4a.mp4'),
@@ -342,7 +342,7 @@ export default function LiveJaapRoomView() {
     const interval = setInterval(() => {
       if (bgPlayer.currentTime !== undefined && bgPlayer.currentTime !== null) {
         const rawTime = bgPlayer.currentTime;
-        const elapsed = mantraType === 'gayatri' ? (rawTime - 2.0 + 28.736) % 28.736 : rawTime;
+        const elapsed = mantraType === 'gayatri' ? (rawTime - 2.0 + 29.276) % 29.276 : rawTime;
         setCurrentTimeState(elapsed);
       }
     }, 50);
@@ -509,7 +509,7 @@ export default function LiveJaapRoomView() {
       
       let totalDuration = 0;
       if (mantraType === 'gayatri') {
-        totalDuration = 28.736;
+        totalDuration = 29.276;
       } else if (mantraType === 'shiva') {
         totalDuration = 8.48; // 8.48s loop contains 1 main chant + instrumental tail, so 1 loop = 1 count
       } else if (mantraType === 'krishna') {
@@ -574,9 +574,9 @@ export default function LiveJaapRoomView() {
           } else {
             const status = getCurrentOtherJaapStatus(new Date(), mantraType);
             if (status.isActive) {
-              const totalDuration = mantraType === 'gayatri' ? 28.736 : (mantraType === 'krishna' ? 22.77 : 8.48);
+              const totalDuration = mantraType === 'gayatri' ? 29.276 : (mantraType === 'krishna' ? 22.77 : 8.48);
               expected = mantraType === 'gayatri'
-                ? (status.elapsedSeconds + 2.0) % 28.736
+                ? (status.elapsedSeconds + 2.0) % 29.276
                 : status.elapsedSeconds % totalDuration;
             }
           }
@@ -624,7 +624,7 @@ export default function LiveJaapRoomView() {
       } else if (mantraType === 'gayatri') {
         const status = getCurrentOtherJaapStatus(new Date(), mantraType);
         if (status.isActive) {
-          const expected = (status.elapsedSeconds + 2.0) % 28.736;
+          const expected = (status.elapsedSeconds + 2.0) % 29.276;
           const current = bgPlayer.currentTime || 0;
           const diff = Math.abs(current - expected);
           

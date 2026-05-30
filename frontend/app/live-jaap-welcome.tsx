@@ -223,22 +223,49 @@ export default function LiveJaapWelcomeScreen() {
 
           {/* JOIN BUTTON */}
           <View style={styles.footerContainer}>
-            <SwipeButton 
-              title={t('language') === 'hi' ? 'अभी लाइव जाप में शामिल हों' : 'Join Live Jaap Now'} 
-              onSwipeComplete={() => {
-                router.push({
-                  pathname: '/live-jaap-room',
-                  params: { 
-                    initialMic: 'false',
-                    mantraType: mantraType || 'hanuman',
-                    title: title || 'Hanuman Chalisa',
-                    hasAudio: 'true',
-                    hasText: 'true',
-                    fromHome: fromHome || 'false'
-                  }
-                });
-              }}
-            />
+            {mantraType === 'gayatri' ? (
+              <TouchableOpacity
+                style={styles.tapJoinButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  router.push({
+                    pathname: '/live-jaap-room',
+                    params: { 
+                      initialMic: 'false',
+                      mantraType: mantraType || 'hanuman',
+                      title: title || 'Hanuman Chalisa',
+                      hasAudio: 'true',
+                      hasText: 'true',
+                      fromHome: fromHome || 'false'
+                    }
+                  });
+                }}
+              >
+                <Text style={styles.tapJoinButtonText}>
+                  {t('language') === 'hi' ? 'अभी लाइव जाप में शामिल हों' : 'Join Live Jaap Now'}
+                </Text>
+                <View style={styles.tapJoinButtonCircle}>
+                  <Text style={styles.tapJoinButtonIcon}>ॐ</Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <SwipeButton 
+                title={t('language') === 'hi' ? 'अभी लाइव जाप में शामिल हों' : 'Join Live Jaap Now'} 
+                onSwipeComplete={() => {
+                  router.push({
+                    pathname: '/live-jaap-room',
+                    params: { 
+                      initialMic: 'false',
+                      mantraType: mantraType || 'hanuman',
+                      title: title || 'Hanuman Chalisa',
+                      hasAudio: 'true',
+                      hasText: 'true',
+                      fromHome: fromHome || 'false'
+                    }
+                  });
+                }}
+              />
+            )}
 
             <View style={styles.privacyNote}>
               <Ionicons name="lock-closed-outline" size={14} color="#7B6A58" />
@@ -395,4 +422,45 @@ const styles = StyleSheet.create({
   footerContainer: { width: '100%', alignItems: 'center', marginTop: 20 },
   privacyNote: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
   privacyText: { fontSize: 13, color: '#64748B', marginLeft: 6 },
+  tapJoinButton: {
+    width: '100%',
+    height: 56,
+    backgroundColor: '#E8630A',
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+    shadowColor: '#E8630A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  tapJoinButtonText: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 48,
+  },
+  tapJoinButtonCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF4ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tapJoinButtonIcon: {
+    color: '#E8630A',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
 });
