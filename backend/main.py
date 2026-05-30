@@ -4714,7 +4714,7 @@ async def create_community(
         owner_user = await db.get_document('users', owner_id)
         owner_name = owner_user.get('name') or "A user"
 
-        # 6. Send notifications to all invited admins and members
+        # 6. Send in-app notifications + push notifications to all invited admins and members
         for admin_id in admin_ids:
             await db.create_document('notifications', {
                 "user_id": admin_id,
@@ -4730,6 +4730,17 @@ async def create_community(
                 "is_read": False,
                 "created_at": datetime.utcnow().isoformat() + 'Z'
             })
+            # Push notification
+            try:
+                await task_queue.enqueue(
+                    FirebaseNotificationService.send_push_notification,
+                    admin_id,
+                    "Community Group Invitation",
+                    f"{owner_name} has invited you as an ADMIN to create '{data.name}'.",
+                    {"type": "community_creation_invite", "request_id": request_id, "role": "admin"}
+                )
+            except Exception as push_err:
+                logger.warning(f"Failed to send push to admin {admin_id}: {push_err}")
 
         for member_id in member_ids:
             await db.create_document('notifications', {
@@ -4746,6 +4757,17 @@ async def create_community(
                 "is_read": False,
                 "created_at": datetime.utcnow().isoformat() + 'Z'
             })
+            # Push notification
+            try:
+                await task_queue.enqueue(
+                    FirebaseNotificationService.send_push_notification,
+                    member_id,
+                    "Community Group Invitation",
+                    f"{owner_name} has invited you as a MEMBER to create '{data.name}'.",
+                    {"type": "community_creation_invite", "request_id": request_id, "role": "member"}
+                )
+            except Exception as push_err:
+                logger.warning(f"Failed to send push to member {member_id}: {push_err}")
 
         return {
             "message": "Community group creation request submitted. Waiting for consensus approval from invited users.",
@@ -4915,6 +4937,91 @@ async def join_community_by_code(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error joining community: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/communities/my-creation-requests")
+async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
+    """Get all community creation requests initiated by the current user, with per-invitee response status."""
+    try:
+        db = await get_db()
+        owner_id = token_data["user_id"]
+        requests = await db.query_documents(
+            'community_creation_requests',
+            filters=[('owner_id', '==', owner_id)]
+        )
+        result = []
+        for req in (requests or []):
+            # Enrich with user names for admin_ids and member_ids
+            admin_ids = req.get('admin_ids', [])
+            member_ids = req.get('member_ids', [])
+            responses = req.get('responses', {})
+
+            admin_list = []
+            for uid in admin_ids:
+                user_doc = await db.get_document('users', uid)
+                admin_list.append({
+                    'id': uid,
+                    'name': user_doc.get('name', 'Unknown') if user_doc else 'Unknown',
+                    'photo': user_doc.get('photo') if user_doc else None,
+                    'status': responses.get(uid, 'pending')
+                })
+
+            member_list = []
+            for uid in member_ids:
+                user_doc = await db.get_document('users', uid)
+                member_list.append({
+                    'id': uid,
+                    'name': user_doc.get('name', 'Unknown') if user_doc else 'Unknown',
+                    'photo': user_doc.get('photo') if user_doc else None,
+                    'status': responses.get(uid, 'pending')
+                })
+
+            result.append({
+                'id': req.get('id'),
+                'name': req.get('name'),
+                'description': req.get('description'),
+                'photo': req.get('photo'),
+                'status': req.get('status', 'pending'),
+                'created_at': req.get('created_at'),
+                'admins': admin_list,
+                'members': member_list,
+                'community_id': req.get('community_id')  # set when approved
+            })
+        # Sort newest first
+        result.sort(key=lambda x: x.get('created_at') or '', reverse=True)
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching my creation requests: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/communities/{community_id}/join")
+async def join_community_direct(
+    community_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Directly join a live user_group community."""
+    try:
+        db = await get_db()
+        user_id = token_data["user_id"]
+        comm = await db.get_document('communities', community_id)
+        if not comm:
+            raise HTTPException(status_code=404, detail="Community not found")
+        if comm.get('type') != 'user_group':
+            raise HTTPException(status_code=400, detail="Only user group communities can be joined directly.")
+        members = comm.get('members', [])
+        if user_id in members:
+            return {"message": "You are already a member.", "community_id": community_id}
+        # Add user to community members
+        await db.array_union_update('communities', community_id, 'members', [user_id])
+        # Add community to user's communities
+        await db.array_union_update('users', user_id, 'communities', [community_id])
+        return {"message": "Successfully joined the community.", "community_id": community_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error joining community direct: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -7898,15 +8005,15 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "kyc_reviewed_by": 'system_user_kyc_sync' if central_vendor_kyc_verified else None,
         "kyc_review_note": 'Applied from central user KYC status' if central_vendor_kyc_verified else None,
     }
-    
+
     vendor_id = await db.create_document('vendors', vendor_data)
     vendor_data['id'] = vendor_id
-    
+
     # Update user to mark as vendor
     await db.update_document('users', user_id, {'is_vendor': True, 'vendor_id': vendor_id})
 
     await _sync_vendor_to_admin_queue(db, vendor_id)
-    
+
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
 
@@ -7920,13 +8027,13 @@ async def get_vendors(
     limit: int = 50,
     token_data: Optional[dict] = Depends(optional_verify_token)
 ):
-    """Get vendors with optional filters"""
+    """Get vendors with optional filters - only shows KYC-verified vendors"""
     db = await get_db()
-    
+
     filters = []
     if category:
         filters.append(('categories', 'array_contains', category))
-    
+
     vendors = await db.query_documents('vendors', filters=filters, limit=limit)
 
     # Merge admin review snapshot fields for legacy approved vendors so public listings
@@ -7934,20 +8041,65 @@ async def get_vendors(
     review_docs = await asyncio.gather(
         *[db.get_document('vendor_admin_reviews', vendor['id']) for vendor in vendors]
     )
-    for vendor, review_doc in zip(vendors, review_docs):
+    
+    # Fetch owner user documents to check central KYC status
+    async def get_user_doc(uid):
+        if not uid:
+            return None
+        try:
+            return await db.get_document('users', uid)
+        except Exception:
+            return None
+
+    user_docs = await asyncio.gather(
+        *[get_user_doc(vendor.get('owner_id')) for vendor in vendors]
+    )
+
+    for vendor, review_doc, user_doc in zip(vendors, review_docs, user_docs):
         if review_doc:
             vendor['review_status'] = review_doc.get('review_status', vendor.get('review_status'))
             vendor['review_state'] = review_doc.get('review_state', vendor.get('review_state'))
             if review_doc.get('kyc_status') and not vendor.get('kyc_status'):
                 vendor['kyc_status'] = review_doc.get('kyc_status')
-    
+        if user_doc:
+            vendor['user_kyc_status'] = user_doc.get('kyc_status')
+            vendor['user_is_verified'] = user_doc.get('is_verified')
+
+    # ── KYC GATE: Only show vendors who have completed KYC verification ──
+    # A vendor is considered verified if any of the following is true:
+    #   1. kyc_status is 'verified' or 'approved'
+    #   2. review_status is 'verified' or 'approved'
+    #   3. review_state is 'closed' (legacy admin-approved path)
+    #   4. The owner user profile is verified/approved centrally
+    #   5. The vendor has no owner_id (legacy/seeded vendors)
+    def _is_kyc_cleared(v: dict) -> bool:
+        kyc = (v.get('kyc_status') or '').lower()
+        rev = (v.get('review_status') or '').lower()
+        state = (v.get('review_state') or '').lower()
+        is_verified = v.get('is_verified') is True
+        
+        user_kyc = (v.get('user_kyc_status') or '').lower()
+        user_verified = v.get('user_is_verified') is True
+        
+        return (
+            kyc in ('verified', 'approved') or
+            rev in ('verified', 'approved') or
+            state == 'closed' or
+            is_verified or
+            user_kyc in ('verified', 'approved') or
+            user_verified or
+            not v.get('owner_id')
+        )
+
+    vendors = [v for v in vendors if _is_kyc_cleared(v)]
+
     # Filter by search term if provided
     if search:
         search_lower = search.lower()
-        vendors = [v for v in vendors if 
+        vendors = [v for v in vendors if
                    search_lower in v.get('business_name', '').lower() or
                    any(search_lower in cat.lower() for cat in v.get('categories', []))]
-    
+
     # Calculate distance if coordinates provided
     if lat and lng:
         import math
@@ -7962,10 +8114,10 @@ async def get_vendors(
                 vendor['distance'] = R * 2 * math.asin(math.sqrt(a))
             else:
                 vendor['distance'] = None
-        
+
         # Sort by distance
         vendors.sort(key=lambda v: v.get('distance') or 999999)
-    
+
     return vendors
 
 

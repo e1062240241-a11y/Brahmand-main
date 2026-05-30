@@ -11,10 +11,12 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   fcmToken: string | null;
+  pendingDeepLink: string | null;
   
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
+  setPendingDeepLink: (link: string | null) => void;
   login: (user: User, token: string) => Promise<void>;
   logout: () => Promise<void>;
   loadStoredAuth: () => Promise<void>;
@@ -28,10 +30,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
   isAuthenticated: false,
   fcmToken: null,
+  pendingDeepLink: null,
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   setToken: (token) => set({ token }),
   setLoading: (isLoading) => set({ isLoading }),
+  setPendingDeepLink: (pendingDeepLink) => set({ pendingDeepLink }),
 
   login: async (user, token) => {
     await secureStorage.setItem('auth_token', token);

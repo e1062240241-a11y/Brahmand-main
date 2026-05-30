@@ -58,9 +58,11 @@ exports.useAuthStore = (0, zustand_1.create)(function (set, get) { return ({
     isLoading: true,
     isAuthenticated: false,
     fcmToken: null,
+    pendingDeepLink: null,
     setUser: function (user) { return set({ user: user, isAuthenticated: !!user }); },
     setToken: function (token) { return set({ token: token }); },
     setLoading: function (isLoading) { return set({ isLoading: isLoading }); },
+    setPendingDeepLink: function (pendingDeepLink) { return set({ pendingDeepLink: pendingDeepLink }); },
     login: function (user, token) { return __awaiter(void 0, void 0, void 0, function () {
         return __generator(this, function (_a) {
             switch (_a.label) {

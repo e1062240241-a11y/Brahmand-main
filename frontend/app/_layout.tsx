@@ -99,34 +99,124 @@ function useAppBackHandler() {
 
 import * as ExpoLinking from 'expo-linking';
 
+function isValidAppPath(path: string): boolean {
+  const cleanPath = path.split('?')[0];
+  
+  const staticPaths = [
+    '/home',
+    '/messages',
+    '/jaap',
+    '/jobs',
+    '/profile',
+    '/vendor',
+    '/sos',
+    '/kyc-submit',
+    '/kyc',
+    '/live-jaap-welcome',
+    '/circle/create',
+    '/community/create',
+    '/community-tweets',
+    '/astrology',
+    '/horoscope',
+    '/panchang',
+    '/festivals',
+    '/all-live-jaaps',
+    '/my-krishna',
+    '/library',
+    '/passport',
+    '/settings',
+    '/verification',
+    '/privacy-policy',
+    '/badges',
+    '/ekant-jaap',
+    '/live-mantra',
+    '/community-request'
+  ];
+
+  if (staticPaths.includes(cleanPath)) {
+    return true;
+  }
+
+  const dynamicPrefixes = [
+    '/post/',
+    '/community/',
+    '/dm/',
+    '/vendor/',
+    '/temple/',
+    '/profile/',
+    '/festival-detail/',
+    '/festival-section-detail/',
+    '/hashtag/'
+  ];
+
+  for (const prefix of dynamicPrefixes) {
+    if (cleanPath.startsWith(prefix) && cleanPath.length > prefix.length) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // Handle deep links for universal links (https://brahmand.app/*) and custom scheme (sanatanlok://)
 function useDeepLinkHandler() {
-  const { token } = useAuthStore();
+  const { token, isAuthenticated, setPendingDeepLink, pendingDeepLink } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
-      if (!token || !event.url) return;
+      if (!event.url) return;
 
       try {
         let path: string | null = null;
-
         const raw = event.url;
 
         // Universal link: https://brahmand.app/some/path
         if (raw.startsWith('https://brahmand.app') || raw.startsWith('http://brahmand.app')) {
           const urlObj = new URL(raw);
-          path = urlObj.pathname; // e.g. "/post/abc123"
+          path = urlObj.pathname + urlObj.search;
         } else {
           // Custom scheme: sanatanlok://some/path
           const parsed = ExpoLinking.parse(raw);
-          path = parsed.path ? `/${parsed.path}` : null;
+          let pathWithQuery = parsed.path ? `/${parsed.path}` : '';
+          const queryParams = parsed.queryParams;
+          if (queryParams && Object.keys(queryParams).length > 0) {
+            const searchParams = new URLSearchParams();
+            for (const [key, val] of Object.entries(queryParams)) {
+              if (val !== undefined && val !== null) {
+                searchParams.append(key, String(val));
+              }
+            }
+            const searchStr = searchParams.toString();
+            if (searchStr) {
+              pathWithQuery += `?${searchStr}`;
+            }
+          }
+          path = pathWithQuery || null;
         }
 
         if (!path || path === '/') return;
 
-        console.log('[DeepLink] Navigating to path:', path);
-        router.push(path as any);
+        // Validate the path
+        if (!isValidAppPath(path)) {
+          console.warn('[DeepLink] Invalid or unsupported deep link path:', path);
+          toast.show('Invalid or unsupported link', 'error');
+          // If we launched the app via an invalid deep link, fallback to home
+          if (token && isAuthenticated) {
+            router.replace('/home');
+          }
+          return;
+        }
+
+        // If authenticated, navigate immediately
+        if (token && isAuthenticated) {
+          console.log('[DeepLink] Navigating to path:', path);
+          router.push(path as any);
+        } else {
+          // Otherwise, save the pending deep link
+          console.log('[DeepLink] Saving pending deep link:', path);
+          setPendingDeepLink(path);
+        }
 
       } catch (error) {
         console.warn('[DeepLink] Failed to parse deep link:', error, event.url);
@@ -137,11 +227,27 @@ function useDeepLinkHandler() {
 
     // Check if app was opened from a cold start via a link
     Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink({ url });
+      if (url) {
+        console.log('[DeepLink] Initial URL on launch:', url);
+        handleDeepLink({ url });
+      }
     });
 
     return () => subscription.remove();
-  }, [token, router]);
+  }, [token, isAuthenticated, router, setPendingDeepLink]);
+
+  // Handle immediate routing once user logs in (for normal app sessions when layout mounts and auth resolves)
+  useEffect(() => {
+    if (token && isAuthenticated && pendingDeepLink) {
+      const path = pendingDeepLink;
+      setPendingDeepLink(null); // Clear first to avoid duplicate pushes
+      console.log('[DeepLink] Redirecting to pending deep link after auth load:', path);
+      
+      setTimeout(() => {
+        router.push(path as any);
+      }, 600);
+    }
+  }, [token, isAuthenticated, pendingDeepLink, router, setPendingDeepLink]);
 }
 
 function useNotificationResponseHandler() {

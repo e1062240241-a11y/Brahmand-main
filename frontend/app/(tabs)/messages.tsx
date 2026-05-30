@@ -39,6 +39,7 @@ import {
   parseApiError,
   resolveCommunityRequest,
   discoverCommunities,
+  joinCommunityDirect,
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
@@ -184,6 +185,23 @@ export default function MessagesScreen() {
   const requestsToRender = requests;
 
   const userGroupsToRender = userGroups;
+
+  // --- Local Community Join state ---
+  const [joinedLocalIds, setJoinedLocalIds] = useState<Set<string>>(new Set());
+  const [joiningLocalId, setJoiningLocalId] = useState<string | null>(null);
+
+  const handleJoinLocal = async (communityId: string, name: string) => {
+    setJoiningLocalId(communityId);
+    try {
+      await joinCommunityDirect(communityId);
+      setJoinedLocalIds(prev => new Set(prev).add(communityId));
+      Alert.alert('Joined!', `You have joined ${name}.`);
+    } catch (err: any) {
+      Alert.alert('Error', parseApiError(err));
+    } finally {
+      setJoiningLocalId(null);
+    }
+  };
 
   const getRequestTheme = (item: any) => {
     const title = (item?.title || '').toLowerCase();
@@ -930,6 +948,8 @@ export default function MessagesScreen() {
     const borderColor = isPurple ? '#7A38B3' : '#437953';
     const badgeBg = '#FFFFFF';
     const pillText = isPurple ? 'Youth' : 'Seva';
+    const isJoined = joinedLocalIds.has(item.id);
+    const isJoining = joiningLocalId === item.id;
 
     return (
       <TouchableOpacity
@@ -950,8 +970,27 @@ export default function MessagesScreen() {
           <Text style={styles.localCommMembers}>{item.member_count} members</Text>
         </View>
 
-        <View style={[styles.localCommPill, { backgroundColor: badgeBg, borderColor }]}>
-          <Text style={[styles.localCommPillText, { color: borderColor }]}>{pillText}</Text>
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          <View style={[styles.localCommPill, { backgroundColor: badgeBg, borderColor }]}>
+            <Text style={[styles.localCommPillText, { color: borderColor }]}>{pillText}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.localJoinBtn, { borderColor }, isJoined && { borderColor: '#CCC' }]}
+            onPress={(e) => {
+              e.stopPropagation();
+              if (!isJoined) handleJoinLocal(item.id, item.name);
+            }}
+            disabled={isJoining || isJoined}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            {isJoining ? (
+              <ActivityIndicator size="small" color={borderColor} style={{ width: 36 }} />
+            ) : (
+              <Text style={[styles.localJoinBtnText, { color: isJoined ? '#AAA' : borderColor }]}>
+                {isJoined ? '✓ Joined' : 'Join'}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -1636,6 +1675,8 @@ const styles = StyleSheet.create({
   localCommMembers: { fontSize: 10, color: '#666', fontFamily: FONTS.regular, marginTop: 2, textAlign: 'center' },
   localCommPill: { paddingHorizontal: 14, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: '#FFFFFF', minWidth: 72, alignItems: 'center' },
   localCommPillText: { fontSize: 10, fontFamily: FONTS.bold },
+  localJoinBtn: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, borderWidth: 1.5, minWidth: 52, alignItems: 'center' },
+  localJoinBtnText: { fontSize: 10, fontFamily: FONTS.bold },
   localCommEmptyBox: { backgroundColor: '#FAF9F6', borderWidth: 1, borderColor: '#EAE8E2', borderStyle: 'dashed', borderRadius: 16, paddingVertical: 20, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20, marginHorizontal: 16 },
   localCommEmptyText: { fontSize: 12, color: '#888', fontFamily: FONTS.regular, textAlign: 'center' },
 

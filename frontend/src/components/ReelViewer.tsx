@@ -962,6 +962,30 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     }
   }, []);
 
+  // Poll reel comments in real-time when the comment modal is visible
+  useEffect(() => {
+    if (!isCommentVisible || !selectedPost?.id) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await getPostComments(selectedPost.id);
+        if (Array.isArray(res.data)) {
+          setLocalComments(prev => {
+            const serverComments = res.data;
+            const optimistic = prev.filter(c => c.is_optimistic);
+            const serverIds = new Set(serverComments.map((c: any) => c.id));
+            const filteredOptimistic = optimistic.filter(c => !serverIds.has(c.id));
+            return [...filteredOptimistic, ...serverComments];
+          });
+        }
+      } catch (error) {
+        console.warn('[Reel Comments Polling] Failed:', error);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isCommentVisible, selectedPost?.id]);
+
   const submitLocalComment = async () => {
     if (!selectedPost || !newCommentText.trim() || isSubmittingComment) return;
 

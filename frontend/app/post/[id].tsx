@@ -160,6 +160,24 @@ const PostScreen = () => {
     loadComments(post.id);
   }, [loadComments]);
 
+  // Poll comments in real-time when the comment modal is visible
+  useEffect(() => {
+    if (!commentModalVisible || !commentPost?.id) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await getPostComments(String(commentPost.id), 200);
+        if (Array.isArray(response.data)) {
+          setPostComments(response.data);
+        }
+      } catch (error) {
+        console.warn('[Post Detail Comments Polling] Failed:', error);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [commentModalVisible, commentPost?.id]);
+
   const handleSubmitComment = useCallback(async () => {
     if (!commentPost?.id || !commentText.trim()) return;
     setCommentSubmitting(true);

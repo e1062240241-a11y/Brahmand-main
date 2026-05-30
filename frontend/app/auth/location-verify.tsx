@@ -117,7 +117,13 @@ export default function LocationVerifyScreen() {
       await AsyncStorage.removeItem('detected_location');
 
       updateUser(response.data.user);
-      router.replace('/home');
+      const pendingDeepLink = useAuthStore.getState().pendingDeepLink;
+      if (pendingDeepLink) {
+        useAuthStore.getState().setPendingDeepLink(null);
+        router.replace(pendingDeepLink as any);
+      } else {
+        router.replace('/home');
+      }
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to save location');
     } finally {
