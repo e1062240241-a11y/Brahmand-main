@@ -22,7 +22,6 @@
 		13B07F961A680F5B00A75B9A /* Brahmand.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Brahmand.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Brahmand/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Brahmand/Info.plist; sourceTree = "<group>"; };
-<<<<<<< HEAD
 		1FDFE05FCDA54234C14750BF /* Pods-Brahmand.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Brahmand.release.xcconfig"; path = "Target Support Files/Pods-Brahmand/Pods-Brahmand.release.xcconfig"; sourceTree = "<group>"; };
 		36C6113AC2CB4D1DBD1C42B6 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Brahmand/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		54FD1948B2E337A9982DA02A /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Brahmand/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
@@ -35,10 +34,6 @@
 		D8C2189A68D8ECC897303128 /* Pods_Brahmand.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Brahmand.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E0F091FB110A114364F5BFC5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Brahmand/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		E1F2A3B4C5D6E7F8A9B0C1D2 /* soundreality_mayday_166011.caf */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; name = soundreality_mayday_166011.caf; path = Brahmand/soundreality_mayday_166011.caf; sourceTree = "<group>"; };
-=======
-		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Brahmand/SplashScreen.storyboard; sourceTree = "<group>"; };
-		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
->>>>>>> c8339c39e83b3ff4020ba2cfa041d8076f7471da
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Brahmand/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Brahmand-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Brahmand-Bridging-Header.h"; path = "Brahmand/Brahmand-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -78,7 +73,6 @@
 			name = Brahmand;
 			sourceTree = "<group>";
 		};
-<<<<<<< HEAD
 		15A5E0DFFFCA4D8276A90D81 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
@@ -88,8 +82,6 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
-=======
->>>>>>> c8339c39e83b3ff4020ba2cfa041d8076f7471da
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -248,7 +240,6 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-<<<<<<< HEAD
 		0E1C412A4941CF54C3AE9BE8 /* [CP-User] [RNFB] Core Configuration */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -354,8 +345,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Brahmand/Pods-Brahmand-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-=======
->>>>>>> c8339c39e83b3ff4020ba2cfa041d8076f7471da
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

@@ -110,7 +110,13 @@ export default function OTPScreen() {
 
       await login(data.user, data.token);
       if (data.user.home_location || data.user.location) {
-        router.replace('/home');
+        const pendingDeepLink = useAuthStore.getState().pendingDeepLink;
+        if (pendingDeepLink) {
+          useAuthStore.getState().setPendingDeepLink(null);
+          router.replace(pendingDeepLink as any);
+        } else {
+          router.replace('/home');
+        }
       } else {
         router.replace('/auth/location');
       }
