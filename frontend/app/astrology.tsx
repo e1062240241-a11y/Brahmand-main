@@ -111,6 +111,14 @@ export default function AstrologyScreen() {
   const details = data?.details || {};
   const report = data?.report || {};
 
+  const normalizeTextBlock = (value: any) => {
+    const text = Array.isArray(value)
+      ? value.map((item) => String(item).trim()).filter(Boolean).join(' ')
+      : String(value ?? '');
+
+    return text.replace(/\s+/g, ' ').trim();
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -183,11 +191,7 @@ export default function AstrologyScreen() {
             {Object.entries(report).map(([key, paragraphs]: any) => (
               <View key={key} style={styles.reportCard}>
                 <Text style={styles.reportCategory}>{key.toUpperCase()}</Text>
-                {Array.isArray(paragraphs) ? paragraphs.map((p: string, idx: number) => (
-                  <Text key={idx} style={styles.reportText}>{p}</Text>
-                )) : (
-                  <Text style={styles.reportText}>{String(paragraphs)}</Text>
-                )}
+                <Text style={styles.reportText}>{normalizeTextBlock(paragraphs)}</Text>
               </View>
             ))}
           </View>

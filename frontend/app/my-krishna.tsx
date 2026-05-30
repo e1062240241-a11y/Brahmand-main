@@ -19,6 +19,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { aiChat } from '../src/services/api';
 import { COLORS, FONTS, SPACING } from '../src/constants/theme';
 
+import { useAuthStore } from '../src/store/authStore';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -30,11 +32,14 @@ interface Message {
 export default function MyKrishnaChat() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
+  const displayName = user?.name?.trim() ? user.name.trim() : 'Partha';
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: 'Radhe Radhe! I am your spiritual guide, My Krishna. Plzz reply in Hinglish. On the battlefield of life, I am here to guide you with the wisdom of the Bhagavad Gita. What troubles your mind today, Partha?',
+      content: `Radhe Radhe! ${displayName}, I am here to guide you with the wisdom of the Bhagavad Gita. What troubles your mind today?`,
       timestamp: new Date(),
     },
   ]);
@@ -71,7 +76,7 @@ export default function MyKrishnaChat() {
       apiMessages.push({ role: userMessage.role, content: userMessage.content });
 
       const response = await aiChat(apiMessages);
-      
+
       if (response.data?.choices?.[0]?.message) {
         const assistantMsg = response.data.choices[0].message;
         const newAssistantMessage: Message = {
@@ -103,7 +108,7 @@ export default function MyKrishnaChat() {
       <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
         {!isUser && (
           <View style={styles.assistantAvatar}>
-             <Text style={{fontSize: 20}}>🪈</Text>
+            <Text style={{ fontSize: 20 }}>🪈</Text>
           </View>
         )}
         <View style={[
@@ -123,19 +128,19 @@ export default function MyKrishnaChat() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ImageBackground 
-        source={require('../assets/images/image temple/MahakalTemple.webp')} 
+      <ImageBackground
+        source={require('../assets/images/image temple/MahakalTemple.webp')}
         style={styles.container}
       >
-        <LinearGradient 
-          colors={['rgba(26, 35, 126, 0.9)', 'rgba(0, 0, 0, 0.85)']} 
-          style={StyleSheet.absoluteFill} 
+        <LinearGradient
+          colors={['rgba(26, 35, 126, 0.9)', 'rgba(0, 0, 0, 0.85)']}
+          style={StyleSheet.absoluteFill}
         />
-        
-        <Stack.Screen 
+
+        <Stack.Screen
           options={{
             headerShown: false,
-          }} 
+          }}
         />
 
         {/* Custom Header */}
@@ -178,8 +183,8 @@ export default function MyKrishnaChat() {
                 multiline
                 maxLength={500}
               />
-              <TouchableOpacity 
-                style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]} 
+              <TouchableOpacity
+                style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
                 onPress={handleSend}
                 disabled={!inputText.trim() || isLoading}
               >
