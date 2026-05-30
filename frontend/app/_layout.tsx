@@ -99,7 +99,7 @@ function useAppBackHandler() {
 
 import * as ExpoLinking from 'expo-linking';
 
-// Handle deep links for circle invites
+// Handle deep links for universal links (https://brahmand.app/*) and custom scheme (sanatanlok://)
 function useDeepLinkHandler() {
   const { token } = useAuthStore();
   const router = useRouter();
@@ -109,22 +109,33 @@ function useDeepLinkHandler() {
       if (!token || !event.url) return;
 
       try {
-        // Use expo-linking to parse the URL correctly
-        const parsed = ExpoLinking.parse(event.url);
-        const path = parsed.path;
+        let path: string | null = null;
 
-        if (!path) return;
+        const raw = event.url;
 
-        // Navigate to the path directly - expo-router handles the rest
-        router.push(`/${path}` as any);
+        // Universal link: https://brahmand.app/some/path
+        if (raw.startsWith('https://brahmand.app') || raw.startsWith('http://brahmand.app')) {
+          const urlObj = new URL(raw);
+          path = urlObj.pathname; // e.g. "/post/abc123"
+        } else {
+          // Custom scheme: sanatanlok://some/path
+          const parsed = ExpoLinking.parse(raw);
+          path = parsed.path ? `/${parsed.path}` : null;
+        }
+
+        if (!path || path === '/') return;
+
+        console.log('[DeepLink] Navigating to path:', path);
+        router.push(path as any);
 
       } catch (error) {
-        console.warn('Failed to parse deep link:', error);
+        console.warn('[DeepLink] Failed to parse deep link:', error, event.url);
       }
     };
 
     const subscription = Linking.addEventListener('url', handleDeepLink);
 
+    // Check if app was opened from a cold start via a link
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });

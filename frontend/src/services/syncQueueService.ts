@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
+import * as Network from 'expo-network';
 import { database } from '../database';
 import { api } from './api';
 
@@ -164,17 +164,34 @@ export async function flushSyncQueue() {
   }
 }
 
-// Start monitoring connection changes to automatically flush
-export function initSyncQueueListener() {
-  console.log('[SyncQueue] Initializing NetInfo sync queue listener...');
-  
-  // Do a first-time flush in case we start connected
-  flushSyncQueue();
+// Check if network is online using expo-network
+async function isOnline(): Promise<boolean> {
+  try {
+    const state = await Network.getNetworkStateAsync();
+    return (state.isConnected === true) && (state.isInternetReachable !== false);
+  } catch {
+    return true; // Assume online if check fails
+  }
+}
 
-  NetInfo.addEventListener((state) => {
-    if (state.isConnected && state.isInternetReachable !== false) {
-      console.log('[SyncQueue] Network is online. Flushing queue...');
+// Start monitoring connection changes to automatically flush
+// expo-network doesn't have an event listener, so we poll every 15s
+export function initSyncQueueListener() {
+  console.log('[SyncQueue] Initializing sync queue listener (expo-network)...');
+
+  // Do a first-time flush in case we start connected
+  isOnline().then((online) => {
+    if (online) flushSyncQueue();
+  });
+
+  // Poll every 15 seconds and flush if online
+  const intervalId = setInterval(async () => {
+    const online = await isOnline();
+    if (online) {
       flushSyncQueue();
     }
-  });
+  }, 15000);
+
+  // Return cleanup function (call this if you ever unmount)
+  return () => clearInterval(intervalId);
 }
