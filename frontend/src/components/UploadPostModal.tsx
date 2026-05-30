@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+// Touch file to force Metro bundler rebuild after correcting JSX tags
 import {
   ActivityIndicator,
   Modal,
