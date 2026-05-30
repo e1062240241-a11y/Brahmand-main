@@ -5,9 +5,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native';
 import { useLibraryStore } from '../../src/store/libraryStore';
 import BookLayout, { BookVerse, PageItem, SpreadItem, useBookLayout } from '../../src/components/BookLayout';
-import { loadMahabharataBook } from '../../src/services/mahabharata-service';
 
-const mahabharataCover = require('../../assets/images/mahabharata.jpg');
+const geetaCover = require('../../assets/images/Bhagvad-geeta.jpg');
 
 const convertToHindiNumerals = (num: number) => {
   const hindiNumerals = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
@@ -17,19 +16,21 @@ const convertToHindiNumerals = (num: number) => {
 type VerseItem = BookVerse;
 type PendingOpenChapter = { chapter: number; edge: 'start' | 'end' };
 
-const CHAPTER_TITLES = Array.from({ length: 18 }, (_, index) => `Book ${index + 1}`);
-
-const STORAGE_LAST_READ_KEY = (chapter: number) => `mahabharata:last-read:book:${chapter}`;
-const STORAGE_BOOKMARK_KEY = (chapter: number) => `mahabharata:bookmark:book:${chapter}`;
+const CHAPTER_TITLES = ['Isha', 'Kena', 'Katha', 'Prashna', 'Mundaka', 'Mandukya', 'Taittiriya', 'Aitareya', 'Chandogya', 'Brihadaranyaka'];
 const TOTAL_CHAPTERS = CHAPTER_TITLES.length;
+
+const STORAGE_LAST_READ_KEY = (chapter: number) => `upanishads:last-read:chapter:${chapter}`;
+const STORAGE_BOOKMARK_KEY = (chapter: number) => `upanishads:bookmark:chapter:${chapter}`;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 const estimateVerseHeight = (verse: VerseItem, layout: ReturnType<typeof useBookLayout>) => {
+  const typeLabel = verse.type || '';
   const pageContentWidth = layout.pageWidth - layout.pageBodyHorizontalPadding * 2 - 12;
   const charW = layout.sanskritTextSize * 0.55;
   const linesText = Math.max(1, Math.ceil((verse.text?.length || 0) / Math.max(1, pageContentWidth / charW)));
-  const totalLines = 1 + linesText;
+  const linesType = typeLabel ? Math.max(1, Math.ceil(typeLabel.length / Math.max(1, pageContentWidth / charW))) : 0;
+  const totalLines = 1 + linesText + linesType;
   return (layout.verseBase + totalLines * layout.sanskritLineHeight) * 1.25;
 };
 
@@ -71,6 +72,7 @@ const buildPages = (verses: VerseItem[], heights: Record<string, number>, layout
 function renderVerseBlock(verse: VerseItem, nightMode: boolean, layout: ReturnType<typeof useBookLayout>) {
   const cleanSanskrit = (verse.text || '').replace(/[\u1CD0-\u1CFF\u0951-\u0952]/g, '');
 
+  const typeLabel = verse.type || '';
   return (
     <>
       <View style={styles.verseContainer}>
@@ -78,6 +80,13 @@ function renderVerseBlock(verse: VerseItem, nightMode: boolean, layout: ReturnTy
           <Text style={[styles.sanskritText, { color: nightMode ? '#EBD7B6' : '#691F0A', fontSize: layout.sanskritTextSize, lineHeight: layout.sanskritLineHeight }]}>{cleanSanskrit}</Text>
           <Text style={[styles.sanskritVerseNumber, { color: nightMode ? '#EBD7B6' : '#691F0A', fontSize: Math.max(9, layout.sanskritTextSize - 1) }]}>{convertToHindiNumerals(verse.verse)}</Text>
         </View>
+        
+        {!!typeLabel && (
+          <Text style={[styles.hindiText, { color: nightMode ? '#C4B49A' : '#3B3B3B', fontSize: layout.translationSize, lineHeight: layout.translationLineHeight }]}> 
+            <Text style={[styles.hindiVerseNumber, { color: nightMode ? '#EBD7B6' : '#691F0A' }]}>{convertToHindiNumerals(verse.verse)}. </Text>
+            {typeLabel}
+          </Text>
+        )}
 
         <View style={styles.dividerContainer}>
           <View style={[styles.dividerLine, { backgroundColor: nightMode ? '#6e4733' : '#8C5A3C' }]} />
@@ -90,24 +99,24 @@ function renderVerseBlock(verse: VerseItem, nightMode: boolean, layout: ReturnTy
 }
 
 const styles = StyleSheet.create({
-  verseContainer: { width: '100%', paddingVertical: 12 },
-  sanskritWrapper: { alignItems: 'center', marginBottom: 12 },
-  sanskritText: { textAlign: 'center', fontWeight: '700', fontFamily: 'serif' },
-  sanskritVerseNumber: { textAlign: 'center', marginTop: 8, fontFamily: 'serif' },
-  hindiText: { textAlign: 'center', marginBottom: 12, paddingHorizontal: 10 },
-  hindiVerseNumber: { fontWeight: 'bold' },
-  dividerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 40, marginTop: 4 },
-  dividerLine: { flex: 1, height: 1 },
-  dividerDot: { width: 4, height: 4, borderRadius: 2, marginHorizontal: 8 },
+  verseContainer: { width: '100%', paddingHorizontal: 12 },
+  sanskritWrapper: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', marginBottom: 16, position: 'relative' },
+  sanskritText: { textAlign: 'center', fontWeight: '600' },
+  sanskritVerseNumber: { marginLeft: 12, position: 'absolute', right: -12, bottom: 0, fontWeight: '600' },
+  hindiText: { textAlign: 'justify', marginTop: 8 },
+  hindiVerseNumber: { fontWeight: '600' },
+  dividerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 24 },
+  dividerLine: { width: 40, height: 1 },
+  dividerDot: { width: 6, height: 6, marginHorizontal: 12 },
 });
 
-export default function MahabharataReaderScreen() {
+export default function UpanishadsReaderScreen() {
   const layout = useBookLayout();
   const router = useRouter();
   const progresses = useLibraryStore(state => state.progresses);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [chapterNum, setChapterNum] = useState(() => progresses['mahabharata']?.chapterNum || 1);
+  const [chapterNum, setChapterNum] = useState(() => progresses['upanishads']?.chapterNum || 1);
   const [chapters, setChapters] = useState<Record<number, VerseItem[]>>({});
   const [chapterLoading, setChapterLoading] = useState<Record<number, boolean>>({});
   const [pendingOpenChapter, setPendingOpenChapter] = useState<PendingOpenChapter | null>(null);
@@ -120,6 +129,23 @@ export default function MahabharataReaderScreen() {
   const initializedReaderChapterRef = useRef<number | null>(null);
   const isReadyToSaveRef = useRef(false);
 
+  const mockLoadChapter = async (chapterNumber: number) => {
+    return [
+      {
+        chapter: chapterNumber,
+        verse: 1,
+        text: 'ईशावास्यमिदं सर्वं यत्किञ्च जगत्यां जगत् ।\nतेन त्यक्तेन भुञ्जीथा मा गृधः कस्यस्विद्धनम् ॥',
+        type: 'The Lord is enshrined in the hearts of all. The Lord is the supreme Reality. Rejoice in him through renunciation.',
+      },
+      {
+        chapter: chapterNumber,
+        verse: 2,
+        text: 'कुर्वन्नेवेह कर्माणि जिजीविषेच्छतं समाः ।\nएवं त्वयि नान्यथेतोऽस्ति न कर्म लिप्यते नरे ॥',
+        type: 'Doing verily works in this world one should wish to live a hundred years. Thus it is in thee and not otherwise than this; action cleaves not to a man.',
+      }
+    ];
+  };
+
   const loadChapter = useCallback(async (chapterNumber: number, openDirectly: false | 'start' | 'end' = false) => {
     const safeChapterNumber = clamp(chapterNumber, 1, TOTAL_CHAPTERS);
     if (chapterLoading[safeChapterNumber]) return;
@@ -131,11 +157,10 @@ export default function MahabharataReaderScreen() {
     setChapterLoading((prev) => ({ ...prev, [safeChapterNumber]: true }));
     if (openDirectly) setPendingOpenChapter({ chapter: safeChapterNumber, edge: openDirectly });
     try {
-      const incoming = await loadMahabharataBook(safeChapterNumber);
+      const incoming = await mockLoadChapter(safeChapterNumber);
       setChapters((prev) => ({ ...prev, [safeChapterNumber]: incoming }));
     } catch (err: any) {
-      const detail = err?.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : `Failed to load Book ${safeChapterNumber}`);
+      setError(`Failed to load Chapter ${safeChapterNumber}`);
     } finally {
       setChapterLoading((prev) => {
         const next = { ...prev };
@@ -174,7 +199,7 @@ export default function MahabharataReaderScreen() {
     }
     const timeout = setTimeout(() => {
       if (!chapters[chapterNum]?.length) {
-        setError(`Book ${chapterNum} is taking too long to load. Please check the connection and try again.`);
+        setError(`Chapter ${chapterNum} is taking too long to load. Please check the connection and try again.`);
         setLoading(false);
       }
     }, 45000);
@@ -308,20 +333,13 @@ export default function MahabharataReaderScreen() {
 
   const bookmarkActive = bookmarkSpread === spreadIndex;
   const directChapterLoading = pendingOpenChapter !== null && !!chapterLoading[pendingOpenChapter.chapter];
-  const loadingChapterLabel = pendingOpenChapter?.chapter ? `Loading Book ${pendingOpenChapter.chapter}` : 'Loading Book 1';
+  const loadingChapterLabel = pendingOpenChapter?.chapter ? `Loading Chapter ${pendingOpenChapter.chapter}` : 'Loading Chapter 1';
 
   const goToPage = useCallback((index: number) => {
     const maxIndex = Math.max(0, spreads.length - 1);
     const target = clamp(index, 0, maxIndex);
     setSpreadIndex(target);
   }, [spreads.length]);
-
-  const renderVerseBlockCallback = useCallback(
-    (verse: VerseItem, nightMode: boolean, layout: ReturnType<typeof useBookLayout>) => renderVerseBlock(verse, nightMode, layout),
-    [],
-  );
-
-  const measureVerses = useMemo(() => (chapters[chapterNum] ?? []).slice(0, 120), [chapters, chapterNum]);
 
   const onToggleBookmark = useCallback(async () => {
     const activeChapter = currentPageChapter;
@@ -340,8 +358,8 @@ export default function MahabharataReaderScreen() {
 
   return (
     <BookLayout
-      title="Mahabharata"
-      chapterTitle={CHAPTER_TITLES[currentPageChapter - 1] || 'Mahabharata'}
+      title="Upanishads"
+      chapterTitle={CHAPTER_TITLES[currentPageChapter - 1] || 'Upanishads'}
       chapterTitles={CHAPTER_TITLES}
       pageCount={pages.length}
       currentPageChapter={currentPageChapter}
@@ -365,12 +383,12 @@ export default function MahabharataReaderScreen() {
       onRetry={retryInitialLoad}
       onChangeSpread={goToPage}
       onLoadChapter={loadChapter}
-      renderVerseBlock={renderVerseBlockCallback}
-      measureVerses={measureVerses}
+      renderVerseBlock={renderVerseBlock}
+      measureVerses={loadedChapters.flatMap((chapter) => chapters[chapter] ?? [])}
       onMeasureVerse={(id, height) => setHeights((prev) => (prev[id] === height ? prev : { ...prev, [id]: height }))}
-      cover={{ title: 'MAHABHARATA', subtitle: 'महाभारत', imageSource: mahabharataCover }}
-      bookId="mahabharata"
-      bookmarkPrefix="mahabharata:bookmark:parva:"
+      cover={{ title: 'UPANISHADS', subtitle: 'VEDIC TEXTS', imageSource: geetaCover }}
+      bookId="upanishads"
+      bookmarkPrefix="upanishads:bookmark:chapter:"
     />
   );
 }

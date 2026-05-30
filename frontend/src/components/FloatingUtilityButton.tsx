@@ -21,7 +21,8 @@ import {
   ImageBackground,
   SafeAreaView,
   AppState,
-  Vibration
+  Vibration,
+  DeviceEventEmitter
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -205,6 +206,15 @@ export const FloatingUtilityButton = () => {
     };
     loadDismissed();
   }, [user?.id]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('open_sos_modal', () => {
+      setModalVisible(true);
+      checkSOSStatus();
+    });
+    return () => sub.remove();
+  }, [checkSOSStatus]);
+
   const [microLocation, setMicroLocation] = useState('');
   const [microLocationLoading, setMicroLocationLoading] = useState(false);
   const [locationFetched, setLocationFetched] = useState(false);

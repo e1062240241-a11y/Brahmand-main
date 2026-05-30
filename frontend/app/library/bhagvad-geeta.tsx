@@ -3,8 +3,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useLibraryStore } from '../../src/store/libraryStore';
 import BookLayout, { BookVerse, PageItem, SpreadItem, useBookLayout } from '../../src/components/BookLayout';
 import { loadBhagavadGitaChapter, getPreferredTranslation } from '../../src/services/bhagavad-geeta-service';
+
+const convertToHindiNumerals = (num: number) => {
+  const hindiNumerals = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+  return num.toString().split('').map(digit => hindiNumerals[parseInt(digit, 10)]).join('');
+};
 
 type VerseItem = BookVerse;
 type PendingOpenChapter = { chapter: number; edge: 'start' | 'end' };
@@ -84,48 +90,60 @@ const buildPages = (verses: VerseItem[], heights: Record<string, number>, layout
 };
 
 function renderVerseBlock(verse: VerseItem, nightMode: boolean, layout: ReturnType<typeof useBookLayout>) {
+  const cleanSanskrit = (verse.text || '').replace(/[\u1CD0-\u1CFF\u0951-\u0952]/g, '');
+
   const translation = getPreferredTranslation(verse.translations ?? {});
   const transliteration = typeof verse.transliteration === 'string' ? verse.transliteration : '';
   return (
     <>
-      <View style={styles.verseBlock}>
-        <Text style={[styles.verseNumber, { color: nightMode ? '#D2B07A' : '#8A6A40', fontSize: Math.max(9, layout.sanskritTextSize - 3) }]}> {verse.chapter}.{verse.verse}</Text>
-        <View style={[styles.dividerContainer, { marginVertical: 4 }]}> 
-          <View style={[styles.dividerLine, { backgroundColor: nightMode ? '#8f7751' : '#A48B5D' }]} />
-          <Ionicons name="diamond" size={4} color={nightMode ? '#8f7751' : '#A48B5D'} style={{ marginHorizontal: 4 }} />
-          <View style={[styles.dividerLine, { backgroundColor: nightMode ? '#8f7751' : '#A48B5D' }]} />
+      <View style={styles.verseContainer}>
+        <View style={styles.sanskritWrapper}>
+          <Text style={[styles.sanskritText, { color: nightMode ? '#EBD7B6' : '#691F0A', fontSize: layout.sanskritTextSize, lineHeight: layout.sanskritLineHeight }]}>{cleanSanskrit}</Text>
+          <Text style={[styles.sanskritVerseNumber, { color: nightMode ? '#EBD7B6' : '#691F0A', fontSize: Math.max(9, layout.sanskritTextSize - 1) }]}>{convertToHindiNumerals(verse.verse)}</Text>
         </View>
-        <Text style={[styles.sanskritText, { color: nightMode ? '#F3DEC0' : '#2A1A0B', fontSize: layout.sanskritTextSize, lineHeight: layout.sanskritLineHeight }]}>{verse.text}</Text>
-        {transliteration ? (
-          <Text style={[styles.transliterationText, { color: nightMode ? '#D8C7A8' : '#5B4729', fontSize: layout.transliterationSize, lineHeight: layout.transliterationLineHeight, marginTop: 4 }]}> 
-            {transliteration}
-          </Text>
-        ) : null}
+        
         {!!translation && (
-          <Text style={[styles.translationText, { color: nightMode ? '#E6D4B7' : '#3C2A15', fontSize: layout.translationSize, lineHeight: layout.translationLineHeight, marginTop: 6 }]}> 
+          <Text style={[styles.hindiText, { color: nightMode ? '#C4B49A' : '#3B3B3B', fontSize: layout.translationSize, lineHeight: layout.translationLineHeight }]}> 
+            <Text style={[styles.hindiVerseNumber, { color: nightMode ? '#EBD7B6' : '#691F0A' }]}>{convertToHindiNumerals(verse.verse)}. </Text>
             {translation}
           </Text>
         )}
+
+        {transliteration ? (
+          <Text style={[styles.transliterationText, { color: nightMode ? '#D8C7A8' : '#5B4729', fontSize: layout.transliterationSize, lineHeight: layout.transliterationLineHeight, marginTop: 12 }]}> 
+            {transliteration}
+          </Text>
+        ) : null}
+
+        <View style={styles.dividerContainer}>
+          <View style={[styles.dividerLine, { backgroundColor: nightMode ? '#6e4733' : '#8C5A3C' }]} />
+          <View style={[styles.dividerDot, { backgroundColor: nightMode ? '#6e4733' : '#8C5A3C' }]} />
+          <View style={[styles.dividerLine, { backgroundColor: nightMode ? '#6e4733' : '#8C5A3C' }]} />
+        </View>
       </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  verseBlock: { width: '100%' },
-  verseNumber: { textAlign: 'center', fontWeight: 'bold', marginBottom: 0 },
-  dividerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#A48B5D', opacity: 0.5 },
-  sanskritText: { textAlign: 'center', fontWeight: '700', fontFamily: 'serif' },
+  verseContainer: { width: '100%', paddingHorizontal: 12 },
+  sanskritWrapper: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', marginBottom: 16, position: 'relative' },
+  sanskritText: { textAlign: 'center', fontWeight: '600' },
+  sanskritVerseNumber: { marginLeft: 12, position: 'absolute', right: -12, bottom: 0, fontWeight: '600' },
+  hindiText: { textAlign: 'justify', marginTop: 8 },
+  hindiVerseNumber: { fontWeight: '600' },
   transliterationText: { textAlign: 'center', fontStyle: 'italic', fontWeight: '500' },
-  translationText: { textAlign: 'center', fontWeight: '500', fontFamily: 'serif' },
+  dividerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 24 },
+  dividerLine: { width: 40, height: 1 },
+  dividerDot: { width: 6, height: 6, marginHorizontal: 12 },
 });
 export default function BhagvadGeetaReaderScreen() {
   const layout = useBookLayout();
   const router = useRouter();
+  const progresses = useLibraryStore(state => state.progresses);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [chapterNum, setChapterNum] = useState(1);
+  const [chapterNum, setChapterNum] = useState(() => progresses['bhagvad-geeta']?.chapterNum || 1);
   const [chapters, setChapters] = useState<Record<number, VerseItem[]>>({});
   const [chapterLoading, setChapterLoading] = useState<Record<number, boolean>>({});
   const [pendingOpenChapter, setPendingOpenChapter] = useState<PendingOpenChapter | null>(null);
@@ -136,6 +154,7 @@ export default function BhagvadGeetaReaderScreen() {
 
   const initialChapterLoadStartedRef = useRef(false);
   const initializedReaderChapterRef = useRef<number | null>(null);
+  const isReadyToSaveRef = useRef(false);
 
   const loadChapter = useCallback(async (chapterNumber: number, openDirectly: false | 'start' | 'end' = false) => {
     const safeChapterNumber = clamp(chapterNumber, 1, TOTAL_CHAPTERS);
@@ -172,7 +191,7 @@ export default function BhagvadGeetaReaderScreen() {
       setHeights({});
       setSpreadIndex(0);
       try {
-        await loadChapter(1);
+        await loadChapter(chapterNum);
       } catch {
         // handled by loadChapter
       } finally {
@@ -185,13 +204,13 @@ export default function BhagvadGeetaReaderScreen() {
 
   useEffect(() => {
     if (!loading) return;
-    if (chapters[1]?.length) {
+    if (chapters[chapterNum]?.length) {
       setLoading(false);
       return;
     }
     const timeout = setTimeout(() => {
-      if (!chapters[1]?.length) {
-        setError('Chapter 1 is taking too long to load. Please check the connection and try again.');
+      if (!chapters[chapterNum]?.length) {
+        setError(`Chapter ${chapterNum} is taking too long to load. Please check the connection and try again.`);
         setLoading(false);
       }
     }, 45000);
@@ -203,10 +222,10 @@ export default function BhagvadGeetaReaderScreen() {
     setLoading(true);
     setChapterLoading((prev) => {
       const next = { ...prev };
-      delete next[1];
+      delete next[chapterNum];
       return next;
     });
-    void loadChapter(1);
+    void loadChapter(chapterNum);
   }, [loadChapter]);
 
   const loadedChapters = useMemo(() => Object.keys(chapters).map(Number).sort((a, b) => a - b), [chapters]);
@@ -278,6 +297,7 @@ export default function BhagvadGeetaReaderScreen() {
         setPendingOpenChapter(null);
         initializedReaderChapterRef.current = chapterNum;
         setSpreadIndex(targetSpread);
+        setTimeout(() => { isReadyToSaveRef.current = true; }, 100);
         return;
       }
 
@@ -286,13 +306,14 @@ export default function BhagvadGeetaReaderScreen() {
       setSpreadIndex(initialSpread);
       setLastReadSpread(base + lastReadIndex);
       setBookmarkSpread(bookmarkIndex !== null ? base + bookmarkIndex : null);
+      setTimeout(() => { isReadyToSaveRef.current = true; }, 100);
     };
     if (pages.length > 0) loadReaderState();
     return () => { mounted = false; };
   }, [chapterNum, pages.length, chapterPages, chapterStartSpreads, pendingOpenChapter]);
 
   useEffect(() => {
-    if (pages.length === 0) return;
+    if (pages.length === 0 || !isReadyToSaveRef.current) return;
     const activeChapter = currentPageChapter;
     const base = chapterStartSpreads[activeChapter] ?? 0;
     const chapterSpreadCount = Math.max(0, Math.ceil((chapterPages[activeChapter]?.length ?? 0) / 2));
@@ -377,6 +398,8 @@ export default function BhagvadGeetaReaderScreen() {
       measureVerses={loadedChapters.flatMap((chapter) => chapters[chapter] ?? [])}
       onMeasureVerse={(id, height) => setHeights((prev) => (prev[id] === height ? prev : { ...prev, [id]: height }))}
       cover={{ title: 'BHAGAVAD\nGITA', textureUri: 'https://www.transparenttextures.com/patterns/leather.png' }}
+      bookId="bhagvad-geeta"
+      bookmarkPrefix="geeta:bookmark:chapter:"
     />
   );
 }

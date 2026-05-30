@@ -185,7 +185,10 @@ class FirebaseNotificationService:
                         )
                     )
                     apns_config = fcm.APNSConfig(
+<<<<<<< HEAD
+=======
                         # apns-push-type required by Apple on iOS 13+ for display
+>>>>>>> c8339c39e83b3ff4020ba2cfa041d8076f7471da
                         headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(

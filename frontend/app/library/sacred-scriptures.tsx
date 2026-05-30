@@ -23,6 +23,7 @@ const rigvedaCover = require('../../assets/images/ancient_new_2.jpg');
 const ramayanCover = require('../../assets/images/ancient_new_4.jpg');
 const ramcharitmanasCover = require('../../assets/images/Ramcharitmanas.jpg');
 const yajurvedaCover = require('../../assets/images/Yajurveda.jpg');
+const parchmentBg = require('../../assets/images/clean_parchment_bg.png');
 
 // ── Color tokens ──────────────────────────────────────────────────────────
 const ORANGE = '#FF6B00';
@@ -139,6 +140,7 @@ export default function SacredScripturesPage() {
         {/* ── Featured Card (Bhagavad Geeta) ── */}
         <View style={styles.featuredWrapper}>
           <View style={styles.featuredCard}>
+            <Image source={parchmentBg} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
             {/* Full-width cover image */}
             <View style={styles.featuredCoverBox}>
               <Image source={geetaCover} style={styles.featuredCover} resizeMode="stretch" />
@@ -193,7 +195,7 @@ export default function SacredScripturesPage() {
                 style={styles.startBtn}
                 onPress={() => router.push('/library/continue-reading' as any)}
               >
-                <Text style={styles.startBtnTxt}>Start Reading</Text>
+                <Text style={styles.startBtnTxt}>Begin Journey</Text>
                 <Ionicons name="arrow-forward" size={16} color={PEACHISH} style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             </View>
@@ -217,6 +219,7 @@ export default function SacredScripturesPage() {
               onPress={() => router.push(book.route as any)}
               activeOpacity={0.88}
             >
+              <Image source={parchmentBg} style={[StyleSheet.absoluteFillObject, { borderRadius: 12, opacity: 0.6 }]} resizeMode="cover" />
               {/* Cover */}
               <Image source={book.cover} style={styles.listCover} resizeMode="stretch" />
 
@@ -333,7 +336,6 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   featuredCard: {
-    backgroundColor: PEACHISH,
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -462,7 +464,6 @@ const styles = StyleSheet.create({
   },
   listCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(226,191,176,0.20)',
