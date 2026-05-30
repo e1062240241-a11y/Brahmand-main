@@ -95,20 +95,41 @@ export async function registerForPushNotifications(): Promise<string | null> {
       return null;
     }
 
-    // Prefer native device push token for FCM-based backend delivery.
-    const deviceToken = await Notifications.getDevicePushTokenAsync();
-    if (deviceToken?.data) {
-      token = deviceToken.data;
-      console.log('[Push] Device Push Token retrieved successfully.');
-    } else {
-      // Fallback: Expo push token
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-      if (projectId) {
+    if (Platform.OS === 'ios') {
+      // iOS: getDevicePushTokenAsync returns a raw APNs hex token.
+      // The firebase-admin SDK on the backend CANNOT send to raw APNs tokens —
+      // it only accepts FCM registration tokens.
+      // Solution: use getExpoPushTokenAsync on iOS. Expo's push service acts as
+      // a proxy that accepts APNs tokens and delivers via Apple's APNs servers.
+      // The backend's FirebaseNotificationService._send_expo_push_notifications
+      // already handles "ExponentPushToken[...]" tokens correctly.
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      if (!projectId) {
+        console.warn('[Push] iOS: No EAS projectId found — cannot get Expo push token.');
+      } else {
         const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
         token = pushToken.data;
-        console.warn('[Push] Received Expo push token; FCM native token preferred for production.');
+        console.log('[Push] iOS: Expo push token acquired:', token?.slice(0, 30) + '...');
+      }
+    } else {
+      // Android: getDevicePushTokenAsync returns a real FCM registration token
+      // that firebase-admin's messaging.send() can use directly.
+      const deviceToken = await Notifications.getDevicePushTokenAsync();
+      if (deviceToken?.data) {
+        token = deviceToken.data;
+        console.log('[Push] Android: FCM device token acquired.');
       } else {
-        console.warn('[Push] Unable to get device push token and no Expo projectId fallback available.');
+        // Fallback to Expo push token on Android as well
+        const projectId =
+          Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+        if (projectId) {
+          const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
+          token = pushToken.data;
+          console.warn('[Push] Android: Fell back to Expo push token.');
+        } else {
+          console.warn('[Push] Android: No FCM token and no Expo projectId fallback.');
+        }
       }
     }
   } catch (error: any) {

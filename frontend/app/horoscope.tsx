@@ -17,8 +17,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 
-import { getDailyHoroscope, askAstrologyAI } from '../src/services/api';
+import { getDailyHoroscope } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
+
+import { useAuthStore } from '../src/store/authStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -39,6 +41,9 @@ const ZODIAC_SIGNS = [
 
 export default function HoroscopeScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  
+  // Set default state
   const [selectedZodiac, setSelectedZodiac] = useState(ZODIAC_SIGNS[0]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [payload, setPayload] = useState<any>(null);
@@ -47,10 +52,17 @@ export default function HoroscopeScreen() {
 
   const isMountedRef = useRef(true);
 
+  // Set default rashi on mount if user profile has one
   useEffect(() => {
     isMountedRef.current = true;
+    if (user?.rashi) {
+      const match = ZODIAC_SIGNS.find(z => z.hindi.toLowerCase() === user.rashi.toLowerCase() || z.name.toLowerCase() === user.rashi.toLowerCase());
+      if (match) {
+        setSelectedZodiac(match);
+      }
+    }
     return () => { isMountedRef.current = false; };
-  }, []);
+  }, [user?.rashi]);
 
   const fetchHoroscope = useCallback(async (zodiacId: string) => {
     setLoading(true);
@@ -92,9 +104,21 @@ export default function HoroscopeScreen() {
     );
   }
 
-  const predictionData = payload?.prediction || {};
+  const predictionData = payload?.detailed_predictions || {};
   const scores = payload?.scores || { finance: 84, love: 59, health: 57, overall: 66 };
-  const lucky = payload?.lucky || { number: '1, 8', color: 'Red', colorHex: '#FF0000' };
+  const lucky = {
+    number: String(payload?.lucky_number || payload?.lucky?.number || '1, 8'),
+    color: String(payload?.lucky_color || payload?.lucky?.color || 'Red'),
+    colorHex: String(payload?.lucky_color_hex || payload?.lucky?.colorHex || '#FF6B00'),
+  };
+
+  const normalizeTextBlock = (value: any) => {
+    const text = Array.isArray(value)
+      ? value.map((item) => String(item).trim()).filter(Boolean).join(' ')
+      : String(value ?? '');
+
+    return text.replace(/\s+/g, ' ').trim();
+  };
 
   const renderPrediction = () => {
     if (typeof payload?.prediction === 'string') {
@@ -103,11 +127,7 @@ export default function HoroscopeScreen() {
 
     if (Array.isArray(payload?.prediction)) {
       return (
-        <View style={{ gap: 12 }}>
-          {payload.prediction.map((p: any, i: number) => (
-            <Text key={i} style={styles.predictionText}>{String(p)}</Text>
-          ))}
-        </View>
+        <Text style={styles.predictionText}>{normalizeTextBlock(payload.prediction)}</Text>
       );
     }
 
@@ -128,7 +148,7 @@ export default function HoroscopeScreen() {
               <View key={key} style={styles.categoryItem}>
                 <Ionicons name={iconName} size={20} color="#E65C00" />
                 <Text style={styles.categoryLabel}>{label}</Text>
-                <Text style={styles.categoryValue}>{String(value)}</Text>
+                <Text style={styles.categoryValue}>{normalizeTextBlock(value)}</Text>
               </View>
             );
           })}
@@ -240,16 +260,18 @@ export default function HoroscopeScreen() {
               </View>
 
               <View style={styles.predictionContent}>
-                {Object.entries(predictionData).map(([key, value], index) => {
-                  if (!value) return null;
-                  const label = key.replace(/_/g, ' ').toUpperCase();
-                  let iconName: any = 'star';
-                  if (key.includes('personal')) iconName = 'person';
-                  if (key.includes('profession')) iconName = 'briefcase';
-                  if (key.includes('health')) iconName = 'heart';
-                  if (key.includes('emotion')) iconName = 'happy';
-                  if (key.includes('travel')) iconName = 'airplane';
-                  if (key.includes('luck')) iconName = 'leaf';
+                {typeof predictionData === 'object' && predictionData !== null && !Array.isArray(predictionData) &&
+                  Object.entries(predictionData).map(([key, value], index) => {
+                    if (!value) return null;
+                    const label = key.replace(/_/g, ' ').toUpperCase();
+                    let iconName: any = 'star';
+                    if (key.includes('personal') || key.includes('love')) iconName = 'heart';
+                    if (key.includes('profession') || key.includes('finance')) iconName = 'briefcase';
+                    if (key.includes('health')) iconName = 'fitness';
+                    if (key.includes('emotion')) iconName = 'happy';
+                    if (key.includes('travel')) iconName = 'airplane';
+                    if (key.includes('luck')) iconName = 'leaf';
+                    if (key.includes('overall')) iconName = 'sparkles';
 
                   return (
                     <View key={key}>

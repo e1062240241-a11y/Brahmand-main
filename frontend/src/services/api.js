@@ -1145,7 +1145,9 @@ var getDailyHoroscope = function (zodiacName, timezone) {
     if (timezone === void 0) { timezone = 5.5; }
     var date = new Date().toISOString().split('T')[0];
     var cacheKey = "horoscope_".concat(zodiacName, "_").concat(date);
-    return getWithCache(cacheKey, function () { return exports.api.get("/horoscope/daily/".concat(zodiacName), { params: { timezone: timezone } }); });
+    return AsyncStorage.removeItem(cacheKey)
+        .catch(function () { return undefined; })
+        .then(function () { return exports.api.get("/horoscope/daily/".concat(zodiacName), { params: { timezone: timezone } }); });
 };
 exports.getDailyHoroscope = getDailyHoroscope;
 var getNakshatraReport = function (params) {

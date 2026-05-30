@@ -19,6 +19,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { aiChat } from '../src/services/api';
 import { COLORS, FONTS, SPACING } from '../src/constants/theme';
 
+import { useAuthStore } from '../src/store/authStore';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -30,11 +32,14 @@ interface Message {
 export default function MyKrishnaChat() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
+  const displayName = user?.name?.trim() ? user.name.trim() : 'Partha';
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: 'Radhe Radhe! I am your spiritual guide, My Krishna. Plzz reply in Hinglish. On the battlefield of life, I am here to guide you with the wisdom of the Bhagavad Gita. What troubles your mind today, Partha?',
+      content: `Radhe Radhe! ${displayName}, I am here to guide you with the wisdom of the Bhagavad Gita. What troubles your mind today?`,
       timestamp: new Date(),
     },
   ]);

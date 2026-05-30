@@ -33,6 +33,7 @@ import { useVendorStore } from '../../src/store/vendorStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
+import HomeJyotishSection from '../../src/components/HomeJyotishSection';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
 
@@ -475,6 +476,12 @@ export default function HomeScreen() {
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || useFeedStore.getState().activeTab;
+    
+    if (tabToLoad === 'jyotish') {
+      // Handled entirely by its own component, no need to touch posts feed
+      return;
+    }
+
     const cached = useFeedStore.getState().tabFeeds[tabToLoad];
     const hasCache = cached && cached.posts && cached.posts.length > 0;
 
@@ -2635,6 +2642,8 @@ export default function HomeScreen() {
                     </AnimatedSkeleton>
                   ))}
                 </View>
+              ) : activeTab === 'jyotish' ? (
+                <HomeJyotishSection />
               ) : feedPosts.length > 0 ? (
                 <>
                   {feedPosts.map((post, index) => {

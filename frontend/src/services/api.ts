@@ -1057,7 +1057,9 @@ export const getPanchang = (params?: {
 export const getDailyHoroscope = (zodiacName: string, timezone: number = 5.5) => {
   const date = new Date().toISOString().split('T')[0];
   const cacheKey = `horoscope_${zodiacName}_${date}`;
-  return getWithCache(cacheKey, () => api.get(`/horoscope/daily/${zodiacName}`, { params: { timezone } }));
+  return AsyncStorage.removeItem(cacheKey)
+    .catch(() => undefined)
+    .then(() => api.get(`/horoscope/daily/${zodiacName}`, { params: { timezone } }));
 };
 
 export const getNakshatraReport = (params?: {

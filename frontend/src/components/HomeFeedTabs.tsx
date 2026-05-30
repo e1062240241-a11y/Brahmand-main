@@ -42,6 +42,15 @@ const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeF
         </Text>
       </TouchableOpacity>
 
+      <TouchableOpacity 
+        style={[styles.tabBtn, activeTab === 'jyotish' && styles.activeTabBtn]} 
+        onPress={() => onTabChange('jyotish')}
+      >
+        <Text style={[styles.tabText, activeTab === 'jyotish' && styles.activeTabText]}>
+          {t('language') === 'hi' ? 'ज्योतिष' : 'Jyotish'}
+        </Text>
+      </TouchableOpacity>
+
       <TouchableOpacity activeOpacity={0.8} style={styles.newPostButton} onPress={onCreatePost}>
         <View style={styles.plusIconBg}>
           <Ionicons name="add" size={20} color="#FF6B00" />
