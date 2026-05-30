@@ -146,7 +146,7 @@ class PushNotificationService:
             
             # iOS: .caf is Apple's native audio format — most reliable for APNs custom sounds.
             # Android: filename WITHOUT extension (matches res/raw/ file name).
-            ios_sound = 'soundreality_mayday_166011.caf' if is_sos else 'bell.caf'
+            ios_sound = 'soundreality_mayday_166011_ios.caf' if is_sos else 'bell_ios.caf'
             android_sound = 'soundreality_mayday_166011' if is_sos else 'bell'
             
             # Android specific configuration

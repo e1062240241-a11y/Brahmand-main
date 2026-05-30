@@ -304,7 +304,7 @@ export async function scheduleLocalNotification(
 
   // iOS requires filename WITH extension; prefer .caf (Apple's native audio format, most reliable for APNs).
   // Android WITHOUT extension (references res/raw/ filename).
-  const iosSoundFile = isSos ? 'soundreality_mayday_166011.caf' : 'bell.caf';
+  const iosSoundFile = isSos ? 'soundreality_mayday_166011_ios.caf' : 'bell_ios.caf';
   const androidSoundFile = isSos ? 'soundreality_mayday_166011' : 'bell';
 
   const channelId = isSos

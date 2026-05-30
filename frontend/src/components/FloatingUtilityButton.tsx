@@ -969,8 +969,8 @@ export const FloatingUtilityButton = () => {
                   <View style={styles.victimCard}>
                     <View style={styles.victimRow}>
                       <View style={styles.victimAvatarBox}>
-                        {nearbySOSAlerts[0].creator_image ? (
-                          <Image source={{ uri: nearbySOSAlerts[0].creator_image }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                        {nearbySOSAlerts[0].creator_image || nearbySOSAlerts[0].user_photo ? (
+                          <Image source={{ uri: nearbySOSAlerts[0].creator_image || nearbySOSAlerts[0].user_photo }} style={{ width: 44, height: 44, borderRadius: 22 }} />
                         ) : (
                           <Ionicons name="person" size={30} color="#DDD" />
                         )}
@@ -1000,20 +1000,30 @@ export const FloatingUtilityButton = () => {
                   </View>
  
                   <View style={styles.responderActionRow}>
-                    <TouchableOpacity
-                      style={[styles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
-                      onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
-                      disabled={isResponding}
-                    >
-                      {isResponding ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                      ) : (
-                        <>
-                          <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
-                          <Text style={styles.responderBtnText}>{t('onMyWay')}</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                    {nearbySOSAlerts[0].responders?.some((r: any) => r.user_id === user?.id) ? (
+                      <TouchableOpacity
+                        style={[styles.responderBtn, { backgroundColor: '#388E3C' }]}
+                        disabled={true}
+                      >
+                        <Ionicons name="checkmark-circle" size={22} color="#FFF" />
+                        <Text style={styles.responderBtnText}>{"ON THE WAY"}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
+                        onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
+                        disabled={isResponding}
+                      >
+                        {isResponding ? (
+                          <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                          <>
+                            <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
+                            <Text style={styles.responderBtnText}>{t('onMyWay')}</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                       style={[styles.responderBtn, { backgroundColor: '#FF9800' }]}
                       onPress={() => {

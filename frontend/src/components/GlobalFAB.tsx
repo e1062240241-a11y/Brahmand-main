@@ -13,6 +13,7 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
+  AppState,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import { getMySOSAlert, resolveSOSAlert, getActiveSOSAlerts, respondToSOS } from
 import { useTranslation } from '../utils/i18n';
 import LocationService from '../services/location';
 import { useAuthStore } from '../store/authStore';
+import { socketService } from '../services/socket';
 
 export function GlobalFAB() {
   const router = useRouter();
@@ -72,9 +74,41 @@ export function GlobalFAB() {
     }
   };
 
+  // Poll & Listen for Realtime SOS events
   useEffect(() => {
+    if (!user?.id) return;
+
     checkSOSStatus();
-  }, [checkSOSStatus]);
+
+    const handleSOSAlert = () => {
+      checkSOSStatus();
+    };
+    const handleSOSResponse = () => {
+      checkSOSStatus();
+    };
+
+    socketService.onEvent('sos_alert', handleSOSAlert);
+    socketService.onEvent('sos_response', handleSOSResponse);
+
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        checkSOSStatus();
+      }
+    }, 10000);
+
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        checkSOSStatus();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      appStateSub.remove();
+      socketService.offEvent('sos_alert', handleSOSAlert);
+      socketService.offEvent('sos_response', handleSOSResponse);
+    };
+  }, [checkSOSStatus, user?.id]);
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('open_sos_modal', () => {
@@ -365,8 +399,8 @@ export function GlobalFAB() {
                     <View style={fabStyles.victimCard}>
                       <View style={fabStyles.victimRow}>
                         <View style={fabStyles.victimAvatarBox}>
-                          {nearbySOSAlerts[0].creator_image ? (
-                            <Image source={{ uri: nearbySOSAlerts[0].creator_image }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                          {nearbySOSAlerts[0].creator_image || nearbySOSAlerts[0].user_photo ? (
+                            <Image source={{ uri: nearbySOSAlerts[0].creator_image || nearbySOSAlerts[0].user_photo }} style={{ width: 44, height: 44, borderRadius: 22 }} />
                           ) : (
                             <Ionicons name="person" size={30} color="#DDD" />
                           )}
@@ -390,24 +424,34 @@ export function GlobalFAB() {
                     </View>
 
                     <View style={fabStyles.responderActionRow}>
-                      <TouchableOpacity
-                        style={[fabStyles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
-                        onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
-                        disabled={isResponding}
-                      >
-                        {isResponding ? (
-                          <ActivityIndicator color="#FFF" size="small" />
-                        ) : (
-                          <>
-                            <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
-                            <Text style={fabStyles.responderBtnText}>{"I'M ON\nMY WAY"}</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
+                      {nearbySOSAlerts[0].responders?.some((r: any) => r.user_id === user?.id) ? (
+                        <TouchableOpacity
+                          style={[fabStyles.responderBtn, { backgroundColor: '#388E3C' }]}
+                          disabled={true}
+                        >
+                          <Ionicons name="checkmark-circle" size={22} color="#FFF" />
+                          <Text style={fabStyles.responderBtnText}>{"ON THE WAY"}</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={[fabStyles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
+                          onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
+                          disabled={isResponding}
+                        >
+                          {isResponding ? (
+                            <ActivityIndicator color="#FFF" size="small" />
+                          ) : (
+                            <>
+                              <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
+                              <Text style={fabStyles.responderBtnText}>{"I'M ON\nMY WAY"}</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
                         style={[fabStyles.responderBtn, { backgroundColor: '#FF9800' }]}
                         onPress={() => {
-                          const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || '';
+                          const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || nearbySOSAlerts[0].phone_number || '';
                           if (!phone) { Alert.alert('Not Available', 'Phone number not provided.'); return; }
                           Linking.openURL(`tel:${phone}`);
                         }}
@@ -419,7 +463,11 @@ export function GlobalFAB() {
                         style={[fabStyles.responderBtn, { backgroundColor: '#2196F3' }]}
                         onPress={() => {
                           const s = nearbySOSAlerts[0];
-                          if (s?.latitude && s?.longitude) Linking.openURL(`https://maps.google.com/?q=${s.latitude},${s.longitude}`);
+                          if (s?.latitude && s?.longitude) {
+                            Linking.openURL(`https://maps.google.com/?q=${s.latitude},${s.longitude}`);
+                          } else {
+                            Alert.alert('Location Not Available', 'This SOS has no coordinate details.');
+                          }
                         }}
                       >
                         <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
@@ -473,6 +521,7 @@ export function GlobalFAB() {
           { bottom: 90 + insets.bottom },
           { transform: pan.getTranslateTransform() },
           fabExpanded && { opacity: 0 },
+          (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#D32F2F', borderColor: '#FFCDD2' }
         ]}
         {...panResponder.panHandlers}
       >
@@ -481,11 +530,15 @@ export function GlobalFAB() {
           activeOpacity={0.85}
           onPress={toggleFab}
         >
-          <Image
-            source={require('../../assets/images/peacock_feather_icon.png')}
-            style={fabStyles.fabIcon}
-            resizeMode="cover"
-          />
+          {activeSOS || nearbySOSAlerts.length > 0 ? (
+            <MaterialCommunityIcons name="alarm-light" size={30} color="#FFF" />
+          ) : (
+            <Image
+              source={require('../../assets/images/peacock_feather_icon.png')}
+              style={fabStyles.fabIcon}
+              resizeMode="cover"
+            />
+          )}
         </TouchableOpacity>
       </Animated.View>
     </>

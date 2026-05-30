@@ -72,7 +72,7 @@ class FirebaseNotificationService:
 
         # iOS requires the .caf extension for custom sounds via the Expo Push API.
         # Without the extension iOS silently falls back to the default system sound.
-        ios_sound = 'soundreality_mayday_166011.caf' if is_sos else 'bell.caf'
+        ios_sound = 'soundreality_mayday_166011_ios.caf' if is_sos else 'bell_ios.caf'
 
         payloads = []
         for token in tokens:
@@ -189,7 +189,7 @@ class FirebaseNotificationService:
                         headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='soundreality_mayday_166011.caf',
+                                sound='soundreality_mayday_166011_ios.caf',
                                 badge=1,
                                 content_available=True,
                                 mutable_content=True,
@@ -210,7 +210,7 @@ class FirebaseNotificationService:
                         headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='bell.caf',
+                                sound='bell_ios.caf',
                                 content_available=True,
                                 mutable_content=True
                             )
@@ -230,7 +230,7 @@ class FirebaseNotificationService:
                         headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
-                                sound='bell.caf',
+                                sound='bell_ios.caf',
                                 content_available=True,
                                 mutable_content=True
                             )
@@ -352,7 +352,7 @@ class FirebaseNotificationService:
                                 headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='soundreality_mayday_166011.caf',
+                                        sound='soundreality_mayday_166011_ios.caf',
                                         badge=1,
                                         content_available=True,
                                         mutable_content=True,
@@ -373,7 +373,7 @@ class FirebaseNotificationService:
                                 headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='bell.caf',
+                                        sound='bell_ios.caf',
                                         content_available=True,
                                         mutable_content=True
                                     )
@@ -393,7 +393,7 @@ class FirebaseNotificationService:
                                 headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
-                                        sound='bell.caf',
+                                        sound='bell_ios.caf',
                                         content_available=True,
                                         mutable_content=True
                                     )

@@ -18,6 +18,7 @@ import {
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COLORS, SPACING } from '../constants/theme';
 import { uploadUserPost, getAllUsers } from '../services/api';
@@ -165,6 +166,7 @@ const M3OutlinedInput = ({ label, value, onChangeText, multiline = false, placeh
 };
 
 export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadStart }: UploadPostModalProps) => {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null);
   const [caption, setCaption] = useState('');
@@ -557,7 +559,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
 
   return (
     <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={resetAndClose} presentationStyle="fullScreen">
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           
           <View style={styles.appBar}>
@@ -778,7 +780,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 };

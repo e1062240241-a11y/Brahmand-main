@@ -1,6 +1,6 @@
 "use strict";
 var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
+    __assign = Object.assign || function (t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
             s = arguments[i];
             for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
@@ -20,8 +20,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
-    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    var _ = { label: 0, sent: function () { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function () { return this; }), g;
     function verb(n) { return function (v) { return step([n, v]); }; }
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
@@ -52,112 +52,122 @@ var zustand_1 = require("zustand");
 var async_storage_1 = require("@react-native-async-storage/async-storage");
 var pushNotifications_1 = require("../services/pushNotifications");
 var authService_1 = require("../services/firebase/authService");
-exports.useAuthStore = (0, zustand_1.create)(function (set, get) { return ({
-    user: null,
-    token: null,
-    isLoading: true,
-    isAuthenticated: false,
-    fcmToken: null,
-    pendingDeepLink: null,
-    setUser: function (user) { return set({ user: user, isAuthenticated: !!user }); },
-    setToken: function (token) { return set({ token: token }); },
-    setLoading: function (isLoading) { return set({ isLoading: isLoading }); },
-    setPendingDeepLink: function (pendingDeepLink) { return set({ pendingDeepLink: pendingDeepLink }); },
-    login: function (user, token) { return __awaiter(void 0, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, async_storage_1.default.setItem('auth_token', token)];
-                case 1:
-                    _a.sent();
-                    return [4 /*yield*/, async_storage_1.default.setItem('user', JSON.stringify(user))];
-                case 2:
-                    _a.sent();
-                    set({ user: user, token: token, isAuthenticated: true, isLoading: false });
-                    return [2 /*return*/];
-            }
-        });
-    }); },
-    logout: function () { return __awaiter(void 0, void 0, void 0, function () {
-        var error_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, (0, authService_1.signOutFirebase)()];
-                case 1:
-                    _a.sent();
-                    return [3 /*break*/, 3];
-                case 2:
-                    error_1 = _a.sent();
-                    console.warn('[Auth] Firebase signOut failed (ignored):', error_1);
-                    return [3 /*break*/, 3];
-                case 3: return [4 /*yield*/, async_storage_1.default.removeItem('auth_token')];
-                case 4:
-                    _a.sent();
-                    return [4 /*yield*/, async_storage_1.default.removeItem('user')];
-                case 5:
-                    _a.sent();
-                    set({ user: null, token: null, isAuthenticated: false, fcmToken: null });
-                    return [2 /*return*/];
-            }
-        });
-    }); },
-    loadStoredAuth: function () { return __awaiter(void 0, void 0, void 0, function () {
-        var token, userStr, user, error_2;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 3, , 4]);
-                    return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
-                case 1:
-                    token = _a.sent();
-                    return [4 /*yield*/, async_storage_1.default.getItem('user')];
-                case 2:
-                    userStr = _a.sent();
-                    if (token && userStr) {
-                        user = JSON.parse(userStr);
-                        set({ user: user, token: token, isAuthenticated: true, isLoading: false });
+exports.useAuthStore = (0, zustand_1.create)(function (set, get) {
+    return ({
+        user: null,
+        token: null,
+        isLoading: true,
+        isAuthenticated: false,
+        fcmToken: null,
+        pendingDeepLink: null,
+        setUser: function (user) { return set({ user: user, isAuthenticated: !!user }); },
+        setToken: function (token) { return set({ token: token }); },
+        setLoading: function (isLoading) { return set({ isLoading: isLoading }); },
+        setPendingDeepLink: function (pendingDeepLink) { return set({ pendingDeepLink: pendingDeepLink }); },
+        login: function (user, token) {
+            return __awaiter(void 0, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, async_storage_1.default.setItem('auth_token', token)];
+                        case 1:
+                            _a.sent();
+                            return [4 /*yield*/, async_storage_1.default.setItem('user', JSON.stringify(user))];
+                        case 2:
+                            _a.sent();
+                            set({ user: user, token: token, isAuthenticated: true, isLoading: false });
+                            return [2 /*return*/];
                     }
-                    else {
-                        set({ isLoading: false });
+                });
+            });
+        },
+        logout: function () {
+            return __awaiter(void 0, void 0, void 0, function () {
+                var error_1;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            _a.trys.push([0, 2, , 3]);
+                            return [4 /*yield*/, (0, authService_1.signOutFirebase)()];
+                        case 1:
+                            _a.sent();
+                            return [3 /*break*/, 3];
+                        case 2:
+                            error_1 = _a.sent();
+                            console.warn('[Auth] Firebase signOut failed (ignored):', error_1);
+                            return [3 /*break*/, 3];
+                        case 3: return [4 /*yield*/, async_storage_1.default.removeItem('auth_token')];
+                        case 4:
+                            _a.sent();
+                            return [4 /*yield*/, async_storage_1.default.removeItem('user')];
+                        case 5:
+                            _a.sent();
+                            set({ user: null, token: null, isAuthenticated: false, fcmToken: null });
+                            return [2 /*return*/];
                     }
-                    return [3 /*break*/, 4];
-                case 3:
-                    error_2 = _a.sent();
-                    console.error('Error loading auth:', error_2);
-                    set({ isLoading: false });
-                    return [3 /*break*/, 4];
-                case 4: return [2 /*return*/];
-            }
-        });
-    }); },
-    updateUser: function (updates) {
-        var currentUser = get().user;
-        if (currentUser) {
-            var updatedUser = __assign(__assign({}, currentUser), updates);
-            set({ user: updatedUser });
-            async_storage_1.default.setItem('user', JSON.stringify(updatedUser));
-        }
-    },
-    initPushNotifications: function () { return __awaiter(void 0, void 0, void 0, function () {
-        var fcmToken, error_3;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, (0, pushNotifications_1.initializePushNotifications)()];
-                case 1:
-                    fcmToken = _a.sent();
-                    if (fcmToken) {
-                        set({ fcmToken: fcmToken });
+                });
+            });
+        },
+        loadStoredAuth: function () {
+            return __awaiter(void 0, void 0, void 0, function () {
+                var token, userStr, user, error_2;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            _a.trys.push([0, 3, , 4]);
+                            return [4 /*yield*/, async_storage_1.default.getItem('auth_token')];
+                        case 1:
+                            token = _a.sent();
+                            return [4 /*yield*/, async_storage_1.default.getItem('user')];
+                        case 2:
+                            userStr = _a.sent();
+                            if (token && userStr) {
+                                user = JSON.parse(userStr);
+                                set({ user: user, token: token, isAuthenticated: true, isLoading: false });
+                            }
+                            else {
+                                set({ isLoading: false });
+                            }
+                            return [3 /*break*/, 4];
+                        case 3:
+                            error_2 = _a.sent();
+                            console.error('Error loading auth:', error_2);
+                            set({ isLoading: false });
+                            return [3 /*break*/, 4];
+                        case 4: return [2 /*return*/];
                     }
-                    return [2 /*return*/, fcmToken];
-                case 2:
-                    error_3 = _a.sent();
-                    console.log('[Push] Could not initialize push notifications:', error_3);
-                    return [2 /*return*/, null];
-                case 3: return [2 /*return*/];
+                });
+            });
+        },
+        updateUser: function (updates) {
+            var currentUser = get().user;
+            if (currentUser) {
+                var updatedUser = __assign(__assign({}, currentUser), updates);
+                set({ user: updatedUser });
+                async_storage_1.default.setItem('user', JSON.stringify(updatedUser));
             }
-        });
-    }); },
-}); });
+        },
+        initPushNotifications: function () {
+            return __awaiter(void 0, void 0, void 0, function () {
+                var fcmToken, error_3;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            _a.trys.push([0, 2, , 3]);
+                            return [4 /*yield*/, (0, pushNotifications_1.initializePushNotifications)()];
+                        case 1:
+                            fcmToken = _a.sent();
+                            if (fcmToken) {
+                                set({ fcmToken: fcmToken });
+                            }
+                            return [2 /*return*/, fcmToken];
+                        case 2:
+                            error_3 = _a.sent();
+                            console.log('[Push] Could not initialize push notifications:', error_3);
+                            return [2 /*return*/, null];
+                        case 3: return [2 /*return*/];
+                    }
+                });
+            });
+        },
+    });
+});
