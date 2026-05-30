@@ -787,7 +787,19 @@ export const markPostAsSeen = async (postId: string) => {
 };
 
 export const getHomeInit = async () => {
-  return await api.get('/home/init');
+  try {
+    const savedSeen = await AsyncStorage.getItem('global_seen_reels');
+    let localSeenIds = '';
+    if (savedSeen) {
+      const parsed = JSON.parse(savedSeen);
+      if (Array.isArray(parsed)) {
+        localSeenIds = parsed.slice(-250).join(',');
+      }
+    }
+    return await api.get('/home/init', { params: { seen_ids: localSeenIds } });
+  } catch (e) {
+    return await api.get('/home/init');
+  }
 };
 
 export const getPostsFeed = async (limit: number = 20, offset: number = 0, tab: string = 'for_you', seen_ids?: string) => {
@@ -797,8 +809,8 @@ export const getPostsFeed = async (limit: number = 20, offset: number = 0, tab: 
     if (savedSeen) {
       const parsed = JSON.parse(savedSeen);
       if (Array.isArray(parsed)) {
-        // Reduced from 100 to 50 for faster query performance on home feed
-        localSeenIds = parsed.slice(-50).join(',');
+        // Increased from 50 to 250 to prevent repetitive content
+        localSeenIds = parsed.slice(-250).join(',');
       }
     }
     const combinedSeen = [seen_ids, localSeenIds].filter(Boolean).join(',');

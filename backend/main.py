@@ -2868,11 +2868,27 @@ async def get_posts_feed(
             
         public_posts.append(p)
 
-    pool = [p for p in public_posts if p.get('id') not in seen_set]
-    
-    # Fallback: If user has seen everything (or pool is too small), show old public posts so feed isn't empty
-    if len(pool) < safe_limit:
-        pool = public_posts
+    # Pre-fetch following IDs if tab is following
+    following_ids = set()
+    if tab == 'following':
+        try:
+            current_user = await db.get_document('users', current_user_id)
+            following_ids = set(current_user.get('following', []) or [])
+        except Exception:
+            pass
+
+    # Fetch user interest preferences
+    user_interests: dict = {}
+    if tab == 'for_you':
+        try:
+            prefs_doc = await db.get_document('feed_preferences', current_user_id)
+            if prefs_doc:
+                user_interests = prefs_doc.get('category_scores', {})
+        except Exception:
+            pass
+
+    now = datetime.utcnow()
+    now_ts = now.timestamp()
 
     def _get_ts(p):
         c_at = p.get('created_at')
@@ -2882,184 +2898,178 @@ async def get_posts_feed(
             except: return 0
         return 0
 
-    if tab == 'festivals':
-        # Specific filter for festivals category
-        pool = [p for p in pool if p.get('category') == 'festivals']
-        pool.sort(key=_get_ts, reverse=True)
-        paged_posts = pool[:safe_limit]
+    def _get_locality_priority(post: dict) -> int:
+        """
+        Ranking: 0=Highest, 2=Lowest
+        """
+        lvl = post.get('community_level', 'city')
+        
+        p_date = post.get('created_at')
+        if isinstance(p_date, str):
+            try: p_date = datetime.fromisoformat(p_date.replace('Z', '+00:00'))
+            except: p_date = now - timedelta(days=365)
+        elif not isinstance(p_date, datetime):
+            p_date = now - timedelta(days=365)
+        
+        is_recent = (now_ts - p_date.timestamp()) < 86400 if hasattr(p_date, 'timestamp') else False
 
-    elif tab == 'following':
+        # Priority 0: Broad posts (State/Country) under 24h matching user location
+        u_country = user_loc.get('country')
+        if lvl == 'country' and u_country and post.get('country') == u_country and is_recent:
+            return 0
+        
+        u_state = user_loc.get('state')
+        if lvl == 'state' and u_state and post.get('state') == u_state and is_recent:
+            return 0
+        
+        # Priority 1: Local city posts
+        u_city = user_loc.get('city')
+        if u_city and post.get('city') == u_city:
+            return 1
+        
+        # Priority 2: Everything else (Older or non-matching)
+        return 2
+
+    def _recency_score(post: dict) -> float:
+        """Exponential decay: score 1.0 if just posted, decays over 30 days."""
+        val = post.get('created_at')
         try:
-            current_user = await db.get_document('users', current_user_id)
-            following_ids = set(current_user.get('following', []) or [])
-            pool = [p for p in pool if p.get('user_id') in following_ids]
-        except Exception:
-            pass
-        pool.sort(key=_get_ts, reverse=True)
-        paged_posts = pool[:safe_limit]
-
-    elif tab == 'trending':
-        pool.sort(key=lambda p: (p.get('engagement_score', 0) or 0) + (p.get('views_count', 0) or 0), reverse=True)
-        paged_posts = pool[:safe_limit]
-
-    else:
-        # ── Weighted Smart Random Feed (for_you) ──────────────────────
-        # Fetch user interest preferences
-        user_interests: dict = {}
-        try:
-            prefs_doc = await db.get_document('feed_preferences', current_user_id)
-            if prefs_doc:
-                user_interests = prefs_doc.get('category_scores', {})
-        except Exception:
-            pass
-
-        now = datetime.utcnow()
-        now_ts = now.timestamp()
-
-        def _get_locality_priority(post: dict) -> int:
-            """
-            Ranking: 0=Highest, 2=Lowest
-            """
-            lvl = post.get('community_level', 'city')
-            
-            p_date = post.get('created_at')
-            if isinstance(p_date, str):
-                try: p_date = datetime.fromisoformat(p_date.replace('Z', '+00:00'))
-                except: p_date = now - timedelta(days=365)
-            elif not isinstance(p_date, datetime):
-                p_date = now - timedelta(days=365)
-            
-            is_recent = (now_ts - p_date.timestamp()) < 86400 if hasattr(p_date, 'timestamp') else False
-
-            # Priority 0: Broad posts (State/Country) under 24h matching user location
-            u_country = user_loc.get('country')
-            if lvl == 'country' and u_country and post.get('country') == u_country and is_recent:
-                return 0
-            
-            u_state = user_loc.get('state')
-            if lvl == 'state' and u_state and post.get('state') == u_state and is_recent:
-                return 0
-            
-            # Priority 1: Local city posts
-            u_city = user_loc.get('city')
-            if u_city and post.get('city') == u_city:
-                return 1
-            
-            # Priority 2: Everything else (Older or non-matching)
-            return 2
-
-        def _recency_score(post: dict) -> float:
-            """Exponential decay: score 1.0 if just posted, decays over 30 days."""
-            val = post.get('created_at')
-            try:
-                if isinstance(val, datetime):
-                    ts = val.timestamp()
-                elif isinstance(val, str):
-                    ts = datetime.fromisoformat(val.replace('Z', '+00:00')).timestamp()
-                else:
-                    return 0.0
-                age_days = max(0, (now_ts - ts) / 86400)
-                return math.exp(-age_days / 30)
-            except Exception:
-                return 0.0
-
-        def _engagement(post: dict) -> float:
-            score = post.get('engagement_score', 0) or 0
-            if score > 0:
-                return float(score)
-            # Fallback: compute from raw fields (watch_time weighted highest)
-            wt = float(post.get('watch_time', 0) or 0)
-            likes = float(post.get('likes_count', 0) or 0)
-            views = float(post.get('views_count', 0) or 0)
-            cr = float(post.get('completion_rate', 0) or 0)
-            return (wt * 0.4) + (likes * 0.3) + (cr * 100 * 0.2) + (views * 0.1)
-
-        def _interest_score(post: dict) -> float:
-            cat = post.get('category', '')
-            return float(user_interests.get(cat, 0))
-
-        # Assign composite scores for bucket selection
-        for p in pool:
-            p['_random_val'] = p.get('random_score', _random.random())
-            p['_engagement_val'] = _engagement(p)
-            p['_interest_val'] = _interest_score(p)
-            p['_recency_val'] = _recency_score(p)
-            p['_priority'] = _get_locality_priority(p)
-
-        # Sort each bucket
-        random_pool = sorted(pool, key=lambda p: p['_random_val'])
-        engagement_pool = sorted(pool, key=lambda p: p['_engagement_val'], reverse=True)
-        interest_pool = sorted(pool, key=lambda p: p['_interest_val'], reverse=True)
-        latest_pool = sorted(pool, key=lambda p: p['_recency_val'], reverse=True)
-
-        # Bucket sizes: 40% / 30% / 20% / 10%
-        n_random = max(1, int(safe_limit * 0.4))
-        n_engage = max(1, int(safe_limit * 0.3))
-        n_interest = max(1, int(safe_limit * 0.2))
-        n_latest = safe_limit - n_random - n_engage - n_interest
-
-        def _take(src, n):
-            return src[:n]
-
-        # Priority 0 posts (Recent State/Country) should ALWAYS be considered
-        priority_0_posts = [p for p in pool if p['_priority'] == 0]
-
-        candidates = (
-            priority_0_posts
-            + _take(random_pool, n_random)
-            + _take(engagement_pool, n_engage)
-            + _take(interest_pool, n_interest)
-            + _take(latest_pool, n_latest)
-        )
-
-        # Deduplicate across buckets (preserve order)
-        seen_cand: set = set()
-        unique_candidates = []
-        for p in candidates:
-            pid = p.get('id')
-            if pid and pid not in seen_cand:
-                seen_cand.add(pid)
-                unique_candidates.append(p)
-
-        # Sort primarily by priority (0 first, then 1, then 2)
-        # but within same priority, preserve the mixed order for diversity
-        unique_candidates.sort(key=lambda p: p['_priority'])
-
-        # Gently shuffle ONLY posts within the same priority level if needed?
-        # Actually, sorting by priority already puts 0 at top.
-
-        # ── Anti-repetition pass ─────────────────────────────────────
-        # No same creator within 5 positions; no same category 3x in a row
-        recent_creators: list = []  # last 5
-        cat_streak: dict = {}       # category -> consecutive count
-        last_cat = None
-        filtered: list = []
-        remainder: list = []
-
-        for p in unique_candidates:
-            creator = p.get('user_id', '')
-            cat = p.get('category', 'spirituality')
-            creator_ok = creator not in recent_creators
-            # Avoid 3+ consecutive same category
-            cat_count = cat_streak.get(cat, 0)
-            cat_ok = cat_count < 2
-
-            if creator_ok and cat_ok:
-                filtered.append(p)
-                recent_creators = (recent_creators + [creator])[-5:]
-                if cat == last_cat:
-                    cat_streak[cat] = cat_streak.get(cat, 0) + 1
-                else:
-                    cat_streak = {cat: 1}
-                last_cat = cat
+            if isinstance(val, datetime):
+                ts = val.timestamp()
+            elif isinstance(val, str):
+                ts = datetime.fromisoformat(val.replace('Z', '+00:00')).timestamp()
             else:
-                remainder.append(p)
+                return 0.0
+            age_days = max(0, (now_ts - ts) / 86400)
+            return math.exp(-age_days / 30)
+        except Exception:
+            return 0.0
 
-        # Fill remaining slots with remainder if needed
-        if len(filtered) < safe_limit:
-            filtered += remainder[:safe_limit - len(filtered)]
+    def _engagement(post: dict) -> float:
+        score = post.get('engagement_score', 0) or 0
+        if score > 0:
+            return float(score)
+        # Fallback: compute from raw fields (watch_time weighted highest)
+        wt = float(post.get('watch_time', 0) or 0)
+        likes = float(post.get('likes_count', 0) or 0)
+        views = float(post.get('views_count', 0) or 0)
+        cr = float(post.get('completion_rate', 0) or 0)
+        return (wt * 0.4) + (likes * 0.3) + (cr * 100 * 0.2) + (views * 0.1)
 
-        paged_posts = filtered[:safe_limit]
+    def _interest_score(post: dict) -> float:
+        cat = post.get('category', '')
+        return float(user_interests.get(cat, 0))
+
+    def _rank_and_filter(candidate_pool: list, target_limit: int) -> list:
+        if not candidate_pool or target_limit <= 0:
+            return []
+
+        local_pool = list(candidate_pool)
+
+        if tab == 'festivals':
+            local_pool = [p for p in local_pool if p.get('category') == 'festivals']
+            local_pool.sort(key=_get_ts, reverse=True)
+            return local_pool[:target_limit]
+
+        elif tab == 'following':
+            local_pool = [p for p in local_pool if p.get('user_id') in following_ids]
+            local_pool.sort(key=_get_ts, reverse=True)
+            return local_pool[:target_limit]
+
+        elif tab == 'trending':
+            local_pool.sort(key=lambda p: (p.get('engagement_score', 0) or 0) + (p.get('views_count', 0) or 0), reverse=True)
+            return local_pool[:target_limit]
+
+        else:
+            # ── Weighted Smart Random Feed (for_you) ──────────────────────
+            for p in local_pool:
+                p['_random_val'] = _random.random()
+                p['_engagement_val'] = _engagement(p)
+                p['_interest_val'] = _interest_score(p)
+                p['_recency_val'] = _recency_score(p)
+                p['_priority'] = _get_locality_priority(p)
+
+            # Sort each bucket
+            random_pool = sorted(local_pool, key=lambda p: p['_random_val'])
+            engagement_pool = sorted(local_pool, key=lambda p: p['_engagement_val'], reverse=True)
+            interest_pool = sorted(local_pool, key=lambda p: p['_interest_val'], reverse=True)
+            latest_pool = sorted(local_pool, key=lambda p: p['_recency_val'], reverse=True)
+
+            # Bucket sizes: 40% / 30% / 20% / 10%
+            n_random = max(1, int(target_limit * 0.4))
+            n_engage = max(1, int(target_limit * 0.3))
+            n_interest = max(1, int(target_limit * 0.2))
+            n_latest = target_limit - n_random - n_engage - n_interest
+
+            def _take(src, n):
+                return src[:n]
+
+            # Priority 0 posts (Recent State/Country) should ALWAYS be considered
+            priority_0_posts = [p for p in local_pool if p['_priority'] == 0]
+
+            candidates = (
+                priority_0_posts
+                + _take(random_pool, n_random)
+                + _take(engagement_pool, n_engage)
+                + _take(interest_pool, n_interest)
+                + _take(latest_pool, n_latest)
+            )
+
+            # Deduplicate across buckets (preserve order)
+            seen_cand: set = set()
+            unique_candidates = []
+            for p in candidates:
+                pid = p.get('id')
+                if pid and pid not in seen_cand:
+                    seen_cand.add(pid)
+                    unique_candidates.append(p)
+
+            # Sort primarily by priority (0 first, then 1, then 2)
+            unique_candidates.sort(key=lambda p: p['_priority'])
+
+            # ── Anti-repetition pass ─────────────────────────────────────
+            recent_creators: list = []  # last 5
+            cat_streak: dict = {}       # category -> consecutive count
+            last_cat = None
+            filtered: list = []
+            remainder: list = []
+
+            for p in unique_candidates:
+                creator = p.get('user_id', '')
+                cat = p.get('category', 'spirituality')
+                creator_ok = creator not in recent_creators
+                cat_count = cat_streak.get(cat, 0)
+                cat_ok = cat_count < 2
+
+                if creator_ok and cat_ok:
+                    filtered.append(p)
+                    recent_creators = (recent_creators + [creator])[-5:]
+                    if cat == last_cat:
+                        cat_streak[cat] = cat_streak.get(cat, 0) + 1
+                    else:
+                        cat_streak = {cat: 1}
+                    last_cat = cat
+                else:
+                    remainder.append(p)
+
+            if len(filtered) < target_limit:
+                filtered += remainder[:target_limit - len(filtered)]
+
+            return filtered[:target_limit]
+
+    # Split public posts into unseen and seen
+    unseen_pool = [p for p in public_posts if p.get('id') not in seen_set]
+    seen_pool = [p for p in public_posts if p.get('id') in seen_set]
+
+    # 1. First, fetch as many unseen posts as possible
+    paged_posts = _rank_and_filter(unseen_pool, safe_limit)
+
+    # 2. If we ran out of unseen posts, fill the remaining spots with seen posts
+    if len(paged_posts) < safe_limit and seen_pool:
+        needed = safe_limit - len(paged_posts)
+        _random.shuffle(seen_pool)
+        extra_posts = _rank_and_filter(seen_pool, needed)
+        paged_posts += extra_posts
 
     # ── Enrich posts with author info and like status ─────────────
     post_author_ids = list({p.get('user_id') for p in paged_posts if p.get('user_id')})
@@ -11354,13 +11364,13 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
 # =================== HOME BFF ===================
 
 @api_router.get('/home/init')
-async def home_init(token_data: dict = Depends(verify_token)):
+async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)):
     db = await get_db()
     user_id = token_data['user_id']
 
     async def _get_feed():
         try:
-            feed_res = await get_posts_feed(limit=10, offset=0, tab='for_you', seen_ids='', token_data=token_data)
+            feed_res = await get_posts_feed(limit=10, offset=0, tab='for_you', seen_ids=seen_ids, token_data=token_data)
             return {"items": feed_res.get("items", []), "has_more": feed_res.get("has_more", False)}
         except Exception as e:
             import logging

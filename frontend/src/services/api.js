@@ -786,10 +786,26 @@ var markPostAsSeen = function (postId) { return __awaiter(void 0, void 0, void 0
 }); };
 exports.markPostAsSeen = markPostAsSeen;
 var getHomeInit = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var savedSeen, localSeenIds, parsed, e_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, exports.api.get('/home/init')];
-            case 1: return [2 /*return*/, _a.sent()];
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, async_storage_1.default.getItem('global_seen_reels')];
+            case 1:
+                savedSeen = _a.sent();
+                localSeenIds = '';
+                if (savedSeen) {
+                    parsed = JSON.parse(savedSeen);
+                    if (Array.isArray(parsed)) {
+                        localSeenIds = parsed.slice(-250).join(',');
+                    }
+                }
+                return [2 /*return*/, exports.api.get('/home/init', { params: { seen_ids: localSeenIds } })];
+            case 2:
+                e_1 = _a.sent();
+                return [2 /*return*/, exports.api.get('/home/init')];
+            case 3: return [2 /*return*/];
         }
     });
 }); };
@@ -815,8 +831,8 @@ var getPostsFeed = function () {
                     if (savedSeen) {
                         parsed = JSON.parse(savedSeen);
                         if (Array.isArray(parsed)) {
-                            // Reduced from 100 to 50 for faster query performance on home feed
-                            localSeenIds = parsed.slice(-50).join(',');
+                            // Increased from 50 to 250 to prevent repetitive content
+                            localSeenIds = parsed.slice(-250).join(',');
                         }
                     }
                     combinedSeen = [seen_ids, localSeenIds].filter(Boolean).join(',');
