@@ -71,6 +71,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   const [otpValue, setOtpValue] = useState('');
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   const extractAadhaarFromText = (text: string) => {
     const matches = text.match(/\d{4}[- ]?\d{4}[- ]?\d{4}/g) || text.match(/\d{12}/g);
@@ -197,6 +198,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     setOtpValue('');
     setOtpCooldown(0);
     setOtpLoading(false);
+    setOtpVerified(false);
   };
 
   const closeAndReset = () => {
@@ -440,6 +442,21 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     }
   };
 
+  const getBase64FromUri = async (uri: string) => {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        const base64 = result.includes(',') ? result.split(',')[1] : result;
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!idNumber.trim()) {
       Alert.alert('Incomplete', 'Please provide your ID number.');
@@ -451,8 +468,13 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
       return;
     }
 
-    if (!isUserFlow && (!idDocumentUri || !faceScanUri)) {
-      Alert.alert('Incomplete', 'Please provide ID type, ID number, one ID document, and live face scan.');
+    if (idType === 'aadhaar' && !idDocumentUri) {
+      Alert.alert('Incomplete', 'Please upload your Aadhaar document image.');
+      return;
+    }
+
+    if (idType === 'pan' && !isUserFlow && !idDocumentUri) {
+      Alert.alert('Incomplete', 'Please upload your PAN card document image.');
       return;
     }
 
@@ -474,8 +496,8 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
 
     setLoading(true);
     try {
-      if (isUserFlow) {
-        if (idType === 'aadhaar') {
+      if (idType === 'aadhaar') {
+        if (isUserFlow) {
           const otpResponse = await generateUserAadhaarOtp({
             aadhaar_number: idNumber.trim(),
             consent: 'Y',
@@ -489,14 +511,55 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
           setOtpReferenceId(referenceId);
           setOtpFlowActive(true);
           setOtpCooldown(30);
+          setOtpVerified(false);
           Alert.alert('OTP Sent', 'Aadhaar OTP sent successfully. Please verify to complete KYC.');
           return;
+        }
+
+        if (!isVendorFlow) {
+          Alert.alert('Business registration required', 'Please register your business first to continue vendor KYC.');
+          return;
+        }
+
+        const otpResponse = await generateVendorAadhaarOtp(vendorId, {
+          aadhaar_number: idNumber.trim(),
+          consent: 'Y',
+          reason: 'Vendor KYC Aadhaar verification',
+        });
+        const referenceId = otpResponse?.data?.reference_id || otpResponse?.data?.sandbox_response?.reference_id || otpResponse?.data?.sandbox_response?.data?.reference_id;
+        if (!referenceId) {
+          throw new Error('OTP generated but reference_id was not returned by sandbox');
+        }
+
+        setOtpReferenceId(referenceId);
+        setOtpFlowActive(true);
+        setOtpCooldown(30);
+        setOtpVerified(false);
+        Alert.alert('OTP Sent', 'Aadhaar OTP sent successfully. Please verify to complete KYC.');
+        return;
+      }
+
+      // PAN Flow (direct upload & submission, no OTP)
+      if (isUserFlow) {
+        let idPhotoBase64: string | undefined = undefined;
+        let selfieBase64: string | undefined = undefined;
+        try {
+          if (idDocumentUri) {
+            idPhotoBase64 = await getBase64FromUri(idDocumentUri);
+          }
+          if (faceScanUri) {
+            selfieBase64 = await getBase64FromUri(faceScanUri);
+          }
+        } catch (fileErr) {
+          console.warn('Failed to read photos as base64', fileErr);
         }
 
         await submitKYC({
           kyc_role: 'organizer',
           id_type: 'pan',
           id_number: idNumber.trim().toUpperCase(),
+          id_photo: idPhotoBase64,
+          selfie_photo: selfieBase64,
         });
 
         if (onKycUpdated) {
@@ -512,7 +575,6 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         return;
       }
 
-      // 1. Upload files through backend (owner-verified)
       const idUpload = await uploadVendorKycFile(vendorId, idType, {
         uri: idDocumentUri as string,
         name: `${idType}.jpg`,
@@ -532,31 +594,12 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         throw new Error('Some uploads did not return valid URLs');
       }
 
-      // 2. Map payload & Update Vendor with KYC status for backend admin review
       await updateVendor(vendorId, {
-        aadhar_url: idType === 'aadhaar' ? idDocumentUrl : null,
-        pan_url: idType === 'pan' ? idDocumentUrl : null,
+        aadhar_url: null,
+        pan_url: idDocumentUrl,
         face_scan_url: faceScanUrl,
         kyc_status: 'pending',
       });
-
-      if (idType === 'aadhaar') {
-        const otpResponse = await generateVendorAadhaarOtp(vendorId, {
-          aadhaar_number: idNumber.trim(),
-          consent: 'Y',
-          reason: 'Vendor KYC Aadhaar verification',
-        });
-        const referenceId = otpResponse?.data?.reference_id || otpResponse?.data?.sandbox_response?.reference_id || otpResponse?.data?.sandbox_response?.data?.reference_id;
-        if (!referenceId) {
-          throw new Error('OTP generated but reference_id was not returned by sandbox');
-        }
-
-        setOtpReferenceId(referenceId);
-        setOtpFlowActive(true);
-        setOtpCooldown(30);
-        Alert.alert('OTP Sent', 'Aadhaar OTP sent successfully. Please verify to complete KYC.');
-        return;
-      }
 
       Alert.alert('Success', 'Your PAN and face scan were uploaded and submitted for review.');
       await fetchMyVendor();
@@ -577,27 +620,49 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   };
 
   const handleVerifyOtp = async () => {
-    if (!otpReferenceId) {
-      Alert.alert('Missing Reference', 'Please generate OTP first.');
-      return;
-    }
-    if (!otpValue.trim()) {
-      Alert.alert('Missing OTP', 'Please enter the Aadhaar OTP.');
-      return;
+    if (!otpVerified) {
+      if (!otpReferenceId) {
+        Alert.alert('Missing Reference', 'Please generate OTP first.');
+        return;
+      }
+      if (!otpValue.trim()) {
+        Alert.alert('Missing OTP', 'Please enter the Aadhaar OTP.');
+        return;
+      }
     }
 
     setOtpLoading(true);
     try {
       if (isUserFlow) {
-        await verifyUserAadhaarOtp({
-          reference_id: otpReferenceId,
-          otp: otpValue.trim(),
-        });
+        // 1. Verify OTP (if not already verified in previous attempt)
+        if (!otpVerified) {
+          await verifyUserAadhaarOtp({
+            reference_id: otpReferenceId,
+            otp: otpValue.trim(),
+          });
+          setOtpVerified(true);
+        }
+
+        // 2. Read documents as Base64 and submit KYC
+        let idPhotoBase64: string | undefined = undefined;
+        let selfieBase64: string | undefined = undefined;
+        try {
+          if (idDocumentUri) {
+            idPhotoBase64 = await getBase64FromUri(idDocumentUri);
+          }
+          if (faceScanUri) {
+            selfieBase64 = await getBase64FromUri(faceScanUri);
+          }
+        } catch (fileErr) {
+          console.warn('Failed to read photos as base64', fileErr);
+        }
 
         await submitKYC({
           kyc_role: 'organizer',
           id_type: 'aadhaar',
           id_number: idNumber.trim(),
+          id_photo: idPhotoBase64,
+          selfie_photo: selfieBase64,
         });
 
         if (onKycUpdated) {
@@ -613,23 +678,59 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         return;
       }
 
-      await verifyVendorAadhaarOtp(vendorId, {
-        reference_id: otpReferenceId,
-        otp: otpValue.trim(),
+      // 1. Verify OTP (if not already verified in previous attempt)
+      if (!otpVerified) {
+        await verifyVendorAadhaarOtp(vendorId, {
+          reference_id: otpReferenceId,
+          otp: otpValue.trim(),
+        });
+        setOtpVerified(true);
+      }
+
+      // 2. Upload files through backend (owner-verified)
+      const idUpload = await uploadVendorKycFile(vendorId, idType, {
+        uri: idDocumentUri as string,
+        name: `${idType}.jpg`,
+        type: 'image/jpeg',
+      });
+
+      const faceUpload = await uploadVendorKycFile(vendorId, 'face_scan', {
+        uri: faceScanUri as string,
+        name: 'face_scan.jpg',
+        type: 'image/jpeg',
+      });
+
+      const idDocumentUrl = idUpload?.data?.storage_uri;
+      const faceScanUrl = faceUpload?.data?.storage_uri;
+
+      if (!idDocumentUrl || !faceScanUrl) {
+        throw new Error('Some uploads did not return valid URLs');
+      }
+
+      // 3. Update Vendor profile with URLs and kyc_status
+      await updateVendor(vendorId, {
+        aadhar_url: idDocumentUrl,
+        pan_url: null,
+        face_scan_url: faceScanUrl,
+        kyc_status: 'pending',
       });
 
       await fetchMyVendor();
       if (onKycUpdated) {
         onKycUpdated();
       }
-      Alert.alert('Submitted', 'Aadhaar OTP verified. KYC sent to admin for review.');
+      Alert.alert('Submitted', 'Aadhaar OTP verified and documents uploaded. KYC sent to admin for review.');
       closeAndReset();
     } catch (error: any) {
+      console.error('OTP Verification/Upload error:', error);
       const backendDetail = error?.response?.data?.detail;
       const detailMessage = typeof backendDetail === 'string'
         ? backendDetail
         : backendDetail?.message || JSON.stringify(backendDetail || '');
-      Alert.alert('OTP Verification Failed', detailMessage || error?.message || 'Unable to verify OTP. Please try again.');
+      Alert.alert(
+        otpVerified ? 'Document Upload Failed' : 'OTP Verification Failed',
+        detailMessage || error?.message || 'Unable to complete verification. Please try again.'
+      );
     } finally {
       setOtpLoading(false);
     }
@@ -856,7 +957,11 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                 {otpFlowActive ? (
                   <View style={styles.otpCard}>
                     <Text style={styles.docTitle}>Aadhaar OTP Verification</Text>
-                    <Text style={styles.docStatus}>Enter OTP sent to Aadhaar linked mobile number</Text>
+                    <Text style={styles.docStatus}>
+                      {otpVerified
+                        ? 'Aadhaar verified. Uploading documents...'
+                        : 'Enter OTP sent to Aadhaar linked mobile number'}
+                    </Text>
                     <TextInput
                       style={styles.idInput}
                       placeholder="Enter OTP"
@@ -864,6 +969,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                       keyboardType="number-pad"
                       onChangeText={setOtpValue}
                       maxLength={8}
+                      editable={!otpVerified}
                     />
                     <TouchableOpacity
                       style={styles.textActionWrap}
@@ -873,7 +979,9 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                       {otpLoading ? (
                         <ActivityIndicator color={COLORS.primary} />
                       ) : (
-                        <Text style={[styles.textAction, otpLoading && styles.textActionDisabled]}>Verify OTP</Text>
+                        <Text style={[styles.textAction, otpLoading && styles.textActionDisabled]}>
+                          {otpVerified ? 'Retry Upload' : 'Verify OTP'}
+                        </Text>
                       )}
                     </TouchableOpacity>
                     <TouchableOpacity

@@ -193,6 +193,26 @@ export const FloatingUtilityButton = () => {
   const [respondedSOSIds, setRespondedSOSIds] = useState<Set<string>>(new Set());
   const [dismissedSOSIds, setDismissedSOSIds] = useState<Set<string>>(new Set());
 
+  const checkSOSStatus = useCallback(async () => {
+    try {
+      const mySOSRes = await getMySOSAlert();
+      setActiveSOS(mySOSRes.data);
+
+      const ok = await LocationService.ensureForegroundPermission();
+      if (ok) {
+        const location = await LocationService.getCurrentPosition({});
+        await updateCurrentLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
+        const nearbyRes = await getActiveSOSAlerts({ lat: location.coords.latitude, lng: location.coords.longitude, radius: 10000 });
+        const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== mySOSRes.data?.id);
+        
+        // Filter out dismissed alerts
+        const visibleSOS = otherSOS.filter((s: any) => s.id && !dismissedSOSIds.has(s.id));
+        setNearbySOSCount(visibleSOS.length);
+        setNearbySOSAlerts(visibleSOS);
+      }
+    } catch (error) { }
+  }, [dismissedSOSIds]);
+
   useEffect(() => {
     const loadDismissed = async () => {
       try {
@@ -465,26 +485,6 @@ export const FloatingUtilityButton = () => {
       setNextFestival(festRes);
     } catch (error) { }
   };
-
-  const checkSOSStatus = useCallback(async () => {
-    try {
-      const mySOSRes = await getMySOSAlert();
-      setActiveSOS(mySOSRes.data);
-
-      const ok = await LocationService.ensureForegroundPermission();
-      if (ok) {
-        const location = await LocationService.getCurrentPosition({});
-        await updateCurrentLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
-        const nearbyRes = await getActiveSOSAlerts({ lat: location.coords.latitude, lng: location.coords.longitude, radius: 10000 });
-        const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== mySOSRes.data?.id);
-        
-        // Filter out dismissed alerts
-        const visibleSOS = otherSOS.filter((s: any) => s.id && !dismissedSOSIds.has(s.id));
-        setNearbySOSCount(visibleSOS.length);
-        setNearbySOSAlerts(visibleSOS);
-      }
-    } catch (error) { }
-  }, [dismissedSOSIds]);
 
   const handleDismissNearbySOS = async () => {
     const nextDismissed = new Set(dismissedSOSIds);
