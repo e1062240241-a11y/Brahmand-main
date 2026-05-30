@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import * as Network from 'expo-network';
 import { database } from '../database';
 import { api } from './api';
 
@@ -164,20 +163,22 @@ export async function flushSyncQueue() {
   }
 }
 
-// Check if network is online using expo-network
+// Check if network is online using a lightweight fetch
 async function isOnline(): Promise<boolean> {
   try {
-    const state = await Network.getNetworkStateAsync();
-    return (state.isConnected === true) && (state.isInternetReachable !== false);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    await fetch('https://clients3.google.com/generate_204', { method: 'HEAD', signal: controller.signal });
+    clearTimeout(timeout);
+    return true;
   } catch {
-    return true; // Assume online if check fails
+    return false;
   }
 }
 
 // Start monitoring connection changes to automatically flush
-// expo-network doesn't have an event listener, so we poll every 15s
 export function initSyncQueueListener() {
-  console.log('[SyncQueue] Initializing sync queue listener (expo-network)...');
+  console.log('[SyncQueue] Initializing sync queue listener...');
 
   // Do a first-time flush in case we start connected
   isOnline().then((online) => {
@@ -195,3 +196,4 @@ export function initSyncQueueListener() {
   // Return cleanup function (call this if you ever unmount)
   return () => clearInterval(intervalId);
 }
+

@@ -10,17 +10,28 @@ import {
   View,
   Dimensions,
   TextInput,
+  Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { askAstrologyAI, getNakshatraReport } from '../src/services/api';
+import { getNakshatraReport } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Cosmic Analysis tab config
+const COSMIC_TABS = [
+  { key: 'physical', label: 'Physical', img: require('../assets/images/festival image/cosmic/cos1.png') },
+  { key: 'character', label: 'Character', img: require('../assets/images/festival image/cosmic/cos2.png') },
+  { key: 'education', label: 'Education', img: require('../assets/images/festival image/cosmic/cos3.png') },
+  { key: 'family', label: 'Family', img: require('../assets/images/festival image/cosmic/cos4.png') },
+  { key: 'health', label: 'Health', img: require('../assets/images/festival image/cosmic/cos5.png') },
+];
 
 export default function AstrologyScreen() {
   const router = useRouter();
@@ -29,9 +40,8 @@ export default function AstrologyScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [question, setQuestion] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{ question: string; answer: string }[]>([]);
+
+  const [activeCosmicTab, setActiveCosmicTab] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   const fetchKundli = useCallback(async (forceRefresh = false) => {
@@ -67,284 +77,403 @@ export default function AstrologyScreen() {
     fetchKundli(true);
   };
 
-  const submitQuestion = async () => {
-    if (!question.trim() || chatLoading) return;
-    const q = question.trim();
-    setChatLoading(true);
-    try {
-      const response = await askAstrologyAI({
-        question: q,
-        astrology: { kind: 'kundli', payload: data },
-      });
-      if (isMountedRef.current) {
-        setChatMessages(prev => [{ question: q, answer: response.data?.answer || 'No guidance available.' }, ...prev]);
-        setQuestion('');
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      if (isMountedRef.current) setChatLoading(false);
-    }
-  };
 
-  const InfoCard = ({ label, value, icon, color = COLORS.primary }: any) => (
-    <View style={styles.infoCard}>
-      <View style={[styles.infoIconBg, { backgroundColor: `${color}10` }]}>
-        <Ionicons name={icon} size={20} color={color} />
-      </View>
-      <View style={styles.infoContent}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value || '-'}</Text>
-      </View>
-    </View>
-  );
+  const normalizeTextBlock = (value: any) => {
+    const text = Array.isArray(value)
+      ? value.map((item) => String(item).trim()).filter(Boolean).join(' ')
+      : String(value ?? '');
+    return text.replace(/\s+/g, ' ').trim();
+  };
 
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <LinearGradient 
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+        locations={[0, 0.0913, 0.25]} 
+        style={styles.loaderContainer}
+      >
+        <ActivityIndicator size="large" color="#C67C4E" />
         <Text style={styles.loaderText}>Mapping your cosmic stars...</Text>
-      </View>
+      </LinearGradient>
     );
   }
 
   const details = data?.details || {};
   const report = data?.report || {};
 
-  const normalizeTextBlock = (value: any) => {
-    const text = Array.isArray(value)
-      ? value.map((item) => String(item).trim()).filter(Boolean).join(' ')
-      : String(value ?? '');
-
-    return text.replace(/\s+/g, ' ').trim();
-  };
+  // Attribute grid items matching the Figma design
+  const attributes = [
+    { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.png'), color: '#F59E0B' },
+    { label: 'RASHI LORD', value: details.SignLord, img: require('../assets/images/iconattributes/Icon2.png'), color: '#C67C4E' },
+    { label: 'CHARAN', value: details.Charan, img: require('../assets/images/iconattributes/Icon3.png'), color: '#10B981' },
+    { label: 'GAN', value: details.Gan, img: require('../assets/images/iconattributes/Icon4.png'), color: '#8B5CF6' },
+    { label: 'YONI', value: details.Yoni, img: require('../assets/images/iconattributes/Icon5.png'), color: '#EC4899' },
+    { label: 'NADI', value: details.Nadi, img: require('../assets/images/iconattributes/Icon6.png'), color: '#EF4444' },
+    { label: 'VARNA', value: details.Varna, img: require('../assets/images/iconattributes/Icon7.png'), color: '#3B82F6' },
+    { label: 'VASHYA', value: details.Vashya, img: require('../assets/images/iconattributes/Icon8.png'), color: '#C67C4E' },
+  ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Janam Kundli</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <LinearGradient 
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+      locations={[0, 0.0913, 0.25]} 
+      style={styles.container}
+    >
+      <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={24} color="#5A3E2B" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Janam Kundli</Text>
+          <View style={{ width: 40 }} />
+        </View>
+      </SafeAreaView>
 
       <ScrollView 
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C67C4E" />}
       >
-        {/* User Summary Header */}
-        <LinearGradient colors={['#FFF9F2', '#FFFFFF']} style={styles.heroSection}>
-          <View style={styles.heroHeader}>
-            <View style={styles.zodiacCircle}>
-              <Text style={styles.zodiacOm}>ॐ</Text>
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          <View style={styles.profileRow}>
+            <View style={styles.avatarWrap}>
+              {user?.profile_image ? (
+                <Image source={{ uri: user.profile_image }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Ionicons name="person" size={28} color="#C67C4E" />
+                </View>
+              )}
             </View>
-            <View style={styles.heroText}>
-              <Text style={styles.userName}>{user?.name || 'Devotee'}</Text>
-              <Text style={styles.userSub}>{user?.date_of_birth} • {user?.time_of_birth}</Text>
+            <View style={styles.profileText}>
+              <Text style={styles.profileName}>{user?.name || 'Devotee'}</Text>
+              <View style={styles.profileStatusRow}>
+                <View style={styles.statusDot} />
+                <Text style={styles.profileStatus}>Celestial Profile Active</Text>
+              </View>
             </View>
           </View>
-          
-          {error ? (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={20} color="#EF4444" />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : (
-            <View style={styles.mainInsights}>
-              <View style={styles.insightBox}>
-                <Text style={styles.insightLabel}>Nakshatra</Text>
-                <Text style={styles.insightValue}>{details.Naksahtra}</Text>
-              </View>
-              <View style={styles.insightDivider} />
-              <View style={styles.insightBox}>
-                <Text style={styles.insightLabel}>Rashi</Text>
-                <Text style={styles.insightValue}>{details.sign}</Text>
-              </View>
-            </View>
-          )}
-        </LinearGradient>
+        </View>
 
-        {/* Detailed Attributes Grid */}
+        {/* Nakshatra & Rashi Card */}
+        {!error && (
+          <View style={styles.insightsCard}>
+            <View style={styles.insightBox}>
+              <Text style={styles.insightLabel}>NAKSHATRA</Text>
+              <Text style={styles.insightValue}>{details.Naksahtra || '-'}</Text>
+            </View>
+            <View style={styles.insightDivider} />
+            <View style={styles.insightBox}>
+              <Text style={styles.insightLabel}>RASHI</Text>
+              <Text style={styles.insightValue}>{details.sign || '-'}</Text>
+            </View>
+          </View>
+        )}
+
+        {error ? (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={20} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        {/* Spiritual Attributes */}
         {!error && details && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Spiritual Attributes (Ashtakoot)</Text>
             <View style={styles.grid}>
-              <InfoCard label="Nakshatra Lord" value={details.NaksahtraLord} icon="sunny" color="#F59E0B" />
-              <InfoCard label="Rashi Lord" value={details.SignLord} icon="planet" color="#6366F1" />
-              <InfoCard label="Charan" value={details.Charan} icon="footsteps" color="#10B981" />
-              <InfoCard label="Gan" value={details.Gan} icon="people" color="#8B5CF6" />
-              <InfoCard label="Yoni" value={details.Yoni} icon="heart" color="#EC4899" />
-              <InfoCard label="Nadi" value={details.Nadi} icon="pulse" color="#EF4444" />
-              <InfoCard label="Varna" value={details.Varna} icon="ribbon" color="#3B82F6" />
-              <InfoCard label="Vashya" value={details.Vashya} icon="leaf" color="#14B8A6" />
+              {attributes.map((attr, i) => (
+                <View key={i} style={styles.attrCard}>
+                  <View style={styles.attrIconBg}>  
+                    <Image source={attr.img} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                  </View>
+                  <View style={styles.attrTextCol}>
+                    <Text style={styles.attrLabel}>{attr.label}</Text>
+                    <Text style={styles.attrValue}>{attr.value || '-'}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
         )}
 
-        {/* Report Sections */}
-        {!error && report && (
+        {/* Cosmic Analysis */}
+        {!error && report && Object.keys(report).length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Cosmic Analysis</Text>
-            {Object.entries(report).map(([key, paragraphs]: any) => (
-              <View key={key} style={styles.reportCard}>
-                <Text style={styles.reportCategory}>{key.toUpperCase()}</Text>
-                <Text style={styles.reportText}>{normalizeTextBlock(paragraphs)}</Text>
+            
+            {/* Tab Row */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cosmicTabScroll} contentContainerStyle={styles.cosmicTabRow}>
+              {COSMIC_TABS.map((tab) => {
+                const isActive = activeCosmicTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[styles.cosmicTab, isActive && styles.cosmicTabActive]}
+                    onPress={() => setActiveCosmicTab(tab.key)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
+                      <Image source={tab.img} style={{ width: 36, height: 36, aspectRatio: 1, tintColor: isActive ? '#FFF' : undefined }} resizeMode="contain" />
+                    </View>
+                    <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Report Content Modal */}
+            <Modal
+              visible={!!activeCosmicTab}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setActiveCosmicTab(null)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalCard}>
+                  {(() => {
+                    const activeTabObj = COSMIC_TABS.find(t => t.key === activeCosmicTab);
+                    if (!activeTabObj) return null;
+                    
+                    let activeReportText = '';
+                    for (const [key, paragraphs] of Object.entries(report)) {
+                      if (key.toLowerCase().includes(activeCosmicTab as string)) {
+                        activeReportText = normalizeTextBlock(paragraphs);
+                        break;
+                      }
+                    }
+
+                    return (
+                      <>
+                        <View style={styles.modalIconWrap}>
+                          <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
+                        </View>
+                        <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
+                        <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                          <Text style={styles.modalDesc}>{activeReportText || 'No summary available.'}</Text>
+                        </ScrollView>
+                        <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setActiveCosmicTab(null)} activeOpacity={0.8}>
+                          <Text style={styles.modalCloseText}>Close</Text>
+                        </TouchableOpacity>
+                      </>
+                    );
+                  })()}
+                </View>
               </View>
-            ))}
+            </Modal>
           </View>
         )}
 
-        {/* AI Consultation Section */}
-        <View style={styles.aiSection}>
-          <View style={styles.aiHeader}>
-            <Ionicons name="sparkles" size={20} color={COLORS.primary} />
-            <Text style={styles.aiTitle}>Consult Birth Chart AI</Text>
-          </View>
-        <View style={styles.aiInputRow}>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="chatbubble-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Ask about your destiny..."
-                placeholderTextColor="#9CA3AF"
-                value={question}
-                onChangeText={setQuestion}
-                multiline
-              />
-            </View>
-            <TouchableOpacity 
-              style={[styles.sendBtn, chatLoading && { opacity: 0.7 }]} 
-              onPress={submitQuestion}
-              disabled={chatLoading}
-            >
-              {chatLoading ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="send" size={20} color="#FFF" />}
-            </TouchableOpacity>
-          </View>
 
-          {/* Chat Messages */}
-          {chatMessages.map((msg, idx) => (
-            <View key={idx} style={styles.messageCard}>
-              <Text style={styles.msgQuestion}>Q: {msg.question}</Text>
-              <Text style={styles.msgAnswer}>{msg.answer}</Text>
-            </View>
-          ))}
-        </View>
 
         <View style={{ height: 120 }} />
       </ScrollView>
-    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
+const CARD_WIDTH = (SCREEN_WIDTH - 48 - 12) / 2;
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1 },
+  headerGradient: { paddingBottom: 0 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  content: { flex: 1 },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' },
-  loaderText: { marginTop: 12, color: '#6B7280', fontSize: 14 },
-  heroSection: {
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  headerTitle: {
+    color: '#5C2A01',
+    fontFamily: 'System',
+    fontSize: 20,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    lineHeight: 24,
   },
-  heroHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  zodiacCircle: {
+  content: { flex: 1 },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loaderText: { marginTop: 12, color: '#8D6E63', fontSize: 14 },
+
+  // Profile
+  profileSection: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  profileRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarWrap: {
+    width: 56, height: 56, borderRadius: 28,
+    borderWidth: 2.5, borderColor: '#C67C4E',
+    overflow: 'hidden', marginRight: 14,
+  },
+  avatar: { width: '100%', height: '100%', borderRadius: 28 },
+  avatarPlaceholder: { backgroundColor: '#FCEADE', justifyContent: 'center', alignItems: 'center' },
+  profileText: { flex: 1 },
+  profileName: { 
+    color: '#311303',
+    fontFamily: 'System',
+    fontSize: 24,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    lineHeight: 32,
+    letterSpacing: 0.6,
+    textTransform: 'capitalize',
+  },
+  profileStatusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#584235', marginRight: 6 },
+  profileStatus: { fontSize: 16, color: '#584235', fontWeight: '400', lineHeight: 24, fontStyle: 'normal' },
+
+  // Insights Card
+  insightsCard: {
+    flexDirection: 'row',
+    marginHorizontal: 20, marginTop: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    paddingVertical: 18,
+    borderWidth: 1, borderColor: '#F0E0D0',
+    shadowColor: '#8D6E63', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+  },
+  insightBox: { flex: 1, alignItems: 'center' },
+  insightLabel: { fontSize: 12, color: '#584235', fontWeight: '700', lineHeight: 16, letterSpacing: 1.2, textTransform: 'uppercase', textAlign: 'center', fontStyle: 'normal' },
+  insightValue: { fontSize: 18, fontWeight: '600', color: '#994700', marginTop: 4, lineHeight: 24, textAlign: 'center', fontStyle: 'normal' },
+  insightDivider: { width: 1, backgroundColor: '#F0E0D0' },
+
+  // Section
+  section: { paddingHorizontal: 20, paddingTop: 24 },
+  sectionTitle: { 
+    color: '#311303',
+    fontFamily: 'System',
+    fontSize: 18,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+
+  // Attribute Grid
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  attrCard: {
+    width: CARD_WIDTH,
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1, borderColor: '#F0E0D0',
+    shadowColor: '#8D6E63', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  },
+  attrIconBg: {
+    width: 40, height: 40, borderRadius: 9999,
+    justifyContent: 'center', alignItems: 'center', marginRight: 10,
+    backgroundColor: '#FFEAE0',
+  },
+  attrTextCol: { flex: 1 },
+  attrLabel: { fontSize: 10, color: '#584235', fontWeight: '700', lineHeight: 12, textTransform: 'uppercase', fontStyle: 'normal' },
+  attrValue: { fontSize: 16, color: '#311303', fontWeight: '700', lineHeight: 24, fontStyle: 'normal', marginTop: 2 },
+
+  // Cosmic Tabs
+  cosmicTabScroll: { marginBottom: 16 },
+  cosmicTabRow: { gap: 12 },
+  cosmicTab: { alignItems: 'center', width: 64 },
+  cosmicTabActive: {},
+  cosmicTabIcon: {
+    width: 56, height: 56, borderRadius: 40,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1.5, borderColor: '#F0D5B8',
+  },
+  cosmicTabIconActive: {
+    backgroundColor: '#FF7B00',
+    borderColor: '#FF7B00',
+  },
+  cosmicTabLabel: { fontSize: 12, fontWeight: '700', color: '#994700', marginTop: 6, textAlign: 'center', fontStyle: 'normal', lineHeight: 16, letterSpacing: 1.2, textTransform: 'capitalize' },
+  cosmicTabLabelActive: { color: '#C67C4E' },
+
+  // Report
+  reportCard: {
+    backgroundColor: '#FFF', borderRadius: 14, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: '#F0E0D0',
+  },
+  reportCategory: { fontSize: 11, fontWeight: '800', color: '#C67C4E', marginBottom: 8, letterSpacing: 1 },
+  reportText: { fontSize: 14, color: '#5D4037', lineHeight: 22 },
+
+
+
+  // Error
+  errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', padding: 12, borderRadius: 12, gap: 8, marginHorizontal: 20, marginTop: 16 },
+  errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '600', flex: 1 },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#FFF',
+    borderRadius: 28,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalIconWrap: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 2,
-    borderColor: '#FDE68A',
+    backgroundColor: '#FF7B00',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginBottom: 16,
   },
-  zodiacOm: { fontSize: 24, color: '#D97706' },
-  heroText: { flex: 1 },
-  userName: { fontSize: 20, fontWeight: '800', color: '#1F2937' },
-  userSub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  mainInsights: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 15,
-    elevation: 3,
+  modalTitle: {
+    color: '#FF7B00',
+    textAlign: 'center',
+    fontFamily: 'System',
+    fontSize: 24,
+    fontStyle: 'normal',
+    fontWeight: '600',
+    lineHeight: 32,
+    marginBottom: 20,
+  },
+  modalScroll: {
+    maxHeight: 250,
+    width: '100%',
+    marginBottom: 24,
+  },
+  modalDesc: {
+    color: '#311303',
+    textAlign: 'center',
+    fontFamily: 'System',
+    fontSize: 16,
+    fontStyle: 'normal',
+    fontWeight: '400',
+    lineHeight: 26,
+  },
+  modalCloseBtn: {
+    width: 302,
+    height: 56,
+    borderRadius: 9999,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 15,
+    elevation: 5,
   },
-  insightBox: { flex: 1, alignItems: 'center' },
-  insightLabel: { fontSize: 12, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5 },
-  insightValue: { fontSize: 16, fontWeight: '700', color: '#111827', marginTop: 4 },
-  insightDivider: { width: 1, height: '100%', backgroundColor: '#F3F4F6', marginHorizontal: 10 },
-  section: { padding: SPACING.md },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#374151', marginBottom: 15 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  infoCard: {
-    width: (SCREEN_WIDTH - SPACING.md * 2 - 12) / 2,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+  modalCloseText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  infoIconBg: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  infoContent: { flex: 1 },
-  infoLabel: { fontSize: 11, color: '#6B7280' },
-  infoValue: { fontSize: 14, fontWeight: '600', color: '#111827', marginTop: 1 },
-  reportCard: { backgroundColor: '#F9FAFB', borderRadius: 16, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: '#F3F4F6' },
-  reportCategory: { fontSize: 12, fontWeight: '800', color: COLORS.primary, marginBottom: 8, letterSpacing: 1 },
-  reportText: { fontSize: 14, color: '#4B5563', lineHeight: 22, marginBottom: 8 },
-  aiSection: { padding: SPACING.md, backgroundColor: '#FDF2F2' },
-  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 15 },
-  aiTitle: { fontSize: 16, fontWeight: '700', color: '#991B1B' },
-  aiInputRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  inputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  inputIcon: { marginTop: 4, marginRight: 8 },
-  textInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#111827',
-    paddingTop: 0,
-    minHeight: 40,
-  },
-  sendBtn: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#EF4444',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
-  },
-  messageCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginTop: 15, borderWidth: 1, borderColor: '#FEE2E2' },
-  msgQuestion: { fontSize: 13, fontWeight: '700', color: '#EF4444', marginBottom: 6 },
-  msgAnswer: { fontSize: 14, color: '#4B5563', lineHeight: 20 },
-  errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', padding: 10, borderRadius: 8, gap: 8 },
-  errorText: { color: '#B91C1C', fontSize: 13, fontWeight: '600' },
 });
