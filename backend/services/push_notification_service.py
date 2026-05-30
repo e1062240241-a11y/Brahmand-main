@@ -46,26 +46,60 @@ class PushNotificationService:
     
     @staticmethod
     async def save_user_fcm_token(user_id: str, fcm_token: str) -> bool:
-        """Save or update a user's FCM token in Firestore"""
+        """Save or update a user's FCM token in Firestore.
+
+        On iOS the frontend previously sent raw APNs hex tokens (64 lowercase hex chars)
+        which firebase-admin messaging.send() cannot use. This method detects and evicts
+        those stale tokens whenever a valid new token arrives.
+        """
         try:
             db = await _get_db()
+
             def _update_tokens():
-                from google.cloud import firestore
-                # Update both singular (legacy/compatibility) and plural (current/multiple devices) fields
-                db.client.collection('users').document(user_id).update({
+                import re
+                from google.cloud import firestore as fs
+
+                doc_ref = db.client.collection('users').document(user_id)
+                user_doc = doc_ref.get()
+                existing_tokens = []
+                if user_doc.exists:
+                    existing_tokens = user_doc.to_dict().get('fcm_tokens', []) or []
+
+                # A raw APNs device token looks like 64 lowercase hex characters.
+                # Expo/FCM tokens contain letters, digits, brackets or colons — never
+                # purely 64-char hex, so this regex is safe to use as a filter.
+                raw_apns_pattern = re.compile(r'^[0-9a-f]{64}$')
+                stale_tokens = [t for t in existing_tokens if raw_apns_pattern.match(t)]
+
+                update_payload = {
                     'fcm_token': fcm_token,
-                    'fcm_tokens': firestore.ArrayUnion([fcm_token]),
-                    'last_fcm_update': firestore.SERVER_TIMESTAMP
-                })
-            
+                    'last_fcm_update': fs.SERVER_TIMESTAMP,
+                }
+
+                if stale_tokens:
+                    logger.info(
+                        f"Evicting {len(stale_tokens)} stale APNs hex token(s) for user {user_id}"
+                    )
+                    doc_ref.update({
+                        **update_payload,
+                        'fcm_tokens': fs.ArrayRemove(stale_tokens),
+                    })
+                    # Now add the valid new token
+                    doc_ref.update({'fcm_tokens': fs.ArrayUnion([fcm_token])})
+                else:
+                    doc_ref.update({
+                        **update_payload,
+                        'fcm_tokens': fs.ArrayUnion([fcm_token]),
+                    })
+
             await db._run_sync(_update_tokens)
-            
+
             logger.info(f"FCM token saved and synced for user {user_id}")
             return True
         except Exception as e:
             logger.error(f"Error saving FCM token: {e}")
             return False
-    
+
     @staticmethod
     def send_notification(
         token: str,
@@ -73,7 +107,7 @@ class PushNotificationService:
         body: str,
         data: Optional[Dict[str, str]] = None,
         image_url: Optional[str] = None,
-        channel_id: str = 'messages'
+        channel_id: str = 'messages_v4'
     ) -> Optional[str]:
         """
         Send a push notification to a single device
@@ -97,25 +131,48 @@ class PushNotificationService:
                 image=image_url
             )
             
+            # Detect notification type for custom sound / channel selection
+            notification_type = (data or {}).get('type', '')
+            is_sos = bool(notification_type and (notification_type.startswith('sos') or notification_type == 'sos_alert'))
+            
+            # Map legacy channel IDs to versioned ones if needed
+            channel_map = {
+                'messages': 'messages_v4',
+                'default': 'default_v4',
+                'sos_alerts': 'sos_alerts_v3',
+                'community': 'community_v1',
+            }
+            resolved_channel = channel_map.get(channel_id, channel_id)
+            
+            # iOS: .caf is Apple's native audio format — most reliable for APNs custom sounds.
+            # Android: filename WITHOUT extension (matches res/raw/ file name).
+            ios_sound = 'soundreality_mayday_166011.caf' if is_sos else 'bell.caf'
+            android_sound = 'soundreality_mayday_166011' if is_sos else 'bell'
+            
             # Android specific configuration
             android_config = messaging.AndroidConfig(
                 priority='high',
                 notification=messaging.AndroidNotification(
-                    channel_id=channel_id,
+                    channel_id=resolved_channel,
                     icon='notification_icon',
                     color='#FF6B35',
-                    sound='default',
-                    click_action='FLUTTER_NOTIFICATION_CLICK'
+                    sound=android_sound,
+                    click_action='FLUTTER_NOTIFICATION_CLICK',
+                    vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000] if is_sos else [0, 250, 250, 250],
                 )
             )
             
-            # iOS specific configuration
+            # iOS APNs configuration — custom .caf sound bundled in app
+            # apns-push-type: alert is required on iOS 13+ for notifications to display.
             apns_config = messaging.APNSConfig(
+                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                 payload=messaging.APNSPayload(
                     aps=messaging.Aps(
-                        sound='default',
+                        sound=ios_sound,
                         badge=1,
-                        content_available=True
+                        content_available=True,
+                        mutable_content=True,
+                        category='SOS_ALERT' if is_sos else None,
                     )
                 )
             )
@@ -292,6 +349,64 @@ class PushNotificationService:
                 'type': 'community',
                 'community_id': community_id,
                 'community_name': community_name
+            }
+        )
+
+    @classmethod
+    async def notify_circle_message(
+        cls,
+        circle_id: str,
+        circle_name: str,
+        sender_name: str,
+        message_preview: str,
+        exclude_user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Send notification to all circle members for a new message
+        """
+        db = await _get_db()
+        circle = await db.get_document('circles', circle_id)
+        
+        if not circle:
+            return {'success_count': 0, 'failure_count': 0}
+            
+        member_ids = circle.get('members', [])
+        
+        # In circles, members might be dicts or strings depending on schema, let's handle strings. 
+        # Actually in circle_routes, they are strings or dicts with user_id?
+        # Looking at other routes, member_ids is list of user IDs or dicts. Let's extract IDs safely.
+        actual_member_ids = []
+        for m in member_ids:
+            if isinstance(m, str):
+                actual_member_ids.append(m)
+            elif isinstance(m, dict) and 'user_id' in m:
+                actual_member_ids.append(m['user_id'])
+                
+        if exclude_user_id:
+            actual_member_ids = [m for m in actual_member_ids if m != exclude_user_id]
+            
+        if not actual_member_ids:
+            return {'success_count': 0, 'failure_count': 0}
+            
+        tokens = []
+        for member_id in actual_member_ids:
+            token = await cls.get_user_fcm_token(member_id)
+            if token:
+                tokens.append(token)
+                
+        if not tokens:
+            return {'success_count': 0, 'failure_count': 0}
+            
+        preview = message_preview[:100] + '...' if len(message_preview) > 100 else message_preview
+        
+        return cls.send_multicast(
+            tokens=tokens,
+            title=f"{sender_name} in {circle_name}",
+            body=preview,
+            data={
+                'type': 'circle_message',
+                'circle_id': circle_id,
+                'circle_name': circle_name
             }
         )
 

@@ -136,6 +136,23 @@ class MessagingService:
         if MessagingService.sio:
             room = f"circle_{circle_id}"
             await MessagingService.sio.emit('new_message', serialize_doc(msg), room=room)
+            
+        # Send Push Notifications
+        try:
+            from services.push_notification_service import push_service
+            import asyncio
+            
+            preview = "Sent an image" if message_type == "image" else "Sent a video" if message_type == "video" else content
+            
+            asyncio.create_task(push_service.notify_circle_message(
+                circle_id=circle_id,
+                circle_name=circle.get("name", "Circle"),
+                sender_name=user["name"],
+                message_preview=preview,
+                exclude_user_id=user_id
+            ))
+        except Exception as e:
+            logger.error(f"Failed to trigger push notification for circle: {e}")
         
         return serialize_doc(msg)
     

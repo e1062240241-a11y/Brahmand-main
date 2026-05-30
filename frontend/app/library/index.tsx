@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
+import { useGitaStore } from '../../src/store/gitaStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -27,7 +28,7 @@ const mahabharataCover = require('../../assets/images/user_upload_1.png');
 const rigvedaCover = require('../../assets/images/Rigveda.jpg');
 const ramayanCover = require('../../assets/images/Ramayan-hardcover-front-scaled.jpg');
 const yajurvedaCover = require('../../assets/images/Yajurveda.jpg');
-const heroImage = require('../../assets/images/final_sacred_hero_complete.png');
+const heroImage = require('../../assets/images/library_banner_new.jpg');
 const diyaImage = require('../../assets/images/library_diya_new.jpg');
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -40,13 +41,13 @@ const BROWN = '#5A4136';
 
 // ── Book data ─────────────────────────────────────────────────────────────
 const BOOKS = [
-  { id: 'atharvaved',      title: 'Atharvaved',       subtitle: 'THE ATHARVA VEDA',   cover: atharvavedCover,      route: '/library/atharvaved',       progress: 0.45 },
-  { id: 'mahabharata',     title: 'Mahabharata',      subtitle: 'THE GREAT EPIC',      cover: mahabharataCover,     route: '/library/mahabharata',      progress: 0.25 },
-  { id: 'ramayan',         title: 'Ramayan',          subtitle: 'VALMIKI RAMAYAN',     cover: ramayanCover,         route: '/library/ramayan',          progress: 0.60 },
-  { id: 'geeta',           title: 'Bhagvad Geeta',    subtitle: 'M. KRISHNA',          cover: geetaCover,           route: '/library/bhagvad-geeta',    progress: 0.30 },
-  { id: 'rigveda',         title: 'Rigveda',          subtitle: 'RIGVEDA SAMHITA',     cover: rigvedaCover,         route: '/library/rigveda',          progress: 0.15 },
-  { id: 'yajurveda',       title: 'Yajurveda',        subtitle: 'YAJURVEDA',           cover: yajurvedaCover,       route: '/library/yajurveda',        progress: 0.50 },
-  { id: 'ramcharitmanas',  title: 'Ramcharitmanas',   subtitle: 'TULSIDAS',            cover: ramcharitmanasCover,  route: '/library/ramcharitmanas',   progress: 0.20 },
+  { id: 'atharvaved', title: 'Atharvaved', subtitle: 'THE ATHARVA VEDA', cover: atharvavedCover, route: '/library/atharvaved', progress: 0.45 },
+  { id: 'mahabharata', title: 'Mahabharata', subtitle: 'THE GREAT EPIC', cover: mahabharataCover, route: '/library/mahabharata', progress: 0.25 },
+  { id: 'ramayan', title: 'Ramayan', subtitle: 'VALMIKI RAMAYAN', cover: ramayanCover, route: '/library/ramayan', progress: 0.60 },
+  { id: 'upanishads', title: 'Upanishads', subtitle: 'VEDIC TEXTS', cover: geetaCover, route: '/library/upanishads', progress: 0.30 },
+  { id: 'rigveda', title: 'Rigveda', subtitle: 'RIGVEDA SAMHITA', cover: rigvedaCover, route: '/library/rigveda', progress: 0.15 },
+  { id: 'yajurveda', title: 'Yajurveda', subtitle: 'YAJURVEDA', cover: yajurvedaCover, route: '/library/yajurveda', progress: 0.50 },
+  { id: 'ramcharitmanas', title: 'Ramcharitmanas', subtitle: 'TULSIDAS', cover: ramcharitmanasCover, route: '/library/ramcharitmanas', progress: 0.20 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ export default function LibraryPage() {
             <Image source={heroImage} style={styles.heroImg} resizeMode="cover" />
             {/* Gradient overlay for readable text on left */}
             <LinearGradient
-              colors={['rgba(16,12,8,0.97)', 'rgba(16,12,8,0.88)', 'rgba(16,12,8,0.15)']}
+              colors={['rgba(16,12,8,0.7)', 'rgba(16,12,8,0.35)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFillObject}
@@ -126,13 +127,53 @@ export default function LibraryPage() {
               <Text style={styles.heroBody}>
                 Explore timeless scriptures that guide{'\n'}your mind, nourish your soul and{'\n'}enrich your life.
               </Text>
-              <TouchableOpacity style={styles.continueBtn}>
-                <Text style={styles.continueTxt}>Continue Reading</Text>
+              <TouchableOpacity
+                style={styles.continueBtn}
+                onPress={() => router.push('/library/sacred-scriptures' as any)}
+              >
+                <Text style={styles.continueTxt}>Explore Collection</Text>
                 <Ionicons name="arrow-forward" size={15} color="#FFF" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             </View>
           </View>
         </View>
+
+        {/* ── Dynamic Continue Reading (Bhagavad Gita) ── */}
+        {(() => {
+          const { lastReadChapter, progressPercent } = useGitaStore();
+          // Only show if the user has started reading
+          if (progressPercent > 0 || lastReadChapter > 1) {
+            return (
+              <View style={[styles.sectionWrapper, { marginTop: 16 }]}>
+                <View style={styles.sectionHead}>
+                  <View style={styles.headLeft}>
+                    <View style={styles.accentBar} />
+                    <Text style={styles.sectionTitle}>Continue Reading</Text>
+                  </View>
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.gitaProgressCard}
+                  onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
+                  activeOpacity={0.9}
+                >
+                  <Image source={require('../../assets/images/bhagavad_gita_3d_new.png')} style={styles.gitaProgressImg} />
+                  <View style={styles.gitaProgressContent}>
+                    <Text style={styles.gitaProgressTitle}>Bhagavad Gita</Text>
+                    <Text style={styles.gitaProgressSub}>Chapter {lastReadChapter}</Text>
+                    
+                    <View style={styles.gitaProgressBarContainer}>
+                      <View style={[styles.gitaProgressBarFill, { width: `${Math.max(progressPercent, 5)}%` }]} />
+                    </View>
+                    <Text style={styles.gitaProgressText}>{Math.round(progressPercent)}% Completed</Text>
+                  </View>
+                  <Ionicons name="play-circle" size={36} color="#FF6B00" style={{ marginRight: 16 }} />
+                </TouchableOpacity>
+              </View>
+            );
+          }
+          return null;
+        })()}
 
         {/* ── Featured Collection ── */}
         <View style={styles.sectionWrapper}>
@@ -142,7 +183,7 @@ export default function LibraryPage() {
               <View style={styles.accentBar} />
               <Text style={styles.sectionTitle}>Featured Collection</Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/library/featured' as any)}>
               <Text style={styles.viewAll}>View All ›</Text>
             </TouchableOpacity>
           </View>
@@ -199,12 +240,14 @@ export default function LibraryPage() {
         <View style={styles.quoteWrapper}>
           <View style={styles.quoteCard}>
             {/* Opening quotation mark icon (orange) */}
-            <MaterialCommunityIcons
-              name="format-quote-close"
-              size={44}
-              color={ORANGE}
-              style={styles.quoteIcon}
-            />
+            <View style={[styles.quoteIcon, { width: 25.5, height: 18, justifyContent: 'center', alignItems: 'center', overflow: 'visible' }]}>
+              <MaterialCommunityIcons
+                name="format-quote-close"
+                size={34}
+                color={ORANGE}
+                style={{ marginTop: -12 }} // Adjust icon to perfectly fit the 18px height visually
+              />
+            </View>
             <Text style={styles.quoteText}>
               {'"A library is not just a collection of\nbooks, but a journey towards a better you."'}
             </Text>
@@ -220,6 +263,17 @@ export default function LibraryPage() {
               </View>
             </View>
           </View>
+        </View>
+
+        {/* ── 3D Book Button ── */}
+        <View style={styles.book3dWrapper}>
+          <TouchableOpacity
+            style={styles.book3dBtn}
+            onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
+          >
+            <Text style={styles.book3dBtnTxt}>View 3D Bhagavad Gita</Text>
+            <Ionicons name="book" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -310,16 +364,16 @@ const styles = StyleSheet.create({
   },
   heroImg: {
     position: 'absolute',
+    left: 0,
     right: 0,
     top: 0,
-    width: '65%',
+    width: '100%',
     height: '100%',
   },
   heroContent: {
     flex: 1,
-    justifyContent: 'center',
-    paddingLeft: 24,
-    paddingRight: '38%',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
     paddingVertical: 22,
   },
   heroGreeting: {
@@ -345,8 +399,8 @@ const styles = StyleSheet.create({
     backgroundColor: ORANGE,
     borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 30,
+    alignSelf: 'center',
     shadowColor: ORANGE,
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -359,6 +413,61 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: FONTS.bold,
     letterSpacing: 0.1,
+  },
+
+  gitaProgressCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF3EB',
+    borderRadius: 16,
+    padding: 12,
+    marginHorizontal: H_PADDING,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.1)',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  gitaProgressImg: {
+    width: 60,
+    height: 80,
+    borderRadius: 8,
+  },
+  gitaProgressContent: {
+    flex: 1,
+    marginLeft: 16,
+    justifyContent: 'center',
+  },
+  gitaProgressTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: DARK,
+    marginBottom: 4,
+  },
+  gitaProgressSub: {
+    fontSize: 13,
+    color: BROWN,
+    marginBottom: 10,
+  },
+  gitaProgressBarContainer: {
+    height: 6,
+    backgroundColor: '#EED9C4',
+    borderRadius: 3,
+    overflow: 'hidden',
+    width: '80%',
+    marginBottom: 6,
+  },
+  gitaProgressBarFill: {
+    height: '100%',
+    backgroundColor: ORANGE,
+    borderRadius: 3,
+  },
+  gitaProgressText: {
+    fontSize: 11,
+    color: BROWN,
+    fontWeight: '500',
   },
 
   /* Section */
@@ -405,19 +514,18 @@ const styles = StyleSheet.create({
   bookCard: {
     width: CARD_W,
     marginRight: 16,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOpacity: 0.10,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 18 },
-    elevation: 8,
-    overflow: 'hidden',
   },
   coverBox: {
     width: '100%',
     height: CARD_COVER_H,
     position: 'relative',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   coverImg: {
     width: '100%',
@@ -443,32 +551,33 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 0.8,
-    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   bookMeta: {
-    paddingHorizontal: 14,
-    paddingTop: 10,
+    paddingHorizontal: 4,
+    paddingTop: 14,
     paddingBottom: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
   },
   bookName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     color: DARK,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    marginBottom: 3,
-    lineHeight: 24,
+    fontFamily: FONTS.medium,
+    marginBottom: 4,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   bookSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: BROWN,
     fontFamily: FONTS.medium,
     letterSpacing: 0.2,
-    lineHeight: 20,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 
   /* Quote */
@@ -536,5 +645,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFF',
+  },
+  book3dWrapper: {
+    paddingHorizontal: H_PADDING,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  book3dBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BROWN,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  book3dBtnTxt: {
+    color: '#FFF',
+    fontSize: 15,
+    fontFamily: FONTS.bold,
+    fontWeight: '600',
   },
 });

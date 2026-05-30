@@ -239,6 +239,30 @@ api.interceptors.response.use(
       return api(config);
     }
 
+    // Intercept mutating request failures due to offline/network or 5xx status and queue them
+    const isOffline = error.code === 'ERR_NETWORK' || !error.response || error.response.status >= 500;
+    const mutatingMethods = new Set(['post', 'put', 'delete']);
+    const isMutating = mutatingMethods.has(method);
+    const nonQueueableUrls = /auth\/|login|register|otp|sync\/pull|sync\/push/i;
+    const isQueueable = config && isMutating && !nonQueueableUrls.test(config.url || '');
+
+    if (isOffline && isQueueable) {
+      console.log(`[API Interceptor] Offline/Error detected. Queueing request: ${method.toUpperCase()} ${config.url}`);
+      try {
+        const { queueRequest } = require('./syncQueueService');
+        await queueRequest(config.url, method, config.data);
+        return Promise.resolve({
+          data: { success: true, offline: true },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: config,
+        });
+      } catch (queueErr) {
+        console.error('[API Interceptor] Failed to queue request:', queueErr);
+      }
+    }
+
     // If backend is temporarily unavailable, return a graceful fallback only for read requests.
     if (RETRYABLE_STATUS_CODES.has(status) && RETRYABLE_METHODS.has(method)) {
       console.warn('[API] Backend unavailable, returning fallback payload for 503/502');
@@ -722,10 +746,8 @@ export const uploadChatMedia = (file: { uri: string; name: string; type: string 
         const data = await response.json();
         return { data };
       } catch (error: any) {
-        if (error.message !== 'Network Error') {
-          console.warn('[API] Native chat media upload failed, retrying via axios:', error);
-        }
-        return api.post('/media/upload', formData);
+        console.warn('[API] Native chat media upload failed:', error);
+        throw error;
       }
     }
 
@@ -791,9 +813,9 @@ export const togglePostLike = (postId: string) => {
   return api.post(`/posts/${postId}/like`);
 };
 
-export const addPostComment = (postId: string, text: string) => {
+export const addPostComment = (postId: string, text: string, parentId?: string) => {
   markPostAsSeen(postId);
-  return api.post(`/posts/${postId}/comments`, { text });
+  return api.post(`/posts/${postId}/comments`, { text, parent_id: parentId });
 };
 
 export const getPostComments = (postId: string, limit: number = 200) =>
@@ -1455,6 +1477,34 @@ export const uploadVendorKycFile = (
     const formData = new FormData();
     formData.append('doc_type', docType);
     await appendMultipartFile(formData, 'file', file);
+
+    if (Platform.OS !== 'web') {
+      try {
+        const token = await secureStorage.getItem('auth_token');
+        const url = `${API_URL}/api/vendors/${vendorId}/kyc/upload`;
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Upload failed: ${response.status} ${text}`);
+        }
+
+        const data = await response.json();
+        return { data };
+      } catch (error) {
+        console.warn('[API] Native KYC file upload failed, retrying via axios:', error);
+        return api.post(`/vendors/${vendorId}/kyc/upload`, formData);
+      }
+    }
 
     return api.post(`/vendors/${vendorId}/kyc/upload`, formData, {
       headers: Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,

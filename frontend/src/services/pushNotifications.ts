@@ -74,7 +74,14 @@ export async function registerForPushNotifications(): Promise<string | null> {
   let finalStatus = existingStatus;
 
   if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
+    const { status } = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+        allowProvisional: false,
+      },
+    });
     finalStatus = status;
   }
 
@@ -88,20 +95,41 @@ export async function registerForPushNotifications(): Promise<string | null> {
       return null;
     }
 
-    // Prefer native device push token for FCM-based backend delivery.
-    const deviceToken = await Notifications.getDevicePushTokenAsync();
-    if (deviceToken?.data) {
-      token = deviceToken.data;
-      console.log('[Push] Device Push Token retrieved successfully.');
-    } else {
-      // Fallback: Expo push token
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-      if (projectId) {
+    if (Platform.OS === 'ios') {
+      // iOS: getDevicePushTokenAsync returns a raw APNs hex token.
+      // The firebase-admin SDK on the backend CANNOT send to raw APNs tokens —
+      // it only accepts FCM registration tokens.
+      // Solution: use getExpoPushTokenAsync on iOS. Expo's push service acts as
+      // a proxy that accepts APNs tokens and delivers via Apple's APNs servers.
+      // The backend's FirebaseNotificationService._send_expo_push_notifications
+      // already handles "ExponentPushToken[...]" tokens correctly.
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      if (!projectId) {
+        console.warn('[Push] iOS: No EAS projectId found — cannot get Expo push token.');
+      } else {
         const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
         token = pushToken.data;
-        console.warn('[Push] Received Expo push token; FCM native token preferred for production.');
+        console.log('[Push] iOS: Expo push token acquired:', token?.slice(0, 30) + '...');
+      }
+    } else {
+      // Android: getDevicePushTokenAsync returns a real FCM registration token
+      // that firebase-admin's messaging.send() can use directly.
+      const deviceToken = await Notifications.getDevicePushTokenAsync();
+      if (deviceToken?.data) {
+        token = deviceToken.data;
+        console.log('[Push] Android: FCM device token acquired.');
       } else {
-        console.warn('[Push] Unable to get device push token and no Expo projectId fallback available.');
+        // Fallback to Expo push token on Android as well
+        const projectId =
+          Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+        if (projectId) {
+          const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
+          token = pushToken.data;
+          console.warn('[Push] Android: Fell back to Expo push token.');
+        } else {
+          console.warn('[Push] Android: No FCM token and no Expo projectId fallback.');
+        }
       }
     }
   } catch (error: any) {
@@ -113,16 +141,23 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   // Configure Android notification channels
+  // NOTE: Android caches channel settings. We delete+recreate ALL channels every
+  // launch to ensure vibration patterns, sounds and priorities are always fresh.
   if (Platform.OS === 'android') {
     try {
-      // ── Default channel (community requests, system) ──────────────────────
+      const channelsToClear = ['default_v4', 'messages_v4', 'community_v1'];
+      for (const ch of channelsToClear) {
+        try { await Notifications.deleteNotificationChannelAsync(ch); } catch (_) {}
+      }
+
+      // ── Default channel ─────────────────────────────────────────────────────
       await Notifications.setNotificationChannelAsync('default_v4', {
         name: 'General Notifications',
         description: 'App alerts, updates and general notifications',
         importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 250, 250, 250],
+        enableVibrate: true,
         lightColor: '#FF6B35',
-        // 'bell' MP3 for default notifications
         sound: 'bell',
       });
 
@@ -132,25 +167,24 @@ export async function registerForPushNotifications(): Promise<string | null> {
         description: 'Private and community message notifications',
         importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 250, 250, 250],
+        enableVibrate: true,
         lightColor: '#FF6B35',
         sound: 'bell',
       });
 
-      // ── Community channel (Lost & Found, Events, Seva) ────────────────────
+      // ── Community channel ─────────────────────────────────────────────────
       await Notifications.setNotificationChannelAsync('community_v1', {
         name: 'Community Alerts',
         description: 'Lost & Found, Event RSVPs and community activity',
         importance: Notifications.AndroidImportance?.HIGH ?? 4,
         vibrationPattern: [0, 300, 200, 300],
+        enableVibrate: true,
         lightColor: '#FF6B35',
         sound: 'bell',
       });
 
-      // ── SOS channel – ALWAYS delete & recreate to enforce vibration/sound ─
-      // Android caches channel settings after first creation; deleting forces update.
-      try {
-        await Notifications.deleteNotificationChannelAsync('sos_alerts_v3');
-      } catch (_) { /* ok if it doesn't exist yet */ }
+      // ── SOS channel – delete & recreate (highest priority) ────────────────
+      try { await Notifications.deleteNotificationChannelAsync('sos_alerts_v3'); } catch (_) {}
 
       await Notifications.setNotificationChannelAsync('sos_alerts_v3', {
         name: 'Emergency SOS Alerts',
@@ -246,7 +280,11 @@ export async function getLastNotificationResponse() {
 }
 
 /**
- * Schedule a local notification (for testing)
+ * Schedule a local notification with correct channel and custom sound.
+ *
+ * iOS: sound filename must include .mp3 extension (matches the file bundled
+ *      in ios/Brahmand/ via Xcode copy-bundle-resources).
+ * Android: sound filename WITHOUT extension (matches res/raw/ filename).
  */
 export async function scheduleLocalNotification(
   title: string,
@@ -255,37 +293,40 @@ export async function scheduleLocalNotification(
 ) {
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
-  
+
   const notificationType = data?.type;
   const isSos = !!notificationType?.startsWith('sos');
-  const isCommunity = notificationType === 'community_interest' || notificationType === 'event_rsvp' || notificationType === 'community_request';
-  const isMsg = notificationType === 'message';
+  const isCommunity =
+    notificationType === 'community_interest' ||
+    notificationType === 'event_rsvp' ||
+    notificationType === 'community_request';
+  const isMsg = notificationType === 'message' || notificationType === 'dm';
 
-  // iOS: must include file extension; Android: no extension (matches raw/ filename without .mp3)
-  const soundName = isSos
-    ? (Platform.OS === 'ios' ? 'soundreality_mayday_166011.mp3' : 'soundreality_mayday_166011')
-    : isCommunity
-      ? (Platform.OS === 'ios' ? 'bell.mp3' : 'bell')
-      : (Platform.OS === 'ios' ? 'bell.mp3' : 'bell');
+  // iOS requires filename WITH extension; prefer .caf (Apple's native audio format, most reliable for APNs).
+  // Android WITHOUT extension (references res/raw/ filename).
+  const iosSoundFile = isSos ? 'soundreality_mayday_166011.caf' : 'bell.caf';
+  const androidSoundFile = isSos ? 'soundreality_mayday_166011' : 'bell';
 
   const channelId = isSos
     ? 'sos_alerts_v3'
     : isCommunity
-      ? 'community_v1'
-      : isMsg
-        ? 'messages_v4'
-        : 'default_v4';
+    ? 'community_v1'
+    : isMsg
+    ? 'messages_v4'
+    : 'default_v4';
 
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
       body,
       data: data || {},
-      sound: soundName,
+      // iOS picks up the sound from the app bundle using this filename.
+      // Android ignores this — it uses the channel's sound setting instead.
+      sound: Platform.OS === 'ios' ? iosSoundFile : androidSoundFile,
     },
-    trigger: {
-      channelId,
-    },
+    trigger: (Platform.OS === 'android'
+      ? { channelId }
+      : { seconds: 1 }) as any,
   });
 }
 

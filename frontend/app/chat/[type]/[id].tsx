@@ -167,17 +167,16 @@ const ChatMessageItem = React.memo(({
           <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
         )}
         <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
-            <Text style={[styles.senderName, { marginBottom: 0 }, isOwnMessage && { color: COLORS.surface }]}>
-              {isOwnMessage ? 'You' : item.sender_name}
-            </Text>
-            {!isOwnMessage && (item as any).is_verified && (
-              <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />
-            )}
-            <Text style={{ fontSize: 10, color: isOwnMessage ? 'rgba(255,255,255,0.7)' : COLORS.textSecondary, marginLeft: 4 }}>
-              · {getTimeAgo(item.created_at)}
-            </Text>
-          </View>
+          {!isOwnMessage && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+              <Text style={styles.senderName}>
+                {item.sender_name}
+              </Text>
+              {(item as any).is_verified && (
+                <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />
+              )}
+            </View>
+          )}
           {renderMessageContent(item)}
           <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
             {formatTime(item.created_at)}
@@ -574,7 +573,6 @@ const ChatScreen = () => {
     });
     setNewMessage('');
 
-    setSending(true);
     try {
       let response;
       if (type === 'community') {
@@ -597,8 +595,6 @@ const ChatScreen = () => {
         return updated;
       });
       Alert.alert('Error', error.response?.data?.detail || 'Failed to send message');
-    } finally {
-      setSending(false);
     }
   };
 
@@ -964,10 +960,10 @@ const ChatScreen = () => {
     }
   };
 
-  const formatTime = (dateString: string) => {
+  const formatTime = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  }, []);
 
   const isMediaUrl = (url: string, type: 'image' | 'video') => {
     const normalized = url.split('?')[0].toLowerCase();
@@ -998,7 +994,7 @@ const ChatScreen = () => {
     }
   };
 
-  const renderMessageContent = (message: Message) => {
+  const renderMessageContent = useCallback((message: Message) => {
     const sourceUrl = message.content || message.text || '';
     if (message.message_type === 'image' && sourceUrl) {
       return (
@@ -1053,7 +1049,7 @@ const ChatScreen = () => {
         {message.text || message.content}
       </Text>
     );
-  };
+  }, [user?.id]);
 
   const handlePickMedia = async (mediaType: 'image' | 'video') => {
     closeAttachmentOptions();
@@ -1239,7 +1235,7 @@ const ChatScreen = () => {
     dateA.getMonth() === dateB.getMonth() &&
     dateA.getDate() === dateB.getDate();
 
-  const formatChatDate = (dateString: string) => {
+  const formatChatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const yesterday = new Date(now);
@@ -1252,14 +1248,14 @@ const ChatScreen = () => {
       day: 'numeric',
       year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
     });
-  };
+  }, []);
 
-  const shouldShowDateSeparator = (index: number, currentDateString: string) => {
+  const shouldShowDateSeparator = useCallback((index: number, currentDateString: string) => {
     const currentDate = new Date(currentDateString);
     if (index === 0) return true;
     const previousDate = new Date(messages[index - 1]?.created_at || '');
     return !isSameDay(currentDate, previousDate);
-  };
+  }, [messages]);
 
   const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
     return (
@@ -1401,8 +1397,14 @@ const ChatScreen = () => {
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          initialNumToRender={20}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
@@ -1494,13 +1496,14 @@ const ChatScreen = () => {
                   styles.sendButton,
                   (!newMessage.trim() && !selectedMedia) && styles.sendButtonDisabled
                 ]}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 onPress={handleSend}
-                disabled={(!newMessage.trim() && !selectedMedia) || sending || uploadingMedia}
+                disabled={(!newMessage.trim() && !selectedMedia) || uploadingMedia}
               >
-                {sending || uploadingMedia ? (
+                {uploadingMedia ? (
                   <ActivityIndicator size="small" color={COLORS.surface} />
                 ) : (
-                  <Ionicons name="send" size={20} color={COLORS.surface} />
+                  <Ionicons name="send" size={18} color={(!newMessage.trim() && !selectedMedia) ? COLORS.textLight : COLORS.surface} style={{ marginLeft: 2 }} />
                 )}
               </TouchableOpacity>
             </View>
@@ -2149,13 +2152,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesList: {
-    padding: SPACING.md,
-    flexGrow: 1,
+    padding: SPACING.sm,
+    paddingBottom: SPACING.xl,
   },
   dateSeparatorContainer: {
-    width: '100%',
     alignItems: 'center',
-    marginVertical: SPACING.sm,
+    marginVertical: SPACING.xs,
   },
   dateSeparator: {
     paddingHorizontal: SPACING.md,
@@ -2172,59 +2174,69 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     flexDirection: 'row',
-    marginBottom: SPACING.md,
+    marginBottom: 4,
     alignItems: 'flex-end',
   },
   ownMessageContainer: {
     justifyContent: 'flex-end',
   },
   messageBubble: {
-    maxWidth: '80%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginLeft: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
+    maxWidth: '82%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginLeft: SPACING.xs,
+    borderWidth: 0.5,
+    borderColor: '#E5E5E5',
     borderBottomLeftRadius: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 1,
+    elevation: 1,
   },
   ownMessageBubble: {
-    backgroundColor: `${COLORS.primary}15`,
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    backgroundColor: '#DCF8C6',
+    borderRadius: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     marginLeft: 0,
-    marginRight: SPACING.sm,
+    marginRight: 0,
+    borderWidth: 0.5,
+    borderColor: '#C1E6A8',
     borderBottomRightRadius: 4,
-    borderWidth: 1,
-    borderColor: `${COLORS.primary}30`,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 1,
+    elevation: 1,
   },
   senderName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
-    color: COLORS.primary,
-    marginBottom: 6,
+    color: '#E65100', // A darker, distinct orange for sender names
+    marginBottom: 2,
   },
   messageText: {
     fontSize: 15,
     fontFamily: 'Inter_400Regular',
-    color: '#09121A',
-    lineHeight: 22,
+    color: '#000000',
+    lineHeight: 20,
   },
   ownMessageText: {
     color: '#000000',
   },
   timeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'Inter_400Regular',
-    color: COLORS.textSecondary,
-    marginTop: 8,
+    color: '#8B959A',
+    marginTop: 2,
     alignSelf: 'flex-end',
   },
   ownTimeText: {
-    color: '#4E4E4E',
+    color: '#5B7A4C',
   },
   emptyContainer: {
     flex: 1,

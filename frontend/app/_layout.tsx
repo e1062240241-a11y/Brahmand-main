@@ -20,10 +20,11 @@ import { toast } from '../src/store/toastStore';
 import { Alert as RNAlert } from 'react-native';
 import { syncDatabase } from '../src/database/sync';
 import { GlobalFAB } from '../src/components/GlobalFAB';
+import { initSyncQueueListener } from '../src/services/syncQueueService';
 
 import { originalAlert } from '../src/utils/nativeAlert';
 
-LogBox.ignoreLogs(['UIKitCore] RCTScrollViewComponentView']);
+LogBox.ignoreLogs(['UIKitCore] RCTScrollViewComponentView', 'RCTScrollViewComponentView implements focusItemsInRect:']);
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
   const titleStr = typeof title === 'string' ? title : '';
@@ -31,18 +32,18 @@ RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any
   const displayMsg = titleStr && bodyStr && titleStr !== 'Success' && titleStr !== 'Error' && titleStr !== 'Info'
     ? `${titleStr}: ${bodyStr}`
     : (bodyStr || titleStr);
-    
-  const isError = titleStr.toLowerCase().includes('error') || titleStr.toLowerCase().includes('fail') || 
-                  displayMsg.toLowerCase().includes('error') || displayMsg.toLowerCase().includes('fail');
-  const isSuccess = titleStr.toLowerCase().includes('success') || titleStr.toLowerCase().includes('saved') || 
-                    titleStr.toLowerCase().includes('updated') || displayMsg.toLowerCase().includes('success');
-  
+
+  const isError = titleStr.toLowerCase().includes('error') || titleStr.toLowerCase().includes('fail') ||
+    displayMsg.toLowerCase().includes('error') || displayMsg.toLowerCase().includes('fail');
+  const isSuccess = titleStr.toLowerCase().includes('success') || titleStr.toLowerCase().includes('saved') ||
+    titleStr.toLowerCase().includes('updated') || displayMsg.toLowerCase().includes('success');
+
   const mappedActions = buttons?.map(btn => ({
     text: btn.text || 'OK',
     style: btn.style,
-    onPress: btn.onPress || (() => {})
+    onPress: btn.onPress || (() => { })
   }));
-  
+
   toast.show(displayMsg, isSuccess ? 'success' : (isError ? 'error' : 'info'), 10000, mappedActions);
 };
 
@@ -63,13 +64,13 @@ function useAppBackHandler() {
   useEffect(() => {
     const onBackPress = () => {
       console.log('[BackHandler] Pathname:', pathname);
-      
+
       // 1. If we are on a main tab screen, NEVER exit with a back gesture/button
       const mainTabs = [
         '/home', '/messages', '/jaap', '/jobs', '/profile', '/vendor', '/index',
         '/(tabs)/home', '/(tabs)/messages', '/(tabs)/jaap', '/(tabs)/jobs', '/(tabs)/profile', '/(tabs)/vendor'
       ];
-      
+
       if (mainTabs.includes(pathname) || pathname === '/' || pathname === '') {
         console.log('[BackHandler] Blocking exit at root-like path.');
         return true; // Consume event, do nothing
@@ -106,24 +107,24 @@ function useDeepLinkHandler() {
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
       if (!token || !event.url) return;
-      
+
       try {
         // Use expo-linking to parse the URL correctly
         const parsed = ExpoLinking.parse(event.url);
         const path = parsed.path;
-        
+
         if (!path) return;
 
         // Navigate to the path directly - expo-router handles the rest
         router.push(`/${path}` as any);
-        
+
       } catch (error) {
         console.warn('Failed to parse deep link:', error);
       }
     };
 
     const subscription = Linking.addEventListener('url', handleDeepLink);
-    
+
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });
@@ -371,7 +372,7 @@ export default function RootLayout() {
   const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
   const { loadStoredAdminAuth } = useAdminStore();
   const pushInitStartedRef = useRef(false);
-  
+
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -382,11 +383,15 @@ export default function RootLayout() {
     Outfit_600SemiBold,
     Outfit_700Bold,
   });
-  
+
   useDeepLinkHandler();
   useAppBackHandler();
   useNotificationResponseHandler();
   useMutedNotificationFilter();
+
+  useEffect(() => {
+    initSyncQueueListener();
+  }, []);
 
   useEffect(() => {
     useLanguageStore.getState().loadLanguage();
@@ -450,117 +455,117 @@ export default function RootLayout() {
         <StatusBar style="auto" />
         <View style={styles.root}>
           <MuteProvider>
-            <Stack screenOptions={{ 
-              headerShown: false, 
+            <Stack screenOptions={{
+              headerShown: false,
               animation: 'slide_from_right',
               gestureEnabled: true,
               gestureDirection: 'horizontal'
             }}>
               {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
-              <Stack.Screen 
-                name="(tabs)" 
-                options={{ 
-                  animation: 'fade',
-                  gestureEnabled: false 
-                }} 
-              />
-              <Stack.Screen 
-                name="index" 
-                options={{ 
+              <Stack.Screen
+                name="(tabs)"
+                options={{
                   animation: 'fade',
                   gestureEnabled: false
-                }} 
+                }}
+              />
+              <Stack.Screen
+                name="index"
+                options={{
+                  animation: 'fade',
+                  gestureEnabled: false
+                }}
               />
               {/* Modals and Creation Forms - Slide from Bottom */}
-              <Stack.Screen 
-                name="community-request/blood" 
-                options={{ 
+              <Stack.Screen
+                name="community-request/blood"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="community-request/food" 
-                options={{ 
+              <Stack.Screen
+                name="community-request/food"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="community-request/gau-seva" 
-                options={{ 
+              <Stack.Screen
+                name="community-request/gau-seva"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="community-request/animal-care" 
-                options={{ 
+              <Stack.Screen
+                name="community-request/animal-care"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="community-request/temple-help" 
-                options={{ 
+              <Stack.Screen
+                name="community-request/temple-help"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="community-request/emergency" 
-                options={{ 
+              <Stack.Screen
+                name="community-request/emergency"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="community-request/other" 
-                options={{ 
+              <Stack.Screen
+                name="community-request/other"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="sos" 
-                options={{ 
+              <Stack.Screen
+                name="sos"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="kyc-submit" 
-                options={{ 
+              <Stack.Screen
+                name="kyc-submit"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="live-jaap-welcome" 
-                options={{ 
+              <Stack.Screen
+                name="live-jaap-welcome"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="circle/create" 
-                options={{ 
+              <Stack.Screen
+                name="circle/create"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="community/create" 
-                options={{ 
+              <Stack.Screen
+                name="community/create"
+                options={{
                   animation: 'slide_from_bottom',
                   gestureDirection: 'vertical'
-                }} 
+                }}
               />
-              <Stack.Screen 
-                name="community-tweets" 
-                options={{ 
+              <Stack.Screen
+                name="community-tweets"
+                options={{
                   animation: 'slide_from_right',
-                }} 
+                }}
               />
               {/* Other standard stack navigations will inherit default slide_from_right */}
             </Stack>

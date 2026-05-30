@@ -8,8 +8,8 @@ async def main():
     db = FirestoreDB(await get_firestore())
     user_id = '29PXIs7epVdwrnN7eFeS'
     
-    # 4 hours from now
-    blocked_until = (datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()
+    # 2 hours from now
+    blocked_until = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
     
     update_data = {
         'is_blocked': True,

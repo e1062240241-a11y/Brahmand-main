@@ -282,6 +282,30 @@ async def _upload_and_compress_video_impl(
 
     user_id = token_data["user_id"]
 
+    # Check if user is blocked
+    from config.database import get_database
+    db = await get_database()
+    user_doc = db.collection('users').document(user_id).get()
+    if user_doc.exists:
+        user = user_doc.to_dict()
+        if user.get('is_blocked'):
+            from datetime import datetime, timezone
+            blocked_until_str = user.get('blocked_until')
+            if blocked_until_str:
+                try:
+                    blocked_until = datetime.fromisoformat(blocked_until_str)
+                    if blocked_until.tzinfo is None:
+                        blocked_until = blocked_until.replace(tzinfo=timezone.utc)
+                    now = datetime.now(timezone.utc)
+                    if now < blocked_until:
+                        raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+                except HTTPException:
+                    raise
+                except Exception:
+                    raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+            else:
+                raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
+
     _ensure_ffmpeg_tools_available()
     input_path = None
     output_file = None

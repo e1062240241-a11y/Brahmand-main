@@ -54,7 +54,7 @@ export default function KYCStatusScreen() {
   const getStatusTitle = () => {
     if (isVerified) return 'Verified & Approved';
     if (isReview) return 'Under Review';
-    if (isRejected) return 'Verification Rejected';
+    if (isRejected) return 'Verification Pending'; // Keep in pending status when rejected
     return 'Verification Pending';
   };
 
@@ -66,8 +66,7 @@ export default function KYCStatusScreen() {
       return 'Your KYC documents are currently being processed by our admin team. This usually takes 24-48 hours.';
     }
     if (isRejected) {
-      const reason = (myVendor as any)?.kyc_rejection_reason || 'Denied by admin. Please upload clear documents and try again.';
-      return `Reason: ${reason}`;
+      return 'Your KYC status is pending review. Verification is in progress.';
     }
     return 'Verify your identity using Aadhaar or PAN card to enable secure community features and listings.';
   };
@@ -75,14 +74,14 @@ export default function KYCStatusScreen() {
   const getStatusColor = () => {
     if (isVerified) return '#2E7D32'; // Green
     if (isReview) return '#E65100'; // Amber/Orange
-    if (isRejected) return '#C62828'; // Red
+    if (isRejected) return '#1565C0'; // Map rejected to pending blue
     return '#1565C0'; // Blue
   };
 
   const getStatusBgColor = () => {
     if (isVerified) return '#E8F5E9';
     if (isReview) return '#FFF3E0';
-    if (isRejected) return '#FFEBEE';
+    if (isRejected) return '#E3F2FD'; // Map rejected to pending bg
     return '#E3F2FD';
   };
 
@@ -138,10 +137,10 @@ export default function KYCStatusScreen() {
             </Text>
           </View>
 
-          {!isVerified && !isReview && (
+          {!isVerified && !isReview && !isRejected && (
             <TouchableOpacity style={styles.actionBtn} onPress={() => setKycVisible(true)}>
               <Text style={styles.actionBtnText}>
-                {isRejected ? 'Resubmit Verification' : 'Start Verification'}
+                Start Verification
               </Text>
             </TouchableOpacity>
           )}

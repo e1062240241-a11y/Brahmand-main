@@ -398,8 +398,8 @@ export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string)
 
 export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, mantraType?: string): { currentIndex: number; isHolding: boolean } => {
   if (mantraType === 'gayatri') {
-    const wordDurations = [3.0, 3.0, 3.0, 6.0, 2.3, 2.3, 2.4, 1.2, 1.3, 1.3, 5.268];
-    const totalDuration = 31.068;
+    const wordDurations = [3.0, 3.0, 3.0, 6.0, 2.3, 2.3, 2.4, 1.2, 1.3, 1.3, 2.936];
+    const totalDuration = 28.736;
     const position = elapsedSeconds % totalDuration;
     let accumulated = 0;
     for (let i = 0; i < wordDurations.length; i++) {
@@ -428,8 +428,8 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
   if (mantraType === 'krishna') {
     const totalDuration = 22.77;
     const position = elapsedSeconds % totalDuration;
-    if (position < 11.7) {
-      const cycle1Ends = [0.8, 1.4, 2.0, 2.7, 3.2, 3.6, 4.3, 5.8, 6.4, 7.1, 7.9, 8.7, 9.4, 10.0, 10.5, 11.7];
+    if (position < 11.75) {
+      const cycle1Ends = [0.75, 1.4, 2.0, 2.6, 3.1, 3.6, 4.35, 5.8, 6.2, 6.6, 7.3, 8.0, 8.7, 9.4, 10.0, 11.75];
       for (let i = 0; i < cycle1Ends.length; i++) {
         if (position < cycle1Ends[i]) {
           return { currentIndex: i, isHolding: false };
@@ -437,14 +437,14 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
       }
       return { currentIndex: 15, isHolding: true };
     } else {
-      const relPos = position - 11.7;
-      const cycle2Ends = [0.7, 1.3, 1.9, 2.6, 3.1, 3.5, 4.2, 5.9, 6.5, 7.2, 8.0, 8.7, 9.3, 9.9, 10.5, 11.07];
+      const relPos = position - 11.75;
+      const cycle2Ends = [0.6, 1.25, 1.85, 2.45, 3.05, 3.65, 4.35, 5.85, 6.45, 7.05, 7.65, 8.25, 8.85, 9.45, 10.05, 11.02];
       for (let i = 0; i < cycle2Ends.length; i++) {
         if (relPos < cycle2Ends[i]) {
-          return { currentIndex: i, isHolding: false };
+          return { currentIndex: 16 + i, isHolding: false };
         }
       }
-      return { currentIndex: 15, isHolding: true };
+      return { currentIndex: 31, isHolding: true };
     }
   }
 

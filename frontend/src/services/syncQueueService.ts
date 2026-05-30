@@ -1,0 +1,180 @@
+import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import { database } from '../database';
+import { api } from './api';
+
+let isFlushing = false;
+
+// Serializes request data (handles both JSON objects and FormData)
+export function serializePayload(data: any): string {
+  if (!data) return '';
+  if (typeof data === 'string') return data;
+  
+  // Handle FormData
+  if (data instanceof FormData) {
+    const serialized: Record<string, any> = { _isFormData: true, fields: {} };
+    // Axios FormDatas usually have _parts on native React Native
+    const parts = (data as any)._parts || [];
+    for (const [key, value] of parts) {
+      if (value && typeof value === 'object' && 'uri' in value) {
+        serialized.fields[key] = {
+          _isFile: true,
+          uri: value.uri,
+          name: value.name,
+          type: value.type
+        };
+      } else {
+        serialized.fields[key] = value;
+      }
+    }
+    return JSON.stringify(serialized);
+  }
+  
+  return JSON.stringify(data);
+}
+
+// Deserializes payload back into either JSON or FormData
+export function deserializePayload(payloadStr: string): any {
+  if (!payloadStr) return undefined;
+  try {
+    const parsed = JSON.parse(payloadStr);
+    if (parsed && parsed._isFormData) {
+      const formData = new FormData();
+      for (const [key, value] of Object.entries(parsed.fields)) {
+        if (value && typeof value === 'object' && (value as any)._isFile) {
+          formData.append(key, {
+            uri: (value as any).uri,
+            name: (value as any).name,
+            type: (value as any).type
+          } as any);
+        } else {
+          formData.append(key, value as any);
+        }
+      }
+      return formData;
+    }
+    return parsed;
+  } catch (e) {
+    return payloadStr; // Return raw string if JSON parsing fails
+  }
+}
+
+// Adds a request to the sync queue
+export async function queueRequest(url: string, method: string, data: any) {
+  if (Platform.OS === 'web') {
+    // Web fallback using local storage
+    try {
+      const queue = JSON.parse(localStorage.getItem('brahmand_sync_queue') || '[]');
+      queue.push({ url, method, payload: serializePayload(data), created_at: Date.now() });
+      localStorage.setItem('brahmand_sync_queue', JSON.stringify(queue));
+    } catch (e) {
+      console.warn('[SyncQueue] Web queue save failed:', e);
+    }
+    return;
+  }
+
+  try {
+    await database.write(async () => {
+      await database.get('sync_queue').create((record: any) => {
+        record.url = url;
+        record.method = method.toUpperCase();
+        record.payload = serializePayload(data);
+        record.createdAt = new Date();
+      });
+    });
+    console.log(`[SyncQueue] Queued offline request: ${method} ${url}`);
+  } catch (err) {
+    console.error('[SyncQueue] Failed to save request to database:', err);
+  }
+}
+
+// Flushes the sync queue sequentially
+export async function flushSyncQueue() {
+  if (isFlushing) return;
+  isFlushing = true;
+  console.log('[SyncQueue] Checking sync queue for pending requests...');
+
+  try {
+    if (Platform.OS === 'web') {
+      const queue = JSON.parse(localStorage.getItem('brahmand_sync_queue') || '[]');
+      if (queue.length === 0) {
+        isFlushing = false;
+        return;
+      }
+      console.log(`[SyncQueue] Web flushing ${queue.length} requests...`);
+      const remaining: any[] = [];
+      for (const item of queue) {
+        try {
+          const payload = deserializePayload(item.payload);
+          await api({
+            url: item.url,
+            method: item.method,
+            data: payload,
+            headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+          });
+        } catch (err) {
+          console.warn(`[SyncQueue] Web request failed to retry: ${item.method} ${item.url}`, err);
+          remaining.push(item);
+        }
+      }
+      localStorage.setItem('brahmand_sync_queue', JSON.stringify(remaining));
+      isFlushing = false;
+      return;
+    }
+
+    // Native database query
+    const syncQueueCollection = database.get('sync_queue');
+    const pending = await syncQueueCollection.query().fetch();
+    if (pending.length === 0) {
+      console.log('[SyncQueue] Queue is empty.');
+      isFlushing = false;
+      return;
+    }
+
+    console.log(`[SyncQueue] Flushing ${pending.length} pending requests...`);
+    // Sort oldest first
+    const sorted = [...pending].sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime());
+
+    for (const item of sorted) {
+      const payload = deserializePayload(item.payload);
+      try {
+        console.log(`[SyncQueue] Retrying request: ${item.method} ${item.url}`);
+        await api({
+          url: item.url,
+          method: item.method,
+          data: payload,
+          headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+        });
+
+        // Delete from queue on success
+        await database.write(async () => {
+          await item.destroyPermanently();
+        });
+        console.log(`[SyncQueue] Successfully synced and removed: ${item.method} ${item.url}`);
+      } catch (err: any) {
+        console.warn(`[SyncQueue] Request failed to sync (will retry later): ${item.method} ${item.url}`, err.message || err);
+        // Stop flushing subsequent requests if there's a connection/server failure
+        break;
+      }
+    }
+  } catch (err) {
+    console.error('[SyncQueue] Error flushing queue:', err);
+  } finally {
+    isFlushing = false;
+  }
+}
+
+// Start monitoring connection changes to automatically flush
+export function initSyncQueueListener() {
+  console.log('[SyncQueue] Initializing NetInfo sync queue listener...');
+  
+  // Do a first-time flush in case we start connected
+  flushSyncQueue();
+
+  NetInfo.addEventListener((state) => {
+    if (state.isConnected && state.isInternetReachable !== false) {
+      console.log('[SyncQueue] Network is online. Flushing queue...');
+      flushSyncQueue();
+    }
+  });
+}
