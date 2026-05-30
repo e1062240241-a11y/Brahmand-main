@@ -398,8 +398,8 @@ export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string)
 
 export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, mantraType?: string): { currentIndex: number; isHolding: boolean } => {
   if (mantraType === 'gayatri') {
-    const wordDurations = [3.0, 3.0, 3.0, 6.0, 2.3, 2.3, 2.4, 1.2, 1.3, 1.3, 5.268];
-    const totalDuration = 31.068;
+    const wordDurations = [3.0, 3.0, 3.0, 6.0, 2.3, 2.3, 2.4, 1.2, 1.3, 1.3, 2.936];
+    const totalDuration = 28.736;
     const position = elapsedSeconds % totalDuration;
     let accumulated = 0;
     for (let i = 0; i < wordDurations.length; i++) {
