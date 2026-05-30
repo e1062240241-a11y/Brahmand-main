@@ -1682,7 +1682,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={styles.screen}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#FFEEE5']} locations={[0, 0.0913, 0.25]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -3143,7 +3143,7 @@ const styles = StyleSheet.create({
   },
   postBannerSection: {
     width: '100%',
-    backgroundColor: '#F8EDE7',
+    backgroundColor: 'transparent',
     paddingHorizontal: PAGE_PADDING,
   },
   cardTextureContent: {
