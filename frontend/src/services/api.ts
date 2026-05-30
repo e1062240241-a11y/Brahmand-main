@@ -909,6 +909,12 @@ export const createCommunity = (data: {
   member_ids?: string[];
 }) => api.post('/communities', data);
 
+export const getMyCreationRequests = () =>
+  api.get('/communities/my-creation-requests');
+
+export const joinCommunityDirect = (communityId: string) =>
+  api.post(`/communities/${communityId}/join`);
+
 export const agreeToRules = (communityId: string, subgroupType: string) =>
   api.post(`/communities/${communityId}/agree-rules`, { subgroup_type: subgroupType });
 

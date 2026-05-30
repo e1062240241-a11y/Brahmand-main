@@ -1330,6 +1330,30 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Poll comments in real-time when the comment modal is visible
+  useEffect(() => {
+    if (!commentModalVisible || !selectedCommentPostId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await getPostComments(selectedCommentPostId, 50);
+        if (Array.isArray(response.data)) {
+          setPostComments(prev => {
+            const serverComments = response.data;
+            const optimistic = prev.filter(c => c.is_optimistic);
+            const serverIds = new Set(serverComments.map((c: any) => c.id));
+            const filteredOptimistic = optimistic.filter(c => !serverIds.has(c.id));
+            return [...filteredOptimistic, ...serverComments];
+          });
+        }
+      } catch (error) {
+        console.warn('[Comments Polling] Failed:', error);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [commentModalVisible, selectedCommentPostId]);
+
   const handleSubmitComment = async () => {
     if (!selectedCommentPostId || !commentText.trim() || commentSubmitting) return;
 
