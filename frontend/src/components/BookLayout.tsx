@@ -12,8 +12,17 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLibraryStore } from '../store/libraryStore';
+
+const convertToHindiNumerals = (num: number) => {
+  const hindiNumerals = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+  return num.toString().split('').map(digit => hindiNumerals[parseInt(digit, 10)]).join('');
+};
 
 export type BookVerse = {
   chapter: number;
@@ -53,27 +62,21 @@ export function useBookLayout() {
   const availableHeight = Math.max(240, height - safeTop - safeBottom - reservedControls);
 
   const bookAspect = 1.35;
-  const spineWidth = 6;
 
   const maxBookWidth = availableWidth;
   const maxBookHeight = availableHeight;
 
-  let bookWidth = Math.min(maxBookWidth, maxBookHeight * bookAspect);
-  let bookHeight = bookWidth / bookAspect;
+  const pageWidth = width;
+  const bookWidth = pageWidth * 2;
+  const bookHeight = height;
+  const spineWidth = 0;
+  const fullBookWidth = bookWidth;
 
-  if (bookHeight > maxBookHeight) {
-    bookHeight = maxBookHeight;
-    bookWidth = bookHeight * bookAspect;
-  }
-
-  const pageWidth = Math.max(120, (bookWidth - spineWidth) / 2);
-  const fullBookWidth = pageWidth * 2 + spineWidth;
-
-  const pageHeaderHeight = Math.max(22, bookHeight * 0.04);
-  const pageFooterHeight = Math.max(14, bookHeight * 0.025);
-  const pageInnerVerticalPadding = 4;
-  const pageBodyGap = 4;
-  const pageBodyHorizontalPadding = 6;
+  const pageHeaderHeight = Math.max(30, bookHeight * 0.05);
+  const pageFooterHeight = Math.max(20, bookHeight * 0.035);
+  const pageInnerVerticalPadding = safeTop + 54;
+  const pageBodyGap = 8;
+  const pageBodyHorizontalPadding = 20;
 
   const pageBodyMaxHeight = Math.max(
     150,
@@ -89,7 +92,7 @@ export function useBookLayout() {
   const translationLineHeight = Math.round(translationSize * 1.4);
   const verseBase = 24 * textScale;
 
-  return {
+  return useMemo(() => ({
     bookWidth,
     fullBookWidth,
     bookHeight,
@@ -109,7 +112,16 @@ export function useBookLayout() {
     translationLineHeight,
     verseBase,
     lineHeight: sanskritLineHeight,
-  };
+    safeTop,
+    safeBottom,
+  }), [
+    bookWidth, fullBookWidth, bookHeight, pageWidth, spineWidth,
+    pageHeaderHeight, pageFooterHeight, pageInnerVerticalPadding,
+    pageBodyGap, pageBodyHorizontalPadding, pageBodyMaxHeight,
+    sanskritTextSize, sanskritLineHeight, transliterationSize,
+    transliterationLineHeight, translationSize, translationLineHeight,
+    verseBase, sanskritLineHeight, safeTop, safeBottom
+  ]);
 }
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -145,18 +157,15 @@ function BookPage({
   const pageChapterTitle = page ? chapterTitle : chapterTitle;
 
   return (
-    <View style={[styles.pageCard, isLeft ? styles.pageLeftEdges : styles.pageRightEdges, { width: layout.pageWidth, backgroundColor: pageBg, borderColor: pageEdge }]}> 
-      <ImageBackground source={{ uri: 'https://www.transparenttextures.com/patterns/rice-paper-2.png' }} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: nightMode ? 0.05 : 0.12 }} />
-      <View style={[styles.pageInnerFrame, { borderColor: nightMode ? 'rgba(125, 102, 68, 0.4)' : 'rgba(185, 150, 97, 0.4)', paddingVertical: layout.pageInnerVerticalPadding, paddingHorizontal: layout.pageBodyHorizontalPadding }]}>
-        <View style={[styles.pageHeader, { height: layout.pageHeaderHeight, marginBottom: 2 }]}> 
-          <Text style={[styles.pageHeaderTitle, { color: nightMode ? '#EBD7B6' : '#5A3E20', fontSize: headerFontSize }]} numberOfLines={1}>
-            {page ? `Ch ${page.chapter} – ${pageChapterTitle}` : `Ch 1 – ${chapterTitle}`}
-          </Text>
-          <Text style={[styles.pageHeaderSub, { color: nightMode ? '#D1B07A' : '#7E5E34', fontSize: Math.max(6, headerFontSize - 1) }]}> 
-            {page ? `Verse ${page.verseStart}${page.verseStart !== page.verseEnd ? `–${page.verseEnd}` : ''}` : '—'}
+    <View style={[{ width: layout.pageWidth, height: '100%', backgroundColor: nightMode ? '#1C1510' : '#DBC3A0' }]}> 
+      <ImageBackground source={require('../../assets/images/ancient_parchment_new.png')} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: nightMode ? 0.35 : 1, resizeMode: 'cover' }} />
+      <View style={[styles.pageInnerFrame, { borderColor: nightMode ? 'rgba(125, 102, 68, 0)' : 'rgba(185, 150, 97, 0)', paddingVertical: layout.pageInnerVerticalPadding, paddingHorizontal: layout.pageBodyHorizontalPadding }]}>
+        <View style={[styles.pageHeader, { marginBottom: 2 }]}> 
+          <Text style={[styles.pageHeaderTitle, { color: nightMode ? '#EBD7B6' : '#691F0A', fontSize: headerFontSize, textAlign: 'center' }]}>
+            {pageChapterTitle}
           </Text>
         </View>
-        <View style={[styles.pageBody, { height: layout.pageBodyMaxHeight, gap: layout.pageBodyGap }]}> 
+        <View style={[styles.pageBody, { gap: layout.pageBodyGap }]}> 
           {page ? page.verses.map((verse) => (
             <View key={`${verse.chapter}-${verse.verse}`} style={styles.verseBlock}>
               {renderVerseBlock(verse, nightMode, layout)}
@@ -164,12 +173,9 @@ function BookPage({
           )) : null}
         </View>
         <View style={[styles.pageFooter, { height: layout.pageFooterHeight, marginTop: 2, paddingTop: 2 }]}> 
-          <Text style={[styles.pageFooterText, { color: nightMode ? '#D8BE98' : '#6D4F2B', fontSize: Math.max(6, headerFontSize - 1) }]}> 
-            {page ? `${page.pageNumber} / ${totalPages}` : `0 / ${totalPages}`}
+          <Text style={[styles.pageFooterText, { color: nightMode ? '#D8BE98' : '#111111', fontSize: 18, fontWeight: '700' }]}> 
+            {page ? convertToHindiNumerals(page.pageNumber) : convertToHindiNumerals(0)}
           </Text>
-          <View style={[styles.pageProgressTrack, { backgroundColor: nightMode ? '#5C472E' : '#DBC297' }]}> 
-            <View style={[styles.pageProgressFill, { width: `${page ? (page.pageNumber / Math.max(1, totalPages)) * 100 : 0}%`, backgroundColor: nightMode ? '#E0C592' : '#8F6A3B' }]} />
-          </View>
           {isLastRead && !isLeft ? <Text style={[styles.lastReadBadge, { color: nightMode ? '#F0D8AA' : '#744A12', fontSize: Math.max(6, headerFontSize - 2) }]}>Last Read</Text> : <View style={styles.lastReadSpacer} />}
         </View>
       </View>
@@ -239,6 +245,8 @@ export type BookLayoutProps = {
   measureVerses: BookVerse[];
   onMeasureVerse: (id: string, height: number) => void;
   cover?: BookCoverProps;
+  bookmarkPrefix?: string;
+  bookId?: string;
 };
 
 export default function BookLayout({
@@ -271,13 +279,82 @@ export default function BookLayout({
   measureVerses,
   onMeasureVerse,
   cover,
+  bookmarkPrefix,
+  bookId,
 }: BookLayoutProps) {
   const layout = useBookLayout();
+  const updateProgress = useLibraryStore(state => state.updateProgress);
   const [showContents, setShowContents] = useState(false);
   const [nightMode, setNightMode] = useState(false);
   const [progressTrackWidth, setProgressTrackWidth] = useState(0);
   const [turnDir, setTurnDir] = useState<'forward' | 'backward' | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(8);
+  const [isOpened, setIsOpened] = useState(false);
+  const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
+  const [bookmarksList, setBookmarksList] = useState<{ chapter: number, spreadIndex: number, title: string }[]>([]);
+
+  const loadBookmarks = useCallback(async () => {
+    if (!bookmarkPrefix) return;
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const bookmarkKeys = keys.filter((k: string) => k.startsWith(bookmarkPrefix));
+      const bms: { chapter: number, spreadIndex: number, title: string }[] = [];
+      for (const k of bookmarkKeys) {
+        const chapStr = k.replace(bookmarkPrefix, '');
+        const chap = parseInt(chapStr);
+        const valStr = await AsyncStorage.getItem(k);
+        if (valStr && !isNaN(chap)) {
+          bms.push({
+            chapter: chap,
+            spreadIndex: parseInt(valStr),
+            title: chapterTitles[chap - 1] || `Chapter ${chap}`
+          });
+        }
+      }
+      setBookmarksList(bms.sort((a,b) => a.chapter - b.chapter));
+    } catch (e) {
+      console.log('Failed to load bookmarks', e);
+    }
+  }, [bookmarkPrefix, chapterTitles]);
+
+  useEffect(() => {
+    if (showBookmarksMenu) {
+      loadBookmarks();
+    }
+  }, [showBookmarksMenu, loadBookmarks]);
+
+  const pages = useMemo(() => {
+    return spreads.flatMap(s => [s.left, s.right]).filter(p => p !== null) as PageItem[];
+  }, [spreads]);
+
+  const [currentPageIndex, setCurrentPageIndex] = useState(spreadIndex * 2);
+
+  useEffect(() => {
+    if (Math.floor(currentPageIndex / 2) !== spreadIndex && spreads.length > 0) {
+      setCurrentPageIndex(spreadIndex * 2);
+    }
+  }, [spreadIndex, spreads.length]);
+
+  const currentLocalSpread = useMemo(() => {
+    return {
+      left: pages[currentPageIndex - 1] ?? null,
+      right: pages[currentPageIndex] ?? null,
+    };
+  }, [pages, currentPageIndex]);
+
+  const prevLocalSpread = useMemo(() => {
+    return {
+      left: pages[currentPageIndex - 3] ?? null,
+      right: pages[currentPageIndex - 2] ?? null,
+    };
+  }, [pages, currentPageIndex]);
+
+  const nextLocalSpread = useMemo(() => {
+    return {
+      left: pages[currentPageIndex + 1] ?? null,
+      right: pages[currentPageIndex + 2] ?? null,
+    };
+  }, [pages, currentPageIndex]);
 
   const coverFlip = useRef(new Animated.Value(0)).current;
   const coverPulse = useRef(new Animated.Value(0)).current;
@@ -296,27 +373,41 @@ export default function BookLayout({
   const currentChapterStartSpread = chapterStartSpreads[currentPageChapter] ?? 0;
   const currentChapterSpreadCount = Math.max(1, Math.ceil((chapterPages[currentPageChapter]?.length ?? 0) / 2));
   const currentChapterComplete = spreadIndex >= currentChapterStartSpread + currentChapterSpreadCount - 1;
-  const progressRatio = spreads.length <= 1 ? 0 : spreadIndex / (spreads.length - 1);
+  const progressRatio = pages.length <= 1 ? 0 : currentPageIndex / (pages.length - 1);
 
-  const spreadLabel = currentSpread?.left && currentSpread?.right
-    ? `Pages ${currentSpread.left.pageNumber}-${currentSpread.right.pageNumber}`
-    : currentSpread?.left
-      ? `Page ${currentSpread.left.pageNumber}`
-      : currentSpread?.right
-        ? `Page ${currentSpread.right.pageNumber}`
-        : 'Page 1';
+  const currentLastReadPage = currentLocalSpread.right?.pageNumber || currentLocalSpread.left?.pageNumber || 1;
+
+  useEffect(() => {
+    if (bookId && pages.length > 0) {
+      updateProgress({
+        id: bookId,
+        chapterName: chapterTitle,
+        chapterNum: currentPageChapter,
+        lastReadPage: currentLastReadPage,
+        totalPages: pages.length,
+        progressPercent: progressRatio * 100,
+        lastOpenedTime: Date.now(),
+      });
+    }
+  }, [bookId, chapterTitle, currentPageChapter, currentLastReadPage, pages.length, progressRatio, updateProgress]);
+
+  const spreadLabel = currentLocalSpread.right ? `Page ${currentLocalSpread.right.pageNumber}` : 'Page 1';
 
   const goToPage = useCallback((index: number) => {
-    const maxIndex = Math.max(0, spreadsLengthRef.current - 1);
-    const target = clamp(index, 0, maxIndex);
-    onChangeSpread(target);
-  }, [onChangeSpread]);
+    if (pages.length === 0) return;
+    const target = clamp(index, 0, pages.length - 1);
+    setCurrentPageIndex(target);
+    const newSpreadIndex = Math.floor(target / 2);
+    if (newSpreadIndex !== spreadIndex) {
+      onChangeSpread(newSpreadIndex);
+    }
+  }, [pages.length, spreadIndex, onChangeSpread]);
 
   const onProgressTouch = useCallback((locationX: number) => {
-    if (progressTrackWidth <= 0 || spreads.length <= 1) return;
+    if (progressTrackWidth <= 0 || pages.length <= 1) return;
     const ratio = clamp(locationX / progressTrackWidth, 0, 1);
-    goToPage(Math.round(ratio * (spreads.length - 1)));
-  }, [progressTrackWidth, spreads.length, goToPage]);
+    goToPage(Math.round(ratio * (pages.length - 1)));
+  }, [progressTrackWidth, pages.length, goToPage]);
 
   const panResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gs) => !isTurningRef.current && !isCoverAnimatingRef.current && Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy) * 0.6,
@@ -332,12 +423,12 @@ export default function BookLayout({
       if (!turnDirRef.current) {
         if (Math.abs(gs.dx) <= 2) return;
         const dir = gs.dx < 0 ? 'forward' : 'backward';
-        if (dir === 'forward' && spreadIndex >= spreadsLengthRef.current - 1) {
+        if (dir === 'forward' && currentPageIndex >= pages.length - 1) {
           const nextChapter = Math.min(currentPageChapter + 1, Number.MAX_SAFE_INTEGER);
           if (!chapterLoading[nextChapter]) void onLoadChapter(nextChapter, 'start');
           return;
         }
-        if (dir === 'backward' && spreadIndex <= 0) {
+        if (dir === 'backward' && currentPageIndex <= 0) {
           const previousChapter = Math.max(1, currentPageChapter - 1);
           if (!chapterLoading[previousChapter]) void onLoadChapter(previousChapter, 'end');
           return;
@@ -372,10 +463,10 @@ export default function BookLayout({
       } else {
         sc = p > 0.3 || gs.vx > 0.3;
       }
-      Animated.timing(turnAnim, { toValue: sc ? 1 : 0, duration: sc ? 650 : 280, useNativeDriver: true }).start(({ finished }) => {
+      Animated.timing(turnAnim, { toValue: sc ? 1 : 0, duration: sc ? 400 : 250, useNativeDriver: true }).start(({ finished }) => {
         if (finished && sc) {
-          const n = turnDirRef.current === 'forward' ? spreadIndex + 1 : spreadIndex - 1;
-          onChangeSpread(n);
+          const n = turnDirRef.current === 'forward' ? currentPageIndex + 2 : currentPageIndex - 2;
+          goToPage(n);
         }
         isTurningRef.current = false;
         turnProgressRef.current = 0;
@@ -414,24 +505,23 @@ export default function BookLayout({
 
   useEffect(() => {
     if (loading || pageCount === 0 || isCoverAnimatingRef.current) return;
-    isCoverAnimatingRef.current = true;
-    coverFlip.setValue(0);
-    coverPulse.setValue(0);
     const pulseAnim = Animated.loop(
       Animated.sequence([
         Animated.timing(coverPulse, { toValue: 1, duration: 2600, useNativeDriver: true }),
         Animated.timing(coverPulse, { toValue: 0, duration: 2600, useNativeDriver: true }),
       ]),
     );
-    pulseAnim.start();
-    Animated.sequence([
-      Animated.delay(1100),
-      Animated.timing(coverFlip, { toValue: 1, duration: 2400, useNativeDriver: true }),
-    ]).start(() => {
-      pulseAnim.stop();
-      isCoverAnimatingRef.current = false;
-    });
-  }, [loading, pageCount, coverFlip, coverPulse]);
+    if (!isOpened) {
+      pulseAnim.start();
+      return () => pulseAnim.stop();
+    } else {
+      isCoverAnimatingRef.current = true;
+      coverPulse.setValue(0);
+      Animated.timing(coverFlip, { toValue: 1, duration: 2400, useNativeDriver: true }).start(() => {
+        isCoverAnimatingRef.current = false;
+      });
+    }
+  }, [loading, pageCount, isOpened]);
 
   useEffect(() => {
     if (!activeLoading) {
@@ -480,7 +570,7 @@ export default function BookLayout({
   const backwardDepthTranslateX = turnAnim.interpolate({ inputRange: [0, 1], outputRange: [-layout.pageWidth * 0.18, layout.pageWidth * 0.18] });
 
   return (
-    <SafeAreaView style={[styles.outerContainer, { backgroundColor: nightMode ? '#0A0603' : '#140D07' }]} edges={['top', 'bottom']}>
+    <View style={[styles.outerContainer, { backgroundColor: nightMode ? '#0A0603' : '#140D07' }]}>
       <Modal visible={showContents} transparent animationType="fade" onRequestClose={() => setShowContents(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setShowContents(false)}>
           <View style={styles.contentsCard} onStartShouldSetResponder={() => true}>
@@ -498,7 +588,7 @@ export default function BookLayout({
                   onPress={() => { void selectChapter(ch); }}
                   activeOpacity={0.82}
                 >
-                  <Text style={[styles.contentsText, sel && styles.contentsTextSelected, locked && styles.contentsTextLocked]} numberOfLines={1}>
+                  <Text style={[styles.contentsText, sel && styles.contentsTextSelected, locked && styles.contentsTextLocked]}>
                     {ch}. {titleItem}
                   </Text>
                   {locked ? <Ionicons name="lock-closed" size={14} color="#7D684A" /> : null}
@@ -509,33 +599,50 @@ export default function BookLayout({
         </Pressable>
       </Modal>
 
-      <View style={styles.topHeaderRow}>
-        <TouchableOpacity onPress={onBack} style={styles.rowBtn}><Ionicons name="chevron-back" size={24} color="#D1B981" /><Text style={styles.rowTitle}>{title}</Text></TouchableOpacity>
-        <View style={styles.headerCenter}><Text style={styles.headerChapterSanskrit}>अध्याय {currentPageChapter}</Text><Text style={styles.headerChapterEnglish}>{chapterTitle}</Text></View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={onToggleBookmarkInternal} style={styles.headerIconBtn}><Ionicons name={bookmarkActive ? 'bookmark' : 'bookmark-outline'} size={24} color={bookmarkActive ? '#F2D39A' : '#D1B981'} /></TouchableOpacity>
-        </View>
-      </View>
+      <Modal visible={showBookmarksMenu} transparent animationType="slide" onRequestClose={() => setShowBookmarksMenu(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowBookmarksMenu(false)}>
+          <View style={[styles.contentsCard, { paddingVertical: 20 }]} onStartShouldSetResponder={() => true}>
+            <View style={styles.contentsHandle} />
+            <Text style={styles.contentsTitle}>Saved Bookmarks</Text>
+            {bookmarksList.length === 0 ? (
+              <Text style={{ textAlign: 'center', marginVertical: 20, color: '#888' }}>No bookmarks saved yet.</Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 400 }}>
+                {bookmarksList.map((bm, index) => (
+                  <TouchableOpacity
+                    key={`bm-${index}`}
+                    style={styles.contentsRow}
+                    onPress={() => { 
+                      setShowBookmarksMenu(false); 
+                      if (bm.chapter !== currentPageChapter) {
+                         void selectChapter(bm.chapter).then(() => {
+                            setTimeout(() => onChangeSpread(bm.spreadIndex), 300);
+                         });
+                      } else {
+                         onChangeSpread(bm.spreadIndex);
+                      }
+                    }}
+                    activeOpacity={0.82}
+                  >
+                    <Text style={styles.contentsText}>
+                      Ch {bm.chapter}: {bm.title}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color="#7D684A" />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
 
-      <View style={styles.deskArea} {...panResponder.panHandlers}>
-        <View style={[styles.bookShadowContainer, { width: layout.bookWidth, height: layout.bookHeight }]}> 
-          <View style={[styles.hardcoverBacking, { width: layout.bookWidth, height: layout.bookHeight }]} />
-          <View style={[styles.pageStackRight, { left: layout.pageWidth + layout.spineWidth, width: layout.pageWidth, height: layout.bookHeight - 4, backgroundColor: nightMode ? '#221910' : '#D1BC94', borderColor: nightMode ? '#3D2F1D' : '#9E855C' }]} />
-          <View style={[styles.pageStackLeft, { left: -2, width: layout.pageWidth, height: layout.bookHeight - 4, backgroundColor: nightMode ? '#221910' : '#D1BC94', borderColor: nightMode ? '#3D2F1D' : '#9E855C' }]} />
-          <View pointerEvents="none" style={[styles.readDepthSpineShade, { left: layout.pageWidth - (4 + progressRatio * 18), width: 4 + progressRatio * 18, height: layout.bookHeight }]}> 
-            <LinearGradient colors={['rgba(255,239,198,0.08)', 'rgba(108,73,35,0.24)', 'rgba(18,9,3,0.38)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
-          </View>
-          <View pointerEvents="none" style={[styles.unreadDepthOuterShade, { left: layout.pageWidth + layout.spineWidth + layout.pageWidth - (4 + (1 - progressRatio) * 18), width: 4 + (1 - progressRatio) * 18, height: layout.bookHeight }]}> 
-            <LinearGradient colors={['rgba(18,9,3,0.35)', 'rgba(108,73,35,0.18)', 'rgba(255,239,198,0.05)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
-          </View>
-          <View pointerEvents="none" style={[styles.bottomReadDepthShade, { width: layout.fullBookWidth * clamp(progressRatio, 0, 1) }]}> 
-            <LinearGradient colors={['rgba(245,218,156,0.55)', 'rgba(122,80,36,0.3)', 'rgba(18,9,3,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
-          </View>
 
-          {currentSpread && (
+      <View style={[StyleSheet.absoluteFill, styles.deskArea]} {...panResponder.panHandlers}>
+        <View style={[styles.bookShadowContainer, { width: layout.bookWidth, height: layout.bookHeight, transform: [{ translateX: -layout.pageWidth / 2 }] }]}> 
+          {currentLocalSpread && (
             <View style={[StyleSheet.absoluteFill, { zIndex: 1 }]}> 
               <View style={{ position: 'absolute', left: 0, top: 0, width: layout.pageWidth, height: layout.bookHeight }}>
-                <MemoBookPage layout={layout} page={turnDir === 'backward' && prevSpread ? prevSpread.left : currentSpread.left} totalPages={pageCount} chapterTitle={chapterTitle} isLeft isLastRead={currentSpreadIsLastReadLeft} nightMode={nightMode} onPrev={() => goToPage(spreadIndex - 1)} onNext={() => goToPage(spreadIndex + 1)} hideTabs={turnDir !== null} renderVerseBlock={renderVerseBlock} />
+                <MemoBookPage layout={layout} page={turnDir === 'backward' && prevLocalSpread ? prevLocalSpread.left : currentLocalSpread.left} totalPages={pageCount} chapterTitle={chapterTitle} isLeft isLastRead={currentSpreadIsLastReadLeft} nightMode={nightMode} onPrev={() => goToPage(currentPageIndex - 2)} onNext={() => goToPage(currentPageIndex + 2)} hideTabs={turnDir !== null} renderVerseBlock={renderVerseBlock} />
                 {turnDir === 'forward' && (
                    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: turnAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.25] }) }]} />
                 )}
@@ -545,7 +652,7 @@ export default function BookLayout({
               </View>
 
               <View style={{ position: 'absolute', left: layout.pageWidth + layout.spineWidth, top: 0, width: layout.pageWidth, height: layout.bookHeight }}>
-                <MemoBookPage layout={layout} page={turnDir === 'forward' && nextSpread ? nextSpread.right : currentSpread.right} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={false} isLastRead={currentSpreadIsLastReadRight} nightMode={nightMode} onPrev={() => goToPage(spreadIndex - 1)} onNext={() => goToPage(spreadIndex + 1)} hideTabs={turnDir !== null} renderVerseBlock={renderVerseBlock} />
+                <MemoBookPage layout={layout} page={turnDir === 'forward' && nextLocalSpread ? nextLocalSpread.right : currentLocalSpread.right} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={false} isLastRead={currentSpreadIsLastReadRight} nightMode={nightMode} onPrev={() => goToPage(currentPageIndex - 2)} onNext={() => goToPage(currentPageIndex + 2)} hideTabs={turnDir !== null} renderVerseBlock={renderVerseBlock} />
                 {turnDir === 'forward' && (
                    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: turnAnim.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0] }) }]} />
                 )}
@@ -556,7 +663,7 @@ export default function BookLayout({
             </View>
           )}
 
-          {turnDir === 'forward' && currentSpread?.right && nextSpread?.left && (
+          {turnDir === 'forward' && currentLocalSpread.right && nextLocalSpread.left && (
             <Animated.View
               pointerEvents="none"
               style={[
@@ -580,7 +687,7 @@ export default function BookLayout({
             </Animated.View>
           )}
 
-          {turnDir === 'backward' && currentSpread?.left && prevSpread?.right && (
+          {turnDir === 'backward' && currentLocalSpread.left && prevLocalSpread.right && (
             <Animated.View
               pointerEvents="none"
               style={[
@@ -604,10 +711,10 @@ export default function BookLayout({
             </Animated.View>
           )}
 
-          {turnDir === 'forward' && currentSpread?.right && nextSpread?.left && (
+          {turnDir === 'forward' && currentLocalSpread.right && nextLocalSpread.left && (
             <Animated.View style={{ position: 'absolute', left: 0, top: 0, width: layout.fullBookWidth, height: layout.bookHeight, zIndex: 10, elevation: 10, transform: [{ perspective: 1500 }, { rotateY: forwardTurnAngle }] }}>
               <Animated.View style={{ position: 'absolute', left: layout.pageWidth + layout.spineWidth, top: 0, width: layout.pageWidth, height: layout.bookHeight, backfaceVisibility: 'hidden', opacity: frontFaceOpacity }}>
-                <MemoBookPage layout={layout} page={currentSpread.right} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={false} isLastRead={false} nightMode={nightMode} onPrev={() => {}} onNext={() => {}} hideTabs={true} renderVerseBlock={renderVerseBlock} />
+                <MemoBookPage layout={layout} page={currentLocalSpread.right} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={false} isLastRead={false} nightMode={nightMode} onPrev={() => {}} onNext={() => {}} hideTabs={true} renderVerseBlock={renderVerseBlock} />
                 <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: turnAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] }) }]} />
                 <Animated.View pointerEvents="none" style={[styles.turningPageEdge, styles.turningPageEdgeRight, { opacity: turningEdgeOpacity, transform: [{ scaleX: turningEdgeScaleX }] }]}> 
                   <LinearGradient colors={['rgba(255,244,216,0)', 'rgba(255,244,216,0.9)', 'rgba(93,61,29,0.35)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
@@ -615,7 +722,7 @@ export default function BookLayout({
               </Animated.View>
 
               <Animated.View style={{ position: 'absolute', left: layout.pageWidth + layout.spineWidth, top: 0, width: layout.pageWidth, height: layout.bookHeight, backfaceVisibility: 'hidden', opacity: backFaceOpacity, transform: [{ rotateY: '180deg' }] }}>
-                <MemoBookPage layout={layout} page={nextSpread.left} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={true} isLastRead={false} nightMode={nightMode} onPrev={() => {}} onNext={() => {}} hideTabs={true} renderVerseBlock={renderVerseBlock} />
+                <MemoBookPage layout={layout} page={nextLocalSpread.left} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={true} isLastRead={false} nightMode={nightMode} onPrev={() => {}} onNext={() => {}} hideTabs={true} renderVerseBlock={renderVerseBlock} />
                 <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
                 <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: turnAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] }) }]} />
                 <Animated.View pointerEvents="none" style={[styles.turningPageEdge, styles.turningPageEdgeLeft, { opacity: turningEdgeOpacity, transform: [{ scaleX: turningEdgeScaleX }] }]}> 
@@ -625,10 +732,10 @@ export default function BookLayout({
             </Animated.View>
           )}
 
-          {turnDir === 'backward' && currentSpread?.left && prevSpread?.right && (
+          {turnDir === 'backward' && currentLocalSpread.left && prevLocalSpread.right && (
             <Animated.View style={{ position: 'absolute', left: 0, top: 0, width: layout.fullBookWidth, height: layout.bookHeight, zIndex: 10, elevation: 10, transform: [{ perspective: 1500 }, { rotateY: backwardTurnAngle }] }}>
               <Animated.View style={{ position: 'absolute', left: 0, top: 0, width: layout.pageWidth, height: layout.bookHeight, backfaceVisibility: 'hidden', opacity: frontFaceOpacity }}>
-                <MemoBookPage layout={layout} page={currentSpread.left} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={true} isLastRead={false} nightMode={nightMode} onPrev={() => {}} onNext={() => {}} hideTabs={true} renderVerseBlock={renderVerseBlock} />
+                <MemoBookPage layout={layout} page={currentLocalSpread.left} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={true} isLastRead={false} nightMode={nightMode} onPrev={() => {}} onNext={() => {}} hideTabs={true} renderVerseBlock={renderVerseBlock} />
                 <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
                 <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: turnAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] }) }]} />
                 <Animated.View pointerEvents="none" style={[styles.turningPageEdge, styles.turningPageEdgeLeft, { opacity: turningEdgeOpacity, transform: [{ scaleX: turningEdgeScaleX }] }]}> 
@@ -637,7 +744,7 @@ export default function BookLayout({
               </Animated.View>
 
               <Animated.View style={{ position: 'absolute', left: 0, top: 0, width: layout.pageWidth, height: layout.bookHeight, backfaceVisibility: 'hidden', opacity: backFaceOpacity, transform: [{ rotateY: '180deg' }] }}>
-                <MemoBookPage layout={layout} page={prevSpread.right} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={false} isLastRead={false} nightMode={nightMode} onPrev={() => {}} onNext={() => {}} hideTabs={true} renderVerseBlock={renderVerseBlock} />
+                <MemoBookPage layout={layout} page={prevLocalSpread.right} totalPages={pageCount} chapterTitle={chapterTitle} isLeft={false} isLastRead={false} nightMode={nightMode} onPrev={() => {}} onNext={() => {}} hideTabs={true} renderVerseBlock={renderVerseBlock} />
                 <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.15)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
                 <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: turnAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] }) }]} />
                 <Animated.View pointerEvents="none" style={[styles.turningPageEdge, styles.turningPageEdgeRight, { opacity: turningEdgeOpacity, transform: [{ scaleX: turningEdgeScaleX }] }]}> 
@@ -651,34 +758,68 @@ export default function BookLayout({
             <LinearGradient colors={['rgba(15,8,3,0.95)', 'rgba(30,15,5,0.25)', 'rgba(15,8,3,0.95)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
           </View>
 
-          <Animated.View pointerEvents="none" style={[styles.coverPivotWrapper, { left: 0, width: layout.fullBookWidth, height: layout.bookHeight, zIndex: 100, transform: [{ perspective: 1500 }, { rotateY: coverRotateY }] }]}> 
-            <Animated.View style={[styles.frontCover, { position: 'absolute', left: layout.pageWidth + layout.spineWidth, top: 0, width: layout.pageWidth, height: layout.bookHeight, opacity: coverOpacity }]}> 
-              <LinearGradient colors={['#3A1208', '#542012', '#260B05']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
-              <ImageBackground source={cover?.imageSource ?? { uri: coverTextureUri }} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: cover?.imageSource ? 0.9 : 0.55 }} />
-              <View style={styles.coverGoldBorder}>
-                <LinearGradient colors={['#FFDCA8', '#C4974F', '#FFDCA8']} style={styles.coverGoldInnerBorder}>
-                  <View style={styles.coverInnerDark}>
-                    <Text style={styles.coverSubtitle}>{coverSubtitle}</Text>
-                    <ImageBackground source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Ashoka_Chakra.svg' }} style={styles.coverEmblem} tintColor="#E7D1A2" />
-                    <Animated.Text style={[styles.coverTitle, { transform: [{ scale: titlePulse }] }]}>{coverTitle}</Animated.Text>
-                  </View>
-                </LinearGradient>
-              </View>
-            </Animated.View>
+          <Animated.View pointerEvents={isOpened ? "none" : "auto"} style={[styles.coverPivotWrapper, { left: 0, width: layout.fullBookWidth, height: layout.bookHeight, zIndex: 100, transform: [{ perspective: 1500 }, { rotateY: coverRotateY }] }]}> 
+            <Pressable onPress={() => !isOpened && setIsOpened(true)} style={StyleSheet.absoluteFill}>
+              <Animated.View style={[styles.frontCover, { position: 'absolute', left: layout.pageWidth + layout.spineWidth, top: 0, width: layout.pageWidth, height: layout.bookHeight, opacity: coverOpacity }]}> 
+                <LinearGradient colors={['#3A1208', '#542012', '#260B05']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
+                <ImageBackground source={cover?.imageSource ?? { uri: coverTextureUri }} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: cover?.imageSource ? 0.9 : 0.55 }} />
+                <View style={styles.coverGoldBorder}>
+                  <LinearGradient colors={['#FFDCA8', '#C4974F', '#FFDCA8']} style={styles.coverGoldInnerBorder}>
+                    <View style={styles.coverInnerDark}>
+                      <Text style={styles.coverSubtitle}>{coverSubtitle}</Text>
+                      <ImageBackground source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Ashoka_Chakra.svg' }} style={styles.coverEmblem} tintColor="#E7D1A2" />
+                      <Animated.Text style={[styles.coverTitle, { transform: [{ scale: titlePulse }] }]}>{coverTitle}</Animated.Text>
+                      
+                      {!isOpened && (
+                        <View style={styles.instructionBadge}>
+                          <Ionicons name="hand-left-outline" size={16} color="#B85D19" style={{ marginRight: 6 }} />
+                          <Text style={styles.instructionText}>Tap to open</Text>
+                        </View>
+                      )}
+                    </View>
+                  </LinearGradient>
+                </View>
+              </Animated.View>
+            </Pressable>
           </Animated.View>
         </View>
       </View>
 
+      <View style={[styles.topHeaderRow, { paddingTop: layout.safeTop + 10 }]} pointerEvents="box-none">
+        <Pressable onPress={onBack} style={styles.iconBtnWrapper} hitSlop={12}>
+          <Ionicons name="chevron-back" size={24} color="#5C250A" />
+        </Pressable>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerChapterSanskrit}>* {title} *</Text>
+          <Text style={styles.headerChapterSanskrit}>* {chapterTitle} *</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setShowBookmarksMenu(true)} style={[styles.iconBtnWrapper, { marginRight: 8 }]}>
+            <Ionicons name="list" size={24} color="#5C250A" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onToggleBookmarkInternal} style={styles.iconBtnWrapper}>
+            <Image 
+              source={bookmarkActive ? require('../../assets/images/bookmark_icon_filled.png') : require('../../assets/images/bookmark_icon.png')} 
+              style={{ width: 26, height: 26, tintColor: bookmarkActive ? '#8C3A00' : '#A09B93', opacity: bookmarkActive ? 1 : 0.7 }} 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.bottomFooterRow}>
-        <TouchableOpacity style={styles.rowBtn} onPress={() => setShowContents(true)}><Ionicons name="list" size={22} color="#D1B981" /><Text style={styles.footerTextRight}>Contents</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.iconBtnWrapper} onPress={() => setShowContents(true)}>
+          <Ionicons name="list" size={22} color="#5C250A" />
+        </TouchableOpacity>
         <View style={styles.footerCenter}>
-          <Text style={styles.progressTextTop}>{spreadLabel}</Text>
-          <View style={styles.progressSliderTrack} onLayout={(e) => setProgressTrackWidth(e.nativeEvent.layout.width)} onStartShouldSetResponder={() => true} onMoveShouldSetResponder={() => true} onResponderGrant={(e) => onProgressTouch(e.nativeEvent.locationX)} onResponderMove={(e) => onProgressTouch(e.nativeEvent.locationX)}>
+          <Text style={styles.progressTextTop}>{spreadLabel} of {pages.length}</Text>
+          <View style={styles.progressSliderTrack} onTouchStart={(e) => onProgressTouch(e.nativeEvent.locationX)} onLayout={(e) => setProgressTrackWidth(e.nativeEvent.layout.width)}>
             <View style={[styles.progressSliderFill, { width: `${progressRatio * 100}%` }]} pointerEvents="none" />
             <View style={[styles.progressThumb, { left: `${progressRatio * 100}%`, transform: [{ translateX: -7 }] }]} pointerEvents="none" />
           </View>
         </View>
-        <TouchableOpacity style={styles.rowBtn} onPress={() => setNightMode((prev) => !prev)}><Ionicons name={nightMode ? 'sunny-outline' : 'moon-outline'} size={24} color="#D1B981" /></TouchableOpacity>
+        <TouchableOpacity style={styles.iconBtnWrapper} onPress={() => setNightMode((prev) => !prev)}>
+          <Ionicons name={nightMode ? 'sunny-outline' : 'moon-outline'} size={24} color="#5C250A" />
+        </TouchableOpacity>
       </View>
 
       {directChapterLoading ? (
@@ -697,12 +838,12 @@ export default function BookLayout({
           </View>);
         })}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outerContainer: { flex: 1, justifyContent: 'space-between' },
+  outerContainer: { flex: 1, backgroundColor: '#140D07' },
   stateContainer: { flex: 1, backgroundColor: '#140D07', justifyContent: 'center', alignItems: 'center' },
   loadingContent: { width: '72%', maxWidth: 320 },
   compactLoadContent: { width: 220 },
@@ -711,16 +852,13 @@ const styles = StyleSheet.create({
   errorText: { color: '#ff9b9b', fontSize: 16, paddingHorizontal: 24, textAlign: 'center' },
   retryButton: { marginTop: 18, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 999, backgroundColor: '#D1B981' },
   retryButtonText: { color: '#241309', fontSize: 14, fontWeight: '800' },
-  topHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'rgba(15, 8, 4, 0.75)' },
-  rowBtn: { flexDirection: 'row', alignItems: 'center' },
-  rowTitle: { color: '#D1B981', fontSize: 15, fontWeight: '600', marginLeft: 4 },
-  headerCenter: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, flex: 1 },
-  headerChapterSanskrit: { color: '#D1B981', fontSize: 14, fontWeight: '700', fontFamily: 'serif' },
-  headerChapterEnglish: { color: '#B89B6E', fontSize: 12, marginTop: 2 },
+  topHeaderRow: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 16, backgroundColor: 'rgba(234, 209, 163, 0.9)', borderBottomWidth: 1, borderBottomColor: 'rgba(140, 58, 0, 0.1)' },
+  iconBtnWrapper: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.4)', justifyContent: 'center', alignItems: 'center' },
+  headerCenter: { alignItems: 'center', flex: 1 },
+  headerChapterSanskrit: { color: '#111111', fontSize: 16, fontWeight: '700', lineHeight: 24, fontFamily: 'serif' },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
-  headerIconBtn: { marginLeft: 16, padding: 4 },
-  deskArea: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
-  bookShadowContainer: { position: 'relative', shadowColor: '#000', shadowOffset: { width: 0, height: 25 }, shadowOpacity: 0.55, shadowRadius: 30, elevation: 25, alignItems: 'center', justifyContent: 'center' },
+  deskArea: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  bookShadowContainer: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   hardcoverBacking: { position: 'absolute', left: 0, top: -2, backgroundColor: '#3A1208', borderRadius: 4, borderWidth: 1, borderColor: '#1F0803', zIndex: 0, bottom: -2 },
   pageStackRight: { position: 'absolute', top: 4, borderTopRightRadius: 6, borderBottomRightRadius: 6, borderRightWidth: 3, borderBottomWidth: 4, borderTopWidth: 1, zIndex: 0 },
   pageStackLeft: { position: 'absolute', top: 4, borderTopLeftRadius: 6, borderBottomLeftRadius: 6, borderLeftWidth: 3, borderBottomWidth: 4, borderTopWidth: 1, zIndex: 0 },
@@ -732,14 +870,11 @@ const styles = StyleSheet.create({
   turningPageEdgeLeft: { left: -2 },
   turningPageEdgeRight: { right: -2 },
   centerSpine: { position: 'absolute', top: 0, overflow: 'hidden', backgroundColor: 'transparent' },
-  pageCard: { height: '100%', position: 'relative', overflow: 'hidden' },
-  pageLeftEdges: { borderTopWidth: 1, borderBottomWidth: 1, borderTopLeftRadius: 4, borderBottomLeftRadius: 4 },
-  pageRightEdges: { borderTopWidth: 1, borderBottomWidth: 1, borderTopRightRadius: 4, borderBottomRightRadius: 4 },
-  pageInnerFrame: { flex: 1, borderTopWidth: 1, borderBottomWidth: 1 },
-  pageHeader: { alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(118, 89, 49, 0.25)', paddingHorizontal: 4 },
-  pageHeaderTitle: { fontWeight: '700', fontFamily: 'serif' },
-  pageHeaderSub: { marginTop: 1, fontWeight: '600' },
-  pageBody: { justifyContent: 'flex-start', overflow: 'hidden' },
+  pageCard: { position: 'relative', overflow: 'hidden' },
+  pageInnerFrame: { flex: 1 },
+  pageHeader: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, marginBottom: 24 },
+  pageHeaderTitle: { fontWeight: '600', fontFamily: 'serif' },
+  pageBody: { justifyContent: 'center', overflow: 'hidden', flex: 1 },
   verseBlock: { width: '100%' },
   verseNumber: { textAlign: 'center', fontWeight: 'bold', marginBottom: 0 },
   dividerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
@@ -767,7 +902,9 @@ const styles = StyleSheet.create({
   coverSubtitle: { color: '#EAD3A6', fontSize: 18, fontWeight: '900', letterSpacing: 6, fontFamily: 'serif' },
   coverEmblem: { width: 64, height: 64, opacity: 0.85, marginVertical: 36 },
   coverTitle: { color: '#F4E1BA', fontSize: 24, fontWeight: '900', letterSpacing: 3, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 6, textAlign: 'center', lineHeight: 34, fontFamily: 'serif' },
-  bottomFooterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: 'rgba(15, 8, 4, 0.75)' },
+  instructionBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginTop: 40, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
+  instructionText: { fontSize: 14, fontWeight: 'bold', color: '#B85D19', textTransform: 'uppercase', letterSpacing: 1.2 },
+  bottomFooterRow: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, paddingBottom: 32, backgroundColor: 'transparent' },
   footerTextRight: { color: '#D1B981', fontSize: 13, fontWeight: '600', marginLeft: 8 },
   footerCenter: { alignItems: 'center', flex: 1, paddingHorizontal: 24 },
   progressTextTop: { color: '#B89B6E', fontSize: 10, marginBottom: 6, fontWeight: '600' },

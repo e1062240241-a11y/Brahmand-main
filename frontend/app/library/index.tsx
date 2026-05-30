@@ -17,6 +17,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
 import { useGitaStore } from '../../src/store/gitaStore';
+import { useLibraryStore } from '../../src/store/libraryStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -49,6 +50,17 @@ const BOOKS = [
   { id: 'yajurveda', title: 'Yajurveda', subtitle: 'YAJURVEDA', cover: yajurvedaCover, route: '/library/yajurveda', progress: 0.50 },
   { id: 'ramcharitmanas', title: 'Ramcharitmanas', subtitle: 'TULSIDAS', cover: ramcharitmanasCover, route: '/library/ramcharitmanas', progress: 0.20 },
 ];
+
+const BOOK_COVERS: Record<string, any> = {
+  'atharvaved': atharvavedCover,
+  'mahabharata': mahabharataCover,
+  'ramayan': ramayanCover,
+  'upanishads': geetaCover,
+  'rigveda': rigvedaCover,
+  'yajurveda': yajurvedaCover,
+  'ramcharitmanas': ramcharitmanasCover,
+  'bhagvad-geeta': require('../../assets/images/bhagavad_gita_3d_new.png'),
+};
 
 // ─────────────────────────────────────────────────────────────────────────
 export default function LibraryPage() {
@@ -85,7 +97,7 @@ export default function LibraryPage() {
           <Ionicons name="chevron-back" size={22} color={DARK} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Brahmand Library</Text>
-        <View style={styles.backBtn} />
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView
@@ -131,18 +143,36 @@ export default function LibraryPage() {
                 style={styles.continueBtn}
                 onPress={() => router.push('/library/sacred-scriptures' as any)}
               >
-                <Text style={styles.continueTxt}>Explore Collection</Text>
+                <Text style={styles.continueTxt}>Continue Reading</Text>
                 <Ionicons name="arrow-forward" size={15} color="#FFF" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* ── Dynamic Continue Reading (Bhagavad Gita) ── */}
+        {/* ── Dynamic Continue Reading (All Books) ── */}
         {(() => {
-          const { lastReadChapter, progressPercent } = useGitaStore();
-          // Only show if the user has started reading
-          if (progressPercent > 0 || lastReadChapter > 1) {
+          const progresses = useLibraryStore(state => state.progresses);
+          const gitaState = useGitaStore();
+          
+          let recentBooks = Object.values(progresses);
+          
+          // Fallback migration for Bhagavad Gita if not in libraryStore yet
+          if (!progresses['bhagvad-geeta'] && (gitaState.progressPercent > 0 || gitaState.lastReadChapter > 1)) {
+            recentBooks.push({
+              id: 'bhagvad-geeta',
+              chapterName: `Chapter ${gitaState.lastReadChapter}`,
+              chapterNum: gitaState.lastReadChapter,
+              lastReadPage: 1, // Approximation
+              totalPages: 100,
+              progressPercent: gitaState.progressPercent,
+              lastOpenedTime: Date.now() - 10000, // Slightly older so current ones take precedence
+            });
+          }
+
+          recentBooks = recentBooks.sort((a, b) => b.lastOpenedTime - a.lastOpenedTime);
+
+          if (recentBooks.length > 0) {
             return (
               <View style={[styles.sectionWrapper, { marginTop: 16 }]}>
                 <View style={styles.sectionHead}>
@@ -152,23 +182,35 @@ export default function LibraryPage() {
                   </View>
                 </View>
                 
-                <TouchableOpacity
-                  style={styles.gitaProgressCard}
-                  onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
-                  activeOpacity={0.9}
-                >
-                  <Image source={require('../../assets/images/bhagavad_gita_3d_new.png')} style={styles.gitaProgressImg} />
-                  <View style={styles.gitaProgressContent}>
-                    <Text style={styles.gitaProgressTitle}>Bhagavad Gita</Text>
-                    <Text style={styles.gitaProgressSub}>Chapter {lastReadChapter}</Text>
-                    
-                    <View style={styles.gitaProgressBarContainer}>
-                      <View style={[styles.gitaProgressBarFill, { width: `${Math.max(progressPercent, 5)}%` }]} />
-                    </View>
-                    <Text style={styles.gitaProgressText}>{Math.round(progressPercent)}% Completed</Text>
-                  </View>
-                  <Ionicons name="play-circle" size={36} color="#FF6B00" style={{ marginRight: 16 }} />
-                </TouchableOpacity>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: H_PADDING, gap: 16 }}>
+                  {recentBooks.map((book) => {
+                    const timeAgo = Math.round((Date.now() - book.lastOpenedTime) / 60000);
+                    const timeString = timeAgo < 60 ? `${timeAgo}m ago` : timeAgo < 1440 ? `${Math.floor(timeAgo/60)}h ago` : `${Math.floor(timeAgo/1440)}d ago`;
+                    return (
+                      <TouchableOpacity
+                        key={book.id}
+                        style={[styles.gitaProgressCard, { marginHorizontal: 0, width: SCREEN_WIDTH * 0.85 }]}
+                        onPress={() => router.push(`/library/${book.id}` as any)}
+                        activeOpacity={0.9}
+                      >
+                        <Image source={BOOK_COVERS[book.id] || BOOK_COVERS['upanishads']} style={styles.gitaProgressImg} resizeMode="cover" />
+                        <View style={styles.gitaProgressContent}>
+                          <Text style={styles.gitaProgressTitle}>{BOOKS.find(b => b.id === book.id)?.title || book.id}</Text>
+                          <Text style={styles.gitaProgressSub}>{book.chapterName} • Page {book.lastReadPage}</Text>
+                          
+                          <View style={styles.gitaProgressBarContainer}>
+                            <View style={[styles.gitaProgressBarFill, { width: `${Math.max(book.progressPercent, 5)}%` }]} />
+                          </View>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={styles.gitaProgressText}>{Math.round(book.progressPercent)}% Completed</Text>
+                            <Text style={[styles.gitaProgressText, { opacity: 0.6 }]}>{timeString}</Text>
+                          </View>
+                        </View>
+                        <Ionicons name="play-circle" size={36} color="#FF6B00" style={{ marginRight: 16 }} />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
               </View>
             );
           }
@@ -265,16 +307,7 @@ export default function LibraryPage() {
           </View>
         </View>
 
-        {/* ── 3D Book Button ── */}
-        <View style={styles.book3dWrapper}>
-          <TouchableOpacity
-            style={styles.book3dBtn}
-            onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
-          >
-            <Text style={styles.book3dBtnTxt}>View 3D Bhagavad Gita</Text>
-            <Ionicons name="book" size={18} color="#FFF" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
-        </View>
+
       </ScrollView>
     </View>
   );

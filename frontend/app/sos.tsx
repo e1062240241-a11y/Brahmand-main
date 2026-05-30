@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView, Linking, Vibration, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView, Linking, Vibration, Animated, DeviceEventEmitter } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +49,7 @@ const reverseGeocodeWithTimeout = async (
 const SOS_TYPES = [
   { label: 'Medical', value: 'medical', icon: 'medical' },
   { label: 'Accident', value: 'accident', icon: 'car-sport' },
+  { label: 'Safety', value: 'safety', icon: 'shield-checkmark' },
   { label: 'Other', value: 'other', icon: 'warning' },
 ];
 
@@ -201,7 +202,10 @@ export default function SOSScreen() {
     (async () => {
       try {
         const res = await getMySOSAlert();
-        if (res.data) setExistingSOS(res.data);
+        if (res.data) {
+          setExistingSOS(res.data);
+          setStage('active');
+        }
       } catch (_) {}
     })();
   }, []);
@@ -288,7 +292,8 @@ export default function SOSScreen() {
       
       Vibration.vibrate(1000);
 
-      setStage('active');
+      DeviceEventEmitter.emit('open_sos_modal');
+      router.replace('/(tabs)/home');
     } catch (e: any) {
       Vibration.cancel();
       setStage('location');
@@ -318,29 +323,6 @@ export default function SOSScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
         style={styles.content}
       >
-        {existingSOS ? (
-          <View style={styles.activeContainer}>
-            <Ionicons name="alert-circle" size={80} color="#FF3B30" />
-            <Text style={[styles.activeTitle, { color: '#FF3B30' }]}>SOS Already Active</Text>
-            <Text style={styles.activeText}>
-              You already have an active SOS alert. Cancel it before creating a new one.
-            </Text>
-            <TouchableOpacity 
-              style={[styles.primaryButton, { backgroundColor: '#333', marginTop: 30, width: '100%' }]} 
-              onPress={handleCancelExistingSOS}
-              disabled={resolving}
-            >
-              {resolving ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <Text style={styles.primaryButtonText}>CANCEL SOS</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
-              <Text style={styles.secondaryButtonText}>Go Back</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (<>
         {stage === 'type' && (
           <>
             <View style={styles.warningContainer}>
@@ -667,7 +649,6 @@ export default function SOSScreen() {
             </TouchableOpacity>
           </View>
         )}
-        </>)}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

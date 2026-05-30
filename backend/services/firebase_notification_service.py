@@ -180,7 +180,7 @@ class FirebaseNotificationService:
                         )
                     )
                     apns_config = fcm.APNSConfig(
-                        headers={'apns-priority': '10'},
+                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
                                 sound='soundreality_mayday_166011.caf',
@@ -201,7 +201,7 @@ class FirebaseNotificationService:
                         )
                     )
                     apns_config = fcm.APNSConfig(
-                        headers={'apns-priority': '10'},
+                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
                                 sound='bell.caf',
@@ -221,7 +221,7 @@ class FirebaseNotificationService:
                         )
                     )
                     apns_config = fcm.APNSConfig(
-                        headers={'apns-priority': '10'},
+                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                         payload=fcm.APNSPayload(
                             aps=fcm.Aps(
                                 sound='bell.caf',
@@ -343,7 +343,7 @@ class FirebaseNotificationService:
                                 )
                             )
                             apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10'},
+                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
                                         sound='soundreality_mayday_166011.caf',
@@ -364,7 +364,7 @@ class FirebaseNotificationService:
                                 )
                             )
                             apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10'},
+                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
                                         sound='bell.caf',
@@ -384,7 +384,7 @@ class FirebaseNotificationService:
                                 )
                             )
                             apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10'},
+                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                                 payload=fcm.APNSPayload(
                                     aps=fcm.Aps(
                                         sound='bell.caf',

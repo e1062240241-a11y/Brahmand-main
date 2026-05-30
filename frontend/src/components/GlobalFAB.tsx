@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,19 @@ import {
   ImageBackground,
   PanResponder,
   Dimensions,
+  DeviceEventEmitter,
+  Alert,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getMySOSAlert, resolveSOSAlert, getActiveSOSAlerts, respondToSOS } from '../services/api';
+import { useTranslation } from '../utils/i18n';
+import LocationService from '../services/location';
+import { useAuthStore } from '../store/authStore';
 
 export function GlobalFAB() {
   const router = useRouter();
@@ -25,6 +34,89 @@ export function GlobalFAB() {
     Array.from({ length: 8 }, () => new Animated.Value(0))
   ).current;
 
+  const { t } = useTranslation();
+  const { user } = useAuthStore();
+  const [activeSOS, setActiveSOS] = useState<any>(null);
+  const [nearbySOSAlerts, setNearbySOSAlerts] = useState<any[]>([]);
+  const [isResponding, setIsResponding] = useState(false);
+
+  const checkSOSStatus = useCallback(async () => {
+    try {
+      const res = await getMySOSAlert();
+      setActiveSOS(res.data);
+
+      const ok = await LocationService.ensureForegroundPermission();
+      if (ok) {
+        const location = await LocationService.getCurrentPosition({});
+        const nearbyRes = await getActiveSOSAlerts({ lat: location.coords.latitude, lng: location.coords.longitude, radius: 10000 });
+        const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== res.data?.id);
+        setNearbySOSAlerts(otherSOS);
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleRespondToSOS = async (sosId: string) => {
+    if (isResponding) return;
+    setIsResponding(true);
+    try {
+      await respondToSOS(sosId, 'coming');
+      const sos = nearbySOSAlerts.find(s => s.id === sosId);
+      if (sos?.latitude && sos?.longitude) {
+        await Linking.openURL(`https://maps.google.com/?q=${sos.latitude},${sos.longitude}`);
+      }
+      Alert.alert('Dhanyawad!', 'The creator has been notified that you are on the way.');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to respond to SOS');
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
+  useEffect(() => {
+    checkSOSStatus();
+  }, [checkSOSStatus]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('open_sos_modal', () => {
+      setFabExpanded(true);
+      Animated.parallel([
+        Animated.spring(fabScale, { toValue: 1, friction: 6, tension: 60, useNativeDriver: true }),
+        Animated.timing(fabRotation, { toValue: 1, duration: 300, useNativeDriver: true }),
+        ...fabItemAnims.map((anim, i) =>
+          Animated.spring(anim, { toValue: 1, friction: 5, tension: 50, delay: i * 40, useNativeDriver: true })
+        ),
+      ]).start();
+      checkSOSStatus();
+    });
+    return () => sub.remove();
+  }, [fabScale, fabRotation, fabItemAnims, checkSOSStatus]);
+
+  const handleResolveActiveSOS = async (status: 'resolved' | 'cancelled') => {
+    if (!activeSOS?.id) return;
+    if (status === 'cancelled') {
+      try {
+        await resolveSOSAlert(activeSOS.id, status);
+        setActiveSOS(null);
+      } catch (error: any) {
+        Alert.alert('Error', error.response?.data?.detail || 'Failed to cancel SOS');
+      }
+      return;
+    }
+    Alert.alert(
+      'Help Received',
+      'Confirm this action?',
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes', onPress: async () => {
+            try {
+              await resolveSOSAlert(activeSOS.id, status);
+              setActiveSOS(null);
+            } catch (error) {}
+          }
+        }
+      ]
+    );
+  };
 
   const pan = useRef(new Animated.ValueXY()).current;
   const panResponder = useRef(
@@ -123,11 +215,11 @@ export function GlobalFAB() {
             ]}
           >
             {/* Outer decorative ring */}
-            <View style={fabStyles.outerRing}>
+            <View style={[fabStyles.outerRing, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#FFEBEE' }]}>
               {/* Inner circle with items */}
-              <View style={fabStyles.innerCircle}>
+              <View style={[fabStyles.innerCircle, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#D32F2F' }]}>
                 {/* Decorative dotted ring */}
-                <View style={fabStyles.dottedRing} />
+                <View style={[fabStyles.dottedRing, (activeSOS || nearbySOSAlerts.length > 0) && { borderColor: 'rgba(255, 255, 255, 0.2)' }]} />
 
                 {/* Menu items arranged in a circle */}
                 {[
@@ -159,7 +251,7 @@ export function GlobalFAB() {
                           left: x,
                           top: y,
                           transform: [{ scale: fabItemAnims[index] }],
-                          opacity: fabItemAnims[index],
+                          opacity: (activeSOS || nearbySOSAlerts.length > 0) ? 0.35 : fabItemAnims[index],
                         },
                       ]}
                     >
@@ -169,6 +261,7 @@ export function GlobalFAB() {
                           { backgroundColor: 'transparent', shadowOpacity: 0 }
                         ]}
                         activeOpacity={0.8}
+                        disabled={!!(activeSOS || nearbySOSAlerts.length > 0)}
                         onPress={() => {
                           toggleFab();
                           setTimeout(() => {
@@ -208,41 +301,165 @@ export function GlobalFAB() {
                           <Ionicons name={item.icon as any} size={28} color="#FFF" />
                         )}
                       </TouchableOpacity>
-                      <Text style={fabStyles.menuItemLabel}>
+                      <Text style={[fabStyles.menuItemLabel, (activeSOS || nearbySOSAlerts.length > 0) && { color: '#FFF' }]}>
                         {item.label}
                       </Text>
                     </Animated.View>
                   );
                 })}
 
-                {/* Center - SOS */}
-                <Animated.View
-                  style={[
-                    fabStyles.centerButton,
-                    {
-                      transform: [{ scale: fabItemAnims[7] }],
-                      opacity: fabItemAnims[7],
-                    },
-                  ]}
-                >
-                  <TouchableOpacity
-                    style={fabStyles.centerButtonInner}
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      toggleFab();
-                      setTimeout(() => {
-                        router.push('/sos');
-                      }, 200);
-                    }}
+                {/* Center Content */}
+                {activeSOS ? (
+                  <View style={[StyleSheet.absoluteFill, fabStyles.sosActiveView]}>
+                    <View style={fabStyles.sosHeader}>
+                      <View style={fabStyles.sosCircleIcon}>
+                        <Text style={fabStyles.sosHeaderText}>SOS</Text>
+                      </View>
+                      <Text style={fabStyles.sosActiveTitle}>{t('yourSosIsActive') || 'YOUR SOS IS ACTIVE'}</Text>
+                      <Text style={fabStyles.sosActiveSub}>{t('sosActiveSub') || 'We are notifying nearby users and keeping you safe.'}</Text>
+                    </View>
+                    <View style={fabStyles.centerGuruContainerSOS}>
+                      <View style={fabStyles.guruImageWrapperSOS}>
+                        <Image source={require('../../assets/images/krishna_guru.png')} style={fabStyles.guruImage} />
+                      </View>
+                    </View>
+                    <View style={fabStyles.sosStatusCard}>
+                      <View style={fabStyles.sosStatusHeader}>
+                        <View style={fabStyles.peopleIconBox}>
+                          <Ionicons name="people" size={24} color="#FFF" />
+                        </View>
+                        <View style={fabStyles.sosStatusTextCol}>
+                          <Text style={fabStyles.sosStatusTitle}>{(activeSOS.responders?.length || 0)} {(activeSOS.responders?.length === 1) ? (t('personIs') || 'PERSON IS') : (t('peopleAre') || 'PEOPLE ARE')}</Text>
+                          <Text style={fabStyles.sosStatusTitle}>{t('comingToHelpYou') || 'COMING TO HELP YOU'}</Text>
+                          <View style={fabStyles.sosVerifiedRow}>
+                            <Ionicons name="checkmark-circle" size={12} color="#FFD54F" />
+                            <Text style={fabStyles.sosVerifiedText}>{(activeSOS.responders?.length || 0)} {t('respondersConfirmed') || 'responders confirmed nearby'}</Text>
+                          </View>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        style={fabStyles.receivedHelpBtn}
+                        onPress={() => handleResolveActiveSOS('resolved')}
+                      >
+                        <View style={fabStyles.receivedHelpCheck}>
+                          <Ionicons name="checkmark" size={18} color="#D32F2F" />
+                        </View>
+                        <Text style={fabStyles.receivedHelpText}>{t('receivedHelp') || 'I HAVE RECEIVED HELP'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={() => handleResolveActiveSOS('cancelled')}>
+                      <Text style={fabStyles.cancelSOSText}>{t('cancelSOS') || 'Cancel SOS'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : nearbySOSAlerts.length > 0 ? (
+                  <View style={[StyleSheet.absoluteFill, fabStyles.sosActiveView]}>
+                    <View style={fabStyles.sosHeader}>
+                      <View style={fabStyles.alertIconCircle}>
+                        <MaterialCommunityIcons name="alarm-light" size={24} color="#D32F2F" />
+                      </View>
+                      <Text style={fabStyles.sosActiveTitle}>{t('sosAlert') || 'SOS ALERT'}</Text>
+                      <Text style={fabStyles.sosActiveSub}>{t('someoneNeedsHelp') || 'Someone nearby needs help'}</Text>
+                      <Text style={fabStyles.sosAlertHighlight}>{t('nearestToRespond') || 'You are the nearest to respond'}</Text>
+                    </View>
+
+                    <View style={fabStyles.victimCard}>
+                      <View style={fabStyles.victimRow}>
+                        <View style={fabStyles.victimAvatarBox}>
+                          {nearbySOSAlerts[0].creator_image ? (
+                            <Image source={{ uri: nearbySOSAlerts[0].creator_image }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                          ) : (
+                            <Ionicons name="person" size={30} color="#DDD" />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={fabStyles.victimName}>{nearbySOSAlerts[0].creator_name || nearbySOSAlerts[0].user_name || 'Unknown'}</Text>
+                          <View style={fabStyles.victimTypeRow}>
+                            <MaterialCommunityIcons name="medical-bag" size={14} color="#D32F2F" />
+                            <Text style={fabStyles.victimTypeText}>{nearbySOSAlerts[0].emergency_type?.toUpperCase() || 'EMERGENCY'}</Text>
+                          </View>
+                          <View style={fabStyles.victimLocRow}>
+                            <Ionicons name="location-outline" size={12} color="#999" />
+                            <Text style={fabStyles.victimLocText} numberOfLines={1}>{nearbySOSAlerts[0].micro_location || 'Nearby location'}</Text>
+                          </View>
+                          <View style={fabStyles.victimLocRow}>
+                            <MaterialCommunityIcons name="target" size={12} color="#999" />
+                            <Text style={fabStyles.victimLocText}>{nearbySOSAlerts[0].distance?.toFixed(2) || '?'} km away</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={fabStyles.responderActionRow}>
+                      <TouchableOpacity
+                        style={[fabStyles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
+                        onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
+                        disabled={isResponding}
+                      >
+                        {isResponding ? (
+                          <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                          <>
+                            <MaterialCommunityIcons name="walk" size={22} color="#FFF" />
+                            <Text style={fabStyles.responderBtnText}>{"I'M ON\nMY WAY"}</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[fabStyles.responderBtn, { backgroundColor: '#FF9800' }]}
+                        onPress={() => {
+                          const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || '';
+                          if (!phone) { Alert.alert('Not Available', 'Phone number not provided.'); return; }
+                          Linking.openURL(`tel:${phone}`);
+                        }}
+                      >
+                        <Ionicons name="call" size={22} color="#FFF" />
+                        <Text style={fabStyles.responderBtnText}>CALL</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[fabStyles.responderBtn, { backgroundColor: '#2196F3' }]}
+                        onPress={() => {
+                          const s = nearbySOSAlerts[0];
+                          if (s?.latitude && s?.longitude) Linking.openURL(`https://maps.google.com/?q=${s.latitude},${s.longitude}`);
+                        }}
+                      >
+                        <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
+                        <Text style={fabStyles.responderBtnText}>MAP</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={toggleFab}>
+                      <Text style={fabStyles.cancelSOSText}>Close Alert</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Animated.View
+                    style={[
+                      fabStyles.centerButton,
+                      {
+                        transform: [{ scale: fabItemAnims[7] }],
+                        opacity: fabItemAnims[7],
+                      },
+                    ]}
                   >
-                    <Image
-                      source={require('../../assets/images/sos_icon_3.png')}
-                      style={{ width: 102, height: 102, borderRadius: 51, alignSelf: 'center' }}
-                      resizeMode="contain"
-                    />
-                  </TouchableOpacity>
-                  <Text style={fabStyles.centerLabel}>SOS</Text>
-                </Animated.View>
+                    <TouchableOpacity
+                      style={fabStyles.centerButtonInner}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        toggleFab();
+                        setTimeout(() => {
+                          router.push('/sos');
+                        }, 200);
+                      }}
+                    >
+                      <Image
+                        source={require('../../assets/images/sos_icon_3.png')}
+                        style={{ width: 102, height: 102, borderRadius: 51, alignSelf: 'center' }}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                    <Text style={fabStyles.centerLabel}>SOS</Text>
+                  </Animated.View>
+                )}
               </View>
             </View>
           </Animated.View>
@@ -408,4 +625,38 @@ const fabStyles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
   },
+  sosActiveView: { alignItems: 'center', padding: 12, justifyContent: 'center' },
+  sosHeader: { alignItems: 'center', marginTop: -10 },
+  sosCircleIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 8 },
+  sosHeaderText: { color: '#D32F2F', fontWeight: '900', fontSize: 16 },
+  sosActiveTitle: { color: '#FFF', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+  sosActiveSub: { color: '#FFCDD2', fontSize: 10, textAlign: 'center', marginTop: 4, lineHeight: 14 },
+  centerGuruContainerSOS: { marginTop: 12, alignItems: 'center' },
+  guruImageWrapperSOS: { width: 66, height: 66, borderRadius: 33, borderWidth: 3, borderColor: '#FFF', overflow: 'hidden' },
+  guruImage: { width: '100%', height: '100%' },
+  sosStatusCard: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, marginTop: 16, width: '85%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  sosStatusHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  peopleIconBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  sosStatusTextCol: { flex: 1 },
+  sosStatusTitle: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  sosVerifiedRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  sosVerifiedText: { color: '#FFD54F', fontSize: 10, marginLeft: 4, fontWeight: '600' },
+  receivedHelpBtn: { backgroundColor: '#FFF', borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
+  receivedHelpCheck: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFEBEE', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  receivedHelpText: { color: '#D32F2F', fontSize: 12, fontWeight: '800' },
+  cancelSOSLink: { marginTop: 12, padding: 8 },
+  cancelSOSText: { color: '#FFCDD2', fontSize: 12, textDecorationLine: 'underline', fontWeight: '600' },
+  alertIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFEBEE', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  sosAlertHighlight: { color: '#FFD54F', fontSize: 11, fontWeight: '700', marginTop: 4 },
+  victimCard: { backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 10, marginTop: 10, width: '85%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  victimRow: { flexDirection: 'row', alignItems: 'center' },
+  victimAvatarBox: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 10, overflow: 'hidden' },
+  victimName: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  victimTypeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  victimTypeText: { color: '#FFCDD2', fontSize: 10, fontWeight: '700', marginLeft: 4 },
+  victimLocRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  victimLocText: { color: '#FFCDD2', fontSize: 10, marginLeft: 4 },
+  responderActionRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10, width: '85%' },
+  responderBtn: { flex: 1, borderRadius: 10, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  responderBtnText: { color: '#FFF', fontSize: 9, fontWeight: '800', textAlign: 'center', marginTop: 2 },
 });
