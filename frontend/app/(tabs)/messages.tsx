@@ -40,6 +40,7 @@ import {
   resolveCommunityRequest,
   discoverCommunities,
   joinCommunityDirect,
+  getMyCreationRequests,
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
@@ -689,9 +690,10 @@ export default function MessagesScreen() {
           }
         } catch (e) {}
 
-        const [communityRes, requestRes] = await Promise.all([
+        const [communityRes, requestRes, myPendingRes] = await Promise.all([
           getCommunities(),
           getCommunityRequests({ status: 'active', limit: 10 }),
+          getMyCreationRequests().catch(() => ({ data: [] })),
         ]);
 
         const allComms = communityRes.data || [];
@@ -707,6 +709,13 @@ export default function MessagesScreen() {
 
         // Fetch ALL user_group communities — load from cache first, then refresh
         try {
+            const pendingGroups = (myPendingRes.data || []).map((req: any) => ({
+              ...req,
+              type: 'user_group',
+              is_pending: true,
+              member_count: req.member_ids?.length || 1,
+            }));
+
           // Show cached user groups immediately
           const cachedGroups = await AsyncStorage.getItem(USER_GROUPS_CACHE_KEY);
           if (cachedGroups) {
@@ -728,16 +737,24 @@ export default function MessagesScreen() {
           );
           // Also include any user_group the current user is a member of (from getCommunities)
           const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group');
-          // Merge and deduplicate by id
-          const merged = [...allUserGroups, ...myUserGroups];
+          // Merge and deduplicate by id, prioritize pending ones for the current user
+          const merged = [...pendingGroups, ...allUserGroups, ...myUserGroups];
           const unique = merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
           setUserGroups(unique);
           // Persist to cache
           await AsyncStorage.setItem(USER_GROUPS_CACHE_KEY, JSON.stringify({ data: unique, timestamp: Date.now() }));
         } catch {
-          // Fallback to just my user_groups if discover fails
+          // Fallback if discover fails
           const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group');
-          setUserGroups(myUserGroups);
+          const pendingGroups = (myPendingRes.data || []).map((req: any) => ({
+            ...req,
+            type: 'user_group',
+            is_pending: true,
+            member_count: req.member_ids?.length || 1,
+          }));
+          const merged = [...pendingGroups, ...myUserGroups];
+          const unique = merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+          setUserGroups(unique);
         }
 
         setRequests(requestRes.data || []);
@@ -950,12 +967,13 @@ export default function MessagesScreen() {
     const pillText = isPurple ? 'Youth' : 'Seva';
     const isJoined = joinedLocalIds.has(item.id);
     const isJoining = joiningLocalId === item.id;
+    const isPending = (item as any).is_pending;
 
     return (
       <TouchableOpacity
         key={item.id}
-        style={[styles.localCommCard, { backgroundColor: cardBg }]}
-        onPress={() => router.push(`/community/${item.id}`)}
+        style={[styles.localCommCard, { backgroundColor: cardBg }, isPending && { opacity: 0.8 }]}
+        onPress={() => isPending ? Alert.alert('Pending', 'This community is awaiting activation from other team members.') : router.push(`/community/${item.id}`)}
       >
         <View style={styles.localCommAvatarWrapper}>
           {item.photo ? (
@@ -974,23 +992,30 @@ export default function MessagesScreen() {
           <View style={[styles.localCommPill, { backgroundColor: badgeBg, borderColor }]}>
             <Text style={[styles.localCommPillText, { color: borderColor }]}>{pillText}</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.localJoinBtn, { borderColor }, isJoined && { borderColor: '#CCC' }]}
-            onPress={(e) => {
-              e.stopPropagation();
-              if (!isJoined) handleJoinLocal(item.id, item.name);
-            }}
-            disabled={isJoining || isJoined}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            {isJoining ? (
-              <ActivityIndicator size="small" color={borderColor} style={{ width: 36 }} />
-            ) : (
-              <Text style={[styles.localJoinBtnText, { color: isJoined ? '#AAA' : borderColor }]}>
-                {isJoined ? '✓ Joined' : 'Join'}
-              </Text>
-            )}
-          </TouchableOpacity>
+          {!isPending && (
+            <TouchableOpacity
+              style={[styles.localJoinBtn, { borderColor }, isJoined && { borderColor: '#CCC' }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                if (!isJoined) handleJoinLocal(item.id, item.name);
+              }}
+              disabled={isJoining || isJoined}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              {isJoining ? (
+                <ActivityIndicator size="small" color={borderColor} style={{ width: 36 }} />
+              ) : (
+                <Text style={[styles.localJoinBtnText, { color: isJoined ? '#AAA' : borderColor }]}>
+                  {isJoined ? '✓ Joined' : 'Join'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {isPending && (
+            <View style={[styles.localJoinBtn, { borderColor: '#FFA500', backgroundColor: '#FFFBEB' }]}>
+               <Text style={[styles.localJoinBtnText, { color: '#D97706' }]}>Pending</Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
