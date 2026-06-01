@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from '../utils/i18n';
 
 const TAB_HEIGHT = 56;
 const TAB_RADIUS = 27.55;
@@ -9,6 +10,7 @@ const ACTIVE_TAB_WIDTH = 126;
 
 export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   // Filter out hidden routes first
   const visibleRoutes = state.routes.filter((route: any) => 
@@ -75,7 +77,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                         resizeMode="contain"
                       />
                     );
-                    label = 'Home';
+                    label = t('home');
                     break;
                   case 'messages':
                     Icon = (
@@ -85,7 +87,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                         resizeMode="contain"
                       />
                     );
-                    label = 'Community';
+                    label = t('community');
                     break;
                   case 'vendor':
                     Icon = (
@@ -95,7 +97,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                         resizeMode="contain"
                       />
                     );
-                    label = 'Service';
+                    label = t('service');
                     break;
                   case 'jaap':
                     Icon = (
@@ -105,7 +107,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                         resizeMode="contain"
                       />
                     );
-                    label = 'Temple';
+                    label = t('temple');
                     break;
                   case 'profile':
                     Icon = (
@@ -115,7 +117,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                         resizeMode="contain"
                       />
                     );
-                    label = 'Profile';
+                    label = t('profile');
                     break;
                   default:
                     break;
