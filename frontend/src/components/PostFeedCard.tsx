@@ -129,7 +129,10 @@ export const PostFeedCard = memo(({
   const posterUrl = String(
     post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || ''
   );
-  const mediaUrl = rawMediaUrl ? String(rawMediaUrl) : '';
+  let mediaUrl = rawMediaUrl ? String(rawMediaUrl) : '';
+  if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
+    mediaUrl = mediaUrl.replace('http://', 'https://');
+  }
 
   const rawMediaType =
     post?.media_type ||

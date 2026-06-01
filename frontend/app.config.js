@@ -104,12 +104,14 @@ try {
 
 module.exports = ({ config }) => {
   // Inject Google Maps API key dynamically
-  if (config.ios && config.ios.config) {
-    config.ios.config.googleMapsApiKey = googleMapsApiKey;
-  }
-  if (config.android && config.android.config && config.android.config.googleMaps) {
-    config.android.config.googleMaps.apiKey = googleMapsApiKey;
-  }
+  if (!config.ios) config.ios = {};
+  if (!config.ios.config) config.ios.config = {};
+  config.ios.config.googleMapsApiKey = googleMapsApiKey;
+
+  if (!config.android) config.android = {};
+  if (!config.android.config) config.android.config = {};
+  if (!config.android.config.googleMaps) config.android.config.googleMaps = {};
+  config.android.config.googleMaps.apiKey = googleMapsApiKey;
   
   if (config.plugins) {
     config.plugins = config.plugins.map(plugin => {

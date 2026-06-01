@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur'; // iOS style dynamic glass effect
+import { Image } from 'expo-image';
 import { useTranslation } from '../utils/i18n';
 
 const TAB_HEIGHT = 56;
@@ -47,114 +48,220 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
             {/* Render a thin connecting bridge between groups */}
             {groupIndex > 0 && <View style={styles.bridge} />}
 
-            {/* ASLI SOLUTION: BlurView hi ab har ek pod/pill ka capsule hai */}
-            {/* Isse aage ka active shape aur piche ka glass 100% sync mein real-time shape badlenge */}
-            <BlurView
-              intensity={55}
-              tint="light"
-              style={[
-                styles.groupPill,
-                group.isActive ? styles.activeGroupPill : styles.inactiveGroupPill
-              ]}
-            >
-              {group.routes.map((route: any) => {
-                const { options } = descriptors[route.key];
-                const isFocused = group.isActive;
+            {Platform.OS === 'android' ? (
+              <View
+                style={[
+                  styles.groupPill,
+                  group.isActive ? styles.activeGroupPill : styles.inactiveGroupPill,
+                  { backgroundColor: group.isActive ? 'rgba(255, 255, 255, 0.95)' : 'rgba(240, 240, 240, 0.85)' }
+                ]}
+              >
+                {group.routes.map((route: any) => {
+                  const { options } = descriptors[route.key];
+                  const isFocused = group.isActive;
 
-                const onPress = () => {
-                  const event = navigation.emit({
-                    type: 'tabPress',
-                    target: route.key,
-                    canPreventDefault: true,
-                  });
+                  const onPress = () => {
+                    const event = navigation.emit({
+                      type: 'tabPress',
+                      target: route.key,
+                      canPreventDefault: true,
+                    });
 
-                  if (!isFocused && !event.defaultPrevented) {
-                    navigation.navigate(route.name);
+                    if (!isFocused && !event.defaultPrevented) {
+                      navigation.navigate(route.name);
+                    }
+                  };
+
+                  let Icon = null;
+                  let label = '';
+                  const iconColor = isFocused ? '#FF7B00' : '#8E8E93';
+
+                  switch (route.name) {
+                    case 'home':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/hoe.png') : require('../../assets/images/tab bar/home_outline.png')}
+                          style={isFocused ? { width: 28.719, height: 28.719, aspectRatio: 1, tintColor: iconColor } : { width: 26, height: 26, aspectRatio: 1, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('home');
+                      break;
+                    case 'messages':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/comunity2.png') : require('../../assets/images/tab bar/community.png')}
+                          style={isFocused ? { width: 36, height: 36, tintColor: iconColor } : { width: 32.548, height: 23.75, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('community');
+                      break;
+                    case 'vendor':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/ser.png') : require('../../assets/images/tab bar/service.png')}
+                          style={isFocused ? { width: 24, height: 28, aspectRatio: 6 / 7, tintColor: iconColor } : { width: 20.983, height: 23.28, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('service');
+                      break;
+                    case 'jaap':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/temp.png') : require('../../assets/images/tab bar/temple.png')}
+                          style={isFocused ? { width: 30.078, height: 30.067, tintColor: iconColor } : { width: 23.035, height: 23.803, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('temple');
+                      break;
+                    case 'profile':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/profile2.png') : require('../../assets/images/tab bar/profile.png')}
+                          style={isFocused ? { width: 28, height: 28, aspectRatio: 1, tintColor: iconColor } : { width: 24.89, height: 23.75, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('profile');
+                      break;
+                    default:
+                      break;
                   }
-                };
 
-                let Icon = null;
-                let label = '';
-                const iconColor = isFocused ? '#FF7B00' : '#8E8E93';
+                  return (
+                    <TouchableOpacity
+                      key={route.key}
+                      accessibilityRole="button"
+                      accessibilityState={isFocused ? { selected: true } : {}}
+                      accessibilityLabel={options.tabBarAccessibilityLabel}
+                      testID={options.tabBarTestID}
+                      onPress={onPress}
+                      style={[
+                        styles.tabItem,
+                        isFocused && styles.activeTabItem
+                      ]}
+                    >
+                      <View style={styles.iconContainer}>
+                        {Icon}
+                      </View>
+                      {isFocused && (
+                        <Text style={styles.activeLabel}>{label}</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <BlurView
+                intensity={55}
+                tint="light"
+                style={[
+                  styles.groupPill,
+                  group.isActive ? styles.activeGroupPill : styles.inactiveGroupPill
+                ]}
+              >
+                {group.routes.map((route: any) => {
+                  const { options } = descriptors[route.key];
+                  const isFocused = group.isActive;
 
-                switch (route.name) {
-                  case 'home':
-                    Icon = (
-                      <Image
-                        source={isFocused ? require('../../assets/images/tab bar/hoe.png') : require('../../assets/images/tab bar/home_outline.png')}
-                        style={isFocused ? { width: 28.719, height: 28.719, aspectRatio: 1, tintColor: iconColor } : { width: 26, height: 26, aspectRatio: 1, tintColor: iconColor }}
-                        resizeMode="contain"
-                      />
-                    );
-                    label = t('home');
-                    break;
-                  case 'messages':
-                    Icon = (
-                      <Image
-                        source={isFocused ? require('../../assets/images/tab bar/comunity2.png') : require('../../assets/images/tab bar/community.png')}
-                        style={isFocused ? { width: 36, height: 36, tintColor: iconColor } : { width: 32.548, height: 23.75, tintColor: iconColor }}
-                        resizeMode="contain"
-                      />
-                    );
-                    label = t('community');
-                    break;
-                  case 'vendor':
-                    Icon = (
-                      <Image
-                        source={isFocused ? require('../../assets/images/tab bar/ser.png') : require('../../assets/images/tab bar/service.png')}
-                        style={isFocused ? { width: 24, height: 28, aspectRatio: 6 / 7, tintColor: iconColor } : { width: 20.983, height: 23.28, tintColor: iconColor }}
-                        resizeMode="contain"
-                      />
-                    );
-                    label = t('service');
-                    break;
-                  case 'jaap':
-                    Icon = (
-                      <Image
-                        source={isFocused ? require('../../assets/images/tab bar/temp.png') : require('../../assets/images/tab bar/temple.png')}
-                        style={isFocused ? { width: 30.078, height: 30.067, tintColor: iconColor } : { width: 23.035, height: 23.803, tintColor: iconColor }}
-                        resizeMode="contain"
-                      />
-                    );
-                    label = t('temple');
-                    break;
-                  case 'profile':
-                    Icon = (
-                      <Image
-                        source={isFocused ? require('../../assets/images/tab bar/profile2.png') : require('../../assets/images/tab bar/profile.png')}
-                        style={isFocused ? { width: 28, height: 28, aspectRatio: 1, tintColor: iconColor } : { width: 24.89, height: 23.75, tintColor: iconColor }}
-                        resizeMode="contain"
-                      />
-                    );
-                    label = t('profile');
-                    break;
-                  default:
-                    break;
-                }
+                  const onPress = () => {
+                    const event = navigation.emit({
+                      type: 'tabPress',
+                      target: route.key,
+                      canPreventDefault: true,
+                    });
 
-                return (
-                  <TouchableOpacity
-                    key={route.key}
-                    accessibilityRole="button"
-                    accessibilityState={isFocused ? { selected: true } : {}}
-                    accessibilityLabel={options.tabBarAccessibilityLabel}
-                    testID={options.tabBarTestID}
-                    onPress={onPress}
-                    style={[
-                      styles.tabItem,
-                      isFocused && styles.activeTabItem
-                    ]}
-                  >
-                    <View style={styles.iconContainer}>
-                      {Icon}
-                    </View>
-                    {isFocused && (
-                      <Text style={styles.activeLabel}>{label}</Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </BlurView>
+                    if (!isFocused && !event.defaultPrevented) {
+                      navigation.navigate(route.name);
+                    }
+                  };
+
+                  let Icon = null;
+                  let label = '';
+                  const iconColor = isFocused ? '#FF7B00' : '#8E8E93';
+
+                  switch (route.name) {
+                    case 'home':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/hoe.png') : require('../../assets/images/tab bar/home_outline.png')}
+                          style={isFocused ? { width: 28.719, height: 28.719, aspectRatio: 1, tintColor: iconColor } : { width: 26, height: 26, aspectRatio: 1, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('home');
+                      break;
+                    case 'messages':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/comunity2.png') : require('../../assets/images/tab bar/community.png')}
+                          style={isFocused ? { width: 36, height: 36, tintColor: iconColor } : { width: 32.548, height: 23.75, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('community');
+                      break;
+                    case 'vendor':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/ser.png') : require('../../assets/images/tab bar/service.png')}
+                          style={isFocused ? { width: 24, height: 28, aspectRatio: 6 / 7, tintColor: iconColor } : { width: 20.983, height: 23.28, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('service');
+                      break;
+                    case 'jaap':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/temp.png') : require('../../assets/images/tab bar/temple.png')}
+                          style={isFocused ? { width: 30.078, height: 30.067, tintColor: iconColor } : { width: 23.035, height: 23.803, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('temple');
+                      break;
+                    case 'profile':
+                      Icon = (
+                        <Image
+                          source={isFocused ? require('../../assets/images/tab bar/profile2.png') : require('../../assets/images/tab bar/profile.png')}
+                          style={isFocused ? { width: 28, height: 28, aspectRatio: 1, tintColor: iconColor } : { width: 24.89, height: 23.75, tintColor: iconColor }}
+                          contentFit="contain"
+                        />
+                      );
+                      label = t('profile');
+                      break;
+                    default:
+                      break;
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={route.key}
+                      accessibilityRole="button"
+                      accessibilityState={isFocused ? { selected: true } : {}}
+                      accessibilityLabel={options.tabBarAccessibilityLabel}
+                      testID={options.tabBarTestID}
+                      onPress={onPress}
+                      style={[
+                        styles.tabItem,
+                        isFocused && styles.activeTabItem
+                      ]}
+                    >
+                      <View style={styles.iconContainer}>
+                        {Icon}
+                      </View>
+                      {isFocused && (
+                        <Text style={styles.activeLabel}>{label}</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </BlurView>
+            )}
           </React.Fragment>
         ))}
       </View>

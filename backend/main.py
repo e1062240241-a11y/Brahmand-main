@@ -7864,8 +7864,7 @@ Every reply should feel:
         config = types.GenerateContentConfig(
             temperature=0.7,
             max_output_tokens=2048,
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-            thinking_config=types.ThinkingConfig(thinking_budget=1024)
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
         response = client.models.generate_content(
@@ -11292,8 +11291,7 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         )
         from google.genai import types
         config = types.GenerateContentConfig(
-            temperature=0.7,
-            thinking_config=types.ThinkingConfig(thinking_budget=1024)
+            temperature=0.7
         )
         
         response = client.models.generate_content(

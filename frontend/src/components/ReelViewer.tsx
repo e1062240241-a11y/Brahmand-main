@@ -146,7 +146,10 @@ const ReelVideoItem = React.memo(({
     if (!isActive) setIsPaused(false);
   }, [isActive]);
 
-  const mediaUrl = String(localPost?.media_url || localPost?.mediaUrl || '');
+  let mediaUrl = String(localPost?.media_url || localPost?.mediaUrl || '');
+  if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
+    mediaUrl = mediaUrl.replace('http://', 'https://');
+  }
   const posterUrl = String(
     localPost?.thumbnail_url || localPost?.thumbnailUrl || localPost?.metadata?.thumbnail_url || localPost?.metadata?.thumbnailUrl || ''
   );
