@@ -2828,15 +2828,61 @@ async def get_posts_feed(
     current_user = await db.get_document('users', current_user_id)
     user_loc = current_user.get('location', {}) if current_user else {}
 
-    # Fetch a large pool of posts
+    # Fetch a large pool of posts (latest and random mixes)
+    posts_dict = {}
     try:
-        # Increase pool size to ensure we have enough diversity for filtering
-        posts = await db.query_documents(
-            'posts',
-            limit=500,
-            order_by='created_at',
-            order_direction='DESCENDING'
-        )
+        rand_start = _random.random()
+        # 1. Query random posts starting from a random float (single-field query)
+        try:
+            pool1 = await db.query_documents(
+                'posts',
+                filters=[('random_score', '>=', rand_start)],
+                limit=200,
+                order_by='random_score',
+                order_direction='ASCENDING'
+            )
+            for p in pool1:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching pool1 in get_posts_feed: %s", e)
+            
+        try:
+            pool2 = await db.query_documents(
+                'posts',
+                filters=[('random_score', '<', rand_start)],
+                limit=200,
+                order_by='random_score',
+                order_direction='DESCENDING'
+            )
+            for p in pool2:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching pool2 in get_posts_feed: %s", e)
+            
+        # 2. Query latest posts
+        try:
+            latest_pool = await db.query_documents(
+                'posts',
+                limit=250,
+                order_by='created_at',
+                order_direction='DESCENDING'
+            )
+            for p in latest_pool:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching latest_pool in get_posts_feed: %s", e)
+            
+        # Fallback if empty
+        if not posts_dict:
+            fallback = await db.query_documents('posts', limit=300)
+            for p in fallback:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+                    
+        posts = list(posts_dict.values())
     except Exception as e:
         logger.error("Firestore query error in get_posts_feed: %s", e)
         posts = []
@@ -2851,6 +2897,8 @@ async def get_posts_feed(
 
     for p in posts:
         if p.get('visibility', 'public') != 'public':
+            continue
+        if tab == 'reels' and p.get('category') != 'reels':
             continue
             
         lvl = p.get('community_level', 'country') # Default to country/public
@@ -3039,7 +3087,7 @@ async def get_posts_feed(
                 cat = p.get('category', 'spirituality')
                 creator_ok = creator not in recent_creators
                 cat_count = cat_streak.get(cat, 0)
-                cat_ok = cat_count < 2
+                cat_ok = True if tab == 'reels' else (cat_count < 2)
 
                 if creator_ok and cat_ok:
                     filtered.append(p)
