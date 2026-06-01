@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
-import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment } from '../services/api';
+import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
@@ -1184,7 +1184,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
       // Use the current number of loaded videos as the offset (minus 1 if initialPost is not from the API)
       const offset = Math.max(0, videosRef.current.length);
-      const res = await getPostsFeed(10, offset, 'for_you', seenParam);
+      const res = await getPostsFeed(10, offset, 'reels', seenParam);
       const newPosts = res.data?.items || res.data || [];
 
       if (newPosts.length === 0) {
@@ -1312,6 +1312,13 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       loadMoreRef.current();
     }
   }).current;
+
+  useEffect(() => {
+    const activePost = videos[activeIndex];
+    if (activePost?.id) {
+      markPostAsSeen(activePost.id);
+    }
+  }, [activeIndex, videos]);
 
   useEffect(() => {
     const nextPost = videos[activeIndex + 1];
@@ -1497,6 +1504,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 <TouchableOpacity
                                   onPress={() => {
                                     setReplyingToComment(item);
+                                    setNewCommentText(`@${item.username || 'User'} `);
                                   }}
                                 >
                                   <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>{t('language') === 'hi' ? 'जवाब दें' : 'Reply'}</Text>

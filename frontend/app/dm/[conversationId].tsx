@@ -623,11 +623,34 @@ const DirectMessageScreen = () => {
       try {
         await socketService.connect();
         socketService.joinRoom(conversationId!);
-        socketService.onMessage(socketListenerId, async () => {
-          await fetchMessagesViaAPI();
-          await fetchConversation();
-          markMessagesAsRead();
-          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        socketService.onMessage(socketListenerId, async (message: any) => {
+          if (message && (message.chat_id === conversationId || message.conversation_id === conversationId)) {
+            setMessages((prev) => {
+              const exists = prev.some((m) => m.id === message.id);
+              if (exists) return prev;
+              
+              const tempIndex = prev.findIndex(
+                (m) => m.status === 'sending' && m.content === message.content && m.sender_id === message.sender_id
+              );
+              
+              if (tempIndex !== -1) {
+                const updated = [...prev];
+                updated[tempIndex] = { ...message, status: 'sent' };
+                return updated;
+              }
+              
+              return [...prev, message];
+            });
+            const cached = await getCachedMessages(conversationId);
+            if (!cached.some((m) => m.id === message.id)) {
+              await setCachedMessages(conversationId, [...cached, message]);
+            }
+            markMessagesAsRead();
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+          } else {
+            await fetchMessagesViaAPI();
+            await fetchConversation();
+          }
         });
       } catch (error) {
         console.error('[Chat] Socket real-time setup failed:', error);
@@ -743,21 +766,20 @@ const DirectMessageScreen = () => {
     };
     
     setMessages(prev => [...prev, optimisticMessage]);
-    setSending(true);
     
     try {
       const response = await sendDirectMessage(conversation.user.sl_id, messageText);
+      const serverMsg = response?.data?.message || response?.data;
+      const realId = serverMsg?.id || response?.data?.id || tempId;
       setMessages(prev => prev.map(m => 
-        m.id === tempId ? { ...m, id: response?.data?.id || m.id, status: 'sent' } : m
+        m.id === tempId ? { ...m, id: realId, status: 'sent' } : m
       ));
       const cached = await getCachedMessages(conversationId);
-      await setCachedMessages(conversationId, [...cached, { ...optimisticMessage, status: 'sent' }]);
+      await setCachedMessages(conversationId, [...cached, { ...optimisticMessage, id: realId, status: 'sent' }]);
     } catch (error: any) {
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setNewMessage(messageText);
       Alert.alert('Send failed', error.response?.data?.detail || 'Failed to send message');
-    } finally {
-      setSending(false);
     }
   };
 

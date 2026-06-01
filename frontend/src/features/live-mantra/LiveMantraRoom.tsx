@@ -14,24 +14,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
-const WORDS = MANTRA.split(' ');
-
-const WORD_TIMING_MS = [
-  0,    
-  1500, 
-  2800, 
-  4200, 
-  5800, 
-  7200, 
-  8800, 
-  10200, 
-  11800, 
-  13400, 
-  15200, 
+const WORDS = [
+  'ॐ भूर्भुवः स्वः',
+  'तत्सवितुर्वरेण्यं',
+  'भर्गो देवस्य धीमहि',
+  'धियो यो नः प्रचोदयात्'
 ];
 
-const TOTAL_MANTRA_DURATION = 16500;
+const WORD_TIMING_MS = [
+  0,
+  5400,
+  10200,
+  16200,
+];
+
+const TOTAL_MANTRA_DURATION = 29276;
 
 const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
 
@@ -274,8 +271,8 @@ const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', zIndex: 1 },
   glowRing: { position: 'absolute', width: 320, height: 320, borderRadius: 160, borderWidth: 1, borderColor: 'rgba(255,215,120,0.16)', alignItems: 'center', justifyContent: 'center' },
   glowPulse: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(255, 205, 74, 0.14)' },
-  mantraRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, paddingHorizontal: 16, zIndex: 2 },
-  mantraWord: { color: '#FFF', fontSize: 38, fontWeight: '700', marginHorizontal: 6, textAlign: 'center' },
+  mantraRow: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 16, zIndex: 2, width: '100%' },
+  mantraWord: { color: '#FFF', fontSize: 26, fontWeight: '700', textAlign: 'center', lineHeight: 36 },
   upcomingContainer: { position: 'absolute', bottom: 48, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' },
   upcomingLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 12, letterSpacing: 1.4, marginBottom: 4 },
   upcomingText: { color: '#FFEBB5', fontSize: 14, fontWeight: '600' },

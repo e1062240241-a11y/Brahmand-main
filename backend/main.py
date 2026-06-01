@@ -23,7 +23,18 @@ from typing import Optional, List, Dict, Any
 from tempfile import NamedTemporaryFile
 from uuid import uuid4
 from urllib.parse import quote
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo as OriginalZoneInfo
+
+def ZoneInfo(key: str):
+    try:
+        return OriginalZoneInfo(key)
+    except Exception:
+        if key == "Asia/Kolkata":
+            from datetime import timezone, timedelta
+            return timezone(timedelta(hours=5, minutes=30))
+        # Fallback to India Standard Time offset if tzdata is missing on Windows
+        from datetime import timezone, timedelta
+        return timezone(timedelta(hours=5, minutes=30))
 
 import base64
 import math
@@ -591,19 +602,19 @@ async def _notify_mentioned_users(
             })
             logger.info('Mention notification created for %s by %s', target_user_id, actor_id)
 
-            target_token = await push_service.get_user_fcm_token(target_user_id)
-            if target_token:
-                push_service.send_notification(
-                    token=target_token,
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=target_user_id,
                     title=title,
                     body=body,
                     data={
                         'type': 'mention',
                         **notification_data,
-                    },
-                    channel_id='messages',
+                    }
                 )
                 logger.info('Mention push sent to %s', target_user_id)
+            except Exception as push_err:
+                logger.warning('Failed to send mention push to %s: %s', target_user_id, push_err)
         except Exception as err:
             logger.warning('Failed to create mention notification for %s: %s', target_user_id, err)
 
@@ -2828,15 +2839,61 @@ async def get_posts_feed(
     current_user = await db.get_document('users', current_user_id)
     user_loc = current_user.get('location', {}) if current_user else {}
 
-    # Fetch a large pool of posts
+    # Fetch a large pool of posts (latest and random mixes)
+    posts_dict = {}
     try:
-        # Increase pool size to ensure we have enough diversity for filtering
-        posts = await db.query_documents(
-            'posts',
-            limit=500,
-            order_by='created_at',
-            order_direction='DESCENDING'
-        )
+        rand_start = _random.random()
+        # 1. Query random posts starting from a random float (single-field query)
+        try:
+            pool1 = await db.query_documents(
+                'posts',
+                filters=[('random_score', '>=', rand_start)],
+                limit=200,
+                order_by='random_score',
+                order_direction='ASCENDING'
+            )
+            for p in pool1:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching pool1 in get_posts_feed: %s", e)
+            
+        try:
+            pool2 = await db.query_documents(
+                'posts',
+                filters=[('random_score', '<', rand_start)],
+                limit=200,
+                order_by='random_score',
+                order_direction='DESCENDING'
+            )
+            for p in pool2:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching pool2 in get_posts_feed: %s", e)
+            
+        # 2. Query latest posts
+        try:
+            latest_pool = await db.query_documents(
+                'posts',
+                limit=250,
+                order_by='created_at',
+                order_direction='DESCENDING'
+            )
+            for p in latest_pool:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching latest_pool in get_posts_feed: %s", e)
+            
+        # Fallback if empty
+        if not posts_dict:
+            fallback = await db.query_documents('posts', limit=300)
+            for p in fallback:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+                    
+        posts = list(posts_dict.values())
     except Exception as e:
         logger.error("Firestore query error in get_posts_feed: %s", e)
         posts = []
@@ -2851,6 +2908,8 @@ async def get_posts_feed(
 
     for p in posts:
         if p.get('visibility', 'public') != 'public':
+            continue
+        if tab == 'reels' and p.get('category') != 'reels':
             continue
             
         lvl = p.get('community_level', 'country') # Default to country/public
@@ -3039,7 +3098,7 @@ async def get_posts_feed(
                 cat = p.get('category', 'spirituality')
                 creator_ok = creator not in recent_creators
                 cat_count = cat_streak.get(cat, 0)
-                cat_ok = cat_count < 2
+                cat_ok = True if tab == 'reels' else (cat_count < 2)
 
                 if creator_ok and cat_ok:
                     filtered.append(p)
@@ -3528,6 +3587,117 @@ async def delete_post(post_id: str, token_data: dict = Depends(verify_token)):
     }
 
 
+async def _send_comment_notifications_background(
+    post_id: str,
+    comment_id: str,
+    parent_id: Optional[str],
+    user_id: str,
+    text: str,
+    comment_doc: dict,
+    parent_comment: Optional[dict],
+    post: dict,
+    user: dict,
+):
+    try:
+        db = await get_db()
+        # 1. Notify the author of the parent comment if this is a reply
+        if parent_comment:
+            parent_owner_id = parent_comment.get('user_id')
+            if parent_owner_id and parent_owner_id != user_id:
+                actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
+                preview_text = text if len(text) <= 80 else f"{text[:77]}..."
+
+                await db.create_document('notifications', {
+                    'user_id': parent_owner_id,
+                    'title': 'New reply to your comment',
+                    'body': f'{actor_name} replied: "{preview_text}"',
+                    'notification_type': 'social',
+                    'data': {
+                        'post_id': str(post_id),
+                        'comment_id': str(comment_id),
+                        'parent_id': str(parent_id),
+                        'actor_user_id': str(user_id),
+                        'actor_name': actor_name,
+                        'action': 'reply',
+                    },
+                    'is_read': False,
+                    'created_at': datetime.utcnow().isoformat() + 'Z',
+                })
+                logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
+
+                try:
+                    await FirebaseNotificationService.send_push_notification(
+                        user_id=parent_owner_id,
+                        title='New reply to your comment',
+                        body=f'{actor_name} replied: "{preview_text}"',
+                        data={
+                            'type': 'post_comment_reply',
+                            'post_id': str(post_id),
+                            'comment_id': str(comment_id),
+                            'parent_id': str(parent_id),
+                            'actor_user_id': str(user_id),
+                        }
+                    )
+                    logger.info(f"Reply push sent to comment owner {parent_owner_id} for comment {parent_id}")
+                except Exception as push_err:
+                    logger.warning(f"Failed to send reply push notification to {parent_owner_id}: {push_err}")
+
+        # 2. Notify the post owner if they are not the replier and haven't already been notified as the parent owner
+        post_owner_id = post.get('user_id')
+        if post_owner_id and post_owner_id != user_id and post_owner_id != (parent_comment.get('user_id') if parent_comment else None):
+            actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
+            preview_text = text if len(text) <= 80 else f"{text[:77]}..."
+
+            await db.create_document('notifications', {
+                'user_id': post_owner_id,
+                'title': 'New comment on your post',
+                'body': f'{actor_name} commented: "{preview_text}"',
+                'notification_type': 'social',
+                'data': {
+                    'post_id': str(post_id),
+                    'comment_id': str(comment_id),
+                    'actor_user_id': str(user_id),
+                    'actor_name': actor_name,
+                    'action': 'comment',
+                },
+                'is_read': False,
+                'created_at': datetime.utcnow().isoformat() + 'Z',
+            })
+            logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
+
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=post_owner_id,
+                    title='New comment on your post',
+                    body=f'{actor_name} commented: "{preview_text}"',
+                    data={
+                        'type': 'post_comment',
+                        'post_id': str(post_id),
+                        'comment_id': str(comment_id),
+                        'actor_user_id': str(user_id),
+                    }
+                )
+                logger.info(f"Comment push sent to post owner {post_owner_id} for post {post_id}")
+            except Exception as push_err:
+                logger.warning(f"Failed to send comment push notification to {post_owner_id}: {push_err}")
+
+        # 3. Mentions
+        try:
+            await _notify_mentioned_users(
+                db=db,
+                text=text,
+                actor_user=user,
+                context_type='comment',
+                context_data={'post_id': post_id, 'comment_id': comment_id},
+                skip_user_ids=[post_owner_id] if post_owner_id else None,
+            )
+        except Exception as mention_err:
+            logger.warning('Comment mention notification failed for post %s: %s', post_id, mention_err)
+
+    except Exception as e:
+        logger.exception("Failed to send comment activity notifications in background: %s", e)
+
+
 @api_router.post('/posts/{post_id}/comments')
 async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3618,106 +3788,20 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
     updated_post['top_comments'] = top_comments_raw[:5]
 
-    # 1. Notify the author of the parent comment if this is a reply
-    if parent_comment:
-        parent_owner_id = parent_comment.get('user_id')
-        if parent_owner_id and parent_owner_id != user_id:
-            try:
-                actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
-                preview_text = text if len(text) <= 80 else f"{text[:77]}..."
-
-                await db.create_document('notifications', {
-                    'user_id': parent_owner_id,
-                    'title': 'New reply to your comment',
-                    'body': f'{actor_name} replied: "{preview_text}"',
-                    'notification_type': 'social',
-                    'data': {
-                        'post_id': str(post_id),
-                        'comment_id': str(comment_id),
-                        'parent_id': str(parent_id),
-                        'actor_user_id': str(user_id),
-                        'actor_name': actor_name,
-                        'action': 'reply',
-                    },
-                    'is_read': False,
-                    'created_at': datetime.utcnow().isoformat() + 'Z',
-                })
-                logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
-
-                parent_owner_token = await push_service.get_user_fcm_token(parent_owner_id)
-                if parent_owner_token:
-                    push_service.send_notification(
-                        token=parent_owner_token,
-                        title='New reply to your comment',
-                        body=f'{actor_name} replied: "{preview_text}"',
-                        data={
-                            'type': 'post_comment_reply',
-                            'post_id': str(post_id),
-                            'comment_id': str(comment_id),
-                            'parent_id': str(parent_id),
-                            'actor_user_id': str(user_id),
-                        },
-                        channel_id='messages'
-                    )
-                    logger.info(f"Reply push sent to comment owner {parent_owner_id} for comment {parent_id}")
-            except Exception as reply_notify_err:
-                logger.warning(f"Parent comment reply notification failed: {reply_notify_err}")
-
-    # 2. Notify the post owner if they are not the replier and haven't already been notified as the parent owner
-    post_owner_id = post.get('user_id')
-    if post_owner_id and post_owner_id != user_id and post_owner_id != (parent_comment.get('user_id') if parent_comment else None):
-        try:
-            actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
-            preview_text = text if len(text) <= 80 else f"{text[:77]}..."
-
-            await db.create_document('notifications', {
-                'user_id': post_owner_id,
-                'title': 'New comment on your post',
-                'body': f'{actor_name} commented: "{preview_text}"',
-                'notification_type': 'social',
-                'data': {
-                    'post_id': str(post_id),
-                    'comment_id': str(comment_id),
-                    'actor_user_id': str(user_id),
-                    'actor_name': actor_name,
-                    'action': 'comment',
-                },
-                'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z',
-            })
-            logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
-
-            post_owner_token = await push_service.get_user_fcm_token(post_owner_id)
-            if post_owner_token:
-                push_service.send_notification(
-                    token=post_owner_token,
-                    title='New comment on your post',
-                    body=f'{actor_name} commented: "{preview_text}"',
-                    data={
-                        'type': 'post_comment',
-                        'post_id': str(post_id),
-                        'comment_id': str(comment_id),
-                        'actor_user_id': str(user_id),
-                    },
-                    channel_id='messages'
-                )
-                logger.info(f"Comment push sent to post owner {post_owner_id} for post {post_id}")
-            else:
-                logger.info(f"Comment notification created for post {post_id} but no FCM token found for owner {post_owner_id}")
-        except Exception as notify_err:
-            logger.warning(f"Post comment notification failed for post {post_id}: {notify_err}")
-
-    try:
-        await _notify_mentioned_users(
-            db=db,
+    # Send all notifications (replies, comments, mentions) in the background asynchronously
+    asyncio.create_task(
+        _send_comment_notifications_background(
+            post_id=post_id,
+            comment_id=comment_id,
+            parent_id=parent_id,
+            user_id=user_id,
             text=text,
-            actor_user=user,
-            context_type='comment',
-            context_data={'post_id': post_id, 'comment_id': comment_id},
-            skip_user_ids=[post_owner_id] if post_owner_id else None,
+            comment_doc=comment_doc,
+            parent_comment=parent_comment,
+            post=post,
+            user=user,
         )
-    except Exception as mention_err:
-        logger.warning('Comment mention notification failed for post %s: %s', post_id, mention_err)
+    )
 
     return {
         'message': 'Comment added',
@@ -10369,7 +10453,7 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
         return
     for uid in user_ids:
         try:
-            await db.create_document('notifications', {
+            notification_data = {
                 'user_id': uid,
                 'title': title,
                 'body': body,
@@ -10377,7 +10461,16 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
                 'data': data,
                 'is_read': False,
                 'created_at': datetime.utcnow().isoformat() + 'Z'
-            })
+            }
+            notification_id = await db.create_document('notifications', notification_data)
+            notification_data['id'] = notification_id
+            
+            # Emit Socket.IO event to user's private room
+            try:
+                await sio.emit('new_notification', notification_data, room=f"user_{uid}")
+                logger.info(f"Emitted real-time notification to user_{uid}")
+            except Exception as se:
+                logger.warning(f"Failed to emit socket notification for user {uid}: {se}")
         except Exception as e:
             logger.error(f"Failed to save bulk notification for user {uid}: {e}")
 
@@ -11744,6 +11837,20 @@ async def _remove_socket_from_voice_room(sid: str):
 @sio.event
 async def connect(sid, environ, auth):
     logger.info(f"Socket connected: {sid}")
+    if auth and isinstance(auth, dict) and 'token' in auth:
+        token = auth['token']
+        if token.startswith("Bearer "):
+            token = token[7:]
+        try:
+            from middleware.security import decode_jwt_token
+            payload = decode_jwt_token(token)
+            user_id = payload.get("user_id")
+            if user_id:
+                await sio.enter_room(sid, f"user_{user_id}")
+                await sio.save_session(sid, {'user_id': user_id})
+                logger.info(f"Socket {sid} associated with room user_{user_id} and session saved")
+        except Exception as e:
+            logger.warning(f"Failed to authenticate socket {sid} during connect: {e}")
     return True
 
 
@@ -11892,6 +11999,100 @@ async def audio_chunk(sid, data):
     
     await sio.emit('audio_chunk', payload, to=room, skip_sid=sid)
 
+
+@sio.on('send_dm')
+async def handle_send_dm_socket(sid, data):
+    """Handle direct message sent via Socket.IO for 0ms delay real-time private chat."""
+    try:
+        session = await sio.get_session(sid)
+        user_id = session.get('user_id')
+        if not user_id:
+            return {'status': 'error', 'message': 'Unauthorized'}
+            
+        recipient_sl_id = data.get('recipient_sl_id')
+        content = data.get('content')
+        if not recipient_sl_id or not content:
+            return {'status': 'error', 'message': 'Missing recipient_sl_id or content'}
+            
+        db = await get_db()
+        sender = await db.get_document('users', user_id)
+        recipient = await db.get_user_by_sl_id(recipient_sl_id)
+        if not recipient:
+            return {'status': 'error', 'message': 'Recipient not found'}
+            
+        sender_id = sender['id']
+        recipient_id = recipient['id']
+        
+        sorted_members = sorted([sender_id, recipient_id])
+        chat_id = f"private_{'_'.join(sorted_members)}"
+        
+        chat = await db.get_document('chats', chat_id)
+        now = datetime.utcnow()
+        
+        if chat:
+            await db.update_document('chats', chat_id, {
+                'last_message': content[:100],
+                'updated_at': now
+            })
+        else:
+            chat_data = {
+                'chat_type': 'private',
+                'members': sorted_members,
+                'created_at': now,
+                'last_message': content[:100],
+                'updated_at': now,
+                'request_status': 'approved',
+                'request_by': sender_id,
+                'request_updated_at': now,
+                'request_retry_after': None,
+            }
+            await db.set_document('chats', chat_id, chat_data)
+            
+        msg_data = {
+            'sender_id': sender_id,
+            'sender_name': sender['name'],
+            'sender_photo': sender.get('photo'),
+            'text': content,
+            'content': content,
+            'status': 'delivered',
+            'read_by': [],
+            'created_at': now.isoformat() + 'Z'
+        }
+        
+        msg_id = await db.add_message_to_chat(chat_id, msg_data)
+        
+        response_msg = {
+            'id': msg_id,
+            'chat_id': chat_id,
+            'sender_id': sender_id,
+            'sender_name': sender['name'],
+            'sender_photo': sender.get('photo'),
+            'text': content,
+            'content': content,
+            'status': 'delivered',
+            'created_at': now.isoformat() + 'Z',
+            'timestamp': now.isoformat() + 'Z'
+        }
+        
+        # Emit via socket to the room
+        await sio.emit('new_dm', response_msg, room=chat_id)
+        
+        # Send push notification in background
+        try:
+            await task_queue.enqueue(
+                push_service.notify_new_dm,
+                recipient_id=recipient_id,
+                sender_name=sender['name'],
+                message_preview=content,
+                chat_id=chat_id
+            )
+        except Exception:
+            pass
+            
+        return {'status': 'success', 'message': response_msg}
+    except Exception as e:
+        logger.error(f"Socket send_dm error: {e}")
+        return {'status': 'error', 'message': str(e)}
 
 
 # =================== JAAP INVITE NOTIFICATION ===================
@@ -12106,6 +12307,38 @@ async def _jaap_reminder_worker():
                         
                     for r in reminders:
                         uid = r.get("user_id")
+                        
+                        # Deduplicate: check if a notification was already sent in the last 10 minutes
+                        try:
+                            from datetime import timezone
+                            recent_notifs = await db.query_documents(
+                                "notifications",
+                                filters=[
+                                    ("user_id", "==", uid),
+                                    ("notification_type", "==", "jaap_reminder")
+                                ],
+                                limit=5
+                            )
+                            already_sent = False
+                            for n in recent_notifs:
+                                n_data = n.get("data", {}) or {}
+                                if n_data.get("session_name") == session['name'] and n_data.get("mantra_type") == "hanuman":
+                                    created_at_str = n.get("created_at")
+                                    if created_at_str:
+                                        try:
+                                            created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                                            now_utc = datetime.now(timezone.utc)
+                                            if (now_utc - created_at).total_seconds() < 600:
+                                                already_sent = True
+                                                break
+                                        except Exception:
+                                            pass
+                            if already_sent:
+                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid}")
+                                continue
+                        except Exception as check_err:
+                            logger.warning(f"Error checking duplicate reminder: {check_err}")
+
                         # Send notification via task queue
                         await task_queue.enqueue(
                             FirebaseNotificationService.notify_jaap_reminder,
@@ -12141,6 +12374,38 @@ async def _jaap_reminder_worker():
                         if mantra_type == "hanuman":
                             continue
                         uid = r.get("user_id")
+                        
+                        # Deduplicate: check if a notification was already sent in the last 10 minutes
+                        try:
+                            from datetime import timezone
+                            recent_notifs = await db.query_documents(
+                                "notifications",
+                                filters=[
+                                    ("user_id", "==", uid),
+                                    ("notification_type", "==", "jaap_reminder")
+                                ],
+                                limit=5
+                            )
+                            already_sent = False
+                            for n in recent_notifs:
+                                n_data = n.get("data", {}) or {}
+                                if n_data.get("session_name") == session['name'] and n_data.get("mantra_type") == mantra_type:
+                                    created_at_str = n.get("created_at")
+                                    if created_at_str:
+                                        try:
+                                            created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                                            now_utc = datetime.now(timezone.utc)
+                                            if (now_utc - created_at).total_seconds() < 600:
+                                                already_sent = True
+                                                break
+                                        except Exception:
+                                            pass
+                            if already_sent:
+                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid}")
+                                continue
+                        except Exception as check_err:
+                            logger.warning(f"Error checking duplicate reminder: {check_err}")
+
                         mantra_title = mantra_type.capitalize() + " Mantra" if mantra_type != "shiva" else "Om Namah Shivaya"
                         await task_queue.enqueue(
                             FirebaseNotificationService.notify_jaap_reminder,
@@ -12154,6 +12419,7 @@ async def _jaap_reminder_worker():
         except Exception as e:
             logger.error(f"Error in jaap reminder worker: {e}")
             await asyncio.sleep(30) # Cool down on error
+
 
 
 app.include_router(api_router)

@@ -1006,7 +1006,7 @@ export const FloatingUtilityButton = () => {
                         disabled={true}
                       >
                         <Ionicons name="checkmark-circle" size={22} color="#FFF" />
-                        <Text style={styles.responderBtnText}>{"ON THE WAY"}</Text>
+                        <Text style={styles.responderBtnText}>{t('onTheWay').toUpperCase()}</Text>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
@@ -1033,11 +1033,11 @@ export const FloatingUtilityButton = () => {
                           return;
                         }
                         Alert.alert(
-                          'Emergency Contact',
-                          `Phone Number: ${phone}`,
+                          t('emergencyContact'),
+                          `${t('phoneNumberLabel')}${phone}`,
                           [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Call', onPress: () => Linking.openURL(`tel:${phone}`) }
+                            { text: t('cancel'), style: 'cancel' },
+                            { text: t('callAction'), onPress: () => Linking.openURL(`tel:${phone}`) }
                           ]
                         );
                       }}
