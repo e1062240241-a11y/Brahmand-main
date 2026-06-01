@@ -12256,6 +12256,7 @@ async def _jaap_reminder_worker():
     Background worker that checks for upcoming jaap sessions
     and sends notifications to registered users 5 minutes before start.
     """
+    from datetime import timezone
     logger.info("Starting Jaap reminder worker loop")
     
     # Session config (Sync with frontend/src/features/live-mantra/schedule.ts)
@@ -12271,8 +12272,15 @@ async def _jaap_reminder_worker():
         {'name': 'Evening', 'hour': 13, 'min': 0},
     ]
     
+    # Local cache to prevent duplicate notifications: (user_id, mantra_type, session_name, date_str) -> sent_timestamp
+    sent_reminders_cache = {}
+    
     while True:
         try:
+            # Clean up cache entries older than 24 hours (86400 seconds)
+            now_ts = datetime.utcnow().timestamp()
+            sent_reminders_cache = {k: ts for k, ts in sent_reminders_cache.items() if now_ts - ts < 86400}
+            
             # Check every minute
             await asyncio.sleep(60)
             
@@ -12305,19 +12313,29 @@ async def _jaap_reminder_worker():
                     if not reminders:
                         continue
                         
+                    date_str = now_ist.strftime("%Y-%m-%d")
+                    seen_uids = set()
+                    
                     for r in reminders:
                         uid = r.get("user_id")
+                        if not uid or uid in seen_uids:
+                            continue
+                        seen_uids.add(uid)
                         
-                        # Deduplicate: check if a notification was already sent in the last 10 minutes
+                        cache_key = (uid, "hanuman", session['name'], date_str)
+                        if cache_key in sent_reminders_cache:
+                            logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (already sent today)")
+                            continue
+                            
+                        # Check Firestore notifications collection as secondary backup (without order_by to avoid index requirements)
                         try:
-                            from datetime import timezone
                             recent_notifs = await db.query_documents(
                                 "notifications",
                                 filters=[
                                     ("user_id", "==", uid),
                                     ("notification_type", "==", "jaap_reminder")
                                 ],
-                                limit=5
+                                limit=10
                             )
                             already_sent = False
                             for n in recent_notifs:
@@ -12334,10 +12352,11 @@ async def _jaap_reminder_worker():
                                         except Exception:
                                             pass
                             if already_sent:
-                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid}")
+                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (FCM backup)")
+                                sent_reminders_cache[cache_key] = now_ts
                                 continue
                         except Exception as check_err:
-                            logger.warning(f"Error checking duplicate reminder: {check_err}")
+                            logger.warning(f"Error checking duplicate reminder backup: {check_err}")
 
                         # Send notification via task queue
                         await task_queue.enqueue(
@@ -12348,6 +12367,7 @@ async def _jaap_reminder_worker():
                             mantra_type="hanuman",
                             session_name=session['name']
                         )
+                        sent_reminders_cache[cache_key] = now_ts
 
             # 2. Check other Live Jaap sessions (Gayatri, Shiva, Krishna, etc.)
             for session in OTHER_SESSIONS:
@@ -12369,22 +12389,32 @@ async def _jaap_reminder_worker():
                     if not reminders:
                         continue
                         
+                    date_str = now_ist.strftime("%Y-%m-%d")
+                    seen_uids_mantras = set()
+                    
                     for r in reminders:
                         mantra_type = r.get("mantra_type")
                         if mantra_type == "hanuman":
                             continue
                         uid = r.get("user_id")
+                        if not uid or (uid, mantra_type) in seen_uids_mantras:
+                            continue
+                        seen_uids_mantras.add((uid, mantra_type))
                         
-                        # Deduplicate: check if a notification was already sent in the last 10 minutes
+                        cache_key = (uid, mantra_type, session['name'], date_str)
+                        if cache_key in sent_reminders_cache:
+                            logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (already sent today)")
+                            continue
+                            
+                        # Secondary backup check in Firestore
                         try:
-                            from datetime import timezone
                             recent_notifs = await db.query_documents(
                                 "notifications",
                                 filters=[
                                     ("user_id", "==", uid),
                                     ("notification_type", "==", "jaap_reminder")
                                 ],
-                                limit=5
+                                limit=10
                             )
                             already_sent = False
                             for n in recent_notifs:
@@ -12401,10 +12431,11 @@ async def _jaap_reminder_worker():
                                         except Exception:
                                             pass
                             if already_sent:
-                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid}")
+                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (FCM backup)")
+                                sent_reminders_cache[cache_key] = now_ts
                                 continue
                         except Exception as check_err:
-                            logger.warning(f"Error checking duplicate reminder: {check_err}")
+                            logger.warning(f"Error checking duplicate reminder backup: {check_err}")
 
                         mantra_title = mantra_type.capitalize() + " Mantra" if mantra_type != "shiva" else "Om Namah Shivaya"
                         await task_queue.enqueue(
@@ -12415,6 +12446,7 @@ async def _jaap_reminder_worker():
                             mantra_type=mantra_type,
                             session_name=session['name']
                         )
+                        sent_reminders_cache[cache_key] = now_ts
                     
         except Exception as e:
             logger.error(f"Error in jaap reminder worker: {e}")
