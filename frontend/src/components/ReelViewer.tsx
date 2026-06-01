@@ -1175,26 +1175,23 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   callbacksRef.current = { onClose, onLike, onComment, onShare };
 
   const loadMoreReels = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return;
+    if (loadingRef.current) return;
 
     setLoading(true);
     try {
-      // Build seen_ids param (cap at 200 to keep URL sane)
       const seenParam = Array.from(seenIdsRef.current).slice(-200).join(',');
-
-      // Use the current number of loaded videos as the offset (minus 1 if initialPost is not from the API)
       const offset = Math.max(0, videosRef.current.length);
       const res = await getPostsFeed(10, offset, 'reels', seenParam);
       const newPosts = res.data?.items || res.data || [];
 
       if (newPosts.length === 0) {
-        setHasMore(false);
-        hasMoreRef.current = false;
+        // Shuffle and recycle existing videos
+        const shuffled = [...videosRef.current].sort(() => 0.5 - Math.random());
+        setVideos(prev => [...prev, ...shuffled]);
       } else {
         setVideos(prev => {
           const existingIds = new Set(prev.map((p: any) => p.id));
           const uniqueNew = newPosts.filter((p: any) => !existingIds.has(p.id));
-          // Track seen IDs
           uniqueNew.forEach((p: any) => p.id && seenIdsRef.current.add(p.id));
           return [...prev, ...uniqueNew];
         });
@@ -1202,8 +1199,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     } catch (error: any) {
       if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
         console.warn('Load more reels timed out — retrying later');
-        setHasMore(false);
-        hasMoreRef.current = false;
       } else {
         console.error('Load more reels error:', error);
       }

@@ -610,17 +610,31 @@ export default function HomeScreen() {
         const currentPosts = useFeedStore.getState().tabFeeds[tabToLoad]?.posts || [];
         const existingIds = new Set(currentPosts.map((item) => item?.id));
         const newItems = incomingItems.filter((item: any) => !existingIds.has(item?.id));
-        setTabFeed(tabToLoad, {
-          posts: [...currentPosts, ...newItems],
-          offset: offset + incomingItems.length,
-          hasMore: nextHasMore && incomingItems.length > 0,
-          lastFetched: Date.now(),
-        });
+
+        if (newItems.length > 0) {
+          // New unseen posts available – append normally
+          setTabFeed(tabToLoad, {
+            posts: [...currentPosts, ...newItems],
+            offset: offset + incomingItems.length,
+            hasMore: true, // always keep open so scroll never stops
+            lastFetched: Date.now(),
+          });
+        } else {
+          // Unseen posts exhausted – shuffle and recycle existing posts
+          console.log(`[HomeFeed] No new unique posts for ${tabToLoad} – recycling ${currentPosts.length} posts`);
+          const recycled = [...currentPosts].sort(() => Math.random() - 0.5);
+          setTabFeed(tabToLoad, {
+            posts: [...currentPosts, ...recycled],
+            offset: 0, // reset offset so next fetch starts from beginning
+            hasMore: true, // never stop scrolling
+            lastFetched: Date.now(),
+          });
+        }
       } else {
         setTabFeed(tabToLoad, {
           posts: incomingItems,
           offset: incomingItems.length,
-          hasMore: nextHasMore && incomingItems.length > 0,
+          hasMore: true, // always keep scrolling possible
           lastFetched: Date.now(),
         });
       }
