@@ -68,32 +68,53 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
 
                 switch (route.name) {
                   case 'home':
-                    Icon = <Ionicons name={isFocused ? 'home' : 'home-outline'} size={24} color={iconColor} style={iconStyle} />;
+                    Icon = (
+                      <Image
+                        source={isFocused ? require('../../assets/images/tab bar/hoe.png') : require('../../assets/images/tab bar/home_outline.png')}
+                        style={isFocused ? { width: 28.719, height: 28.719, aspectRatio: 1, tintColor: iconColor } : { width: 26, height: 26, aspectRatio: 1, tintColor: iconColor }}
+                        resizeMode="contain"
+                      />
+                    );
                     label = 'Home';
                     break;
                   case 'messages':
-                    // Using MaterialIcons 'groups' to match the 3-person community icon
-                    Icon = <MaterialIcons name={isFocused ? 'groups' : 'groups'} size={28} color={iconColor} style={iconStyle} />;
+                    Icon = (
+                      <Image
+                        source={isFocused ? require('../../assets/images/tab bar/comunity2.png') : require('../../assets/images/tab bar/community.png')}
+                        style={isFocused ? { width: 36, height: 36, tintColor: iconColor } : { width: 32.548, height: 23.75, tintColor: iconColor }}
+                        resizeMode="contain"
+                      />
+                    );
                     label = 'Community';
                     break;
                   case 'vendor':
-                    Icon = <Ionicons name={isFocused ? 'accessibility' : 'accessibility-outline'} size={24} color={iconColor} style={iconStyle} />;
+                    Icon = (
+                      <Image
+                        source={isFocused ? require('../../assets/images/tab bar/ser.png') : require('../../assets/images/tab bar/service.png')}
+                        style={isFocused ? { width: 24, height: 28, aspectRatio: 6/7, tintColor: iconColor } : { width: 20.983, height: 23.28, tintColor: iconColor }}
+                        resizeMode="contain"
+                      />
+                    );
                     label = 'Service';
                     break;
                   case 'jaap':
                     Icon = (
-                      <View>
-                        <Image
-                          source={require('../../assets/images/jaap_tab_icon.png')}
-                          style={{ width: 24, height: 24, tintColor: iconColor }}
-                          resizeMode="contain"
-                        />
-                      </View>
+                      <Image
+                        source={isFocused ? require('../../assets/images/tab bar/temp.png') : require('../../assets/images/tab bar/temple.png')}
+                        style={isFocused ? { width: 30.078, height: 30.067, tintColor: iconColor } : { width: 23.035, height: 23.803, tintColor: iconColor }}
+                        resizeMode="contain"
+                      />
                     );
                     label = 'Temple';
                     break;
                   case 'profile':
-                    Icon = <Ionicons name={isFocused ? 'person' : 'person-outline'} size={24} color={iconColor} style={iconStyle} />;
+                    Icon = (
+                      <Image
+                        source={isFocused ? require('../../assets/images/tab bar/profile2.png') : require('../../assets/images/tab bar/profile.png')}
+                        style={isFocused ? { width: 28, height: 28, aspectRatio: 1, tintColor: iconColor } : { width: 24.89, height: 23.75, tintColor: iconColor }}
+                        resizeMode="contain"
+                      />
+                    );
                     label = 'Profile';
                     break;
                   default:
@@ -113,7 +134,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                       isFocused && styles.activeTabItem
                     ]}
                   >
-                    <View style={styles.iconContainer}>
+                    <View style={[styles.iconContainer, isFocused && styles.glassEffect]}>
                       {Icon}
                     </View>
                     {isFocused && (
@@ -139,6 +160,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   tabBarWrapper: {
+    height: 74,
+    borderRadius: 37,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.40)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -171,21 +196,25 @@ const styles = StyleSheet.create({
     minWidth: 54, // Ensure inactive icons have enough touch area
   },
   activeTabItem: {
-    width: ACTIVE_TAB_WIDTH,
+    minWidth: ACTIVE_TAB_WIDTH,
     height: TAB_HEIGHT,
     borderRadius: TAB_RADIUS,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
+  glassEffect: {
+    // Removed orange background circle
+  },
   activeLabel: {
-    color: '#FF7B00',
-    fontSize: 14,
+    color: '#FF8A00',
+    fontSize: 12,
+    fontStyle: 'normal',
     fontWeight: '700',
-    marginLeft: 6,
-    fontFamily: 'System',
+    fontFamily: 'SF Pro',
+    marginLeft: 4,
   }
 });
