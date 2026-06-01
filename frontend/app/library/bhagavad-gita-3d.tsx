@@ -49,6 +49,12 @@ export default function BhagavadGita3DPage() {
   const { lastReadChapter, lastReadScrollY, bookmarks, setLastRead, toggleBookmark } = useGitaStore();
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [nightMode, setNightMode] = useState(false);
+  
+  const [contentHeight, setContentHeight] = useState(0);
+  const [layoutHeight, setLayoutHeight] = useState(0);
+  const [progressTrackWidth, setProgressTrackWidth] = useState(0);
   
   const isBookmarked = bookmarks.some(b => b.chapter === currentChapter);
 
@@ -61,10 +67,13 @@ export default function BhagavadGita3DPage() {
     const scrollY = event.nativeEvent.contentOffset.y;
     const contentHeight = event.nativeEvent.contentSize.height;
     const layoutHeight = event.nativeEvent.layoutMeasurement.height;
-    const progress = (scrollY / (contentHeight - layoutHeight)) * 100;
+    const scrollableHeight = contentHeight - layoutHeight;
+    const progress = scrollableHeight > 0 ? (scrollY / scrollableHeight) * 100 : 0;
+    const clampedProgress = Math.min(Math.max(progress, 0), 100);
     
+    setScrollProgress(clampedProgress);
     // Save progress instantly (zustand persist handles debouncing implicitly if set up, but frequent saves to AsyncStorage might be heavy. We'll throttle it visually)
-    setLastRead(currentChapter, scrollY, Math.min(Math.max(progress, 0), 100));
+    setLastRead(currentChapter, scrollY, clampedProgress);
   };
 
   const handleChapterChange = (chNum: number) => {
@@ -212,41 +221,48 @@ export default function BhagavadGita3DPage() {
             style={StyleSheet.absoluteFillObject}
             resizeMode="cover"
           >
+            {nightMode && (
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(20, 10, 5, 0.85)' }]} />
+            )}
             {/* Subtle parchment texture overlay just to balance lighting if needed */}
             <LinearGradient
-              colors={['rgba(140,58,0,0.05)', 'rgba(255,255,255,0.1)', 'rgba(140,58,0,0.1)']}
+              colors={nightMode ? ['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.5)'] : ['rgba(140,58,0,0.05)', 'rgba(255,255,255,0.1)', 'rgba(140,58,0,0.1)']}
               style={StyleSheet.absoluteFillObject}
               pointerEvents="none"
             />
             
             {/* Sticky Top Header Container */}
-            <View style={[styles.stickyTopHeader, { paddingTop: insets.top + 10 }]}>
+            <View style={[styles.stickyTopHeader, { 
+              paddingTop: insets.top + 10,
+              backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.9)',
+              borderBottomColor: nightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(140, 58, 0, 0.1)'
+            }]}>
               {/* Back Button */}
               <TouchableOpacity 
-                style={styles.iconBtnWrapper} 
+                style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
                 onPress={() => router.back()}
               >
-                <Ionicons name="chevron-back" size={24} color="#5C250A" />
+                <Ionicons name="chevron-back" size={24} color={nightMode ? "#FFD5B8" : "#5C250A"} />
               </TouchableOpacity>
 
               {/* Title Header sticky in center */}
               <View style={styles.stickyChapterTitle}>
-                <Text style={styles.headerText}>* श्रीमद्भगवद्गीता *</Text>
-                <Text style={styles.headerText}>* {GITA_DATA[currentChapter]?.title} *</Text>
+                <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* श्रीमद्भगवद्गीता *</Text>
+                <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* {GITA_DATA[currentChapter]?.title} *</Text>
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {/* View All Bookmarks Button */}
                 <TouchableOpacity 
-                  style={[styles.iconBtnWrapper, { marginRight: 8 }]} 
+                  style={[styles.iconBtnWrapper, { marginRight: 8 }, nightMode && styles.iconBtnWrapperNight]} 
                   onPress={() => setShowBookmarksMenu(true)}
                 >
-                  <Ionicons name="list" size={24} color="#5C250A" />
+                  <Ionicons name="list" size={24} color={nightMode ? "#FFD5B8" : "#5C250A"} />
                 </TouchableOpacity>
 
                 {/* Bookmark Button */}
                 <TouchableOpacity 
-                  style={styles.iconBtnWrapper} 
+                  style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
                   onPress={handleToggleBookmark}
                 >
                   <Image 
@@ -254,7 +270,7 @@ export default function BhagavadGita3DPage() {
                     style={{
                       width: 26, 
                       height: 26, 
-                      tintColor: isBookmarked ? '#8C3A00' : '#A09B93',
+                      tintColor: isBookmarked ? (nightMode ? '#FFD5B8' : '#8C3A00') : (nightMode ? '#887766' : '#A09B93'),
                       opacity: isBookmarked ? 1 : 0.7
                     }} 
                   />
@@ -267,7 +283,9 @@ export default function BhagavadGita3DPage() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             onScroll={handleScroll}
-            scrollEventThrottle={100}
+            scrollEventThrottle={16}
+            onContentSizeChange={(_, h) => setContentHeight(h)}
+            onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
           >
             <View style={styles.pageContent}>
               {/* Chapter Navigator */}
@@ -281,13 +299,15 @@ export default function BhagavadGita3DPage() {
                     key={chNum}
                     style={[
                       styles.chapterTab,
-                      currentChapter === chNum && styles.chapterTabActive
+                      nightMode && styles.chapterTabNight,
+                      currentChapter === chNum && (nightMode ? styles.chapterTabActiveNight : styles.chapterTabActive)
                     ]}
                     onPress={() => handleChapterChange(chNum)}
                   >
                     <Text style={[
                       styles.chapterTabText,
-                      currentChapter === chNum && styles.chapterTabTextActive
+                      nightMode && styles.textNightMuted,
+                      currentChapter === chNum && (nightMode ? styles.textNight : styles.chapterTabTextActive)
                     ]}>
                       अध्याय {convertToHindiNumerals(chNum)}
                     </Text>
@@ -297,7 +317,7 @@ export default function BhagavadGita3DPage() {
 
               {/* Subtitle */}
               <View style={styles.chapterSubHeader}>
-                <Text style={styles.subHeaderText}>{GITA_DATA[currentChapter]?.name}</Text>
+                <Text style={[styles.subHeaderText, nightMode && styles.textNight]}>{GITA_DATA[currentChapter]?.name}</Text>
               </View>
 
               {/* Verses */}
@@ -305,22 +325,22 @@ export default function BhagavadGita3DPage() {
                 <View key={verse.id} style={styles.verseContainer}>
                   {/* Sanskrit Text */}
                   <View style={styles.sanskritWrapper}>
-                    <Text style={styles.sanskritText}>{verse.sanskrit}</Text>
-                    <Text style={styles.sanskritVerseNumber}>{convertToHindiNumerals(verse.id)}</Text>
+                    <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{verse.sanskrit}</Text>
+                    <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.id)}</Text>
                   </View>
 
                   {/* Hindi Translation */}
-                  <Text style={styles.hindiText}>
-                    <Text style={styles.hindiVerseNumber}>{convertToHindiNumerals(verse.id)}. </Text>
+                  <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
+                    <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.id)}. </Text>
                     {verse.hindi}
                   </Text>
 
                   {/* Divider */}
                   {index < GITA_DATA[currentChapter].verses.length - 1 && (
                     <View style={styles.dividerContainer}>
-                      <View style={styles.dividerLine} />
-                      <View style={styles.dividerDot} />
-                      <View style={styles.dividerLine} />
+                      <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
+                      <View style={[styles.dividerDot, nightMode && { backgroundColor: '#6e4733' }]} />
+                      <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
                     </View>
                   )}
                 </View>
@@ -329,16 +349,16 @@ export default function BhagavadGita3DPage() {
               {/* Bottom Chapter Navigation */}
               <View style={styles.bottomNavContainer}>
                 {currentChapter > 1 ? (
-                  <TouchableOpacity style={styles.bottomNavBtn} onPress={() => handleChapterChange(currentChapter - 1)}>
-                    <Ionicons name="arrow-back" size={16} color="#691F0A" />
-                    <Text style={styles.bottomNavText}>पिछला अध्याय</Text>
+                  <TouchableOpacity style={[styles.bottomNavBtn, nightMode && styles.bottomNavBtnNight]} onPress={() => handleChapterChange(currentChapter - 1)}>
+                    <Ionicons name="arrow-back" size={16} color={nightMode ? "#EBD7B6" : "#691F0A"} />
+                    <Text style={[styles.bottomNavText, nightMode && styles.textNight]}>पिछला अध्याय</Text>
                   </TouchableOpacity>
                 ) : <View style={{ width: 100 }} />}
                 
                 {currentChapter < 18 ? (
-                  <TouchableOpacity style={styles.bottomNavBtn} onPress={() => handleChapterChange(currentChapter + 1)}>
-                    <Text style={styles.bottomNavText}>अगला अध्याय</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#691F0A" />
+                  <TouchableOpacity style={[styles.bottomNavBtn, nightMode && styles.bottomNavBtnNight]} onPress={() => handleChapterChange(currentChapter + 1)}>
+                    <Text style={[styles.bottomNavText, nightMode && styles.textNight]}>अगला अध्याय</Text>
+                    <Ionicons name="arrow-forward" size={16} color={nightMode ? "#EBD7B6" : "#691F0A"} />
                   </TouchableOpacity>
                 ) : <View style={{ width: 100 }} />}
               </View>
@@ -347,8 +367,41 @@ export default function BhagavadGita3DPage() {
             </View>
           </ScrollView>
 
-          {/* Page Number */}
-          <Text style={styles.pageNumber}>६२</Text>
+          {/* Fixed Bottom Bar */}
+          <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.95)', borderTopColor: nightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(140, 58, 0, 0.1)' }]}>
+            <View style={styles.bottomBarContent}>
+              <TouchableOpacity onPress={() => setNightMode(!nightMode)} style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight, { width: 36, height: 36 }]}>
+                <Ionicons name={nightMode ? "sunny" : "moon"} size={18} color={nightMode ? "#FFD5B8" : "#5C250A"} />
+              </TouchableOpacity>
+              
+              <View style={styles.sliderWrapper}>
+                <Text style={[styles.pageIndicatorText, nightMode && styles.textNight]}>
+                  पृष्ठ {convertToHindiNumerals(Math.max(1, Math.min(Math.ceil(contentHeight / (layoutHeight || 1)), Math.ceil((scrollProgress / 100) * Math.max(1, Math.ceil(contentHeight / (layoutHeight || 1)) - 1)) + 1)))}
+                </Text>
+                <TouchableOpacity 
+                  activeOpacity={1}
+                  style={styles.bottomProgressBarContainer}
+                  onLayout={(e) => setProgressTrackWidth(e.nativeEvent.layout.width)}
+                  onPress={(e) => {
+                    if (progressTrackWidth > 0 && contentHeight > 0 && layoutHeight > 0) {
+                      const ratio = e.nativeEvent.locationX / progressTrackWidth;
+                      const scrollableHeight = contentHeight - layoutHeight;
+                      if (scrollableHeight > 0) {
+                        const targetY = ratio * scrollableHeight;
+                        scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
+                      }
+                    }
+                  }}
+                >
+                  <View style={[styles.bottomProgressBarTrack, { backgroundColor: nightMode ? 'rgba(255, 213, 184, 0.2)' : 'rgba(140, 58, 0, 0.1)' }]} pointerEvents="none" />
+                  <View style={[styles.bottomProgressBarFill, { width: `${scrollProgress}%`, backgroundColor: nightMode ? '#FFD5B8' : '#8C3A00' }]} pointerEvents="none" />
+                  <View style={[styles.progressThumb, { left: `${scrollProgress}%`, backgroundColor: nightMode ? '#FFD5B8' : '#8C3A00' }]} pointerEvents="none" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={{ width: 36 }} />
+            </View>
+          </View>
           </ImageBackground>
         </Animated.View>
       )}
@@ -430,8 +483,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     zIndex: 20,
     backgroundColor: 'rgba(234, 209, 163, 0.9)', // Match parchment background slightly translucent
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(140, 58, 0, 0.1)',
   },
   iconBtnWrapper: {
     width: 40,
@@ -440,6 +491,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  iconBtnWrapperNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   stickyChapterTitle: {
     alignItems: 'center',
@@ -515,6 +569,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(140, 58, 0, 0.15)',
     borderColor: '#8C3A00',
   },
+  chapterTabNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  chapterTabActiveNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: '#EBD7B6',
+  },
   chapterTabText: {
     color: '#8C5A3C',
     fontWeight: '600',
@@ -523,6 +585,15 @@ const styles = StyleSheet.create({
   chapterTabTextActive: {
     color: '#5C250A',
     fontWeight: '700',
+  },
+  textNight: {
+    color: '#EBD7B6',
+  },
+  textNightLight: {
+    color: '#FFD5B8',
+  },
+  textNightMuted: {
+    color: '#C4B49A',
   },
   chapterSubHeader: {
     alignItems: 'center',
@@ -607,19 +678,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(140, 58, 0, 0.2)',
   },
+  bottomNavBtnNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
   bottomNavText: {
     color: '#691F0A',
     fontWeight: '700',
     fontSize: 14,
     marginHorizontal: 8,
-  },
-  pageNumber: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111111',
   },
   modalOverlay: {
     flex: 1,
@@ -687,5 +754,67 @@ const styles = StyleSheet.create({
   bookmarkItemSub: {
     fontSize: 14,
     color: '#8C5A3C',
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    zIndex: 20,
+    paddingTop: 12,
+  },
+  bottomBarContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  bottomProgressBarContainer: {
+    height: 30,
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  bottomProgressBarTrack: {
+    height: 4,
+    borderRadius: 2,
+    width: '100%',
+    position: 'absolute',
+    top: 13,
+  },
+  bottomProgressBarFill: {
+    height: 4,
+    borderRadius: 2,
+    position: 'absolute',
+    left: 0,
+    top: 13,
+  },
+  progressThumb: {
+    position: 'absolute',
+    top: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginLeft: -8,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  sliderWrapper: {
+    flex: 1,
+    marginHorizontal: 16,
+    justifyContent: 'center',
+  },
+  pageIndicatorText: {
+    position: 'absolute',
+    top: -16,
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#691F0A',
+    opacity: 0.8,
   },
 });

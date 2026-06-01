@@ -307,6 +307,16 @@ export default function LibraryPage() {
           </View>
         </View>
 
+        {/* ── 3D Book Button ── */}
+        <View style={styles.book3dWrapper}>
+          <TouchableOpacity
+            style={styles.book3dBtn}
+            onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
+          >
+            <Text style={styles.book3dBtnTxt}>View 3D Bhagavad Gita</Text>
+            <Ionicons name="book" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+        </View>
 
       </ScrollView>
     </View>
