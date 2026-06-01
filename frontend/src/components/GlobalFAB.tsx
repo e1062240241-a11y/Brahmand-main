@@ -47,14 +47,33 @@ export function GlobalFAB() {
       const res = await getMySOSAlert();
       setActiveSOS(res.data);
 
-      const ok = await LocationService.ensureForegroundPermission();
-      if (ok) {
-        const location = await LocationService.getCurrentPosition({});
-        const nearbyRes = await getActiveSOSAlerts({ lat: location.coords.latitude, lng: location.coords.longitude, radius: 10000 });
-        const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== res.data?.id);
-        setNearbySOSAlerts(otherSOS);
+      let lat = undefined;
+      let lng = undefined;
+      try {
+        const ok = await LocationService.ensureForegroundPermission();
+        if (ok) {
+          const location = await LocationService.getCurrentPosition({});
+          lat = location.coords.latitude;
+          lng = location.coords.longitude;
+        }
+      } catch (locErr) {
+        console.warn('Location fetch failed in SOS check:', locErr);
       }
-    } catch (e) {}
+
+      // Always fetch nearby alerts, even without location
+      const params: any = { radius: 10000 };
+      if (lat && lng) {
+        params.lat = lat;
+        params.lng = lng;
+      }
+      
+      const nearbyRes = await getActiveSOSAlerts(params);
+      const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== res.data?.id);
+      setNearbySOSAlerts(otherSOS);
+
+    } catch (e) {
+      console.error('Failed to check SOS status:', e);
+    }
   }, []);
 
   const handleRespondToSOS = async (sosId: string) => {
@@ -122,6 +141,15 @@ export function GlobalFAB() {
       ]).start();
       checkSOSStatus();
     });
+
+    // Check for pending SOS from background notification
+    if ((window as any).__PENDING_SOS) {
+      setTimeout(() => {
+        DeviceEventEmitter.emit('open_sos_modal');
+        (window as any).__PENDING_SOS = null;
+      }, 500);
+    }
+
     return () => sub.remove();
   }, [fabScale, fabRotation, fabItemAnims, checkSOSStatus]);
 
