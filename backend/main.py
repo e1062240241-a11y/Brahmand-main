@@ -23,7 +23,18 @@ from typing import Optional, List, Dict, Any
 from tempfile import NamedTemporaryFile
 from uuid import uuid4
 from urllib.parse import quote
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo as OriginalZoneInfo
+
+def ZoneInfo(key: str):
+    try:
+        return OriginalZoneInfo(key)
+    except Exception:
+        if key == "Asia/Kolkata":
+            from datetime import timezone, timedelta
+            return timezone(timedelta(hours=5, minutes=30))
+        # Fallback to India Standard Time offset if tzdata is missing on Windows
+        from datetime import timezone, timedelta
+        return timezone(timedelta(hours=5, minutes=30))
 
 import base64
 import math
@@ -10336,7 +10347,7 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
         return
     for uid in user_ids:
         try:
-            await db.create_document('notifications', {
+            notification_data = {
                 'user_id': uid,
                 'title': title,
                 'body': body,
@@ -10344,7 +10355,16 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
                 'data': data,
                 'is_read': False,
                 'created_at': datetime.utcnow().isoformat() + 'Z'
-            })
+            }
+            notification_id = await db.create_document('notifications', notification_data)
+            notification_data['id'] = notification_id
+            
+            # Emit Socket.IO event to user's private room
+            try:
+                await sio.emit('new_notification', notification_data, room=f"user_{uid}")
+                logger.info(f"Emitted real-time notification to user_{uid}")
+            except Exception as se:
+                logger.warning(f"Failed to emit socket notification for user {uid}: {se}")
         except Exception as e:
             logger.error(f"Failed to save bulk notification for user {uid}: {e}")
 
@@ -11705,6 +11725,20 @@ async def _remove_socket_from_voice_room(sid: str):
 @sio.event
 async def connect(sid, environ, auth):
     logger.info(f"Socket connected: {sid}")
+    if auth and isinstance(auth, dict) and 'token' in auth:
+        token = auth['token']
+        if token.startswith("Bearer "):
+            token = token[7:]
+        try:
+            from middleware.security import decode_jwt_token
+            payload = decode_jwt_token(token)
+            user_id = payload.get("user_id")
+            if user_id:
+                await sio.enter_room(sid, f"user_{user_id}")
+                await sio.save_session(sid, {'user_id': user_id})
+                logger.info(f"Socket {sid} associated with room user_{user_id} and session saved")
+        except Exception as e:
+            logger.warning(f"Failed to authenticate socket {sid} during connect: {e}")
     return True
 
 
@@ -11853,6 +11887,100 @@ async def audio_chunk(sid, data):
     
     await sio.emit('audio_chunk', payload, to=room, skip_sid=sid)
 
+
+@sio.on('send_dm')
+async def handle_send_dm_socket(sid, data):
+    """Handle direct message sent via Socket.IO for 0ms delay real-time private chat."""
+    try:
+        session = await sio.get_session(sid)
+        user_id = session.get('user_id')
+        if not user_id:
+            return {'status': 'error', 'message': 'Unauthorized'}
+            
+        recipient_sl_id = data.get('recipient_sl_id')
+        content = data.get('content')
+        if not recipient_sl_id or not content:
+            return {'status': 'error', 'message': 'Missing recipient_sl_id or content'}
+            
+        db = await get_db()
+        sender = await db.get_document('users', user_id)
+        recipient = await db.get_user_by_sl_id(recipient_sl_id)
+        if not recipient:
+            return {'status': 'error', 'message': 'Recipient not found'}
+            
+        sender_id = sender['id']
+        recipient_id = recipient['id']
+        
+        sorted_members = sorted([sender_id, recipient_id])
+        chat_id = f"private_{'_'.join(sorted_members)}"
+        
+        chat = await db.get_document('chats', chat_id)
+        now = datetime.utcnow()
+        
+        if chat:
+            await db.update_document('chats', chat_id, {
+                'last_message': content[:100],
+                'updated_at': now
+            })
+        else:
+            chat_data = {
+                'chat_type': 'private',
+                'members': sorted_members,
+                'created_at': now,
+                'last_message': content[:100],
+                'updated_at': now,
+                'request_status': 'approved',
+                'request_by': sender_id,
+                'request_updated_at': now,
+                'request_retry_after': None,
+            }
+            await db.set_document('chats', chat_id, chat_data)
+            
+        msg_data = {
+            'sender_id': sender_id,
+            'sender_name': sender['name'],
+            'sender_photo': sender.get('photo'),
+            'text': content,
+            'content': content,
+            'status': 'delivered',
+            'read_by': [],
+            'created_at': now.isoformat() + 'Z'
+        }
+        
+        msg_id = await db.add_message_to_chat(chat_id, msg_data)
+        
+        response_msg = {
+            'id': msg_id,
+            'chat_id': chat_id,
+            'sender_id': sender_id,
+            'sender_name': sender['name'],
+            'sender_photo': sender.get('photo'),
+            'text': content,
+            'content': content,
+            'status': 'delivered',
+            'created_at': now.isoformat() + 'Z',
+            'timestamp': now.isoformat() + 'Z'
+        }
+        
+        # Emit via socket to the room
+        await sio.emit('new_dm', response_msg, room=chat_id)
+        
+        # Send push notification in background
+        try:
+            await task_queue.enqueue(
+                push_service.notify_new_dm,
+                recipient_id=recipient_id,
+                sender_name=sender['name'],
+                message_preview=content,
+                chat_id=chat_id
+            )
+        except Exception:
+            pass
+            
+        return {'status': 'success', 'message': response_msg}
+    except Exception as e:
+        logger.error(f"Socket send_dm error: {e}")
+        return {'status': 'error', 'message': str(e)}
 
 
 # =================== JAAP INVITE NOTIFICATION ===================
@@ -12067,6 +12195,38 @@ async def _jaap_reminder_worker():
                         
                     for r in reminders:
                         uid = r.get("user_id")
+                        
+                        # Deduplicate: check if a notification was already sent in the last 10 minutes
+                        try:
+                            from datetime import timezone
+                            recent_notifs = await db.query_documents(
+                                "notifications",
+                                filters=[
+                                    ("user_id", "==", uid),
+                                    ("notification_type", "==", "jaap_reminder")
+                                ],
+                                limit=5
+                            )
+                            already_sent = False
+                            for n in recent_notifs:
+                                n_data = n.get("data", {}) or {}
+                                if n_data.get("session_name") == session['name'] and n_data.get("mantra_type") == "hanuman":
+                                    created_at_str = n.get("created_at")
+                                    if created_at_str:
+                                        try:
+                                            created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                                            now_utc = datetime.now(timezone.utc)
+                                            if (now_utc - created_at).total_seconds() < 600:
+                                                already_sent = True
+                                                break
+                                        except Exception:
+                                            pass
+                            if already_sent:
+                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid}")
+                                continue
+                        except Exception as check_err:
+                            logger.warning(f"Error checking duplicate reminder: {check_err}")
+
                         # Send notification via task queue
                         await task_queue.enqueue(
                             FirebaseNotificationService.notify_jaap_reminder,
@@ -12102,6 +12262,38 @@ async def _jaap_reminder_worker():
                         if mantra_type == "hanuman":
                             continue
                         uid = r.get("user_id")
+                        
+                        # Deduplicate: check if a notification was already sent in the last 10 minutes
+                        try:
+                            from datetime import timezone
+                            recent_notifs = await db.query_documents(
+                                "notifications",
+                                filters=[
+                                    ("user_id", "==", uid),
+                                    ("notification_type", "==", "jaap_reminder")
+                                ],
+                                limit=5
+                            )
+                            already_sent = False
+                            for n in recent_notifs:
+                                n_data = n.get("data", {}) or {}
+                                if n_data.get("session_name") == session['name'] and n_data.get("mantra_type") == mantra_type:
+                                    created_at_str = n.get("created_at")
+                                    if created_at_str:
+                                        try:
+                                            created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                                            now_utc = datetime.now(timezone.utc)
+                                            if (now_utc - created_at).total_seconds() < 600:
+                                                already_sent = True
+                                                break
+                                        except Exception:
+                                            pass
+                            if already_sent:
+                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid}")
+                                continue
+                        except Exception as check_err:
+                            logger.warning(f"Error checking duplicate reminder: {check_err}")
+
                         mantra_title = mantra_type.capitalize() + " Mantra" if mantra_type != "shiva" else "Om Namah Shivaya"
                         await task_queue.enqueue(
                             FirebaseNotificationService.notify_jaap_reminder,
@@ -12115,6 +12307,7 @@ async def _jaap_reminder_worker():
         except Exception as e:
             logger.error(f"Error in jaap reminder worker: {e}")
             await asyncio.sleep(30) # Cool down on error
+
 
 
 app.include_router(api_router)
