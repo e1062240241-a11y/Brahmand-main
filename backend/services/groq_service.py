@@ -165,7 +165,8 @@ class GroqService:
         config = types.GenerateContentConfig(
             temperature=0.38,
             max_output_tokens=2048,
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+            thinking_config=types.ThinkingConfig(thinking_budget=1024)
         )
 
         contents = [

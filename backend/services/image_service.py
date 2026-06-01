@@ -27,6 +27,7 @@ def compress_base64_image(base64_string: str, max_size: int = MAX_IMAGE_SIZE, qu
     Returns:
         Compressed base64 encoded JPEG image with data URI prefix
     """
+    import gc
     try:
         # Remove data URI prefix if present
         if ',' in base64_string:
@@ -36,51 +37,59 @@ def compress_base64_image(base64_string: str, max_size: int = MAX_IMAGE_SIZE, qu
         
         # Decode base64 to bytes
         image_bytes = base64.b64decode(base64_data)
+        del base64_data
         
-        # Open image with Pillow
-        image = Image.open(io.BytesIO(image_bytes))
-        
-        # Convert to RGB if necessary (for PNG with transparency)
-        if image.mode in ('RGBA', 'LA', 'P'):
-            # Create white background
-            background = Image.new('RGB', image.size, (255, 255, 255))
-            if image.mode == 'P':
-                image = image.convert('RGBA')
-            if 'A' in image.mode:
-                background.paste(image, mask=image.split()[-1])
-                image = background
+        # Open image with Pillow using a context manager
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            # Convert to RGB if necessary (for PNG with transparency)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                # Create white background
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                try:
+                    working_img = img
+                    if img.mode == 'P':
+                        working_img = img.convert('RGBA')
+                    if 'A' in working_img.mode:
+                        background.paste(working_img, mask=working_img.split()[-1])
+                        image = background
+                    else:
+                        image = working_img.convert('RGB')
+                        background.close()
+                    if working_img is not img:
+                        working_img.close()
+                except Exception as convert_err:
+                    background.close()
+                    raise convert_err
+            elif img.mode != 'RGB':
+                image = img.convert('RGB')
             else:
-                image = image.convert('RGB')
-        elif image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        # Calculate new size maintaining aspect ratio
-        width, height = image.size
-        if width > max_size or height > max_size:
-            if width > height:
-                new_width = max_size
-                new_height = int(height * (max_size / width))
-            else:
-                new_height = max_size
-                new_width = int(width * (max_size / height))
+                image = img.copy()
+
+        del image_bytes
+        gc.collect()
+
+        try:
+            # Calculate new size maintaining aspect ratio using thumbnail (in-place & memory efficient)
+            width, height = image.size
+            if width > max_size or height > max_size:
+                image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+                logger.info(f"Resized image from {width}x{height} to {image.width}x{image.height}")
             
-            # Resize with high-quality resampling
-            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            logger.info(f"Resized image from {width}x{height} to {new_width}x{new_height}")
-        
-        # Compress to JPEG
-        output_buffer = io.BytesIO()
-        image.save(output_buffer, format='JPEG', quality=quality, optimize=True)
-        compressed_bytes = output_buffer.getvalue()
-        
-        # Encode back to base64
-        compressed_base64 = base64.b64encode(compressed_bytes).decode('utf-8')
-        
-        original_size = len(base64_data)
-        new_size = len(compressed_base64)
-        logger.info(f"Compressed image: {original_size} -> {new_size} bytes ({100 * new_size // original_size}%)")
-        
-        return f"data:image/jpeg;base64,{compressed_base64}"
+            # Compress to JPEG
+            output_buffer = io.BytesIO()
+            try:
+                image.save(output_buffer, format='JPEG', quality=quality, optimize=True)
+                compressed_bytes = output_buffer.getvalue()
+            finally:
+                output_buffer.close()
+            
+            # Encode back to base64
+            compressed_base64 = base64.b64encode(compressed_bytes).decode('utf-8')
+            
+            return f"data:image/jpeg;base64,{compressed_base64}"
+        finally:
+            image.close()
+            gc.collect()
         
     except Exception as e:
         logger.error(f"Image compression failed: {e}")

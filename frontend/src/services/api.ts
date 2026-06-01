@@ -1499,9 +1499,18 @@ export const uploadVendorKycFile = (
   file: { uri: string; name: string; type: string }
 ) => {
   return (async () => {
+    console.log('[API] Starting uploadVendorKycFile payload processing:', {
+      vendorId,
+      docType,
+      file,
+      platform: Platform.OS
+    });
+
     const formData = new FormData();
     formData.append('doc_type', docType);
     await appendMultipartFile(formData, 'file', file);
+
+    console.log('[API] Constructed FormData keys:', Object.keys(formData));
 
     if (Platform.OS !== 'web') {
       try {
@@ -1512,6 +1521,11 @@ export const uploadVendorKycFile = (
           headers.Authorization = `Bearer ${token}`;
         }
 
+        console.log('[API] Native upload fetch details:', {
+          url,
+          headers: { ...headers, Authorization: headers.Authorization ? 'Bearer [HIDDEN]' : 'none' }
+        });
+
         const response = await fetch(url, {
           method: 'POST',
           headers,
@@ -1520,10 +1534,12 @@ export const uploadVendorKycFile = (
 
         if (!response.ok) {
           const text = await response.text();
+          console.error('[API] Native upload failed with status:', response.status, text);
           throw new Error(`Upload failed: ${response.status} ${text}`);
         }
 
         const data = await response.json();
+        console.log('[API] Native upload succeeded:', data);
         return { data };
       } catch (error) {
         console.warn('[API] Native KYC file upload failed, retrying via axios:', error);
@@ -1531,6 +1547,7 @@ export const uploadVendorKycFile = (
       }
     }
 
+    console.log('[API] Web upload using axios to:', `/vendors/${vendorId}/kyc/upload`);
     return api.post(`/vendors/${vendorId}/kyc/upload`, formData, {
       headers: Platform.OS === 'web' ? { 'Content-Type': 'multipart/form-data' } : undefined,
     });

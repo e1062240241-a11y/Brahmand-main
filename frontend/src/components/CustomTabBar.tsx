@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur'; // iOS style dynamic glass effect
 
 const TAB_HEIGHT = 56;
 const TAB_RADIUS = 27.55;
@@ -11,7 +12,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
 
   // Filter out hidden routes first
-  const visibleRoutes = state.routes.filter((route: any) => 
+  const visibleRoutes = state.routes.filter((route: any) =>
     !['index', 'temple', 'circles', 'jobs', 'discover'].includes(route.name)
   );
 
@@ -37,12 +38,23 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom + 12 }]}>
+      {/* MAIN CONTAINER: Yeh transparent flex wrapper hai jo groups ko hold karega */}
       <View style={styles.tabBarWrapper}>
         {groups.map((group, groupIndex) => (
           <React.Fragment key={`group-${groupIndex}`}>
             {/* Render a thin connecting bridge between groups */}
             {groupIndex > 0 && <View style={styles.bridge} />}
-            <View style={styles.groupPill}>
+
+            {/* ASLI SOLUTION: BlurView hi ab har ek pod/pill ka capsule hai */}
+            {/* Isse aage ka active shape aur piche ka glass 100% sync mein real-time shape badlenge */}
+            <BlurView
+              intensity={55}
+              tint="light"
+              style={[
+                styles.groupPill,
+                group.isActive ? styles.activeGroupPill : styles.inactiveGroupPill
+              ]}
+            >
               {group.routes.map((route: any) => {
                 const { options } = descriptors[route.key];
                 const isFocused = group.isActive;
@@ -62,9 +74,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                 let Icon = null;
                 let label = '';
                 const iconColor = isFocused ? '#FF7B00' : '#8E8E93';
-                
-                // Active icons do not have shadows anymore
-                const iconStyle = {};
 
                 switch (route.name) {
                   case 'home':
@@ -91,7 +100,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                     Icon = (
                       <Image
                         source={isFocused ? require('../../assets/images/tab bar/ser.png') : require('../../assets/images/tab bar/service.png')}
-                        style={isFocused ? { width: 24, height: 28, aspectRatio: 6/7, tintColor: iconColor } : { width: 20.983, height: 23.28, tintColor: iconColor }}
+                        style={isFocused ? { width: 24, height: 28, aspectRatio: 6 / 7, tintColor: iconColor } : { width: 20.983, height: 23.28, tintColor: iconColor }}
                         resizeMode="contain"
                       />
                     );
@@ -134,7 +143,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                       isFocused && styles.activeTabItem
                     ]}
                   >
-                    <View style={[styles.iconContainer, isFocused && styles.glassEffect]}>
+                    <View style={styles.iconContainer}>
                       {Icon}
                     </View>
                     {isFocused && (
@@ -143,7 +152,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </BlurView>
           </React.Fragment>
         ))}
       </View>
@@ -161,39 +170,50 @@ const styles = StyleSheet.create({
   },
   tabBarWrapper: {
     height: 74,
-    borderRadius: 37,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.40)',
+    backgroundColor: 'transparent', // No static box anymore
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 10,
   },
   bridge: {
     width: 14,
-    height: 14,
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: -4, // Overlap slightly to ensure it seamlessly connects
+    height: 10, // Perfectly slim bridge connecting the dynamic shape pods
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+    marginHorizontal: -4,
     zIndex: -1,
+    borderTopWidth: 1.2,
+    borderBottomWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
   },
   groupPill: {
-    backgroundColor: '#FFFFFF',
     borderRadius: TAB_RADIUS,
     height: TAB_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
+    overflow: 'hidden', // Crucial to sync the glass rendering inside the capsule shape
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.55)', // Crisp Apple-style frosted border
+    // Soft drop shadow mirroring your SVG image
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  activeGroupPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.75)', // Bright frosted reflection for active selection
+  },
+  inactiveGroupPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)', // Softer frosted alpha for secondary pods
   },
   tabItem: {
     height: TAB_HEIGHT,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 54, // Ensure inactive icons have enough touch area
+    minWidth: 54,
   },
   activeTabItem: {
     minWidth: ACTIVE_TAB_WIDTH,
@@ -204,10 +224,6 @@ const styles = StyleSheet.create({
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
-  },
-  glassEffect: {
-    // Removed orange background circle
   },
   activeLabel: {
     color: '#FF8A00',
