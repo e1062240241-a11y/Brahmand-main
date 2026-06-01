@@ -20,3 +20,4 @@ pymongo
 
 google-genai==2.6.0
 tzdata
+chromadb-client>=1.5.9

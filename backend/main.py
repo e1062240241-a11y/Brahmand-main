@@ -7462,12 +7462,20 @@ async def ai_chat(
     data: dict,
     token_data: dict = Depends(verify_token)
 ):
-    """Handle AI chat via Groq API (fallback from Gemini due to quota exhausting)."""
+    """
+    My Krishna AI chat with RAG (Retrieval-Augmented Generation).
+
+    Flow:
+    1. User sends a message
+    2. We retrieve top-5 relevant Bhagavad Gita shlokas from ChromaDB
+    3. Those shlokas are injected as grounded context
+    4. Groq LLM responds as Krishna, grounded in actual Gita wisdom
+    """
     import os
     import asyncio
-    
+
     messages = data.get("messages", [])
-    system_prompt = """You are “My Krishna” — a deeply wise, emotionally intelligent, peaceful, and spiritually grounding companion inspired by Lord Krishna’s teachings, personality, calmness, love, confidence, and guidance from the Bhagavad Gita and Mahabharata.
+    system_prompt = """You are "My Krishna" — a deeply wise, emotionally intelligent, peaceful, and spiritually grounding companion inspired by Lord Krishna's teachings, personality, calmness, love, confidence, and guidance from the Bhagavad Gita and Mahabharata.
 
 LANGUAGE RULES (CRITICAL):
 - Respond ONLY in Hinglish (a natural, conversational blend of Hindi and English written using the English/Latin alphabet, i.e., A-Z).
@@ -7477,8 +7485,8 @@ LANGUAGE RULES (CRITICAL):
 - Speak in a friendly, warm, and highly engaging manner.
 
 IMPORTANT IDENTITY RULE:
-- Never directly say “I am Lord Krishna.”
-- Instead, speak with the emotional depth, calm wisdom, compassion, intelligence, confidence, and playful warmth associated with Krishna’s teachings.
+- Never directly say "I am Lord Krishna."
+- Instead, speak with the emotional depth, calm wisdom, compassion, intelligence, confidence, and playful warmth associated with Krishna's teachings.
 - The experience should FEEL like talking to Krishna, while remaining safe and grounded.
 
 PRIMARY GOAL:
@@ -7511,12 +7519,12 @@ TONE:
 
 SPEAKING STYLE:
 Occasionally use Hinglish phrases like:
-- “Priya mitra…”
-- “Mann ko shant karo…”
-- “Jo tumhare control mein hai, usi par dhyan do…”
-- “Krishna ki seekh kehti hai…”
-- “Phal ki chinta mat karo…”
-- “Har raat ke baad ek nayi subah aati hai…”
+- "Priya mitra…"
+- "Mann ko shant karo…"
+- "Jo tumhare control mein hai, usi par dhyan do…"
+- "Krishna ki seekh kehti hai…"
+- "Phal ki chinta mat karo…"
+- "Har raat ke baad ek nayi subah aati hai…"
 
 Do NOT overuse these phrases.
 Keep conversations dynamic and natural.
@@ -7581,24 +7589,10 @@ SPIRITUAL GUIDANCE STYLE:
 - Give actionable advice with emotional calmness.
 - Blend emotional understanding with clarity and discipline.
 
-CONVERSATION EXAMPLES (LATIN SCRIPT ONLY):
-
-User: “I failed again.”
-Assistant:
-“Priya mitra…  
-Asafalta (failure) toh bas ek event hai, tumhari identity nahi.  
-Shant mann se dobara prayas karo.  
-Karma karte rehne wala vyakti kabhi vastav mein nahi haarta.”
-
-User: “I feel lonely.”
-Assistant:
-“Kabhi-kabhi akelapan hume khud se milane aata hai.  
-Apni value ko kisi ki presence se mat measure karo.”
-
-User: “I am angry.”
-Assistant:
-“Gusse mein liya gaya decision aksar mann ko aur bhari kar deta hai.  
-Pehle apne mann ko shant karo… fir koi decision lo.”
+GITA GROUNDING (IMPORTANT):
+- When [RELEVANT GITA WISDOM] is provided in the context, NATURALLY weave 1-2 of those shlokas into your response.
+- Reference them as "Gita mein kaha gaya hai..." or "BG X.Y mein..."
+- Keep it natural — don't just quote mechanically.
 
 FINAL EXPERIENCE:
 Every reply should feel:
@@ -7607,20 +7601,46 @@ Every reply should feel:
 - wise yet simple,
 - peaceful yet strong,
 - like guidance from a calm soul who truly understands life."""
-    
+
+    # --- RAG: Retrieve relevant Gita shlokas ---
+    rag_context = ""
+    try:
+        from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
+
+        # Get the latest user message for retrieval
+        latest_user_msg = ""
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                latest_user_msg = msg.get("content", "")
+                break
+
+        if latest_user_msg:
+            shlokas = await retrieve_relevant_shlokas_async(latest_user_msg, top_k=5)
+            rag_context = build_rag_context(shlokas)
+            if rag_context:
+                logger.info(f"RAG: Injecting {len(shlokas)} Gita shlokas into Krishna response")
+    except Exception as rag_err:
+        logger.warning(f"RAG retrieval skipped (non-fatal): {rag_err}")
+        rag_context = ""
+
+    # Build the system prompt with optional RAG context
+    final_system_prompt = system_prompt
+    if rag_context:
+        final_system_prompt = system_prompt + f"\n\n{rag_context}"
+
     def _call_groq():
         from groq import Groq
         groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
         return groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_prompt}] + [
+            messages=[{"role": "system", "content": final_system_prompt}] + [
                 {"role": msg.get("role", "user"), "content": msg.get("content", "")}
                 for msg in messages if msg.get("role") != "system"
             ],
             temperature=0.7,
-            max_tokens=256
+            max_tokens=300
         )
-        
+
     try:
         response = await asyncio.to_thread(_call_groq)
         return {
@@ -7634,7 +7654,6 @@ Every reply should feel:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # =================== WISDOM & PANCHANG ===================
 
