@@ -11687,7 +11687,8 @@ async def connect(sid, environ, auth):
             user_id = payload.get("user_id")
             if user_id:
                 await sio.enter_room(sid, f"user_{user_id}")
-                logger.info(f"Socket {sid} associated with room user_{user_id}")
+                await sio.save_session(sid, {'user_id': user_id})
+                logger.info(f"Socket {sid} associated with room user_{user_id} and session saved")
         except Exception as e:
             logger.warning(f"Failed to authenticate socket {sid} during connect: {e}")
     return True
@@ -11838,6 +11839,100 @@ async def audio_chunk(sid, data):
     
     await sio.emit('audio_chunk', payload, to=room, skip_sid=sid)
 
+
+@sio.on('send_dm')
+async def handle_send_dm_socket(sid, data):
+    """Handle direct message sent via Socket.IO for 0ms delay real-time private chat."""
+    try:
+        session = await sio.get_session(sid)
+        user_id = session.get('user_id')
+        if not user_id:
+            return {'status': 'error', 'message': 'Unauthorized'}
+            
+        recipient_sl_id = data.get('recipient_sl_id')
+        content = data.get('content')
+        if not recipient_sl_id or not content:
+            return {'status': 'error', 'message': 'Missing recipient_sl_id or content'}
+            
+        db = await get_db()
+        sender = await db.get_document('users', user_id)
+        recipient = await db.get_user_by_sl_id(recipient_sl_id)
+        if not recipient:
+            return {'status': 'error', 'message': 'Recipient not found'}
+            
+        sender_id = sender['id']
+        recipient_id = recipient['id']
+        
+        sorted_members = sorted([sender_id, recipient_id])
+        chat_id = f"private_{'_'.join(sorted_members)}"
+        
+        chat = await db.get_document('chats', chat_id)
+        now = datetime.utcnow()
+        
+        if chat:
+            await db.update_document('chats', chat_id, {
+                'last_message': content[:100],
+                'updated_at': now
+            })
+        else:
+            chat_data = {
+                'chat_type': 'private',
+                'members': sorted_members,
+                'created_at': now,
+                'last_message': content[:100],
+                'updated_at': now,
+                'request_status': 'approved',
+                'request_by': sender_id,
+                'request_updated_at': now,
+                'request_retry_after': None,
+            }
+            await db.set_document('chats', chat_id, chat_data)
+            
+        msg_data = {
+            'sender_id': sender_id,
+            'sender_name': sender['name'],
+            'sender_photo': sender.get('photo'),
+            'text': content,
+            'content': content,
+            'status': 'delivered',
+            'read_by': [],
+            'created_at': now.isoformat() + 'Z'
+        }
+        
+        msg_id = await db.add_message_to_chat(chat_id, msg_data)
+        
+        response_msg = {
+            'id': msg_id,
+            'chat_id': chat_id,
+            'sender_id': sender_id,
+            'sender_name': sender['name'],
+            'sender_photo': sender.get('photo'),
+            'text': content,
+            'content': content,
+            'status': 'delivered',
+            'created_at': now.isoformat() + 'Z',
+            'timestamp': now.isoformat() + 'Z'
+        }
+        
+        # Emit via socket to the room
+        await sio.emit('new_dm', response_msg, room=chat_id)
+        
+        # Send push notification in background
+        try:
+            await task_queue.enqueue(
+                push_service.notify_new_dm,
+                recipient_id=recipient_id,
+                sender_name=sender['name'],
+                message_preview=content,
+                chat_id=chat_id
+            )
+        except Exception:
+            pass
+            
+        return {'status': 'success', 'message': response_msg}
+    except Exception as e:
+        logger.error(f"Socket send_dm error: {e}")
+        return {'status': 'error', 'message': str(e)}
 
 
 # =================== JAAP INVITE NOTIFICATION ===================
