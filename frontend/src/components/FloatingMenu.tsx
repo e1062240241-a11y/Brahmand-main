@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, PanResponder, Image, Dimensions, ImageBackground } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -136,8 +137,8 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                       const startAngle = -Math.PI / 2; // Start from top
                       const angle = startAngle + index * angleStep;
                       const radius = 120;
-                      const centerX = 180 - 40; // center of 360 - half of 80
-                      const centerY = 180 - 40;
+                      const centerX = 140 - 40; // center of 280 - half of 80
+                      const centerY = 140 - 40 - 12; // shift up by 12px for visual centering with text
                       const x = centerX + radius * Math.cos(angle);
                       const y = centerY + radius * Math.sin(angle);
                       
@@ -170,36 +171,36 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                             }}
                           >
                             {item.key === 'myKrishna' ? (
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} resizeMode="contain" />
                               </ImageBackground>
                             ) : item.key === 'festival' ? (
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                              <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>
                             ) : item.key === 'kundli' ? (
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/tab bar/hand_eye_phosphor.png')} style={{ width: 52, height: 52 }} resizeMode="contain" />
                               </ImageBackground>
                             ) : item.key === 'brahmandPassport' ? (
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 64, height: 64 }} resizeMode="contain" />
                               </ImageBackground>
                             ) : item.key === 'panchang' ? (
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                              <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image
                                   source={require('../../assets/images/panchang_icon_3.png')}
-                                  style={{ width: 44, height: 44 }}
+                                  style={{ width: 36, height: 36 }}
                                   resizeMode="contain"
                                 />
                               </ImageBackground>
                             ) : item.key === 'brahmandLibrary' ? (
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
                               </ImageBackground>
                             ) : item.key === 'jyotish' ? (
-                              <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 42, height: 42 }} resizeMode="contain" />
                               </ImageBackground>
                             ) : (
                               <Ionicons name={item.icon as any} size={28} color="#FFF" />
@@ -286,11 +287,11 @@ const fabStyles = StyleSheet.create({
   outerRing: { width: 360, height: 360, borderRadius: 180, backgroundColor: '#FFEEE7', justifyContent: 'center', alignItems: 'center' },
   innerCircle: { width: 280, height: 280, borderRadius: 140, backgroundColor: '#FFEEE7', position: 'relative' },
   dottedRing: { position: 'absolute', top: 40, left: 40, width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: 'rgba(255, 123, 0, 0.15)', borderStyle: 'dashed' },
-  menuItem: { position: 'absolute', width: 80, alignItems: 'center', marginLeft: -30, marginTop: -30 },
+  menuItem: { position: 'absolute', width: 80, alignItems: 'center' },
   menuItemButton: { width: 80, alignItems: 'center' },
   iconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 3 },
   menuItemLabel: { color: '#000', fontSize: 11, fontWeight: '700', textAlign: 'center', marginTop: 4, lineHeight: 13 },
-  centerButton: { position: 'absolute', left: 90, top: 90, alignItems: 'center', width: 100, height: 100 },
+  centerButton: { position: 'absolute', left: 90, top: 78, alignItems: 'center', width: 100, height: 100 },
   centerButtonInner: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 4, borderColor: '#FFF', shadowColor: '#FF3B30', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
   sosImageLarge: { width: 40, height: 40, marginBottom: 2 },
   centerLabel: { color: '#000', fontSize: 16, fontWeight: '900', letterSpacing: 1 },

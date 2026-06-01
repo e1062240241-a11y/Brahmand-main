@@ -2019,9 +2019,7 @@ export default function HomeScreen() {
                       let displayLabel = item.label;
                       let displaySubtitle = item.subtitle;
 
-                      if (item.label === 'Jyotish' && t('language') !== 'hi') {
-                        displayLabel = 'Cosmic\nGuidance';
-                      }
+
 
                       if (t('language') === 'hi') {
                         if (item.label === 'My Krishna') {

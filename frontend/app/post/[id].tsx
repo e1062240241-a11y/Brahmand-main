@@ -41,6 +41,9 @@ const PostScreen = () => {
   const [feedOffset, setFeedOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [initialPostLoaded, setInitialPostLoaded] = useState(false);
+  // Global pool of all posts loaded this session — used for recycling when all posts are seen
+  const allSessionPostsRef = useRef<any[]>([]);
+  const seenPostIdsRef = useRef<Set<string>>(new Set());
 
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const postOffsetsRef = useRef<Record<string, number>>({});
@@ -87,7 +90,9 @@ const PostScreen = () => {
         }
       }
 
-      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, 'for_you');
+      // Pass seen IDs so backend prioritises unseen content
+      const seenParam = Array.from(seenPostIdsRef.current).slice(-250).join(',');
+      const response = await getPostsFeed(FEED_PAGE_SIZE, 0, 'for_you', seenParam);
       const payload = response.data;
       let feedItems = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
 
@@ -99,19 +104,35 @@ const PostScreen = () => {
         items = feedItems;
       }
 
-      const nextHasMore = typeof payload?.has_more === 'boolean' ? payload.has_more : feedItems.length === FEED_PAGE_SIZE;
+      // Add new items to the global session pool
+      for (const p of items) {
+        if (p?.id && !allSessionPostsRef.current.find((x: any) => x.id === p.id)) {
+          allSessionPostsRef.current.push(p);
+        }
+      }
 
       if (append) {
         setFeedPosts(prev => {
           const seen = new Set(prev.map(p => String(p.id)));
           const newItems = items.filter(p => !seen.has(String(p.id)));
+
+          if (newItems.length === 0) {
+            // All returned posts already visible — recycle from session pool (shuffled)
+            const pool = allSessionPostsRef.current;
+            if (pool.length > 1) {
+              const shuffled = [...pool].sort(() => Math.random() - 0.5);
+              return [...prev, ...shuffled.filter(p => !seen.has(String(p.id))).slice(0, FEED_PAGE_SIZE * 2)];
+            }
+            return prev;
+          }
           return [...prev, ...newItems];
         });
       } else {
         setFeedPosts(items);
       }
       setFeedOffset(offset + feedItems.length);
-      setHasMore(nextHasMore);
+      // Always keep hasMore true so the feed is truly infinite via recycling
+      setHasMore(true);
     } catch (err) {
       console.warn('[Post] Failed to load feed', err);
     } finally {
@@ -336,8 +357,8 @@ const PostScreen = () => {
   }, []);
 
   const handleLoadMore = useCallback(() => {
-    if (!loadingMore && hasMore) loadFeed(feedOffset, true);
-  }, [loadingMore, hasMore, feedOffset, loadFeed]);
+    if (!loadingMore) loadFeed(feedOffset, true);
+  }, [loadingMore, feedOffset, loadFeed]);
 
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     const postKey = String(item.id || item.media_url || index);
@@ -390,8 +411,17 @@ const PostScreen = () => {
         }
       }
     }
-    setActivePostKey(prev => closestKey ?? prev);
-  }, [feedPostKeys]);
+    if (closestKey) {
+      setActivePostKey(closestKey);
+      // Find the post for this key and mark it as seen
+      const postIdx = feedPostKeys.indexOf(closestKey);
+      if (postIdx >= 0 && feedPosts[postIdx]?.id) {
+        seenPostIdsRef.current.add(String(feedPosts[postIdx].id));
+      }
+    } else {
+      setActivePostKey(prev => prev);
+    }
+  }, [feedPostKeys, feedPosts]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
