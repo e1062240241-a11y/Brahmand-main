@@ -324,9 +324,14 @@ export default function NotificationsScreen() {
     const date = new Date(dateStr);
     if (Number.isNaN(date.getTime())) return 'Earlier';
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffDays = Math.floor((startOfDay.getTime() - date.getTime()) / 86400000);
-    if (diffDays === 0) return 'Today';
+    
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfGiven = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    const diffMs = startOfToday.getTime() - startOfGiven.getTime();
+    const diffDays = Math.round(diffMs / 86400000);
+    
+    if (diffDays <= 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays <= 7) return 'This Week';
     if (diffDays <= 30) return 'This Month';

@@ -401,26 +401,11 @@ export const getSynchronizedIndex = (words: string[], elapsedSeconds: number, ma
     const totalDuration = 29.276;
     const position = elapsedSeconds % totalDuration;
     
-    // First chant
-    if (position < 2.4) return { currentIndex: 0, isHolding: false }; // Om
-    if (position < 3.1) return { currentIndex: 1, isHolding: false }; // Bhur
-    if (position < 4.0) return { currentIndex: 2, isHolding: false }; // Bhuvah (Swaha)
-    if (position < 8.45) return { currentIndex: 3, isHolding: false }; // Tat Savitur Varenyam
-    if (position < 9.75) return { currentIndex: 4, isHolding: false }; // Bhargo
-    if (position < 11.0) return { currentIndex: 5, isHolding: false }; // Devasya
-    if (position < 14.2) return { currentIndex: 6, isHolding: false }; // Dheemahi
-    if (position < 14.95) return { currentIndex: 7, isHolding: false }; // Dhiyo
-    if (position < 16.0) return { currentIndex: 8, isHolding: false }; // Yo
-    if (position < 17.0) return { currentIndex: 9, isHolding: false }; // Nah
-    if (position < 20.4) return { currentIndex: 10, isHolding: false }; // Prachodayat (first time)
+    if (position < 5.4) return { currentIndex: 0, isHolding: false }; // ॐ भूर्भुवः स्वः
+    if (position < 10.2) return { currentIndex: 1, isHolding: false }; // तत्सवितुर्वरेण्यं
+    if (position < 16.2) return { currentIndex: 2, isHolding: false }; // भर्गो देवस्य धीमहि
     
-    // Second chant repeat
-    if (position < 21.4) return { currentIndex: 7, isHolding: false }; // Dhiyo
-    if (position < 22.4) return { currentIndex: 8, isHolding: false }; // Yo
-    if (position < 23.6) return { currentIndex: 9, isHolding: false }; // Nah
-    if (position < 27.6) return { currentIndex: 10, isHolding: false }; // Prachodayat (second time)
-    
-    return { currentIndex: 10, isHolding: true }; // holding at the end
+    return { currentIndex: 3, isHolding: position >= 27.9 }; // धियो यो नः प्रचोदयात् (holds at end)
   }
 
   if (mantraType === 'shiva') {

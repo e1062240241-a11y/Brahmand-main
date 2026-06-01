@@ -15,6 +15,7 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   PanResponder,
+  Image as RNImage,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -193,11 +194,31 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     }).start();
   }, [uploadProgress]);
 
+  const getClosestAspectRatio = (width: number, height: number): '1:1' | '4:5' | '1.91:1' | '9:16' => {
+    const ratio = width / height;
+    const options = [
+      { mode: '9:16' as const, value: 9 / 16 },
+      { mode: '4:5' as const, value: 4 / 5 },
+      { mode: '1:1' as const, value: 1.0 },
+      { mode: '1.91:1' as const, value: 1.91 },
+    ];
+    let closest = options[0];
+    let minDiff = Math.abs(ratio - closest.value);
+    for (let i = 1; i < options.length; i++) {
+      const diff = Math.abs(ratio - options[i].value);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = options[i];
+      }
+    }
+    return closest.mode;
+  };
+
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
   const availableWidth = screenWidth - SPACING.lg * 2;
   const [dynamicRatio, setDynamicRatio] = useState<number>(4 / 5);
-  const [aspectRatioMode, setAspectRatioMode] = useState<'1:1' | '4:5' | '1.91:1' | '9:16' | 'original'>('original');
+  const [aspectRatioMode, setAspectRatioMode] = useState<'1:1' | '4:5' | '1.91:1' | '9:16'>('4:5');
 
   const previewVideoSource = (visible && selectedMedia?.mediaType === 'video') ? selectedMedia.uri : null;
   const previewPlayer = useSafeVideoPlayer(Platform.OS === 'web' ? null : previewVideoSource, (p) => {
@@ -217,8 +238,11 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   useEffect(() => {
     if (selectedMedia?.width && selectedMedia?.height) {
       setDynamicRatio(selectedMedia.width / selectedMedia.height);
+      const closestMode = getClosestAspectRatio(selectedMedia.width, selectedMedia.height);
+      setAspectRatioMode(closestMode);
     } else {
       setDynamicRatio(4 / 5);
+      setAspectRatioMode('4:5');
     }
   }, [selectedMedia]);
 
@@ -232,9 +256,8 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
         return 1.91;
       case '9:16':
         return 9 / 16;
-      case 'original':
       default:
-        return dynamicRatio;
+        return 4 / 5;
     }
   };
 
@@ -308,8 +331,17 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => aspectRatioModeRef.current !== 'original',
-      onMoveShouldSetPanResponder: () => aspectRatioModeRef.current !== 'original',
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
+        const currentW = imgWidthRef.current;
+        const currentH = imgHeightRef.current;
+        const currentPrevW = previewWidthRef.current;
+        const currentPrevH = previewHeightRef.current;
+        const canDrag = currentW > currentPrevW || currentH > currentPrevH;
+        return canDrag && (Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3);
+      },
       onPanResponderGrant: () => {
         setScrollEnabled(false);
         Animated.timing(gridOpacity, {
@@ -319,7 +351,6 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
         }).start();
       },
       onPanResponderMove: (evt, gestureState) => {
-        if (aspectRatioModeRef.current === 'original') return;
 
         const currentW = imgWidthRef.current;
         const currentH = imgHeightRef.current;
@@ -391,7 +422,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     setUploading(false);
     setUploadProgress(0);
     setIsCompressing(false);
-    setAspectRatioMode('original');
+    setAspectRatioMode('4:5');
     setOffsetXPercent(0.5);
     setOffsetYPercent(0.5);
     setScrollEnabled(true);
@@ -447,12 +478,36 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
       return alert('Only image files and mp4/mov videos are supported.');
     }
     const mediaType = detectMediaType(mimeType);
-    setSelectedMedia({
-      uri: file.uri,
-      mimeType,
-      mediaType,
-      name: file.name || buildFileName(file.uri, mediaType),
-    });
+    if (mediaType === 'image') {
+      RNImage.getSize(
+        file.uri,
+        (width, height) => {
+          setSelectedMedia({
+            uri: file.uri,
+            mimeType,
+            mediaType,
+            name: file.name || buildFileName(file.uri, mediaType),
+            width,
+            height,
+          });
+        },
+        () => {
+          setSelectedMedia({
+            uri: file.uri,
+            mimeType,
+            mediaType,
+            name: file.name || buildFileName(file.uri, mediaType),
+          });
+        }
+      );
+    } else {
+      setSelectedMedia({
+        uri: file.uri,
+        mimeType,
+        mediaType,
+        name: file.name || buildFileName(file.uri, mediaType),
+      });
+    }
   };
 
   const handleAssetSelected = (asset: any) => {
@@ -493,10 +548,9 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
         mediaWidth = 1080;
         mediaHeight = 1920;
         break;
-      case 'original':
       default:
-        mediaWidth = selectedMedia.width;
-        mediaHeight = selectedMedia.height;
+        mediaWidth = 1080;
+        mediaHeight = 1350;
         break;
     }
 
@@ -559,7 +613,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   };
 
   return (
-    <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={resetAndClose} presentationStyle="fullScreen">
+    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={resetAndClose}>
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           
@@ -570,15 +624,12 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             <Text style={styles.title}>{t('language') === 'hi' ? 'नई पोस्ट बनाएं' : 'Create New Post'}</Text>
             <View style={styles.iconBtn} />
           </View>
-
           <ScrollView scrollEnabled={scrollEnabled} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            
             <View style={styles.mediaContainer}>
               <View
                 style={[
                   styles.previewBox,
                   selectedMedia ? { width: previewWidth, height: previewHeight } : {},
-                  (selectedMedia && aspectRatioMode === 'original') ? { backgroundColor: '#FFFFFF' } : {},
                 ]}
               >
                 {!selectedMedia ? (
@@ -586,28 +637,17 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                     <MaterialIcons name="add-photo-alternate" size={48} color={COLORS.textSecondary} />
                     <Text style={styles.previewPlaceholder}>{t('uploadPlaceholder')}</Text>
                   </View>
-                ) : aspectRatioMode === 'original' ? (
-                  <View style={{ width: '100%', height: '100%', position: 'relative' }}>
-                    {selectedMedia.mediaType === 'image' ? (
-                       <Image source={{ uri: selectedMedia.uri }} style={[styles.previewImage, getFilterStyle(selectedFilter)]} contentFit="contain" />
-                    ) : Platform.OS === 'web' ? (
-                      <video src={selectedMedia.uri} controls style={{ width: '100%', height: '100%', objectFit: 'contain', ...getFilterStyle(selectedFilter) }} />
-                    ) : ExpoVideoModule?.VideoView && previewPlayer ? (
-                      <ExpoVideoModule.VideoView player={previewPlayer} style={styles.previewVideo} contentFit="contain" nativeControls playsInline />
-                    ) : (
-                      <View style={[styles.previewVideo, { backgroundColor: '#000' }]} />
-                    )}
-                    {Platform.OS !== 'web' && selectedFilter !== 'Normal' && (
-                      <View style={[StyleSheet.absoluteFill, getOverlayStyle(selectedFilter)]} pointerEvents="none" />
-                    )}
-                  </View>
                 ) : (
                   <View 
-                    style={{ width: '100%', height: '100%', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', position: 'relative' }}
+                    style={{ width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000', position: 'relative' }}
                     {...panResponder.panHandlers}
                   >
                     <Animated.View
+                      pointerEvents="none"
                       style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
                         width: imgWidth,
                         height: imgHeight,
                         transform: [
@@ -651,7 +691,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                   </View>
                 )}
 
-                {selectedMedia && aspectRatioMode !== 'original' && (
+                {selectedMedia && (
                   <View style={styles.dragTooltip} pointerEvents="none">
                     <Ionicons name="move" size={14} color="#FFF" />
                     <Text style={styles.dragTooltipText}>
@@ -659,8 +699,8 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
                         ? (isCroppedHorizontally 
                             ? "← फिट समायोजित करने के लिए बाएं/दाएं खींचें →" 
                             : isCroppedVertically 
-                              ? "↑ फिट समायोजित करने के लिए ऊपर/नीचे खींचें ↓" 
-                              : "फिट समायोजित करने के लिए खींचें") 
+                                ? "↑ फिट समायोजित करने के लिए ऊपर/नीचे खींचें ↓" 
+                                : "फिट समायोजित करने के लिए खींचें") 
                         : tooltipText}
                     </Text>
                   </View>
@@ -669,13 +709,6 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
               
               {selectedMedia && (
                 <View style={styles.aspectRatioContainer}>
-                  <TouchableOpacity
-                    onPress={() => setAspectRatioMode('original')}
-                    style={[styles.aspectRatioBtn, aspectRatioMode === 'original' && styles.aspectRatioBtnActive]}
-                  >
-                    <Ionicons name="image-outline" size={13} color="#fff" />
-                    <Text style={styles.aspectRatioBtnText}>{t('original')}</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode('1:1')}
                     style={[styles.aspectRatioBtn, aspectRatioMode === '1:1' && styles.aspectRatioBtnActive]}

@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
-import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment } from '../services/api';
+import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { formatTimeAgo } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
@@ -146,7 +146,10 @@ const ReelVideoItem = React.memo(({
     if (!isActive) setIsPaused(false);
   }, [isActive]);
 
-  const mediaUrl = String(localPost?.media_url || localPost?.mediaUrl || '');
+  let mediaUrl = String(localPost?.media_url || localPost?.mediaUrl || '');
+  if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
+    mediaUrl = mediaUrl.replace('http://', 'https://');
+  }
   const posterUrl = String(
     localPost?.thumbnail_url || localPost?.thumbnailUrl || localPost?.metadata?.thumbnail_url || localPost?.metadata?.thumbnailUrl || ''
   );
@@ -875,8 +878,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
 
-  // Session-level seen IDs — prevents same reel appearing twice
+  // Session-level seen IDs — prevents same reel appearing twice in the same batch
   const seenIdsRef = useRef<Set<string>>(new Set());
+  // Global pool of ALL posts ever loaded this session — used for recycling when all seen
+  const allSessionPostsRef = useRef<any[]>([]);
 
   // Watch-time tracking
   const watchStartRef = useRef<number>(Date.now());
@@ -1175,35 +1180,55 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   callbacksRef.current = { onClose, onLike, onComment, onShare };
 
   const loadMoreReels = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return;
+    if (loadingRef.current) return;
 
     setLoading(true);
+    loadingRef.current = true;
     try {
-      // Build seen_ids param (cap at 200 to keep URL sane)
-      const seenParam = Array.from(seenIdsRef.current).slice(-200).join(',');
+      const currentVideos = videosRef.current;
 
-      // Use the current number of loaded videos as the offset (minus 1 if initialPost is not from the API)
-      const offset = Math.max(0, videosRef.current.length);
-      const res = await getPostsFeed(10, offset, 'for_you', seenParam);
-      const newPosts = res.data?.items || res.data || [];
+      // Build set of all IDs currently in the queue to avoid immediate duplicates
+      const currentIds = new Set(currentVideos.map((p: any) => p.id).filter(Boolean));
 
-      if (newPosts.length === 0) {
-        setHasMore(false);
-        hasMoreRef.current = false;
-      } else {
-        setVideos(prev => {
-          const existingIds = new Set(prev.map((p: any) => p.id));
-          const uniqueNew = newPosts.filter((p: any) => !existingIds.has(p.id));
-          // Track seen IDs
-          uniqueNew.forEach((p: any) => p.id && seenIdsRef.current.add(p.id));
-          return [...prev, ...uniqueNew];
-        });
+      // Pass ALL session-seen IDs so backend prioritises truly unseen posts
+      const allSeenIds = Array.from(seenIdsRef.current).slice(-250).join(',');
+
+      const res = await getPostsFeed(20, 0, 'for_you', allSeenIds);
+      const newPosts: any[] = res.data?.items || (Array.isArray(res.data) ? res.data : []);
+
+      // Add any new posts to the global session pool
+      for (const p of newPosts) {
+        if (p?.id && !allSessionPostsRef.current.find((x: any) => x.id === p.id)) {
+          allSessionPostsRef.current.push(p);
+        }
       }
+
+      // Filter to only truly new posts not already in current queue
+      const uniqueNew = newPosts.filter((p: any) => p?.id && !currentIds.has(p.id));
+
+      if (uniqueNew.length > 0) {
+        // Great — append fresh unseen content
+        setVideos(prev => [...prev, ...uniqueNew]);
+      } else {
+        // All returned posts already queued — recycle from the full session pool
+        const pool = allSessionPostsRef.current;
+        if (pool.length > 1) {
+          // Shuffle the entire session pool and append, giving a fresh experience
+          const shuffled = [...pool].sort(() => Math.random() - 0.5);
+          setVideos(prev => [...prev, ...shuffled]);
+        } else if (currentVideos.length > 1) {
+          // Fallback: recycle what's currently queued
+          const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
+          setVideos(prev => [...prev, ...shuffled]);
+        }
+      }
+
+      // Always keep hasMore true — we recycle content so the feed is truly infinite
+      hasMoreRef.current = true;
+      setHasMore(true);
     } catch (error: any) {
       if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
         console.warn('Load more reels timed out — retrying later');
-        setHasMore(false);
-        hasMoreRef.current = false;
       } else {
         console.error('Load more reels error:', error);
       }
@@ -1217,8 +1242,13 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   useEffect(() => {
     if (isVisible) {
-      // Track initial post
-      if (initialPost?.id) seenIdsRef.current.add(initialPost.id);
+      // Reset all state for fresh session
+      seenIdsRef.current.clear();
+      allSessionPostsRef.current = [];
+      if (initialPost?.id) {
+        seenIdsRef.current.add(initialPost.id);
+        allSessionPostsRef.current.push(initialPost);
+      }
       setVideos([initialPost]);
       setActiveIndex(0);
       setHasMore(true);
@@ -1226,10 +1256,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       loadingRef.current = false;
       hasMoreRef.current = true;
       watchStartRef.current = Date.now();
-      // Increase delay to 2.5s to let the initial video load without API competition
-      setTimeout(() => loadMoreReels(), 2500);
+      // Load more after short delay so initial video starts playing first
+      setTimeout(() => loadMoreRef.current(), 1000);
     }
-  }, [isVisible, initialPost, loadMoreReels]);
+  }, [isVisible, initialPost]);
 
   // Send watch event when active reel changes
   const sendWatchEventLocal = useCallback((post: any, watchedMs: number) => {
@@ -1314,6 +1344,19 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   }).current;
 
   useEffect(() => {
+    const activePost = videos[activeIndex];
+    if (activePost?.id) {
+      markPostAsSeen(activePost.id);
+      // Track in session seen set for smarter backend querying
+      seenIdsRef.current.add(activePost.id);
+      // Add to global session pool if not already there
+      if (!allSessionPostsRef.current.find((p: any) => p.id === activePost.id)) {
+        allSessionPostsRef.current.push(activePost);
+      }
+    }
+  }, [activeIndex, videos]);
+
+  useEffect(() => {
     const nextPost = videos[activeIndex + 1];
     if (!nextPost) return;
     const nextUrl = String(nextPost?.media_url || nextPost?.mediaUrl || '');
@@ -1367,7 +1410,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             data={videos}
             renderItem={renderItem}
             extraData={{ activeIndex, isMuted }}
-            keyExtractor={(item, index) => `${item.id || index}`}
+            keyExtractor={(_, index) => `reel-${index}`}
             pagingEnabled={Platform.OS !== 'web'}
             showsVerticalScrollIndicator={false}
             onScroll={handleReelScroll}
@@ -1497,6 +1540,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 <TouchableOpacity
                                   onPress={() => {
                                     setReplyingToComment(item);
+                                    setNewCommentText(`@${item.username || 'User'} `);
                                   }}
                                 >
                                   <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>{t('language') === 'hi' ? 'जवाब दें' : 'Reply'}</Text>

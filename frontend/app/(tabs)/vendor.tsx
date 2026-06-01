@@ -24,6 +24,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance from '../../src/utils/formatDistance';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
+import { useTranslation } from '../../src/utils/i18n';
 
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore, Vendor, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
@@ -51,9 +52,128 @@ interface JobProfile {
   distance?: number;
 }
 
+const LOCAL_TRANSLATIONS = {
+  en: {
+    nearby: 'Nearby',
+    searchFor: 'Search for "',
+    all: 'All',
+    more: '+ More',
+    showLess: 'Show Less',
+    categoryPrefix: 'Category: ',
+    professionPrefix: 'Profession: ',
+    manageMyService: 'Manage My Service',
+    kycVerified: 'KYC Verified',
+    kycRejected: 'KYC Rejected',
+    verificationInReview: 'Verification In Review',
+    pendingKyc: 'Pending KYC',
+    verify: 'Verify',
+    registerYourService: 'Register Your Service',
+    createJobProfile: 'Create Job Profile',
+    updateJobProfile: 'Update Job Profile',
+    noJobsFound: 'No jobs found',
+    noServicesFound: 'No services found',
+    createJobProfileSub: 'Create a job profile to appear here.',
+    beFirstRegisterSub: 'Be the first to register in this area!',
+    preferredCityNotSet: 'Preferred city not set',
+    years: 'yrs',
+    profession: 'Profession',
+    carpenter: 'Carpenter',
+    housemaid: 'Housemaid',
+    plumber: 'Plumber',
+    electrician: 'Electrician',
+    cook: 'Cook',
+    teacher: 'Teacher',
+    painter: 'Painter',
+    beautician: 'Beautician',
+    deleteTitle: 'Delete Service Profile',
+    deleteConfirm: 'Are you sure you want to permanently delete your service business profile? This action cannot be undone.',
+    deletedTitle: 'Deleted',
+    deletedMsg: 'Your service registration was deleted successfully.',
+    unavailable: 'Unavailable',
+    cvNotAvailable: 'CV link is not available.',
+    cvOpenError: 'Could not open CV link.',
+    regCompleteTitle: 'Registration Complete',
+    regCompleteMsg: 'Your business is registered. Please complete KYC verification to make it visible and access all features.',
+    later: 'Later',
+    completeKyc: 'Complete KYC',
+    cancel: 'Cancel',
+    deletePermanently: 'Delete Permanently',
+    failedDelete: 'Failed to delete service.',
+    error: 'Error',
+    approvedTitle: 'Approved',
+    approvedMsg: 'Your business has been registered and your KYC is already verified.',
+    goDashboard: 'Go to Dashboard',
+  },
+  hi: {
+    nearby: 'आस-पास',
+    searchFor: 'खोजें "',
+    all: 'सभी',
+    more: '+ अधिक',
+    showLess: 'कम दिखाएं',
+    categoryPrefix: 'श्रेणी: ',
+    professionPrefix: 'पेशा: ',
+    manageMyService: 'मेरी सेवा प्रबंधित करें',
+    kycVerified: 'केवाईसी सत्यापित',
+    kycRejected: 'केवाईसी अस्वीकृत',
+    verificationInReview: 'सत्यापन समीक्षा में है',
+    pendingKyc: 'लंबित केवाईसी',
+    verify: 'सत्यापित करें',
+    registerYourService: 'अपनी सेवा पंजीकृत करें',
+    createJobProfile: 'नौकरी प्रोफ़ाइल बनाएं',
+    updateJobProfile: 'नौकरी प्रोफ़ाइल अपडेट करें',
+    noJobsFound: 'कोई नौकरी नहीं मिली',
+    noServicesFound: 'कोई सेवाएं नहीं मिलीं',
+    createJobProfileSub: 'यहाँ दिखने के लिए एक नौकरी प्रोफ़ाइल बनाएं।',
+    beFirstRegisterSub: 'इस क्षेत्र में पंजीकरण करने वाले पहले व्यक्ति बनें!',
+    preferredCityNotSet: 'पसंदीदा शहर सेट नहीं है',
+    years: 'वर्ष',
+    profession: 'पेशा',
+    carpenter: 'बढ़ई',
+    housemaid: 'कामवाली',
+    plumber: 'नलसाज',
+    electrician: 'बिजली मिस्त्री',
+    cook: 'रसोइया',
+    teacher: 'शिक्षक',
+    painter: 'चित्रकार',
+    beautician: 'ब्यूटीशियन',
+    deleteTitle: 'सेवा प्रोफ़ाइल हटाएं',
+    deleteConfirm: 'क्या आप वाकई अपनी सेवा व्यवसाय प्रोफ़ाइल को स्थायी रूप से हटाना चाहते हैं? इस कार्रवाई को वापस नहीं लिया जा सकता।',
+    deletedTitle: 'हटा दिया गया',
+    deletedMsg: 'आपका सेवा पंजीकरण सफलतापूर्वक हटा दिया गया था।',
+    unavailable: 'अनुपलब्ध',
+    cvNotAvailable: 'सीवी लिंक उपलब्ध नहीं है।',
+    cvOpenError: 'सीवी लिंक नहीं खोला जा सका।',
+    regCompleteTitle: 'पंजीकरण पूरा हुआ',
+    regCompleteMsg: 'आपका व्यवसाय पंजीकृत है। कृपया इसे दृश्यमान बनाने और सभी सुविधाओं का उपयोग करने के लिए केवाईसी सत्यापन पूरा करें।',
+    later: 'बाद में',
+    completeKyc: 'केवाईसी पूरा करें',
+    cancel: 'रद्द करें',
+    deletePermanently: 'स्थायी रूप से हटाएं',
+    failedDelete: 'सेवा हटाने में विफल।',
+    error: 'त्रुटि',
+    approvedTitle: 'सत्यापित',
+    approvedMsg: 'आपका व्यवसाय पंजीकृत कर दिया गया है और आपका केवाईसी पहले से ही सत्यापित है।',
+    goDashboard: 'डैशबोर्ड पर जाएं',
+  }
+};
+
 export default function VendorScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, language } = useTranslation();
+  const currentLang = (language === 'hi' || language === 'en') ? language : 'en';
+
+  const localT = (key: keyof typeof LOCAL_TRANSLATIONS.en): any => {
+    return (LOCAL_TRANSLATIONS[currentLang] as any)[key] || (LOCAL_TRANSLATIONS.en as any)[key] || key;
+  };
+
+  const getNoItemsInAreaText = (term: string) => {
+    if (currentLang === 'hi') {
+      return `आपके क्षेत्र में कोई '${term}' नहीं है।`;
+    }
+    return `No '${term}' in your area.`;
+  };
+
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const userId = user?.id;
   const [kycStatus, setKycStatus] = useState<string | null>((user as any)?.kyc_status || null);
@@ -541,11 +661,11 @@ export default function VendorScreen() {
       
       if (kycStatus === 'verified' || hasVerifiedKyc) {
         Alert.alert(
-          'Approved', 
-          'Your business has been registered and your KYC is already verified.',
+          localT('approvedTitle'), 
+          localT('approvedMsg'),
           [
             {
-              text: 'Go to Dashboard',
+              text: localT('goDashboard'),
               onPress: () => router.push('/vendor/dashboard')
             }
           ]
@@ -553,18 +673,18 @@ export default function VendorScreen() {
       } else {
         // Show KYC modal for verification
         Alert.alert(
-          'Registration Complete', 
-          'Your business is registered. Please complete KYC verification to make it visible and access all features.',
+          localT('regCompleteTitle'), 
+          localT('regCompleteMsg'),
           [
             { 
-              text: 'Later', 
+              text: localT('later'), 
               style: 'cancel',
               onPress: () => {
                 router.push('/vendor/dashboard');
               }
             },
             { 
-              text: 'Complete KYC', 
+              text: localT('completeKyc'), 
               onPress: () => {
                 router.push('/kyc');
               }
@@ -586,33 +706,33 @@ export default function VendorScreen() {
         const store = useVendorStore.getState();
         await store.deleteVendor(myVendor.id);
         if (Platform.OS === 'web') {
-          window.alert('Your service registration was deleted successfully.');
+          window.alert(localT('deletedMsg'));
         } else {
-          Alert.alert('Deleted', 'Your service registration was deleted successfully.');
+          Alert.alert(localT('deletedTitle'), localT('deletedMsg'));
         }
         await loadData();
       } catch (error: any) {
         if (Platform.OS === 'web') {
-          window.alert(error?.message || 'Failed to delete service.');
+          window.alert(error?.message || localT('failedDelete'));
         } else {
-          Alert.alert('Error', error?.message || 'Failed to delete service.');
+          Alert.alert(localT('error'), error?.message || localT('failedDelete'));
         }
       }
     };
 
     if (Platform.OS === 'web') {
-      const confirm = window.confirm('Are you sure you want to permanently delete your service business profile? This action cannot be undone.');
+      const confirm = window.confirm(localT('deleteConfirm'));
       if (confirm) {
         performDelete();
       }
     } else {
       Alert.alert(
-        'Delete Service Profile',
-        'Are you sure you want to permanently delete your service business profile? This action cannot be undone.',
+        localT('deleteTitle'),
+        localT('deleteConfirm'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: localT('cancel'), style: 'cancel' },
           {
-            text: 'Delete Permanently',
+            text: localT('deletePermanently'),
             style: 'destructive',
             onPress: performDelete
           }
@@ -679,7 +799,7 @@ export default function VendorScreen() {
             <View style={styles.categoriesRow}>
               {vendorCategories.slice(0, 2).map((cat, idx) => (
                 <View key={idx} style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText} numberOfLines={1}>{cat}</Text>
+                  <Text style={styles.categoryBadgeText} numberOfLines={1}>{localT(cat.toLowerCase() as any) || cat}</Text>
                 </View>
               ))}
               {vendorCategories.length > 2 && (
@@ -739,16 +859,18 @@ export default function VendorScreen() {
 
           <View style={styles.categoriesRow}>
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{item.profession || 'Profession'}</Text>
+              <Text style={styles.categoryBadgeText}>
+                {localT(item.profession?.toLowerCase() as any) || item.profession || localT('profession')}
+              </Text>
             </View>
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{item.experience_years || 0} yrs</Text>
+              <Text style={styles.categoryBadgeText}>{item.experience_years || 0} {localT('years')}</Text>
             </View>
           </View>
 
           <View style={styles.distanceRow}>
             <Ionicons name="location" size={12} color={COLORS.textLight} />
-            <Text style={styles.distanceText}>{item.preferred_work_city || 'Preferred city not set'}</Text>
+            <Text style={styles.distanceText}>{item.preferred_work_city || localT('preferredCityNotSet')}</Text>
           </View>
         </View>
 
@@ -764,17 +886,17 @@ export default function VendorScreen() {
               try {
                 const url = typeof item.cv_url === 'string' ? item.cv_url : '';
                 if (!url) {
-                  Alert.alert('Unavailable', 'CV link is not available.');
+                  Alert.alert(localT('unavailable'), localT('cvNotAvailable'));
                   return;
                 }
                 const canOpen = await Linking.canOpenURL(url);
                 if (!canOpen) {
-                  Alert.alert('Unavailable', 'Could not open CV link.');
+                  Alert.alert(localT('unavailable'), localT('cvOpenError'));
                   return;
                 }
                 await Linking.openURL(url);
               } catch {
-                Alert.alert('Unavailable', 'Could not open CV link.');
+                Alert.alert(localT('unavailable'), localT('cvOpenError'));
               }
             }}
           >
@@ -816,7 +938,7 @@ export default function VendorScreen() {
               }}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab}
+                {tab === 'Nearby' ? localT('nearby') : tab}
               </Text>
             </TouchableOpacity>
           ))}
@@ -841,13 +963,18 @@ export default function VendorScreen() {
           >
             {!searchTerm && (
               <View style={styles.inlinePlaceholderRow} pointerEvents="box-none">
-                <Text style={styles.inlinePlaceholderText}>Search for "</Text>
+                <Text style={styles.inlinePlaceholderText}>{localT('searchFor')}</Text>
                 <Pressable
                   onPress={handleSkillPlaceholderPress}
                   onHoverIn={() => setIsPlaceholderPaused(true)}
                   onHoverOut={() => setIsPlaceholderPaused(false)}
                 >
-                  <Text style={styles.inlinePlaceholderBold}>{typedSkillPlaceholder}</Text>
+                  <Text style={styles.inlinePlaceholderBold}>
+                    {(() => {
+                      const skillKey = typedSkillPlaceholder.toLowerCase() as any;
+                      return localT(skillKey) || typedSkillPlaceholder;
+                    })()}
+                  </Text>
                 </Pressable>
                 <Text style={styles.inlinePlaceholderText}>"</Text>
               </View>
@@ -919,7 +1046,7 @@ export default function VendorScreen() {
                 setShowCategoryFilter(false);
               }}
             >
-              <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>All</Text>
+              <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>{localT('all')}</Text>
             </TouchableOpacity>
             
             {(activeSection === 'Jobs' ? jobProfessionFilters : categories)
@@ -933,7 +1060,9 @@ export default function VendorScreen() {
                   setShowCategoryFilter(false);
                 }}
               >
-                <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
+                <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>
+                  {localT(cat.toLowerCase() as any) || cat}
+                </Text>
               </TouchableOpacity>
             ))}
             
@@ -942,7 +1071,7 @@ export default function VendorScreen() {
                 style={styles.categoryChip}
                 onPress={() => setShowExpandedCategories(true)}
               >
-                <Text style={styles.categoryChipText}>+ More</Text>
+                <Text style={styles.categoryChipText}>{localT('more')}</Text>
               </TouchableOpacity>
             )}
             
@@ -951,7 +1080,7 @@ export default function VendorScreen() {
                 style={styles.categoryChip}
                 onPress={() => setShowExpandedCategories(false)}
               >
-                <Text style={styles.categoryChipText}>Show Less</Text>
+                <Text style={styles.categoryChipText}>{localT('showLess')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -980,9 +1109,9 @@ export default function VendorScreen() {
             >
               <Text style={styles.suggestionText}>
                 {suggestion.type === 'category'
-                  ? `Category: ${suggestion.label}`
+                  ? `${localT('categoryPrefix')}${localT(suggestion.label.toLowerCase() as any) || suggestion.label}`
                   : suggestion.type === 'profession'
-                    ? `Profession: ${suggestion.label}`
+                    ? `${localT('professionPrefix')}${localT(suggestion.label.toLowerCase() as any) || suggestion.label}`
                     : suggestion.label}
               </Text>
             </TouchableOpacity>
@@ -1003,14 +1132,14 @@ export default function VendorScreen() {
               <Ionicons name="storefront" size={24} color={COLORS.primary} />
             </View>
             <View style={styles.myBusinessInfo}>
-              <Text style={styles.myBusinessLabel}>Manage My Service</Text>
+              <Text style={styles.myBusinessLabel}>{localT('manageMyService')}</Text>
               <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
               {hasVerifiedKyc ? (
                 <View style={{ marginTop: SPACING.xs }}>
                   <View style={styles.kycStatusBadge}>
                     <Ionicons name="checkmark-circle" size={12} color="#2E7D32" style={{ marginRight: SPACING.xs }} />
                     <Text style={[styles.kycStatusText, { color: '#2E7D32' }]}>
-                      KYC Verified
+                      {localT('kycVerified')}
                     </Text>
                   </View>
                 </View>
@@ -1029,10 +1158,10 @@ export default function VendorScreen() {
                         { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
                       ]}>
                         {myVendor.kyc_status === 'rejected'
-                          ? 'KYC Rejected'
+                          ? localT('kycRejected')
                           : myVendor.kyc_status === 'manual_review'
-                            ? 'Verification In Review'
-                            : 'Pending KYC'}
+                            ? localT('verificationInReview')
+                            : localT('pendingKyc')}
                       </Text>
                     </View>
                   </View>
@@ -1058,7 +1187,7 @@ export default function VendorScreen() {
                 }}
               >
                 <Text style={{ color: COLORS.surface, fontSize: 11, fontWeight: '700' }}>
-                  Verify
+                  {localT('verify')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -1088,7 +1217,7 @@ export default function VendorScreen() {
           onPress={() => setShowRegistrationModal(true)}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.registerText}>Register Your Service</Text>
+          <Text style={styles.registerText}>{localT('registerYourService')}</Text>
         </TouchableOpacity>
       )}
 
@@ -1098,7 +1227,7 @@ export default function VendorScreen() {
           onPress={() => setShowJobProfileModal(true)}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.registerText}>{myJobProfile ? 'Update Job Profile' : 'Create Job Profile'}</Text>
+          <Text style={styles.registerText}>{myJobProfile ? localT('updateJobProfile') : localT('createJobProfile')}</Text>
         </TouchableOpacity>
       )}
 
@@ -1129,12 +1258,12 @@ export default function VendorScreen() {
               <Ionicons name={activeSection === 'Jobs' ? 'briefcase-outline' : 'storefront-outline'} size={48} color={COLORS.textLight} />
               <Text style={styles.emptyText}>
                 {searchTerm
-                  ? `No '${searchTerm}' in your area.`
-                  : (activeSection === 'Jobs' ? 'No jobs found' : 'No services found')}
+                  ? getNoItemsInAreaText(searchTerm)
+                  : (activeSection === 'Jobs' ? localT('noJobsFound') : localT('noServicesFound'))}
               </Text>
               {!searchTerm && (
                 <Text style={styles.emptySubtext}>
-                  {activeSection === 'Jobs' ? 'Create a job profile to appear here.' : 'Be the first to register in this area!'}
+                  {activeSection === 'Jobs' ? localT('createJobProfileSub') : localT('beFirstRegisterSub')}
                 </Text>
               )}
             </View>

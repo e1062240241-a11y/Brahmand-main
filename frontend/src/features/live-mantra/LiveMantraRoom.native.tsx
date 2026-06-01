@@ -32,24 +32,21 @@ const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || '4f7199e5d22f4aaf93
 declare const require: any;
 
 const ROOM_NAME = 'mantra-jaap-live-room';
-const MANTRA = 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्';
-const WORDS = MANTRA.split(' ');
-
-const WORD_TIMING_MS = [
-  0,    // ॐ
-  1500, // भूर्भुवः
-  2800, // स्वः
-  4200, // तत्सवितुर्वरेण्यं
-  5800, // भर्गो
-  7200, // देवस्य
-  8800, // धीमहि
-  10200, // धियो
-  11800, // यो
-  13400, // नः
-  15200, // प्रचोदयात्
+const WORDS = [
+  'ॐ भूर्भुवः स्वः',
+  'तत्सवितुर्वरेण्यं',
+  'भर्गो देवस्य धीमहि',
+  'धियो यो नः प्रचोदयात्'
 ];
 
-const TOTAL_MANTRA_DURATION = 16500;
+const WORD_TIMING_MS = [
+  0,
+  5400,
+  10200,
+  16200,
+];
+
+const TOTAL_MANTRA_DURATION = 29276;
 
 const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
 
@@ -712,19 +709,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 205, 74, 0.14)',
   },
   mantraRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 16,
     paddingHorizontal: 16,
     zIndex: 2,
+    width: '100%',
   },
   mantraWord: {
     color: '#FFF',
-    fontSize: 40, // Slightly larger
+    fontSize: 26,
     fontWeight: '800',
-    marginHorizontal: 8,
     textAlign: 'center',
+    lineHeight: 36,
   },
   upcomingContainer: {
     position: 'absolute',

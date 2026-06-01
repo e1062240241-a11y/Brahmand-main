@@ -608,11 +608,15 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
       }
       closeAndReset();
     } catch (error: any) {
-      console.error('KYC submit error:', error);
+      console.error('[KYC] Submit error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+      });
       const backendDetail = error?.response?.data?.detail;
       const detailMessage = typeof backendDetail === 'string'
         ? backendDetail
-        : backendDetail?.message || JSON.stringify(backendDetail || '');
+        : backendDetail?.message || (backendDetail ? JSON.stringify(backendDetail) : null);
       Alert.alert('Upload Failed', detailMessage || error?.message || 'There was an issue processing your documents.');
     } finally {
       setLoading(false);
@@ -722,11 +726,18 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
       Alert.alert('Submitted', 'Aadhaar OTP verified and documents uploaded. KYC sent to admin for review.');
       closeAndReset();
     } catch (error: any) {
-      console.error('OTP Verification/Upload error:', error);
+      console.error('[KYC] OTP Verification/Upload error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        otpVerified,
+        vendorId,
+        idType,
+      });
       const backendDetail = error?.response?.data?.detail;
       const detailMessage = typeof backendDetail === 'string'
         ? backendDetail
-        : backendDetail?.message || JSON.stringify(backendDetail || '');
+        : backendDetail?.message || (backendDetail ? JSON.stringify(backendDetail) : null);
       Alert.alert(
         otpVerified ? 'Document Upload Failed' : 'OTP Verification Failed',
         detailMessage || error?.message || 'Unable to complete verification. Please try again.'
