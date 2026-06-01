@@ -146,7 +146,15 @@ def main():
 
     logger.info(f"Found {len(chapter_files)} chapter files")
 
-    # Collect all shlokas
+    # Fetch ALL existing IDs in one call (fast) — avoid per-shloka GET
+    existing_ids: set = set()
+    if existing_count > 0:
+        logger.info(f"Fetching {existing_count} existing IDs to skip duplicates...")
+        existing_result = collection.get(include=[])  # IDs only, no docs/embeddings
+        existing_ids = set(existing_result["ids"])
+        logger.info(f"Will skip {len(existing_ids)} already-uploaded shlokas")
+
+    # Collect all shlokas that need uploading
     all_ids = []
     all_texts = []
     all_metadatas = []
@@ -174,14 +182,9 @@ def main():
 
             doc_id = f"bg_{chapter}_{verse}"
 
-            # Skip if already in DB
-            if existing_count > 0:
-                try:
-                    existing = collection.get(ids=[doc_id])
-                    if existing["ids"]:
-                        continue
-                except Exception:
-                    pass
+            # Skip if already in DB (O(1) set lookup instead of per-doc GET)
+            if doc_id in existing_ids:
+                continue
 
             # Document text = translation (what we embed and what gets returned)
             all_ids.append(doc_id)
