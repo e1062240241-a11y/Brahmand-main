@@ -5076,18 +5076,56 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     if not comm:
         raise HTTPException(status_code=404, detail="Community not found")
         
-    # Populate owner name
+    # Build complete members_details array for frontend
+    members_details = []
+    
+    # 1. Fetch owner
     if comm.get('owner_id'):
         owner = await db.get_document('users', comm['owner_id'])
         if owner:
             comm['owner_name'] = owner.get('name', 'Community Owner')
+            members_details.append({
+                'id': comm['owner_id'],
+                'name': owner.get('name', 'Community Owner'),
+                'photo': owner.get('photo', ''),
+                'role': 'Owner'
+            })
             
-    # Populate admin names
+    # 2. Fetch admins
     admin_ids = comm.get('admin_ids', [])
     if admin_ids:
         admins = await db.get_documents_batch('users', admin_ids)
         comm['admin_names'] = [a.get('name', 'Admin') for a in admins if a]
-        
+        for idx, admin_doc in enumerate(admins):
+            if admin_doc:
+                members_details.append({
+                    'id': admin_ids[idx],
+                    'name': admin_doc.get('name', 'Admin'),
+                    'photo': admin_doc.get('photo', ''),
+                    'role': 'Admin'
+                })
+                
+    # 3. Fetch regular members (support both 'members' and 'member_ids' fields)
+    member_ids = comm.get('members', comm.get('member_ids', []))
+    if member_ids:
+        members = await db.get_documents_batch('users', member_ids)
+        comm['member_names'] = [m.get('name', 'Member') for m in members if m]
+        for idx, member_doc in enumerate(members):
+            if member_doc:
+                members_details.append({
+                    'id': member_ids[idx],
+                    'name': member_doc.get('name', 'Member'),
+                    'photo': member_doc.get('photo', ''),
+                    'role': 'Member'
+                })
+                
+    comm['members_details'] = members_details
+    
+    # Also fix members count if mismatched
+    actual_count = len(members_details)
+    if not comm.get('member_count') and not comm.get('members_count'):
+        comm['members_count'] = actual_count
+    
     return comm
 
 
@@ -7680,62 +7718,36 @@ Every reply should feel:
 
         contents = []
         # Prepend system instruction for Gemma
-        contents.append(
-            types.Content(
-                role="user",
-                parts=[types.Part.from_text(text=f"System Instruction:\n{final_system_prompt}")]
-            )
-        )
-        contents.append(
-            types.Content(
-                role="model",
-                parts=[types.Part.from_text(text="Understood. I will follow those instructions and act as Lord Krishna.")]
-            )
-        )
+        combined_messages = []
+        combined_messages.append({"role": "user", "content": f"System Instruction:\n{final_system_prompt}"})
+        combined_messages.append({"role": "model", "content": "Understood. I will follow those instructions and act as Lord Krishna."})
 
+        # Filter out system messages and flatten
         for msg in messages:
             role = msg.get("role")
             if role == "system":
                 continue
             gemini_role = "user" if role == "user" else "model"
+            content = msg.get("content", "")
+            
+            # Combine consecutive messages with the same role
+            if combined_messages and combined_messages[-1]["role"] == gemini_role:
+                combined_messages[-1]["content"] += f"\n\n{content}"
+            else:
+                combined_messages.append({"role": gemini_role, "content": content})
+
+        for msg in combined_messages:
             contents.append(
                 types.Content(
-                    role=gemini_role,
-                    parts=[types.Part.from_text(text=msg.get("content", ""))]
+                    role=msg["role"],
+                    parts=[types.Part.from_text(text=msg["content"])]
                 )
             )
 
-        safety_settings = [
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-        ]
-
-        tools = [
-            types.Tool(googleSearch=types.GoogleSearch()),
-        ]
-
         config = types.GenerateContentConfig(
-            safety_settings=safety_settings,
-            thinking_config=types.ThinkingConfig(
-                thinking_level="MINIMAL",
-            ),
-            tools=tools,
             temperature=0.7,
             max_output_tokens=2048,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
         response = client.models.generate_content(

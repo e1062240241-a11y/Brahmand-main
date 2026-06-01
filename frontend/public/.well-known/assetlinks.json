@@ -1,12 +1,14 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.brahmand.app",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_YOUR_PLAY_STORE_SHA256_FINGERPRINT",
-        "REPLACE_WITH_YOUR_UPLOAD_KEY_SHA256_FINGERPRINT"
+        "D8:93:AC:31:7C:9A:27:49:08:B7:09:7B:4A:60:53:93:CB:F5:B0:BD:3E:E0:A6:E2:D6:D9:B3:FC:A3:CB:3C:87",
+        "3F:D9:CB:A1:1F:D5:92:C9:3A:44:CA:E2:BC:8E:D3:97:D8:09:E5:16:01:5F:D1:A7:21:92:D1:D1:EE:72:EA:62"
       ]
     }
   }
