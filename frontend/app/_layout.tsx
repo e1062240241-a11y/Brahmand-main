@@ -21,6 +21,7 @@ import { Alert as RNAlert } from 'react-native';
 import { syncDatabase } from '../src/database/sync';
 import { GlobalFAB } from '../src/components/GlobalFAB';
 import { initSyncQueueListener } from '../src/services/syncQueueService';
+import { socketService } from '../src/services/socket';
 
 import { originalAlert } from '../src/utils/nativeAlert';
 
@@ -556,6 +557,39 @@ export default function RootLayout() {
         .catch((err) => console.warn('[Sync] WatermelonDB sync failed on startup:', err));
     }
   }, [isLoading, isAuthenticated, token]);
+
+  // Connect/disconnect Socket.IO globally and handle real-time notifications
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && token) {
+      console.log('[Socket] Connecting globally...');
+      socketService.connect().catch((err) => {
+        console.warn('[Socket] Global connection failed:', err);
+      });
+
+      const handleNewNotification = (notification: any) => {
+        console.log('[Socket] Received real-time notification:', notification);
+        try {
+          const { unreadCount, setUnreadCount } = useNotificationStore.getState();
+          setUnreadCount(unreadCount + 1);
+          
+          if (pathname !== '/notifications' && pathname !== '/(tabs)/notifications') {
+            toast.show(notification.title || 'New Notification', 'info');
+          }
+        } catch (e) {
+          console.warn('[Socket] Failed to process real-time notification:', e);
+        }
+      };
+
+      socketService.onEvent('new_notification', handleNewNotification);
+
+      return () => {
+        socketService.offEvent('new_notification', handleNewNotification);
+      };
+    } else if (!isLoading && !isAuthenticated) {
+      console.log('[Socket] Disconnecting globally...');
+      socketService.disconnect();
+    }
+  }, [isLoading, isAuthenticated, token, pathname]);
 
 
   if (isLoading || !fontsLoaded) {

@@ -65,9 +65,29 @@ const FestivalDetailPage = () => {
       setReminderEnabled(enabled);
 
       if (enabled) {
-        // In a real production app, we would parse the festival date string (e.g., "October 20, 2024")
-        // and calculate the exact trigger time for 24 hours prior.
-        // For this implementation, we schedule a high-priority local notification.
+        // Calculate reminder time: 1 day (24 hours) before the festival at 9:00 AM local time
+        const festDateStr = festival.date; // format: "YYYY-MM-DD"
+        const festivalDate = new Date(`${festDateStr}T09:00:00`);
+        const triggerDate = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
+        
+        const now = new Date();
+        let triggerInput: any;
+        let alertMessage = `You will be notified 1 day before the festival at 9:00 AM!`;
+
+        if (triggerDate.getTime() <= now.getTime()) {
+          // Fallback: If the festival is in less than 24 hours (or today), trigger reminder in 5 seconds
+          triggerInput = {
+            seconds: 5,
+            channelId: 'default',
+          };
+          alertMessage = `Since the festival is tomorrow or today, you will receive a test notification in 5 seconds!`;
+        } else {
+          triggerInput = {
+            date: triggerDate,
+            channelId: 'default',
+          };
+        }
+
         await Notifications.scheduleNotificationAsync({
           content: {
             title: `🪔 Festival Tomorrow: ${festival.name || festival.festival_name}`,
@@ -75,12 +95,10 @@ const FestivalDetailPage = () => {
             sound: 'bell.mp3',
             priority: Notifications.AndroidNotificationPriority.HIGH,
           },
-          trigger: {
-            seconds: 60, // For testing purposes, set to 1 minute. Replace with actual calculated timestamp.
-            channelId: 'default',
-          },
+          trigger: triggerInput,
         });
-        Alert.alert('Reminder Set', 'You will be notified 1 day before the festival!');
+        
+        Alert.alert('Reminder Set', alertMessage);
       } else {
         await Notifications.cancelAllScheduledNotificationsAsync();
         Alert.alert('Reminder Removed', 'Notification for this festival has been cancelled.');
