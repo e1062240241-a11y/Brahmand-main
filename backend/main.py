@@ -602,19 +602,19 @@ async def _notify_mentioned_users(
             })
             logger.info('Mention notification created for %s by %s', target_user_id, actor_id)
 
-            target_token = await push_service.get_user_fcm_token(target_user_id)
-            if target_token:
-                push_service.send_notification(
-                    token=target_token,
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=target_user_id,
                     title=title,
                     body=body,
                     data={
                         'type': 'mention',
                         **notification_data,
-                    },
-                    channel_id='messages',
+                    }
                 )
                 logger.info('Mention push sent to %s', target_user_id)
+            except Exception as push_err:
+                logger.warning('Failed to send mention push to %s: %s', target_user_id, push_err)
         except Exception as err:
             logger.warning('Failed to create mention notification for %s: %s', target_user_id, err)
 
@@ -3539,6 +3539,117 @@ async def delete_post(post_id: str, token_data: dict = Depends(verify_token)):
     }
 
 
+async def _send_comment_notifications_background(
+    post_id: str,
+    comment_id: str,
+    parent_id: Optional[str],
+    user_id: str,
+    text: str,
+    comment_doc: dict,
+    parent_comment: Optional[dict],
+    post: dict,
+    user: dict,
+):
+    try:
+        db = await get_db()
+        # 1. Notify the author of the parent comment if this is a reply
+        if parent_comment:
+            parent_owner_id = parent_comment.get('user_id')
+            if parent_owner_id and parent_owner_id != user_id:
+                actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
+                preview_text = text if len(text) <= 80 else f"{text[:77]}..."
+
+                await db.create_document('notifications', {
+                    'user_id': parent_owner_id,
+                    'title': 'New reply to your comment',
+                    'body': f'{actor_name} replied: "{preview_text}"',
+                    'notification_type': 'social',
+                    'data': {
+                        'post_id': str(post_id),
+                        'comment_id': str(comment_id),
+                        'parent_id': str(parent_id),
+                        'actor_user_id': str(user_id),
+                        'actor_name': actor_name,
+                        'action': 'reply',
+                    },
+                    'is_read': False,
+                    'created_at': datetime.utcnow().isoformat() + 'Z',
+                })
+                logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
+
+                try:
+                    await FirebaseNotificationService.send_push_notification(
+                        user_id=parent_owner_id,
+                        title='New reply to your comment',
+                        body=f'{actor_name} replied: "{preview_text}"',
+                        data={
+                            'type': 'post_comment_reply',
+                            'post_id': str(post_id),
+                            'comment_id': str(comment_id),
+                            'parent_id': str(parent_id),
+                            'actor_user_id': str(user_id),
+                        }
+                    )
+                    logger.info(f"Reply push sent to comment owner {parent_owner_id} for comment {parent_id}")
+                except Exception as push_err:
+                    logger.warning(f"Failed to send reply push notification to {parent_owner_id}: {push_err}")
+
+        # 2. Notify the post owner if they are not the replier and haven't already been notified as the parent owner
+        post_owner_id = post.get('user_id')
+        if post_owner_id and post_owner_id != user_id and post_owner_id != (parent_comment.get('user_id') if parent_comment else None):
+            actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
+            preview_text = text if len(text) <= 80 else f"{text[:77]}..."
+
+            await db.create_document('notifications', {
+                'user_id': post_owner_id,
+                'title': 'New comment on your post',
+                'body': f'{actor_name} commented: "{preview_text}"',
+                'notification_type': 'social',
+                'data': {
+                    'post_id': str(post_id),
+                    'comment_id': str(comment_id),
+                    'actor_user_id': str(user_id),
+                    'actor_name': actor_name,
+                    'action': 'comment',
+                },
+                'is_read': False,
+                'created_at': datetime.utcnow().isoformat() + 'Z',
+            })
+            logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
+
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=post_owner_id,
+                    title='New comment on your post',
+                    body=f'{actor_name} commented: "{preview_text}"',
+                    data={
+                        'type': 'post_comment',
+                        'post_id': str(post_id),
+                        'comment_id': str(comment_id),
+                        'actor_user_id': str(user_id),
+                    }
+                )
+                logger.info(f"Comment push sent to post owner {post_owner_id} for post {post_id}")
+            except Exception as push_err:
+                logger.warning(f"Failed to send comment push notification to {post_owner_id}: {push_err}")
+
+        # 3. Mentions
+        try:
+            await _notify_mentioned_users(
+                db=db,
+                text=text,
+                actor_user=user,
+                context_type='comment',
+                context_data={'post_id': post_id, 'comment_id': comment_id},
+                skip_user_ids=[post_owner_id] if post_owner_id else None,
+            )
+        except Exception as mention_err:
+            logger.warning('Comment mention notification failed for post %s: %s', post_id, mention_err)
+
+    except Exception as e:
+        logger.exception("Failed to send comment activity notifications in background: %s", e)
+
+
 @api_router.post('/posts/{post_id}/comments')
 async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3629,106 +3740,20 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
     updated_post['top_comments'] = top_comments_raw[:5]
 
-    # 1. Notify the author of the parent comment if this is a reply
-    if parent_comment:
-        parent_owner_id = parent_comment.get('user_id')
-        if parent_owner_id and parent_owner_id != user_id:
-            try:
-                actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
-                preview_text = text if len(text) <= 80 else f"{text[:77]}..."
-
-                await db.create_document('notifications', {
-                    'user_id': parent_owner_id,
-                    'title': 'New reply to your comment',
-                    'body': f'{actor_name} replied: "{preview_text}"',
-                    'notification_type': 'social',
-                    'data': {
-                        'post_id': str(post_id),
-                        'comment_id': str(comment_id),
-                        'parent_id': str(parent_id),
-                        'actor_user_id': str(user_id),
-                        'actor_name': actor_name,
-                        'action': 'reply',
-                    },
-                    'is_read': False,
-                    'created_at': datetime.utcnow().isoformat() + 'Z',
-                })
-                logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
-
-                parent_owner_token = await push_service.get_user_fcm_token(parent_owner_id)
-                if parent_owner_token:
-                    push_service.send_notification(
-                        token=parent_owner_token,
-                        title='New reply to your comment',
-                        body=f'{actor_name} replied: "{preview_text}"',
-                        data={
-                            'type': 'post_comment_reply',
-                            'post_id': str(post_id),
-                            'comment_id': str(comment_id),
-                            'parent_id': str(parent_id),
-                            'actor_user_id': str(user_id),
-                        },
-                        channel_id='messages'
-                    )
-                    logger.info(f"Reply push sent to comment owner {parent_owner_id} for comment {parent_id}")
-            except Exception as reply_notify_err:
-                logger.warning(f"Parent comment reply notification failed: {reply_notify_err}")
-
-    # 2. Notify the post owner if they are not the replier and haven't already been notified as the parent owner
-    post_owner_id = post.get('user_id')
-    if post_owner_id and post_owner_id != user_id and post_owner_id != (parent_comment.get('user_id') if parent_comment else None):
-        try:
-            actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
-            preview_text = text if len(text) <= 80 else f"{text[:77]}..."
-
-            await db.create_document('notifications', {
-                'user_id': post_owner_id,
-                'title': 'New comment on your post',
-                'body': f'{actor_name} commented: "{preview_text}"',
-                'notification_type': 'social',
-                'data': {
-                    'post_id': str(post_id),
-                    'comment_id': str(comment_id),
-                    'actor_user_id': str(user_id),
-                    'actor_name': actor_name,
-                    'action': 'comment',
-                },
-                'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z',
-            })
-            logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
-
-            post_owner_token = await push_service.get_user_fcm_token(post_owner_id)
-            if post_owner_token:
-                push_service.send_notification(
-                    token=post_owner_token,
-                    title='New comment on your post',
-                    body=f'{actor_name} commented: "{preview_text}"',
-                    data={
-                        'type': 'post_comment',
-                        'post_id': str(post_id),
-                        'comment_id': str(comment_id),
-                        'actor_user_id': str(user_id),
-                    },
-                    channel_id='messages'
-                )
-                logger.info(f"Comment push sent to post owner {post_owner_id} for post {post_id}")
-            else:
-                logger.info(f"Comment notification created for post {post_id} but no FCM token found for owner {post_owner_id}")
-        except Exception as notify_err:
-            logger.warning(f"Post comment notification failed for post {post_id}: {notify_err}")
-
-    try:
-        await _notify_mentioned_users(
-            db=db,
+    # Send all notifications (replies, comments, mentions) in the background asynchronously
+    asyncio.create_task(
+        _send_comment_notifications_background(
+            post_id=post_id,
+            comment_id=comment_id,
+            parent_id=parent_id,
+            user_id=user_id,
             text=text,
-            actor_user=user,
-            context_type='comment',
-            context_data={'post_id': post_id, 'comment_id': comment_id},
-            skip_user_ids=[post_owner_id] if post_owner_id else None,
+            comment_doc=comment_doc,
+            parent_comment=parent_comment,
+            post=post,
+            user=user,
         )
-    except Exception as mention_err:
-        logger.warning('Comment mention notification failed for post %s: %s', post_id, mention_err)
+    )
 
     return {
         'message': 'Comment added',
@@ -5062,18 +5087,56 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     if not comm:
         raise HTTPException(status_code=404, detail="Community not found")
         
-    # Populate owner name
+    # Build complete members_details array for frontend
+    members_details = []
+    
+    # 1. Fetch owner
     if comm.get('owner_id'):
         owner = await db.get_document('users', comm['owner_id'])
         if owner:
             comm['owner_name'] = owner.get('name', 'Community Owner')
+            members_details.append({
+                'id': comm['owner_id'],
+                'name': owner.get('name', 'Community Owner'),
+                'photo': owner.get('photo', ''),
+                'role': 'Owner'
+            })
             
-    # Populate admin names
+    # 2. Fetch admins
     admin_ids = comm.get('admin_ids', [])
     if admin_ids:
         admins = await db.get_documents_batch('users', admin_ids)
         comm['admin_names'] = [a.get('name', 'Admin') for a in admins if a]
-        
+        for idx, admin_doc in enumerate(admins):
+            if admin_doc:
+                members_details.append({
+                    'id': admin_ids[idx],
+                    'name': admin_doc.get('name', 'Admin'),
+                    'photo': admin_doc.get('photo', ''),
+                    'role': 'Admin'
+                })
+                
+    # 3. Fetch regular members (support both 'members' and 'member_ids' fields)
+    member_ids = comm.get('members', comm.get('member_ids', []))
+    if member_ids:
+        members = await db.get_documents_batch('users', member_ids)
+        comm['member_names'] = [m.get('name', 'Member') for m in members if m]
+        for idx, member_doc in enumerate(members):
+            if member_doc:
+                members_details.append({
+                    'id': member_ids[idx],
+                    'name': member_doc.get('name', 'Member'),
+                    'photo': member_doc.get('photo', ''),
+                    'role': 'Member'
+                })
+                
+    comm['members_details'] = members_details
+    
+    # Also fix members count if mismatched
+    actual_count = len(members_details)
+    if not comm.get('member_count') and not comm.get('members_count'):
+        comm['members_count'] = actual_count
+    
     return comm
 
 
@@ -7666,62 +7729,36 @@ Every reply should feel:
 
         contents = []
         # Prepend system instruction for Gemma
-        contents.append(
-            types.Content(
-                role="user",
-                parts=[types.Part.from_text(text=f"System Instruction:\n{final_system_prompt}")]
-            )
-        )
-        contents.append(
-            types.Content(
-                role="model",
-                parts=[types.Part.from_text(text="Understood. I will follow those instructions and act as Lord Krishna.")]
-            )
-        )
+        combined_messages = []
+        combined_messages.append({"role": "user", "content": f"System Instruction:\n{final_system_prompt}"})
+        combined_messages.append({"role": "model", "content": "Understood. I will follow those instructions and act as Lord Krishna."})
 
+        # Filter out system messages and flatten
         for msg in messages:
             role = msg.get("role")
             if role == "system":
                 continue
             gemini_role = "user" if role == "user" else "model"
+            content = msg.get("content", "")
+            
+            # Combine consecutive messages with the same role
+            if combined_messages and combined_messages[-1]["role"] == gemini_role:
+                combined_messages[-1]["content"] += f"\n\n{content}"
+            else:
+                combined_messages.append({"role": gemini_role, "content": content})
+
+        for msg in combined_messages:
             contents.append(
                 types.Content(
-                    role=gemini_role,
-                    parts=[types.Part.from_text(text=msg.get("content", ""))]
+                    role=msg["role"],
+                    parts=[types.Part.from_text(text=msg["content"])]
                 )
             )
 
-        safety_settings = [
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-        ]
-
-        tools = [
-            types.Tool(googleSearch=types.GoogleSearch()),
-        ]
-
         config = types.GenerateContentConfig(
-            safety_settings=safety_settings,
-            thinking_config=types.ThinkingConfig(
-                thinking_level="MINIMAL",
-            ),
-            tools=tools,
             temperature=0.7,
             max_output_tokens=2048,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
         response = client.models.generate_content(

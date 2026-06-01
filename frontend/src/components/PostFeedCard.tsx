@@ -173,13 +173,20 @@ export const PostFeedCard = memo(({
     const translateX = maxDragX > 0 ? -targetCropX * maxDragX : 0;
     const translateY = maxDragY > 0 ? -targetCropY * maxDragY : 0;
 
+    const transformStyle = Platform.OS === 'web'
+      ? `translateX(${translateX}px) translateY(${translateY}px)`
+      : [
+          { translateX },
+          { translateY }
+        ];
+
     return {
+      position: 'absolute' as const,
+      left: 0,
+      top: 0,
       width: imgWidth,
       height: imgHeight,
-      transform: [
-        { translateX },
-        { translateY }
-      ]
+      transform: transformStyle as any
     };
   }, [post, displayRatio, feedHeight]);
 
@@ -757,7 +764,7 @@ const styles = StyleSheet.create({
   dropdownItem: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
   dropdownText: { color: '#000000', fontSize: 13, fontWeight: '700' },
   dropdownDangerText: { color: COLORS.error },
-  mediaWrap: { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  mediaWrap: { backgroundColor: '#000', overflow: 'hidden', position: 'relative' },
   videoContainer: { width: '100%', height: '100%', position: 'relative' },
   videoBackground: { width: '100%', height: '100%' },
   videoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },

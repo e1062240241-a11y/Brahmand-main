@@ -774,7 +774,11 @@ const UserProfileScreen = () => {
       </Modal>
 
       {/* Post Detail Modal */}
-      <Modal visible={postModalVisible} animationType="slide">
+      <Modal 
+        visible={postModalVisible} 
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
         <View style={styles.postDetailContainer}>
           <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
@@ -1212,7 +1216,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#333',
-    marginTop: Platform.OS === 'ios' ? 40 : 0,
   },
   postDetailTitle: {
     fontSize: 18,

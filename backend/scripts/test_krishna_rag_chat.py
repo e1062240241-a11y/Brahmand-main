@@ -127,16 +127,8 @@ Speak directly to the user's issue, naturally weaving the reference (e.g., "Gita
             ),
         ]
 
-        tools = [
-            genai_types.Tool(googleSearch=genai_types.GoogleSearch()),
-        ]
-
         config = genai_types.GenerateContentConfig(
             safety_settings=safety_settings,
-            thinking_config=genai_types.ThinkingConfig(
-                thinking_level="MINIMAL",
-            ),
-            tools=tools,
             temperature=0.7,
             max_output_tokens=2048,
         )

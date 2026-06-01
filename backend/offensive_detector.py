@@ -222,46 +222,15 @@ def is_offensive(
     skip_regex: bool = False
 ) -> Dict[str, Any]:
     """
-    Main function to check offensive content.
-    
-    Args:
-        text: Message to check
-        use_hybrid: If True, use regex first, then ML for doubtful cases
-        ml_threshold: Threshold for ML model (0-1)
-        skip_regex: Skip regex check (for testing)
-    
-    Returns:
-        {
-            'offensive': bool,
-            'method': 'regex' | 'ml' | 'hybrid',
-            'reason': str,
-            'confidence': float,
-            'categories': dict
-        }
+    Main function to check offensive content (Globally disabled).
     """
-    if not text or not text.strip():
-        return {
-            'offensive': False,
-            'method': 'none',
-            'reason': 'Empty message',
-            'confidence': 0.0,
-            'categories': {}
-        }
-    
-    if use_hybrid:
-        # Step 1: Fast regex check first
-        if not skip_regex:
-            regex_result = regex_check(text)
-            if regex_result['offensive']:
-                return regex_result
-        
-        # Step 2: ML check for doubtful cases
-        ml_result = ml_check(text, ml_threshold)
-        return ml_result
-    
-    else:
-        # Direct ML check only
-        return ml_check(text, ml_threshold)
+    return {
+        'offensive': False,
+        'method': 'none',
+        'reason': None,
+        'confidence': 0.0,
+        'categories': {}
+    }
 
 
 def is_text_safe(text: str, auto_censor: bool = False) -> Dict[str, Any]:

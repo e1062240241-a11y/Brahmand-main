@@ -307,6 +307,8 @@ PODS:
     - React-Core
     - React-runtimescheduler
     - ReactCommon
+  - ExpoNetwork (55.0.14):
+    - ExpoModulesCore
   - ExpoNotifications (55.0.22):
     - ExpoModulesCore
   - ExpoRouter (55.0.13):
@@ -325,6 +327,8 @@ PODS:
   - ExpoSystemUI (55.0.16):
     - ExpoModulesCore
   - ExpoTextRecognition (0.1.1):
+    - ExpoModulesCore
+  - ExpoTrackingTransparency (55.0.14):
     - ExpoModulesCore
   - ExpoVideo (55.0.17):
     - ExpoModulesCore
@@ -3679,6 +3683,7 @@ DEPENDENCIES:
   - ExpoMediaLibrary (from `../node_modules/expo-media-library/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
+  - ExpoNetwork (from `../node_modules/expo-network/ios`)
   - ExpoNotifications (from `../node_modules/expo-notifications/ios`)
   - ExpoRouter (from `../node_modules/expo-router/ios`)
   - ExpoSecureStore (from `../node_modules/expo-secure-store/ios`)
@@ -3688,6 +3693,7 @@ DEPENDENCIES:
   - ExpoSymbols (from `../node_modules/expo-symbols/ios`)
   - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
   - ExpoTextRecognition (from `../node_modules/expo-text-recognition/ios`)
+  - ExpoTrackingTransparency (from `../node_modules/expo-tracking-transparency/ios`)
   - ExpoVideo (from `../node_modules/expo-video/ios`)
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
@@ -3886,6 +3892,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   ExpoModulesJSI:
     :path: "../node_modules/expo-modules-core"
+  ExpoNetwork:
+    :path: "../node_modules/expo-network/ios"
   ExpoNotifications:
     :path: "../node_modules/expo-notifications/ios"
   ExpoRouter:
@@ -3904,6 +3912,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-system-ui/ios"
   ExpoTextRecognition:
     :path: "../node_modules/expo-text-recognition/ios"
+  ExpoTrackingTransparency:
+    :path: "../node_modules/expo-tracking-transparency/ios"
   ExpoVideo:
     :path: "../node_modules/expo-video/ios"
   ExpoWebBrowser:
@@ -4136,6 +4146,7 @@ SPEC CHECKSUMS:
   ExpoMediaLibrary: 968a787ea00b58a35a4336e2cf725f7972b4b356
   ExpoModulesCore: 060a8269ca6d392eebb8d6be661566811d2381a8
   ExpoModulesJSI: 4f6e665f2801be06fecf7a912946ed33d64d15fc
+  ExpoNetwork: 07e4f287bcf4df56f62021332c571beeb1791ea6
   ExpoNotifications: b37f0275df4aa42f29b9f72b65a3ae091168eef2
   ExpoRouter: 73e97e4468c4435576be4c4b72ff4b5276854a1a
   ExpoSecureStore: 49c8b5e467e359051eee6fb67a8988f93476df2b
@@ -4145,6 +4156,7 @@ SPEC CHECKSUMS:
   ExpoSymbols: 9dfd60e35b2fafb284adefaefe1c6d757e331708
   ExpoSystemUI: 179b6f2b3bd151499e17115339ee047eaba636c3
   ExpoTextRecognition: 6ffb8c17847739a70c4c6f5ae728f090ae79b632
+  ExpoTrackingTransparency: dd1a8a79f2ce277569cfcc5adac6fcec1a9c6e09
   ExpoVideo: ea84566ae0ad3766b3fd7266529febafd80ebc38
   ExpoWebBrowser: 0f4255b795de0eca7e0337de591c3d1c20efbdf0
   EXUpdatesInterface: 33cfb4116f9ddd0ee1732484248495d4fece9744

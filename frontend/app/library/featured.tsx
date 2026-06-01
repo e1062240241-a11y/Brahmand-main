@@ -82,7 +82,7 @@ export default function SacredScriptures() {
             
             <TouchableOpacity 
               style={styles.startReadingBtn}
-              onPress={() => router.push('/library/continue-reading' as any)}
+              onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
             >
               <Text style={styles.startReadingText}>Start Reading</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />

@@ -162,37 +162,10 @@ class GroqService:
     def _create_chat_completion(self, system_content: str, user_content: str, max_completion_tokens: int = 300) -> str:
         from google.genai import types
 
-        safety_settings = [
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-            ),
-        ]
-
-        tools = [
-            types.Tool(googleSearch=types.GoogleSearch()),
-        ]
-
         config = types.GenerateContentConfig(
-            safety_settings=safety_settings,
-            thinking_config=types.ThinkingConfig(
-                thinking_level="MINIMAL",
-            ),
-            tools=tools,
             temperature=0.38,
             max_output_tokens=2048,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
         contents = [
