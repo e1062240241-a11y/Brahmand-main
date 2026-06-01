@@ -4716,6 +4716,9 @@ async def get_communities(token_data: dict = Depends(verify_token)):
 class CommunityRequestResponse(BaseModel):
     status: str
 
+class ResendInviteRequest(BaseModel):
+    user_id: str
+
 @api_router.post("/communities")
 async def create_community(
     data: CommunityCreate,
@@ -5087,6 +5090,87 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
         return result
     except Exception as e:
         logger.error(f"Error fetching my creation requests: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/communities/requests/{request_id}/resend-invite")
+async def resend_community_invite(
+    request_id: str,
+    data: ResendInviteRequest,
+    token_data: dict = Depends(verify_token)
+):
+    """Resend a pending community creation invite notification to a user"""
+    try:
+        db = await get_db()
+        owner_id = token_data["user_id"]
+        target_user_id = data.user_id
+
+        # 1. Fetch the request
+        request_doc = await db.get_document('community_creation_requests', request_id)
+        if not request_doc:
+            raise HTTPException(status_code=404, detail="Community creation request not found")
+
+        # 2. Check owner permission
+        if request_doc.get('owner_id') != owner_id:
+            raise HTTPException(status_code=403, detail="Only the community creator can resend invitations.")
+
+        # 3. Check request is pending
+        if request_doc.get('status') != 'pending':
+            raise HTTPException(status_code=400, detail=f"Request is already {request_doc.get('status')}")
+
+        admin_ids = request_doc.get('admin_ids', [])
+        member_ids = request_doc.get('member_ids', [])
+        invited_users = admin_ids + member_ids
+
+        # 4. Check target user is invited
+        if target_user_id not in invited_users:
+            raise HTTPException(status_code=404, detail="User is not invited to this community group creation request.")
+
+        # 5. Check if the user has already responded (status must be pending)
+        responses = request_doc.get('responses', {})
+        if responses.get(target_user_id, 'pending') != 'pending':
+            raise HTTPException(status_code=400, detail=f"User has already responded: {responses.get(target_user_id)}")
+
+        # 6. Fetch owner name
+        owner_user = await db.get_document('users', owner_id)
+        owner_name = owner_user.get('name') or "A user"
+        comm_name = request_doc.get('name', 'Community')
+        
+        role = "admin" if target_user_id in admin_ids else "member"
+
+        # 7. Create notification in DB
+        await db.create_document('notifications', {
+            "user_id": target_user_id,
+            "title": "Community Group Invitation",
+            "body": f"{owner_name} has invited you as an {role.upper()} to help create the community group '{comm_name}'.",
+            "type": "community_creation_invite",
+            "data": {
+                "request_id": request_id,
+                "community_name": comm_name,
+                "role": role,
+                "owner_name": owner_name
+            },
+            "is_read": False,
+            "created_at": datetime.utcnow().isoformat() + 'Z'
+        })
+
+        # 8. Send push notification via FCM
+        try:
+            await task_queue.enqueue(
+                FirebaseNotificationService.send_push_notification,
+                target_user_id,
+                "Community Group Invitation",
+                f"{owner_name} has invited you as an {role.upper()} to create '{comm_name}'.",
+                {"type": "community_creation_invite", "request_id": request_id, "role": role}
+            )
+        except Exception as push_err:
+            logger.warning(f"Failed to send push to user {target_user_id} during resend: {push_err}")
+
+        return {"message": "Invitation notification sent again successfully."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resending community invite: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -4109,6 +4109,9 @@ const styles = StyleSheet.create({
   sevaInfoText: { fontSize: 14, lineHeight: 20, color: '#4D2F00' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalDismiss: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  bottomSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 20 },
+  sheetHandle: { width: 40, height: 5, backgroundColor: '#E0E0E0', borderRadius: 3, alignSelf: 'center', marginBottom: 15 },
   commentModalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '70%', padding: 20 },
   commentModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   commentModalTitle: { fontSize: 18, fontWeight: '800', color: '#111' },
