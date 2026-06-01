@@ -16,6 +16,7 @@ import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../src/store/authStore';
 import { useVendorStore } from '../src/store/vendorStore';
+import { useTranslation } from '../src/utils/i18n';
 
 import { getKYCStatus } from '../src/services/api';
 
@@ -23,18 +24,19 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
 
 const CATEGORIES = [
-  { id: 'blood', name: 'Blood Request', icon: 'tint', type: 'font-awesome', color: '#E53935', bg: '#FFEBEE' },
-  { id: 'emergency', name: 'Emergency Help', icon: 'ambulance', type: 'font-awesome', color: '#FB8C00', bg: '#FFF3E0' },
-  { id: 'food', name: 'Food / Grocery Help', icon: 'basket', type: 'material', color: '#F25C05', bg: '#FFF4EE' },
-  { id: 'senior', name: 'Senior Citizen Support', icon: 'account-group', type: 'material', color: '#5C6BC0', bg: '#E8EAF6' },
-  { id: 'gau-seva', name: 'Gau Seva / Animal Care', icon: 'cow', type: 'material', color: '#43A047', bg: '#E8F5E9' },
-  { id: 'animal', name: 'Animal Care / Rescue', icon: 'paw', type: 'material', color: '#EF6C00', bg: '#FFF3E0' },
-  { id: 'temple', name: 'Temple / Volunteer Help', icon: 'temple-hindu', type: 'material', color: '#FB8C00', bg: '#FFF3E0' },
-  { id: 'other', name: 'Other Community Request', icon: 'help-circle', type: 'material', color: '#00796B', bg: '#E0F2F1' },
+  { id: 'blood', name: 'Blood Request', key: 'bloodRequest', icon: 'tint', type: 'font-awesome', color: '#E53935', bg: '#FFEBEE' },
+  { id: 'emergency', name: 'Emergency Help', key: 'emergencyHelp', icon: 'ambulance', type: 'font-awesome', color: '#FB8C00', bg: '#FFF3E0' },
+  { id: 'food', name: 'Food / Grocery Help', key: 'foodGroceryHelp', icon: 'basket', type: 'material', color: '#F25C05', bg: '#FFF4EE' },
+  { id: 'senior', name: 'Senior Citizen Support', key: 'seniorCitizenSupport', icon: 'account-group', type: 'material', color: '#5C6BC0', bg: '#E8EAF6' },
+  { id: 'gau-seva', name: 'Gau Seva / Animal Care', key: 'gauSevaAnimalCare', icon: 'cow', type: 'material', color: '#43A047', bg: '#E8F5E9' },
+  { id: 'animal', name: 'Animal Care / Rescue', key: 'animalCareRescue', icon: 'paw', type: 'material', color: '#EF6C00', bg: '#FFF3E0' },
+  { id: 'temple', name: 'Temple / Volunteer Help', key: 'templeVolunteerHelp', icon: 'temple-hindu', type: 'material', color: '#FB8C00', bg: '#FFF3E0' },
+  { id: 'other', name: 'Other Community Request', key: 'otherCommunityRequest', icon: 'help-circle', type: 'material', color: '#00796B', bg: '#E0F2F1' },
 ];
 
 export default function CommunityRequestHub() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { community_id } = useLocalSearchParams<{ community_id?: string }>();
 
   const { user, updateUser } = useAuthStore();
@@ -104,7 +106,7 @@ export default function CommunityRequestHub() {
           <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack}>
             <Ionicons name="chevron-back" size={24} color="#F25C05" />
           </TouchableOpacity>
-          <Text style={styles.topHeaderText}>Community Requests</Text>
+          <Text style={styles.topHeaderText}>{t('communityRequests')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -113,8 +115,8 @@ export default function CommunityRequestHub() {
           {/* Header Card */}
           <View style={styles.headerCard}>
             <View style={styles.headerTextCol}>
-              <Text style={styles.headerTitle}>Help Your Community</Text>
-              <Text style={styles.headerSubtitle}>Reach out and make a real difference in someone's life.</Text>
+              <Text style={styles.headerTitle}>{t('helpYourCommunity')}</Text>
+              <Text style={styles.headerSubtitle}>{t('makeDifferenceSub')}</Text>
             </View>
           </View>
 
@@ -130,7 +132,7 @@ export default function CommunityRequestHub() {
                 <View style={[styles.iconWrapper, { backgroundColor: cat.bg }]}>
                   {renderIcon(cat)}
                 </View>
-                <Text style={styles.catName} numberOfLines={2}>{cat.name}</Text>
+                <Text style={styles.catName} numberOfLines={2}>{t(cat.key)}</Text>
                 <View style={styles.arrowCircle}>
                   <Ionicons name="arrow-forward" size={14} color="#BBB" />
                 </View>
@@ -140,7 +142,7 @@ export default function CommunityRequestHub() {
 
           <View style={styles.footerInfo}>
             <Ionicons name="shield-checkmark-outline" size={16} color="#888" />
-            <Text style={styles.footerText}>Secure and Verified Community Support</Text>
+            <Text style={styles.footerText}>{t('secureVerifiedSupport')}</Text>
           </View>
 
           <View style={{ height: 40 }} />
