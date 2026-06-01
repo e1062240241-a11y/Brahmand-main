@@ -111,7 +111,7 @@ export default function ContinueReadingPage() {
           <View style={s.startBtnWrap}>
             <TouchableOpacity
               style={s.startBtn}
-              onPress={() => router.push('/library/bhagvad-geeta' as any)}
+              onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
               activeOpacity={0.86}
             >
               <LinearGradient

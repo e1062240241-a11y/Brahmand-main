@@ -30,6 +30,7 @@ interface Community {
   member_count: number;
   photo?: string;
   is_default?: boolean;
+  is_member?: boolean;
 }
 
 interface InviteeStatus {
@@ -71,7 +72,6 @@ export default function DiscoverCommunitiesScreen() {
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
 
-    // Load cache first
     try {
       const cached = await AsyncStorage.getItem(CACHE_KEY);
       if (cached) {
@@ -80,6 +80,11 @@ export default function DiscoverCommunitiesScreen() {
         if (Array.isArray(data) && data.length > 0) {
           setCreatedGroups(data);
           setFilteredGroups(data);
+          // Restore joined state from cache
+          const cachedJoined = new Set<string>(
+            data.filter((c: Community) => c.is_member).map((c: Community) => c.id)
+          );
+          if (cachedJoined.size > 0) setJoinedIds(cachedJoined);
           setLoading(false);
           if (age < CACHE_TTL_MS && !showRefresh) {
             setRefreshing(false);
@@ -102,6 +107,11 @@ export default function DiscoverCommunitiesScreen() {
         );
         setCreatedGroups(userGroupsList);
         setFilteredGroups(userGroupsList);
+        // Seed joinedIds from backend's is_member flag
+        const alreadyJoined = new Set<string>(
+          userGroupsList.filter((c: Community) => c.is_member).map((c: Community) => c.id)
+        );
+        setJoinedIds(prev => new Set([...prev, ...alreadyJoined]));
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: userGroupsList, timestamp: Date.now() }));
       }
 

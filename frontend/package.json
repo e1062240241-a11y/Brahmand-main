@@ -67,6 +67,7 @@
     "expo-symbols": "~55.0.7",
     "expo-system-ui": "~55.0.15",
     "expo-text-recognition": "^0.1.1",
+    "expo-tracking-transparency": "~55.0.14",
     "expo-video": "~55.0.17",
     "expo-web-browser": "~55.0.14",
     "firebase": "^12.11.0",

@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -251,6 +252,8 @@ import UploadPostModal from '../../src/components/UploadPostModal';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
+import { SirenIcon } from '../../src/components/SirenIcon';
+import { SacredIcon } from '../../src/components/SacredIcon';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
 import {
   addPostComment,
@@ -343,11 +346,11 @@ try {
 
 const baseQuickAccess = [
   { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
-  { label: 'SOS', subtitle: 'Sanatan People Around You.', color: '#FFF', urgent: true },
-  { label: 'Panchang', subtitle: 'Vedic View', color: '#FFF' },
-  { label: 'Kundli', subtitle: 'Your Daily Vedic Energy', color: '#FFF' },
-  { label: 'Jyotish', subtitle: 'Your Cosmic Blueprint', color: '#FFF' },
-  { label: 'Brahmand Passport', subtitle: 'Your Temple Journey Record', color: '#FFF' },
+  { label: 'SOS', subtitle: 'Quick help\nfrom Sanatan', color: '#FFF', urgent: true },
+  { label: 'Panchang', subtitle: 'Plan with\nVedic wisdom', color: '#FFF' },
+  { label: 'Kundli', subtitle: 'Your birth chart insights', color: '#FFF' },
+  { label: 'Jyotish', subtitle: 'Your birth chart insights', color: '#FFF' },
+  { label: 'Brahmand Passport', subtitle: 'Track your spiritual journey', color: '#FFF' },
   { label: 'Festival Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
   { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
 ];
@@ -436,7 +439,7 @@ export default function HomeScreen() {
         x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
         animated: true,
       });
-    }, 4000);
+    }, 7000);
     return () => clearInterval(interval);
   }, [isFocused]);
 
@@ -2002,6 +2005,10 @@ export default function HomeScreen() {
                       let displayLabel = item.label;
                       let displaySubtitle = item.subtitle;
 
+                      if (item.label === 'Jyotish' && t('language') !== 'hi') {
+                        displayLabel = 'Cosmic\nGuidance';
+                      }
+
                       if (t('language') === 'hi') {
                         if (item.label === 'My Krishna') {
                           displayLabel = 'मेरे कृष्ण';
@@ -2011,13 +2018,13 @@ export default function HomeScreen() {
                           displaySubtitle = 'आपके आसपास के सनातनी लोग';
                         } else if (item.label === 'Panchang') {
                           displayLabel = 'पंचांग';
-                          displaySubtitle = 'वैदिक दर्शन';
+                          displaySubtitle = 'Plan with\nVedic wisdom';
                         } else if (item.label === 'Kundli') {
                           displayLabel = 'कुंडली';
-                          displaySubtitle = 'आपकी दैनिक वैदिक ऊर्जा';
+                          displaySubtitle = 'Your birth chart insights';
                         } else if (item.label === 'Jyotish') {
                           displayLabel = 'ज्योतिष';
-                          displaySubtitle = 'आपका ब्रह्मांडीय खाका';
+                          displaySubtitle = 'Your birth chart insights';
                         } else if (item.label === 'Brahmand Passport') {
                           displayLabel = 'ब्रह्मांड पासपोर्ट';
                           displaySubtitle = 'आपकी मंदिर यात्रा का रिकॉर्ड';
@@ -2033,7 +2040,7 @@ export default function HomeScreen() {
                       return (
                         <TouchableOpacity
                           key={idx}
-                          style={[styles.featureCard, { backgroundColor: cardBg }]}
+                          style={styles.featureCard}
                           activeOpacity={0.9}
                           onPress={() => {
                             if (item.label === 'Panchang') router.push('/panchang');
@@ -2047,48 +2054,50 @@ export default function HomeScreen() {
                           }}
                         >
                           {item.label === 'SOS' ? (
-                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <Image source={require('../../assets/images/sos_icon_3.png')} style={{ width: 44, height: 44, borderRadius: 22 }} resizeMode="contain" />
+                            <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' }}>
+                              <View style={{ width: 42.2, height: 42.2, borderRadius: 21.1, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' }}>
+                                <View style={{ width: 34.5, height: 34.5, borderRadius: 17.25, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' }}>
+                                  <Text style={{ color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 11, fontWeight: '600' }}>SOS</Text>
+                                </View>
+                              </View>
                             </View>
                           ) : item.label === 'My Krishna' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Panchang' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Kundli' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Jyotish' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                <SirenIcon width={24} height={24} color="white" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Passport' ? (
-                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                              </ImageBackground>
+                            <View style={[styles.featureIconWrap, { overflow: 'visible', width: 45, height: 60 }]}>
+                              <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 47.3, height: 60, flexShrink: 0, aspectRatio: 41/52 }} resizeMode="contain" />
                             </View>
                           ) : item.label === 'Festival Days' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                <SacredIcon width={44} height={44} />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Library' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
@@ -2098,9 +2107,9 @@ export default function HomeScreen() {
                             </View>
                           )}
                           <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle} numberOfLines={2}>{displayLabel}</Text>
+                            <Text style={styles.featureTitle} numberOfLines={undefined}>{displayLabel}</Text>
                             {displaySubtitle ? (
-                              <Text style={styles.featureSubtitle} numberOfLines={2}>{displaySubtitle}</Text>
+                              <Text style={styles.featureSubtitle} numberOfLines={undefined}>{displaySubtitle}</Text>
                             ) : null}
                           </View>
                           <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
@@ -3260,9 +3269,9 @@ const styles = StyleSheet.create({
     height: 75,
   },
   featureIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },

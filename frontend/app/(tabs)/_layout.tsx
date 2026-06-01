@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../src/utils/i18n';
+import CustomTabBar from '../../src/components/CustomTabBar';
 
 const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
   <View style={styles.iconContainer}>
@@ -20,26 +21,8 @@ export default function TabLayout() {
     <>
     <Tabs
       initialRouteName="home"
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: '#FF6600',
-        tabBarInactiveTintColor: '#8E8E93',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 0,
-          height: 65 + insets.bottom,
-          paddingBottom: bottomInset + 4,
-          paddingTop: 8,
-          elevation: 20,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.05,
-          shadowRadius: 10,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '600',
-          marginTop: 2,
-        },
         headerShown: false,
       }}
     >

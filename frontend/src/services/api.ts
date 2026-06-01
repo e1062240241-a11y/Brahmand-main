@@ -575,6 +575,13 @@ export const markNotificationRead = (notificationId: string) =>
 export const aiChat = (messages: any[]) =>
   api.post('/ai/chat', { messages });
 
+export const getChatHistory = () =>
+  api.get('/ai/chat/history');
+
+export const clearChatHistory = () =>
+  api.delete('/ai/chat/history');
+
+
 const nativeMultipartPost = async (endpoint: string, formData: FormData) => {
   const token = await secureStorage.getItem('auth_token');
   const headers: Record<string, string> = {};
@@ -612,10 +619,10 @@ export const uploadUserPost = (
   originalHeight?: number
 ) => {
   return (async () => {
-    if (Platform.OS === 'web' && ENABLE_WEB_DIRECT_VIDEO_UPLOAD && isVideoMimeType(file.type)) {
+    if (Platform.OS === 'web' && isVideoMimeType(file.type)) {
       const localResponse = await fetch(file.uri);
       const localBlob = await localResponse.blob();
-      if (localBlob.size > CLOUD_RUN_SAFE_UPLOAD_BYTES) {
+      if (localBlob.size > CLOUD_RUN_SAFE_UPLOAD_BYTES && ENABLE_WEB_DIRECT_VIDEO_UPLOAD) {
         const { objectPath } = await uploadLargeVideoViaFirebase(file, onProgress);
 
         const formData = new FormData();

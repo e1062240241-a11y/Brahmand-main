@@ -7,9 +7,13 @@ import { useLibraryStore } from '../../src/store/libraryStore';
 import BookLayout, { BookVerse, PageItem, SpreadItem, useBookLayout } from '../../src/components/BookLayout';
 import { loadBhagavadGitaChapter, getPreferredTranslation } from '../../src/services/bhagavad-geeta-service';
 
-const convertToHindiNumerals = (num: number) => {
+const convertToHindiNumerals = (num: number | string | undefined | null) => {
+  if (num === undefined || num === null) return '';
   const hindiNumerals = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
-  return num.toString().split('').map(digit => hindiNumerals[parseInt(digit, 10)]).join('');
+  return num.toString().split('').map(digit => {
+    const d = parseInt(digit, 10);
+    return isNaN(d) ? digit : hindiNumerals[d];
+  }).join('');
 };
 
 type VerseItem = BookVerse;
@@ -318,8 +322,20 @@ export default function BhagvadGeetaReaderScreen() {
     const base = chapterStartSpreads[activeChapter] ?? 0;
     const chapterSpreadCount = Math.max(0, Math.ceil((chapterPages[activeChapter]?.length ?? 0) / 2));
     const relativeIndex = clamp(spreadIndex - base, 0, Math.max(0, chapterSpreadCount - 1));
+    
     AsyncStorage.setItem(STORAGE_LAST_READ_KEY(activeChapter), String(relativeIndex));
     setLastReadSpread(spreadIndex);
+
+    // Synchronize with global library store so "Continue Reading" opens the correct chapter
+    useLibraryStore.getState().updateProgress({
+      id: 'bhagvad-geeta',
+      chapterName: CHAPTER_TITLES[activeChapter - 1] || 'Chapter ' + activeChapter,
+      chapterNum: activeChapter,
+      lastReadPage: relativeIndex,
+      totalPages: chapterSpreadCount,
+      progressPercent: chapterSpreadCount > 0 ? (relativeIndex / chapterSpreadCount) * 100 : 0,
+      lastOpenedTime: Date.now(),
+    });
   }, [spreadIndex, currentPageChapter, chapterPages, chapterStartSpreads, pages.length]);
 
   useEffect(() => {

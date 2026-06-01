@@ -201,7 +201,7 @@ export default function AstrologyScreen() {
         {/* Cosmic Analysis */}
         {!error && report && Object.keys(report).length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cosmic Analysis</Text>
+            <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Cosmic Analysis</Text>
             
             {/* Tab Row */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cosmicTabScroll} contentContainerStyle={styles.cosmicTabRow}>
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   // Cosmic Tabs
   cosmicTabScroll: { marginBottom: 16 },
   cosmicTabRow: { gap: 12 },
-  cosmicTab: { alignItems: 'center', width: 64 },
+  cosmicTab: { alignItems: 'center', minWidth: 64 },
   cosmicTabActive: {},
   cosmicTabIcon: {
     width: 56, height: 56, borderRadius: 40,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF7B00',
     borderColor: '#FF7B00',
   },
-  cosmicTabLabel: { fontSize: 12, fontWeight: '700', color: '#994700', marginTop: 6, textAlign: 'center', fontStyle: 'normal', lineHeight: 16, letterSpacing: 1.2, textTransform: 'capitalize' },
+  cosmicTabLabel: { fontSize: 11, fontWeight: '700', color: '#994700', marginTop: 4, textAlign: 'center', fontStyle: 'normal', lineHeight: 14, letterSpacing: 0.5, textTransform: 'capitalize' },
   cosmicTabLabelActive: { color: '#C67C4E' },
 
   // Report

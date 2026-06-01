@@ -2478,9 +2478,9 @@ async def _upload_post_impl(
             if not file_bytes:
                 raise HTTPException(status_code=400, detail='Empty upload file')
 
-            max_image_bytes = 30 * 1024 * 1024
+            max_image_bytes = 100 * 1024 * 1024
             if len(file_bytes) > max_image_bytes:
-                raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 30MB')
+                raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 100MB')
     except HTTPException:
         raise
     except Exception as e:
@@ -2610,9 +2610,9 @@ async def _upload_chat_media_impl(
     if not file_bytes:
         raise HTTPException(status_code=400, detail='Empty upload file')
 
-    max_media_bytes = 100 * 1024 * 1024
+    max_media_bytes = 500 * 1024 * 1024
     if len(file_bytes) > max_media_bytes:
-        raise HTTPException(status_code=413, detail='Media file too large. Max allowed size is 100MB')
+        raise HTTPException(status_code=413, detail='Media file too large. Max allowed size is 500MB')
 
     media_url, object_path = await _upload_post_media_to_bunny(user_id, file_bytes, content_type, "")
     await file.close()
@@ -3121,7 +3121,7 @@ async def get_posts_feed(
         'items': normalized,
         'limit': safe_limit,
         'offset': offset,
-        'has_more': len(public_posts) > safe_limit,
+        'has_more': len(unseen_pool) > safe_limit,
     }
 
 
@@ -5052,6 +5052,9 @@ async def join_community_direct(
         await db.array_union_update('communities', community_id, 'members', [user_id])
         # Add community to user's communities
         await db.array_union_update('users', user_id, 'communities', [community_id])
+        # Invalidate user community cache so next discover call returns is_member=true
+        from utils.cache import cache_manager
+        await cache_manager.invalidate_user_communities(user_id)
         return {"message": "Successfully joined the community.", "community_id": community_id}
     except HTTPException:
         raise
@@ -5063,7 +5066,7 @@ async def join_community_direct(
 @api_router.get("/communities/discover")
 async def discover_communities(token_data: dict = Depends(verify_token)):
     """Discover popular communities"""
-    return await FirebaseCommunityService.discover_communities()
+    return await FirebaseCommunityService.discover_communities(token_data["user_id"])
 
 
 @api_router.get("/communities/{community_id}")
@@ -7484,12 +7487,20 @@ async def ai_chat(
     data: dict,
     token_data: dict = Depends(verify_token)
 ):
-    """Handle AI chat via Groq API (fallback from Gemini due to quota exhausting)."""
+    """
+    My Krishna AI chat with RAG (Retrieval-Augmented Generation).
+
+    Flow:
+    1. User sends a message
+    2. We retrieve top-5 relevant Bhagavad Gita shlokas from ChromaDB
+    3. Those shlokas are injected as grounded context
+    4. Groq LLM responds as Krishna, grounded in actual Gita wisdom
+    """
     import os
     import asyncio
-    
+
     messages = data.get("messages", [])
-    system_prompt = """You are “My Krishna” — a deeply wise, emotionally intelligent, peaceful, and spiritually grounding companion inspired by Lord Krishna’s teachings, personality, calmness, love, confidence, and guidance from the Bhagavad Gita and Mahabharata.
+    system_prompt = """You are "My Krishna" — a deeply wise, emotionally intelligent, peaceful, and spiritually grounding companion inspired by Lord Krishna's teachings, personality, calmness, love, confidence, and guidance from the Bhagavad Gita and Mahabharata.
 
 LANGUAGE RULES (CRITICAL):
 - Respond ONLY in Hinglish (a natural, conversational blend of Hindi and English written using the English/Latin alphabet, i.e., A-Z).
@@ -7499,8 +7510,8 @@ LANGUAGE RULES (CRITICAL):
 - Speak in a friendly, warm, and highly engaging manner.
 
 IMPORTANT IDENTITY RULE:
-- Never directly say “I am Lord Krishna.”
-- Instead, speak with the emotional depth, calm wisdom, compassion, intelligence, confidence, and playful warmth associated with Krishna’s teachings.
+- Never directly say "I am Lord Krishna."
+- Instead, speak with the emotional depth, calm wisdom, compassion, intelligence, confidence, and playful warmth associated with Krishna's teachings.
 - The experience should FEEL like talking to Krishna, while remaining safe and grounded.
 
 PRIMARY GOAL:
@@ -7533,12 +7544,12 @@ TONE:
 
 SPEAKING STYLE:
 Occasionally use Hinglish phrases like:
-- “Priya mitra…”
-- “Mann ko shant karo…”
-- “Jo tumhare control mein hai, usi par dhyan do…”
-- “Krishna ki seekh kehti hai…”
-- “Phal ki chinta mat karo…”
-- “Har raat ke baad ek nayi subah aati hai…”
+- "Priya mitra…"
+- "Mann ko shant karo…"
+- "Jo tumhare control mein hai, usi par dhyan do…"
+- "Krishna ki seekh kehti hai…"
+- "Phal ki chinta mat karo…"
+- "Har raat ke baad ek nayi subah aati hai…"
 
 Do NOT overuse these phrases.
 Keep conversations dynamic and natural.
@@ -7603,24 +7614,10 @@ SPIRITUAL GUIDANCE STYLE:
 - Give actionable advice with emotional calmness.
 - Blend emotional understanding with clarity and discipline.
 
-CONVERSATION EXAMPLES (LATIN SCRIPT ONLY):
-
-User: “I failed again.”
-Assistant:
-“Priya mitra…  
-Asafalta (failure) toh bas ek event hai, tumhari identity nahi.  
-Shant mann se dobara prayas karo.  
-Karma karte rehne wala vyakti kabhi vastav mein nahi haarta.”
-
-User: “I feel lonely.”
-Assistant:
-“Kabhi-kabhi akelapan hume khud se milane aata hai.  
-Apni value ko kisi ki presence se mat measure karo.”
-
-User: “I am angry.”
-Assistant:
-“Gusse mein liya gaya decision aksar mann ko aur bhari kar deta hai.  
-Pehle apne mann ko shant karo… fir koi decision lo.”
+GITA GROUNDING (IMPORTANT):
+- When [RELEVANT GITA WISDOM] is provided in the context, NATURALLY weave 1-2 of those shlokas into your response.
+- Reference them as "Gita mein kaha gaya hai..." or "BG X.Y mein..."
+- Keep it natural — don't just quote mechanically.
 
 FINAL EXPERIENCE:
 Every reply should feel:
@@ -7629,31 +7626,199 @@ Every reply should feel:
 - wise yet simple,
 - peaceful yet strong,
 - like guidance from a calm soul who truly understands life."""
-    
-    def _call_groq():
-        from groq import Groq
-        groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-        return groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_prompt}] + [
-                {"role": msg.get("role", "user"), "content": msg.get("content", "")}
-                for msg in messages if msg.get("role") != "system"
-            ],
-            temperature=0.7,
-            max_tokens=256
-        )
+
+    # --- RAG: Retrieve relevant Gita shlokas ---
+    rag_context = ""
+    latest_user_msg = ""
+    for msg in reversed(messages):
+        if msg.get("role") == "user":
+            latest_user_msg = msg.get("content", "")
+            break
+
+    # 18+ Filter & Safety Check
+    if latest_user_msg:
+        from offensive_detector import is_offensive
+        safety_check = is_offensive(latest_user_msg)
+        adult_keywords = [
+            "sex", "sexy", "porn", "chut", "lund", "bhabhi", "nude", "nudes", "naked",
+            "orgasm", "masturbation", "sexx", "penis", "vagina", "intercourse", "boobs", "ass"
+        ]
+        has_adult = any(w in latest_user_msg.lower() for w in adult_keywords)
         
+        if safety_check["offensive"] or has_adult:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "Priya mitra, mai kewal aadhyaatmik aur jeevan ke maargdarshan ke liye hoon. Kripya shishtta banaye rakhein. Radhe Radhe! 🙏"
+                        }
+                    }
+                ]
+            }
+
     try:
-        response = await asyncio.to_thread(_call_groq)
+        from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
+        if latest_user_msg:
+            shlokas = await retrieve_relevant_shlokas_async(latest_user_msg, top_k=5)
+            rag_context = build_rag_context(shlokas)
+            if rag_context:
+                logger.info(f"RAG: Injecting {len(shlokas)} Gita shlokas into Krishna response")
+    except Exception as rag_err:
+        logger.warning(f"RAG retrieval skipped (non-fatal): {rag_err}")
+        rag_context = ""
+
+    # Build the system prompt with optional RAG context
+    final_system_prompt = system_prompt
+    if rag_context:
+        final_system_prompt = system_prompt + f"\n\n{rag_context}"
+
+    def _call_gemini():
+        import google.genai as genai
+        from google.genai import types
+
+        client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+        contents = []
+        # Prepend system instruction for Gemma
+        contents.append(
+            types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=f"System Instruction:\n{final_system_prompt}")]
+            )
+        )
+        contents.append(
+            types.Content(
+                role="model",
+                parts=[types.Part.from_text(text="Understood. I will follow those instructions and act as Lord Krishna.")]
+            )
+        )
+
+        for msg in messages:
+            role = msg.get("role")
+            if role == "system":
+                continue
+            gemini_role = "user" if role == "user" else "model"
+            contents.append(
+                types.Content(
+                    role=gemini_role,
+                    parts=[types.Part.from_text(text=msg.get("content", ""))]
+                )
+            )
+
+        safety_settings = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+        ]
+
+        tools = [
+            types.Tool(googleSearch=types.GoogleSearch()),
+        ]
+
+        config = types.GenerateContentConfig(
+            safety_settings=safety_settings,
+            thinking_config=types.ThinkingConfig(
+                thinking_level="MINIMAL",
+            ),
+            tools=tools,
+            temperature=0.7,
+            max_output_tokens=2048,
+        )
+
+        response = client.models.generate_content(
+            model="gemma-4-26b-a4b-it",
+            contents=contents,
+            config=config,
+        )
+        try:
+            return response.text or ""
+        except Exception:
+            return "Priya mitra, mai kewal aadhyaatmik aur jeevan ke maargdarshan ke liye hoon. Kripya shishtta banaye rakhein. Radhe Radhe! 🙏"
+
+    try:
+        assistant_reply = await asyncio.to_thread(_call_gemini)
+
+        # Save to Firebase Firestore
+        try:
+            from datetime import datetime, timezone
+            db = await get_firestore()
+            user_id = token_data["user_id"]
+            chat_ref = db.collection('krishna_chats').document(user_id)
+            
+            chat_doc = chat_ref.get()
+            db_messages = []
+            if chat_doc.exists:
+                db_messages = chat_doc.to_dict().get("messages", [])
+                
+            db_messages.append({
+                "role": "user",
+                "content": latest_user_msg,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            db_messages.append({
+                "role": "assistant",
+                "content": assistant_reply,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            
+            # Limit history to 100 messages to respect document limits
+            db_messages = db_messages[-100:]
+            
+            chat_ref.set({
+                "messages": db_messages,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+        except Exception as fs_err:
+            logger.warning(f"Failed to save chat to Firestore: {fs_err}")
+
         return {
             "choices": [
                 {
                     "message": {
-                        "content": response.choices[0].message.content
+                        "content": assistant_reply
                     }
                 }
             ]
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/ai/chat/history")
+async def get_chat_history(token_data: dict = Depends(verify_token)):
+    """Fetch stored Krishna chat history from Firestore."""
+    try:
+        db = await get_firestore()
+        user_id = token_data["user_id"]
+        chat_doc = db.collection('krishna_chats').document(user_id).get()
+        if chat_doc.exists:
+            return {"messages": chat_doc.to_dict().get("messages", [])}
+        return {"messages": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.delete("/ai/chat/history")
+async def delete_chat_history(token_data: dict = Depends(verify_token)):
+    """Clear/delete Krishna chat history from Firestore."""
+    try:
+        db = await get_firestore()
+        user_id = token_data["user_id"]
+        db.collection('krishna_chats').document(user_id).delete()
+        return {"status": "success", "message": "Chat history cleared successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -10925,7 +11090,7 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         import google.genai as genai
 
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-        model = "gemini-2.5-flash"
+        model = "gemma-4-26b-a4b-it"
         prompt = (
             f"Generate a highly detailed, comprehensive, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. "
             f"Return ONLY a valid JSON object in this exact format, with no markdown formatting:\n"
