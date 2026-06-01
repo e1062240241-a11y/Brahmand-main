@@ -1504,6 +1504,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 <TouchableOpacity
                                   onPress={() => {
                                     setReplyingToComment(item);
+                                    setNewCommentText(`@${item.username || 'User'} `);
                                   }}
                                 >
                                   <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>{t('language') === 'hi' ? 'जवाब दें' : 'Reply'}</Text>

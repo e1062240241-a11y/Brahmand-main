@@ -507,6 +507,7 @@ const PostScreen = () => {
                               <TouchableOpacity
                                 onPress={() => {
                                   setReplyingToComment(item);
+                                  setCommentText(`@${item.username || 'User'} `);
                                 }}
                               >
                                 <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>

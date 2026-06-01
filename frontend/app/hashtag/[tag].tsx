@@ -30,6 +30,7 @@ const HashtagPage = () => {
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [replyingToComment, setReplyingToComment] = useState<any | null>(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
 
@@ -92,6 +93,7 @@ const HashtagPage = () => {
     setSelectedCommentPostId(postId);
     setSelectedCommentPost(post);
     setCommentText('');
+    setReplyingToComment(null);
     setCommentModalVisible(true);
 
     setCommentsLoading(true);
@@ -111,7 +113,8 @@ const HashtagPage = () => {
 
     setCommentSubmitting(true);
     try {
-      const response = await addPostComment(selectedCommentPostId, commentText.trim());
+      const parentId = replyingToComment?.id || undefined;
+      const response = await addPostComment(selectedCommentPostId, commentText.trim(), parentId);
       const updatedPost = response.data?.post;
 
       if (updatedPost) {
@@ -124,6 +127,7 @@ const HashtagPage = () => {
       const commentsResponse = await getPostComments(selectedCommentPostId, 300);
       setPostComments(Array.isArray(commentsResponse.data) ? commentsResponse.data : []);
       setCommentText('');
+      setReplyingToComment(null);
     } catch (error) {
       console.warn('Failed to add comment:', error);
       alert('Could not post comment. Please try again.');
@@ -287,6 +291,7 @@ const HashtagPage = () => {
           setSelectedCommentPostId(null);
           setSelectedCommentPost(null);
           setPostComments([]);
+          setReplyingToComment(null);
         }}
       >
         <KeyboardAvoidingView
@@ -304,6 +309,7 @@ const HashtagPage = () => {
                   setSelectedCommentPostId(null);
                   setSelectedCommentPost(null);
                   setPostComments([]);
+                  setReplyingToComment(null);
                 }}
                 style={styles.commentCloseBtn}
               >
@@ -326,32 +332,110 @@ const HashtagPage = () => {
                 <Text style={styles.commentEmptyText}>Loading comments...</Text>
               ) : postComments.length > 0 ? (
                 <ScrollView showsVerticalScrollIndicator={false}>
-                  {postComments.map((comment) => {
-                    const canDelete = comment.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                    return (
-                      <View key={comment.id || `${comment.user_id}-${comment.created_at}-${comment.text}`} style={styles.commentItem}>
-                        <Avatar name={comment?.username || 'User'} photo={comment?.user_photo} size={32} />
-                        <View style={styles.commentBubble}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
-                            {canDelete && (
-                              <TouchableOpacity
-                                style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                onPress={() => handleDeleteComment(comment)}
-                              >
-                                <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                              </TouchableOpacity>
-                            )}
+                  {(() => {
+                    const parentComments = postComments.filter(c => !c.parent_id);
+                    const repliesMap = postComments.reduce((acc, c) => {
+                      if (c.parent_id) {
+                        if (!acc[c.parent_id]) acc[c.parent_id] = [];
+                        acc[c.parent_id].push(c);
+                      }
+                      return acc;
+                    }, {} as Record<string, any[]>);
+
+                    return parentComments.map((comment) => {
+                      const canDelete = comment.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                      const replies = repliesMap[comment.id] || [];
+                      return (
+                        <View key={comment.id || `${comment.user_id}-${comment.created_at}-${comment.text}`} style={{ marginBottom: 12 }}>
+                          <View style={styles.commentItem}>
+                            <Avatar name={comment?.username || 'User'} photo={comment?.user_photo} size={32} />
+                            <View style={styles.commentBubble}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Text style={styles.commentItemUser}>{comment?.username || 'User'}</Text>
+                                {canDelete && (
+                                  <TouchableOpacity
+                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                    onPress={() => handleDeleteComment(comment)}
+                                  >
+                                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                              <Text style={styles.commentItemText}>{comment?.text || ''}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                <Text style={styles.commentTime}>{formatTimeAgo(comment?.created_at)}</Text>
+                                <TouchableOpacity
+                                  style={{ marginLeft: 16 }}
+                                  onPress={() => {
+                                    setReplyingToComment(comment);
+                                    setCommentText(`@${comment.username || 'User'} `);
+                                  }}
+                                >
+                                  <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
                           </View>
-                          <Text style={styles.commentItemText}>{comment?.text || ''}</Text>
-                          <Text style={styles.commentTime}>{formatTimeAgo(comment?.created_at)}</Text>
+
+                          {/* Render replies */}
+                          {replies.length > 0 && (
+                            <View style={{
+                              marginLeft: 40,
+                              paddingLeft: 16,
+                              borderLeftWidth: 1.5,
+                              borderLeftColor: '#E6E1E8',
+                              marginTop: 8,
+                            }}>
+                              {replies.map((reply: any) => {
+                                const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                                return (
+                                  <View key={reply.id} style={[styles.commentItem, { position: 'relative', paddingLeft: 4, marginBottom: 10 }]}>
+                                    {/* Horizontal connection branch */}
+                                    <View style={{
+                                      position: 'absolute',
+                                      left: -16,
+                                      top: 16,
+                                      width: 12,
+                                      height: 1.5,
+                                      backgroundColor: '#E6E1E8',
+                                    }} />
+
+                                    <Avatar name={reply?.username || 'User'} photo={reply?.user_photo} size={28} />
+                                    <View style={[styles.commentBubble, { backgroundColor: '#F8F5F9' }]}>
+                                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <Text style={[styles.commentItemUser, { fontSize: 13 }]}>{reply?.username || 'User'}</Text>
+                                        {canDeleteReply && (
+                                          <TouchableOpacity
+                                            style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                            onPress={() => handleDeleteComment(reply)}
+                                          >
+                                            <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                          </TouchableOpacity>
+                                        )}
+                                      </View>
+                                      <Text style={[styles.commentItemText, { fontSize: 13 }]}>{reply?.text || ''}</Text>
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                        <Text style={styles.commentTime}>{formatTimeAgo(reply?.created_at)}</Text>
+                                        <TouchableOpacity
+                                          style={{ marginLeft: 16 }}
+                                          onPress={() => {
+                                            setReplyingToComment(comment);
+                                            setCommentText(`@${reply.username} `);
+                                          }}
+                                        >
+                                          <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          )}
                         </View>
-                        <TouchableOpacity style={styles.commentLikeBtn}>
-                          <Ionicons name="heart-outline" size={16} color={COLORS.textSecondary} />
-                        </TouchableOpacity>
-                      </View>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </ScrollView>
               ) : (
                 <View style={styles.commentEmptyState}>
@@ -362,12 +446,34 @@ const HashtagPage = () => {
               )}
             </View>
 
+            {replyingToComment && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: COLORS.background,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderTopWidth: 0.5,
+                borderTopColor: COLORS.divider,
+                marginBottom: 8,
+                width: '100%',
+              }}>
+                <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
+                  Replying to <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
+                </Text>
+                <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                  <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+                </TouchableOpacity>
+              </View>
+            )}
+
             <View style={styles.commentInputWrap}>
               <TextInput
                 style={styles.commentInput}
                 value={commentText}
                 onChangeText={setCommentText}
-                placeholder="Add a comment..."
+                placeholder={replyingToComment ? `Reply to @${replyingToComment.username}...` : "Add a comment..."}
                 placeholderTextColor={COLORS.textSecondary}
                 multiline
               />

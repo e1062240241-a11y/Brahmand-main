@@ -173,6 +173,7 @@ export default function ProfileScreen() {
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [replyingToComment, setReplyingToComment] = useState<any | null>(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
 
@@ -828,6 +829,7 @@ export default function ProfileScreen() {
 
     setSelectedCommentPost(post);
     setCommentText('');
+    setReplyingToComment(null);
     setCommentModalVisible(true);
     loadComments(postId);
   }, []);
@@ -837,7 +839,8 @@ export default function ProfileScreen() {
 
     setCommentSubmitting(true);
     try {
-      const response = await addPostComment(selectedCommentPost.id, commentText.trim());
+      const parentId = replyingToComment?.id || undefined;
+      const response = await addPostComment(selectedCommentPost.id, commentText.trim(), parentId);
       const updatedPost = response.data?.post || response.data;
       const serverComment = response.data?.comment;
       
@@ -851,6 +854,7 @@ export default function ProfileScreen() {
 
       await loadComments(selectedCommentPost.id);
       setCommentText('');
+      setReplyingToComment(null);
       Keyboard.dismiss();
     } catch (error) {
       console.warn('Failed to add comment:', error);
@@ -1505,70 +1509,187 @@ export default function ProfileScreen() {
           )}
 
           {/* Comment Modal nested inside Post Detail Modal */}
-          <Modal visible={commentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
+          <Modal 
+            visible={commentModalVisible} 
+            transparent 
+            animationType="slide" 
+            onRequestClose={() => {
+              setCommentModalVisible(false);
+              setReplyingToComment(null);
+            }}
+          >
             <KeyboardAvoidingView 
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
               style={styles.sheetOverlay}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
-              <TouchableOpacity style={styles.sheetDismiss} activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
+              <TouchableOpacity 
+                style={styles.sheetDismiss} 
+                activeOpacity={1} 
+                onPress={() => {
+                  setCommentModalVisible(false);
+                  setReplyingToComment(null);
+                }} 
+              />
               <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
                 <View style={styles.sheetHandle} />
                 <View style={styles.sheetHeader}>
                   <Text style={styles.sheetTitle}>
                     {t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})
                   </Text>
-                  <TouchableOpacity onPress={() => { setCommentModalVisible(false); }}>
+                  <TouchableOpacity onPress={() => { setCommentModalVisible(false); setReplyingToComment(null); }}>
                     <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>
                 </View>
 
-              {commentsLoading ? (
-                <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-              ) : (
-                <FlatList
-                  data={postComments}
-                  keyExtractor={(item, index) => item.id || String(index)}
-                  renderItem={({ item }) => {
-                    const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                    return (
-                      <View style={styles.commentItem}>
-                        <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
-                        <View style={styles.commentContent}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={styles.commentUser}>{item.username || 'User'}</Text>
-                            {canDelete && (
-                              <TouchableOpacity
-                                style={{ padding: 4, marginRight: -4 }}
-                                onPress={() => handleDeleteComment(item)}
-                              >
-                                <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                              </TouchableOpacity>
+                {commentsLoading ? (
+                  <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+                ) : postComments.length === 0 ? (
+                  <View style={styles.emptyComments}>
+                    <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
+                    <Text style={styles.emptyCommentsText}>
+                      {t('language') === 'hi' ? 'अभी तक कोई टिप्पणी नहीं। पहले बनें!' : 'No comments yet. Be the first!'}
+                    </Text>
+                  </View>
+                ) : (() => {
+                  const parentComments = postComments.filter(c => !c.parent_id);
+                  const repliesMap = postComments.reduce((acc, c) => {
+                    if (c.parent_id) {
+                      if (!acc[c.parent_id]) acc[c.parent_id] = [];
+                      acc[c.parent_id].push(c);
+                    }
+                    return acc;
+                  }, {} as Record<string, any[]>);
+
+                  return (
+                    <FlatList
+                      data={parentComments}
+                      keyExtractor={(item, index) => item.id || String(index)}
+                      renderItem={({ item }) => {
+                        const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                        const replies = repliesMap[item.id] || [];
+                        return (
+                          <View style={{ marginBottom: 12, paddingHorizontal: 16 }}>
+                            <View style={styles.commentItem}>
+                              <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
+                              <View style={styles.commentContent}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Text style={styles.commentUser}>{item.username || 'User'}</Text>
+                                  {canDelete && (
+                                    <TouchableOpacity
+                                      style={{ padding: 4, marginRight: -4 }}
+                                      onPress={() => handleDeleteComment(item)}
+                                    >
+                                      <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                    </TouchableOpacity>
+                                  )}
+                                </View>
+                                <MentionText style={styles.commentText} text={item.text || ''} />
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                  <TouchableOpacity
+                                    onPress={() => {
+                                      setReplyingToComment(item);
+                                      setCommentText(`@${item.username || 'User'} `);
+                                    }}
+                                  >
+                                    <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>
+                                      {t('language') === 'hi' ? 'उत्तर दें' : 'Reply'}
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            </View>
+
+                            {/* Render replies */}
+                            {replies.length > 0 && (
+                              <View style={{
+                                marginLeft: 44,
+                                paddingLeft: 16,
+                                borderLeftWidth: 1.5,
+                                borderLeftColor: '#E6E1E8',
+                                marginTop: 8,
+                              }}>
+                                {replies.map((reply: any) => {
+                                  const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                                  return (
+                                    <View key={reply.id} style={[styles.commentItem, { position: 'relative', paddingLeft: 4, marginBottom: 10 }]}>
+                                      {/* Horizontal connection branch */}
+                                      <View style={{
+                                        position: 'absolute',
+                                        left: -16,
+                                        top: 18,
+                                        width: 12,
+                                        height: 1.5,
+                                        backgroundColor: '#E6E1E8',
+                                      }} />
+
+                                      <Avatar name={reply.username || 'User'} photo={reply.user_photo} size={28} />
+                                      <View style={styles.commentContent}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                          <Text style={[styles.commentUser, { fontSize: 13 }]}>{reply.username || 'User'}</Text>
+                                          {canDeleteReply && (
+                                            <TouchableOpacity
+                                              style={{ padding: 4, marginRight: -4 }}
+                                              onPress={() => handleDeleteComment(reply)}
+                                            >
+                                              <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                            </TouchableOpacity>
+                                          )}
+                                        </View>
+                                        <MentionText style={[styles.commentText, { fontSize: 13 }]} text={reply.text || ''} />
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                          <TouchableOpacity
+                                            onPress={() => {
+                                              setReplyingToComment(item);
+                                              setCommentText(`@${reply.username} `);
+                                            }}
+                                          >
+                                            <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>
+                                              {t('language') === 'hi' ? 'उत्तर दें' : 'Reply'}
+                                            </Text>
+                                          </TouchableOpacity>
+                                        </View>
+                                      </View>
+                                    </View>
+                                  );
+                                })}
+                              </View>
                             )}
                           </View>
-                          <MentionText style={styles.commentText} text={item.text || ''} />
-                        </View>
-                      </View>
-                    );
-                  }}
-                  ListEmptyComponent={
-                    <View style={styles.emptyComments}>
-                      <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-                      <Text style={styles.emptyCommentsText}>
-                        {t('language') === 'hi' ? 'अभी तक कोई टिप्पणी नहीं। पहले बनें!' : 'No comments yet. Be the first!'}
-                      </Text>
-                    </View>
-                  }
-                  contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
-                />
-              )}
+                        );
+                      }}
+                      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
+                    />
+                  );
+                })()}
+
+                {replyingToComment && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: COLORS.background,
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    borderTopWidth: 0.5,
+                    borderTopColor: COLORS.divider,
+                    width: '100%',
+                  }}>
+                    <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
+                      {t('language') === 'hi' ? 'को उत्तर दे रहे हैं' : 'Replying to'} <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
+                    </Text>
+                    <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                      <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
                   <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
                   <MentionInput
                     value={commentText}
                     onChangeText={setCommentText}
-                    placeholder={t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...'}
+                    placeholder={replyingToComment ? (t('language') === 'hi' ? `@${replyingToComment.username} को उत्तर दें...` : `Reply to @${replyingToComment.username}...`) : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
                     multiline
                     inputStyle={styles.commentInput}
                   />
