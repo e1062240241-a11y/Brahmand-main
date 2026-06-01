@@ -878,8 +878,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
 
-  // Session-level seen IDs — prevents same reel appearing twice
+  // Session-level seen IDs — prevents same reel appearing twice in the same batch
   const seenIdsRef = useRef<Set<string>>(new Set());
+  // Global pool of ALL posts ever loaded this session — used for recycling when all seen
+  const allSessionPostsRef = useRef<any[]>([]);
 
   // Watch-time tracking
   const watchStartRef = useRef<number>(Date.now());
@@ -1181,38 +1183,49 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     if (loadingRef.current) return;
 
     setLoading(true);
+    loadingRef.current = true;
     try {
       const currentVideos = videosRef.current;
 
-      // Only pass seen IDs that are already in the current list (not AsyncStorage history)
-      // This ensures backend can always send fresh content
+      // Build set of all IDs currently in the queue to avoid immediate duplicates
       const currentIds = new Set(currentVideos.map((p: any) => p.id).filter(Boolean));
-      const seenParam = Array.from(currentIds).slice(-50).join(',');
 
-      const res = await getPostsFeed(15, 0, 'reels', seenParam);
-      const newPosts: any[] = res.data?.items || res.data || [];
+      // Pass ALL session-seen IDs so backend prioritises truly unseen posts
+      const allSeenIds = Array.from(seenIdsRef.current).slice(-250).join(',');
 
-      if (newPosts.length === 0) {
-        // Backend has no more posts at all — recycle current list (shuffled)
-        if (currentVideos.length > 1) {
+      const res = await getPostsFeed(20, 0, 'for_you', allSeenIds);
+      const newPosts: any[] = res.data?.items || (Array.isArray(res.data) ? res.data : []);
+
+      // Add any new posts to the global session pool
+      for (const p of newPosts) {
+        if (p?.id && !allSessionPostsRef.current.find((x: any) => x.id === p.id)) {
+          allSessionPostsRef.current.push(p);
+        }
+      }
+
+      // Filter to only truly new posts not already in current queue
+      const uniqueNew = newPosts.filter((p: any) => p?.id && !currentIds.has(p.id));
+
+      if (uniqueNew.length > 0) {
+        // Great — append fresh unseen content
+        setVideos(prev => [...prev, ...uniqueNew]);
+      } else {
+        // All returned posts already queued — recycle from the full session pool
+        const pool = allSessionPostsRef.current;
+        if (pool.length > 1) {
+          // Shuffle the entire session pool and append, giving a fresh experience
+          const shuffled = [...pool].sort(() => Math.random() - 0.5);
+          setVideos(prev => [...prev, ...shuffled]);
+        } else if (currentVideos.length > 1) {
+          // Fallback: recycle what's currently queued
           const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
           setVideos(prev => [...prev, ...shuffled]);
         }
-        // If only 1 video loaded, don't recycle — just wait, backend may have more
-      } else {
-        // Filter out posts already visible in current list to avoid immediate duplicates
-        const uniqueNew = newPosts.filter((p: any) => !currentIds.has(p.id));
-
-        if (uniqueNew.length > 0) {
-          setVideos(prev => [...prev, ...uniqueNew]);
-        } else {
-          // All returned posts are already in current view — recycle with shuffle
-          if (currentVideos.length > 1) {
-            const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
-            setVideos(prev => [...prev, ...shuffled]);
-          }
-        }
       }
+
+      // Always keep hasMore true — we recycle content so the feed is truly infinite
+      hasMoreRef.current = true;
+      setHasMore(true);
     } catch (error: any) {
       if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
         console.warn('Load more reels timed out — retrying later');
@@ -1231,7 +1244,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     if (isVisible) {
       // Reset all state for fresh session
       seenIdsRef.current.clear();
-      if (initialPost?.id) seenIdsRef.current.add(initialPost.id);
+      allSessionPostsRef.current = [];
+      if (initialPost?.id) {
+        seenIdsRef.current.add(initialPost.id);
+        allSessionPostsRef.current.push(initialPost);
+      }
       setVideos([initialPost]);
       setActiveIndex(0);
       setHasMore(true);
@@ -1240,7 +1257,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       hasMoreRef.current = true;
       watchStartRef.current = Date.now();
       // Load more after short delay so initial video starts playing first
-      setTimeout(() => loadMoreRef.current(), 1500);
+      setTimeout(() => loadMoreRef.current(), 1000);
     }
   }, [isVisible, initialPost]);
 
@@ -1330,6 +1347,12 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const activePost = videos[activeIndex];
     if (activePost?.id) {
       markPostAsSeen(activePost.id);
+      // Track in session seen set for smarter backend querying
+      seenIdsRef.current.add(activePost.id);
+      // Add to global session pool if not already there
+      if (!allSessionPostsRef.current.find((p: any) => p.id === activePost.id)) {
+        allSessionPostsRef.current.push(activePost);
+      }
     }
   }, [activeIndex, videos]);
 
