@@ -9,9 +9,13 @@ import { loadRamcharitmanasKand } from '../../src/services/ramcharitmanas-servic
 
 const ramcharitmanasCover = require('../../assets/images/Ramcharitmanas.jpg');
 
-const convertToHindiNumerals = (num: number) => {
+const convertToHindiNumerals = (num: number | string | undefined | null) => {
+  if (num === undefined || num === null) return '';
   const hindiNumerals = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
-  return num.toString().split('').map(digit => hindiNumerals[parseInt(digit, 10)]).join('');
+  return num.toString().split('').map(digit => {
+    const d = parseInt(digit, 10);
+    return isNaN(d) ? digit : hindiNumerals[d];
+  }).join('');
 };
 
 type VerseItem = BookVerse;
@@ -38,11 +42,21 @@ const estimateVerseHeight = (verse: VerseItem, layout: ReturnType<typeof useBook
   const transliteration = typeof verse.transliteration === 'string' ? verse.transliteration : '';
   const pageContentWidth = layout.pageWidth - layout.pageBodyHorizontalPadding * 2 - 12;
   const charW = layout.sanskritTextSize * 0.55;
-  const linesText = Math.max(1, Math.ceil((verse.text?.length || 0) / Math.max(1, pageContentWidth / charW)));
-  const linesTrans = transliteration ? Math.max(1, Math.ceil(transliteration.length / Math.max(1, pageContentWidth / charW))) : 0;
+  const textLinesArray = (verse.text || '').split('\n');
+  let linesText = 0;
+  for (const line of textLinesArray) {
+    linesText += Math.max(1, Math.ceil(line.length / Math.max(1, pageContentWidth / charW)));
+  }
+
+  const transLinesArray = transliteration ? transliteration.split('\n') : [];
+  let linesTrans = 0;
+  for (const line of transLinesArray) {
+    linesTrans += Math.max(1, Math.ceil(line.length / Math.max(1, pageContentWidth / charW)));
+  }
+
   const linesTranslation = typeLabel ? Math.max(1, Math.ceil(typeLabel.length / Math.max(1, pageContentWidth / charW))) : 0;
   const totalLines = 1 + linesText + linesTrans + linesTranslation;
-  return (layout.verseBase + totalLines * layout.sanskritLineHeight) * 1.25;
+  return (layout.verseBase + totalLines * layout.sanskritLineHeight) * 1.35;
 };
 
 const buildPages = (verses: VerseItem[], heights: Record<string, number>, layout: ReturnType<typeof useBookLayout>) => {
@@ -312,6 +326,17 @@ export default function RamcharitmanasReaderScreen() {
     const relativeIndex = clamp(spreadIndex - base, 0, Math.max(0, chapterSpreadCount - 1));
     AsyncStorage.setItem(STORAGE_LAST_READ_KEY(activeChapter), String(relativeIndex));
     setLastReadSpread(spreadIndex);
+
+    // Synchronize with global library store
+    useLibraryStore.getState().updateProgress({
+      id: 'ramcharitmanas',
+      chapterName: CHAPTER_TITLES[activeChapter - 1] || 'Kand ' + activeChapter,
+      chapterNum: activeChapter,
+      lastReadPage: relativeIndex,
+      totalPages: chapterSpreadCount,
+      progressPercent: chapterSpreadCount > 0 ? (relativeIndex / chapterSpreadCount) * 100 : 0,
+      lastOpenedTime: Date.now(),
+    });
   }, [spreadIndex, currentPageChapter, chapterPages, chapterStartSpreads, pages.length]);
 
   useEffect(() => {
