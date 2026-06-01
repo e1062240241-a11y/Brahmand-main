@@ -1,6 +1,6 @@
-"""AI summary service using Groq."""
+"""AI summary service using Gemini (swapped from Groq)."""
+import os
 from typing import Any, Dict, List
-from groq import Groq
 
 from config.settings import settings
 
@@ -151,54 +151,75 @@ def _astrology_payload_to_prompt(payload: dict) -> str:
 
 
 class GroqService:
+    """A compatibility wrapper that routes the GroqService endpoints to Gemini."""
     def __init__(self):
-        if not settings.GROQ_API_KEY:
-            raise ValueError('GROQ_API_KEY is not configured in settings')
-        self.client = Groq(api_key=settings.GROQ_API_KEY)
+        import google.genai as genai
+        gemini_key = os.environ.get("GEMINI_API_KEY") or settings.GEMINI_API_KEY
+        if not gemini_key:
+            raise ValueError('GEMINI_API_KEY is not configured')
+        self.client = genai.Client(api_key=gemini_key)
 
     def _create_chat_completion(self, system_content: str, user_content: str, max_completion_tokens: int = 300) -> str:
-        completion = self.client.chat.completions.create(
-            messages=[
-                {'role': 'system', 'content': system_content},
-                {'role': 'user', 'content': user_content},
-            ],
-            model='llama-3.3-70b-versatile',
+        from google.genai import types
+
+        safety_settings = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+        ]
+
+        tools = [
+            types.Tool(googleSearch=types.GoogleSearch()),
+        ]
+
+        config = types.GenerateContentConfig(
+            safety_settings=safety_settings,
+            thinking_config=types.ThinkingConfig(
+                thinking_level="MINIMAL",
+            ),
+            tools=tools,
             temperature=0.38,
-            max_completion_tokens=max_completion_tokens,
-            top_p=1,
-            stream=False,
+            max_output_tokens=2048,
         )
 
-        if isinstance(completion, dict):
-            choices = completion.get('choices')
-            if choices and len(choices) > 0:
-                chunk = choices[0]
-                msg = chunk.get('message')
-                if isinstance(msg, dict):
-                    text = msg.get('content')
-                else:
-                    text = chunk.get('text')
-                if text:
-                    return text
+        contents = [
+            types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=f"System Instruction:\n{system_content}")]
+            ),
+            types.Content(
+                role="model",
+                parts=[types.Part.from_text(text="Understood. I will follow those instructions.")]
+            ),
+            types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=user_content)]
+            )
+        ]
 
-        if hasattr(completion, 'choices'):
-            choices = completion.choices
-            if choices and len(choices) > 0:
-                first = choices[0]
-                if hasattr(first, 'message') and first.message is not None:
-                    msg = first.message
-                    if isinstance(msg, dict):
-                        text = msg.get('content')
-                    else:
-                        text = getattr(msg, 'content', None)
-                    if text:
-                        return text
-                if hasattr(first, 'text'):
-                    text = getattr(first, 'text', None)
-                    if text:
-                        return text
-
-        return ''
+        try:
+            response = self.client.models.generate_content(
+                model="gemma-4-26b-a4b-it",
+                contents=contents,
+                config=config,
+            )
+            return response.text or ''
+        except Exception as e:
+            print(f"Gemini generation error in GroqService compatibility layer: {e}")
+            return 'Priya mitra, mai kewal aadhyaatmik aur shisht vishayon par charcha karne ke liye hoon. Radhe Radhe! 🙏'
 
     def summarize_panchang(self, payload: dict) -> str:
         prompt_text = _panchang_payload_to_prompt(payload)
@@ -207,7 +228,7 @@ class GroqService:
             user_content=f'Summarize the following Panchang data in simple Hindi/English a few lines:\n{prompt_text}',
             max_completion_tokens=300,
         )
-        return text or 'Unable to parse Groq summary response.'
+        return text or 'Unable to parse Gemini summary response.'
 
     def summarize_astrology(self, payload: dict) -> str:
         prompt_text = _astrology_payload_to_prompt(payload)
@@ -220,7 +241,7 @@ class GroqService:
             ),
             max_completion_tokens=380,
         )
-        return text or 'Unable to parse Groq astrology summary response.'
+        return text or 'Unable to parse Gemini astrology summary response.'
 
     def answer_astrology_question(self, payload: dict, question: str) -> str:
         prompt_text = _astrology_payload_to_prompt(payload)
@@ -237,7 +258,7 @@ class GroqService:
             ),
             max_completion_tokens=420,
         )
-        return text or 'Unable to parse Groq astrology answer response.'
+        return text or 'Unable to parse Gemini astrology answer response.'
 
     def answer_panchang_question(self, payload: dict, question: str) -> str:
         prompt_text = _panchang_payload_to_prompt(payload)
@@ -256,8 +277,7 @@ class GroqService:
             ),
             max_completion_tokens=420,
         )
-        return text or 'Unable to parse Groq Panchang answer response.'
-
+        return text or 'Unable to parse Gemini Panchang answer response.'
 
 
 def get_groq_service() -> GroqService:

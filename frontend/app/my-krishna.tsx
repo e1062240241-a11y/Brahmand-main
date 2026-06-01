@@ -11,13 +11,14 @@ import {
   ImageBackground,
   Animated,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { aiChat } from '../src/services/api';
+import { aiChat, getChatHistory, clearChatHistory } from '../src/services/api';
 import { FONTS } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 
@@ -89,31 +90,59 @@ export default function MyKrishnaChat() {
   const { user } = useAuthStore();
   const displayName = user?.name?.trim() ? user.name.trim() : 'Partha';
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: `Radhe Radhe, ${displayName}! 🙏\n\nMain yahan hoon — tumhare dil ki baat sunne ke liye, Gita ki seekh share karne ke liye.\n\nAaj mann mein kya chal raha hai?`,
-      timestamp: new Date(),
-    },
-  ]);
+  const defaultWelcomeMessage = useCallback((): Message => ({
+    id: 'welcome',
+    role: 'assistant',
+    content: `Radhe Radhe, ${displayName}! 🙏\n\nMain yahan hoon — tumhare dil ki baat sunne ke liye, Gita ki seekh share karne ke liye.\n\nAaj mann mein kya chal raha hai?`,
+    timestamp: new Date(),
+  }), [displayName]);
+
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // Load chat history from Firestore on mount
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,
       useNativeDriver: true,
     }).start();
-  }, []);
+
+    const fetchHistory = async () => {
+      try {
+        const response = await getChatHistory();
+        if (response.data?.messages && response.data.messages.length > 0) {
+          const formatted: Message[] = response.data.messages.map((m: any, idx: number) => ({
+            id: `msg_${idx}`,
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+          }));
+          setMessages(formatted);
+          setShowSuggestions(false);
+        } else {
+          setMessages([defaultWelcomeMessage()]);
+        }
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+        setMessages([defaultWelcomeMessage()]);
+      } finally {
+        setHistoryLoading(false);
+        scrollToBottom();
+      }
+    };
+
+    fetchHistory();
+  }, [defaultWelcomeMessage]);
 
   const scrollToBottom = useCallback(() => {
-    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
   }, []);
 
   const sendMessage = useCallback(
@@ -123,7 +152,7 @@ export default function MyKrishnaChat() {
       setShowSuggestions(false);
 
       const userMsg: Message = {
-        id: Date.now().toString(),
+        id: `user_${Date.now()}`,
         role: 'user',
         content: text.trim(),
         timestamp: new Date(),
@@ -135,16 +164,18 @@ export default function MyKrishnaChat() {
       scrollToBottom();
 
       try {
-        const apiMessages = [
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
-          { role: userMsg.role, content: userMsg.content },
-        ];
+        // Filter out system greetings and keep only real exchange history
+        const apiMessages = messages
+          .filter(m => m.id !== 'welcome')
+          .map((m) => ({ role: m.role, content: m.content }));
+        
+        apiMessages.push({ role: userMsg.role, content: userMsg.content });
 
         const response = await aiChat(apiMessages);
 
         if (response.data?.choices?.[0]?.message) {
           const assistantMsg: Message = {
-            id: (Date.now() + 1).toString(),
+            id: `assistant_${Date.now()}`,
             role: 'assistant',
             content: response.data.choices[0].message.content || '',
             timestamp: new Date(),
@@ -156,7 +187,7 @@ export default function MyKrishnaChat() {
         setMessages((prev) => [
           ...prev,
           {
-            id: (Date.now() + 1).toString(),
+            id: `err_${Date.now()}`,
             role: 'assistant',
             content: 'Koi connection issue hai abhi. Thodi der mein dobara try karo. 🙏',
             timestamp: new Date(),
@@ -172,6 +203,33 @@ export default function MyKrishnaChat() {
 
   const handleSend = () => sendMessage(inputText);
   const handleSuggestion = (text: string) => sendMessage(text);
+
+  const handleClearChat = () => {
+    Alert.alert(
+      'Clear Chat',
+      'Kya aap Krishna ke sath apni chat history clear karna chahte hain?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              await clearChatHistory();
+              setMessages([defaultWelcomeMessage()]);
+              setShowSuggestions(true);
+            } catch (err) {
+              console.error('Failed to clear chat:', err);
+              Alert.alert('Error', 'Chat history clear nahi ho payi. Dobara try karein.');
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === 'user';
@@ -230,7 +288,9 @@ export default function MyKrishnaChat() {
             </View>
           </View>
 
-          <View style={{ width: 40 }} />
+          <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn} disabled={isLoading || historyLoading}>
+            <Ionicons name="trash-outline" size={22} color="#FFD700" />
+          </TouchableOpacity>
         </View>
 
         <KeyboardAvoidingView
@@ -238,23 +298,30 @@ export default function MyKrishnaChat() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={0}
         >
-          {/* ── Message List ── */}
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingTop: insets.top + 80 },
-            ]}
-            onContentSizeChange={scrollToBottom}
-            showsVerticalScrollIndicator={false}
-            ListFooterComponent={isLoading ? <TypingDots /> : null}
-          />
+          {/* ── Loading indicator while history loads ── */}
+          {historyLoading ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator color="#FFD700" size="large" />
+              <Text style={styles.loaderText}>Krishna ke vichar sun rahe hain...</Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessage}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingTop: insets.top + 80 },
+              ]}
+              onContentSizeChange={scrollToBottom}
+              showsVerticalScrollIndicator={false}
+              ListFooterComponent={isLoading ? <TypingDots /> : null}
+            />
+          )}
 
           {/* ── Suggestions chips (only shown before first user message) ── */}
-          {showSuggestions && (
+          {showSuggestions && !historyLoading && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -287,11 +354,12 @@ export default function MyKrishnaChat() {
                 maxLength={500}
                 returnKeyType="send"
                 onSubmitEditing={handleSend}
+                editable={!historyLoading}
               />
               <TouchableOpacity
                 style={[styles.sendBtn, (!inputText.trim() || isLoading) && styles.sendBtnDisabled]}
                 onPress={handleSend}
-                disabled={!inputText.trim() || isLoading}
+                disabled={!inputText.trim() || isLoading || historyLoading}
               >
                 <Ionicons
                   name="send"
@@ -329,6 +397,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,215,0,0.15)',
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  clearBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerAvatarGlow: {
     width: 40,
@@ -356,6 +425,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: FONTS.regular,
   },
+
+  // Loader
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loaderText: { color: '#FFD700', fontFamily: FONTS.medium, marginTop: 12, fontSize: 14 },
 
   // Messages
   listContent: { paddingHorizontal: 14, paddingBottom: 12 },

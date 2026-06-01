@@ -2478,9 +2478,9 @@ async def _upload_post_impl(
             if not file_bytes:
                 raise HTTPException(status_code=400, detail='Empty upload file')
 
-            max_image_bytes = 30 * 1024 * 1024
+            max_image_bytes = 100 * 1024 * 1024
             if len(file_bytes) > max_image_bytes:
-                raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 30MB')
+                raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 100MB')
     except HTTPException:
         raise
     except Exception as e:
@@ -2610,9 +2610,9 @@ async def _upload_chat_media_impl(
     if not file_bytes:
         raise HTTPException(status_code=400, detail='Empty upload file')
 
-    max_media_bytes = 100 * 1024 * 1024
+    max_media_bytes = 500 * 1024 * 1024
     if len(file_bytes) > max_media_bytes:
-        raise HTTPException(status_code=413, detail='Media file too large. Max allowed size is 100MB')
+        raise HTTPException(status_code=413, detail='Media file too large. Max allowed size is 500MB')
 
     media_url, object_path = await _upload_post_media_to_bunny(user_id, file_bytes, content_type, "")
     await file.close()
@@ -3121,7 +3121,7 @@ async def get_posts_feed(
         'items': normalized,
         'limit': safe_limit,
         'offset': offset,
-        'has_more': len(pool) > safe_limit,
+        'has_more': len(unseen_pool) > safe_limit,
     }
 
 
@@ -7604,16 +7604,35 @@ Every reply should feel:
 
     # --- RAG: Retrieve relevant Gita shlokas ---
     rag_context = ""
+    latest_user_msg = ""
+    for msg in reversed(messages):
+        if msg.get("role") == "user":
+            latest_user_msg = msg.get("content", "")
+            break
+
+    # 18+ Filter & Safety Check
+    if latest_user_msg:
+        from offensive_detector import is_offensive
+        safety_check = is_offensive(latest_user_msg)
+        adult_keywords = [
+            "sex", "sexy", "porn", "chut", "lund", "bhabhi", "nude", "nudes", "naked",
+            "orgasm", "masturbation", "sexx", "penis", "vagina", "intercourse", "boobs", "ass"
+        ]
+        has_adult = any(w in latest_user_msg.lower() for w in adult_keywords)
+        
+        if safety_check["offensive"] or has_adult:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "Priya mitra, mai kewal aadhyaatmik aur jeevan ke maargdarshan ke liye hoon. Kripya shishtta banaye rakhein. Radhe Radhe! 🙏"
+                        }
+                    }
+                ]
+            }
+
     try:
         from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
-
-        # Get the latest user message for retrieval
-        latest_user_msg = ""
-        for msg in reversed(messages):
-            if msg.get("role") == "user":
-                latest_user_msg = msg.get("content", "")
-                break
-
         if latest_user_msg:
             shlokas = await retrieve_relevant_shlokas_async(latest_user_msg, top_k=5)
             rag_context = build_rag_context(shlokas)
@@ -7628,32 +7647,156 @@ Every reply should feel:
     if rag_context:
         final_system_prompt = system_prompt + f"\n\n{rag_context}"
 
-    def _call_groq():
-        from groq import Groq
-        groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-        return groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": final_system_prompt}] + [
-                {"role": msg.get("role", "user"), "content": msg.get("content", "")}
-                for msg in messages if msg.get("role") != "system"
-            ],
-            temperature=0.7,
-            max_tokens=300
+    def _call_gemini():
+        import google.genai as genai
+        from google.genai import types
+
+        client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+        contents = []
+        # Prepend system instruction for Gemma
+        contents.append(
+            types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=f"System Instruction:\n{final_system_prompt}")]
+            )
+        )
+        contents.append(
+            types.Content(
+                role="model",
+                parts=[types.Part.from_text(text="Understood. I will follow those instructions and act as Lord Krishna.")]
+            )
         )
 
+        for msg in messages:
+            role = msg.get("role")
+            if role == "system":
+                continue
+            gemini_role = "user" if role == "user" else "model"
+            contents.append(
+                types.Content(
+                    role=gemini_role,
+                    parts=[types.Part.from_text(text=msg.get("content", ""))]
+                )
+            )
+
+        safety_settings = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+            ),
+        ]
+
+        tools = [
+            types.Tool(googleSearch=types.GoogleSearch()),
+        ]
+
+        config = types.GenerateContentConfig(
+            safety_settings=safety_settings,
+            thinking_config=types.ThinkingConfig(
+                thinking_level="MINIMAL",
+            ),
+            tools=tools,
+            temperature=0.7,
+            max_output_tokens=2048,
+        )
+
+        response = client.models.generate_content(
+            model="gemma-4-26b-a4b-it",
+            contents=contents,
+            config=config,
+        )
+        try:
+            return response.text or ""
+        except Exception:
+            return "Priya mitra, mai kewal aadhyaatmik aur jeevan ke maargdarshan ke liye hoon. Kripya shishtta banaye rakhein. Radhe Radhe! 🙏"
+
     try:
-        response = await asyncio.to_thread(_call_groq)
+        assistant_reply = await asyncio.to_thread(_call_gemini)
+
+        # Save to Firebase Firestore
+        try:
+            from datetime import datetime, timezone
+            db = await get_firestore()
+            user_id = token_data["user_id"]
+            chat_ref = db.collection('krishna_chats').document(user_id)
+            
+            chat_doc = chat_ref.get()
+            db_messages = []
+            if chat_doc.exists:
+                db_messages = chat_doc.to_dict().get("messages", [])
+                
+            db_messages.append({
+                "role": "user",
+                "content": latest_user_msg,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            db_messages.append({
+                "role": "assistant",
+                "content": assistant_reply,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            
+            # Limit history to 100 messages to respect document limits
+            db_messages = db_messages[-100:]
+            
+            chat_ref.set({
+                "messages": db_messages,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+        except Exception as fs_err:
+            logger.warning(f"Failed to save chat to Firestore: {fs_err}")
+
         return {
             "choices": [
                 {
                     "message": {
-                        "content": response.choices[0].message.content
+                        "content": assistant_reply
                     }
                 }
             ]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/ai/chat/history")
+async def get_chat_history(token_data: dict = Depends(verify_token)):
+    """Fetch stored Krishna chat history from Firestore."""
+    try:
+        db = await get_firestore()
+        user_id = token_data["user_id"]
+        chat_doc = db.collection('krishna_chats').document(user_id).get()
+        if chat_doc.exists:
+            return {"messages": chat_doc.to_dict().get("messages", [])}
+        return {"messages": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.delete("/ai/chat/history")
+async def delete_chat_history(token_data: dict = Depends(verify_token)):
+    """Clear/delete Krishna chat history from Firestore."""
+    try:
+        db = await get_firestore()
+        user_id = token_data["user_id"]
+        db.collection('krishna_chats').document(user_id).delete()
+        return {"status": "success", "message": "Chat history cleared successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # =================== WISDOM & PANCHANG ===================
 
@@ -10922,7 +11065,7 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         import google.genai as genai
 
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-        model = "gemini-2.5-flash"
+        model = "gemma-4-26b-a4b-it"
         prompt = (
             f"Generate a highly detailed, comprehensive, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. "
             f"Return ONLY a valid JSON object in this exact format, with no markdown formatting:\n"

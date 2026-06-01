@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "C2JVJ4VXRD.com.brahmand.app",
+        "paths": ["*", "/*"]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["C2JVJ4VXRD.com.brahmand.app"]
+  },
+  "appclips": {
+    "apps": ["C2JVJ4VXRD.com.brahmand.app.Clip"]
+  }
+}

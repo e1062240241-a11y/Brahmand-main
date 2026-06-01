@@ -165,6 +165,9 @@ export async function flushSyncQueue() {
 
 // Check if network is online using a lightweight fetch
 async function isOnline(): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    return navigator.onLine;
+  }
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
