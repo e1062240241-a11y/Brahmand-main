@@ -294,9 +294,22 @@ export default function LiveJaapRoomView() {
   const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
 
   const selectedMantra = MANTRA_DATA[mantraType || 'gayatri'] || MANTRA_DATA.gayatri;
-  const WORDS = useMemo(() => selectedMantra.text.split(/[\s\u00A0]+/g), [selectedMantra.text]);
+  const WORDS = useMemo(() => {
+    if (mantraType === 'gayatri') {
+      return [
+        'ॐ भूर्भुवः स्वः',
+        'तत्सवितुर्वरेण्यं',
+        'भर्गो देवस्य धीमहि',
+        'धियो यो नः प्रचोदयात्'
+      ];
+    }
+    return selectedMantra.text.split(/[\s\u00A0]+/g);
+  }, [selectedMantra.text, mantraType]);
   
   const MANTRA_LINES = useMemo(() => {
+    if (mantraType === 'gayatri') {
+      return WORDS;
+    }
     const lines = [];
     const wordsPerLine = mantraType === 'krishna' ? 8 : 4;
     for (let i = 0; i < WORDS.length; i += wordsPerLine) {
@@ -392,10 +405,10 @@ export default function LiveJaapRoomView() {
         nextLineText,
       };
     } else {
-      const wordsPerLine = mantraType === 'krishna' ? 8 : 4;
-      const lineIndex = Math.floor(currentIndex / wordsPerLine);
+      const wordsPerLine = mantraType === 'gayatri' ? 1 : (mantraType === 'krishna' ? 8 : 4);
+      const lineIndex = mantraType === 'gayatri' ? currentIndex : Math.floor(currentIndex / wordsPerLine);
       const lineItems = MANTRA_LINES[lineIndex] ? MANTRA_LINES[lineIndex].split(' ') : [];
-      const highlightedIdx = currentIndex % wordsPerLine;
+      const highlightedIdx = mantraType === 'gayatri' ? 0 : currentIndex % wordsPerLine;
       
       const previousLineText = lineIndex - 1 >= 0 ? MANTRA_LINES[lineIndex - 1] : '';
       const nextLineText = MANTRA_LINES[lineIndex + 1] || MANTRA_LINES[0] || '';
@@ -504,8 +517,8 @@ export default function LiveJaapRoomView() {
         } else if (mantraType === 'krishna') {
           totalDuration = 11.385; // 22.77s / 2 repetitions
         } else {
-          const wordDurations = WORDS.map(w => (w.length > 7 ? 3.0 : 1.2));
-          totalDuration = wordDurations.reduce((a, b) => a + b, 0) + 4.0;
+          const wordDurations = WORDS.map((w: string) => (w.length > 7 ? 3.0 : 1.2));
+          totalDuration = wordDurations.reduce((a: number, b: number) => a + b, 0) + 4.0;
         }
 
         if (diff > 0 && diff < 2.0) {
@@ -957,7 +970,7 @@ export default function LiveJaapRoomView() {
                       {/* Current Line */}
                       <View style={styles.currentLineBoxNew}>
                         {lineItems.map((word: string, idx: number) => {
-                          const isHighlighted = highlightedIdx === idx;
+                          const isHighlighted = mantraType === 'gayatri' || highlightedIdx === idx;
                           return (
                             <Text key={`${word}-${idx}`} style={[styles.wordNew, isHighlighted && styles.wordHighlightNew]}>
                               {word}{' '}

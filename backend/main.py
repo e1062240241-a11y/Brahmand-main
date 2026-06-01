@@ -591,19 +591,19 @@ async def _notify_mentioned_users(
             })
             logger.info('Mention notification created for %s by %s', target_user_id, actor_id)
 
-            target_token = await push_service.get_user_fcm_token(target_user_id)
-            if target_token:
-                push_service.send_notification(
-                    token=target_token,
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=target_user_id,
                     title=title,
                     body=body,
                     data={
                         'type': 'mention',
                         **notification_data,
-                    },
-                    channel_id='messages',
+                    }
                 )
                 logger.info('Mention push sent to %s', target_user_id)
+            except Exception as push_err:
+                logger.warning('Failed to send mention push to %s: %s', target_user_id, push_err)
         except Exception as err:
             logger.warning('Failed to create mention notification for %s: %s', target_user_id, err)
 
@@ -3121,7 +3121,7 @@ async def get_posts_feed(
         'items': normalized,
         'limit': safe_limit,
         'offset': offset,
-        'has_more': len(pool) > safe_limit,
+        'has_more': len(public_posts) > safe_limit,
     }
 
 
@@ -3528,6 +3528,117 @@ async def delete_post(post_id: str, token_data: dict = Depends(verify_token)):
     }
 
 
+async def _send_comment_notifications_background(
+    post_id: str,
+    comment_id: str,
+    parent_id: Optional[str],
+    user_id: str,
+    text: str,
+    comment_doc: dict,
+    parent_comment: Optional[dict],
+    post: dict,
+    user: dict,
+):
+    try:
+        db = await get_db()
+        # 1. Notify the author of the parent comment if this is a reply
+        if parent_comment:
+            parent_owner_id = parent_comment.get('user_id')
+            if parent_owner_id and parent_owner_id != user_id:
+                actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
+                preview_text = text if len(text) <= 80 else f"{text[:77]}..."
+
+                await db.create_document('notifications', {
+                    'user_id': parent_owner_id,
+                    'title': 'New reply to your comment',
+                    'body': f'{actor_name} replied: "{preview_text}"',
+                    'notification_type': 'social',
+                    'data': {
+                        'post_id': str(post_id),
+                        'comment_id': str(comment_id),
+                        'parent_id': str(parent_id),
+                        'actor_user_id': str(user_id),
+                        'actor_name': actor_name,
+                        'action': 'reply',
+                    },
+                    'is_read': False,
+                    'created_at': datetime.utcnow().isoformat() + 'Z',
+                })
+                logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
+
+                try:
+                    await FirebaseNotificationService.send_push_notification(
+                        user_id=parent_owner_id,
+                        title='New reply to your comment',
+                        body=f'{actor_name} replied: "{preview_text}"',
+                        data={
+                            'type': 'post_comment_reply',
+                            'post_id': str(post_id),
+                            'comment_id': str(comment_id),
+                            'parent_id': str(parent_id),
+                            'actor_user_id': str(user_id),
+                        }
+                    )
+                    logger.info(f"Reply push sent to comment owner {parent_owner_id} for comment {parent_id}")
+                except Exception as push_err:
+                    logger.warning(f"Failed to send reply push notification to {parent_owner_id}: {push_err}")
+
+        # 2. Notify the post owner if they are not the replier and haven't already been notified as the parent owner
+        post_owner_id = post.get('user_id')
+        if post_owner_id and post_owner_id != user_id and post_owner_id != (parent_comment.get('user_id') if parent_comment else None):
+            actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
+            preview_text = text if len(text) <= 80 else f"{text[:77]}..."
+
+            await db.create_document('notifications', {
+                'user_id': post_owner_id,
+                'title': 'New comment on your post',
+                'body': f'{actor_name} commented: "{preview_text}"',
+                'notification_type': 'social',
+                'data': {
+                    'post_id': str(post_id),
+                    'comment_id': str(comment_id),
+                    'actor_user_id': str(user_id),
+                    'actor_name': actor_name,
+                    'action': 'comment',
+                },
+                'is_read': False,
+                'created_at': datetime.utcnow().isoformat() + 'Z',
+            })
+            logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
+
+            try:
+                await FirebaseNotificationService.send_push_notification(
+                    user_id=post_owner_id,
+                    title='New comment on your post',
+                    body=f'{actor_name} commented: "{preview_text}"',
+                    data={
+                        'type': 'post_comment',
+                        'post_id': str(post_id),
+                        'comment_id': str(comment_id),
+                        'actor_user_id': str(user_id),
+                    }
+                )
+                logger.info(f"Comment push sent to post owner {post_owner_id} for post {post_id}")
+            except Exception as push_err:
+                logger.warning(f"Failed to send comment push notification to {post_owner_id}: {push_err}")
+
+        # 3. Mentions
+        try:
+            await _notify_mentioned_users(
+                db=db,
+                text=text,
+                actor_user=user,
+                context_type='comment',
+                context_data={'post_id': post_id, 'comment_id': comment_id},
+                skip_user_ids=[post_owner_id] if post_owner_id else None,
+            )
+        except Exception as mention_err:
+            logger.warning('Comment mention notification failed for post %s: %s', post_id, mention_err)
+
+    except Exception as e:
+        logger.exception("Failed to send comment activity notifications in background: %s", e)
+
+
 @api_router.post('/posts/{post_id}/comments')
 async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3618,106 +3729,20 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
     updated_post['top_comments'] = top_comments_raw[:5]
 
-    # 1. Notify the author of the parent comment if this is a reply
-    if parent_comment:
-        parent_owner_id = parent_comment.get('user_id')
-        if parent_owner_id and parent_owner_id != user_id:
-            try:
-                actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
-                preview_text = text if len(text) <= 80 else f"{text[:77]}..."
-
-                await db.create_document('notifications', {
-                    'user_id': parent_owner_id,
-                    'title': 'New reply to your comment',
-                    'body': f'{actor_name} replied: "{preview_text}"',
-                    'notification_type': 'social',
-                    'data': {
-                        'post_id': str(post_id),
-                        'comment_id': str(comment_id),
-                        'parent_id': str(parent_id),
-                        'actor_user_id': str(user_id),
-                        'actor_name': actor_name,
-                        'action': 'reply',
-                    },
-                    'is_read': False,
-                    'created_at': datetime.utcnow().isoformat() + 'Z',
-                })
-                logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
-
-                parent_owner_token = await push_service.get_user_fcm_token(parent_owner_id)
-                if parent_owner_token:
-                    push_service.send_notification(
-                        token=parent_owner_token,
-                        title='New reply to your comment',
-                        body=f'{actor_name} replied: "{preview_text}"',
-                        data={
-                            'type': 'post_comment_reply',
-                            'post_id': str(post_id),
-                            'comment_id': str(comment_id),
-                            'parent_id': str(parent_id),
-                            'actor_user_id': str(user_id),
-                        },
-                        channel_id='messages'
-                    )
-                    logger.info(f"Reply push sent to comment owner {parent_owner_id} for comment {parent_id}")
-            except Exception as reply_notify_err:
-                logger.warning(f"Parent comment reply notification failed: {reply_notify_err}")
-
-    # 2. Notify the post owner if they are not the replier and haven't already been notified as the parent owner
-    post_owner_id = post.get('user_id')
-    if post_owner_id and post_owner_id != user_id and post_owner_id != (parent_comment.get('user_id') if parent_comment else None):
-        try:
-            actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
-            preview_text = text if len(text) <= 80 else f"{text[:77]}..."
-
-            await db.create_document('notifications', {
-                'user_id': post_owner_id,
-                'title': 'New comment on your post',
-                'body': f'{actor_name} commented: "{preview_text}"',
-                'notification_type': 'social',
-                'data': {
-                    'post_id': str(post_id),
-                    'comment_id': str(comment_id),
-                    'actor_user_id': str(user_id),
-                    'actor_name': actor_name,
-                    'action': 'comment',
-                },
-                'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z',
-            })
-            logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
-
-            post_owner_token = await push_service.get_user_fcm_token(post_owner_id)
-            if post_owner_token:
-                push_service.send_notification(
-                    token=post_owner_token,
-                    title='New comment on your post',
-                    body=f'{actor_name} commented: "{preview_text}"',
-                    data={
-                        'type': 'post_comment',
-                        'post_id': str(post_id),
-                        'comment_id': str(comment_id),
-                        'actor_user_id': str(user_id),
-                    },
-                    channel_id='messages'
-                )
-                logger.info(f"Comment push sent to post owner {post_owner_id} for post {post_id}")
-            else:
-                logger.info(f"Comment notification created for post {post_id} but no FCM token found for owner {post_owner_id}")
-        except Exception as notify_err:
-            logger.warning(f"Post comment notification failed for post {post_id}: {notify_err}")
-
-    try:
-        await _notify_mentioned_users(
-            db=db,
+    # Send all notifications (replies, comments, mentions) in the background asynchronously
+    asyncio.create_task(
+        _send_comment_notifications_background(
+            post_id=post_id,
+            comment_id=comment_id,
+            parent_id=parent_id,
+            user_id=user_id,
             text=text,
-            actor_user=user,
-            context_type='comment',
-            context_data={'post_id': post_id, 'comment_id': comment_id},
-            skip_user_ids=[post_owner_id] if post_owner_id else None,
+            comment_doc=comment_doc,
+            parent_comment=parent_comment,
+            post=post,
+            user=user,
         )
-    except Exception as mention_err:
-        logger.warning('Comment mention notification failed for post %s: %s', post_id, mention_err)
+    )
 
     return {
         'message': 'Comment added',

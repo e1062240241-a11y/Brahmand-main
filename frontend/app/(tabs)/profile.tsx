@@ -1395,7 +1395,11 @@ export default function ProfileScreen() {
       </Modal>
 
       {/* Post Detail Modal */}
-      <Modal visible={postModalVisible} animationType="slide">
+      <Modal 
+        visible={postModalVisible} 
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
         <View style={styles.postDetailContainer}>
           <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
             <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
@@ -2533,10 +2537,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   uploadingStatusBar: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    position: 'absolute',
+    bottom: 90,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(30, 30, 30, 0.95)',
+    borderRadius: 12,
     padding: 12,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   uploadingStatusContent: {
     flexDirection: 'row',

@@ -164,7 +164,23 @@ export default function VendorProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}><TouchableOpacity onPress={handleBack}><Ionicons name="arrow-back" size={24} color={COLORS.text} /></TouchableOpacity><Text style={styles.headerTitle}>{vendor.business_name}</Text><TouchableOpacity style={styles.topCallButton} onPress={handleGetCall} disabled={isSendingRequest}><Text style={styles.topCallButtonText}>{isSendingRequest ? 'Sending...' : 'Get call'}</Text></TouchableOpacity></View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>
+          {vendor.business_name}
+        </Text>
+        <TouchableOpacity
+          style={styles.topCallButton}
+          onPress={handleGetCall}
+          disabled={isSendingRequest}
+        >
+          <Text style={styles.topCallButtonText}>
+            {isSendingRequest ? 'Sending...' : 'Get call'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Photo */}
