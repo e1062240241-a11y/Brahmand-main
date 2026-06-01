@@ -1182,28 +1182,36 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
     setLoading(true);
     try {
-      const seenParam = Array.from(seenIdsRef.current).slice(-200).join(',');
-      const offset = Math.max(0, videosRef.current.length);
-      const res = await getPostsFeed(10, offset, 'reels', seenParam);
-      const newPosts = res.data?.items || res.data || [];
+      const currentVideos = videosRef.current;
+
+      // Only pass seen IDs that are already in the current list (not AsyncStorage history)
+      // This ensures backend can always send fresh content
+      const currentIds = new Set(currentVideos.map((p: any) => p.id).filter(Boolean));
+      const seenParam = Array.from(currentIds).slice(-50).join(',');
+
+      const res = await getPostsFeed(15, 0, 'reels', seenParam);
+      const newPosts: any[] = res.data?.items || res.data || [];
 
       if (newPosts.length === 0) {
-        // Unseen khatam — shuffle existing and recycle, reset seenIds for next real fetch
-        const currentVideos = videosRef.current;
-        if (currentVideos.length > 0) {
+        // Backend has no more posts at all — recycle current list (shuffled)
+        if (currentVideos.length > 1) {
           const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
           setVideos(prev => [...prev, ...shuffled]);
-          // Reset so next API call fetches fresh unseen posts
-          seenIdsRef.current.clear();
         }
+        // If only 1 video loaded, don't recycle — just wait, backend may have more
       } else {
-        setVideos(prev => {
-          const uniqueNew = newPosts.filter(
-            (p: any) => !seenIdsRef.current.has(p.id)
-          );
-          uniqueNew.forEach((p: any) => p.id && seenIdsRef.current.add(p.id));
-          return [...prev, ...uniqueNew];
-        });
+        // Filter out posts already visible in current list to avoid immediate duplicates
+        const uniqueNew = newPosts.filter((p: any) => !currentIds.has(p.id));
+
+        if (uniqueNew.length > 0) {
+          setVideos(prev => [...prev, ...uniqueNew]);
+        } else {
+          // All returned posts are already in current view — recycle with shuffle
+          if (currentVideos.length > 1) {
+            const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
+            setVideos(prev => [...prev, ...shuffled]);
+          }
+        }
       }
     } catch (error: any) {
       if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
@@ -1221,7 +1229,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   useEffect(() => {
     if (isVisible) {
-      // Track initial post
+      // Reset all state for fresh session
+      seenIdsRef.current.clear();
       if (initialPost?.id) seenIdsRef.current.add(initialPost.id);
       setVideos([initialPost]);
       setActiveIndex(0);
@@ -1230,10 +1239,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       loadingRef.current = false;
       hasMoreRef.current = true;
       watchStartRef.current = Date.now();
-      // Increase delay to 2.5s to let the initial video load without API competition
-      setTimeout(() => loadMoreReels(), 2500);
+      // Load more after short delay so initial video starts playing first
+      setTimeout(() => loadMoreRef.current(), 1500);
     }
-  }, [isVisible, initialPost, loadMoreReels]);
+  }, [isVisible, initialPost]);
 
   // Send watch event when active reel changes
   const sendWatchEventLocal = useCallback((post: any, watchedMs: number) => {
