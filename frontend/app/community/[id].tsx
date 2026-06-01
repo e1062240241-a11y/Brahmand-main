@@ -24,7 +24,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch } from '../../src/services/api';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
@@ -39,6 +39,13 @@ import * as Clipboard from 'expo-clipboard';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface User {
+  id: string;
+  name: string;
+  sl_id: string;
+  photo?: string;
+}
 
 // Persists across navigation (module-level cache) — survives tab switches but NOT full reloads
 const localPostCategories = new Map<string, string>();
@@ -427,6 +434,13 @@ export default function CommunityDetailScreen() {
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [showGroupInfoModal, setShowGroupInfoModal] = useState(false);
+  const [showAttendeesModal, setShowAttendeesModal] = useState<any | null>(null);
+  const [attendeesList, setAttendeesList] = useState<User[]>([]);
+  const [attendeesLoading, setAttendeesLoading] = useState(false);
+
+  const isLocalUserCommunity = useMemo(() => {
+    return !['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type);
+  }, [community?.type]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -1447,7 +1461,10 @@ export default function CommunityDetailScreen() {
 
         <TouchableOpacity
           style={styles.headerCreateBtn}
-          onPress={() => { setPostCategory(''); setShowCreateModal(true); }}
+          onPress={() => {
+            setPostCategory(isLocalUserCommunity ? 'Others' : '');
+            setShowCreateModal(true);
+          }}
         >
           <Ionicons name="add" size={16} color="#FFF" />
           <Text style={styles.headerCreateBtnText}>Create</Text>
@@ -1527,6 +1544,7 @@ export default function CommunityDetailScreen() {
     const hasPrevThreadConnection = item.threadParentId !== undefined;
 
     const isFulfilled = (item as any).status === 'fulfilled' || (item as any).status === 'resolved' || (item as any).status === 'done';
+    const isEventPost = (item as any).category === 'Events';
 
     const shouldTruncate = item.content.length > 300;
     const displayText = shouldTruncate
@@ -1608,6 +1626,18 @@ export default function CommunityDetailScreen() {
             >
               <Text selectable={true} style={styles.postContentText}>{displayText}</Text>
             </TouchableOpacity>
+
+            {isEventPost && (item as any).start_time && (
+              <View style={[styles.sevaInfoCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                <Text style={[styles.sevaInfoLabel, { color: '#166534' }]}>Event Date & Time</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="calendar-outline" size={16} color="#166534" />
+                  <Text style={[styles.sevaInfoText, { color: '#166534' }]}>
+                    {new Date((item as any).start_time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {item.sevaDetails ? (
               <View style={styles.sevaInfoCard}>
@@ -1829,9 +1859,27 @@ export default function CommunityDetailScreen() {
     }
   };
 
+  const handleViewAttendees = async (item: any) => {
+    setShowAttendeesModal(item);
+    setAttendeesLoading(true);
+    setAttendeesList([]);
+    try {
+      const attendeeIds = item.attendees || [];
+      if (attendeeIds.length > 0) {
+        const res = await getUsersBatch(attendeeIds);
+        setAttendeesList(res.data?.users || res.data || []);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch attendees:', err);
+    } finally {
+      setAttendeesLoading(false);
+    }
+  };
+
   const renderEventItem = ({ item }: { item: any }) => {
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     const phone = item.contact_number || item.contact || item.user_phone;
+    const isCreator = item.user_id === user?.id || item.sender_id === user?.id || item.organizer_id === user?.id;
 
     const userIsAttendee = Array.isArray(item.attendees) && item.attendees.includes(user?.id);
     const rsvp = rsvpStates[item.id] || (userIsAttendee ? 'yes' : undefined);
@@ -1860,13 +1908,24 @@ export default function CommunityDetailScreen() {
             ) : null}
             <View style={styles.festEventMeta}>
               <View style={styles.festMetaRow}>
+                <Ionicons name="calendar-outline" size={14} color="#FF6B00" />
+                <Text style={styles.festMetaText} numberOfLines={1}>
+                  {item.start_time ? new Date(item.start_time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Date not set'}
+                </Text>
+              </View>
+              <View style={styles.festMetaRow}>
                 <Ionicons name="location-outline" size={14} color="#FF3B30" />
                 <Text style={styles.festMetaText} numberOfLines={1}>{item.location || 'Online'}</Text>
               </View>
-              <View style={styles.festMetaRow}>
+              <TouchableOpacity
+                style={styles.festMetaRow}
+                onPress={() => isCreator ? handleViewAttendees(item) : null}
+                disabled={!isCreator}
+              >
                 <Ionicons name="people" size={14} color="#00C853" />
                 <Text style={styles.festMetaText} numberOfLines={1}>{displayGoingCount} Going</Text>
-              </View>
+                {isCreator && displayGoingCount > 0 && <Ionicons name="chevron-forward" size={12} color="#00C853" />}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -2596,8 +2655,7 @@ export default function CommunityDetailScreen() {
 
   const handlePostButtonPress = () => {
     if (!newMessage.trim() && !selectedImage) return;
-    
-    const isLocalUserCommunity = !['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type);
+
     if (isLocalUserCommunity) {
       handleCategorySelectedAndPost('Others');
       return;
@@ -3133,7 +3191,7 @@ export default function CommunityDetailScreen() {
               <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
                 <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  {!['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type) ? null : (
+                  {!isLocalUserCommunity && (
                     !postCategory ? (
                       <TouchableOpacity
                         onPress={() => setShowInlineCategories(!showInlineCategories)}
@@ -3158,15 +3216,16 @@ export default function CommunityDetailScreen() {
                     </TouchableOpacity>
                   ) : (
                     <View style={[styles.selectedCategoryBadge, { marginBottom: 10, marginTop: 0 }]}>
-                      <Ionicons name="pricetag-outline" size={14} color="#FF6600" />
+                      <Ionicons name="pricetag-outline" size={14} color="#FF6B00" />
                       <Text style={styles.selectedCategoryText}>Category: {postCategory}</Text>
                       <TouchableOpacity onPress={() => { setPostCategory(''); }}>
                         <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
                     </View>
-                  ))}
+                  )
+                )}
 
-                  {!['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type) ? null : (
+                  {!isLocalUserCommunity && (
                     showInlineCategories && (
                       <View style={{ marginBottom: 16 }}>
                       <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>Select Category</Text>
@@ -3320,7 +3379,7 @@ export default function CommunityDetailScreen() {
                         <DateTimePicker
                           value={eventDate || new Date()}
                           mode="date"
-                          display="default"
+                          display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
                           onChange={(event, selectedDate) => {
                             setShowDatePicker(false);
                             if (selectedDate) {
@@ -3336,7 +3395,7 @@ export default function CommunityDetailScreen() {
                         <DateTimePicker
                           value={eventDate || new Date()}
                           mode="time"
-                          display="default"
+                          display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
                           onChange={(event, selectedDate) => {
                             setShowTimePicker(false);
                             if (selectedDate) {
@@ -3601,6 +3660,41 @@ export default function CommunityDetailScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Attendees Modal */}
+      <Modal visible={!!showAttendeesModal} animationType="slide" transparent={true} onRequestClose={() => setShowAttendeesModal(null)}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={styles.modalDismiss} activeOpacity={1} onPress={() => setShowAttendeesModal(null)} />
+          <View style={[styles.bottomSheet, { height: '60%' }]}>
+            <View style={styles.sheetHandle} />
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111', marginBottom: 20 }}>Event Attendees</Text>
+
+            {attendeesLoading ? (
+              <ActivityIndicator size="large" color="#FF6B00" />
+            ) : (
+              <FlatList
+                data={attendeesList}
+                keyExtractor={(u) => u.id}
+                renderItem={({ item }) => (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                    <Avatar name={item.name} photo={item.photo} size={40} />
+                    <View style={{ marginLeft: 12 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>{item.name}</Text>
+                      <Text style={{ fontSize: 12, color: '#666' }}>@{item.sl_id}</Text>
+                    </View>
+                  </View>
+                )}
+                ListEmptyComponent={() => (
+                  <View style={{ alignItems: 'center', marginTop: 40 }}>
+                    <Ionicons name="people-outline" size={48} color="#CCC" />
+                    <Text style={{ color: '#888', marginTop: 12 }}>No one has joined yet.</Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
       </Modal>
 
       {/* Group Info Modal */}
