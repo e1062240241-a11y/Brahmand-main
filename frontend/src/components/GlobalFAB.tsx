@@ -15,6 +15,7 @@ import {
   Linking,
   AppState,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
@@ -272,7 +273,7 @@ export function GlobalFAB() {
                   const angle = startAngle + index * angleStep;
                   const radius = 120;
                   const centerX = 180 - 40; // center of 360 - half of 80
-                  const centerY = 180 - 40;
+                  const centerY = 180 - 40 - 15; // Shift up by 15px for visual centering with text
                   const x = centerX + radius * Math.cos(angle);
                   const y = centerY + radius * Math.sin(angle);
 
@@ -304,32 +305,32 @@ export function GlobalFAB() {
                         }}
                       >
                         {item.label === 'My Krishna' ? (
-                          <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Image source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label === 'Festival' ? (
-                          <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label === 'Kundli' ? (
-                          <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Image source={require('../../assets/images/tab bar/hand_eye_phosphor.png')} style={{ width: 52, height: 52 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label.includes('Passport') ? (
-                          <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 64, height: 64 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label === 'Panchang' ? (
-                          <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label.includes('Library') ? (
-                          <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label === 'Jyotish' ? (
-                          <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 80, height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/siren_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 42, height: 42 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : (
                           <Ionicons name={item.icon as any} size={28} color="#FFF" />
@@ -629,7 +630,7 @@ const fabStyles = StyleSheet.create({
   centerButton: {
     position: 'absolute',
     left: 126,
-    top: 126,
+    top: 112,
     alignItems: 'center',
     width: 108,
   },
