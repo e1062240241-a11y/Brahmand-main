@@ -1178,26 +1178,29 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   callbacksRef.current = { onClose, onLike, onComment, onShare };
 
   const loadMoreReels = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return;
+    if (loadingRef.current) return;
 
     setLoading(true);
     try {
-      // Build seen_ids param (cap at 200 to keep URL sane)
       const seenParam = Array.from(seenIdsRef.current).slice(-200).join(',');
-
-      // Use the current number of loaded videos as the offset (minus 1 if initialPost is not from the API)
       const offset = Math.max(0, videosRef.current.length);
       const res = await getPostsFeed(10, offset, 'reels', seenParam);
       const newPosts = res.data?.items || res.data || [];
 
       if (newPosts.length === 0) {
-        setHasMore(false);
-        hasMoreRef.current = false;
+        // Unseen khatam — shuffle existing and recycle, reset seenIds for next real fetch
+        const currentVideos = videosRef.current;
+        if (currentVideos.length > 0) {
+          const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
+          setVideos(prev => [...prev, ...shuffled]);
+          // Reset so next API call fetches fresh unseen posts
+          seenIdsRef.current.clear();
+        }
       } else {
         setVideos(prev => {
-          const existingIds = new Set(prev.map((p: any) => p.id));
-          const uniqueNew = newPosts.filter((p: any) => !existingIds.has(p.id));
-          // Track seen IDs
+          const uniqueNew = newPosts.filter(
+            (p: any) => !seenIdsRef.current.has(p.id)
+          );
           uniqueNew.forEach((p: any) => p.id && seenIdsRef.current.add(p.id));
           return [...prev, ...uniqueNew];
         });
@@ -1205,8 +1208,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     } catch (error: any) {
       if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
         console.warn('Load more reels timed out — retrying later');
-        setHasMore(false);
-        hasMoreRef.current = false;
       } else {
         console.error('Load more reels error:', error);
       }
@@ -1377,7 +1378,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             data={videos}
             renderItem={renderItem}
             extraData={{ activeIndex, isMuted }}
-            keyExtractor={(item, index) => `${item.id || index}`}
+            keyExtractor={(_, index) => `reel-${index}`}
             pagingEnabled={Platform.OS !== 'web'}
             showsVerticalScrollIndicator={false}
             onScroll={handleReelScroll}
