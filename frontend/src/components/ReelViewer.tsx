@@ -1185,13 +1185,19 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const newPosts = res.data?.items || res.data || [];
 
       if (newPosts.length === 0) {
-        // Shuffle and recycle existing videos
-        const shuffled = [...videosRef.current].sort(() => 0.5 - Math.random());
-        setVideos(prev => [...prev, ...shuffled]);
+        // Unseen khatam — shuffle existing and recycle, reset seenIds for next real fetch
+        const currentVideos = videosRef.current;
+        if (currentVideos.length > 0) {
+          const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
+          setVideos(prev => [...prev, ...shuffled]);
+          // Reset so next API call fetches fresh unseen posts
+          seenIdsRef.current.clear();
+        }
       } else {
         setVideos(prev => {
-          const existingIds = new Set(prev.map((p: any) => p.id));
-          const uniqueNew = newPosts.filter((p: any) => !existingIds.has(p.id));
+          const uniqueNew = newPosts.filter(
+            (p: any) => !seenIdsRef.current.has(p.id)
+          );
           uniqueNew.forEach((p: any) => p.id && seenIdsRef.current.add(p.id));
           return [...prev, ...uniqueNew];
         });
@@ -1369,7 +1375,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             data={videos}
             renderItem={renderItem}
             extraData={{ activeIndex, isMuted }}
-            keyExtractor={(item, index) => `${item.id || index}`}
+            keyExtractor={(_, index) => `reel-${index}`}
             pagingEnabled={Platform.OS !== 'web'}
             showsVerticalScrollIndicator={false}
             onScroll={handleReelScroll}

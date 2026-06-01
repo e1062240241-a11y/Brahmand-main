@@ -1019,7 +1019,7 @@ export default function HomeScreen() {
   const liveActive = isWithinGayatriMantraWindow(now);
   const liveEnd = getCurrentGayatriEnd(now);
   const feedPostKeys = useMemo(
-    () => feedPosts.map((post, index) => String(post.id || post.media_url || index)),
+    () => feedPosts.map((post, index) => `feed-${index}-${post.id || post.media_url || index}`),
     [feedPosts],
   );
 
@@ -1691,7 +1691,7 @@ export default function HomeScreen() {
   };
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
-    const postKey = String(item.id || item.media_url || index);
+    const postKey = `feed-${index}-${String(item.id || item.media_url || index)}`;
     return (
       <View
         onLayout={(event) => {
@@ -2694,7 +2694,7 @@ export default function HomeScreen() {
               ) : feedPosts.length > 0 ? (
                 <>
                   {feedPosts.map((post, index) => {
-                    const postKey = String(post.id || post.media_url || index);
+                    const postKey = `feed-${index}-${String(post.id || post.media_url || index)}`;
                     const yOffset = postOffsetsRef.current[postKey];
                     const cardHeight = postHeightsRef.current[postKey];
 
