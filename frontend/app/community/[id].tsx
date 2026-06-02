@@ -25,6 +25,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch } from '../../src/services/api';
+import { scheduleEventReminderNotification } from '../../src/services/pushNotifications';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useTranslation } from '../../src/utils/i18n';
 import { useAuthStore } from '../../src/store/authStore';
@@ -171,51 +172,51 @@ const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festiv
 
 // Festival image map — mirrors the one in festivals.tsx
 const FESTIVAL_IMAGE_MAP: Record<string, any> = {
-  'Akshaya Tritiya': require('../../assets/images/festival image/Akshaya Tritiya.jpg.webp'),
-  'Anant Chaturdashi': require('../../assets/images/festival image/Anant Chaturdashi.jpg.webp'),
-  'Ashadhi Ekadashi': require('../../assets/images/festival image/Ashadhi Ekadashi_.jpg'),
-  'Bhai Dooj': require('../../assets/images/festival image/Bhai Dooj.jpg'),
-  'Bohag Bihu': require('../../assets/images/festival image/Bohag Bihu .jpg.webp'),
-  'Chaitra Sukhladi': require('../../assets/images/festival image/Chaitra Sukhladi .jpg'),
-  'Chhath Puja': require('../../assets/images/festival image/Chhath Puja.jpg'),
-  'Dhanteras': require('../../assets/images/festival image/Dhanteras.jpg.avif'),
-  'Dhanu Sankranti': require('../../assets/images/festival image/Dhanu Sankranti.jpeg'),
-  'Diwali': require('../../assets/images/festival image/Diwali .jpeg'),
-  'Durga Ashtami': require('../../assets/images/festival image/Durga Ashtami.jpeg'),
-  'Dussehra': require('../../assets/images/festival image/Dussehra.jpg'),
-  'Ganesh Chaturthi': require('../../assets/images/festival image/Ganesh Chaturthi.jpeg'),
-  'Geeta Jayanti': require('../../assets/images/festival image/Geeta Jayanti.jpg.avif'),
-  'Govardhan Puja': require('../../assets/images/festival image/Govardhan Puja.jpg'),
-  'Guru Purnima': require('../../assets/images/festival image/Guru Purnima.png.avif'),
-  'Hanuman janmotsav': require('../../assets/images/festival image/Hanuman janmotsav.jpg'),
-  'Holi': require('../../assets/images/festival image/Happy Holi.jpg.webp'),
-  'Hariyali Teej': require('../../assets/images/festival image/Hariyali Teej.jpeg'),
-  'Hindi New Year': require('../../assets/images/festival image/Hindi New Year.jpg.webp'),
-  'Holika Dahan': require('../../assets/images/festival image/Holika Dahan.png.avif'),
-  'Jagannath Rath Yatra': require('../../assets/images/festival image/Jagannath Rath Yatra.webp'),
-  'Janmashtami': require('../../assets/images/festival image/Janmashtami.jpg'),
-  'Kajari Teej': require('../../assets/images/festival image/Kajari Teej.jpeg'),
-  'Kartik Purnima': require('../../assets/images/festival image/Kartik Purnima.jpeg'),
-  'Karva Chauth': require('../../assets/images/festival image/Karva Chauth.jpg.webp'),
-  'Magh Bihu': require('../../assets/images/festival image/Magh Bihu.jpg'),
-  'Maha Navami': require('../../assets/images/festival image/Maha Navami.jpeg'),
-  'Maha Saptami': require('../../assets/images/festival image/Maha Saptami.jpg.webp'),
-  'Maha Shivaratri': require('../../assets/images/festival image/Maha Shivaratri.jpeg'),
-  'Mahalaya Amavasya': require('../../assets/images/festival image/Mahalaya Amavasya.jpg'),
-  'Maharishi Valmiki Jayanti': require('../../assets/images/festival image/Maharishi Valmiki Jayanti.jpg'),
-  'Makar Sankranti': require('../../assets/images/festival image/Makar Sankranti .jpg.webp.jpeg'),
-  'Nag Panchami': require('../../assets/images/festival image/Nag Panchami.jpg'),
-  'Navratri': require('../../assets/images/festival image/Sharad Navratri.jpg'),
-  'Onam': require('../../assets/images/festival image/Onam.jpg'),
-  'Raksha Bandhan': require('../../assets/images/festival image/Raksha Bandhan.jpg'),
-  'Ram Navami': require('../../assets/images/festival image/Ram Navami.jpg'),
-  'Savitri Pooja': require('../../assets/images/festival image/Savitri Pooja_.jpg'),
-  'Sharad Navratri': require('../../assets/images/festival image/Sharad Navratri.jpg'),
-  'Sharad Purnima': require('../../assets/images/festival image/Sharad Purnima.jpg.webp'),
-  'Thaipusam': require('../../assets/images/festival image/Thaipusam.jpg'),
-  'Vaisakhi': require('../../assets/images/festival image/Vaisakhi.jpg'),
-  'Vasant Panchami': require('../../assets/images/festival image/Vasant Panchami.jpg'),
-  'Vishwakarma Puja': require('../../assets/images/festival image/Vishwakarma Puja.jpeg'),
+  'Akshaya Tritiya': require('../../assets/images/festival_image/Akshaya Tritiya.jpg.webp'),
+  'Anant Chaturdashi': require('../../assets/images/festival_image/Anant Chaturdashi.jpg.webp'),
+  'Ashadhi Ekadashi': require('../../assets/images/festival_image/Ashadhi Ekadashi_.jpg'),
+  'Bhai Dooj': require('../../assets/images/festival_image/Bhai Dooj.jpg'),
+  'Bohag Bihu': require('../../assets/images/festival_image/Bohag Bihu .jpg.webp'),
+  'Chaitra Sukhladi': require('../../assets/images/festival_image/Chaitra Sukhladi .jpg'),
+  'Chhath Puja': require('../../assets/images/festival_image/Chhath Puja.jpg'),
+  'Dhanteras': require('../../assets/images/festival_image/Dhanteras.jpg.avif'),
+  'Dhanu Sankranti': require('../../assets/images/festival_image/Dhanu Sankranti.jpeg'),
+  'Diwali': require('../../assets/images/festival_image/Diwali .jpeg'),
+  'Durga Ashtami': require('../../assets/images/festival_image/Durga Ashtami.jpeg'),
+  'Dussehra': require('../../assets/images/festival_image/Dussehra.jpg'),
+  'Ganesh Chaturthi': require('../../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
+  'Geeta Jayanti': require('../../assets/images/festival_image/Geeta Jayanti.jpg.avif'),
+  'Govardhan Puja': require('../../assets/images/festival_image/Govardhan Puja.jpg'),
+  'Guru Purnima': require('../../assets/images/festival_image/Guru Purnima.png.avif'),
+  'Hanuman janmotsav': require('../../assets/images/festival_image/Hanuman janmotsav.jpg'),
+  'Holi': require('../../assets/images/festival_image/Happy Holi.jpg.webp'),
+  'Hariyali Teej': require('../../assets/images/festival_image/Hariyali Teej.jpeg'),
+  'Hindi New Year': require('../../assets/images/festival_image/Hindi New Year.jpg.webp'),
+  'Holika Dahan': require('../../assets/images/festival_image/Holika Dahan.png.avif'),
+  'Jagannath Rath Yatra': require('../../assets/images/festival_image/Jagannath Rath Yatra.webp'),
+  'Janmashtami': require('../../assets/images/festival_image/Janmashtami.jpg'),
+  'Kajari Teej': require('../../assets/images/festival_image/Kajari Teej.jpeg'),
+  'Kartik Purnima': require('../../assets/images/festival_image/Kartik Purnima.jpeg'),
+  'Karva Chauth': require('../../assets/images/festival_image/Karva Chauth.jpg.webp'),
+  'Magh Bihu': require('../../assets/images/festival_image/Magh Bihu.jpg'),
+  'Maha Navami': require('../../assets/images/festival_image/Maha Navami.jpeg'),
+  'Maha Saptami': require('../../assets/images/festival_image/Maha Saptami.jpg.webp'),
+  'Maha Shivaratri': require('../../assets/images/festival_image/Maha Shivaratri.jpeg'),
+  'Mahalaya Amavasya': require('../../assets/images/festival_image/Mahalaya Amavasya.jpg'),
+  'Maharishi Valmiki Jayanti': require('../../assets/images/festival_image/Maharishi Valmiki Jayanti.jpg'),
+  'Makar Sankranti': require('../../assets/images/festival_image/Makar Sankranti .jpg.webp.jpeg'),
+  'Nag Panchami': require('../../assets/images/festival_image/Nag Panchami.jpg'),
+  'Navratri': require('../../assets/images/festival_image/Sharad Navratri.jpg'),
+  'Onam': require('../../assets/images/festival_image/Onam.jpg'),
+  'Raksha Bandhan': require('../../assets/images/festival_image/Raksha Bandhan.jpg'),
+  'Ram Navami': require('../../assets/images/festival_image/Ram Navami.jpg'),
+  'Savitri Pooja': require('../../assets/images/festival_image/Savitri Pooja_.jpg'),
+  'Sharad Navratri': require('../../assets/images/festival_image/Sharad Navratri.jpg'),
+  'Sharad Purnima': require('../../assets/images/festival_image/Sharad Purnima.jpg.webp'),
+  'Thaipusam': require('../../assets/images/festival_image/Thaipusam.jpg'),
+  'Vaisakhi': require('../../assets/images/festival_image/Vaisakhi.jpg'),
+  'Vasant Panchami': require('../../assets/images/festival_image/Vasant Panchami.jpg'),
+  'Vishwakarma Puja': require('../../assets/images/festival_image/Vishwakarma Puja.jpeg'),
 };
 
 const getCommunityFestivalImage = (name: string) => {
@@ -245,7 +246,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Join us for a grand Diwali celebration with prayers, lights & community dinner.',
     location: 'Ramakrishna Math, Andheri West',
     time: '31 Oct 2024, 6:00 PM',
-    image: require('../../assets/images/festival image/Diwali .jpeg'),
+    image: require('../../assets/images/festival_image/Diwali .jpeg'),
     organizer: { name: 'Rahul Joshi', photo: null, isVerified: true },
     timeAgo: '2h ago'
   },
@@ -255,7 +256,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Community aarti and prasad distribution for all devotees.',
     location: 'Lokhandwala, Andheri West',
     time: '7 Sep 2024, 7:00 PM',
-    image: require('../../assets/images/festival image/Ganesh Chaturthi.jpeg'),
+    image: require('../../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
     organizer: { name: 'Neha Sharma', photo: null, isVerified: true },
     timeAgo: '5h ago'
   },
@@ -265,7 +266,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Nine nights of celebration, dance and divine energy.',
     location: 'NSCI Dome, Worli',
     time: '3 Oct 2024, 8:00 PM',
-    image: require('../../assets/images/festival image/Sharad Navratri.jpg'),
+    image: require('../../assets/images/festival_image/Sharad Navratri.jpg'),
     organizer: { name: 'Amit Patel', photo: null, isVerified: true },
     timeAgo: '1d ago'
   }
@@ -358,6 +359,8 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
   }
 ];
 
+import { useGlobalMute } from '../../src/contexts/MuteContext';
+
 let ExpoVideoModule: any = null;
 try {
   ExpoVideoModule = require('expo-video');
@@ -366,27 +369,60 @@ try {
 const CommunityMediaItem = ({ media, style, onPress }: { media: string | any, style: any, onPress?: () => void }) => {
   const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
   const isVideo = typeof mediaUrl === 'string' && (mediaUrl.toLowerCase().startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl));
+  const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
 
   const player = ExpoVideoModule?.useVideoPlayer ? ExpoVideoModule.useVideoPlayer(isVideo ? mediaUrl : null, (p: any) => {
     if (p) {
       p.loop = true;
-      p.muted = true;
+      p.muted = isMuted;
       p.play();
     }
   }) : null;
+
+  useEffect(() => {
+    if (player) {
+      player.muted = isMuted;
+    }
+  }, [isMuted, player]);
 
   const Wrapper = onPress ? TouchableOpacity : View;
   const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
 
   if (isVideo && ExpoVideoModule?.VideoView && player) {
+    const flattenedStyle = StyleSheet.flatten(style) || {};
     return (
-      <Wrapper {...wrapperProps}>
+      <Wrapper {...wrapperProps} style={[flattenedStyle, { position: 'relative', overflow: 'hidden' }]}>
         <ExpoVideoModule.VideoView
           player={player}
-          style={style}
+          style={{ width: '100%', height: '100%' }}
           contentFit="cover"
           nativeControls={false}
         />
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            zIndex: 10,
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+          onPress={(e) => {
+            e.stopPropagation();
+            toggleMute();
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={isMuted ? 'volume-mute' : 'volume-medium'}
+            size={18}
+            color="#FFF"
+          />
+        </TouchableOpacity>
       </Wrapper>
     );
   }
@@ -1997,11 +2033,18 @@ export default function CommunityDetailScreen() {
     );
   };
 
-  const handleAttendPress = async (eventId: string, wantsToAttend: boolean) => {
+  const handleAttendPress = async (eventId: string, wantsToAttend: boolean, eventItem?: any) => {
     setRsvpStates(prev => ({
       ...prev,
       [eventId]: wantsToAttend ? 'yes' : 'no'
     }));
+
+    // Schedule a 5-min reminder when user marks as attending
+    if (wantsToAttend && eventItem?.start_time) {
+      const title = eventItem.title || eventItem.content || 'Community Event';
+      scheduleEventReminderNotification(title, eventItem.start_time, id as string)
+        .catch(e => console.warn('[Community] Failed to schedule event reminder:', e));
+    }
 
     try {
       if (typeof eventId === 'string' && !eventId.startsWith('post-') && !eventId.startsWith('dummy-')) {
@@ -2171,7 +2214,7 @@ export default function CommunityDetailScreen() {
               )}
             </View>
             <TouchableOpacity
-              onPress={() => handleAttendPress(item.id, rsvp !== 'yes')}
+              onPress={() => handleAttendPress(item.id, rsvp !== 'yes', item)}
               style={{
                 backgroundColor: rsvp === 'yes' ? '#1D9BF0' : '#FFFFFF',
                 paddingHorizontal: 16,
@@ -3061,6 +3104,15 @@ export default function CommunityDetailScreen() {
 
     // No longer switching tabs automatically to keep the user in their current context
     // The post will appear immediately in the Feed and its specific category
+    // For Events with a date set, schedule a 5-min reminder for the creator
+    if (finalCategory === 'Events' && eventDate) {
+      scheduleEventReminderNotification(
+        newMessage.trim() || 'Community Event',
+        eventDate.toISOString(),
+        id as string
+      ).catch(e => console.warn('[Community] Failed to schedule event reminder on create:', e));
+    }
+
     Alert.alert('Success', textChunks.length > 1 ? 'Your thread has been shared with the community!' : 'Your post has been shared with the community!');
   };
 

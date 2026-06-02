@@ -92,6 +92,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
 
   const handleShareWhatsApp = async () => {
     const message = getShareText();
+    const postLink = getPostLink();
     let mediaUrl = post?.media_url || post?.mediaUrl || '';
 
     if (mediaUrl) {
@@ -105,69 +106,100 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
       }
     }
 
-    try {
-      if (mediaUrl) {
-        const isVideo = post?.media_type === 'video' || String(mediaUrl).toLowerCase().match(/\.(mp4|mov|webm|m4v)/i);
-        const ext = isVideo ? 'mp4' : 'jpg';
-        const localUri = `${(FileSystem as any).cacheDirectory}whatsapp_share_${Date.now()}.${ext}`;
-        const download = await (FileSystem as any).downloadAsync(mediaUrl, localUri);
-        
-        if (download?.uri) {
-          await Clipboard.setStringAsync(message);
-          
-          if (Platform.OS === 'ios') {
-            Alert.alert(
-              t('language') === 'hi' ? "व्हाट्सएप स्टेटस पर साझा करें" : "Share to WhatsApp Status",
-              t('language') === 'hi'
-                ? "वीडियो/छवि तैयार है! लिंक आपके क्लिपबोर्ड पर कॉपी हो गया है। जब व्हाट्सएप खुले, तो 'My Status' चुनें और कैप्शन में लिंक को पेस्ट करें।"
-                : "Video/Image is ready! The link has been copied to your clipboard. When WhatsApp opens, select 'My Status' and paste the link into the caption.",
-              [{
-                text: t('language') === 'hi' ? "ठीक है" : "OK",
-                onPress: async () => {
-                  await Sharing.shareAsync(download.uri, {
-                    UTI: ext === 'mp4' ? 'public.mpeg-4' : 'public.jpeg',
-                    dialogTitle: t('language') === 'hi' ? 'व्हाट्सएप स्टेटस पर साझा करें' : 'Share to WhatsApp Status',
-                  });
-                }
-              }]
-            );
-          } else {
-            Alert.alert(
-              t('language') === 'hi' ? "व्हाट्सएप पर साझा करें" : "Share to WhatsApp", 
-              t('language') === 'hi' 
-                ? "वीडियो/छवि तैयार है! लिंक आपके क्लिपबोर्ड पर कॉपी हो गया है। दूसरों के साथ साझा करने के लिए इसे अपने व्हाट्सएप स्टेटस कैप्शन में पेस्ट करें।"
-                : "Video/Image is ready! The link has been copied to your clipboard. Paste it into your WhatsApp Status caption to share with others.",
-              [{ text: t('language') === 'hi' ? "ठीक है" : "OK", onPress: async () => {
-                const mimeType = ext === 'mp4' ? 'video/mp4' : 'image/jpeg';
-                await Sharing.shareAsync(download.uri, {
-                  mimeType: mimeType,
-                  dialogTitle: t('language') === 'hi' ? 'व्हाट्सएप स्टेटस चुनें' : 'Select WhatsApp Status',
-                });
-              }}]
-            );
-          }
+    // Helper: open WhatsApp with text — always works on both Android & iOS
+    const openWhatsAppWithText = async () => {
+      const encoded = encodeURIComponent(message);
+      try {
+        const waDeepLink = `whatsapp://send?text=${encoded}`;
+        const canOpen = await Linking.canOpenURL(waDeepLink);
+        if (canOpen) {
+          await Linking.openURL(waDeepLink);
+        } else {
+          // Universal fallback — opens WhatsApp web or app on any platform
+          await Linking.openURL(`https://wa.me/?text=${encoded}`);
+        }
+        onClose();
+      } catch (e) {
+        const msg = String((e as any)?.message || e || '').toLowerCase();
+        if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
+        // Last resort — native Share sheet
+        try {
+          await Share.share({ message });
           onClose();
-          return;
+        } catch {
+          Alert.alert(
+            t('language') === 'hi' ? 'साझा करें' : 'Share',
+            message,
+            [{ text: 'OK' }]
+          );
         }
       }
-      
-      const encoded = encodeURIComponent(message);
-      const url = `whatsapp://send?text=${encoded}`;
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        await Linking.openURL(`https://wa.me/?text=${encoded}`);
+    };
+
+    try {
+      // Media download + share to WhatsApp Status — native only (not available on web)
+      if (Platform.OS !== 'web' && mediaUrl) {
+        const isVideo = post?.media_type === 'video' || String(mediaUrl).toLowerCase().match(/\.(mp4|mov|webm|m4v)/i);
+        const ext = isVideo ? 'mp4' : 'jpg';
+
+        try {
+          const localUri = `${(FileSystem as any).cacheDirectory}whatsapp_share_${Date.now()}.${ext}`;
+          const download = await (FileSystem as any).downloadAsync(mediaUrl, localUri);
+
+          if (download?.uri) {
+            const sharingAvailable = await Sharing.isAvailableAsync();
+            if (sharingAvailable) {
+              await Clipboard.setStringAsync(message);
+
+              if (Platform.OS === 'ios') {
+                Alert.alert(
+                  t('language') === 'hi' ? 'व्हाट्सएप स्टेटस पर साझा करें' : 'Share to WhatsApp Status',
+                  t('language') === 'hi'
+                    ? 'मीडिया तैयार है! लिंक क्लिपबोर्ड पर कॉपी हो गया है। व्हाट्सएप खुलने पर My Status चुनें और कैप्शन में लिंक पेस्ट करें।'
+                    : 'Media ready! The post link was copied to your clipboard. Select My Status in WhatsApp and paste the link in the caption.',
+                  [{
+                    text: t('language') === 'hi' ? 'ठीक है' : 'OK',
+                    onPress: async () => {
+                      await Sharing.shareAsync(download.uri, {
+                        UTI: ext === 'mp4' ? 'public.mpeg-4' : 'public.jpeg',
+                        dialogTitle: t('language') === 'hi' ? 'व्हाट्सएप स्टेटस पर साझा करें' : 'Share to WhatsApp Status',
+                      });
+                    }
+                  }]
+                );
+              } else {
+                Alert.alert(
+                  t('language') === 'hi' ? 'व्हाट्सएप पर साझा करें' : 'Share to WhatsApp',
+                  t('language') === 'hi'
+                    ? 'मीडिया तैयार है! लिंक क्लिपबोर्ड पर कॉपी हो गया है। व्हाट्सएप स्टेटस कैप्शन में पेस्ट करें।'
+                    : 'Media ready! Post link copied. Paste it into your WhatsApp Status caption.',
+                  [{ text: t('language') === 'hi' ? 'ठीक है' : 'OK', onPress: async () => {
+                    const mimeType = ext === 'mp4' ? 'video/mp4' : 'image/jpeg';
+                    await Sharing.shareAsync(download.uri, {
+                      mimeType,
+                      dialogTitle: t('language') === 'hi' ? 'व्हाट्सएप स्टेटस चुनें' : 'Select WhatsApp Status',
+                    });
+                  }}]
+                );
+              }
+              onClose();
+              return;
+            }
+          }
+        } catch (downloadErr) {
+          // Media download failed — fall through to text-only share
+          console.warn('[SharePostModal] Media download failed, falling back to text share:', downloadErr);
+        }
       }
-      onClose();
+
+      // Text-only WhatsApp share (works on web, and when no media or download failed)
+      await openWhatsAppWithText();
     } catch (e) {
       const msg = String((e as any)?.message || e || '').toLowerCase();
       if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
-      console.warn("WhatsApp share error:", e);
-      Alert.alert(
-        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
-        `${t('language') === 'hi' ? 'व्हाट्सएप नहीं खोल सका। सुनिश्चित करें कि व्हाट्सएप इंस्टॉल है।' : 'Could not open WhatsApp. Make sure WhatsApp is installed.'}\n\nDetails: ${(e as any)?.message || e}`
-      );
+      console.warn('WhatsApp share error:', e);
+      // Still try basic text link share
+      await openWhatsAppWithText();
     }
   };
 

@@ -112,7 +112,7 @@ export default function TempleScreen() {
   return (
     <LinearGradient
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-      locations={[0, 0.09, 0.25]}
+      locations={[0, 0.0913, 0.25]}
       style={{ flex: 1 }}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -386,15 +386,15 @@ const styles = StyleSheet.create({
   searchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 30, paddingHorizontal: 20, paddingVertical: 14, elevation: 4, shadowOpacity: 0.1, shadowRadius: 10 },
   searchInputField: { flex: 1, fontSize: 14, color: '#333', fontFamily: FONTS.medium },
 
-  categoryPillsRow: { marginBottom: 20, backgroundColor: '#FFFFFF', paddingVertical: 10 },
+  categoryPillsRow: { marginBottom: 20, backgroundColor: 'transparent', paddingVertical: 10 },
   catPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, marginRight: 12 },
   catPillActive: { backgroundColor: '#FFF5EB' },
   catPillText: { fontSize: 14, fontFamily: FONTS.bold, color: '#555' },
   catPillTextActive: { color: '#FF6600' },
 
   templeListContainer: { paddingHorizontal: 20, paddingBottom: 40 },
-  templeItemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 20, padding: 12, marginBottom: 15, elevation: 2, shadowOpacity: 0.05, shadowRadius: 5 },
-  templeItemImage: { width: 90, height: 90, borderRadius: 15 },
+  templeItemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', height: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 15, elevation: 2, shadowOpacity: 0.05, shadowRadius: 5 },
+  templeItemImage: { width: 80, height: 95, borderRadius: 15 },
   templeItemInfo: { flex: 1, marginLeft: 15 },
   templeItemName: { fontSize: 16, fontFamily: FONTS.bold, color: '#111', marginBottom: 4 },
   templeItemLocRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },

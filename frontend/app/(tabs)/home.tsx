@@ -1478,16 +1478,21 @@ export default function HomeScreen() {
     const message = `Check this post on Brahmand!${caption}\n\n${appLink}`;
 
     try {
-      if (FileSystemModule?.cacheDirectory && FileSystemModule?.downloadAsync && mediaUrl) {
+      // Media download is native-only — skip on web
+      if (Platform.OS !== 'web' && FileSystemModule?.cacheDirectory && FileSystemModule?.downloadAsync && mediaUrl) {
         const inferredExt = post?.media_type === 'video' ? 'mp4' : 'jpg';
         const localPath = `${FileSystemModule.cacheDirectory}share-${Date.now()}.${inferredExt}`;
-        const downloadRes = await FileSystemModule.downloadAsync(mediaUrl, localPath);
-        if (downloadRes?.uri) {
-          await Share.share({ message, url: downloadRes.uri, title: 'Share via Brahmand' });
-          return;
+        try {
+          const downloadRes = await FileSystemModule.downloadAsync(mediaUrl, localPath);
+          if (downloadRes?.uri) {
+            await Share.share({ message, url: downloadRes.uri, title: 'Share via Brahmand' });
+            return;
+          }
+        } catch (downloadErr) {
+          console.warn('[handleShareExternal] Media download failed, sharing text only:', downloadErr);
         }
       }
-      await Share.share({ message: `${message}\n${mediaUrl}`, url: appLink, title: 'Share via Brahmand' });
+      await Share.share({ message: `${message}${mediaUrl ? '\n' + mediaUrl : ''}`, url: appLink, title: 'Share via Brahmand' });
     } catch (error: any) {
       const msg = String(error?.message || error || '').toLowerCase();
       if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
@@ -2891,7 +2896,7 @@ export default function HomeScreen() {
               }
             }}
             onDownload={async () => {
-              if (selectedSharePost?.media_url && FileSystemModule?.downloadAsync) {
+              if (Platform.OS !== 'web' && selectedSharePost?.media_url && FileSystemModule?.downloadAsync) {
                 try {
                   const ext = selectedSharePost.media_type === 'video' ? 'mp4' : 'jpg';
                   const localPath = `${FileSystemModule.documentDirectory}brahmand_post_${Date.now()}.${ext}`;
@@ -2901,7 +2906,7 @@ export default function HomeScreen() {
                   alert('Download failed');
                 }
               } else {
-                alert('Download naturally unsupported');
+                alert('Download not supported on this platform');
               }
               setShareModalVisible(false);
             }}

@@ -60,6 +60,7 @@ export default function PanchangScreen() {
 
   // Sub-tabs / Toggles
   const [choghadiyaMode, setChoghadiyaMode] = useState<'day' | 'night'>('day');
+  const [activeHoraIdx, setActiveHoraIdx] = useState<number>(1);
 
   const isMountedRef = useRef(true);
 
@@ -342,13 +343,13 @@ export default function PanchangScreen() {
     };
 
     const staticHoraList = [
-      { time: '05:45 AM - 06:45 AM', hora: 'Sun', nature: { text: 'BENEFIC', type: 'good' }, isActive: false },
-      { time: '06:45 AM - 07:45 AM', hora: 'Venus', nature: { text: 'GOOD', type: 'good_active' }, isActive: true },
-      { time: '07:45 AM - 08:45 AM', hora: 'Mercury', nature: { text: 'NEUTRAL', type: 'neutral' }, isActive: false },
-      { time: '08:45 AM - 09:45 AM', hora: 'Moon', nature: { text: 'BENEFIC', type: 'good' }, isActive: false },
-      { time: '09:45 AM - 10:45 AM', hora: 'Saturn', nature: { text: 'MALEFIC', type: 'bad' }, isActive: false },
-      { time: '10:45 AM - 11:45 AM', hora: 'Jupiter', nature: { text: 'BENEFIC', type: 'good' }, isActive: false },
-      { time: '11:45 AM - 12:45 PM', hora: 'Mars', nature: { text: 'BAD', type: 'bad' }, isActive: false },
+      { time: '05:45 AM - 06:45 AM', hora: 'Sun', nature: { text: 'BENEFIC', type: 'good' } },
+      { time: '06:45 AM - 07:45 AM', hora: 'Venus', nature: { text: 'GOOD', type: 'good' } },
+      { time: '07:45 AM - 08:45 AM', hora: 'Mercury', nature: { text: 'NEUTRAL', type: 'neutral' } },
+      { time: '08:45 AM - 09:45 AM', hora: 'Moon', nature: { text: 'BENEFIC', type: 'good' } },
+      { time: '09:45 AM - 10:45 AM', hora: 'Saturn', nature: { text: 'MALEFIC', type: 'bad' } },
+      { time: '10:45 AM - 11:45 AM', hora: 'Jupiter', nature: { text: 'BENEFIC', type: 'good' } },
+      { time: '11:45 AM - 12:45 PM', hora: 'Mars', nature: { text: 'BAD', type: 'bad' } },
     ];
 
     return (
@@ -356,13 +357,20 @@ export default function PanchangScreen() {
         <View style={styles.horaTimelineContainer}>
           {staticHoraList.map((h: any, idx: number) => {
             const isLast = idx === staticHoraList.length - 1;
+            const isActive = idx === activeHoraIdx;
+            const activeTypeStr = isActive ? `${h.nature.type}_active` : h.nature.type;
 
             return (
-              <View key={idx} style={styles.horaTimelineRow}>
+              <TouchableOpacity 
+                key={idx} 
+                style={styles.horaTimelineRow} 
+                onPress={() => setActiveHoraIdx(idx)}
+                activeOpacity={isActive ? 1 : 0.7}
+              >
                 {/* Timeline Column */}
                 <View style={styles.horaTimelineCol}>
-                  {!isLast && <View style={h.isActive ? styles.horaTimelineLineActive : styles.horaTimelineLine} />}
-                  {h.isActive ? (
+                  {!isLast && <View style={isActive ? styles.horaTimelineLineActive : styles.horaTimelineLine} />}
+                  {isActive ? (
                     <View style={styles.horaTimelineDotActiveOuter}>
                       <View style={styles.horaTimelineDotActiveMiddle}>
                         <View style={styles.horaTimelineDotActiveInner} />
@@ -375,7 +383,7 @@ export default function PanchangScreen() {
 
                 {/* Content Column */}
                 <View style={styles.horaContentCol}>
-                  {h.isActive ? (
+                  {isActive ? (
                     <View style={styles.horaActiveCard}>
                       <View style={styles.horaActiveTopRow}>
                         <Text style={styles.horaActiveTitle}>CURRENT HORA</Text>
@@ -389,9 +397,9 @@ export default function PanchangScreen() {
                           {planetIcons[h.hora] && <Image source={planetIcons[h.hora]} style={styles.horaPlanetIconActive} resizeMode="contain" />}
                           <Text style={styles.horaPlanetNameActive}>{h.hora}</Text>
                         </View>
-                        <View style={[styles.natureBadge, (styles as any)[`natureBadge_${h.nature.type}`]]}>
-                          <View style={[styles.natureDot, (styles as any)[`natureDot_${h.nature.type}`]]} />
-                          <Text style={[styles.natureText, (styles as any)[`natureText_${h.nature.type}`]]}>{h.nature.text}</Text>
+                        <View style={[styles.natureBadge, (styles as any)[`natureBadge_${activeTypeStr}`]]}>
+                          <View style={[styles.natureDot, (styles as any)[`natureDot_${activeTypeStr}`]]} />
+                          <Text style={[styles.natureText, (styles as any)[`natureText_${activeTypeStr}`]]}>{h.nature.text}</Text>
                         </View>
                       </View>
                     </View>
@@ -411,7 +419,7 @@ export default function PanchangScreen() {
                     </View>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -952,6 +960,16 @@ const styles = StyleSheet.create({
   },
   natureDot_neutral: { backgroundColor: '#584235' },
   natureText_neutral: { color: '#584235' },
+  natureBadge_neutral_active: {
+    paddingHorizontal: 13,
+    paddingTop: 6,
+    paddingBottom: 7.5,
+    backgroundColor: '#FFE2D5',
+    borderWidth: 1,
+    borderColor: 'rgba(224, 192, 175, 0.60)',
+  },
+  natureDot_neutral_active: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#584235' },
+  natureText_neutral_active: { color: '#584235', fontSize: 11, lineHeight: 16.5 },
   natureBadge_bad: { 
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
@@ -959,6 +977,16 @@ const styles = StyleSheet.create({
   },
   natureDot_bad: { backgroundColor: '#EF4444' },
   natureText_bad: { color: '#B91C1C' },
+  natureBadge_bad_active: {
+    paddingHorizontal: 13,
+    paddingTop: 6,
+    paddingBottom: 7.5,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  natureDot_bad_active: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
+  natureText_bad_active: { color: '#B91C1C', fontSize: 11, lineHeight: 16.5 },
   inauspiciousRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 

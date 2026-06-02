@@ -44,11 +44,37 @@ const getTempleIdFromName = (name: string, prefix: 'jyotirling' | 'other' = 'oth
 const getTempleImageById = (id: string) => TEMPLE_IMAGES[id] || DEFAULT_TEMPLE_IMAGE;
 
 const getTempleImageByName = (name: string) => {
+  const lowerName = String(name || '').toLowerCase();
+  
+  if (lowerName.includes('iskcon') && (lowerName.includes('mira') || lowerName.includes('borivali'))) {
+    return TEMPLE_IMAGES['other-iskcon-mira-road-thane'];
+  }
+  if (lowerName.includes('shirdi') || lowerName.includes('sai baba')) {
+    return TEMPLE_IMAGES['other-shirdi-sai-baba-temple-maharashtra'];
+  }
+  if (lowerName.includes('tirumala') || lowerName.includes('venkateswara') || lowerName.includes('tirupati') || lowerName.includes('balaji')) {
+    return TEMPLE_IMAGES['other-tirupati-balaji-temple-andhra-pradesh'];
+  }
+  if (lowerName.includes('siddhivinayak')) {
+    return TEMPLE_IMAGES['other-siddhivinayak-temple-mumbai'];
+  }
+
   const jyotirlingId = getTempleIdFromName(name, 'jyotirling');
   if (TEMPLE_IMAGES[jyotirlingId]) return TEMPLE_IMAGES[jyotirlingId];
 
   const otherId = getTempleIdFromName(name, 'other');
-  return TEMPLE_IMAGES[otherId] || DEFAULT_TEMPLE_IMAGE;
+  if (TEMPLE_IMAGES[otherId]) return TEMPLE_IMAGES[otherId];
+
+  const norm = normalizeTempleName(name);
+  if (norm.length > 3) {
+    for (const key of Object.keys(TEMPLE_IMAGES)) {
+      if (key.includes(norm) || norm.includes(key.replace(/^(jyotirling|other)-/, ''))) {
+        return TEMPLE_IMAGES[key];
+      }
+    }
+  }
+
+  return DEFAULT_TEMPLE_IMAGE;
 };
 
 export { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageById, getTempleImageByName };
