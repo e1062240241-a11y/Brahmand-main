@@ -4822,7 +4822,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   dropdownOptionSelected: {
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#F0FDFA',
     borderRadius: 12,
     paddingHorizontal: 16,
   },
@@ -4832,7 +4832,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   dropdownOptionTextSelected: {
-    color: '#A855F7',
+    color: '#0D9488',
     fontWeight: '700',
   },
   twitterDropdownMenu: {

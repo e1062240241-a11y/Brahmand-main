@@ -31,7 +31,8 @@ class FirebaseNotificationService:
         title: str,
         body: str,
         notification_type: str,
-        data: Optional[Dict[str, Any]] = None
+        data: Optional[Dict[str, Any]] = None,
+        notification_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create and store notification"""
         db = await FirebaseNotificationService.get_db()
@@ -46,8 +47,8 @@ class FirebaseNotificationService:
             "created_at": datetime.utcnow().isoformat() + 'Z'
         }
         
-        notification_id = await db.create_document('notifications', notification_data)
-        notification_data['id'] = notification_id
+        inserted_id = await db.create_document('notifications', notification_data, doc_id=notification_id)
+        notification_data['id'] = inserted_id
         
         logger.info(f"Notification created for user {user_id}")
         
@@ -590,7 +591,8 @@ class FirebaseNotificationService:
         title: str,
         body: str,
         mantra_type: str,
-        session_name: str
+        session_name: str,
+        notification_id: Optional[str] = None
     ):
         """Store notification and send push notification to user's device"""
         await FirebaseNotificationService.create_notification(
@@ -598,7 +600,8 @@ class FirebaseNotificationService:
             title=title,
             body=body,
             notification_type="jaap_reminder",
-            data={"mantra_type": mantra_type, "session_name": session_name}
+            data={"mantra_type": mantra_type, "session_name": session_name},
+            notification_id=notification_id
         )
         await FirebaseNotificationService.send_push_notification(
             user_id=user_id,

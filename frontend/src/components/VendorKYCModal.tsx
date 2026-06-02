@@ -259,6 +259,12 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         const fileName = (asset as any).fileName || null;
         setIdDocumentUri(uri);
         setHasAutoExtracted(false);
+        // Reset OTP verification states when a new document is picked
+        setOtpVerified(false);
+        setOtpFlowActive(false);
+        setOtpReferenceId('');
+        setOtpValue('');
+        setOtpCooldown(0);
 
         if (idType === 'aadhaar') {
           setAadhaarExtracting(true);
@@ -907,7 +913,15 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                       autoCapitalize="none"
                       keyboardType="number-pad"
                       maxLength={12}
-                      onChangeText={(value) => setIdNumber(value.replace(/[^\d]/g, '').slice(0, 12))}
+                      onChangeText={(value) => {
+                        setIdNumber(value.replace(/[^\d]/g, '').slice(0, 12));
+                        // Reset OTP verification states when Aadhaar number is modified
+                        setOtpVerified(false);
+                        setOtpFlowActive(false);
+                        setOtpReferenceId('');
+                        setOtpValue('');
+                        setOtpCooldown(0);
+                      }}
                     />
                   </View>
                   <View style={styles.docActionCol}>

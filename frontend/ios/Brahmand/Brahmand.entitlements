@@ -7,6 +7,7 @@
     <key>com.apple.developer.associated-domains</key>
     <array>
       <string>applinks:brahmand.app</string>
+      <string>applinks:www.brahmand.app</string>
     </array>
   </dict>
 </plist>

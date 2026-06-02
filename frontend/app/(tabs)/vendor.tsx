@@ -376,6 +376,18 @@ export default function VendorScreen() {
 
   useEffect(() => {
     if (!userId) return;
+
+    // Background sync: poll to refresh vendor data and update WatermelonDB every 30 seconds
+    const interval = setInterval(() => {
+      console.log('[Background Sync] Refreshing vendors list and syncing with WatermelonDB...');
+      loadData().catch((err) => console.warn('[Background Sync] Failed to refresh vendors:', err));
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [userId, loadData]);
+
+  useEffect(() => {
+    if (!userId) return;
     if (activeSection === 'Jobs') {
       loadJobsData();
       loadKycStatus();
@@ -516,9 +528,8 @@ export default function VendorScreen() {
       });
     }
 
-    // Show all vendors if distance cannot be computed (e.g. location disabled),
-    // or limit to a generous 100km radius so users/testers can see profiles.
-    filtered = filtered.filter((v) => typeof v.distance !== 'number' || v.distance <= 100);
+    // Show only vendors within a strict 8km radius as requested by the user
+    filtered = filtered.filter((v) => typeof v.distance === 'number' && v.distance <= 8);
 
     return filtered.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
   }, [vendors, activeTab, searchTerm, searchCategory]);
