@@ -121,24 +121,31 @@ export default function LibraryPage() {
           </View>
         </View>
 
-        {/* ── Hero Card ── */}
-        <View style={styles.heroWrapper}>
-          <View style={styles.heroCard}>
-            {/* Background image (right-aligned) */}
-            <Image source={heroImage} style={styles.heroImg} resizeMode="cover" />
-            {/* Gradient overlay for readable text on left */}
-            <LinearGradient
-              colors={['rgba(16,12,8,0.7)', 'rgba(16,12,8,0.35)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            {/* Text content */}
-            <View style={styles.heroContent}>
-              <Text style={styles.heroGreeting}>Namaste, 🙏</Text>
-              <Text style={styles.heroBody}>
-                Explore timeless scriptures that guide{'\n'}your mind, nourish your soul and{'\n'}enrich your life.
-              </Text>
+        {/* ── Quote Section (Moved to Top) ── */}
+        <View style={styles.quoteWrapper}>
+          <View style={styles.quoteCard}>
+            {/* Opening quotation mark icon (orange) */}
+            <View style={[styles.quoteIcon, { width: 25.5, height: 18, justifyContent: 'center', alignItems: 'center', overflow: 'visible' }]}>
+              <MaterialCommunityIcons
+                name="format-quote-close"
+                size={34}
+                color={ORANGE}
+                style={{ marginTop: -12 }} // Adjust icon to perfectly fit the 18px height visually
+              />
+            </View>
+            <Text style={styles.quoteText}>
+              {'"A library is not just a collection of\nbooks, but a journey towards a better you."'}
+            </Text>
+
+            {/* Diya circular avatar */}
+            <View style={styles.diyaContainer}>
+              <View style={styles.diyaRing}>
+                <Image source={diyaImage} style={styles.diyaImg} resizeMode="cover" />
+              </View>
+              {/* Orange Sparkle badge */}
+              <View style={styles.diyaBadge}>
+                <Ionicons name="sparkles" size={14} color="#FFF" />
+              </View>
             </View>
           </View>
         </View>
@@ -271,34 +278,6 @@ export default function LibraryPage() {
           </ScrollView>
         </View>
 
-        {/* ── Quote Section ── */}
-        <View style={styles.quoteWrapper}>
-          <View style={styles.quoteCard}>
-            {/* Opening quotation mark icon (orange) */}
-            <View style={[styles.quoteIcon, { width: 25.5, height: 18, justifyContent: 'center', alignItems: 'center', overflow: 'visible' }]}>
-              <MaterialCommunityIcons
-                name="format-quote-close"
-                size={34}
-                color={ORANGE}
-                style={{ marginTop: -12 }} // Adjust icon to perfectly fit the 18px height visually
-              />
-            </View>
-            <Text style={styles.quoteText}>
-              {'"A library is not just a collection of\nbooks, but a journey towards a better you."'}
-            </Text>
-
-            {/* Diya circular avatar */}
-            <View style={styles.diyaContainer}>
-              <View style={styles.diyaRing}>
-                <Image source={diyaImage} style={styles.diyaImg} resizeMode="cover" />
-              </View>
-              {/* Orange Sparkle badge */}
-              <View style={styles.diyaBadge}>
-                <Ionicons name="sparkles" size={14} color="#FFF" />
-              </View>
-            </View>
-          </View>
-        </View>
 
         {/* ── 3D Book Button ── */}
         <View style={styles.book3dWrapper}>
@@ -619,7 +598,7 @@ const styles = StyleSheet.create({
   /* Quote */
   quoteWrapper: {
     paddingHorizontal: H_PADDING,
-    marginBottom: 50,
+    marginBottom: 16,
   },
   quoteCard: {
     backgroundColor: '#FFFFFF',

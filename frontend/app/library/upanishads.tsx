@@ -33,7 +33,7 @@ import { useLibraryStore } from '../../src/store/libraryStore';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Upanishads image provided by the user
-const geeta3DImage = require('../../assets/images/tab bar/books/926fcc275fe2d574ed7190b15962fd9a469f7d8f.png');
+const geeta3DImage = require('../../assets/images/tab bar/books/upanishad.png');
 // Custom bookmark icons
 const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
 const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');
