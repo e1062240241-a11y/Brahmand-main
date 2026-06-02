@@ -339,7 +339,7 @@ export function GlobalFAB() {
                           </ImageBackground>
                         ) : item.label === 'Festival' ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 54, height: 54 }} resizeMode="contain" />
+                            <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label === 'Kundli' ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -347,7 +347,7 @@ export function GlobalFAB() {
                           </ImageBackground>
                         ) : item.label.includes('Passport') ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 72, height: 72 }} resizeMode="contain" />
+                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 62, height: 62 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label === 'Panchang' ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>

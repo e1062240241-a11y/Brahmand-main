@@ -356,7 +356,7 @@ const baseQuickAccess = [
   { label: 'Kundli', subtitle: 'Your birth chart insights', color: '#FFF' },
   { label: 'Jyotish', subtitle: 'Your birth chart insights', color: '#FFF' },
   { label: 'Brahmand Passport', subtitle: 'Track your spiritual journey', color: '#FFF' },
-  { label: 'Festival Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
+  { label: 'Festival', subtitle: 'Next Festival & Rituals', color: '#FFF' },
   { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
 ];
 
@@ -2064,7 +2064,7 @@ export default function HomeScreen() {
                         } else if (item.label === 'Brahmand Passport') {
                           displayLabel = 'ब्रह्मांड पासपोर्ट';
                           displaySubtitle = 'आपकी मंदिर यात्रा का रिकॉर्ड';
-                        } else if (item.label === 'Festival Days') {
+                        } else if (item.label === 'Festival') {
                           displayLabel = 'त्योहार के दिन';
                           displaySubtitle = 'अगला त्योहार और अनुष्ठान';
                         } else if (item.label === 'Brahmand Library') {
@@ -2085,7 +2085,7 @@ export default function HomeScreen() {
                             else if (item.label === 'Kundli') router.push('/astrology' as any);
                             else if (item.label === 'Jyotish') router.push('/horoscope');
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
-                            else if (item.label === 'Festival Days') router.push('/festivals');
+                            else if (item.label === 'Festival') router.push('/festivals');
                             else if (item.label === 'Brahmand Library') router.push('/library');
                           }}
                         >
@@ -2125,10 +2125,10 @@ export default function HomeScreen() {
                             <View style={[styles.featureIconWrap, { overflow: 'visible', width: 52, height: 67 }]}>
                               <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 53, height: 67, flexShrink: 0, aspectRatio: 41/52 }} resizeMode="contain" />
                             </View>
-                          ) : item.label === 'Festival Days' ? (
+                          ) : item.label === 'Festival' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'visible' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 54, height: 54, justifyContent: 'center', alignItems: 'center' }}>
-                                <SacredIcon width={52} height={52} />
+                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 34, height: 34 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Library' ? (
@@ -2571,8 +2571,8 @@ export default function HomeScreen() {
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgeCyan, { borderColor: '#0EA5E9', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#0EA5E9', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                     </View>
                   </View>
                 </View>
