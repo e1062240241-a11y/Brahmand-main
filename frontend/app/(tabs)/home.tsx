@@ -298,6 +298,7 @@ const HOME_CARD_TEXTURES = {
   peach: require('../../assets/images/home_card_bg_peach.png'),
   mint: require('../../assets/images/home_card_bg_mint.jpg'),
   cyan: require('../../assets/images/home_card_bg_mint.jpg'),
+  lavender: require('../../assets/images/home_card_bg_lavender.jpg'),
 } as const;
 
 type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
@@ -307,6 +308,7 @@ const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, string]
   peach: ['rgba(255, 250, 242, 0.74)', 'rgba(255, 232, 205, 0.48)'],
   mint: ['rgba(242, 255, 248, 0.74)', 'rgba(210, 245, 225, 0.48)'],
   cyan: ['rgba(224, 247, 250, 0.75)', 'rgba(178, 235, 242, 0.48)'],
+  lavender: ['rgba(245, 235, 255, 0.74)', 'rgba(220, 205, 250, 0.48)'],
 };
 
 function HomeCardTextureBg({
@@ -2519,7 +2521,7 @@ export default function HomeScreen() {
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="cyan">
+                    <HomeCardTextureBg texture="lavender">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
@@ -2544,11 +2546,11 @@ export default function HomeScreen() {
                         width: '85%',
                         height: 28,
                         borderRadius: 14,
-                        backgroundColor: '#0EA5E9',
+                        backgroundColor: '#8C36DB',
                         justifyContent: 'center',
                         alignItems: 'center',
                         alignSelf: 'center',
-                        shadowColor: '#0EA5E9',
+                        shadowColor: '#8C36DB',
                         shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.3,
                         shadowRadius: 3,
