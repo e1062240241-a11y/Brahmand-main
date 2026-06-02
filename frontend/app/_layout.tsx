@@ -1,8 +1,6 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-// @ts-ignore
-import * as NavigationBar from 'expo-navigation-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -521,6 +519,7 @@ export default function RootLayout() {
 
     const configureAndroidBars = async () => {
       try {
+        const NavigationBar = require('expo-navigation-bar');
         // Keep bottom navigation bar consistently dark to avoid layout updates & flickering during page transitions
         await NavigationBar.setBackgroundColorAsync('#000000');
         await NavigationBar.setButtonStyleAsync('light');
