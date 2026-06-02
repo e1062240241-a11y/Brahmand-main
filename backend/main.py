@@ -7234,8 +7234,9 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         otp_aadhaar = (user_doc.get('kyc_aadhaar_number') or '').strip()
         if not otp_verified:
             raise HTTPException(status_code=400, detail="Please verify Aadhaar OTP before submitting KYC")
-        if otp_aadhaar and otp_aadhaar != id_number:
-            raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
+        # Relaxed check as requested to allow re-uploads of different Aadhaar documents
+        # if otp_aadhaar and otp_aadhaar != id_number:
+        #     raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
     
     # Compress photos if provided
     id_photo = data.get('id_photo')
@@ -12459,6 +12460,17 @@ async def _jaap_reminder_worker():
                             logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (already sent today)")
                             continue
                             
+                        # Deterministic notification ID to prevent duplicates across multiple servers/workers
+                        notif_id = f"jaap_reminder:{uid}:hanuman:{session['name'].lower()}:{date_str}"
+                        try:
+                            existing_notif = await db.get_document("notifications", notif_id)
+                            if existing_notif:
+                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (Deterministic Doc Check)")
+                                sent_reminders_cache[cache_key] = now_ts
+                                continue
+                        except Exception as check_err:
+                            logger.warning(f"Error checking deterministic Hanuman Chalisa reminder: {check_err}")
+                            
                         # Check Firestore notifications collection as secondary backup (without order_by to avoid index requirements)
                         try:
                             recent_notifs = await db.query_documents(
@@ -12497,7 +12509,8 @@ async def _jaap_reminder_worker():
                             title="🙏 Jaap Starting Soon",
                             body=f"Your {session['name']} Hanuman Chalisa session starts in 5 minutes. Join now!",
                             mantra_type="hanuman",
-                            session_name=session['name']
+                            session_name=session['name'],
+                            notification_id=notif_id
                         )
                         sent_reminders_cache[cache_key] = now_ts
 
@@ -12538,6 +12551,17 @@ async def _jaap_reminder_worker():
                             logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (already sent today)")
                             continue
                             
+                        # Deterministic notification ID to prevent duplicates across multiple servers/workers
+                        notif_id = f"jaap_reminder:{uid}:{mantra_type}:{session['name'].lower()}:{date_str}"
+                        try:
+                            existing_notif = await db.get_document("notifications", notif_id)
+                            if existing_notif:
+                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (Deterministic Doc Check)")
+                                sent_reminders_cache[cache_key] = now_ts
+                                continue
+                        except Exception as check_err:
+                            logger.warning(f"Error checking deterministic {mantra_type} reminder: {check_err}")
+
                         # Secondary backup check in Firestore
                         try:
                             recent_notifs = await db.query_documents(
@@ -12576,7 +12600,8 @@ async def _jaap_reminder_worker():
                             title="🙏 Live Jaap Starting Soon",
                             body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
                             mantra_type=mantra_type,
-                            session_name=session['name']
+                            session_name=session['name'],
+                            notification_id=notif_id
                         )
                         sent_reminders_cache[cache_key] = now_ts
                     
