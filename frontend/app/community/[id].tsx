@@ -25,6 +25,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch } from '../../src/services/api';
+import { scheduleEventReminderNotification } from '../../src/services/pushNotifications';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useTranslation } from '../../src/utils/i18n';
 import { useAuthStore } from '../../src/store/authStore';
@@ -358,6 +359,8 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
   }
 ];
 
+import { useGlobalMute } from '../../src/contexts/MuteContext';
+
 let ExpoVideoModule: any = null;
 try {
   ExpoVideoModule = require('expo-video');
@@ -366,27 +369,60 @@ try {
 const CommunityMediaItem = ({ media, style, onPress }: { media: string | any, style: any, onPress?: () => void }) => {
   const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
   const isVideo = typeof mediaUrl === 'string' && (mediaUrl.toLowerCase().startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl));
+  const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
 
   const player = ExpoVideoModule?.useVideoPlayer ? ExpoVideoModule.useVideoPlayer(isVideo ? mediaUrl : null, (p: any) => {
     if (p) {
       p.loop = true;
-      p.muted = true;
+      p.muted = isMuted;
       p.play();
     }
   }) : null;
+
+  useEffect(() => {
+    if (player) {
+      player.muted = isMuted;
+    }
+  }, [isMuted, player]);
 
   const Wrapper = onPress ? TouchableOpacity : View;
   const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
 
   if (isVideo && ExpoVideoModule?.VideoView && player) {
+    const flattenedStyle = StyleSheet.flatten(style) || {};
     return (
-      <Wrapper {...wrapperProps}>
+      <Wrapper {...wrapperProps} style={[flattenedStyle, { position: 'relative', overflow: 'hidden' }]}>
         <ExpoVideoModule.VideoView
           player={player}
-          style={style}
+          style={{ width: '100%', height: '100%' }}
           contentFit="cover"
           nativeControls={false}
         />
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            zIndex: 10,
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+          onPress={(e) => {
+            e.stopPropagation();
+            toggleMute();
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={isMuted ? 'volume-mute' : 'volume-medium'}
+            size={18}
+            color="#FFF"
+          />
+        </TouchableOpacity>
       </Wrapper>
     );
   }
@@ -1997,11 +2033,18 @@ export default function CommunityDetailScreen() {
     );
   };
 
-  const handleAttendPress = async (eventId: string, wantsToAttend: boolean) => {
+  const handleAttendPress = async (eventId: string, wantsToAttend: boolean, eventItem?: any) => {
     setRsvpStates(prev => ({
       ...prev,
       [eventId]: wantsToAttend ? 'yes' : 'no'
     }));
+
+    // Schedule a 5-min reminder when user marks as attending
+    if (wantsToAttend && eventItem?.start_time) {
+      const title = eventItem.title || eventItem.content || 'Community Event';
+      scheduleEventReminderNotification(title, eventItem.start_time, id as string)
+        .catch(e => console.warn('[Community] Failed to schedule event reminder:', e));
+    }
 
     try {
       if (typeof eventId === 'string' && !eventId.startsWith('post-') && !eventId.startsWith('dummy-')) {
@@ -2171,7 +2214,7 @@ export default function CommunityDetailScreen() {
               )}
             </View>
             <TouchableOpacity
-              onPress={() => handleAttendPress(item.id, rsvp !== 'yes')}
+              onPress={() => handleAttendPress(item.id, rsvp !== 'yes', item)}
               style={{
                 backgroundColor: rsvp === 'yes' ? '#1D9BF0' : '#FFFFFF',
                 paddingHorizontal: 16,
@@ -3061,6 +3104,15 @@ export default function CommunityDetailScreen() {
 
     // No longer switching tabs automatically to keep the user in their current context
     // The post will appear immediately in the Feed and its specific category
+    // For Events with a date set, schedule a 5-min reminder for the creator
+    if (finalCategory === 'Events' && eventDate) {
+      scheduleEventReminderNotification(
+        newMessage.trim() || 'Community Event',
+        eventDate.toISOString(),
+        id as string
+      ).catch(e => console.warn('[Community] Failed to schedule event reminder on create:', e));
+    }
+
     Alert.alert('Success', textChunks.length > 1 ? 'Your thread has been shared with the community!' : 'Your post has been shared with the community!');
   };
 

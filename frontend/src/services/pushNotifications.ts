@@ -280,12 +280,61 @@ export async function getLastNotificationResponse() {
 }
 
 /**
- * Schedule a local notification with correct channel and custom sound.
- *
- * iOS: sound filename must include .mp3 extension (matches the file bundled
- *      in ios/Brahmand/ via Xcode copy-bundle-resources).
- * Android: sound filename WITHOUT extension (matches res/raw/ filename).
+ * Schedule a local notification 5 minutes before a community event.
+ * Safe to call multiple times — silently skips if the event is in the past
+ * or less than 6 minutes away (so the reminder would already have passed).
  */
+export async function scheduleEventReminderNotification(
+  eventTitle: string,
+  startTimeIso: string,
+  communityId?: string
+): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
+  const eventMs = new Date(startTimeIso).getTime();
+  if (isNaN(eventMs)) {
+    console.warn('[Push] scheduleEventReminderNotification: invalid startTimeIso', startTimeIso);
+    return null;
+  }
+
+  const reminderMs = eventMs - 5 * 60 * 1000; // 5 minutes before
+  const secondsUntilReminder = Math.floor((reminderMs - Date.now()) / 1000);
+
+  if (secondsUntilReminder < 60) {
+    // Event is too soon or already past — don't schedule
+    console.log('[Push] Event reminder skipped — event is too close or in the past');
+    return null;
+  }
+
+  const channelId = 'community_v1';
+
+  try {
+    const notifId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🔔 Event starting soon!',
+        body: `"${eventTitle}" starts in 5 minutes. Get ready!`,
+        data: {
+          type: 'event_reminder',
+          communityId: communityId || '',
+        },
+        sound: Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell',
+      },
+      trigger: Platform.OS === 'android'
+        ? { seconds: secondsUntilReminder, channelId } as any
+        : { seconds: secondsUntilReminder } as any,
+    });
+    console.log(`[Push] Event reminder scheduled in ${secondsUntilReminder}s (notifId: ${notifId})`);
+    return notifId;
+  } catch (e) {
+    console.warn('[Push] Failed to schedule event reminder:', e);
+    return null;
+  }
+}
+
+
 export async function scheduleLocalNotification(
   title: string,
   body: string,
