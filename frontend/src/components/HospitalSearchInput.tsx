@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { searchHospitals } from '../services/api';
@@ -121,13 +121,15 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
         hasSearched && manualResults.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hospitalChipScroll}>
             {manualResults.map((hospital) => (
-              <TouchableOpacity
+              <Pressable
                 key={`${hospital.name}-${hospital.address}`}
-                style={[
+                style={({ pressed }) => [
                   styles.hospitalChip,
                   hospitalQuery === hospital.name && styles.hospitalChipSelected,
+                  pressed && { opacity: 0.7 }
                 ]}
                 onPress={() => handleManualSelect(hospital)}
+                android_ripple={{ color: COLORS.primary + '20', borderless: false }}
               >
                 <Text
                   style={[
@@ -137,16 +139,20 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
                 >
                   {hospital.name}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </ScrollView>
         )
       )}
 
       {value && (
-        <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+        <Pressable
+          onPress={handleClear}
+          style={({ pressed }) => [styles.clearButton, pressed && { opacity: 0.7 }]}
+          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 10 }}
+        >
           <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {selectedArea ? (

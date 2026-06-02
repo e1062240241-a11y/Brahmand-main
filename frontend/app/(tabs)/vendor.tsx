@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance from '../../src/utils/formatDistance';
+import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
 import { useTranslation } from '../../src/utils/i18n';
@@ -161,6 +162,7 @@ export default function VendorScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, language } = useTranslation();
+  const onVendorScrollTabBar = useScrollToHideTabBar();
   const currentLang = (language === 'hi' || language === 'en') ? language : 'en';
 
   const localT = (key: keyof typeof LOCAL_TRANSLATIONS.en): any => {
@@ -768,8 +770,12 @@ export default function VendorScreen() {
       (item as any).review_state === 'closed';
     
     return (
-      <TouchableOpacity 
-        style={styles.vendorCard}
+      <Pressable 
+        style={({ pressed }) => [
+          styles.vendorCard,
+          Platform.OS === 'ios' && pressed && { opacity: 0.7 }
+        ]}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
         onPress={() => router.push(`/vendor/${item.id}`)}
       >
         {/* Business Image Placeholder */}
@@ -816,13 +822,17 @@ export default function VendorScreen() {
         </View>
 
         {/* Call Button */}
-        <TouchableOpacity 
-          style={styles.callButton}
+        <Pressable 
+          style={({ pressed }) => [
+            styles.callButton,
+            Platform.OS === 'ios' && pressed && { opacity: 0.7 }
+          ]}
+          android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: true }}
           onPress={() => handleCall(item.phone_number)}
         >
           <Ionicons name="call" size={20} color={COLORS.primary} />
-        </TouchableOpacity>
-      </TouchableOpacity>
+        </Pressable>
+      </Pressable>
     );
   };
 
@@ -832,8 +842,12 @@ export default function VendorScreen() {
     const cvIconColor = isKycVerified ? COLORS.primary : COLORS.textLight;
 
     return (
-      <TouchableOpacity
-        style={styles.vendorCard}
+      <Pressable
+        style={({ pressed }) => [
+          styles.vendorCard,
+          Platform.OS === 'ios' && pressed && { opacity: 0.7 }
+        ]}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
         onPress={() => {
           setSearchTerm('');
           router.push(`/jobs/${item.id}`);
@@ -875,8 +889,12 @@ export default function VendorScreen() {
         </View>
 
         {item.cv_url ? (
-          <TouchableOpacity
-            style={styles.callButton}
+          <Pressable
+            style={({ pressed }) => [
+              styles.callButton,
+              Platform.OS === 'ios' && pressed && { opacity: 0.7 }
+            ]}
+            android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: true }}
             onPress={async () => {
               const canViewCv = await ensureKycVerifiedForCv();
               if (!canViewCv) {
@@ -901,9 +919,9 @@ export default function VendorScreen() {
             }}
           >
             <Ionicons name={cvIconName} size={18} color={cvIconColor} />
-          </TouchableOpacity>
+          </Pressable>
         ) : null}
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
@@ -1245,6 +1263,8 @@ export default function VendorScreen() {
         renderItem={activeSection === 'Jobs' ? (renderJobProfile as any) : (renderVendor as any)}
         keyExtractor={(item: any) => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
+        onScroll={onVendorScrollTabBar}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 

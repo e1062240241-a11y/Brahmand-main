@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   Modal,
   Dimensions,
   Platform,
@@ -63,9 +63,13 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
             <View style={styles.emergencyBadge}>
               <Text style={styles.emergencyBadgeText}>EMERGENCY NEARBY</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <Pressable
+              onPress={onClose}
+              style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.7 }]}
+              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 15 }}
+            >
               <Ionicons name="close" size={24} color="#666" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <View style={styles.content}>
@@ -92,24 +96,37 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
               />
             </View>
 
-            <TouchableOpacity style={styles.directionsBtn} onPress={openInMaps}>
+            <Pressable
+              style={({ pressed }) => [styles.directionsBtn, pressed && { opacity: 0.8 }]}
+              onPress={openInMaps}
+              android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
+            >
               <Ionicons name="navigate" size={18} color="#FFF" />
               <Text style={styles.directionsBtnText}>GET DIRECTIONS</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+            <Pressable
+              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+              onPress={onClose}
+              android_ripple={{ color: 'rgba(0,0,0,0.05)', borderless: false }}
+            >
               <Text style={styles.cancelBtnText}>Ignore</Text>
-            </TouchableOpacity>
+            </Pressable>
             
-            <TouchableOpacity 
-              style={[styles.respondBtn, loading && styles.respondBtnDisabled]} 
+            <Pressable 
+              style={({ pressed }) => [
+                styles.respondBtn,
+                loading && styles.respondBtnDisabled,
+                pressed && !loading && { opacity: 0.85 }
+              ]} 
               onPress={handleRespond}
               disabled={loading}
+              android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: false }}
             >
               <Text style={styles.respondBtnText}>I'M COMING</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </View>

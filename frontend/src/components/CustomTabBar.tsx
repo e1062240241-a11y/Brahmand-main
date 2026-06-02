@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur'; // iOS style dynamic glass effect
 import { Image } from 'expo-image';
 import { useTranslation } from '../utils/i18n';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useTabBar } from '../contexts/TabBarContext';
 
 const TAB_HEIGHT = 56;
 const TAB_RADIUS = 27.55;
@@ -13,6 +15,13 @@ const ACTIVE_TAB_WIDTH = 126;
 export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const { tabBarTranslateY } = useTabBar();
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: tabBarTranslateY.value }],
+    };
+  });
 
   // Filter out hidden routes first
   const visibleRoutes = state.routes.filter((route: any) =>
@@ -40,7 +49,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + 12 }]}>
+    <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 12 }, animatedStyle]}>
       {/* MAIN CONTAINER: Yeh transparent flex wrapper hai jo groups ko hold karega */}
       <View style={styles.tabBarWrapper}>
         {groups.map((group, groupIndex) => (
@@ -132,16 +141,22 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                   }
 
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={route.key}
                       accessibilityRole="button"
                       accessibilityState={isFocused ? { selected: true } : {}}
                       accessibilityLabel={options.tabBarAccessibilityLabel}
                       testID={options.tabBarTestID}
                       onPress={onPress}
-                      style={[
+                      android_ripple={{
+                        color: 'rgba(255, 123, 0, 0.15)',
+                        borderless: true,
+                        radius: TAB_RADIUS,
+                      }}
+                      style={({ pressed }) => [
                         styles.tabItem,
-                        isFocused && styles.activeTabItem
+                        isFocused && styles.activeTabItem,
+                        pressed && { opacity: 0.85 }
                       ]}
                     >
                       <View style={styles.iconContainer}>
@@ -150,7 +165,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                       {isFocused && (
                         <Text style={styles.activeLabel}>{label}</Text>
                       )}
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -239,16 +254,17 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                   }
 
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={route.key}
                       accessibilityRole="button"
                       accessibilityState={isFocused ? { selected: true } : {}}
                       accessibilityLabel={options.tabBarAccessibilityLabel}
                       testID={options.tabBarTestID}
                       onPress={onPress}
-                      style={[
+                      style={({ pressed }) => [
                         styles.tabItem,
-                        isFocused && styles.activeTabItem
+                        isFocused && styles.activeTabItem,
+                        pressed && { opacity: 0.6 }
                       ]}
                     >
                       <View style={styles.iconContainer}>
@@ -257,7 +273,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                       {isFocused && (
                         <Text style={styles.activeLabel}>{label}</Text>
                       )}
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </BlurView>
@@ -265,7 +281,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
           </React.Fragment>
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

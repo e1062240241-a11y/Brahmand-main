@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   Modal,
-  TouchableOpacity,
+  Pressable,
   TextInput,
   ScrollView,
   KeyboardAvoidingView,
@@ -403,13 +403,15 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       <Text style={styles.label}>Post Request Visibility</Text>
       <View style={styles.visibilityContainer}>
         {VISIBILITY_OPTIONS.map((option) => (
-          <TouchableOpacity
+          <Pressable
             key={option.key}
-            style={[
+            style={({ pressed }) => [
               styles.visibilityOption,
               visibility === option.key && styles.visibilityOptionSelected,
+              pressed && { opacity: 0.8 }
             ]}
             onPress={() => setVisibility(option.key)}
+            android_ripple={{ color: COLORS.primary + '20', borderless: false }}
           >
             <View style={styles.radioOuter}>
               {visibility === option.key && <View style={styles.radioInner} />}
@@ -425,7 +427,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             ]}>
               {option.label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
 
@@ -435,13 +437,15 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
           <Text style={styles.label}>Blood Group Required *</Text>
           <View style={styles.bloodGroupContainer}>
             {BLOOD_GROUPS.map((bg) => (
-              <TouchableOpacity
+              <Pressable
                 key={bg}
-                style={[
+                style={({ pressed }) => [
                   styles.bloodGroupBtn,
                   bloodGroup === bg && styles.bloodGroupBtnSelected,
+                  pressed && { opacity: 0.8 }
                 ]}
                 onPress={() => setBloodGroup(bg)}
+                android_ripple={{ color: '#E74C3C20', borderless: false }}
               >
                 <Text style={[
                   styles.bloodGroupText,
@@ -449,7 +453,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 ]}>
                   {bg}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
 
@@ -526,13 +530,15 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
           <Text style={styles.label}>Community *</Text>
           <View style={styles.communityDropdown}>
             {communities.map((community) => (
-              <TouchableOpacity
+              <Pressable
                 key={community?.id}
-                style={[
+                style={({ pressed }) => [
                   styles.communityOption,
                   selectedCommunityId === community?.id && styles.communityOptionActive,
+                  pressed && { opacity: 0.8 }
                 ]}
                 onPress={() => setSelectedCommunityId(community?.id)}
+                android_ripple={{ color: COLORS.primary + '20', borderless: false }}
               >
                 <Text
                   style={[
@@ -542,7 +548,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 >
                   {community?.name}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
         </>
@@ -552,13 +558,15 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       <Text style={styles.label}>Urgency Level</Text>
       <View style={styles.urgencyContainer}>
         {URGENCY_OPTIONS.map((option) => (
-          <TouchableOpacity
+          <Pressable
             key={option.key}
-            style={[
+            style={({ pressed }) => [
               styles.urgencyBtn,
               urgency === option.key && { backgroundColor: `${option.color}15`, borderColor: option.color },
+              pressed && { opacity: 0.8 }
             ]}
             onPress={() => setUrgency(option.key)}
+            android_ripple={{ color: option.color + '20', borderless: false }}
           >
             <View style={[
               styles.urgencyDot,
@@ -570,7 +578,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             ]}>
               {option.label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
 
@@ -639,10 +647,15 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
           ) : null}
 
           <View style={styles.otpButtonRow}>
-            <TouchableOpacity
-              style={[styles.otpButton, (phoneSending || phoneVerifying) && styles.otpButtonDisabled]}
+            <Pressable
+              style={({ pressed }) => [
+                styles.otpButton,
+                (phoneSending || phoneVerifying) && styles.otpButtonDisabled,
+                pressed && !(phoneSending || phoneVerifying) && { opacity: 0.8 }
+              ]}
               onPress={handleSendPhoneOtp}
               disabled={phoneSending || phoneVerifying}
+              android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
             >
               {phoneSending ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -651,7 +664,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   {phoneOtpStage === 'sent' ? 'Resend OTP' : 'Send OTP'}
                 </Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {phoneOtpStage === 'sent' && (
@@ -665,17 +678,22 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 keyboardType="number-pad"
                 maxLength={6}
               />
-              <TouchableOpacity
-                style={[styles.otpButton, (phoneVerifying || !phoneOtp.trim()) && styles.otpButtonDisabled]}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.otpButton,
+                  (phoneVerifying || !phoneOtp.trim()) && styles.otpButtonDisabled,
+                  pressed && !(phoneVerifying || !phoneOtp.trim()) && { opacity: 0.8 }
+                ]}
                 onPress={handleVerifyPhoneOtp}
                 disabled={phoneVerifying || !phoneOtp.trim()}
+                android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
               >
                 {phoneVerifying ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <Text style={styles.otpButtonText}>Verify OTP</Text>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             </>
           )}
         </View>
@@ -692,9 +710,13 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={{ marginRight: 15 }}>
+            <Pressable
+              onPress={onClose}
+              style={({ pressed }) => [{ marginRight: 15 }, pressed && { opacity: 0.7 }]}
+              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
+            >
               <Ionicons name="chevron-back" size={28} color={COLORS.text} />
-            </TouchableOpacity>
+            </Pressable>
             <View style={styles.headerLeft}>
               <View style={[styles.iconBg, { backgroundColor: `${getIconColor()}15` }]}>
                 <Ionicons name={getIcon()} size={20} color={getIconColor()} />
@@ -706,9 +728,13 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 )}
               </View>
             </View>
-            <TouchableOpacity onPress={onClose}>
+            <Pressable
+              onPress={onClose}
+              style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
+            >
               <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <ScrollView
@@ -719,10 +745,15 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             {requestType === 'Petition' ? renderPetitionForm() : renderStandardForm()}
 
             {/* Submit Button */}
-            <TouchableOpacity
-              style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+            <Pressable
+              style={({ pressed }) => [
+                styles.submitBtn,
+                loading && styles.submitBtnDisabled,
+                pressed && !loading && { opacity: 0.85 }
+              ]}
               onPress={handleSubmit}
               disabled={loading}
+              android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -731,7 +762,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   {requestType === 'Petition' ? 'Create Petition' : 'Post Request'}
                 </Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
 
             <View style={{ height: 40 }} />
           </ScrollView>

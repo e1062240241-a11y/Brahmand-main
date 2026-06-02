@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -307,9 +308,9 @@ export default function DiscoverCommunitiesScreen() {
 
   // --- Render: Public Community Card with Join Button ---
   const renderCommunityItem = ({ item, index }: { item: Community; index: number }) => {
-    const isPurple = index % 2 === 1 || (item.label || '').toLowerCase().includes('youth');
-    const cardBg = isPurple ? '#F7ECFC' : '#EEF5EA';
-    const borderColor = isPurple ? '#7A38B3' : '#437953';
+    const isTeal = index % 2 === 1 || (item.label || '').toLowerCase().includes('youth');
+    const cardBg = isTeal ? '#E0F2F1' : '#EEF5EA';
+    const borderColor = isTeal ? '#00796B' : '#437953';
     const isJoined = joinedIds.has(item.id);
     const isJoining = joiningId === item.id;
 

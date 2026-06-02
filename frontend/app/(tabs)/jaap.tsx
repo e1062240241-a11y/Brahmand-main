@@ -27,6 +27,7 @@ import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import api from '../../src/services/api';
 import { useTranslation } from '../../src/utils/i18n';
+import { useScrollToHideTabBar } from '../../src/utils/scroll';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -103,6 +104,7 @@ export default function JaapLandingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const onJaapScrollTabBar = useScrollToHideTabBar();
   const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
   const [heroBannerIndex, setHeroBannerIndex] = useState(0);
@@ -381,6 +383,8 @@ export default function JaapLandingScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
           bounces
+          onScroll={onJaapScrollTabBar}
+          scrollEventThrottle={16}
         >
           <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
             <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
@@ -700,6 +704,8 @@ export default function JaapLandingScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
           bounces
+          onScroll={onJaapScrollTabBar}
+          scrollEventThrottle={16}
         >
             <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
               {/* Hero Banner (Same structure as Jaap tab banner) */}

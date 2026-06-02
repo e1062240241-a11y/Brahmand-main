@@ -230,7 +230,12 @@ export default function CreateCommunityScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.tabsContainer}>
           <View style={styles.activeTab}><Text style={styles.activeTabText}>My Communities</Text></View>
-          <View style={styles.inactiveTab}><Text style={styles.inactiveTabText}>Discover</Text></View>
+          <TouchableOpacity
+            style={styles.inactiveTab}
+            onPress={() => router.push('/community/discover')}
+          >
+            <Text style={styles.inactiveTabText}>Discover</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.landingIllustBox}>

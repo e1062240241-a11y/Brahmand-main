@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
@@ -22,7 +23,7 @@ const CARD_COLORS = [
   '#FFE082', // Yellow
   '#B2EBF2', // Light Blue
   '#F48FB1', // Pink
-  '#CE93D8', // Purple
+  '#A7F3D0', // Sage/Mint Green
   '#A5D6A7', // Green
   '#FFCC80', // Orange
   '#CFD8DC', // Blue Grey

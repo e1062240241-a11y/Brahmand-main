@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -460,7 +461,7 @@ export const FloatingUtilityButton = () => {
     switch (type) {
       case 'blood': return '#E53935';
       case 'medical': return '#1976D2';
-      case 'petition': return '#7C3AED';
+      case 'petition': return '#0EA5E9';
       case 'financial': return '#43A047';
       default: return COLORS.primary;
     }

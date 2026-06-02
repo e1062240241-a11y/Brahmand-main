@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     borderRadius: BORDER_RADIUS.xl,
-    backgroundColor: '#2B1C4A',
+    backgroundColor: '#083344',
     padding: SPACING.lg,
     marginBottom: SPACING.md,
   },
@@ -82,7 +83,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   heroSubtitle: {
-    color: '#D8B4FE',
+    color: '#38BDF8',
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.7,
@@ -95,12 +96,12 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   heroDate: {
-    color: '#C4B5FD',
+    color: '#7DD3FC',
     fontSize: 14,
     marginBottom: SPACING.sm,
   },
   heroMiniText: {
-    color: '#EDE9FE',
+    color: '#E0F2FE',
     fontSize: 13,
     lineHeight: 20,
   },

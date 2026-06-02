@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, Modal, TouchableOpacity, Image, Alert, ActivityIndicator, Dimensions, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Modal, TouchableOpacity, Pressable, Image, Alert, ActivityIndicator, Dimensions, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -835,18 +835,28 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
           </View>
 
           <View style={styles.cameraControls}>
-            <TouchableOpacity style={styles.cameraBtn} onPress={() => setShowCamera(false)}>
+            <Pressable
+              style={({ pressed }) => [styles.cameraBtn, pressed && { opacity: 0.7 }]}
+              onPress={() => setShowCamera(false)}
+              android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: true, radius: 25 }}
+            >
               <Ionicons name="close" size={32} color="#FFF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.captureBtn, !faceDetected && styles.captureBtnDisabled]} onPress={takePicture} disabled={!faceDetected}>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.captureBtn, !faceDetected && styles.captureBtnDisabled, pressed && faceDetected && { transform: [{ scale: 0.95 }] }]}
+              onPress={takePicture}
+              disabled={!faceDetected}
+              android_ripple={{ color: 'rgba(255,255,255,0.4)', borderless: true, radius: 35 }}
+            >
               <View style={styles.captureBtnInner} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.cameraBtn}
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.cameraBtn, pressed && { opacity: 0.7 }]}
               onPress={() => setCameraType((current) => (current === 'back' ? 'front' : 'back'))}
+              android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: true, radius: 25 }}
             >
               <Ionicons name="camera-reverse" size={32} color="#FFF" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -866,9 +876,14 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
               <View style={styles.iconBg}><Ionicons name="id-card" size={20} color={COLORS.primary} /></View>
               <Text style={styles.headerTitle}>KYC Verification</Text>
             </View>
-            <TouchableOpacity onPress={closeAndReset} disabled={loading}>
+            <Pressable
+              onPress={closeAndReset}
+              disabled={loading}
+              style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
+            >
               <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <ScrollView
@@ -905,10 +920,15 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                   </View>
                   <View style={styles.docActionCol}>
                     {idDocumentUri && <Image source={{ uri: idDocumentUri }} style={styles.previewThumb} />}
-                    <TouchableOpacity
-                      style={[styles.uploadBtn, (documentPicking || loading) && styles.uploadBtnDisabled]}
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.uploadBtn,
+                        (documentPicking || loading) && styles.uploadBtnDisabled,
+                        pressed && !(documentPicking || loading) && { opacity: 0.8 }
+                      ]}
                       onPress={pickDocument}
                       disabled={documentPicking || loading}
+                      android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
                     >
                       <Ionicons name="cloud-upload" size={18} color="#FFF" />
                       <Text style={styles.uploadBtnText}>
@@ -918,7 +938,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                             ? 'Upload Different Image'
                             : 'Upload'}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   </View>
                 </View>
 
@@ -932,10 +952,14 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                   {faceScanUri ? (
                     <Image source={{ uri: faceScanUri }} style={styles.previewThumb} />
                   ) : (
-                    <TouchableOpacity style={styles.uploadBtn} onPress={startFaceScan}>
+                    <Pressable
+                      style={({ pressed }) => [styles.uploadBtn, pressed && { opacity: 0.8 }]}
+                      onPress={startFaceScan}
+                      android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
+                    >
                       <Ionicons name="camera" size={18} color="#FFF" />
                       <Text style={styles.uploadBtnText}>Scan Face</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   )}
                 </View>
 
@@ -982,10 +1006,11 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                       maxLength={8}
                       editable={!otpVerified}
                     />
-                    <TouchableOpacity
-                      style={styles.textActionWrap}
+                    <Pressable
+                      style={({ pressed }) => [styles.textActionWrap, pressed && { opacity: 0.6 }]}
                       onPress={handleVerifyOtp}
                       disabled={otpLoading}
+                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: true, radius: 40 }}
                     >
                       {otpLoading ? (
                         <ActivityIndicator color={COLORS.primary} />
@@ -994,25 +1019,31 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                           {otpVerified ? 'Retry Upload' : 'Verify OTP'}
                         </Text>
                       )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.textActionWrap}
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.textActionWrap, pressed && { opacity: 0.6 }]}
                       onPress={handleResendOtp}
                       disabled={otpCooldown > 0 || otpLoading}
+                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: true, radius: 40 }}
                     >
                       <Text style={[styles.textAction, (otpCooldown > 0 || otpLoading) && styles.textActionDisabled]}>
                         {otpCooldown > 0 ? `Resend OTP in ${otpCooldown}s` : 'Resend OTP'}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   </View>
                 ) : (
-                  <TouchableOpacity
-                    style={[styles.submitBtn, (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri) && styles.submitBtnDisabled]}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.submitBtn,
+                      (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri) && styles.submitBtnDisabled,
+                      pressed && !(loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri) && { opacity: 0.85 }
+                    ]}
                     onPress={handleSubmit}
                     disabled={loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri}
+                    android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
                   >
                     {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Submit KYC Documents</Text>}
-                  </TouchableOpacity>
+                  </Pressable>
                 )}
               </>
             )}

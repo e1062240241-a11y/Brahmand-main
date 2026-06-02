@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect } from 'react';
 import { BackHandler, View, Text, StyleSheet, TouchableOpacity } from 'react-native';

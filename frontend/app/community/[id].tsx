@@ -2996,7 +2996,7 @@ export default function CommunityDetailScreen() {
             return (
               <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
                 <View style={styles.sectionTitleRow}>
-                  <Ionicons name="calendar" size={24} color="#A855F7" style={{ marginRight: 10 }} />
+                  <Ionicons name="calendar" size={24} color="#0EA5E9" style={{ marginRight: 10 }} />
                   <Text style={[styles.sectionTitle, { fontSize: 22 }]}>Festivals</Text>
                 </View>
                 <TouchableOpacity style={styles.filterDropdown}>

@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { Image } from 'expo-image';
 import {

@@ -23,7 +23,7 @@ export const TabBarProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const hideTabBar = useCallback(() => {
     if (isVisible.current) {
-      tabBarTranslateY.value = withTiming(100, { duration: 300 });
+      tabBarTranslateY.value = withTiming(150, { duration: 300 });
       isVisible.current = false;
     }
   }, []);
