@@ -41,6 +41,9 @@
           "fetch",
           "remote-notification"
         ],
+        "LSApplicationQueriesSchemes": [
+          "whatsapp"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       },
       "associatedDomains": [

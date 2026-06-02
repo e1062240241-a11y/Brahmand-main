@@ -26,6 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch } from '../../src/services/api';
 import { originalAlert } from '../../src/utils/nativeAlert';
+import { useTranslation } from '../../src/utils/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
 import { useVendorStore } from '../../src/store/vendorStore';
@@ -410,6 +411,43 @@ export default function CommunityDetailScreen() {
   const listRef = useRef<FlatList>(null);
   const stateCommunityIdRef = useRef<string | null>(null);
   const countryCommunityIdRef = useRef<string | null>(null);
+
+  const { t } = useTranslation();
+
+  const getTranslatedCommunityName = (name: string) => {
+    if (t('language') !== 'hi') return name;
+    const nameLower = name.toLowerCase();
+    if (nameLower.includes('mumbai')) {
+      return 'मुंबई समुदाय';
+    }
+    if (nameLower.includes('maharashtra')) {
+      return 'महाराष्ट्र समुदाय';
+    }
+    if (nameLower.includes('bharat') || nameLower.includes('india') || nameLower.includes('national')) {
+      return 'भारत समुदाय';
+    }
+    if (nameLower.includes('pune food')) {
+      return 'पुणे भोजन साझाकरण समूह';
+    }
+    return name;
+  };
+
+  const getTranslatedTab = (tab: string) => {
+    if (t('language') !== 'hi') return tab;
+    switch (tab) {
+      case 'My Posts': return 'मेरे पोस्ट';
+      case 'Feed': return 'फ़ीड';
+      case 'Requests': return 'अनुरोध';
+      case 'Events': return 'आयोजन';
+      case 'Lost & Found': return 'खोया और पाया';
+      case 'Festivals': return 'त्योहार';
+      case 'Seva': return 'सेवा';
+      case 'Temple Updates': return 'मंदिर अपडेट';
+      case 'Others': return 'अन्य';
+      case 'Select Category': return 'श्रेणी का चयन करें';
+      default: return tab;
+    }
+  };
 
   const cacheKey = `community_screen_${id}`;
 
@@ -1562,7 +1600,7 @@ export default function CommunityDetailScreen() {
         </TouchableOpacity>
 
         <Text style={styles.headerTitleText} numberOfLines={1}>
-          {community?.name || 'Mumbai Group'}
+          {getTranslatedCommunityName(community?.name || 'Mumbai Group')}
         </Text>
 
         <TouchableOpacity
@@ -1573,7 +1611,7 @@ export default function CommunityDetailScreen() {
           }}
         >
           <Ionicons name="add" size={16} color="#FFF" />
-          <Text style={styles.headerCreateBtnText}>Create</Text>
+          <Text style={styles.headerCreateBtnText}>{t('language') === 'hi' ? 'बनाएं' : 'Create'}</Text>
         </TouchableOpacity>
         
         {(!['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type)) && (
@@ -1588,12 +1626,16 @@ export default function CommunityDetailScreen() {
 
       {/* Centered Member Count */}
       <Text style={styles.headerMembersText}>
-        {community?.members_count || community?.member_count || '1.8K'} Members
+        {community?.members_count || community?.member_count || '1.8K'} {t('language') === 'hi' ? 'सदस्य' : 'Members'}
       </Text>
 
       {/* Centered Description/Tagline */}
       <Text style={styles.headerTaglineText}>
-        {community?.description || 'Connect with your local community.'}
+        {t('language') === 'hi'
+          ? (community?.description === 'A community group for sharing food in Pune.'
+              ? 'पुणे में भोजन साझा करने के लिए एक सामुदायिक समूह।'
+              : (community?.description || 'अपने स्थानीय समुदाय से जुड़ें।'))
+          : (community?.description || 'Connect with your local community.')}
       </Text>
 
       {/* Tabs list scroll */}
@@ -1614,7 +1656,9 @@ export default function CommunityDetailScreen() {
               color={activeTab === 'My Posts' ? '#FF6B00' : '#888'}
             />
           </View>
-          <Text style={[styles.pillTabText, activeTab === 'My Posts' && styles.pillTabTextActive]}>My Posts</Text>
+          <Text style={[styles.pillTabText, activeTab === 'My Posts' && styles.pillTabTextActive]}>
+            {getTranslatedTab('My Posts')}
+          </Text>
         </TouchableOpacity>
 
         <View style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
@@ -1625,7 +1669,9 @@ export default function CommunityDetailScreen() {
             onPress={() => setActiveTab(tab)}
             style={[styles.pillTab, activeTab === tab && styles.pillTabActive]}
           >
-            <Text style={[styles.pillTabText, activeTab === tab && styles.pillTabTextActive]}>{tab}</Text>
+            <Text style={[styles.pillTabText, activeTab === tab && styles.pillTabTextActive]}>
+              {getTranslatedTab(tab)}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -2515,8 +2561,14 @@ export default function CommunityDetailScreen() {
     }
 
     if (Platform.OS === 'web') {
-      const messageText = `Hare Krishna! I saw your request '${item.title}' in the Mumbai Group and would like to offer my support/help.`;
-      const confirmed = window.confirm(`Would you like to offer help to ${item.user_name || 'devotee'} by starting a chat?\n\nMessage: "${messageText}"`);
+      const groupName = getTranslatedCommunityName(community?.name || 'Mumbai Group');
+      const messageText = t('language') === 'hi'
+        ? `हरे कृष्णा! मैंने ${groupName} में आपका अनुरोध '${item.title}' देखा और मैं अपनी सहायता/मदद देना चाहूंगा।`
+        : `Hare Krishna! I saw your request '${item.title}' in the ${community?.name || 'Mumbai Group'} and would like to offer my support/help.`;
+      const confirmedMsg = t('language') === 'hi'
+        ? `क्या आप चैट शुरू करके ${item.user_name || 'भक्त'} की मदद करना चाहते हैं?\n\nसंदेश: "${messageText}"`
+        : `Would you like to offer help to ${item.user_name || 'devotee'} by starting a chat?\n\nMessage: "${messageText}"`;
+      const confirmed = window.confirm(confirmedMsg);
       if (confirmed) {
         try {
           const response = await sendDirectMessage(targetSlId, messageText);
@@ -2535,18 +2587,21 @@ export default function CommunityDetailScreen() {
 
     const options: any[] = [
       {
-        text: 'Send Message (Chat)',
+        text: t('language') === 'hi' ? 'चैट संदेश भेजें' : 'Send Message (Chat)',
         onPress: () => {
           Alert.alert(
-            'Offer Help',
-            `Send a message to ${item.user_name || 'devotee'}?`,
+            t('language') === 'hi' ? 'मदद की पेशकश' : 'Offer Help',
+            t('language') === 'hi' ? `क्या ${item.user_name || 'भक्त'} को संदेश भेजें?` : `Send a message to ${item.user_name || 'devotee'}?`,
             [
-              { text: 'Cancel', style: 'cancel' },
+              { text: t('language') === 'hi' ? 'रद्द करें' : 'Cancel', style: 'cancel' },
               {
-                text: 'Send',
+                text: t('language') === 'hi' ? 'भेजें' : 'Send',
                 onPress: async () => {
                   try {
-                    const messageText = `Hare Krishna! I saw your request '${item.title}' in the Mumbai Group and would like to offer my support/help.`;
+                    const groupName = getTranslatedCommunityName(community?.name || 'Mumbai Group');
+                    const messageText = t('language') === 'hi'
+                      ? `हरे कृष्णा! मैंने ${groupName} में आपका अनुरोध '${item.title}' देखा और मैं अपनी सहायता/मदद देना चाहूंगा।`
+                      : `Hare Krishna! I saw your request '${item.title}' in the ${community?.name || 'Mumbai Group'} and would like to offer my support/help.`;
                     const response = await sendDirectMessage(targetSlId, messageText);
                     const conversationId = response.data?.chat_id || response.data?.conversation_id;
                     if (conversationId) {
@@ -2603,7 +2658,9 @@ export default function CommunityDetailScreen() {
     try {
       const appLink = `https://brahmand.app/community/${id}`;
       await Share.share({
-        message: `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${appLink}`,
+        message: t('language') === 'hi'
+          ? `ब्रह्मांड पर ${getTranslatedCommunityName(community?.name || 'Mumbai Group')} में शामिल हों!\n\n${appLink}`
+          : `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${appLink}`,
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -3286,7 +3343,7 @@ export default function CommunityDetailScreen() {
                     <View style={styles.recentRequestTitleRow}>
                       <MaterialCommunityIcons name="bullhorn" size={20} color="#F25C05" />
                       <Text style={styles.recentRequestSectionTitle}>
-                        LATEST COMMUNITY REQUEST
+                        {t('language') === 'hi' ? 'नवीनतम सामुदायिक अनुरोध' : 'LATEST COMMUNITY REQUEST'}
                       </Text>
                     </View>
                     <View style={[
@@ -3321,7 +3378,7 @@ export default function CommunityDetailScreen() {
                       style={styles.recentRequestViewBtn}
                       onPress={() => router.push({ pathname: '/community-request/list', params: { community_id: id } })}
                     >
-                      <Text style={styles.recentRequestViewBtnText}>View Details</Text>
+                      <Text style={styles.recentRequestViewBtnText}>{t('language') === 'hi' ? 'विवरण देखें' : 'View Details'}</Text>
                       <Ionicons name="arrow-forward" size={14} color="#FFF" />
                     </TouchableOpacity>
                   </View>
@@ -3335,14 +3392,22 @@ export default function CommunityDetailScreen() {
                   <View style={styles.sectionTitleRow}>
                     <Ionicons name="chatbubbles-outline" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
                     <Text style={styles.sectionTitle}>
-                      {activeTab === 'My Posts' ? 'My Shared Posts' : 'Community Discussion'}
+                      {activeTab === 'My Posts' 
+                        ? (t('language') === 'hi' ? 'मेरे साझा किए गए पोस्ट' : 'My Shared Posts') 
+                        : (t('language') === 'hi' ? 'सामुदायिक चर्चा' : 'Community Discussion')}
                     </Text>
                   </View>
                   {activeTab !== 'My Posts' && (
                     <View style={styles.verifiedMessagesBadge}>
                       <MaterialCommunityIcons name="check-decagram" size={14} color="#FF3B30" />
-                      <Text style={styles.verifiedMessagesText}>Featured Verified Messages</Text>
-                      <TouchableOpacity><Text style={styles.viewAllInline}>View All</Text></TouchableOpacity>
+                      <Text style={styles.verifiedMessagesText}>
+                        {t('language') === 'hi' ? 'विशेष सत्यापित संदेश' : 'Featured Verified Messages'}
+                      </Text>
+                      <TouchableOpacity>
+                        <Text style={styles.viewAllInline}>
+                          {t('language') === 'hi' ? 'सभी देखें' : 'View All'}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   )}
                 </View>
@@ -3406,14 +3471,16 @@ export default function CommunityDetailScreen() {
                     >
                       <Ionicons name="pricetag-outline" size={14} color="#FFF" />
                       <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF', fontFamily: FONTS.bold }}>
-                        Choose Category *
+                        {t('language') === 'hi' ? 'श्रेणी चुनें *' : 'Choose Category *'}
                       </Text>
                       <Ionicons name={showInlineCategories ? "chevron-up" : "chevron-down"} size={12} color="#FFF" />
                     </TouchableOpacity>
                   ) : (
                     <View style={[styles.selectedCategoryBadge, { marginBottom: 10, marginTop: 0 }]}>
                       <Ionicons name="pricetag-outline" size={14} color="#FF6B00" />
-                      <Text style={styles.selectedCategoryText}>Category: {postCategory}</Text>
+                      <Text style={styles.selectedCategoryText}>
+                        {t('language') === 'hi' ? 'श्रेणी' : 'Category'}: {getTranslatedTab(postCategory)}
+                      </Text>
                       <TouchableOpacity onPress={() => { setPostCategory(''); }}>
                         <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
@@ -3424,7 +3491,9 @@ export default function CommunityDetailScreen() {
                   {!isLocalUserCommunity && (
                     showInlineCategories && (
                       <View style={{ marginBottom: 16 }}>
-                      <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>Select Category</Text>
+                      <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>
+                        {t('language') === 'hi' ? 'श्रेणी का चयन करें' : 'Select Category'}
+                      </Text>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                         {POST_CATEGORIES.map((cat) => {
                           let iconColor = '#536471';
@@ -3482,7 +3551,9 @@ export default function CommunityDetailScreen() {
                                   color={iconColor}
                                 />
                               </View>
-                              <Text style={{ fontSize: 12, fontFamily: FONTS.medium, color: '#333' }}>{cat}</Text>
+                              <Text style={{ fontSize: 12, fontFamily: FONTS.medium, color: '#333' }}>
+                                {getTranslatedTab(cat)}
+                              </Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -3493,7 +3564,11 @@ export default function CommunityDetailScreen() {
                   <MentionInput
                     value={newMessage}
                     onChangeText={setNewMessage}
-                    placeholder={postCategory ? "What's happening?" : "Select a category above to start writing..."}
+                    placeholder={
+                      t('language') === 'hi'
+                        ? (postCategory ? 'क्या चल रहा है?' : 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...')
+                        : (postCategory ? "What's happening?" : "Select a category above to start writing...")
+                    }
                     placeholderTextColor="#536471"
                     multiline
                     editable={!!postCategory}
@@ -3801,7 +3876,11 @@ export default function CommunityDetailScreen() {
           <ToastContainer />
           <View style={[styles.commentModalContent, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 20) }]}>
             <View style={styles.commentModalHeader}>
-              <Text style={styles.commentModalTitle}>Comments ({showCommentModal?.comments ?? activeComments.length ?? 0})</Text>
+              <Text style={styles.commentModalTitle}>
+                {t('language') === 'hi'
+                  ? `टिप्पणियाँ (${showCommentModal?.comments ?? activeComments.length ?? 0})`
+                  : `Comments (${showCommentModal?.comments ?? activeComments.length ?? 0})`}
+              </Text>
               <TouchableOpacity onPress={() => setShowCommentModal(null)}>
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
@@ -3840,7 +3919,11 @@ export default function CommunityDetailScreen() {
               ) : (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 20 }}>
                   <Ionicons name="chatbubble-outline" size={40} color="#CCC" />
-                  <Text style={{ color: '#888', marginTop: 8, fontSize: 13 }}>No comments yet. Be the first to comment!</Text>
+                  <Text style={{ color: '#888', marginTop: 8, fontSize: 13 }}>
+                    {t('language') === 'hi'
+                      ? 'अभी तक कोई टिप्पणी नहीं है। टिप्पणी करने वाले पहले व्यक्ति बनें!'
+                      : 'No comments yet. Be the first to comment!'}
+                  </Text>
                 </View>
               )}
             </ScrollView>
@@ -3850,12 +3933,14 @@ export default function CommunityDetailScreen() {
               <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
-                placeholder="Add a comment..."
+                placeholder={t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...'}
                 placeholderTextColor="#888"
                 inputStyle={styles.commentInput}
               />
               <TouchableOpacity onPress={handleAddComment} disabled={!commentText.trim()}>
-                <Text style={[styles.postCommentBtn, !commentText.trim() && { opacity: 0.5 }]}>Post</Text>
+                <Text style={[styles.postCommentBtn, !commentText.trim() && { opacity: 0.5 }]}>
+                  {t('language') === 'hi' ? 'पोस्ट' : 'Post'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

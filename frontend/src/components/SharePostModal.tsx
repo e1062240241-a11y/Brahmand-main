@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator, Image, Alert, Share, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../constants/theme';
-import { getConversations, sendDirectMessage } from '../services/api';
+import { getConversations, sendDirectMessage, API_URL } from '../services/api';
 import { Avatar } from './Avatar';
 import { useTranslation } from '../utils/i18n';
 
@@ -92,23 +92,46 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
 
   const handleShareWhatsApp = async () => {
     const message = getShareText();
-    const mediaUrl = post?.media_url || post?.mediaUrl || '';
+    let mediaUrl = post?.media_url || post?.mediaUrl || '';
+
+    if (mediaUrl) {
+      if (!mediaUrl.startsWith('http://') && !mediaUrl.startsWith('https://')) {
+        mediaUrl = `${API_URL}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
+      } else if (mediaUrl.includes('localhost') || mediaUrl.includes('127.0.0.1')) {
+        const apiHostMatch = API_URL.match(/https?:\/\/([^:/]+)/i);
+        if (apiHostMatch && apiHostMatch[1]) {
+          mediaUrl = mediaUrl.replace(/localhost|127\.0\.0\.1/g, apiHostMatch[1]);
+        }
+      }
+    }
 
     try {
       if (mediaUrl) {
-        const ext = String(mediaUrl).match(/\.(mp4|mov|jpg|png|jpeg|webm)/i)?.[1] || 'mp4';
+        const isVideo = post?.media_type === 'video' || String(mediaUrl).toLowerCase().match(/\.(mp4|mov|webm|m4v)/i);
+        const ext = isVideo ? 'mp4' : 'jpg';
         const localUri = `${(FileSystem as any).cacheDirectory}whatsapp_share_${Date.now()}.${ext}`;
         const download = await (FileSystem as any).downloadAsync(mediaUrl, localUri);
         
         if (download?.uri) {
+          await Clipboard.setStringAsync(message);
+          
           if (Platform.OS === 'ios') {
-            await Sharing.shareAsync(download.uri, {
-              UTI: ext === 'mp4' ? 'public.mpeg-4' : 'public.jpeg',
-              dialogTitle: t('language') === 'hi' ? 'व्हाट्सएप स्टेटस पर साझा करें' : 'Share to WhatsApp Status',
-            });
+            Alert.alert(
+              t('language') === 'hi' ? "व्हाट्सएप स्टेटस पर साझा करें" : "Share to WhatsApp Status",
+              t('language') === 'hi'
+                ? "वीडियो/छवि तैयार है! लिंक आपके क्लिपबोर्ड पर कॉपी हो गया है। जब व्हाट्सएप खुले, तो 'My Status' चुनें और कैप्शन में लिंक को पेस्ट करें।"
+                : "Video/Image is ready! The link has been copied to your clipboard. When WhatsApp opens, select 'My Status' and paste the link into the caption.",
+              [{
+                text: t('language') === 'hi' ? "ठीक है" : "OK",
+                onPress: async () => {
+                  await Sharing.shareAsync(download.uri, {
+                    UTI: ext === 'mp4' ? 'public.mpeg-4' : 'public.jpeg',
+                    dialogTitle: t('language') === 'hi' ? 'व्हाट्सएप स्टेटस पर साझा करें' : 'Share to WhatsApp Status',
+                  });
+                }
+              }]
+            );
           } else {
-            // Android: Copy link to clipboard first since system share often strips text from file shares
-            await Clipboard.setStringAsync(message);
             Alert.alert(
               t('language') === 'hi' ? "व्हाट्सएप पर साझा करें" : "Share to WhatsApp", 
               t('language') === 'hi' 
@@ -140,9 +163,10 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
     } catch (e) {
       const msg = String((e as any)?.message || e || '').toLowerCase();
       if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
+      console.warn("WhatsApp share error:", e);
       Alert.alert(
         t('language') === 'hi' ? 'त्रुटि' : 'Error', 
-        t('language') === 'hi' ? 'व्हाट्सएप नहीं खोल सका। सुनिश्चित करें कि व्हाट्सएप इंस्टॉल है।' : 'Could not open WhatsApp. Make sure WhatsApp is installed.'
+        `${t('language') === 'hi' ? 'व्हाट्सएप नहीं खोल सका। सुनिश्चित करें कि व्हाट्सएप इंस्टॉल है।' : 'Could not open WhatsApp. Make sure WhatsApp is installed.'}\n\nDetails: ${(e as any)?.message || e}`
       );
     }
   };

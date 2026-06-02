@@ -2582,7 +2582,14 @@ export default function HomeScreen() {
                 {/* Mumbai Community Card */}
                 {(() => {
                   const cityComm = communities.find(c => c.type === 'city');
-                  const cityName = cityComm?.name || 'City Community';
+                  let cityName = cityComm?.name || 'City Community';
+                  if (t('language') === 'hi') {
+                    if (cityName === 'City Community') {
+                      cityName = 'शहर समुदाय';
+                    } else if (cityName.toLowerCase().includes('mumbai')) {
+                      cityName = 'मुंबई समुदाय';
+                    }
+                  }
                   const cityId = cityComm?.id || 'city_default';
                   return (
                     <TouchableOpacity
@@ -2615,7 +2622,12 @@ export default function HomeScreen() {
                     localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
                   const localName = 'Local Community';
                   const localId = localComm?.id || 'food_pune';
-                  const realGroupName = localComm?.name || 'Pune Food Sharing Group';
+                  let realGroupName = localComm?.name || 'Pune Food Sharing Group';
+                  if (t('language') === 'hi') {
+                    if (realGroupName === 'Pune Food Sharing Group') {
+                      realGroupName = 'पुणे भोजन साझाकरण समूह';
+                    }
+                  }
                   const localMembers = localComm ? (localComm.member_count || localComm.members_count || 12) : 236;
                   const localSubgroup = localComm?.type || 'city';
                   return (
