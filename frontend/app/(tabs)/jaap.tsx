@@ -22,7 +22,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { getTempleImageByName } from '../../src/constants/templeImages';
+import { getTempleImageByName, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import api from '../../src/services/api';
@@ -202,7 +202,7 @@ export default function JaapLandingScreen() {
   const jaapScrollRef = useRef<ScrollView>(null);
   const jaapScrollOffset = useRef(0);
   const jaapScrollDir = useRef(1); // 1 = forward, -1 = backward
-  const CARD_WIDTH = 250; // approx card + gap
+  const CARD_WIDTH = 131; // approx card (115) + gap (16)
 
   // Temple State
   const [temples, setTemples] = useState<any[]>([]);
@@ -284,12 +284,16 @@ export default function JaapLandingScreen() {
       if (name.includes('Vaidyanath')) return 'श्री बैद्यनाथ ज्योतिर्लिंग';
       if (name.includes('Ghrishneshwar')) return 'श्री घृष्णेश्वर ज्योतिर्लिंग';
     }
-    return name;
+    return name.replace(/Borivali/ig, 'Mira Road');
   };
 
-  const getTranslatedTempleLocation = (loc: string) => {
+  const getTranslatedTempleLocation = (loc: string, name?: string) => {
+    let finalLoc = loc;
+    if (finalLoc.includes('Mira Road') || finalLoc.includes('Thane') || finalLoc.toLowerCase().includes('borivali') || (name && name.toLowerCase().includes('iskcon') && (name.toLowerCase().includes('mira') || name.toLowerCase().includes('borivali')))) {
+      finalLoc = 'Mira Road, Mumbai, Maharashtra.';
+    }
     if (t('language') === 'hi') {
-      let l = loc;
+      let l = finalLoc;
       if (l.includes('Uttarakhand')) l = l.replace('Uttarakhand', 'उत्तराखंड');
       if (l.includes('Gujarat')) l = l.replace('Gujarat', 'गुजरात');
       if (l.includes('Uttar Pradesh')) l = l.replace('Uttar Pradesh', 'उत्तर प्रदेश');
@@ -300,7 +304,7 @@ export default function JaapLandingScreen() {
       if (l.includes('Jharkhand')) l = l.replace('Jharkhand', 'झारखंड');
       return l;
     }
-    return loc;
+    return finalLoc;
   };
 
   const filteredTemples = (temples || []).filter(t => {
@@ -362,7 +366,7 @@ export default function JaapLandingScreen() {
   return (
     <LinearGradient
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-      locations={[0, 0.09, 0.25]}
+      locations={[0, 0.0913, 0.25]}
       style={{ flex: 1 }}
     >
       <View style={styles.container}>
@@ -384,9 +388,8 @@ export default function JaapLandingScreen() {
           contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
           bounces
           onScroll={onJaapScrollTabBar}
-          scrollEventThrottle={16}
         >
-          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
+          <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
             <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
                 source={require('../../assets/images/jaap_hero_shiva_final.png')}
@@ -550,7 +553,7 @@ export default function JaapLandingScreen() {
                 return (
                   <TouchableOpacity
                     key={jaap.id}
-                    style={[styles.jaapCardContainer, { width: 240, backgroundColor: '#1A0A00' }]}
+                    style={[styles.jaapCardContainer, { backgroundColor: '#1A0A00' }]}
                     onPress={() => router.push({
                       pathname: '/live-jaap-welcome',
                       params: {
@@ -570,6 +573,31 @@ export default function JaapLandingScreen() {
                           <Ionicons name="radio" size={12} color="#FFF" style={{ marginRight: 4 }} />
                           <Text style={styles.exactLiveText}>{liveLabel}</Text>
                         </View>
+                        <View style={styles.exactCountBadge}>
+                          <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 2 }} />
+                          <Text style={styles.exactCountText}>
+                            {t('language') === 'hi' ? jaap.devotees.replace('K', 'k') : jaap.devotees}
+                          </Text>
+                        </View>
+                      </View>
+                    <View style={styles.jaapCardBottomArea}>
+                      <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
+                      <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity
+                          style={[styles.exactJoinBtn, { flex: 1 }]}
+                        onPress={() => router.push({
+                          pathname: '/live-jaap-welcome',
+                          params: {
+                            mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
+                            title: jaap.title.replace('\n', ' ')
+                          }
+                        })}
+                      >
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={styles.exactJoinText}>{t('join')}</Text>
+                        </View>
+                        </TouchableOpacity>
                         <TouchableOpacity
                           testID={`jaap-bell-${jaap.id}`}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -579,43 +607,16 @@ export default function JaapLandingScreen() {
                           ]}
                           onPress={() => {
                             const mantraType = jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
-                            // Toggle reminders for all sessions of this mantra
                             handleSetReminder(jaap.id, mantraType, 'All');
                           }}
                         >
                           <Ionicons
                             name={reminders[jaap.id] ? 'notifications' : 'notifications-outline'}
-                            size={16}
+                            size={14}
                             color={reminders[jaap.id] ? '#FFD700' : '#FFF'}
                           />
                         </TouchableOpacity>
                       </View>
-                    <View style={styles.jaapCardBottomArea}>
-                      <View style={styles.exactCountBadge}>
-                        <Ionicons name="people" size={12} color="#FFF" style={{ marginRight: 4 }} />
-                        <Text style={styles.exactCountText}>
-                          {t('language') === 'hi' ? `${jaap.devotees.replace('K', ' हजार')} भक्त` : `${jaap.devotees} devotees`}
-                        </Text>
-                      </View>
-                      <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
-                      <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
-                      <TouchableOpacity
-                        style={styles.exactJoinBtn}
-                        onPress={() => router.push({
-                          pathname: '/live-jaap-welcome',
-                          params: {
-                            mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
-                            title: jaap.title.replace('\n', ' ')
-                          }
-                        })}
-                      >
-                        <View style={{ flex: 1, alignItems: 'center', paddingLeft: 30 }}>
-                          <Text style={styles.exactJoinText}>{t('join')}</Text>
-                        </View>
-                        <View style={styles.waveformIconBox}>
-                          <MaterialCommunityIcons name="waveform" size={24} color="#FF6600" />
-                        </View>
-                      </TouchableOpacity>
                     </View>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -707,7 +708,7 @@ export default function JaapLandingScreen() {
           onScroll={onJaapScrollTabBar}
           scrollEventThrottle={16}
         >
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingTop: 12, zIndex: 10 }}>
+            <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
               {/* Hero Banner (Same structure as Jaap tab banner) */}
               <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
@@ -813,12 +814,15 @@ export default function JaapLandingScreen() {
                 filteredTemples.map((item, idx) => (
                   <View key={item.id} style={styles.newTempleCard}>
 
-                    <Image source={getTempleImageByName(item.name)} style={styles.newTempleCardImg} resizeMode="cover" />
+                    <Image source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} style={styles.newTempleCardImg} resizeMode="cover" />
                     <View style={styles.newTempleCardInfo}>
                       <View>
                         <Text style={styles.newTempleCardDeity}>
                           {(() => {
-                            const rawDeity = item.deity || 'LORD SHIVA';
+                            let rawDeity = item.deity || 'LORD SHIVA';
+                            if (item.name?.toLowerCase().includes('iskcon') || item.name?.toLowerCase().includes('borivali')) {
+                              rawDeity = 'LORD KRISHNA';
+                            }
                             if (t('language') === 'hi') {
                               const upper = rawDeity.toUpperCase();
                               if (upper.includes('SHIVA')) return 'भगवान शिव';
@@ -832,7 +836,7 @@ export default function JaapLandingScreen() {
                           })()}
                         </Text>
                         <Text style={styles.newTempleCardName}>{getTranslatedTempleName(item.name || '')}</Text>
-                        <Text style={styles.newTempleCardLoc}>{getTranslatedTempleLocation(getTempleLocation(item))}</Text>
+                        <Text style={styles.newTempleCardLoc}>{getTranslatedTempleLocation(getTempleLocation(item), item.name)}</Text>
                       </View>
                       <TouchableOpacity style={styles.newTempleOpenBtn} onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}>
                         <Text style={styles.newTempleOpenBtnText}>{t('openInMaps')}</Text>
@@ -1101,25 +1105,23 @@ const styles = StyleSheet.create({
   sectionTitleText: { fontSize: 22, fontWeight: '900', color: '#2D1400' },
   viewAllSaffronRefined: { color: '#FF6600', fontSize: 16, fontWeight: '800' },
   miniCardsRowPadding: { paddingLeft: 25 },
-  jaapCardContainer: { width: 220, height: 320, marginRight: 22, borderRadius: 32, overflow: 'hidden' },
-  jaapCardOverlayExact: { flex: 1, padding: 15, justifyContent: 'space-between' },
+  jaapCardContainer: { width: 115, height: 180, marginRight: 16, borderRadius: 20, overflow: 'hidden' },
+  jaapCardOverlayExact: { flex: 1, padding: 10, justifyContent: 'space-between' },
   jaapCardTopRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  exactLiveBadge: { backgroundColor: '#E31E24', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },
-  exactLiveText: { color: '#FFF', fontSize: 11, fontWeight: '900' },
+  exactLiveBadge: { backgroundColor: '#E31E24', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center' },
+  exactLiveText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
   exactCountBadge: {
     backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: 8,
   },
   jaapCardBellBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1130,13 +1132,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,215,0,0.2)',
     borderColor: '#FFD700',
   },
-  exactCountText: { color: '#FFF', fontSize: 11, fontWeight: '800', marginLeft: 2 },
+  exactCountText: { color: '#FFF', fontSize: 9, fontWeight: '800', marginLeft: 2 },
   jaapCardBottomArea: { width: '100%' },
-  jaapCardTitleExact: { color: '#FFF', fontSize: 26, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, marginBottom: 8 },
-  jaapCardSlokExact: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600', fontStyle: 'italic', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 12 },
-  exactJoinBtn: { backgroundColor: '#FFF', height: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', elevation: 5 },
-  exactJoinText: { color: '#FF6600', fontSize: 18, fontWeight: '800' },
-  waveformIconBox: { marginRight: 15 },
+  jaapCardTitleExact: { color: '#FFF', fontSize: 14, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2, marginBottom: 6 },
+  jaapCardSlokExact: { display: 'none' },
+  exactJoinBtn: { backgroundColor: '#FFF', height: 32, borderRadius: 16, flexDirection: 'row', alignItems: 'center', elevation: 2, justifyContent: 'center' },
+  exactJoinText: { color: '#FF6600', fontSize: 13, fontWeight: '800' },
+  waveformIconBox: { display: 'none' },
   sessionsColPadding: { paddingHorizontal: 20 },
   // New session card matching provided design
   sessionCard: {
@@ -1242,14 +1244,14 @@ const styles = StyleSheet.create({
   newTempleSearchInput: { flex: 1, fontSize: 14, color: '#333', fontFamily: 'Inter_500Medium' },
   filterIconBtn: { padding: 4 },
   newTempleListPadding: { paddingHorizontal: 16, paddingBottom: 20 },
-  newTempleCard: { backgroundColor: '#FDF5EC', borderRadius: 16, padding: 12, marginBottom: 16, flexDirection: 'row', position: 'relative' },
-  newTempleCardImg: { width: 100, height: 120, borderRadius: 12 },
-  newTempleCardInfo: { flex: 1, marginLeft: 16, justifyContent: 'space-between', paddingVertical: 2 },
-  newTempleCardDeity: { color: '#FF6600', fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 },
-  newTempleCardName: { color: '#000', fontSize: 16, fontFamily: 'Inter_700Bold', marginBottom: 4 },
-  newTempleCardLoc: { color: '#555', fontSize: 11, fontFamily: 'Inter_500Medium', marginBottom: 12 },
-  newTempleOpenBtn: { borderWidth: 1.5, borderColor: '#FF6600', borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
-  newTempleOpenBtnText: { color: '#FF6600', fontSize: 13, fontFamily: 'Inter_700Bold' },
+  newTempleCard: { backgroundColor: '#FFF', height: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center', position: 'relative' },
+  newTempleCardImg: { width: 80, height: 95, borderRadius: 12 },
+  newTempleCardInfo: { flex: 1, marginLeft: 16, justifyContent: 'center' },
+  newTempleCardDeity: { color: '#FF6B35', fontSize: 12, fontWeight: '700', lineHeight: 16, letterSpacing: 0.3, textTransform: 'uppercase', marginBottom: 2, alignSelf: 'center' },
+  newTempleCardName: { color: '#1C1C1E', fontSize: 16, fontWeight: '700', lineHeight: 27 },
+  newTempleCardLoc: { color: 'rgba(0, 0, 0, 0.61)', fontSize: 14, fontWeight: '400', lineHeight: 21, marginBottom: 8 },
+  newTempleOpenBtn: { width: 190, height: 32, justifyContent: 'center', alignItems: 'center', borderRadius: 12, borderWidth: 2, borderColor: '#FF7B00', alignSelf: 'center' },
+  newTempleOpenBtnText: { color: '#FF7B00', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   blueBadge: { position: 'absolute', top: -8, left: 12, backgroundColor: '#0084FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, zIndex: 10 },
   blueBadgeText: { color: '#FFF', fontSize: 9, fontFamily: 'Inter_700Bold' },
 });

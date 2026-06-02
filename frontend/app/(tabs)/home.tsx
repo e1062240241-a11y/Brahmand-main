@@ -2637,7 +2637,12 @@ export default function HomeScreen() {
                         <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                           {realGroupName}
                         </Text>
-                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
+                        <View style={styles.miniCardBottomRow}>
+                          <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
+                          <View style={styles.sevaBadgeMini}>
+                            <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                          </View>
+                        </View>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                     </TouchableOpacity>
