@@ -1,7 +1,7 @@
 """Firebase Push Notification Service using FCM"""
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 
 from config.firebase_config import get_firestore, get_firebase_messaging
 from config.firestore_db import FirestoreDB
@@ -31,7 +31,8 @@ class FirebaseNotificationService:
         title: str,
         body: str,
         notification_type: str,
-        data: Optional[Dict[str, Any]] = None
+        data: Optional[Dict[str, Any]] = None,
+        notification_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create and store notification"""
         db = await FirebaseNotificationService.get_db()
@@ -46,8 +47,8 @@ class FirebaseNotificationService:
             "created_at": datetime.utcnow().isoformat() + 'Z'
         }
         
-        notification_id = await db.create_document('notifications', notification_data)
-        notification_data['id'] = notification_id
+        inserted_id = await db.create_document('notifications', notification_data, doc_id=notification_id)
+        notification_data['id'] = inserted_id
         
         logger.info(f"Notification created for user {user_id}")
         
@@ -67,10 +68,10 @@ class FirebaseNotificationService:
         title: str,
         body: str,
         data: Optional[Dict[str, str]] = None
-    ) -> int:
+    ) -> Tuple[int, List[str]]:
         """Send push notifications to Expo Go clients using the Expo Push API"""
         if not tokens:
-            return 0
+            return 0, []
         import httpx
         url = "https://exp.host/--/api/v2/push/send"
         
@@ -103,6 +104,7 @@ class FirebaseNotificationService:
         chunks = [payloads[i:i + chunk_size] for i in range(0, len(payloads), chunk_size)]
         
         success_count = 0
+        failed_tokens = []
         async with httpx.AsyncClient() as client:
             for chunk in chunks:
                 try:
@@ -118,16 +120,22 @@ class FirebaseNotificationService:
                     )
                     if response.status_code == 200:
                         res_data = response.json()
-                        for item in res_data.get('data', []):
+                        for idx, item in enumerate(res_data.get('data', [])):
                             if item.get('status') == 'ok':
                                 success_count += 1
                             else:
-                                logger.warning(f"Expo push error for token: {item.get('message')}")
+                                error_msg = item.get('message', '')
+                                logger.warning(f"Expo push error for token: {error_msg}")
+                                details = item.get('details', {}) or {}
+                                error_code = details.get('error', '')
+                                if error_code == 'DeviceNotRegistered' or 'not a registered push token' in error_msg:
+                                    if idx < len(chunk):
+                                        failed_tokens.append(chunk[idx]['to'])
                     else:
                         logger.error(f"Expo Push API error {response.status_code}: {response.text}")
                 except Exception as e:
                     logger.error(f"Failed to send Expo push chunk: {e}")
-        return success_count
+        return success_count, failed_tokens
 
     @staticmethod
     async def send_push_notification(
@@ -146,7 +154,16 @@ class FirebaseNotificationService:
         if not user:
             raise ValueError("User not found")
         
-        fcm_tokens = user.get('fcm_tokens', [])
+        # Prioritize primary fcm_token to prevent duplicate notifications on a single device
+        primary_token = user.get('fcm_token')
+        if primary_token:
+            fcm_tokens = [primary_token]
+        else:
+            fcm_tokens = user.get('fcm_tokens', [])
+            if fcm_tokens:
+                # Fallback to the most recently registered token to prevent duplicate sends
+                fcm_tokens = [fcm_tokens[-1]]
+                
         if not fcm_tokens:
             logger.info(f"No tokens for user {user_id}")
             return {"message": "No tokens registered", "sent": 0}
@@ -159,10 +176,16 @@ class FirebaseNotificationService:
         
         # 1. Send to Expo tokens if any
         if expo_tokens:
-            expo_sent = await FirebaseNotificationService._send_expo_push_notifications(
+            expo_sent, failed_expo_tokens = await FirebaseNotificationService._send_expo_push_notifications(
                 expo_tokens, title, body, data
             )
             success_count += expo_sent
+            if failed_expo_tokens:
+                try:
+                    await db.array_remove_update('users', user_id, 'fcm_tokens', failed_expo_tokens)
+                    logger.info(f"Evicted {len(failed_expo_tokens)} failed Expo tokens for user {user_id}")
+                except Exception as evict_err:
+                    logger.warning(f"Failed to evict Expo tokens: {evict_err}")
             
         # 2. Send to FCM native tokens if any
         if fcm_native_tokens:
@@ -293,25 +316,26 @@ class FirebaseNotificationService:
                 logger.warning("send_multicast: No user_ids provided")
                 return {"message": "No user_ids", "sent": 0}
             
-            # Collect all FCM and Expo tokens from users
+            # Collect all FCM and Expo tokens from users (at most 1 per user to prevent duplicate notifications)
             all_fcm_tokens = []
             all_expo_tokens = []
             users_with_tokens = 0
             for user_id in user_ids:
                 user = await db.get_document('users', user_id)
                 if user:
-                    tokens = list(user.get('fcm_tokens', []) or [])
-                    fcm_token = user.get('fcm_token')
-                    if fcm_token and fcm_token not in tokens:
-                        tokens.append(fcm_token)
+                    primary_token = user.get('fcm_token')
+                    if primary_token:
+                        token = primary_token
+                    else:
+                        tokens = user.get('fcm_tokens', [])
+                        token = tokens[-1] if tokens else None
                     
-                    if tokens:
+                    if token:
                         users_with_tokens += 1
-                        for token in tokens:
-                            if token.startswith('ExponentPushToken') or token.startswith('ExpoPushToken'):
-                                all_expo_tokens.append(token)
-                            else:
-                                all_fcm_tokens.append(token)
+                        if token.startswith('ExponentPushToken') or token.startswith('ExpoPushToken'):
+                            all_expo_tokens.append(token)
+                        else:
+                            all_fcm_tokens.append(token)
                                 
             # Deduplicate
             all_fcm_tokens = list(set(all_fcm_tokens))
@@ -323,11 +347,17 @@ class FirebaseNotificationService:
             # 1. Send via Expo Push API if there are Expo tokens
             if all_expo_tokens:
                 logger.info(f"SOS: Sending via Expo Push to {len(all_expo_tokens)} tokens")
-                expo_sent = await FirebaseNotificationService._send_expo_push_notifications(
+                expo_sent, failed_expo_tokens = await FirebaseNotificationService._send_expo_push_notifications(
                     all_expo_tokens, title, body, data
                 )
                 total_success += expo_sent
                 total_failure += len(all_expo_tokens) - expo_sent
+                if failed_expo_tokens:
+                    for uid in user_ids:
+                        try:
+                            await db.array_remove_update('users', uid, 'fcm_tokens', failed_expo_tokens)
+                        except Exception:
+                            pass
                 
             # 2. Send via FCM if there are native FCM tokens
             if all_fcm_tokens:
@@ -561,7 +591,8 @@ class FirebaseNotificationService:
         title: str,
         body: str,
         mantra_type: str,
-        session_name: str
+        session_name: str,
+        notification_id: Optional[str] = None
     ):
         """Store notification and send push notification to user's device"""
         await FirebaseNotificationService.create_notification(
@@ -569,7 +600,8 @@ class FirebaseNotificationService:
             title=title,
             body=body,
             notification_type="jaap_reminder",
-            data={"mantra_type": mantra_type, "session_name": session_name}
+            data={"mantra_type": mantra_type, "session_name": session_name},
+            notification_id=notification_id
         )
         await FirebaseNotificationService.send_push_notification(
             user_id=user_id,

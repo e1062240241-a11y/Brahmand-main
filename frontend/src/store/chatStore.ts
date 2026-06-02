@@ -14,6 +14,7 @@ export interface CommunityScreenCache {
   communityPosts: any[];
   allFestivals: any[];
   lastFetched: number;
+  deletedPostIds?: string[];
 }
 
 interface ChatState {
@@ -38,6 +39,7 @@ const initialCommunityScreenCache = (): CommunityScreenCache => ({
   communityPosts: [],
   allFestivals: [],
   lastFetched: 0,
+  deletedPostIds: [],
 });
 
 export const useChatStore = create<ChatState>((set) => ({

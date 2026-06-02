@@ -547,10 +547,47 @@ const DirectMessageScreen = () => {
   // Fetch messages via REST API
   const fetchMessagesViaAPI = useCallback(async (fromCache = true) => {
     if (fromCache && messages.length === 0) {
-      const cached = await getCachedMessages(conversationId);
-      if (cached.length > 0) {
-        setMessages(cached);
-        setLoading(false);
+      // 1. Try loading from WatermelonDB first (extremely fast SQLite query)
+      try {
+        const { Q } = require('@nozbe/watermelondb');
+        const { database } = require('../../src/database');
+        if (database && Platform.OS !== 'web') {
+          const localMessages = await database.get('chats')
+            .query(
+              Q.where('chat_id', conversationId),
+              Q.sortBy('created_at', Q.desc),
+              Q.take(50)
+            ).fetch();
+            
+          if (localMessages && localMessages.length > 0) {
+            const mapped = localMessages.reverse().map((msg: any) => ({
+              id: msg.id,
+              sender_id: msg.senderId || '',
+              sender_name: msg.senderName || 'Unknown',
+              sender_photo: undefined,
+              text: msg.content || '',
+              content: msg.content || '',
+              message_type: msg.messageType || 'text',
+              status: 'sent',
+              created_at: new Date(msg.createdAt).toISOString(),
+              timestamp: new Date(msg.createdAt).toISOString(),
+              is_verified: false,
+            }));
+            setMessages(mapped);
+            setLoading(false);
+          }
+        }
+      } catch (err) {
+        console.warn('[DM] Failed to load local messages from WatermelonDB:', err);
+      }
+
+      // 2. Fallback to AsyncStorage cache
+      if (messages.length === 0) {
+        const cached = await getCachedMessages(conversationId);
+        if (cached.length > 0) {
+          setMessages(cached);
+          setLoading(false);
+        }
       }
     }
     
@@ -601,6 +638,16 @@ const DirectMessageScreen = () => {
   useEffect(() => {
     fetchConversation();
     fetchMessagesViaAPI();
+
+    // Trigger WatermelonDB sync in background immediately on screen mount
+    if (Platform.OS !== 'web') {
+      try {
+        const { syncDatabase } = require('../../src/database/sync');
+        syncDatabase().catch((err: any) => console.warn('[DM] Background sync failed on mount:', err));
+      } catch (e) {
+        console.warn('[DM] Failed to require syncDatabase:', e);
+      }
+    }
     
     let pollingInterval: NodeJS.Timeout | null = null;
     const socketListenerId = `dm_${conversationId}_${Date.now()}`;

@@ -5346,6 +5346,8 @@ async def send_community_message(
         msg_data['contact'] = message.contact
     if message.seva_details:
         msg_data['seva_details'] = message.seva_details
+    if message.location:
+        msg_data['location'] = message.location
     
     msg_id = await db.add_message_to_chat(chat_id, msg_data.copy())
     
@@ -5370,6 +5372,8 @@ async def send_community_message(
         response_data['contact'] = message.contact
     if message.seva_details:
         response_data['seva_details'] = message.seva_details
+    if message.location:
+        response_data['location'] = message.location
 
     # Notify mentioned users in this community message
     try:
@@ -5557,6 +5561,7 @@ async def add_community_message_comment(
         'user_photo': user.get('photo'),
         'text': text,
         'created_at': datetime.utcnow().isoformat() + 'Z',
+        'chat_id': chat_id,
     }
     
     comment_id = await db.create_document('post_comments', comment_doc)
@@ -5621,13 +5626,58 @@ async def delete_comment(comment_id: str, token_data: dict = Depends(verify_toke
     if post_id:
         try:
             new_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
-            post = await db.get_document('posts', post_id)
-            if post:
-                await db.update_document('posts', post_id, {'comments_count': new_count})
+            chat_id = comment.get('chat_id')
+            if not chat_id:
+                # Deduce chat_id by scanning community chats
+                chats = await db.query_documents('chats')
+                for c in chats:
+                    msg = await db.get_chat_message(c['id'], post_id)
+                    if msg:
+                        chat_id = c['id']
+                        break
+            
+            if chat_id:
+                await db.update_chat_message(chat_id, post_id, {'comments_count': new_count})
+            else:
+                post = await db.get_document('posts', post_id)
+                if post:
+                    await db.update_document('posts', post_id, {'comments_count': new_count})
         except Exception:
             pass
 
     return {'status': 'success', 'message': 'Comment deleted'}
+
+
+@api_router.delete("/messages/community/{community_id}/{subgroup_type}/{message_id}")
+async def delete_community_message(
+    community_id: str, subgroup_type: str, message_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    db = await get_db()
+    user_id = token_data['user_id']
+    chat_id = f"community_{community_id}_{subgroup_type}"
+    
+    msg = await db.get_chat_message(chat_id, message_id)
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+        
+    if msg.get('sender_id') != user_id:
+        raise HTTPException(status_code=403, detail="You can only delete your own messages")
+        
+    def _delete():
+        db.client.collection('chats').document(chat_id).collection('messages').document(message_id).delete()
+        return True
+        
+    await db._run_sync(_delete)
+    
+    try:
+        comments = await db.query_documents('post_comments', filters=[('post_id', '==', message_id)])
+        for c in comments:
+            await db.delete_document('post_comments', c['id'])
+    except Exception:
+        pass
+        
+    return {'status': 'success', 'message': 'Message deleted'}
 
 
 @api_router.post("/dm")
@@ -7184,8 +7234,9 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         otp_aadhaar = (user_doc.get('kyc_aadhaar_number') or '').strip()
         if not otp_verified:
             raise HTTPException(status_code=400, detail="Please verify Aadhaar OTP before submitting KYC")
-        if otp_aadhaar and otp_aadhaar != id_number:
-            raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
+        # Relaxed check as requested to allow re-uploads of different Aadhaar documents
+        # if otp_aadhaar and otp_aadhaar != id_number:
+        #     raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
     
     # Compress photos if provided
     id_photo = data.get('id_photo')
@@ -12409,6 +12460,17 @@ async def _jaap_reminder_worker():
                             logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (already sent today)")
                             continue
                             
+                        # Deterministic notification ID to prevent duplicates across multiple servers/workers
+                        notif_id = f"jaap_reminder:{uid}:hanuman:{session['name'].lower()}:{date_str}"
+                        try:
+                            existing_notif = await db.get_document("notifications", notif_id)
+                            if existing_notif:
+                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (Deterministic Doc Check)")
+                                sent_reminders_cache[cache_key] = now_ts
+                                continue
+                        except Exception as check_err:
+                            logger.warning(f"Error checking deterministic Hanuman Chalisa reminder: {check_err}")
+                            
                         # Check Firestore notifications collection as secondary backup (without order_by to avoid index requirements)
                         try:
                             recent_notifs = await db.query_documents(
@@ -12447,7 +12509,8 @@ async def _jaap_reminder_worker():
                             title="🙏 Jaap Starting Soon",
                             body=f"Your {session['name']} Hanuman Chalisa session starts in 5 minutes. Join now!",
                             mantra_type="hanuman",
-                            session_name=session['name']
+                            session_name=session['name'],
+                            notification_id=notif_id
                         )
                         sent_reminders_cache[cache_key] = now_ts
 
@@ -12488,6 +12551,17 @@ async def _jaap_reminder_worker():
                             logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (already sent today)")
                             continue
                             
+                        # Deterministic notification ID to prevent duplicates across multiple servers/workers
+                        notif_id = f"jaap_reminder:{uid}:{mantra_type}:{session['name'].lower()}:{date_str}"
+                        try:
+                            existing_notif = await db.get_document("notifications", notif_id)
+                            if existing_notif:
+                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (Deterministic Doc Check)")
+                                sent_reminders_cache[cache_key] = now_ts
+                                continue
+                        except Exception as check_err:
+                            logger.warning(f"Error checking deterministic {mantra_type} reminder: {check_err}")
+
                         # Secondary backup check in Firestore
                         try:
                             recent_notifs = await db.query_documents(
@@ -12526,7 +12600,8 @@ async def _jaap_reminder_worker():
                             title="🙏 Live Jaap Starting Soon",
                             body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
                             mantra_type=mantra_type,
-                            session_name=session['name']
+                            session_name=session['name'],
+                            notification_id=notif_id
                         )
                         sent_reminders_cache[cache_key] = now_ts
                     

@@ -46,6 +46,7 @@ import {
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
+import { syncDatabase } from '../../src/database/sync';
 
 const { width } = Dimensions.get('window');
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
@@ -199,6 +200,23 @@ export default function MessagesScreen() {
     try {
       await joinCommunityDirect(communityId);
       setJoinedLocalIds(prev => new Set(prev).add(communityId));
+      
+      // Update cache so it persists when returning to this screen
+      try {
+        const cached = await AsyncStorage.getItem(USER_GROUPS_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.data && Array.isArray(parsed.data)) {
+            parsed.data = parsed.data.map((c: any) => 
+              c.id === communityId ? { ...c, is_member: true } : c
+            );
+            await AsyncStorage.setItem(USER_GROUPS_CACHE_KEY, JSON.stringify(parsed));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Failed to update cache after join local', cacheErr);
+      }
+
       Alert.alert('Joined!', `You have joined ${name}.`);
     } catch (err: any) {
       Alert.alert('Error', parseApiError(err));
@@ -263,9 +281,9 @@ export default function MessagesScreen() {
 
     if (nameLower.includes('mumbai') || item.type === 'city') {
       return {
-        label: 'CITY COMMUNITY',
-        name: item.name || 'Mumbai Community',
-        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} members` : '13K members',
+        label: t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY',
+        name: t('language') === 'hi' ? 'मुंबई समुदाय' : (item.name || 'Mumbai Community'),
+        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '13K सदस्य' : '13K members'),
         avatarBadge: '+8',
         iconBg: '#FFFFFF',
         iconColor: '#9F45FF',
@@ -275,9 +293,9 @@ export default function MessagesScreen() {
     }
     if (nameLower.includes('maharashtra') || item.type === 'state') {
       return {
-        label: 'STATE COMMUNITY',
-        name: 'Maharashtra Community',
-        memberCount: '14K members',
+        label: t('language') === 'hi' ? 'राज्य समुदाय' : 'STATE COMMUNITY',
+        name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
+        memberCount: t('language') === 'hi' ? '14K सदस्य' : '14K members',
         avatarBadge: '+9',
         iconBg: 'transparent',
         iconColor: '#FF9500',
@@ -287,9 +305,9 @@ export default function MessagesScreen() {
     }
     if (nameLower.includes('bharat') || nameLower.includes('india') || nameLower.includes('national') || item.type === 'country') {
       return {
-        label: 'NATIONAL COMMUNITY',
-        name: item.name || 'Bharat Community',
-        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} members` : '14K members',
+        label: t('language') === 'hi' ? 'राष्ट्रीय समुदाय' : 'NATIONAL COMMUNITY',
+        name: t('language') === 'hi' ? 'भारत समुदाय' : (item.name || 'Bharat Community'),
+        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '14K सदस्य' : '14K members'),
         avatarBadge: '+2',
         iconBg: 'transparent',
         iconColor: '#FF9500',
@@ -298,9 +316,9 @@ export default function MessagesScreen() {
     }
 
     return {
-      label: item.type === 'city' ? 'CITY COMMUNITY' : item.type === 'state' ? 'STATE COMMUNITY' : 'NATIONAL COMMUNITY',
+      label: item.type === 'city' ? (t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY') : item.type === 'state' ? (t('language') === 'hi' ? 'राज्य समुदाय' : 'STATE COMMUNITY') : (t('language') === 'hi' ? 'राष्ट्रीय समुदाय' : 'NATIONAL COMMUNITY'),
       name: item.name,
-      memberCount: item.member_count ? `${formatMemberCount(item.member_count)} members` : '1.2K members',
+      memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '1.2K सदस्य' : '1.2K members'),
       avatarBadge: '+5',
       iconBg: 'transparent',
       iconColor: item.type === 'city' ? '#9F45FF' : '#FF9500',
@@ -693,6 +711,9 @@ export default function MessagesScreen() {
           }
         } catch (e) {}
 
+        // Trigger background sync for WatermelonDB to keep local chats updated
+        syncDatabase().catch(e => console.warn('[Messages] Background sync failed:', e));
+
         const [communityRes, requestRes, myPendingRes] = await Promise.all([
           getCommunities(),
           getCommunityRequests({ status: 'active', limit: 10 }),
@@ -968,7 +989,7 @@ export default function MessagesScreen() {
     const borderColor = isTeal ? '#00796B' : '#437953';
     const badgeBg = '#FFFFFF';
     const pillText = isTeal ? 'Youth' : 'Seva';
-    const isJoined = joinedLocalIds.has(item.id);
+    const isJoined = joinedLocalIds.has(item.id) || (item as any).is_member || communities.some(c => c.id === item.id);
     const isJoining = joiningLocalId === item.id;
     const isPending = (item as any).is_pending;
 

@@ -298,7 +298,6 @@ const HOME_CARD_TEXTURES = {
   peach: require('../../assets/images/home_card_bg_peach.png'),
   mint: require('../../assets/images/home_card_bg_mint.jpg'),
   cyan: require('../../assets/images/home_card_bg_mint.jpg'),
-  lavender: require('../../assets/images/home_card_bg_lavender.jpg'),
 } as const;
 
 type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
@@ -308,7 +307,6 @@ const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, string]
   peach: ['rgba(255, 250, 242, 0.74)', 'rgba(255, 232, 205, 0.48)'],
   mint: ['rgba(242, 255, 248, 0.74)', 'rgba(210, 245, 225, 0.48)'],
   cyan: ['rgba(224, 247, 250, 0.75)', 'rgba(178, 235, 242, 0.48)'],
-  lavender: ['rgba(245, 235, 255, 0.74)', 'rgba(220, 205, 250, 0.48)'],
 };
 
 function HomeCardTextureBg({
@@ -1480,16 +1478,21 @@ export default function HomeScreen() {
     const message = `Check this post on Brahmand!${caption}\n\n${appLink}`;
 
     try {
-      if (FileSystemModule?.cacheDirectory && FileSystemModule?.downloadAsync && mediaUrl) {
+      // Media download is native-only — skip on web
+      if (Platform.OS !== 'web' && FileSystemModule?.cacheDirectory && FileSystemModule?.downloadAsync && mediaUrl) {
         const inferredExt = post?.media_type === 'video' ? 'mp4' : 'jpg';
         const localPath = `${FileSystemModule.cacheDirectory}share-${Date.now()}.${inferredExt}`;
-        const downloadRes = await FileSystemModule.downloadAsync(mediaUrl, localPath);
-        if (downloadRes?.uri) {
-          await Share.share({ message, url: downloadRes.uri, title: 'Share via Brahmand' });
-          return;
+        try {
+          const downloadRes = await FileSystemModule.downloadAsync(mediaUrl, localPath);
+          if (downloadRes?.uri) {
+            await Share.share({ message, url: downloadRes.uri, title: 'Share via Brahmand' });
+            return;
+          }
+        } catch (downloadErr) {
+          console.warn('[handleShareExternal] Media download failed, sharing text only:', downloadErr);
         }
       }
-      await Share.share({ message: `${message}\n${mediaUrl}`, url: appLink, title: 'Share via Brahmand' });
+      await Share.share({ message: `${message}${mediaUrl ? '\n' + mediaUrl : ''}`, url: appLink, title: 'Share via Brahmand' });
     } catch (error: any) {
       const msg = String(error?.message || error || '').toLowerCase();
       if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
@@ -2521,7 +2524,7 @@ export default function HomeScreen() {
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="lavender">
+                    <HomeCardTextureBg texture="peach">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
@@ -2571,8 +2574,8 @@ export default function HomeScreen() {
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                    <View style={[styles.cardHeaderBadgeEmerald, { borderColor: '#0D9488', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#0D9488', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                     </View>
                   </View>
                 </View>
@@ -2582,7 +2585,14 @@ export default function HomeScreen() {
                 {/* Mumbai Community Card */}
                 {(() => {
                   const cityComm = communities.find(c => c.type === 'city');
-                  const cityName = cityComm?.name || 'City Community';
+                  let cityName = cityComm?.name || 'City Community';
+                  if (t('language') === 'hi') {
+                    if (cityName === 'City Community') {
+                      cityName = 'शहर समुदाय';
+                    } else if (cityName.toLowerCase().includes('mumbai')) {
+                      cityName = 'मुंबई समुदाय';
+                    }
+                  }
                   const cityId = cityComm?.id || 'city_default';
                   return (
                     <TouchableOpacity
@@ -2615,7 +2625,12 @@ export default function HomeScreen() {
                     localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
                   const localName = 'Local Community';
                   const localId = localComm?.id || 'food_pune';
-                  const realGroupName = localComm?.name || 'Pune Food Sharing Group';
+                  let realGroupName = localComm?.name || 'Pune Food Sharing Group';
+                  if (t('language') === 'hi') {
+                    if (realGroupName === 'Pune Food Sharing Group') {
+                      realGroupName = 'पुणे भोजन साझाकरण समूह';
+                    }
+                  }
                   const localMembers = localComm ? (localComm.member_count || localComm.members_count || 12) : 236;
                   const localSubgroup = localComm?.type || 'city';
                   return (
@@ -2886,7 +2901,7 @@ export default function HomeScreen() {
               }
             }}
             onDownload={async () => {
-              if (selectedSharePost?.media_url && FileSystemModule?.downloadAsync) {
+              if (Platform.OS !== 'web' && selectedSharePost?.media_url && FileSystemModule?.downloadAsync) {
                 try {
                   const ext = selectedSharePost.media_type === 'video' ? 'mp4' : 'jpg';
                   const localPath = `${FileSystemModule.documentDirectory}brahmand_post_${Date.now()}.${ext}`;
@@ -2896,7 +2911,7 @@ export default function HomeScreen() {
                   alert('Download failed');
                 }
               } else {
-                alert('Download naturally unsupported');
+                alert('Download not supported on this platform');
               }
               setShareModalVisible(false);
             }}
@@ -3500,6 +3515,17 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderColor: '#A5D6A7',
+    zIndex: 100,
+    elevation: 5,
+  },
+  cardHeaderBadgeEmerald: {
+    backgroundColor: '#E6F4F1',
+    paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
+    paddingVertical: Platform.OS === 'ios' ? 4 : 5,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#B2DFDB',
     zIndex: 100,
     elevation: 5,
   },

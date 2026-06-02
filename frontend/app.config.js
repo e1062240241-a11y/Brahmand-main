@@ -116,7 +116,10 @@ module.exports = ({ config }) => {
   if (config.plugins) {
     config.plugins = config.plugins.map(plugin => {
       if (Array.isArray(plugin) && plugin[0] === 'react-native-maps') {
-        return ['react-native-maps', { googleMapsApiKey }];
+        return ['react-native-maps', { 
+          androidGoogleMapsApiKey: googleMapsApiKey,
+          iosGoogleMapsApiKey: googleMapsApiKey 
+        }];
       }
       return plugin;
     });
