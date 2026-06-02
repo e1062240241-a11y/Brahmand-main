@@ -64,7 +64,6 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   const [aadhaarExtracting, setAadhaarExtracting] = useState(false);
   const [ocrInProgress, setOcrInProgress] = useState(false);
   const [hasAutoExtracted, setHasAutoExtracted] = useState(false);
-  const [aadhaarMismatch, setAadhaarMismatch] = useState(false);
   const [previousAadhaar, setPreviousAadhaar] = useState<string | null>(null);
   const [otpFlowActive, setOtpFlowActive] = useState(false);
   const [otpReferenceId, setOtpReferenceId] = useState('');
@@ -174,7 +173,6 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
     try {
       setIdNumber(value);
       setPreviousAadhaar(value);
-      setAadhaarMismatch(false);
       if (vendorId) {
         await AsyncStorage.setItem(getAadhaarStorageKey(), value);
       }
@@ -332,12 +330,6 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                 }
               }
             }
-          }
-
-          if (finalAadhaarNumber && previousAadhaar && previousAadhaar !== finalAadhaarNumber) {
-            setAadhaarMismatch(true);
-          } else {
-            setAadhaarMismatch(false);
           }
 
           if (!finalAadhaarNumber) {
@@ -977,13 +969,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                   </Text>
                 )}
 
-                {aadhaarMismatch && (
-                  <Text style={styles.ocrError}>
-                    Uploaded image Aadhaar does not match previously saved number. Please upload a different image or correct Aadhaar number.
-                  </Text>
-                )}
-
-                {hasAutoExtracted && idNumber.length === 12 && !aadhaarMismatch && (
+                {hasAutoExtracted && idNumber.length === 12 && (
                   <Text style={styles.autoExtractInfo}>
                     Aadhaar number extracted automatically: {idNumber}
                   </Text>
@@ -1035,11 +1021,11 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                   <Pressable
                     style={({ pressed }) => [
                       styles.submitBtn,
-                      (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri) && styles.submitBtnDisabled,
-                      pressed && !(loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri) && { opacity: 0.85 }
+                      (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || !faceScanUri) && styles.submitBtnDisabled,
+                      pressed && !(loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || !faceScanUri) && { opacity: 0.85 }
                     ]}
                     onPress={handleSubmit}
-                    disabled={loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || aadhaarMismatch || !faceScanUri}
+                    disabled={loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || !faceScanUri}
                     android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
                   >
                     {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Submit KYC Documents</Text>}

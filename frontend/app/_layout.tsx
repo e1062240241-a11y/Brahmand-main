@@ -255,15 +255,10 @@ function useDeepLinkHandler() {
 }
 
 function useNotificationResponseHandler() {
-  const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
   const processedResponseKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.name) {
-      return;
-    }
-
     const getResponseKey = (response: any) => {
       const actionId = response?.actionIdentifier || response?.actionId || 'default';
       const data = response?.notification?.request?.content?.data;
@@ -295,22 +290,30 @@ function useNotificationResponseHandler() {
       return null;
     };
 
+    const navigateOrQueue = (path: string) => {
+      const { token, isAuthenticated, user } = useAuthStore.getState();
+      if (token && isAuthenticated && user?.name) {
+        console.log('[Push] Navigating directly to:', path);
+        router.push(path as any);
+      } else {
+        console.log('[Push] Not authenticated or initialized yet. Queueing deep link path:', path);
+        useAuthStore.getState().setPendingDeepLink(path);
+      }
+    };
+
     const navigateToDm = (chatId: string) => {
       if (!chatId) return;
-      console.log('[Push] Navigating to DM chat:', chatId);
-      router.push(`/dm/${chatId}`);
+      navigateOrQueue(`/dm/${chatId}`);
     };
 
     const navigateToProfile = (userId: string) => {
       if (!userId) return;
-      console.log('[Push] Navigating to profile:', userId);
-      router.push(`/profile/${userId}`);
+      navigateOrQueue(`/profile/${userId}`);
     };
 
     const navigateToPost = (postId: string) => {
       if (!postId) return;
-      console.log('[Push] Navigating to post:', postId);
-      router.push(`/post/${postId}`);
+      navigateOrQueue(`/post/${postId}`);
     };
 
     const handleResponse = async (response: any) => {
@@ -327,6 +330,15 @@ function useNotificationResponseHandler() {
       processedResponseKey.current = responseKey;
 
       if (data.type === 'dm' && data.chat_id) {
+        // Trigger background sync immediately when user taps on DM notification
+        if (Platform.OS !== 'web') {
+          try {
+            const { syncDatabase } = require('../src/database/sync');
+            syncDatabase().catch((err: any) => console.warn('[Push] Background sync failed:', err));
+          } catch (e) {
+            console.warn('[Push] Failed to require syncDatabase:', e);
+          }
+        }
         navigateToDm(data.chat_id);
         return;
       }
@@ -337,12 +349,12 @@ function useNotificationResponseHandler() {
       }
 
       if (data.type === 'community_like' && data.community_id && data.message_id) {
-        router.push(`/community/${data.community_id}?postId=${data.message_id}`);
+        navigateOrQueue(`/community/${data.community_id}?postId=${data.message_id}`);
         return;
       }
 
       if (data.type === 'community_request' && data.requestId) {
-        router.push(`/community-request/list?requestId=${data.requestId}`);
+        navigateOrQueue(`/community-request/list?requestId=${data.requestId}`);
         return;
       }
 
@@ -430,7 +442,7 @@ function useNotificationResponseHandler() {
     return () => {
       subscription?.remove?.();
     };
-  }, [isAuthenticated, user?.name]);
+  }, [router]);
 }
 
 function useMutedNotificationFilter() {
@@ -445,6 +457,19 @@ function useMutedNotificationFilter() {
     const init = async () => {
       sub = await addNotificationReceivedListener(async (notification: any) => {
         const data = notification?.request?.content?.data;
+        
+        // Trigger background sync immediately when message notification is received
+        if (data?.type === 'dm' || data?.type === 'message' || data?.type === 'circle_message') {
+          if (Platform.OS !== 'web') {
+            try {
+              const { syncDatabase } = require('../src/database/sync');
+              syncDatabase().catch((err: any) => console.warn('[Push] Foreground sync on message failed:', err));
+            } catch (e) {
+              console.warn('[Push] Failed to require syncDatabase:', e);
+            }
+          }
+        }
+
         if (data?.type === 'dm' && data?.chat_id && mutedRef.current.has(data.chat_id)) {
           const Notifications = await import('expo-notifications');
           await Notifications.dismissNotificationAsync(notification.request.identifier);
@@ -522,8 +547,8 @@ export default function RootLayout() {
     const configureAndroidBars = async () => {
       try {
         // Keep bottom navigation bar consistently dark to avoid layout updates & flickering during page transitions
-        await NavigationBar.setBackgroundColorAsync('#000000');
-        await NavigationBar.setButtonStyleAsync('light');
+        await (NavigationBar as any).setBackgroundColorAsync('#000000');
+        await (NavigationBar as any).setButtonStyleAsync('light');
 
         // Configure top status bar transparency
         const { StatusBar: RNStatusBar } = require('react-native');

@@ -152,6 +152,23 @@ export default function DiscoverCommunitiesScreen() {
     try {
       await joinCommunityDirect(communityId);
       setJoinedIds(prev => new Set(prev).add(communityId));
+
+      // Update cache so it persists when returning to this screen
+      try {
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.data && Array.isArray(parsed.data)) {
+            parsed.data = parsed.data.map((c: any) => 
+              c.id === communityId ? { ...c, is_member: true } : c
+            );
+            await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(parsed));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Failed to update cache after join', cacheErr);
+      }
+
       Alert.alert('Joined!', `You have joined ${communityName}.`);
     } catch (error: any) {
       Alert.alert('Error', parseApiError(error));

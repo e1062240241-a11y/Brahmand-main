@@ -18,7 +18,8 @@
       "entitlements": {
         "aps-environment": "production",
         "com.apple.developer.associated-domains": [
-          "applinks:brahmand.app"
+          "applinks:brahmand.app",
+          "applinks:www.brahmand.app"
         ]
       },
       "infoPlist": {
@@ -44,7 +45,8 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "associatedDomains": [
-        "applinks:brahmand.app"
+        "applinks:brahmand.app",
+        "applinks:www.brahmand.app"
       ]
     },
     "android": {
@@ -73,7 +75,7 @@
       ],
       "intentFilters": [
         {
-          "action": "android.intent.action.VIEW",
+          "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
@@ -81,12 +83,12 @@
             }
           ],
           "category": [
-            "android.intent.category.DEFAULT",
-            "android.intent.category.BROWSABLE"
+            "DEFAULT",
+            "BROWSABLE"
           ]
         },
         {
-          "action": "android.intent.action.VIEW",
+          "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
@@ -96,11 +98,19 @@
             {
               "scheme": "http",
               "host": "brahmand.app"
+            },
+            {
+              "scheme": "https",
+              "host": "www.brahmand.app"
+            },
+            {
+              "scheme": "http",
+              "host": "www.brahmand.app"
             }
           ],
           "category": [
-            "android.intent.category.DEFAULT",
-            "android.intent.category.BROWSABLE"
+            "DEFAULT",
+            "BROWSABLE"
           ]
         }
       ]
@@ -170,7 +180,8 @@
       [
         "react-native-maps",
         {
-          "googleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
+          "androidGoogleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs",
+          "iosGoogleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
         }
       ],
       [

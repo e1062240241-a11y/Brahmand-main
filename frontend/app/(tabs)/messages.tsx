@@ -46,6 +46,7 @@ import {
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
+import { syncDatabase } from '../../src/database/sync';
 
 const { width } = Dimensions.get('window');
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
@@ -199,6 +200,23 @@ export default function MessagesScreen() {
     try {
       await joinCommunityDirect(communityId);
       setJoinedLocalIds(prev => new Set(prev).add(communityId));
+      
+      // Update cache so it persists when returning to this screen
+      try {
+        const cached = await AsyncStorage.getItem(USER_GROUPS_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.data && Array.isArray(parsed.data)) {
+            parsed.data = parsed.data.map((c: any) => 
+              c.id === communityId ? { ...c, is_member: true } : c
+            );
+            await AsyncStorage.setItem(USER_GROUPS_CACHE_KEY, JSON.stringify(parsed));
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Failed to update cache after join local', cacheErr);
+      }
+
       Alert.alert('Joined!', `You have joined ${name}.`);
     } catch (err: any) {
       Alert.alert('Error', parseApiError(err));
@@ -693,6 +711,9 @@ export default function MessagesScreen() {
           }
         } catch (e) {}
 
+        // Trigger background sync for WatermelonDB to keep local chats updated
+        syncDatabase().catch(e => console.warn('[Messages] Background sync failed:', e));
+
         const [communityRes, requestRes, myPendingRes] = await Promise.all([
           getCommunities(),
           getCommunityRequests({ status: 'active', limit: 10 }),
@@ -968,7 +989,7 @@ export default function MessagesScreen() {
     const borderColor = isTeal ? '#00796B' : '#437953';
     const badgeBg = '#FFFFFF';
     const pillText = isTeal ? 'Youth' : 'Seva';
-    const isJoined = joinedLocalIds.has(item.id);
+    const isJoined = joinedLocalIds.has(item.id) || (item as any).is_member || communities.some(c => c.id === item.id);
     const isJoining = joiningLocalId === item.id;
     const isPending = (item as any).is_pending;
 

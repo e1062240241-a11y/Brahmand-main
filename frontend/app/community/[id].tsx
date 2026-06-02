@@ -3974,7 +3974,7 @@ export default function CommunityDetailScreen() {
                 key={idx}
                 style={styles.twitterDropdownItem}
                 onPress={() => {
-                  setFestivalSort(opt.value);
+                  setFestivalSort(opt.value as any);
                   setShowSortDropdown(false);
                 }}
               >

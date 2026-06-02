@@ -249,6 +249,9 @@ const ChatScreen = () => {
     const cachedData = useChatStore.getState().caches[roomKey];
     return !cachedData;
   });
+  const [messageOffset, setMessageOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<{
@@ -352,16 +355,20 @@ const ChatScreen = () => {
     });
   }, [type, id, subgroup, clearedAtMs, roomKey]);
 
-  const fetchMessages = useCallback(async (force = false) => {
+  const fetchMessages = useCallback(async (force = false, offset = 0) => {
     const cachedData = useChatStore.getState().caches[roomKey];
-    if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 30000) {
+    const isInitialLoad = offset === 0;
+
+    if (isInitialLoad && !force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 30000) {
       console.log('[Chat] Using fresh cache, skipping fetchMessages');
       setLoading(false);
       return;
     }
     
-    // Offline-first approach for messages
-    if (!cachedData?.messages || cachedData.messages.length === 0) {
+    if (offset > 0) setLoadingMore(true);
+
+    // Offline-first approach for messages (now handles paginated requests natively)
+    if ((isInitialLoad && (!cachedData?.messages || cachedData.messages.length === 0)) || offset > 0) {
       try {
         const { Q } = require('@nozbe/watermelondb');
         const { database } = require('../../../src/database');
@@ -374,30 +381,42 @@ const ChatScreen = () => {
             .query(
               Q.where(filterCol, filterId),
               Q.sortBy('created_at', Q.desc),
-              Q.take(50)
+              Q.skip(offset),
+              Q.take(14)
             ).fetch();
             
           if (localMessages && localMessages.length > 0) {
             const mapped = localMessages.reverse().map((msg: any) => ({
               id: msg.id,
-              sender_id: msg.senderId,
-              sender_name: msg.senderName,
+              sender_id: msg.senderId || msg.sender_id,
+              sender_name: msg.senderName || msg.sender_name,
               content: msg.content,
-              message_type: msg.messageType,
-              created_at: msg.createdAt,
-              updated_at: msg.updatedAt
+              text: msg.content,
+              message_type: msg.messageType || msg.message_type,
+              created_at: msg.createdAt || msg.created_at,
+              updated_at: msg.updatedAt || msg.updated_at
             }));
             const filteredLocal = applyClientClearFilter(mapped);
-            setMessages(filteredLocal);
-            setLoading(false); // Stop loading immediately
+            
+            setMessages(prev => isInitialLoad ? filteredLocal : [...filteredLocal, ...prev]);
+            setHasMore(localMessages.length === 14);
+            
+            if (isInitialLoad) setLoading(false);
+            if (offset > 0) setLoadingMore(false);
+          } else {
+            setHasMore(false);
+            if (isInitialLoad) setLoading(false);
+            if (offset > 0) setLoadingMore(false);
           }
         }
       } catch (err) {
         console.warn('Failed to load local messages:', err);
+        if (offset > 0) setLoadingMore(false);
       }
     }
     
-    try {
+    if (isInitialLoad) {
+      try {
       let response;
       if (type === 'community') {
         response = await getCommunityMessages(id!, subgroup || 'city');
@@ -419,10 +438,18 @@ const ChatScreen = () => {
         return false;
       }
       return true;
-    } finally {
-      setLoading(false);
+      } finally {
+        setLoading(false);
+      }
     }
   }, [type, id, subgroup, applyClientClearFilter, roomKey]);
+
+  const loadMoreMessages = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    const nextOffset = messageOffset + 14;
+    setMessageOffset(nextOffset);
+    fetchMessages(true, nextOffset);
+  }, [loadingMore, hasMore, messageOffset, fetchMessages]);
 
   const fetchCircleInfo = useCallback(async () => {
     if (type !== 'circle' || !id) return;
@@ -458,6 +485,14 @@ const ChatScreen = () => {
       if (type === 'circle' && clearChatStorageKey) {
         const stored = await AsyncStorage.getItem(clearChatStorageKey);
         setClearedAtMs(stored ? Number(stored) || 0 : 0);
+      }
+      if (Platform.OS !== 'web') {
+        try {
+          const { syncDatabase } = require('../../../src/database/sync');
+          syncDatabase().catch((err: any) => console.warn('[Chat] Background sync failed on mount:', err));
+        } catch (e) {
+          console.warn('[Chat] Failed to require syncDatabase:', e);
+        }
       }
       await fetchMessages(false);
       await fetchCircleInfo();
@@ -1399,12 +1434,28 @@ const ChatScreen = () => {
           keyExtractor={(item) => item.id}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.messagesList}
+          onScroll={(e) => {
+            const offsetY = e.nativeEvent.contentOffset.y;
+            if (offsetY < 150 && !loadingMore && hasMore && messages.length >= 14) {
+              loadMoreMessages();
+            }
+          }}
+          scrollEventThrottle={16}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={() => {
+            if (messageOffset === 0) flatListRef.current?.scrollToEnd({ animated: true });
+          }}
           initialNumToRender={20}
-          maxToRenderPerBatch={10}
+          maxToRenderPerBatch={14}
           windowSize={10}
           removeClippedSubviews={Platform.OS === 'android'}
+          ListHeaderComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 10 }}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
