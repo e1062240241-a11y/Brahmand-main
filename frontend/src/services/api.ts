@@ -990,6 +990,7 @@ export const sendCommunityMessage = (
   mediaUrl?: string,
   contact?: string,
   sevaDetails?: string,
+  location?: string,
 ) =>
   api.post(`/messages/community/${communityId}/${subgroupType}`, {
     content,
@@ -998,6 +999,7 @@ export const sendCommunityMessage = (
     media_url: mediaUrl,
     contact,
     seva_details: sevaDetails,
+    location,
   });
 
 export const getCommunityMessages = (communityId: string, subgroupType: string, limit: number = 25, before_timestamp?: string) => {
@@ -1007,6 +1009,9 @@ export const getCommunityMessages = (communityId: string, subgroupType: string, 
   }
   return api.get(url);
 };
+
+export const deleteCommunityMessage = (communityId: string, subgroupType: string, messageId: string) =>
+  api.delete(`/messages/community/${communityId}/${subgroupType}/${messageId}`);
 export const sendCircleMessage = (circleId: string, content: string, messageType: string = 'text') =>
   api.post(`/messages/circle/${circleId}`, { content, message_type: messageType });
 

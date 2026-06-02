@@ -24,7 +24,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch } from '../../src/services/api';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore } from '../../src/store/chatStore';
@@ -426,7 +426,7 @@ export default function CommunityDetailScreen() {
     const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
     return cachedData?.events || [];
   });
-  const [discussionPosts, setDiscussionPosts] = useState<DiscussionPost[]>(MOCK_DISCUSSION);
+  const [discussionPosts, setDiscussionPosts] = useState<DiscussionPost[]>([]);
 
   // interest state: requestId -> { count, userInterested }
   const [interestMap, setInterestMap] = useState<Record<string, { count: number; userInterested: boolean }>>({});
@@ -450,7 +450,7 @@ export default function CommunityDetailScreen() {
   });
   const [allFestivals, setAllFestivals] = useState<any[]>(() => {
     const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-    return cachedData?.allFestivals || MOCK_FESTIVALS;
+    return cachedData?.allFestivals || [];
   });
   const [loading, setLoading] = useState(() => {
     const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
@@ -561,18 +561,7 @@ export default function CommunityDetailScreen() {
   const mostRecentRequest = useMemo(() => {
     const activeList = activeTab === 'Seva' ? filteredSevaRequests : activeTab === 'Requests' ? filteredRequests : requests;
     if (!activeList || activeList.length === 0) {
-      return {
-        id: 'mock_1',
-        title: 'O+ Blood Required urgently for operation',
-        request_type: 'blood',
-        description: 'Patient is admitted at Lifeline Hospital in ICU. Need 2 units of O+ blood as soon as possible. Any help would be highly appreciated.',
-        contact_number: '+919876543210',
-        urgency_level: 'critical',
-        created_at: new Date(Date.now() - 10 * 60000).toISOString(),
-        status: 'active',
-        location: 'Andheri West, Mumbai',
-        user_name: 'Rahul Joshi'
-      };
+      return null;
     }
     return [...activeList].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
   }, [requests, activeTab, filteredRequests, filteredSevaRequests]);
@@ -802,7 +791,7 @@ export default function CommunityDetailScreen() {
         return String(b.id).localeCompare(String(a.id));
       });
 
-      return userOwnItems.length > 0 ? userOwnItems : [createDummyItem('My Posts')];
+      return userOwnItems;
     }
 
     if (activeTab === 'Requests') {
@@ -829,7 +818,7 @@ export default function CommunityDetailScreen() {
       localList.forEach(r => reqMap.set(r.id, r));
 
       const list = Array.from(reqMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      return list.length > 0 ? list : [createDummyItem('Requests')];
+      return list;
     }
     if (activeTab === 'Events') {
       const apiList = events;
@@ -852,7 +841,7 @@ export default function CommunityDetailScreen() {
       localList.forEach(e => evtMap.set(e.id, e));
 
       const list = Array.from(evtMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      return list.length > 0 ? list : [createDummyItem('Events')];
+      return list;
     }
     if (activeTab === 'Festivals') {
       const userFestivals = communityPosts
@@ -894,8 +883,7 @@ export default function CommunityDetailScreen() {
         });
 
       let eventList = [
-        ...userFestivals,
-        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' }))
+        ...userFestivals
       ];
 
       if (selectedFestival) {
@@ -960,7 +948,7 @@ export default function CommunityDetailScreen() {
       localList.forEach(r => lfMap.set(r.id, r));
 
       const list = Array.from(lfMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      return list.length > 0 ? list : [createDummyItem('Lost & Found')];
+      return list;
     }
     if (activeTab === 'Temple Updates') {
       const apiList = requests.filter((item: any) => isTempleUpdateRequest(item));
@@ -983,7 +971,7 @@ export default function CommunityDetailScreen() {
       localList.forEach(r => tuMap.set(r.id, r));
 
       const list = Array.from(tuMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      return list.length > 0 ? list : [createDummyItem('Temple Updates')];
+      return list;
     }
     if (activeTab === 'Seva') {
       const apiSeva = filteredSevaRequests.map((r: any) => ({ ...r, isSevaPost: true, isRequestItem: true }));
@@ -1009,7 +997,7 @@ export default function CommunityDetailScreen() {
       const mergedSeva = Array.from(sevaMap.values());
       const sortedSeva = mergedSeva.sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
 
-      return sortedSeva.length > 0 ? sortedSeva : [createDummyItem('Seva')];
+      return sortedSeva;
     }
     if (activeTab === 'Feed') {
       const itemMap = new Map();
@@ -1267,7 +1255,8 @@ export default function CommunityDetailScreen() {
         getFestivalList().catch(() => ({ data: [] }))
       ];
 
-      if (nextCommunity.type === 'city') {
+      const isLocalCommunity = nextCommunity.type === 'city' || nextCommunity.type === 'cultural' || nextCommunity.type === 'user_group' || nextCommunity.type === 'area';
+      if (isLocalCommunity) {
         promises.push(getCommunityRequests({ status: 'active', limit: 50 }).catch(() => ({ data: [] })));
       }
 
@@ -1278,7 +1267,7 @@ export default function CommunityDetailScreen() {
       const stateMsgResponse = results[3];
       const nationalMsgResponse = results[4];
       const festResponse = results[5];
-      const globalReqResponse = nextCommunity.type === 'city' ? results[6] : null;
+      const globalReqResponse = isLocalCommunity ? results[6] : null;
 
       console.log('[Community] Requests fetched:', reqResponse.data?.length);
       let nextRequests = reqResponse.data || [];
@@ -1327,6 +1316,7 @@ export default function CommunityDetailScreen() {
         communityId: id as string,
         contact: msg.contact,
         sevaDetails: msg.seva_details,
+        location: msg.location,
       }));
 
       // Map State API messages
@@ -1355,6 +1345,7 @@ export default function CommunityDetailScreen() {
         communityId: stateCommunityId,
         contact: msg.contact,
         sevaDetails: msg.seva_details,
+        location: msg.location,
       }));
 
       // Map National API messages
@@ -1383,6 +1374,7 @@ export default function CommunityDetailScreen() {
         communityId: countryCommunityId,
         contact: msg.contact,
         sevaDetails: msg.seva_details,
+        location: msg.location,
       }));
 
       // Separate state & national announcements into recent (last 24 hours, to be pinned) and older (to go down the feed)
@@ -1404,6 +1396,10 @@ export default function CommunityDetailScreen() {
       const recentNationalMsgs = formattedNationalMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
       const olderNationalMsgs = formattedNationalMsgs.filter((msg: any) => !isWithin24Hours(msg.timestamp));
 
+      // Retrieve list of locally deleted post IDs to filter them from fresh server data
+      const currentCache = useChatStore.getState().communityScreenCaches[cacheKey];
+      const deletedIds = new Set<string>(currentCache?.deletedPostIds || []);
+
       let finalPosts: any[] = [];
       setCommunityPosts((prev: any[]) => {
         const serverIds = new Set([
@@ -1415,14 +1411,15 @@ export default function CommunityDetailScreen() {
         ]);
 
         // Keep local optimistic posts (either pending with 'post-' ID, or completed but not yet in server fetch)
-        const localPosts = prev.filter((p: any) => (String(p.id).startsWith('post-') || p.isUniversal) && !serverIds.has(p.id));
+        const localPosts = prev.filter((p: any) => (String(p.id).startsWith('post-') || p.isUniversal) && !serverIds.has(p.id) && !deletedIds.has(String(p.id)));
         const seenIds = new Set(localPosts.map((p: any) => p.id));
 
-        const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id));
-        const uniqueRecentStateMsgs = recentStateMsgs.filter((p: any) => !seenIds.has(p.id));
-        const uniqueRecentNationalMsgs = recentNationalMsgs.filter((p: any) => !seenIds.has(p.id));
-        const uniqueOlderStateMsgs = olderStateMsgs.filter((p: any) => !seenIds.has(p.id));
-        const uniqueOlderNationalMsgs = olderNationalMsgs.filter((p: any) => !seenIds.has(p.id));
+        // Filter fresh server posts — exclude any that were locally deleted
+        const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+        const uniqueRecentStateMsgs = recentStateMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+        const uniqueRecentNationalMsgs = recentNationalMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+        const uniqueOlderStateMsgs = olderStateMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+        const uniqueOlderNationalMsgs = olderNationalMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
 
         const getPostTimeMs = (p: any) => {
           const ts = p.timestamp || p.created_at;
@@ -1515,6 +1512,7 @@ export default function CommunityDetailScreen() {
         communityId: id as string,
         contact: msg.contact,
         sevaDetails: msg.seva_details,
+        location: msg.location,
       }));
 
       if (newMsgs.length > 0) {
@@ -1751,6 +1749,13 @@ export default function CommunityDetailScreen() {
               <View style={styles.sevaInfoCard}>
                 <Text style={styles.sevaInfoLabel}>Seva</Text>
                 <Text style={styles.sevaInfoText}>{item.sevaDetails}</Text>
+              </View>
+            ) : null}
+
+            {(item as any).location ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 3 }}>
+                <Ionicons name="location-outline" size={12} color="#888" />
+                <Text style={{ fontSize: 12, color: '#888' }} numberOfLines={1}>{(item as any).location}</Text>
               </View>
             ) : null}
 
@@ -2258,13 +2263,6 @@ export default function CommunityDetailScreen() {
           <TouchableOpacity style={styles.attendBtn} onPress={() => handleFestivalInterest(item)}>
             <Text style={styles.attendBtnText}>Set a reminder</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.festMiniBtn, { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, backgroundColor: '#F0F9FF', borderRadius: 8, borderWidth: 1, borderColor: '#BAE6FD' }]}
-            onPress={() => setActiveTab('Requests')}
-          >
-            <Ionicons name="people-outline" size={16} color="#0369A1" />
-            <Text style={{ fontSize: 11, color: '#0369A1', fontWeight: '700' }}>View Requests</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -2319,6 +2317,14 @@ export default function CommunityDetailScreen() {
               <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
             ) : null}
             <View style={styles.festEventMeta}>
+              {item.location ? (
+                <View style={styles.festMetaRow}>
+                  <Ionicons name="location" size={14} color="#64748B" />
+                  <Text style={[styles.festMetaText, { color: '#64748B' }]} numberOfLines={1}>
+                    {item.location}
+                  </Text>
+                </View>
+              ) : null}
               <View style={styles.festMetaRow}>
                 <Ionicons name={iconDetails.name as any} size={14} color={iconDetails.color} />
                 <Text style={styles.festMetaText} numberOfLines={1}>{(item.urgency_level || 'Normal').toUpperCase()}</Text>
@@ -2726,19 +2732,30 @@ export default function CommunityDetailScreen() {
       }
     }
 
+    const isCommunityMsg = postToDelete?.isCommunityMsg;
+    const communityId = postToDelete?.communityId || id;
+    const subgroupType = postToDelete?.subgroupType || (community?.type === 'state' ? 'state' : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city'));
+
     if (Platform.OS === 'web') {
       const confirmDelete = window.confirm('Are you sure you want to delete this post from the community?');
       if (confirmDelete) {
         setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
         setCommunityPosts(prev => {
           const updated = prev.filter(post => post.id !== postId);
-          useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+          // Save deleted ID so it is excluded even after re-fetch from server
+          const currentDeleted = useChatStore.getState().communityScreenCaches[cacheKey]?.deletedPostIds || [];
+          const newDeletedIds = [...new Set([...currentDeleted, postId])];
+          useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated, deletedPostIds: newDeletedIds });
           return updated;
         });
 
         try {
-          const { deletePost } = require('../../src/services/api');
-          deletePost(postId).catch((e: any) => console.log('API delete err:', e));
+          if (isCommunityMsg) {
+            deleteCommunityMessage(communityId, subgroupType, postId).catch((e: any) => console.log('API delete community msg err:', e));
+          } else {
+            const { deletePost } = require('../../src/services/api');
+            deletePost(postId).catch((e: any) => console.log('API delete err:', e));
+          }
         } catch (error) {
           console.log('[Community] Post delete API error:', error);
         }
@@ -2760,13 +2777,20 @@ export default function CommunityDetailScreen() {
             setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
             setCommunityPosts(prev => {
               const updated = prev.filter(post => post.id !== postId);
-              useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+              // Save deleted ID so it is excluded even after re-fetch from server
+              const currentDeleted = useChatStore.getState().communityScreenCaches[cacheKey]?.deletedPostIds || [];
+              const newDeletedIds = [...new Set([...currentDeleted, postId])];
+              useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated, deletedPostIds: newDeletedIds });
               return updated;
             });
 
             try {
-              const { deletePost } = require('../../src/services/api');
-              await deletePost(postId);
+              if (isCommunityMsg) {
+                await deleteCommunityMessage(communityId, subgroupType, postId);
+              } else {
+                const { deletePost } = require('../../src/services/api');
+                await deletePost(postId);
+              }
             } catch (error) {
               console.log('[Community] Post delete API error (safe to ignore for local/mock posts):', error);
             }
@@ -2836,6 +2860,29 @@ export default function CommunityDetailScreen() {
     // Use activeTab as default category (but map 'Others' or empty to 'Feed')
     const finalCategory = (categoryOverride === 'Others' || !categoryOverride) ? 'Feed' : categoryOverride;
 
+    let postLocation: string | undefined = undefined;
+    if (finalCategory === 'Lost & Found') {
+      try {
+        const { ensureForegroundPermission, getCurrentPosition } = require('../../src/services/location');
+        const hasPermission = await ensureForegroundPermission();
+        if (hasPermission) {
+          const pos = await getCurrentPosition({ accuracy: 3 });
+          if (pos && pos.coords) {
+            const { reverseGeocode } = require('../../src/services/api');
+            const geocodeRes = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+            const addressData = geocodeRes?.data;
+            if (addressData) {
+              postLocation = addressData.display_name || addressData.formatted_address || addressData.name || `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+            } else {
+              postLocation = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[Community] Failed to get post location:', err);
+      }
+    }
+
     // Split text into chunks of max 250 characters
     const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
 
@@ -2866,6 +2913,7 @@ export default function CommunityDetailScreen() {
       contact: index === 0 ? (contactNumber || undefined) : undefined,
       sevaDetails: index === 0 ? (sevaDetails || undefined) : undefined,
       start_time: index === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined,
+      location: index === 0 ? (postLocation || undefined) : undefined,
       isUniversal: true, // Flag to show in general Feed
       sender_id: user?.id, // Track ownership of local posts
       isCommunityMsg: true,
@@ -2922,7 +2970,8 @@ export default function CommunityDetailScreen() {
               finalCategory,
               i === 0 ? uploadedUrl : undefined,
               i === 0 ? (contactNumber || undefined) : undefined,
-              i === 0 ? (sevaDetails || undefined) : undefined
+              i === 0 ? (sevaDetails || undefined) : undefined,
+              i === 0 ? (postLocation || undefined) : undefined
             );
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
 
@@ -3001,6 +3050,8 @@ export default function CommunityDetailScreen() {
         isVerified: c.is_verified || false,
       }));
       setActiveComments(mappedComments);
+      // Sync the comment count on the post with actual loaded count to prevent stale badge mismatch
+      setShowCommentModal(prev => prev ? { ...prev, comments: mappedComments.length } : null);
     } catch (error) {
       console.warn('Failed to load comments:', error);
     }
@@ -3936,7 +3987,6 @@ export default function CommunityDetailScreen() {
               {[
                 { label: 'All Festivals', value: null },
                 ...allFestivals.map(f => ({ label: f.name, value: f.name })),
-                ...MOCK_FESTIVALS.map(f => ({ label: f.name, value: f.name })),
               ].filter((item, index, self) => self.findIndex(t => t.value === item.value) === index).map((opt, idx) => (
                 <TouchableOpacity
                   key={idx}
