@@ -10,6 +10,23 @@ interface FestivalDetailCardProps {
   onGuidePress?: (section: string) => void;
 }
 
+const formatFestivalDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const monthName = months[monthIndex] || parts[1];
+    return `${day} ${monthName} ${year}`;
+  }
+  return dateStr;
+};
+
 const FestivalDetailCard = ({ festival, onBack, onGuidePress }: FestivalDetailCardProps) => {
   const sections = [
     { title: 'About', value: festival.summary },
@@ -25,7 +42,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress }: FestivalDetailCa
       <View style={styles.heroCard}>
         <Text style={styles.heroSubtitle}>Upcoming Festival</Text>
         <Text style={styles.heroTitle}>{festival.festival_name}</Text>
-        <Text style={styles.heroDate}>{festival.date}</Text>
+        <Text style={styles.heroDate}>{formatFestivalDate(festival.date)}</Text>
         <Text style={styles.heroMiniText}>Tap each section for a clear festival guide.</Text>
       </View>
 

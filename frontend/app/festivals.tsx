@@ -87,6 +87,23 @@ const getFestivalImage = (name: string) => {
   return key ? festivalImageMap[key] : null;
 };
 
+const formatFestivalDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const monthName = months[monthIndex] || parts[1];
+    return `${day} ${monthName} ${year}`;
+  }
+  return dateStr;
+};
+
 const FestivalPage = () => {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -180,7 +197,7 @@ const FestivalPage = () => {
                     <View style={styles.cardTextContainer}>
                       <Text style={styles.cardLabel}>Festival</Text>
                       <Text style={styles.cardName}>{festival.name}</Text>
-                      <Text style={styles.cardDate}>{festival.date}</Text>
+                      <Text style={styles.cardDate}>{formatFestivalDate(festival.date)}</Text>
                     </View>
                     <View style={styles.cardRight}>
                       <View style={styles.festivalIconWrapper}>

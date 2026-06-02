@@ -10,6 +10,23 @@ interface FestivalSectionDetailCardProps {
   onBack: () => void;
 }
 
+const formatFestivalDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const monthName = months[monthIndex] || parts[1];
+    return `${day} ${monthName} ${year}`;
+  }
+  return dateStr;
+};
+
 const FestivalSectionDetailCard = ({ festival, section, onBack }: FestivalSectionDetailCardProps) => {
   const sectionMap: Record<string, string> = {
     About: festival.summary,
@@ -26,7 +43,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack }: FestivalSectio
       <View style={styles.heroCard}>
         <Text style={styles.heroSubtitle}>{section}</Text>
         <Text style={styles.heroTitle}>{festival.festival_name}</Text>
-        <Text style={styles.heroDate}>{festival.date}</Text>
+        <Text style={styles.heroDate}>{formatFestivalDate(festival.date)}</Text>
       </View>
 
       <View style={styles.contentCard}>
