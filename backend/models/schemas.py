@@ -272,6 +272,7 @@ class MessageCreate(BaseModel):
     category: Optional[str] = None
     contact: Optional[str] = None
     seva_details: Optional[str] = None
+    location: Optional[str] = None
 
 
     @model_validator(mode='after')

@@ -281,9 +281,9 @@ export default function MessagesScreen() {
 
     if (nameLower.includes('mumbai') || item.type === 'city') {
       return {
-        label: 'CITY COMMUNITY',
-        name: item.name || 'Mumbai Community',
-        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} members` : '13K members',
+        label: t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY',
+        name: t('language') === 'hi' ? 'मुंबई समुदाय' : (item.name || 'Mumbai Community'),
+        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '13K सदस्य' : '13K members'),
         avatarBadge: '+8',
         iconBg: '#FFFFFF',
         iconColor: '#9F45FF',
@@ -293,9 +293,9 @@ export default function MessagesScreen() {
     }
     if (nameLower.includes('maharashtra') || item.type === 'state') {
       return {
-        label: 'STATE COMMUNITY',
-        name: 'Maharashtra Community',
-        memberCount: '14K members',
+        label: t('language') === 'hi' ? 'राज्य समुदाय' : 'STATE COMMUNITY',
+        name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
+        memberCount: t('language') === 'hi' ? '14K सदस्य' : '14K members',
         avatarBadge: '+9',
         iconBg: 'transparent',
         iconColor: '#FF9500',
@@ -305,9 +305,9 @@ export default function MessagesScreen() {
     }
     if (nameLower.includes('bharat') || nameLower.includes('india') || nameLower.includes('national') || item.type === 'country') {
       return {
-        label: 'NATIONAL COMMUNITY',
-        name: item.name || 'Bharat Community',
-        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} members` : '14K members',
+        label: t('language') === 'hi' ? 'राष्ट्रीय समुदाय' : 'NATIONAL COMMUNITY',
+        name: t('language') === 'hi' ? 'भारत समुदाय' : (item.name || 'Bharat Community'),
+        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '14K सदस्य' : '14K members'),
         avatarBadge: '+2',
         iconBg: 'transparent',
         iconColor: '#FF9500',
@@ -316,9 +316,9 @@ export default function MessagesScreen() {
     }
 
     return {
-      label: item.type === 'city' ? 'CITY COMMUNITY' : item.type === 'state' ? 'STATE COMMUNITY' : 'NATIONAL COMMUNITY',
+      label: item.type === 'city' ? (t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY') : item.type === 'state' ? (t('language') === 'hi' ? 'राज्य समुदाय' : 'STATE COMMUNITY') : (t('language') === 'hi' ? 'राष्ट्रीय समुदाय' : 'NATIONAL COMMUNITY'),
       name: item.name,
-      memberCount: item.member_count ? `${formatMemberCount(item.member_count)} members` : '1.2K members',
+      memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '1.2K सदस्य' : '1.2K members'),
       avatarBadge: '+5',
       iconBg: 'transparent',
       iconColor: item.type === 'city' ? '#9F45FF' : '#FF9500',
