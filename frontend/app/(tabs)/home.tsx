@@ -368,6 +368,23 @@ const AnimatedSkeleton = ({ children, style }: { children: React.ReactNode; styl
   return <Animated.View style={[{ opacity }, style]}>{children}</Animated.View>;
 };
 
+const formatFestivalDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const monthName = months[monthIndex] || parts[1];
+    return `${day} ${monthName} ${year}`;
+  }
+  return dateStr;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -1858,7 +1875,7 @@ export default function HomeScreen() {
                     <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
                       {nextFestival.days_until === 0
                         ? `${nextFestival.name} ${t('isTodayClick')}`
-                        : `${nextFestival.name} ${t('isTomorrowClick')} (${nextFestival.date})`}
+                        : `${nextFestival.name} ${t('isTomorrowClick')} (${formatFestivalDate(nextFestival.date)})`}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#FFF" />
