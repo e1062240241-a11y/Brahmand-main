@@ -251,6 +251,7 @@ function ShopIcon() {
 
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
+import { BlurView } from 'expo-blur';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
@@ -297,6 +298,7 @@ const HOME_CARD_TEXTURES = {
   peach: require('../../assets/images/home_card_bg_peach.png'),
   mint: require('../../assets/images/home_card_bg_mint.jpg'),
   cyan: require('../../assets/images/home_card_bg_mint.jpg'),
+  lavender: require('../../assets/images/home_card_bg_lavender.jpg'),
 } as const;
 
 type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
@@ -306,6 +308,7 @@ const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, string]
   peach: ['rgba(255, 250, 242, 0.74)', 'rgba(255, 232, 205, 0.48)'],
   mint: ['rgba(242, 255, 248, 0.74)', 'rgba(210, 245, 225, 0.48)'],
   cyan: ['rgba(224, 247, 250, 0.75)', 'rgba(178, 235, 242, 0.48)'],
+  lavender: ['rgba(245, 235, 255, 0.74)', 'rgba(220, 205, 250, 0.48)'],
 };
 
 function HomeCardTextureBg({
@@ -317,19 +320,19 @@ function HomeCardTextureBg({
   borderRadius?: number;
   children: React.ReactNode;
 }) {
-  const overlay = CARD_TEXTURE_OVERLAY[texture];
   return (
     <ImageBackground
       source={HOME_CARD_TEXTURES[texture]}
-      style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+      style={[StyleSheet.absoluteFillObject, { borderRadius, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.65)' }]}
       imageStyle={{ borderRadius, resizeMode: 'cover' }}
       resizeMode="cover"
     >
+      <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={[...overlay]}
+        colors={['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+        style={StyleSheet.absoluteFillObject}
       />
       <View style={styles.cardTextureContent}>{children}</View>
     </ImageBackground>
@@ -353,7 +356,7 @@ const baseQuickAccess = [
   { label: 'Kundli', subtitle: 'Your birth chart insights', color: '#FFF' },
   { label: 'Jyotish', subtitle: 'Your birth chart insights', color: '#FFF' },
   { label: 'Brahmand Passport', subtitle: 'Track your spiritual journey', color: '#FFF' },
-  { label: 'Festival Days', subtitle: 'Next Festival & Rituals', color: '#FFF' },
+  { label: 'Festival', subtitle: 'Next Festival & Rituals', color: '#FFF' },
   { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
 ];
 
@@ -2061,7 +2064,7 @@ export default function HomeScreen() {
                         } else if (item.label === 'Brahmand Passport') {
                           displayLabel = 'ब्रह्मांड पासपोर्ट';
                           displaySubtitle = 'आपकी मंदिर यात्रा का रिकॉर्ड';
-                        } else if (item.label === 'Festival Days') {
+                        } else if (item.label === 'Festival') {
                           displayLabel = 'त्योहार के दिन';
                           displaySubtitle = 'अगला त्योहार और अनुष्ठान';
                         } else if (item.label === 'Brahmand Library') {
@@ -2082,7 +2085,7 @@ export default function HomeScreen() {
                             else if (item.label === 'Kundli') router.push('/astrology' as any);
                             else if (item.label === 'Jyotish') router.push('/horoscope');
                             else if (item.label === 'Brahmand Passport') router.push('/passport');
-                            else if (item.label === 'Festival Days') router.push('/festivals');
+                            else if (item.label === 'Festival') router.push('/festivals');
                             else if (item.label === 'Brahmand Library') router.push('/library');
                           }}
                         >
@@ -2097,7 +2100,7 @@ export default function HomeScreen() {
                           ) : item.label === 'My Krishna' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                                <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 42, height: 42 }} contentFit="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Panchang' ? (
@@ -2109,23 +2112,23 @@ export default function HomeScreen() {
                           ) : item.label === 'Kundli' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Jyotish' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                <SirenIcon width={24} height={24} color="white" />
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Passport' ? (
-                            <View style={[styles.featureIconWrap, { overflow: 'visible', width: 45, height: 60 }]}>
-                              <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 47.3, height: 60, flexShrink: 0, aspectRatio: 41/52 }} resizeMode="contain" />
+                            <View style={[styles.featureIconWrap, { overflow: 'visible', width: 52, height: 67 }]}>
+                              <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 53, height: 67, flexShrink: 0, aspectRatio: 41/52 }} resizeMode="contain" />
                             </View>
-                          ) : item.label === 'Festival Days' ? (
-                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                <SacredIcon width={44} height={44} />
+                          ) : item.label === 'Festival' ? (
+                            <View style={[styles.featureIconWrap, { overflow: 'visible' }]}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 54, height: 54, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 34, height: 34 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Library' ? (
@@ -2518,7 +2521,7 @@ export default function HomeScreen() {
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="cyan">
+                    <HomeCardTextureBg texture="lavender">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
@@ -2543,11 +2546,11 @@ export default function HomeScreen() {
                         width: '85%',
                         height: 28,
                         borderRadius: 14,
-                        backgroundColor: '#0EA5E9',
+                        backgroundColor: '#8C36DB',
                         justifyContent: 'center',
                         alignItems: 'center',
                         alignSelf: 'center',
-                        shadowColor: '#0EA5E9',
+                        shadowColor: '#8C36DB',
                         shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.3,
                         shadowRadius: 3,
@@ -2568,8 +2571,8 @@ export default function HomeScreen() {
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgeCyan, { borderColor: '#0EA5E9', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#0EA5E9', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                     </View>
                   </View>
                 </View>
@@ -3286,7 +3289,8 @@ const styles = StyleSheet.create({
   },
   topFeatureRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 20,
     gap: 8,
     marginHorizontal: -PAGE_PADDING,
   },
@@ -3449,8 +3453,8 @@ const styles = StyleSheet.create({
   },
   actionCardsScroll: {
     paddingHorizontal: PAGE_PADDING,
-    paddingTop: 25,
-    paddingBottom: 5,
+    paddingTop: 30,
+    paddingBottom: 15,
     gap: Platform.OS === 'ios' ? 8 : 10,
   },
   actionCard: {

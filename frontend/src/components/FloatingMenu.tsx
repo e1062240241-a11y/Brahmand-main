@@ -172,7 +172,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                           >
                             {item.key === 'myKrishna' ? (
                               <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} resizeMode="contain" />
+                                <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
                               </ImageBackground>
                             ) : item.key === 'festival' ? (
                               <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -184,7 +184,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                               </ImageBackground>
                             ) : item.key === 'brahmandPassport' ? (
                               <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 64, height: 64 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 62, height: 62 }} resizeMode="contain" />
                               </ImageBackground>
                             ) : item.key === 'panchang' ? (
                               <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -268,10 +268,10 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
           activeOpacity={0.85}
           onPress={toggleFab}
         >
-          <Image
-            source={require('../../assets/images/peacock_feather_icon.png')}
+          <ExpoImage
+            source={require('../../assets/images/tab bar/my_krishna.png')}
             style={fabStyles.fabIcon}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </TouchableOpacity>
       </Animated.View>

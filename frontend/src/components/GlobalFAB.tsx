@@ -335,7 +335,7 @@ export function GlobalFAB() {
                       >
                         {item.label === 'My Krishna' ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} resizeMode="contain" />
+                            <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
                           </ImageBackground>
                         ) : item.label === 'Festival' ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -347,7 +347,7 @@ export function GlobalFAB() {
                           </ImageBackground>
                         ) : item.label.includes('Passport') ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 64, height: 64 }} resizeMode="contain" />
+                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 62, height: 62 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.label === 'Panchang' ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -384,7 +384,7 @@ export function GlobalFAB() {
                     </View>
                     <View style={fabStyles.centerGuruContainerSOS}>
                       <View style={fabStyles.guruImageWrapperSOS}>
-                        <Image source={require('../../assets/images/krishna_guru.png')} style={fabStyles.guruImage} />
+                        <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={fabStyles.guruImage} contentFit="cover" />
                       </View>
                     </View>
                     <View style={fabStyles.sosStatusCard}>
@@ -563,10 +563,10 @@ export function GlobalFAB() {
           {activeSOS || nearbySOSAlerts.length > 0 ? (
             <MaterialCommunityIcons name="alarm-light" size={30} color="#FFF" />
           ) : (
-            <Image
-              source={require('../../assets/images/peacock_feather_icon.png')}
+            <ExpoImage
+              source={require('../../assets/images/tab bar/my_krishna.png')}
               style={fabStyles.fabIcon}
-              resizeMode="cover"
+              contentFit="cover"
             />
           )}
         </TouchableOpacity>
@@ -704,9 +704,8 @@ const fabStyles = StyleSheet.create({
     borderColor: '#FFD5B8',
   },
   fabIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 50,
+    height: 50,
   },
   sosActiveView: { alignItems: 'center', padding: 12, justifyContent: 'center' },
   sosHeader: { alignItems: 'center', marginTop: -10 },
