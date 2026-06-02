@@ -4716,6 +4716,9 @@ async def get_communities(token_data: dict = Depends(verify_token)):
 class CommunityRequestResponse(BaseModel):
     status: str
 
+class ResendInviteRequest(BaseModel):
+    user_id: str
+
 @api_router.post("/communities")
 async def create_community(
     data: CommunityCreate,
@@ -5087,6 +5090,87 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
         return result
     except Exception as e:
         logger.error(f"Error fetching my creation requests: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/communities/requests/{request_id}/resend-invite")
+async def resend_community_invite(
+    request_id: str,
+    data: ResendInviteRequest,
+    token_data: dict = Depends(verify_token)
+):
+    """Resend a pending community creation invite notification to a user"""
+    try:
+        db = await get_db()
+        owner_id = token_data["user_id"]
+        target_user_id = data.user_id
+
+        # 1. Fetch the request
+        request_doc = await db.get_document('community_creation_requests', request_id)
+        if not request_doc:
+            raise HTTPException(status_code=404, detail="Community creation request not found")
+
+        # 2. Check owner permission
+        if request_doc.get('owner_id') != owner_id:
+            raise HTTPException(status_code=403, detail="Only the community creator can resend invitations.")
+
+        # 3. Check request is pending
+        if request_doc.get('status') != 'pending':
+            raise HTTPException(status_code=400, detail=f"Request is already {request_doc.get('status')}")
+
+        admin_ids = request_doc.get('admin_ids', [])
+        member_ids = request_doc.get('member_ids', [])
+        invited_users = admin_ids + member_ids
+
+        # 4. Check target user is invited
+        if target_user_id not in invited_users:
+            raise HTTPException(status_code=404, detail="User is not invited to this community group creation request.")
+
+        # 5. Check if the user has already responded (status must be pending)
+        responses = request_doc.get('responses', {})
+        if responses.get(target_user_id, 'pending') != 'pending':
+            raise HTTPException(status_code=400, detail=f"User has already responded: {responses.get(target_user_id)}")
+
+        # 6. Fetch owner name
+        owner_user = await db.get_document('users', owner_id)
+        owner_name = owner_user.get('name') or "A user"
+        comm_name = request_doc.get('name', 'Community')
+        
+        role = "admin" if target_user_id in admin_ids else "member"
+
+        # 7. Create notification in DB
+        await db.create_document('notifications', {
+            "user_id": target_user_id,
+            "title": "Community Group Invitation",
+            "body": f"{owner_name} has invited you as an {role.upper()} to help create the community group '{comm_name}'.",
+            "type": "community_creation_invite",
+            "data": {
+                "request_id": request_id,
+                "community_name": comm_name,
+                "role": role,
+                "owner_name": owner_name
+            },
+            "is_read": False,
+            "created_at": datetime.utcnow().isoformat() + 'Z'
+        })
+
+        # 8. Send push notification via FCM
+        try:
+            await task_queue.enqueue(
+                FirebaseNotificationService.send_push_notification,
+                target_user_id,
+                "Community Group Invitation",
+                f"{owner_name} has invited you as an {role.upper()} to create '{comm_name}'.",
+                {"type": "community_creation_invite", "request_id": request_id, "role": role}
+            )
+        except Exception as push_err:
+            logger.warning(f"Failed to send push to user {target_user_id} during resend: {push_err}")
+
+        return {"message": "Invitation notification sent again successfully."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resending community invite: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -7864,8 +7948,7 @@ Every reply should feel:
         config = types.GenerateContentConfig(
             temperature=0.7,
             max_output_tokens=2048,
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-            thinking_config=types.ThinkingConfig(thinking_budget=1024)
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
         response = client.models.generate_content(
@@ -11292,8 +11375,7 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         )
         from google.genai import types
         config = types.GenerateContentConfig(
-            temperature=0.7,
-            thinking_config=types.ThinkingConfig(thinking_budget=1024)
+            temperature=0.7
         )
         
         response = client.models.generate_content(
@@ -12256,6 +12338,7 @@ async def _jaap_reminder_worker():
     Background worker that checks for upcoming jaap sessions
     and sends notifications to registered users 5 minutes before start.
     """
+    from datetime import timezone
     logger.info("Starting Jaap reminder worker loop")
     
     # Session config (Sync with frontend/src/features/live-mantra/schedule.ts)
@@ -12271,8 +12354,15 @@ async def _jaap_reminder_worker():
         {'name': 'Evening', 'hour': 13, 'min': 0},
     ]
     
+    # Local cache to prevent duplicate notifications: (user_id, mantra_type, session_name, date_str) -> sent_timestamp
+    sent_reminders_cache = {}
+    
     while True:
         try:
+            # Clean up cache entries older than 24 hours (86400 seconds)
+            now_ts = datetime.utcnow().timestamp()
+            sent_reminders_cache = {k: ts for k, ts in sent_reminders_cache.items() if now_ts - ts < 86400}
+            
             # Check every minute
             await asyncio.sleep(60)
             
@@ -12305,19 +12395,29 @@ async def _jaap_reminder_worker():
                     if not reminders:
                         continue
                         
+                    date_str = now_ist.strftime("%Y-%m-%d")
+                    seen_uids = set()
+                    
                     for r in reminders:
                         uid = r.get("user_id")
+                        if not uid or uid in seen_uids:
+                            continue
+                        seen_uids.add(uid)
                         
-                        # Deduplicate: check if a notification was already sent in the last 10 minutes
+                        cache_key = (uid, "hanuman", session['name'], date_str)
+                        if cache_key in sent_reminders_cache:
+                            logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (already sent today)")
+                            continue
+                            
+                        # Check Firestore notifications collection as secondary backup (without order_by to avoid index requirements)
                         try:
-                            from datetime import timezone
                             recent_notifs = await db.query_documents(
                                 "notifications",
                                 filters=[
                                     ("user_id", "==", uid),
                                     ("notification_type", "==", "jaap_reminder")
                                 ],
-                                limit=5
+                                limit=10
                             )
                             already_sent = False
                             for n in recent_notifs:
@@ -12334,10 +12434,11 @@ async def _jaap_reminder_worker():
                                         except Exception:
                                             pass
                             if already_sent:
-                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid}")
+                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (FCM backup)")
+                                sent_reminders_cache[cache_key] = now_ts
                                 continue
                         except Exception as check_err:
-                            logger.warning(f"Error checking duplicate reminder: {check_err}")
+                            logger.warning(f"Error checking duplicate reminder backup: {check_err}")
 
                         # Send notification via task queue
                         await task_queue.enqueue(
@@ -12348,6 +12449,7 @@ async def _jaap_reminder_worker():
                             mantra_type="hanuman",
                             session_name=session['name']
                         )
+                        sent_reminders_cache[cache_key] = now_ts
 
             # 2. Check other Live Jaap sessions (Gayatri, Shiva, Krishna, etc.)
             for session in OTHER_SESSIONS:
@@ -12369,22 +12471,32 @@ async def _jaap_reminder_worker():
                     if not reminders:
                         continue
                         
+                    date_str = now_ist.strftime("%Y-%m-%d")
+                    seen_uids_mantras = set()
+                    
                     for r in reminders:
                         mantra_type = r.get("mantra_type")
                         if mantra_type == "hanuman":
                             continue
                         uid = r.get("user_id")
+                        if not uid or (uid, mantra_type) in seen_uids_mantras:
+                            continue
+                        seen_uids_mantras.add((uid, mantra_type))
                         
-                        # Deduplicate: check if a notification was already sent in the last 10 minutes
+                        cache_key = (uid, mantra_type, session['name'], date_str)
+                        if cache_key in sent_reminders_cache:
+                            logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (already sent today)")
+                            continue
+                            
+                        # Secondary backup check in Firestore
                         try:
-                            from datetime import timezone
                             recent_notifs = await db.query_documents(
                                 "notifications",
                                 filters=[
                                     ("user_id", "==", uid),
                                     ("notification_type", "==", "jaap_reminder")
                                 ],
-                                limit=5
+                                limit=10
                             )
                             already_sent = False
                             for n in recent_notifs:
@@ -12401,10 +12513,11 @@ async def _jaap_reminder_worker():
                                         except Exception:
                                             pass
                             if already_sent:
-                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid}")
+                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (FCM backup)")
+                                sent_reminders_cache[cache_key] = now_ts
                                 continue
                         except Exception as check_err:
-                            logger.warning(f"Error checking duplicate reminder: {check_err}")
+                            logger.warning(f"Error checking duplicate reminder backup: {check_err}")
 
                         mantra_title = mantra_type.capitalize() + " Mantra" if mantra_type != "shiva" else "Om Namah Shivaya"
                         await task_queue.enqueue(
@@ -12415,6 +12528,7 @@ async def _jaap_reminder_worker():
                             mantra_type=mantra_type,
                             session_name=session['name']
                         )
+                        sent_reminders_cache[cache_key] = now_ts
                     
         except Exception as e:
             logger.error(f"Error in jaap reminder worker: {e}")

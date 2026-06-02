@@ -627,17 +627,31 @@ export default function HomeScreen() {
         const currentPosts = useFeedStore.getState().tabFeeds[tabToLoad]?.posts || [];
         const existingIds = new Set(currentPosts.map((item) => item?.id));
         const newItems = incomingItems.filter((item: any) => !existingIds.has(item?.id));
-        setTabFeed(tabToLoad, {
-          posts: [...currentPosts, ...newItems],
-          offset: offset + incomingItems.length,
-          hasMore: nextHasMore && incomingItems.length > 0,
-          lastFetched: Date.now(),
-        });
+
+        if (newItems.length > 0) {
+          // New unseen posts available – append normally
+          setTabFeed(tabToLoad, {
+            posts: [...currentPosts, ...newItems],
+            offset: offset + incomingItems.length,
+            hasMore: true, // always keep open so scroll never stops
+            lastFetched: Date.now(),
+          });
+        } else {
+          // Unseen posts exhausted – shuffle and recycle existing posts
+          console.log(`[HomeFeed] No new unique posts for ${tabToLoad} – recycling ${currentPosts.length} posts`);
+          const recycled = [...currentPosts].sort(() => Math.random() - 0.5);
+          setTabFeed(tabToLoad, {
+            posts: [...currentPosts, ...recycled],
+            offset: 0, // reset offset so next fetch starts from beginning
+            hasMore: true, // never stop scrolling
+            lastFetched: Date.now(),
+          });
+        }
       } else {
         setTabFeed(tabToLoad, {
           posts: incomingItems,
           offset: incomingItems.length,
-          hasMore: nextHasMore && incomingItems.length > 0,
+          hasMore: true, // always keep scrolling possible
           lastFetched: Date.now(),
         });
       }
@@ -1022,7 +1036,7 @@ export default function HomeScreen() {
   const liveActive = isWithinGayatriMantraWindow(now);
   const liveEnd = getCurrentGayatriEnd(now);
   const feedPostKeys = useMemo(
-    () => feedPosts.map((post, index) => String(post.id || post.media_url || index)),
+    () => feedPosts.map((post, index) => `feed-${index}-${post.id || post.media_url || index}`),
     [feedPosts],
   );
 
@@ -1694,7 +1708,7 @@ export default function HomeScreen() {
   };
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
-    const postKey = String(item.id || item.media_url || index);
+    const postKey = `feed-${index}-${String(item.id || item.media_url || index)}`;
     return (
       <View
         onLayout={(event) => {
@@ -2022,9 +2036,7 @@ export default function HomeScreen() {
                       let displayLabel = item.label;
                       let displaySubtitle = item.subtitle;
 
-                      if (item.label === 'Jyotish' && t('language') !== 'hi') {
-                        displayLabel = 'Cosmic\nGuidance';
-                      }
+
 
                       if (t('language') === 'hi') {
                         if (item.label === 'My Krishna') {
@@ -2697,7 +2709,7 @@ export default function HomeScreen() {
               ) : feedPosts.length > 0 ? (
                 <>
                   {feedPosts.map((post, index) => {
-                    const postKey = String(post.id || post.media_url || index);
+                    const postKey = `feed-${index}-${String(post.id || post.media_url || index)}`;
                     const yOffset = postOffsetsRef.current[postKey];
                     const cardHeight = postHeightsRef.current[postKey];
 

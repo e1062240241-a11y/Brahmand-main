@@ -139,13 +139,6 @@ export default function LibraryPage() {
               <Text style={styles.heroBody}>
                 Explore timeless scriptures that guide{'\n'}your mind, nourish your soul and{'\n'}enrich your life.
               </Text>
-              <TouchableOpacity
-                style={styles.continueBtn}
-                onPress={() => router.push('/library/sacred-scriptures' as any)}
-              >
-                <Text style={styles.continueTxt}>Continue Reading</Text>
-                <Ionicons name="arrow-forward" size={15} color="#FFF" style={{ marginLeft: 8 }} />
-              </TouchableOpacity>
             </View>
           </View>
         </View>

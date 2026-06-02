@@ -27,6 +27,8 @@ import Animated, {
   Extrapolate,
 } from 'react-native-reanimated';
 import { useGitaStore } from '../../src/store/gitaStore';
+import { useLibraryStore } from '../../src/store/libraryStore';
+// from '../../src/store/gitaStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -46,6 +48,7 @@ export default function BhagavadGita3DPage() {
   const [isOpened, setIsOpened] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   
+  const { updateProgress } = useLibraryStore();
   const { lastReadChapter, lastReadScrollY, bookmarks, setLastRead, toggleBookmark } = useGitaStore();
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
@@ -73,7 +76,20 @@ export default function BhagavadGita3DPage() {
     
     setScrollProgress(clampedProgress);
     // Save progress instantly (zustand persist handles debouncing implicitly if set up, but frequent saves to AsyncStorage might be heavy. We'll throttle it visually)
+    
     setLastRead(currentChapter, scrollY, clampedProgress);
+    
+    // Update Library Store
+    updateProgress({
+      id: 'bhagvad-geeta',
+      chapterName: GITA_DATA[currentChapter]?.title || `अध्याय ${currentChapter}`,
+      chapterNum: currentChapter,
+      lastReadPage: Math.max(1, Math.min(Math.ceil(contentHeight / (layoutHeight || 1)), Math.ceil((clampedProgress / 100) * Math.max(1, Math.ceil(contentHeight / (layoutHeight || 1)) - 1)) + 1)),
+      totalPages: Math.max(1, Math.ceil(contentHeight / (layoutHeight || 1))),
+      progressPercent: clampedProgress,
+      lastOpenedTime: Date.now(),
+    });
+
   };
 
   const handleChapterChange = (chNum: number) => {
