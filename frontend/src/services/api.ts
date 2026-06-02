@@ -931,6 +931,9 @@ export const createCommunity = (data: {
 export const getMyCreationRequests = () =>
   api.get('/communities/my-creation-requests');
 
+export const resendCommunityInvite = (requestId: string, userId: string) =>
+  api.post(`/communities/requests/${requestId}/resend-invite`, { user_id: userId });
+
 export const joinCommunityDirect = (communityId: string) =>
   api.post(`/communities/${communityId}/join`);
 

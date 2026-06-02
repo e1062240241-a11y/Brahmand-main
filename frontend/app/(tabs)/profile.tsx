@@ -27,6 +27,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from '../../src/utils/i18n';
+import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
 import api, {
@@ -94,6 +95,7 @@ export default function ProfileScreen() {
   const { section } = useLocalSearchParams<{ section?: string }>();
   const userId = user?.id;
   const scrollY = useRef(new Animated.Value(0)).current;
+  const onProfileScrollTabBar = useScrollToHideTabBar();
 
   const navTitleOpacity = scrollY.interpolate({
     inputRange: [100, 180],
@@ -1293,7 +1295,12 @@ export default function ProfileScreen() {
         numColumns={3}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
+          {
+            useNativeDriver: true,
+            listener: (event: any) => {
+              onProfileScrollTabBar(event);
+            },
+          }
         )}
         scrollEventThrottle={16}
         ListFooterComponent={

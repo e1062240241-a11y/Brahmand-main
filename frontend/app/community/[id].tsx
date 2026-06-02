@@ -168,12 +168,73 @@ function splitTextIntoTweets(text: string, limit = 250): string[] {
 const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 
+// Festival image map — mirrors the one in festivals.tsx
+const FESTIVAL_IMAGE_MAP: Record<string, any> = {
+  'Akshaya Tritiya': require('../../assets/images/festival image/Akshaya Tritiya.jpg.webp'),
+  'Anant Chaturdashi': require('../../assets/images/festival image/Anant Chaturdashi.jpg.webp'),
+  'Ashadhi Ekadashi': require('../../assets/images/festival image/Ashadhi Ekadashi_.jpg'),
+  'Bhai Dooj': require('../../assets/images/festival image/Bhai Dooj.jpg'),
+  'Bohag Bihu': require('../../assets/images/festival image/Bohag Bihu .jpg.webp'),
+  'Chaitra Sukhladi': require('../../assets/images/festival image/Chaitra Sukhladi .jpg'),
+  'Chhath Puja': require('../../assets/images/festival image/Chhath Puja.jpg'),
+  'Dhanteras': require('../../assets/images/festival image/Dhanteras.jpg.avif'),
+  'Dhanu Sankranti': require('../../assets/images/festival image/Dhanu Sankranti.jpeg'),
+  'Diwali': require('../../assets/images/festival image/Diwali .jpeg'),
+  'Durga Ashtami': require('../../assets/images/festival image/Durga Ashtami.jpeg'),
+  'Dussehra': require('../../assets/images/festival image/Dussehra.jpg'),
+  'Ganesh Chaturthi': require('../../assets/images/festival image/Ganesh Chaturthi.jpeg'),
+  'Geeta Jayanti': require('../../assets/images/festival image/Geeta Jayanti.jpg.avif'),
+  'Govardhan Puja': require('../../assets/images/festival image/Govardhan Puja.jpg'),
+  'Guru Purnima': require('../../assets/images/festival image/Guru Purnima.png.avif'),
+  'Hanuman janmotsav': require('../../assets/images/festival image/Hanuman janmotsav.jpg'),
+  'Holi': require('../../assets/images/festival image/Happy Holi.jpg.webp'),
+  'Hariyali Teej': require('../../assets/images/festival image/Hariyali Teej.jpeg'),
+  'Hindi New Year': require('../../assets/images/festival image/Hindi New Year.jpg.webp'),
+  'Holika Dahan': require('../../assets/images/festival image/Holika Dahan.png.avif'),
+  'Jagannath Rath Yatra': require('../../assets/images/festival image/Jagannath Rath Yatra.webp'),
+  'Janmashtami': require('../../assets/images/festival image/Janmashtami.jpg'),
+  'Kajari Teej': require('../../assets/images/festival image/Kajari Teej.jpeg'),
+  'Kartik Purnima': require('../../assets/images/festival image/Kartik Purnima.jpeg'),
+  'Karva Chauth': require('../../assets/images/festival image/Karva Chauth.jpg.webp'),
+  'Magh Bihu': require('../../assets/images/festival image/Magh Bihu.jpg'),
+  'Maha Navami': require('../../assets/images/festival image/Maha Navami.jpeg'),
+  'Maha Saptami': require('../../assets/images/festival image/Maha Saptami.jpg.webp'),
+  'Maha Shivaratri': require('../../assets/images/festival image/Maha Shivaratri.jpeg'),
+  'Mahalaya Amavasya': require('../../assets/images/festival image/Mahalaya Amavasya.jpg'),
+  'Maharishi Valmiki Jayanti': require('../../assets/images/festival image/Maharishi Valmiki Jayanti.jpg'),
+  'Makar Sankranti': require('../../assets/images/festival image/Makar Sankranti .jpg.webp.jpeg'),
+  'Nag Panchami': require('../../assets/images/festival image/Nag Panchami.jpg'),
+  'Navratri': require('../../assets/images/festival image/Sharad Navratri.jpg'),
+  'Onam': require('../../assets/images/festival image/Onam.jpg'),
+  'Raksha Bandhan': require('../../assets/images/festival image/Raksha Bandhan.jpg'),
+  'Ram Navami': require('../../assets/images/festival image/Ram Navami.jpg'),
+  'Savitri Pooja': require('../../assets/images/festival image/Savitri Pooja_.jpg'),
+  'Sharad Navratri': require('../../assets/images/festival image/Sharad Navratri.jpg'),
+  'Sharad Purnima': require('../../assets/images/festival image/Sharad Purnima.jpg.webp'),
+  'Thaipusam': require('../../assets/images/festival image/Thaipusam.jpg'),
+  'Vaisakhi': require('../../assets/images/festival image/Vaisakhi.jpg'),
+  'Vasant Panchami': require('../../assets/images/festival image/Vasant Panchami.jpg'),
+  'Vishwakarma Puja': require('../../assets/images/festival image/Vishwakarma Puja.jpeg'),
+};
+
+const getCommunityFestivalImage = (name: string) => {
+  if (!name) return null;
+  if (FESTIVAL_IMAGE_MAP[name]) return FESTIVAL_IMAGE_MAP[name];
+  const key = Object.keys(FESTIVAL_IMAGE_MAP).find(k => name.includes(k) || k.includes(name));
+  return key ? FESTIVAL_IMAGE_MAP[key] : null;
+};
+
 const MOCK_FESTIVALS = [
-  { id: '1', name: 'Diwali', icon: 'flame-outline', events: 12, color: '#FFF5F0', iconColor: '#FF6B00' },
-  { id: '2', name: 'Navratri', icon: 'sunny-outline', events: 18, color: '#FFF9EB', iconColor: '#FFB800' },
-  { id: '3', name: 'Janmashtami', icon: 'color-palette-outline', events: 10, color: '#F0F9FF', iconColor: '#00A3FF' },
-  { id: '4', name: 'Ganesh Chaturthi', icon: 'flower-outline', events: 8, color: '#FFF0F5', iconColor: '#FF007A' },
-  { id: '5', name: 'Makar Sankranti', icon: 'paper-plane-outline', events: 6, color: '#F0FFF4', iconColor: '#00C853' },
+  { id: '1', name: 'Diwali', events: 12, color: '#FFF5F0', date: '2026-11-01' },
+  { id: '2', name: 'Navratri', events: 18, color: '#FFF9EB', date: '2026-10-12' },
+  { id: '3', name: 'Janmashtami', events: 10, color: '#F0F9FF', date: '2026-09-04' },
+  { id: '4', name: 'Ganesh Chaturthi', events: 8, color: '#FFF0F5', date: '2026-09-15' },
+  { id: '5', name: 'Makar Sankranti', events: 6, color: '#F0FFF4', date: '2026-01-14' },
+  { id: '6', name: 'Holi', events: 15, color: '#FFF0FA', date: '2026-03-23' },
+  { id: '7', name: 'Dussehra', events: 9, color: '#FFFBEB', date: '2026-10-22' },
+  { id: '8', name: 'Maha Shivaratri', events: 11, color: '#F5F0FF', date: '2026-02-15' },
+  { id: '9', name: 'Ram Navami', events: 7, color: '#FFF0F0', date: '2026-04-16' },
+  { id: '10', name: 'Raksha Bandhan', events: 5, color: '#F0FFF5', date: '2026-08-28' },
 ];
 
 const MOCK_FESTIVAL_EVENTS = [
@@ -183,7 +244,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Join us for a grand Diwali celebration with prayers, lights & community dinner.',
     location: 'Ramakrishna Math, Andheri West',
     time: '31 Oct 2024, 6:00 PM',
-    image: require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
+    image: require('../../assets/images/festival image/Diwali .jpeg'),
     organizer: { name: 'Rahul Joshi', photo: null, isVerified: true },
     timeAgo: '2h ago'
   },
@@ -193,7 +254,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Community aarti and prasad distribution for all devotees.',
     location: 'Lokhandwala, Andheri West',
     time: '7 Sep 2024, 7:00 PM',
-    image: require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
+    image: require('../../assets/images/festival image/Ganesh Chaturthi.jpeg'),
     organizer: { name: 'Neha Sharma', photo: null, isVerified: true },
     timeAgo: '5h ago'
   },
@@ -203,7 +264,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Nine nights of celebration, dance and divine energy.',
     location: 'NSCI Dome, Worli',
     time: '3 Oct 2024, 8:00 PM',
-    image: require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
+    image: require('../../assets/images/festival image/Sharad Navratri.jpg'),
     organizer: { name: 'Amit Patel', photo: null, isVerified: true },
     timeAgo: '1d ago'
   }
@@ -419,6 +480,10 @@ export default function CommunityDetailScreen() {
   const [eventDate, setEventDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedFestival, setSelectedFestival] = useState<string | null>(null);
+  const [festivalSort, setFestivalSort] = useState<'latest' | 'oldest'>('latest');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   const [showInlineCategories, setShowInlineCategories] = useState(false);
 
@@ -555,7 +620,7 @@ export default function CommunityDetailScreen() {
     if (!item) return false;
     const type = (item.request_type || '').toLowerCase();
     const title = (item.title || '').toLowerCase();
-    const description = (item.description || '').toLowerCase();
+    const description = (item.description || item.content || '').toLowerCase();
     const support = (item.support_needed || '').toLowerCase().trim();
     const cat = (item.category || '').toLowerCase().trim();
 
@@ -572,7 +637,7 @@ export default function CommunityDetailScreen() {
     if (!item) return false;
     const type = (item.request_type || '').toLowerCase();
     const title = (item.title || '').toLowerCase();
-    const description = (item.description || '').toLowerCase();
+    const description = (item.description || item.content || '').toLowerCase();
     const support = (item.support_needed || '').toLowerCase().trim();
     const cat = (item.category || '').toLowerCase().trim();
 
@@ -809,7 +874,13 @@ export default function CommunityDetailScreen() {
             title: p.title || p.content || 'Festival Celebration',
             description: p.description || p.content || 'Join our community celebration!',
             location: p.location || p.sevaDetails || 'Nearby Community',
-            time: p.time || (p.timestamp ? new Date(p.timestamp).toLocaleDateString() : 'Today'),
+            time: p.time || (p.timestamp ? (() => {
+              const d = parseUTCDate(p.timestamp);
+              if (isNaN(d.getTime())) return 'Today';
+              const day = String(d.getDate()).padStart(2, '0');
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              return `${day}/${month}/${d.getFullYear()}`;
+            })() : 'Today'),
             image: resolvedImage,
             organizer: {
               name: p.user?.name || 'Devotee',
@@ -822,12 +893,49 @@ export default function CommunityDetailScreen() {
           };
         });
 
+      let eventList = [
+        ...userFestivals,
+        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' }))
+      ];
+
+      if (selectedFestival) {
+        const targetFestival = allFestivals.find(f => f.name === selectedFestival);
+        let targetDateStr = '';
+        if (targetFestival && targetFestival.date) {
+          try {
+            const d = parseUTCDate(targetFestival.date);
+            if (!isNaN(d.getTime())) {
+              const day = String(d.getDate()).padStart(2, '0');
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              targetDateStr = `${day}/${month}/${d.getFullYear()}`;
+            }
+          } catch (err) {
+            console.warn('Failed to parse target festival date', err);
+          }
+        }
+
+        eventList = eventList.filter(e => {
+          if (targetDateStr && e.time && e.time.includes(targetDateStr)) {
+            return true;
+          }
+          const title = (e.title || '').toLowerCase();
+          const desc = (e.description || '').toLowerCase();
+          const name = selectedFestival.toLowerCase();
+          return title.includes(name) || desc.includes(name);
+        });
+      }
+
+      eventList.sort((a, b) => {
+        const timeA = getUnixTimestamp(a);
+        const timeB = getUnixTimestamp(b);
+        return festivalSort === 'latest' ? timeB - timeA : timeA - timeB;
+      });
+
       return [
         { id: 'fest-header-main', type: 'festivals_header' },
         { id: 'fest-list-horizontal', type: 'festivals_list' },
         { id: 'fest-events-header-sub', type: 'festival_events_header' },
-        ...userFestivals,
-        ...MOCK_FESTIVAL_EVENTS.map(e => ({ ...e, type: 'festival_event' })),
+        ...eventList,
         { id: 'fest-banner-footer', type: 'festival_banner' }
       ];
     }
@@ -1910,7 +2018,20 @@ export default function CommunityDetailScreen() {
               <View style={styles.festMetaRow}>
                 <Ionicons name="calendar-outline" size={14} color="#FF6B00" />
                 <Text style={styles.festMetaText} numberOfLines={1}>
-                  {item.start_time ? new Date(item.start_time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Date not set'}
+                  {(() => {
+                    if (!item.start_time) return 'Date not set';
+                    const d = parseUTCDate(item.start_time);
+                    if (isNaN(d.getTime())) return 'Date not set';
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const year = d.getFullYear();
+                    let hours = d.getHours();
+                    const minutes = String(d.getMinutes()).padStart(2, '0');
+                    const ampm = hours >= 12 ? 'PM' : 'AM';
+                    hours = hours % 12;
+                    hours = hours ? hours : 12;
+                    return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
+                  })()}
                 </Text>
               </View>
               <View style={styles.festMetaRow}>
@@ -1988,54 +2109,78 @@ export default function CommunityDetailScreen() {
             borderTopWidth: 1,
             borderTopColor: '#F0F0F0',
           }}>
-            <Text style={{ fontSize: 13, color: '#64748B', fontFamily: FONTS.regular }}>
-              Do you want to attend?
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 14 }}>
-              <TouchableOpacity
-                onPress={() => handleAttendPress(item.id, true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={rsvp === 'yes' ? "checkmark-circle" : "checkmark-circle-outline"}
-                  size={22}
-                  color={rsvp === 'yes' ? "#16A34A" : "#94A3B8"}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleAttendPress(item.id, false)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={rsvp === 'no' ? "close-circle" : "close-circle-outline"}
-                  size={22}
-                  color={rsvp === 'no' ? "#DC2626" : "#94A3B8"}
-                />
-              </TouchableOpacity>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={{ fontSize: 13, color: '#64748B', fontFamily: FONTS.regular }}>
+                Want to attend?
+              </Text>
+              {rsvp === 'yes' && (
+                <Text style={{ fontSize: 11, color: '#1D9BF0', marginTop: 2, fontFamily: FONTS.regular }}>
+                  Your response has been shared with organizer.
+                </Text>
+              )}
             </View>
+            <TouchableOpacity
+              onPress={() => handleAttendPress(item.id, rsvp !== 'yes')}
+              style={{
+                backgroundColor: rsvp === 'yes' ? '#1D9BF0' : '#FFFFFF',
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: '#1D9BF0',
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: rsvp === 'yes' ? '#FFFFFF' : '#1D9BF0', fontSize: 13, fontWeight: '700' }}>
+                I will attend
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
     );
   };
+  const renderFestivalItem = ({ item, index }: { item: any; index: number }) => {
+    const festImg = getCommunityFestivalImage(item.name);
+    
+    let formattedDate = 'Upcoming';
+    if (item.date) {
+      try {
+        const d = parseUTCDate(item.date);
+        if (!isNaN(d.getTime())) {
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          formattedDate = `${day}/${month}/${d.getFullYear()}`;
+        }
+      } catch (err) {
+        console.warn('Failed to parse date in card', err);
+      }
+    }
 
-  const renderFestivalItem = ({ item, index }: { item: any; index: number }) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => router.push(`/festival-detail?index=${index}`)}
-      style={[styles.festivalTypeCard, { backgroundColor: item.color }]}
-    >
-      <View style={styles.festivalIconCircle}>
-        <Ionicons name={item.icon} size={24} color={item.iconColor} />
-      </View>
-      <Text style={styles.festivalTypeName}>{item.name}</Text>
-      <View style={styles.festivalEventCount}>
-        <Text style={styles.festivalEventCountNum}>{item.events}</Text>
-        <Text style={styles.festivalEventCountText}>Events</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
+    return (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => router.push(`/festival-detail?index=${index}`)}
+        style={[styles.festivalTypeCard, { backgroundColor: item.color || '#FFF5F0' }]}
+      >
+        <View style={styles.festivalIconCircle}>
+          {festImg ? (
+            <Image
+              source={festImg}
+              style={{ width: '100%', height: '100%', borderRadius: 28 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Ionicons name="calendar-outline" size={24} color="#FF6B00" />
+          )}
+        </View>
+        <Text style={styles.festivalTypeName}>{item.name}</Text>
+        <View style={styles.festivalEventCount}>
+          <Text style={styles.festivalEventCountText}>{formattedDate}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
   const handleFestivalInterest = async (item: any) => {
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -2996,11 +3141,11 @@ export default function CommunityDetailScreen() {
             return (
               <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
                 <View style={styles.sectionTitleRow}>
-                  <Ionicons name="calendar" size={24} color="#A855F7" style={{ marginRight: 10 }} />
+                  <Ionicons name="calendar" size={24} color="#0EA5E9" style={{ marginRight: 10 }} />
                   <Text style={[styles.sectionTitle, { fontSize: 22 }]}>Festivals</Text>
                 </View>
-                <TouchableOpacity style={styles.filterDropdown}>
-                  <Text style={styles.filterText}>All Festivals</Text>
+                <TouchableOpacity style={styles.filterDropdown} onPress={() => setShowFilterDropdown(!showFilterDropdown)}>
+                  <Text style={styles.filterText} numberOfLines={1}>{selectedFestival || 'All Festivals'}</Text>
                   <Ionicons name="chevron-down" size={16} color="#444" />
                 </TouchableOpacity>
               </View>
@@ -3022,8 +3167,8 @@ export default function CommunityDetailScreen() {
             return (
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { fontSize: 18 }]}>Upcoming Festival Events</Text>
-                <TouchableOpacity style={styles.filterDropdown}>
-                  <Text style={styles.filterText}>Latest First</Text>
+                <TouchableOpacity style={styles.filterDropdown} onPress={() => setShowSortDropdown(!showSortDropdown)}>
+                  <Text style={styles.filterText}>{festivalSort === 'latest' ? 'Latest First' : 'Oldest First'}</Text>
                   <Ionicons name="chevron-down" size={16} color="#444" />
                 </TouchableOpacity>
               </View>
@@ -3360,7 +3505,11 @@ export default function CommunityDetailScreen() {
                         >
                           <Ionicons name="calendar-outline" size={18} color="#FF6600" />
                           <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
-                            {eventDate ? eventDate.toLocaleDateString() : 'Select Date'}
+                            {eventDate ? (() => {
+                              const day = String(eventDate.getDate()).padStart(2, '0');
+                              const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+                              return `${day}/${month}/${eventDate.getFullYear()}`;
+                            })() : 'Select Date'}
                           </Text>
                         </TouchableOpacity>
                         
@@ -3770,6 +3919,71 @@ export default function CommunityDetailScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      <Modal
+        visible={showFilterDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFilterDropdown(false)}
+      >
+        <TouchableOpacity 
+          style={{ flex: 1, backgroundColor: 'transparent' }} 
+          activeOpacity={1} 
+          onPress={() => setShowFilterDropdown(false)}
+        >
+          <View style={[styles.twitterDropdownMenu, { top: 220, right: 20 }]}> 
+            <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true}>
+              {[
+                { label: 'All Festivals', value: null },
+                ...allFestivals.map(f => ({ label: f.name, value: f.name })),
+                ...MOCK_FESTIVALS.map(f => ({ label: f.name, value: f.name })),
+              ].filter((item, index, self) => self.findIndex(t => t.value === item.value) === index).map((opt, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.twitterDropdownItem}
+                  onPress={() => {
+                    setSelectedFestival(opt.value);
+                    setShowFilterDropdown(false);
+                  }}
+                >
+                  <Text style={styles.twitterDropdownText}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={showSortDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSortDropdown(false)}
+      >
+        <TouchableOpacity 
+          style={{ flex: 1, backgroundColor: 'transparent' }} 
+          activeOpacity={1} 
+          onPress={() => setShowSortDropdown(false)}
+        >
+          <View style={[styles.twitterDropdownMenu, { top: 400, right: 20 }]}> 
+            {[
+              { label: 'Latest First', value: 'latest' },
+              { label: 'Oldest First', value: 'oldest' },
+            ].map((opt, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.twitterDropdownItem}
+                onPress={() => {
+                  setFestivalSort(opt.value);
+                  setShowSortDropdown(false);
+                }}
+              >
+                <Text style={styles.twitterDropdownText}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -4109,6 +4323,9 @@ const styles = StyleSheet.create({
   sevaInfoText: { fontSize: 14, lineHeight: 20, color: '#4D2F00' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalDismiss: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  bottomSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 20 },
+  sheetHandle: { width: 40, height: 5, backgroundColor: '#E0E0E0', borderRadius: 3, alignSelf: 'center', marginBottom: 15 },
   commentModalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '70%', padding: 20 },
   commentModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   commentModalTitle: { fontSize: 18, fontWeight: '800', color: '#111' },
@@ -4370,5 +4587,93 @@ const styles = StyleSheet.create({
   },
   attendPromptBtnTextActive: {
     color: '#FFF',
+  },
+  dropdownModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  dropdownSheetContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '60%',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
+  },
+  dropdownSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingBottom: 12,
+  },
+  dropdownSheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  dropdownCloseBtn: {
+    padding: 4,
+  },
+  dropdownSheetList: {
+    paddingBottom: 16,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownOptionSelected: {
+    backgroundColor: '#F5F3FF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
+  dropdownOptionText: {
+    fontSize: 16,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
+  dropdownOptionTextSelected: {
+    color: '#A855F7',
+    fontWeight: '700',
+  },
+  twitterDropdownMenu: {
+    position: 'absolute',
+    top: 38,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFF3F4',
+    width: 150,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    paddingVertical: 4,
+    zIndex: 9999,
+  },
+  twitterDropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F7F9F9',
+  },
+  twitterDropdownText: {
+    fontSize: 14,
+    color: '#0F1419',
+    fontWeight: '600',
   },
 });

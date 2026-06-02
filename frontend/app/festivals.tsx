@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
@@ -22,7 +23,7 @@ const CARD_COLORS = [
   '#FFE082', // Yellow
   '#B2EBF2', // Light Blue
   '#F48FB1', // Pink
-  '#CE93D8', // Purple
+  '#A7F3D0', // Sage/Mint Green
   '#A5D6A7', // Green
   '#FFCC80', // Orange
   '#CFD8DC', // Blue Grey
@@ -84,6 +85,23 @@ const getFestivalImage = (name: string) => {
   // Try partial match
   const key = Object.keys(festivalImageMap).find(k => name.includes(k) || k.includes(name));
   return key ? festivalImageMap[key] : null;
+};
+
+const formatFestivalDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const monthName = months[monthIndex] || parts[1];
+    return `${day} ${monthName} ${year}`;
+  }
+  return dateStr;
 };
 
 const FestivalPage = () => {
@@ -179,7 +197,7 @@ const FestivalPage = () => {
                     <View style={styles.cardTextContainer}>
                       <Text style={styles.cardLabel}>Festival</Text>
                       <Text style={styles.cardName}>{festival.name}</Text>
-                      <Text style={styles.cardDate}>{festival.date}</Text>
+                      <Text style={styles.cardDate}>{formatFestivalDate(festival.date)}</Text>
                     </View>
                     <View style={styles.cardRight}>
                       <View style={styles.festivalIconWrapper}>

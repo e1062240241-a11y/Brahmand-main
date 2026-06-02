@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,

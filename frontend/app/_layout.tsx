@@ -1,6 +1,8 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import { Slot, usePathname, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+// @ts-ignore
+import * as NavigationBar from 'expo-navigation-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -147,7 +149,8 @@ function isValidAppPath(path: string): boolean {
     '/profile/',
     '/festival-detail/',
     '/festival-section-detail/',
-    '/hashtag/'
+    '/hashtag/',
+    '/community-request/'
   ];
 
   for (const prefix of dynamicPrefixes) {
@@ -487,6 +490,11 @@ import { useLanguageStore } from '../src/utils/i18n';
 
 export default function RootLayout() {
   const pathname = usePathname();
+  const isDarkScreen = 
+    pathname.includes('/profile') || 
+    pathname.includes('/reel') ||
+    pathname.includes('/post/') ||
+    pathname === '/community-tweets';
   const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
   const { loadStoredAdminAuth } = useAdminStore();
   const pushInitStartedRef = useRef(false);
@@ -506,6 +514,28 @@ export default function RootLayout() {
   useAppBackHandler();
   useNotificationResponseHandler();
   useMutedNotificationFilter();
+
+  // Configure Android status bar and bottom navigation bar globally once to prevent flickering/glitching
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const configureAndroidBars = async () => {
+      try {
+        // Keep bottom navigation bar consistently dark to avoid layout updates & flickering during page transitions
+        await NavigationBar.setBackgroundColorAsync('#000000');
+        await NavigationBar.setButtonStyleAsync('light');
+
+        // Configure top status bar transparency
+        const { StatusBar: RNStatusBar } = require('react-native');
+        RNStatusBar.setBackgroundColor('transparent', true);
+        RNStatusBar.setTranslucent(true);
+      } catch (error) {
+        console.warn('[Bars] Error configuring system bars:', error);
+      }
+    };
+
+    configureAndroidBars();
+  }, []);
 
   useEffect(() => {
     initSyncQueueListener();
@@ -603,7 +633,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style="auto" />
+        <StatusBar style={isDarkScreen ? 'light' : 'dark'} translucent />
         <View style={styles.root}>
           <MuteProvider>
             <Stack screenOptions={{

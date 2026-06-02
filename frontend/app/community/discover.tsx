@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -18,7 +19,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, FONTS } from '../../src/constants/theme';
-import { discoverCommunities, getMyCreationRequests, joinCommunityDirect, parseApiError } from '../../src/services/api';
+import { discoverCommunities, getMyCreationRequests, joinCommunityDirect, parseApiError, resendCommunityInvite } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { useAuthStore } from '../../src/store/authStore';
 
@@ -159,6 +160,25 @@ export default function DiscoverCommunitiesScreen() {
     }
   };
 
+  const [resendingInviteIds, setResendingInviteIds] = useState<Set<string>>(new Set());
+
+  const handleResendInvite = async (requestId: string, userId: string, userName: string) => {
+    const key = `${requestId}-${userId}`;
+    setResendingInviteIds(prev => new Set(prev).add(key));
+    try {
+      await resendCommunityInvite(requestId, userId);
+      Alert.alert('Success', `Invitation notification sent again to ${userName}.`);
+    } catch (error: any) {
+      Alert.alert('Error', parseApiError(error));
+    } finally {
+      setResendingInviteIds(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
   // --- Render: My Created Communities Section ---
   const renderStatusDot = (status: string) => {
     const color = status === 'accepted' ? '#22C55E' : status === 'declined' ? '#EF4444' : '#F59E0B';
@@ -220,6 +240,22 @@ export default function DiscoverCommunitiesScreen() {
                     }
                     <Text style={styles.memberName} numberOfLines={1}>{u.name}</Text>
                     {renderStatusDot(u.status)}
+                    {u.status === 'pending' && (
+                      <TouchableOpacity
+                        style={styles.resendBtn}
+                        onPress={() => handleResendInvite(req.id, u.id, u.name)}
+                        disabled={resendingInviteIds.has(`${req.id}-${u.id}`)}
+                      >
+                        {resendingInviteIds.has(`${req.id}-${u.id}`) ? (
+                          <ActivityIndicator size="small" color="#FF3400" />
+                        ) : (
+                          <>
+                            <Ionicons name="notifications-outline" size={12} color="#FF3400" />
+                            <Text style={styles.resendBtnText}>Resend</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ))}
               </>
@@ -235,6 +271,22 @@ export default function DiscoverCommunitiesScreen() {
                     }
                     <Text style={styles.memberName} numberOfLines={1}>{u.name}</Text>
                     {renderStatusDot(u.status)}
+                    {u.status === 'pending' && (
+                      <TouchableOpacity
+                        style={styles.resendBtn}
+                        onPress={() => handleResendInvite(req.id, u.id, u.name)}
+                        disabled={resendingInviteIds.has(`${req.id}-${u.id}`)}
+                      >
+                        {resendingInviteIds.has(`${req.id}-${u.id}`) ? (
+                          <ActivityIndicator size="small" color="#FF3400" />
+                        ) : (
+                          <>
+                            <Ionicons name="notifications-outline" size={12} color="#FF3400" />
+                            <Text style={styles.resendBtnText}>Resend</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ))}
               </>
@@ -256,9 +308,9 @@ export default function DiscoverCommunitiesScreen() {
 
   // --- Render: Public Community Card with Join Button ---
   const renderCommunityItem = ({ item, index }: { item: Community; index: number }) => {
-    const isPurple = index % 2 === 1 || (item.label || '').toLowerCase().includes('youth');
-    const cardBg = isPurple ? '#F7ECFC' : '#EEF5EA';
-    const borderColor = isPurple ? '#7A38B3' : '#437953';
+    const isTeal = index % 2 === 1 || (item.label || '').toLowerCase().includes('youth');
+    const cardBg = isTeal ? '#E0F2F1' : '#EEF5EA';
+    const borderColor = isTeal ? '#00796B' : '#437953';
     const isJoined = joinedIds.has(item.id);
     const isJoining = joiningId === item.id;
 
@@ -512,6 +564,22 @@ const styles = StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusLabel: { fontSize: 11, fontFamily: FONTS.bold },
+  resendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF1EE',
+    borderColor: '#FF3400',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  resendBtnText: {
+    color: '#FF3400',
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+  },
 
   viewLiveBtn: {
     marginTop: 12,

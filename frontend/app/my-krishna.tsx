@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +12,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -168,7 +168,7 @@ export default function MyKrishnaChat() {
         const apiMessages = messages
           .filter(m => m.id !== 'welcome')
           .map((m) => ({ role: m.role, content: m.content }));
-        
+
         apiMessages.push({ role: userMsg.role, content: userMsg.content });
 
         const response = await aiChat(apiMessages);
@@ -274,9 +274,13 @@ export default function MyKrishnaChat() {
 
         {/* ── Header ── */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+            android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: true, radius: 20 }}
+          >
             <Ionicons name="chevron-back" size={26} color="#FFF" />
-          </TouchableOpacity>
+          </Pressable>
 
           <View style={styles.headerCenter}>
             <View style={styles.headerAvatarGlow}>
@@ -288,9 +292,14 @@ export default function MyKrishnaChat() {
             </View>
           </View>
 
-          <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn} disabled={isLoading || historyLoading}>
+          <Pressable
+            onPress={handleClearChat}
+            style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.7 }]}
+            disabled={isLoading || historyLoading}
+            android_ripple={{ color: 'rgba(255, 215, 0, 0.25)', borderless: true, radius: 20 }}
+          >
             <Ionicons name="trash-outline" size={22} color="#FFD700" />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <KeyboardAvoidingView
@@ -329,13 +338,14 @@ export default function MyKrishnaChat() {
               contentContainerStyle={styles.suggestionsContent}
             >
               {SUGGESTIONS.map((s, i) => (
-                <TouchableOpacity
+                <Pressable
                   key={i}
-                  style={styles.chip}
+                  style={({ pressed }) => [styles.chip, pressed && { opacity: 0.8 }]}
                   onPress={() => handleSuggestion(s)}
+                  android_ripple={{ color: 'rgba(255, 215, 0, 0.25)', borderless: false }}
                 >
                   <Text style={styles.chipText}>{s}</Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </ScrollView>
           )}
@@ -356,17 +366,22 @@ export default function MyKrishnaChat() {
                 onSubmitEditing={handleSend}
                 editable={!historyLoading}
               />
-              <TouchableOpacity
-                style={[styles.sendBtn, (!inputText.trim() || isLoading) && styles.sendBtnDisabled]}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.sendBtn,
+                  (!inputText.trim() || isLoading) && styles.sendBtnDisabled,
+                  pressed && inputText.trim() && !isLoading && { opacity: 0.8 }
+                ]}
                 onPress={handleSend}
                 disabled={!inputText.trim() || isLoading || historyLoading}
+                android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: true, radius: 18 }}
               >
                 <Ionicons
                   name="send"
                   size={18}
                   color={inputText.trim() && !isLoading ? '#FFF' : 'rgba(255,255,255,0.25)'}
                 />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
         </KeyboardAvoidingView>

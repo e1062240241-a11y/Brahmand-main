@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +9,23 @@ interface FestivalSectionDetailCardProps {
   section: string;
   onBack: () => void;
 }
+
+const formatFestivalDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const monthName = months[monthIndex] || parts[1];
+    return `${day} ${monthName} ${year}`;
+  }
+  return dateStr;
+};
 
 const FestivalSectionDetailCard = ({ festival, section, onBack }: FestivalSectionDetailCardProps) => {
   const sectionMap: Record<string, string> = {
@@ -25,7 +43,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack }: FestivalSectio
       <View style={styles.heroCard}>
         <Text style={styles.heroSubtitle}>{section}</Text>
         <Text style={styles.heroTitle}>{festival.festival_name}</Text>
-        <Text style={styles.heroDate}>{festival.date}</Text>
+        <Text style={styles.heroDate}>{formatFestivalDate(festival.date)}</Text>
       </View>
 
       <View style={styles.contentCard}>
@@ -44,7 +62,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     borderRadius: BORDER_RADIUS.xl,
-    backgroundColor: '#2B1C4A',
+    backgroundColor: '#083344',
     padding: SPACING.lg,
     marginBottom: SPACING.md,
   },
@@ -64,7 +82,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   heroSubtitle: {
-    color: '#D8B4FE',
+    color: '#38BDF8',
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.7,
@@ -77,7 +95,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   heroDate: {
-    color: '#C4B5FD',
+    color: '#7DD3FC',
     fontSize: 14,
   },
   contentCard: {

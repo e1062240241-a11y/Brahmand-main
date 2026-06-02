@@ -1,4 +1,5 @@
 // @ts-nocheck
+// accessibility: placeholder
 import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
@@ -7,6 +8,11 @@ export default function Root({ children }: PropsWithChildren) {
     <html lang="en" style={{ height: "100%" }}>
       <head>
         <meta charSet="utf-8" />
+        <title>Sanatan Lok</title>
+        <meta name="description" content="Sanatan Lok - Connect with your local spiritual community, find temples, jaap rooms, and emergency services." />
+        <meta property="og:title" content="Sanatan Lok" />
+        <meta property="og:description" content="Connect with your local spiritual community, find temples, jaap rooms, and emergency services." />
+        <meta property="og:type" content="website" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
           name="viewport"

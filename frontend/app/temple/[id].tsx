@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, ImageBackground, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';

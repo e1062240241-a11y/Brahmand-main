@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -932,7 +933,7 @@ const styles = StyleSheet.create({
     jaapTopChipIndicator: {
         width: 4,
         height: 12,
-        backgroundColor: '#A855F7',
+        backgroundColor: '#14B8A6',
         borderRadius: 2,
     },
     jaapCenter: {

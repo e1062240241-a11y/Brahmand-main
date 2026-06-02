@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { COLORS, BORDER_RADIUS, SPACING } from '../constants/theme';
 
 interface ButtonProps {
@@ -21,15 +21,6 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
 }) => {
-  const buttonStyle = [
-    styles.button,
-    variant === 'primary' && styles.primary,
-    variant === 'secondary' && styles.secondary,
-    variant === 'outline' && styles.outline,
-    disabled && styles.disabled,
-    style,
-  ];
-
   const textStyleFinal = [
     styles.text,
     variant === 'primary' && styles.textPrimary,
@@ -39,18 +30,29 @@ export const Button: React.FC<ButtonProps> = ({
   ];
 
   return (
-    <TouchableOpacity
-      style={buttonStyle}
+    <Pressable
+      style={({ pressed }) => [
+        styles.button,
+        variant === 'primary' && styles.primary,
+        variant === 'secondary' && styles.secondary,
+        variant === 'outline' && styles.outline,
+        disabled && styles.disabled,
+        pressed && !disabled && !loading && { opacity: 0.8 },
+        style,
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.8}
+      android_ripple={{
+        color: variant === 'outline' ? 'rgba(255, 107, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)',
+        borderless: false,
+      }}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'outline' ? COLORS.primary : COLORS.textWhite} />
       ) : (
         <Text style={textStyleFinal}>{title}</Text>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

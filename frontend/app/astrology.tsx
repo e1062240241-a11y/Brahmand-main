@@ -106,7 +106,7 @@ export default function AstrologyScreen() {
     { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.png'), color: '#F59E0B' },
     { label: 'RASHI LORD', value: details.SignLord, img: require('../assets/images/iconattributes/Icon2.png'), color: '#C67C4E' },
     { label: 'CHARAN', value: details.Charan, img: require('../assets/images/iconattributes/Icon3.png'), color: '#10B981' },
-    { label: 'GAN', value: details.Gan, img: require('../assets/images/iconattributes/Icon4.png'), color: '#8B5CF6' },
+    { label: 'GAN', value: details.Gan, img: require('../assets/images/iconattributes/Icon4.png'), color: '#14B8A6' },
     { label: 'YONI', value: details.Yoni, img: require('../assets/images/iconattributes/Icon5.png'), color: '#EC4899' },
     { label: 'NADI', value: details.Nadi, img: require('../assets/images/iconattributes/Icon6.png'), color: '#EF4444' },
     { label: 'VARNA', value: details.Varna, img: require('../assets/images/iconattributes/Icon7.png'), color: '#3B82F6' },

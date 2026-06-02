@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -28,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { useTranslation } from '../../src/utils/i18n';
+import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import {
   getCircles,
   getCommunities,
@@ -122,6 +124,7 @@ export default function MessagesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const onMessagesScrollTabBar = useScrollToHideTabBar();
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
   const [activeRequestIndex, setActiveRequestIndex] = useState(0);
@@ -960,11 +963,11 @@ export default function MessagesScreen() {
 
 
   const renderLocalCommunityCard = (item: Community, index: number) => {
-    const isPurple = index % 2 === 1 || (item.label || '').toLowerCase().includes('youth');
-    const cardBg = isPurple ? '#F7ECFC' : '#EEF5EA';
-    const borderColor = isPurple ? '#7A38B3' : '#437953';
+    const isTeal = index % 2 === 1 || (item.label || '').toLowerCase().includes('youth');
+    const cardBg = isTeal ? '#E0F2F1' : '#EEF5EA';
+    const borderColor = isTeal ? '#00796B' : '#437953';
     const badgeBg = '#FFFFFF';
-    const pillText = isPurple ? 'Youth' : 'Seva';
+    const pillText = isTeal ? 'Youth' : 'Seva';
     const isJoined = joinedLocalIds.has(item.id);
     const isJoining = joiningLocalId === item.id;
     const isPending = (item as any).is_pending;
@@ -1069,6 +1072,8 @@ export default function MessagesScreen() {
         showsVerticalScrollIndicator={false}
         overScrollMode="never"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
+        onScroll={onMessagesScrollTabBar}
+        scrollEventThrottle={16}
       >
         {activeTopTab === 'Community' ? (
           <View style={styles.communityContent}>

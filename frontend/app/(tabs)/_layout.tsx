@@ -5,6 +5,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../src/utils/i18n';
 import CustomTabBar from '../../src/components/CustomTabBar';
+import { TabBarProvider } from '../../src/contexts/TabBarContext';
 
 const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
   <View style={styles.iconContainer}>
@@ -18,13 +19,13 @@ export default function TabLayout() {
   const { t } = useTranslation();
 
   return (
-    <>
-    <Tabs
-      initialRouteName="home"
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-      }}
+    <TabBarProvider>
+      <Tabs
+        initialRouteName="home"
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+        }}
     >
       {/* 1. Home */}
       <Tabs.Screen
@@ -94,7 +95,7 @@ export default function TabLayout() {
       <Tabs.Screen name="jobs" options={{ href: null }} />
       <Tabs.Screen name="discover" options={{ href: null }} />
     </Tabs>
-    </>
+    </TabBarProvider>
   );
 }
 

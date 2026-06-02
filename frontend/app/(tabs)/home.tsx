@@ -1,3 +1,4 @@
+// accessibility: placeholder
 // Trigger watch rebuild
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -37,6 +38,7 @@ import PostFeedCard from '../../src/components/PostFeedCard';
 import HomeJyotishSection from '../../src/components/HomeJyotishSection';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
+import { useScrollToHideTabBar } from '../../src/utils/scroll';
 
 function KundliSirenIcon() {
   return (
@@ -295,11 +297,17 @@ const HOME_CARD_TEXTURES = {
   rose: require('../../assets/images/home_card_bg_rose.png'),
   peach: require('../../assets/images/home_card_bg_peach.png'),
   mint: require('../../assets/images/home_card_bg_mint.jpg'),
-  lavender: require('../../assets/images/home_card_bg_lavender.jpg'),
+  cyan: require('../../assets/images/home_card_bg_mint.jpg'),
 } as const;
 
 type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
 
+const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, string]> = {
+  rose: ['rgba(255, 245, 245, 0.72)', 'rgba(255, 220, 220, 0.45)'],
+  peach: ['rgba(255, 250, 242, 0.74)', 'rgba(255, 232, 205, 0.48)'],
+  mint: ['rgba(242, 255, 248, 0.74)', 'rgba(210, 245, 225, 0.48)'],
+  cyan: ['rgba(224, 247, 250, 0.75)', 'rgba(178, 235, 242, 0.48)'],
+};
 
 function HomeCardTextureBg({
   texture,
@@ -363,9 +371,27 @@ const AnimatedSkeleton = ({ children, style }: { children: React.ReactNode; styl
   return <Animated.View style={[{ opacity }, style]}>{children}</Animated.View>;
 };
 
+const formatFestivalDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const monthName = months[monthIndex] || parts[1];
+    return `${day} ${monthName} ${year}`;
+  }
+  return dateStr;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const onHomeScrollTabBar = useScrollToHideTabBar();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
@@ -1039,6 +1065,7 @@ export default function HomeScreen() {
   const lastScrollTimeRef = useRef(0);
 
   const handleHomeScroll = useCallback((event: any) => {
+    onHomeScrollTabBar(event);
     const y = event.nativeEvent.contentOffset.y;
     currentScrollY.current = y;
 
@@ -1867,7 +1894,7 @@ export default function HomeScreen() {
                     <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
                       {nextFestival.days_until === 0
                         ? `${nextFestival.name} ${t('isTodayClick')}`
-                        : `${nextFestival.name} ${t('isTomorrowClick')} (${nextFestival.date})`}
+                        : `${nextFestival.name} ${t('isTomorrowClick')} (${formatFestivalDate(nextFestival.date)})`}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#FFF" />
@@ -2492,7 +2519,7 @@ export default function HomeScreen() {
                 {/* Live Aarti */}
                 <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="lavender">
+                    <HomeCardTextureBg texture="cyan">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                       <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                         <TempleIcon />
@@ -2517,11 +2544,11 @@ export default function HomeScreen() {
                         width: '85%',
                         height: 28,
                         borderRadius: 14,
-                        backgroundColor: '#8C36DB',
+                        backgroundColor: '#0EA5E9',
                         justifyContent: 'center',
                         alignItems: 'center',
                         alignSelf: 'center',
-                        shadowColor: '#8C36DB',
+                        shadowColor: '#0EA5E9',
                         shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.3,
                         shadowRadius: 3,
@@ -2542,8 +2569,8 @@ export default function HomeScreen() {
                   </View>
                   {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                   <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[styles.cardHeaderBadgePurple, { borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                    <View style={[styles.cardHeaderBadgeCyan, { borderColor: '#0EA5E9', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                      <Text style={[styles.cardBadgeTextDark, { color: '#0EA5E9', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                     </View>
                   </View>
                 </View>
@@ -3469,14 +3496,14 @@ const styles = StyleSheet.create({
     zIndex: 100,
     elevation: 5,
   },
-  cardHeaderBadgePurple: {
-    backgroundColor: '#F3E5F5',
+  cardHeaderBadgeCyan: {
+    backgroundColor: '#E0F7FA',
     paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
     paddingVertical: Platform.OS === 'ios' ? 4 : 5,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#CE93D8',
+    borderColor: '#0EA5E9',
     zIndex: 100,
     elevation: 5,
   },
@@ -3591,7 +3618,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 4,
   },
-  cardButtonOutlinePurple: {
+  cardButtonOutlineCyan: {
     width: Platform.OS === 'ios' ? 76 : 60,
     height: 19,
     borderRadius: 6,

@@ -1,3 +1,4 @@
+// accessibility: placeholder
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator, Image, Alert, Share, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
