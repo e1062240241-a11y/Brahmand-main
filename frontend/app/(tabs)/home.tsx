@@ -249,6 +249,7 @@ function ShopIcon() {
 
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
+import { BlurView } from 'expo-blur';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
@@ -299,12 +300,6 @@ const HOME_CARD_TEXTURES = {
 
 type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
 
-const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, string]> = {
-  rose: ['rgba(255, 245, 245, 0.72)', 'rgba(255, 220, 220, 0.45)'],
-  peach: ['rgba(255, 250, 242, 0.74)', 'rgba(255, 232, 205, 0.48)'],
-  mint: ['rgba(242, 255, 248, 0.74)', 'rgba(210, 245, 225, 0.48)'],
-  lavender: ['rgba(248, 242, 255, 0.74)', 'rgba(225, 210, 245, 0.48)'],
-};
 
 function HomeCardTextureBg({
   texture,
@@ -315,19 +310,19 @@ function HomeCardTextureBg({
   borderRadius?: number;
   children: React.ReactNode;
 }) {
-  const overlay = CARD_TEXTURE_OVERLAY[texture];
   return (
     <ImageBackground
       source={HOME_CARD_TEXTURES[texture]}
-      style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+      style={[StyleSheet.absoluteFillObject, { borderRadius, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.65)' }]}
       imageStyle={{ borderRadius, resizeMode: 'cover' }}
       resizeMode="cover"
     >
+      <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
-        colors={[...overlay]}
+        colors={['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+        style={StyleSheet.absoluteFillObject}
       />
       <View style={styles.cardTextureContent}>{children}</View>
     </ImageBackground>
@@ -2076,7 +2071,7 @@ export default function HomeScreen() {
                           ) : item.label === 'My Krishna' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/peacock_feather_icon.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+                                <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 42, height: 42 }} contentFit="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Panchang' ? (
@@ -2088,23 +2083,23 @@ export default function HomeScreen() {
                           ) : item.label === 'Kundli' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                               <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 38, height: 38 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Jyotish' ? (
                             <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/custom_jyotish_icon_3.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                <SirenIcon width={24} height={24} color="white" />
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Passport' ? (
-                            <View style={[styles.featureIconWrap, { overflow: 'visible', width: 45, height: 60 }]}>
-                              <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 47.3, height: 60, flexShrink: 0, aspectRatio: 41/52 }} resizeMode="contain" />
+                            <View style={[styles.featureIconWrap, { overflow: 'visible', width: 52, height: 67 }]}>
+                              <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 53, height: 67, flexShrink: 0, aspectRatio: 41/52 }} resizeMode="contain" />
                             </View>
                           ) : item.label === 'Festival Days' ? (
-                            <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                <SacredIcon width={44} height={44} />
+                            <View style={[styles.featureIconWrap, { overflow: 'visible' }]}>
+                              <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 54, height: 54, justifyContent: 'center', alignItems: 'center' }}>
+                                <SacredIcon width={52} height={52} />
                               </ImageBackground>
                             </View>
                           ) : item.label === 'Brahmand Library' ? (
@@ -3265,7 +3260,8 @@ const styles = StyleSheet.create({
   },
   topFeatureRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 20,
     gap: 8,
     marginHorizontal: -PAGE_PADDING,
   },
@@ -3428,8 +3424,8 @@ const styles = StyleSheet.create({
   },
   actionCardsScroll: {
     paddingHorizontal: PAGE_PADDING,
-    paddingTop: 25,
-    paddingBottom: 5,
+    paddingTop: 30,
+    paddingBottom: 15,
     gap: Platform.OS === 'ios' ? 8 : 10,
   },
   actionCard: {

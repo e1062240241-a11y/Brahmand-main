@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Image as ExpoImage } from 'expo-image';
 import {
   View,
   Text,
@@ -832,9 +833,10 @@ export const FloatingUtilityButton = () => {
             ) : (
               <View style={styles.fabDefaultContent}>
                 <View style={styles.fabAvatarRing}>
-                  <Image
-                    source={require('../../assets/images/krishna_guru.png')}
+                  <ExpoImage
+                    source={require('../../assets/images/tab bar/my_krishna.png')}
                     style={styles.fabAvatar}
+                    contentFit="cover"
                   />
                 </View>
                 <View style={styles.fabSparkBadge}>
@@ -900,7 +902,7 @@ export const FloatingUtilityButton = () => {
  
                   <View style={styles.centerGuruContainerSOS}>
                     <View style={styles.guruImageWrapperSOS}>
-                      <Image source={require('../../assets/images/krishna_guru.png')} style={styles.guruImage} />
+                      <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={styles.guruImage} contentFit="cover" />
                     </View>
                   </View>
  
@@ -1123,7 +1125,7 @@ export const FloatingUtilityButton = () => {
                     onPress={() => { setModalVisible(false); router.push('/my-krishna'); }}
                   >
                     <View style={styles.guruImageWrapper}>
-                      <Image source={require('../../assets/images/krishna_guru.png')} style={styles.guruImage} />
+                      <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={styles.guruImage} contentFit="cover" />
                     </View>
                     <View style={styles.guruTitleBox}>
                       <Ionicons name="leaf" size={16} color="#FFD54F" style={{ marginBottom: -2 }} />
