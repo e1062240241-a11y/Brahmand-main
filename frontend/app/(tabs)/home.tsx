@@ -2526,7 +2526,7 @@ export default function HomeScreen() {
                       {/* Live Aarti */}
                       <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                         <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                          <HomeCardTextureBg texture="peach">
+                          <HomeCardTextureBg texture="lavender">
                             <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                               <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                                 <TempleIcon />
@@ -2576,8 +2576,8 @@ export default function HomeScreen() {
                         </View>
                         {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
                         <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                          <View style={[styles.cardHeaderBadgeEmerald, { borderColor: '#0D9488', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                            <Text style={[styles.cardBadgeTextDark, { color: '#0D9488', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                          <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                            <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                           </View>
                         </View>
                       </View>
@@ -2626,7 +2626,6 @@ export default function HomeScreen() {
                         const localComm =
                           communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area' || c.type === 'user_group' || c.type === 'local') ||
                           localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
-                        const localName = 'Local Community';
                         const localId = localComm?.id || 'food_pune';
                         let realGroupName = localComm?.name || 'Pune Food Sharing Group';
                         if (t('language') === 'hi') {
@@ -2655,7 +2654,12 @@ export default function HomeScreen() {
                               <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                                 {realGroupName}
                               </Text>
-                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
+                              <View style={styles.miniCardBottomRow}>
+                                <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
+                                <View style={styles.sevaBadgeMini}>
+                                  <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                                </View>
+                              </View>
                             </View>
                             <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                           </TouchableOpacity>
