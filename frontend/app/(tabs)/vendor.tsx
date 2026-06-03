@@ -976,7 +976,7 @@ export default function VendorScreen() {
           style={[
             styles.inlineSearchContainer,
             {
-              width: searchAnim.interpolate({
+              width: Platform.OS === 'android' ? (showSearch ? 230 : 0) : searchAnim.interpolate({
                 inputRange: [0, 1],
                 outputRange: [0, 230],
               }),
@@ -1016,6 +1016,7 @@ export default function VendorScreen() {
               onChangeText={setSearchTerm}
               returnKeyType="search"
               blurOnSubmit={false}
+              disableFullscreenUI={true}
             />
           </Pressable>
           {!!searchTerm && (

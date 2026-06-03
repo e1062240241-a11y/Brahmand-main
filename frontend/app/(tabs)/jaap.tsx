@@ -8,7 +8,6 @@ import {
   Image,
   Dimensions,
   Platform,
-  StatusBar,
   TextInput,
   ActivityIndicator,
   Modal,
@@ -17,6 +16,7 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -177,10 +177,10 @@ export default function JaapLandingScreen() {
       }
 
       if (active) {
-        const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर सेट!' : '🔔 Reminders Set!';
+        const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर सक्रिय' : '🔔 Reminder Set!';
         const msgText = t('language') === 'hi' 
-          ? `अब आपको ${readableMantra} सत्र शुरू होने से 5 मिनट पहले सूचना प्राप्त होगी।` 
-          : `You will now receive notifications 5 minutes before any session starts for ${readableMantra}.`;
+          ? `${readableMantra} के लिए आपका रिमाइंडर सफलतापूर्वक सक्रिय हो गया है।`
+          : `Your reminder for ${readableMantra} has been successfully scheduled.`;
         Alert.alert(titleText, msgText);
       } else {
         const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर हटाया गया' : '🔔 Reminders Removed';
@@ -370,7 +370,7 @@ export default function JaapLandingScreen() {
       style={{ flex: 1 }}
     >
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar style="dark" translucent />
 
       <View style={[styles.stickyTopTabsWrap, { paddingTop: insets.top + 10 }]}>
         <View style={styles.topTabsContainer}>

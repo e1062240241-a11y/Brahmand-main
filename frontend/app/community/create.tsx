@@ -345,6 +345,7 @@ export default function CreateCommunityScreen() {
             value={formData.name}
             onChangeText={(text) => setFormData({ ...formData, name: text })}
             maxLength={100}
+            disableFullscreenUI={true}
           />
           <Text style={styles.charCount}>{formData.name.length}/100</Text>
         </View>
@@ -357,6 +358,7 @@ export default function CreateCommunityScreen() {
             value={formData.short_name}
             onChangeText={(text) => setFormData({ ...formData, short_name: text })}
             maxLength={50}
+            disableFullscreenUI={true}
           />
           <Text style={styles.charCount}>{formData.short_name.length}/50</Text>
         </View>
@@ -371,6 +373,8 @@ export default function CreateCommunityScreen() {
             multiline
             numberOfLines={4}
             maxLength={500}
+            disableFullscreenUI={true}
+            textAlignVertical="top"
           />
           <Text style={styles.charCount}>{formData.description.length}/500</Text>
         </View>
@@ -528,6 +532,7 @@ export default function CreateCommunityScreen() {
             placeholder="Search by name or SL ID"
             value={searchQuery}
             onChangeText={setSearchQuery}
+            disableFullscreenUI={true}
           />
         </View>
       </View>
@@ -610,6 +615,7 @@ export default function CreateCommunityScreen() {
             placeholder="Search by name or SL ID"
             value={searchQuery}
             onChangeText={setSearchQuery}
+            disableFullscreenUI={true}
           />
         </View>
       </View>
@@ -711,7 +717,12 @@ export default function CreateCommunityScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {step === 1 && renderStep1()}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        {step === 1 && renderStep1()}
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
       {step === 4 && renderStep4()}
@@ -731,6 +742,7 @@ export default function CreateCommunityScreen() {
            </TouchableOpacity>
         </View>
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
