@@ -43,6 +43,7 @@ const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeF
       </TouchableOpacity>
 
 
+
       <TouchableOpacity activeOpacity={0.8} style={styles.newPostButton} onPress={onCreatePost}>
         <View style={styles.plusIconBg}>
           <Ionicons name="add" size={20} color="#FF6B00" />

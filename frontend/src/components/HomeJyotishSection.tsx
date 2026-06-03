@@ -1,201 +1,121 @@
-// accessibility: placeholder
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from '../utils/i18n';
-import { getUserHoroscope } from '../services/api';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
+
+const { width } = Dimensions.get('window');
+
+const ZODIAC_DATA = [
+  { id: 'aries', name: 'Aries', hindi: 'Mesh', image: require('../../assets/images/tab bar/rashi/Aries.png') },
+  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', image: require('../../assets/images/tab bar/rashi/Taurus.png') },
+  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', image: require('../../assets/images/tab bar/rashi/gemini.png') },
+  { id: 'cancer', name: 'Cancer', hindi: 'Kark', image: require('../../assets/images/tab bar/rashi/cancer.png') },
+  { id: 'leo', name: 'Leo', hindi: 'Simha', image: require('../../assets/images/tab bar/rashi/Leo.png') },
+  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', image: require('../../assets/images/tab bar/rashi/Virgo.png') },
+  { id: 'libra', name: 'Libra', hindi: 'Tula', image: require('../../assets/images/tab bar/rashi/Libra.png') },
+  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', image: require('../../assets/images/tab bar/rashi/Scorpio.png') },
+  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', image: require('../../assets/images/tab bar/rashi/sagittarius.png') },
+  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', image: require('../../assets/images/tab bar/rashi/Capricorn.png') },
+  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', image: require('../../assets/images/tab bar/rashi/Aquarius.png') },
+  { id: 'pisces', name: 'Pisces', hindi: 'Meen', image: require('../../assets/images/tab bar/rashi/Pisces.png') },
+];
 
 export default function HomeJyotishSection() {
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
-  const [error, setError] = useState('');
-
-  const fetchDetails = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await getUserHoroscope();
-      setData(res.data);
-    } catch (err: any) {
-      console.warn('Failed to load jyotish details', err);
-      setError(err?.response?.data?.detail || 'Failed to load details from backend');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDetails();
-  }, []);
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#FFD26C" />
-        <Text style={styles.loadingText}>Reading your cosmic alignments...</Text>
-      </View>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <View style={styles.center}>
-        <Ionicons name="alert-circle-outline" size={48} color="#FF6B00" />
-        <Text style={styles.errorText}>{error || 'Could not load details'}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={fetchDetails}>
-          <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (data.has_profile === false) {
-    return (
-      <View style={styles.center}>
-        <Ionicons name="moon-outline" size={48} color="#FF6B00" />
-        <Text style={styles.errorText}>{data.message}</Text>
-        <Text style={{ marginTop: 10, color: '#666', textAlign: 'center' }}>
-          Please go to Kundli / Astrology tab to set your birth details.
-        </Text>
-      </View>
-    );
-  }
+  const router = useRouter();
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#FFECE0', '#FFFFFF']} style={styles.card}>
-        <View style={styles.header}>
-            <Ionicons name="star" size={24} color="#FF6B00" />
-            <Text style={styles.title}>Your Daily Horoscope</Text>
-        </View>
-        <Text style={styles.rashiText}>{data.rashi_english || data.rashi} • Zodiac</Text>
-
-        {data.prediction ? (
-          <Text style={styles.prediction}>{data.prediction}</Text>
-        ) : (
-          <Text style={styles.prediction}>The universe is quiet today. Stay peaceful.</Text>
-        )}
-
-        <View style={styles.luckyRow}>
-            {data.lucky_color ? (
-              <View style={[styles.luckyPill, { backgroundColor: data.lucky_color.toLowerCase() === 'white' ? '#EEE' : data.lucky_color.toLowerCase() }]}>
-                 <Text style={[styles.luckyText, { color: ['yellow', 'white'].includes(data.lucky_color.toLowerCase()) ? '#000' : '#FFF' }]}>
-                   Color: {data.lucky_color}
-                 </Text>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <Text style={styles.title}>What's your Rashi</Text>
+      
+      <View style={styles.grid}>
+        {ZODIAC_DATA.map((zodiac) => {
+          return (
+            <TouchableOpacity 
+              key={zodiac.id} 
+              style={styles.card}
+              onPress={() => router.push('/horoscope')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.iconContainer}>
+                <ExpoImage source={zodiac.image} style={{ width: 52, height: 52 }} contentFit="contain" />
               </View>
-            ) : null}
-            {data.lucky_numbers && data.lucky_numbers.length > 0 ? (
-              <View style={styles.luckyPillOutline}>
-                 <Text style={styles.luckyTextDark}>Lucky Number: {data.lucky_numbers.join(', ')}</Text>
-              </View>
-            ) : null}
-            {data.lucky_number ? (
-               <View style={styles.luckyPillOutline}>
-                 <Text style={styles.luckyTextDark}>Lucky Number: {data.lucky_number}</Text>
-               </View>
-            ) : null}
-        </View>
-      </LinearGradient>
-    </View>
+              <Text style={styles.name}>{zodiac.name}</Text>
+              <Text style={styles.hindiName}>{zodiac.hindi}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  center: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    color: '#666',
-    fontWeight: '600',
-  },
-  errorText: {
-    marginTop: 16,
-    color: '#333',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  retryBtn: {
-    marginTop: 20,
-    backgroundColor: '#FF6B00',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#FFF',
-    fontWeight: '700',
-  },
   container: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  card: {
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 32,
+    paddingBottom: 120, // Safe padding for tab bar
+    minHeight: Dimensions.get('window').height,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#333',
-    marginLeft: 8,
+    fontSize: 26,
+    color: '#FFFFFF',
+    marginBottom: 32,
+    textAlign: 'center',
+    fontFamily: 'Inter_800ExtraBold',
+    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  rashiText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FF6B00',
-    marginBottom: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  prediction: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#444',
-    marginBottom: 20,
-  },
-  luckyRow: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  luckyPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minWidth: 100,
+  card: {
+    width: (width - 32 - 24) / 3, // 3 columns, 32 total side padding, 24 total gap (12*2)
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 16,
     alignItems: 'center',
-  },
-  luckyPillOutline: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    shadowColor: '#FE6339',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#FF6B00',
-    minWidth: 100,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  luckyText: {
-    fontWeight: '700',
-    fontSize: 14,
+  name: {
+    fontSize: 15,
+    color: '#333333',
+    marginBottom: 2,
+    fontFamily: 'Inter_700Bold',
   },
-  luckyTextDark: {
-    fontWeight: '700',
-    fontSize: 14,
+  hindiName: {
+    fontSize: 12,
     color: '#FF6B00',
+    fontFamily: 'Inter_600SemiBold',
   }
 });

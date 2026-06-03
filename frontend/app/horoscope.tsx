@@ -23,21 +23,30 @@ import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 
 import { useAuthStore } from '../src/store/authStore';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const ZODIAC_SIGNS = [
-  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: '♈', dates: '21 March - 19 April', color: '#FF6B00', image: require('../assets/images/icon.png') },
-  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: '♉', dates: '20 April - 20 May', color: '#8E44AD', image: require('../assets/images/icon.png') },
-  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', icon: '♊', dates: '21 May - 20 June', color: '#2ECC71', image: require('../assets/images/zodiac/gemini.png') },
-  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: '♋', dates: '21 June - 22 July', color: '#3498DB', image: require('../assets/images/icon.png') },
-  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: '♌', dates: '23 July - 22 August', color: '#F1C40F', image: require('../assets/images/icon.png') },
-  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: '♍', dates: '23 August - 22 September', color: '#16A085', image: require('../assets/images/icon.png') },
-  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: '♎', dates: '23 September - 22 October', color: '#E67E22', image: require('../assets/images/icon.png') },
-  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: '♏', dates: '23 October - 21 November', color: '#C0392B', image: require('../assets/images/icon.png') },
-  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: '♐', dates: '22 November - 21 December', color: '#2980B9', image: require('../assets/images/icon.png') },
-  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: '♑', dates: '22 December - 19 January', color: '#273C75', image: require('../assets/images/icon.png') },
-  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: '♒', dates: '20 January - 18 February', color: '#192A56', image: require('../assets/images/icon.png') },
-  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: '♓', dates: '19 February - 20 March', color: '#44BD32', image: require('../assets/images/icon.png') },
+  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: '♈', dates: '21 March - 19 April', color: '#FF6B00', image: require('../assets/images/tab bar/rashi/Aries.png') },
+  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: '♉', dates: '20 April - 20 May', color: '#8E44AD', image: require('../assets/images/tab bar/rashi/Taurus.png') },
+  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', icon: '♊', dates: '21 May - 20 June', color: '#2ECC71', image: require('../assets/images/tab bar/rashi/gemini.png') },
+  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: '♋', dates: '21 June - 22 July', color: '#3498DB', image: require('../assets/images/tab bar/rashi/cancer.png') },
+  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: '♌', dates: '23 July - 22 August', color: '#F1C40F', image: require('../assets/images/tab bar/rashi/Leo.png') },
+  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: '♍', dates: '23 August - 22 September', color: '#16A085', image: require('../assets/images/tab bar/rashi/Virgo.png') },
+  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: '♎', dates: '23 September - 22 October', color: '#E67E22', image: require('../assets/images/tab bar/rashi/Libra.png') },
+  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: '♏', dates: '23 October - 21 November', color: '#C0392B', image: require('../assets/images/tab bar/rashi/Scorpio.png') },
+  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: '♐', dates: '22 November - 21 December', color: '#2980B9', image: require('../assets/images/tab bar/rashi/sagittarius.png') },
+  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: '♑', dates: '22 December - 19 January', color: '#273C75', image: require('../assets/images/tab bar/rashi/Capricorn.png') },
+  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: '♒', dates: '20 January - 18 February', color: '#192A56', image: require('../assets/images/tab bar/rashi/Aquarius.png') },
+  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: '♓', dates: '19 February - 20 March', color: '#44BD32', image: require('../assets/images/tab bar/rashi/Pisces.png') },
+];
+
+const PREDICTION_SECTIONS = [
+  { label: 'PERSONAL LIFE', keys: ['fiance', 'personal_life', 'personal'], icon: require('../assets/images/tab bar/rashi/Person-Fill Streamline Phosphor-Fill.png'), fallback: 'Something feels slightly tense in your interactions today. Small adjustments in tone and timing can help you avoid unnecessary friction.' },
+  { label: 'PROFESSION', keys: ['love', 'profession', 'career'], icon: require('../assets/images/tab bar/rashi/Briefcase-Fill Streamline Phosphor-Fill.png'), fallback: 'Work matters feel more demanding as expectations rise. Focus on clear priorities and give your actions structure.' },
+  { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/tab bar/rashi/heart.png'), fallback: 'Pay attention to how you breathe. Slowing down will calm your system faster than forcing yourself to relax.' },
+  { label: 'EMOTIONS', keys: ['overall', 'emotion', 'emotions'], icon: require('../assets/images/tab bar/rashi/Smiley-Melting-Fill Streamline Phosphor-Fill.png'), fallback: 'You are reacting faster than you are processing. Give yourself space before responding, even in small conversations.' },
+  { label: 'TRAVEL', keys: ['travel'], icon: require('../assets/images/tab bar/rashi/Trolley-Suitcase-Fill Streamline Phosphor-Fill.png'), fallback: 'If you have plans to move, keep them simple and leave room for delays or changes. Staying flexible will make the experience smoother.' },
+  { label: 'LUCK', keys: ['luck'], icon: require('../assets/images/tab bar/rashi/Clover-Fill Streamline Phosphor-Fill.png'), fallback: 'Things work better when you slow reactions and act with intention. When your actions match your priorities, you create your own sense of timing.' },
 ];
 
 export default function HoroscopeScreen() {
@@ -45,10 +54,11 @@ export default function HoroscopeScreen() {
   const { user } = useAuthStore();
   
   // Set default state
+  const [viewMode, setViewMode] = useState<'grid' | 'details'>('grid');
   const [selectedZodiac, setSelectedZodiac] = useState(ZODIAC_SIGNS[0]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [payload, setPayload] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const isMountedRef = useRef(true);
@@ -86,14 +96,17 @@ export default function HoroscopeScreen() {
   }, []);
 
   useEffect(() => {
-    fetchHoroscope(selectedZodiac.id);
-  }, [selectedZodiac.id, fetchHoroscope]);
+    if (viewMode === 'details') {
+      fetchHoroscope(selectedZodiac.id);
+    }
+  }, [selectedZodiac.id, fetchHoroscope, viewMode]);
 
   const toggleDropdown = () => setShowDropdown(!showDropdown);
 
   const selectZodiac = (zodiac: typeof ZODIAC_SIGNS[0]) => {
     setSelectedZodiac(zodiac);
     setShowDropdown(false);
+    setViewMode('details');
   };
 
   if (loading) {
@@ -161,87 +174,112 @@ export default function HoroscopeScreen() {
     return null;
   };
 
+  if (viewMode === 'grid') {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#FFEEE5' }}>
+        <LinearGradient
+          colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+          locations={[0, 0.0913, 0.25]}
+          style={StyleSheet.absoluteFill}
+        />
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+          <View style={[styles.header, { backgroundColor: 'transparent', borderBottomWidth: 0 }]}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="chevron-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}>
+            <Text style={styles.gridTitle}>What's your Rashi</Text>
+            
+            <View style={styles.grid}>
+              {ZODIAC_SIGNS.map((zodiac) => {
+                return (
+                  <TouchableOpacity 
+                    key={zodiac.id} 
+                    style={styles.gridCard}
+                    onPress={() => selectZodiac(zodiac)}
+                    activeOpacity={0.75}
+                  >
+                    <ExpoImage source={zodiac.image} style={{ width: 100, height: 100, marginBottom: 10 }} contentFit="contain" />
+                    <Text style={styles.gridName}>{zodiac.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#FF8A4C', '#FFB894', '#FFF0E6']} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { backgroundColor: '#FFEEE5' }]}>
+      {/* Full gradient background */}
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        locations={[0, 0.0913, 0.25]}
+        style={StyleSheet.absoluteFill}
+      />
+
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={24} color="#333" />
+          <TouchableOpacity onPress={() => setViewMode('grid')} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={24} color="#FFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Rashi</Text>
+          <Text style={styles.headerTitle}>Cosmic Guidance</Text>
           <TouchableOpacity onPress={toggleDropdown} style={styles.backBtn}>
-            <Ionicons name="apps-outline" size={20} color="#333" />
+            <Ionicons name="apps-outline" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* Date Pill */}
-          <View style={styles.datePillContainer}>
-            <View style={styles.datePill}>
-              <Text style={styles.datePillText}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+          {/* Sign Hero */}
+          <View style={styles.heroSection}>
+            <View style={styles.heroLeft}>
+              <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
+              <Text style={styles.signDateText}>
                 Today {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
               </Text>
             </View>
+            <View style={styles.heroImageWrapper}>
+              <ExpoImage source={selectedZodiac.image} style={styles.zodiacImage} contentFit="contain" />
+            </View>
           </View>
-          {error ? (
+
+          {loading ? (
+            <View style={styles.loaderInline}>
+              <ActivityIndicator size="large" color="#FFF" />
+              <Text style={styles.loaderText}>Consulting the heavens...</Text>
+            </View>
+          ) : error ? (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+              <Ionicons name="alert-circle-outline" size={48} color="#FFF" />
               <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity style={styles.retryButton} onPress={() => fetchHoroscope(selectedZodiac.id)}>
                 <Text style={styles.retryText}>Retry</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={{ flex: 1 }}>
-              {/* Sign Header */}
-              <View style={styles.signHeaderRow}>
-                <View style={styles.signTitleCol}>
-                  <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
-                  <Text style={styles.signDatesText}>{selectedZodiac.dates}</Text>
-                </View>
-                <View style={styles.signIllustrationContainer}>
-                  <View style={[styles.illustrationBg, { backgroundColor: selectedZodiac.color + '20', borderWidth: 0 }]}>
-                    {(selectedZodiac as any).image ? (
-                      <ExpoImage source={(selectedZodiac as any).image} style={styles.zodiacImage} contentFit="contain" />
-                    ) : (
-                      <Text style={styles.largeZodiacEmoji}>{selectedZodiac.icon}</Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.content}>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0.5)']}
-                  style={styles.predictionCard}
-                >
-                  <View style={styles.cardHeader}>
-                    <View style={styles.dateBadge}>
-                      <Text style={styles.dateText}>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
-                    </View>
-                    <Text style={styles.cardEyebrow}>Daily Prediction</Text>
-                  </View>
-                  {renderPrediction()}
-                </LinearGradient>
-              </View>
-
+            <>
               {/* Metrics Section */}
               <View style={styles.metricsContainer}>
+                {/* Left: Horizontal bars */}
                 <View style={styles.leftMetrics}>
                   <MetricBar label="Finance" value={scores.finance} />
                   <MetricBar label="Love" value={scores.love} />
                   <MetricBar label="Health" value={scores.health} />
                 </View>
-                
+
+                {/* Center: Overall vertical bar */}
                 <View style={styles.centerMetric}>
-                  <View style={styles.verticalBarContainer}>
+                  <View style={styles.verticalBarTrack}>
                     <LinearGradient
-                      colors={['#E65C00', '#FF8C42']}
-                      start={{ x: 0, y: 1 }}
-                      end={{ x: 0, y: 0 }}
-                      style={[styles.verticalBarFill, { height: `${scores.overall}%` }]}
+                      colors={['#FFF4C6', '#FFD738']}
+                      locations={[0, 0.5668]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={[styles.verticalBarFill, { height: `${scores.overall}%` as any }]}
                     >
                       <Text style={styles.verticalBarText}>{scores.overall}%</Text>
                     </LinearGradient>
@@ -249,73 +287,108 @@ export default function HoroscopeScreen() {
                   <Text style={styles.metricLabel}>Overall</Text>
                 </View>
 
+                {/* Right: Lucky */}
                 <View style={styles.rightMetrics}>
-                  <View style={styles.luckyBox}>
-                    <Text style={styles.luckyValue}>{lucky.number}</Text>
-                    <Text style={styles.luckyLabel}>Lucky Number</Text>
+                  <View style={styles.luckyItem}>
+                    <View style={styles.luckyNumberBox}>
+                      <Text style={styles.luckyValue}>{lucky.number}</Text>
+                    </View>
+                    <Text style={styles.luckyLabel}>Lucky{'\n'}Number</Text>
                   </View>
-                  <View style={[styles.luckyBox, { backgroundColor: lucky.colorHex || '#FF0000' }]}>
-                    <Text style={[styles.luckyValue, { color: '#FFF' }]}>{lucky.color}</Text>
-                    <Text style={[styles.luckyLabel, { color: '#FFF' }]}>Lucky Colour</Text>
+                  
+                  <View style={styles.luckyItem}>
+                    <LinearGradient 
+                      colors={['#FFAF95', '#E13F08']} 
+                      style={styles.luckyColorBox}
+                    >
+                      <Text style={[styles.luckyValue, { color: '#FFF', fontSize: 16 }]}>{lucky.color}</Text>
+                    </LinearGradient>
+                    <Text style={styles.luckyLabel}>Lucky{'\n'}Colour</Text>
                   </View>
                 </View>
               </View>
 
-              <View style={styles.predictionContent}>
-                {typeof predictionData === 'object' && predictionData !== null && !Array.isArray(predictionData) &&
-                  Object.entries(predictionData).map(([key, value], index) => {
-                    if (!value) return null;
-                    const label = key.replace(/_/g, ' ').toUpperCase();
-                    let iconName: any = 'star';
-                    if (key.includes('personal') || key.includes('love')) iconName = 'heart';
-                    if (key.includes('profession') || key.includes('finance')) iconName = 'briefcase';
-                    if (key.includes('health')) iconName = 'fitness';
-                    if (key.includes('emotion')) iconName = 'happy';
-                    if (key.includes('travel')) iconName = 'airplane';
-                    if (key.includes('luck')) iconName = 'leaf';
-                    if (key.includes('overall')) iconName = 'sparkles';
+              {/* AI Card */}
+              <View style={styles.aiCard}>
+                <View style={styles.aiCardHeader}>
+                  <Ionicons name="sparkles" size={20} color="#FF8C00" />
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={styles.aiCardTitle}>Ask AI about your horoscope</Text>
+                    <Text style={styles.aiCardSubtitle}>Get insights tailored to your situation</Text>
+                  </View>
+                </View>
+                <Text style={styles.aiCardBody}>
+                  Get personalised horoscope guidance for love, career, relationships, timing, and your spiritual journey.
+                </Text>
+                <View style={styles.aiTagsRow}>
+                  <View style={styles.aiTag}>
+                    <Ionicons name="time-outline" size={12} color="#FF8C00" />
+                    <Text style={styles.aiTagText}>Auspicious Timing</Text>
+                  </View>
+                  <View style={styles.aiTag}>
+                    <Ionicons name="flame-outline" size={12} color="#FF8C00" />
+                    <Text style={styles.aiTagText}>Spiritual Guidance</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.aiButton}>
+                  <Text style={styles.aiButtonText}>Ask Now</Text>
+                </TouchableOpacity>
+              </View>
 
-                  return (
-                    <View key={key}>
-                      <View style={styles.sectionDivider}>
-                        <View style={styles.dividerLine} />
-                        <Ionicons name="bonfire" size={12} color="#FF6B00" style={styles.dividerIcon} />
-                        <View style={styles.dividerLine} />
+              {/* Prediction sections */}
+              {renderPrediction()}
+
+              {/* Detailed category sections */}
+              {PREDICTION_SECTIONS.map((section, index) => {
+                let text = '';
+                if (typeof predictionData === 'object' && predictionData !== null) {
+                  for (const k of section.keys) {
+                    if (predictionData[k]) {
+                      text = String(predictionData[k]);
+                      break;
+                    }
+                  }
+                }
+                
+                // Fallback text if backend doesn't provide it
+                if (!text) {
+                  text = section.fallback;
+                }
+
+                return (
+                  <View key={section.label}>
+                    <View style={styles.dividerContainer}>
+                      <View style={styles.dividerLine} />
+                      <Ionicons name="flame" size={14} color="#F47B3E" style={{ marginHorizontal: 8 }} />
+                      <View style={styles.dividerLine} />
+                    </View>
+                    <View style={styles.predictionRow}>
+                      <View style={styles.predictionLeftIcon}>
+                        <ExpoImage source={section.icon} style={{ width: 32, height: 32 }} tintColor="#F47B3E" contentFit="contain" />
                       </View>
-                      
-                      <View style={styles.sectionRow}>
-                        <View style={styles.sectionIconCol}>
-                          <Ionicons name={iconName} size={32} color="#111" />
-                        </View>
-                        <View style={styles.sectionTextCol}>
-                          <Text style={styles.sectionLabel}>{label}</Text>
-                          <Text style={styles.sectionDescription}>{String(value)}</Text>
-                        </View>
+                      <View style={styles.predictionRightContent}>
+                        <Text style={styles.predictionSectionLabel}>{section.label}</Text>
+                        <Text style={styles.predictionSectionText}>{text}</Text>
                       </View>
                     </View>
-                  );
-                })}
-              </View>
-            </View>
+                  </View>
+                );
+              })}
+            </>
           )}
-
-          <View style={{ height: 100 }} />
         </ScrollView>
       </SafeAreaView>
 
-      {/* Detailed Content Dropdown Overlay moved here */}
+      {/* Zodiac grid dropdown overlay */}
       {showDropdown && (
-        <TouchableOpacity 
-          style={styles.dropdownOverlay} 
-          activeOpacity={1} 
-          onPress={() => setShowDropdown(false)}
-        >
+        <TouchableOpacity style={styles.dropdownOverlay} activeOpacity={1} onPress={() => setShowDropdown(false)}>
           <View style={styles.dropdownContent}>
             <ScrollView showsVerticalScrollIndicator={false}>
               {ZODIAC_SIGNS.map((z) => (
                 <TouchableOpacity key={z.id} style={styles.dropdownOption} onPress={() => selectZodiac(z)}>
-                  <Text style={styles.dropdownOptionIcon}>{z.icon}</Text>
+                  <ExpoImage source={z.image} style={{ width: 28, height: 28, marginRight: 12 }} contentFit="contain" />
                   <Text style={styles.dropdownOptionName}>{z.name}</Text>
+                  <Text style={styles.dropdownOptionHindi}>{z.hindi}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -329,43 +402,232 @@ export default function HoroscopeScreen() {
 const MetricBar = ({ label, value }: { label: string; value: number }) => (
   <View style={styles.metricBarItem}>
     <View style={styles.metricBarTrack}>
-      <LinearGradient
-        colors={['#E65C00', '#FF8C42']}
-        start={{ x: 0, y: 0 }}
+      <LinearGradient 
+        colors={['#FFD738', '#FFF4C6']} 
+        locations={[0.0029, 0.5673]}
+        start={{ x: 0, y: 0 }} 
         end={{ x: 1, y: 0 }}
-        style={[styles.metricBarFill, { width: `${value}%` }]}
+        style={[styles.metricBarFill, { width: `${value}%` as any }]}
       >
         <Text style={styles.metricBarText}>{value}%</Text>
       </LinearGradient>
     </View>
-    <Text style={styles.metricLabel}>{label}</Text>
+    <Text style={styles.metricBarLabel}>{label}</Text>
   </View>
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  gridTitle: {
+    fontSize: 20,
+    color: '#FFF',
+    marginBottom: 28,
+    textAlign: 'center',
+    fontFamily: 'System',
+    fontWeight: '700',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 20,
+    columnGap: 0,
+  },
+  gridCard: {
+    width: (SCREEN_WIDTH - 40) / 3,
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  gridName: {
+    fontSize: 14,
+    color: '#000',
+    fontFamily: 'System',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  gridHindiName: {
+    fontSize: 11,
+    color: '#8B3A2A',
+    fontFamily: 'Inter_600SemiBold',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  container: { flex: 1, backgroundColor: '#F47B3E' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#333' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#FFF' },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loaderText: { marginTop: 12, color: '#444', fontSize: 14, fontWeight: '600' },
+  loaderInline: { padding: 40, alignItems: 'center', gap: 16 },
+  loaderText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
   scrollView: { flex: 1 },
-  datePillContainer: { alignItems: 'center', marginTop: 10 },
-  datePill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  // Hero section
+  heroSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    paddingTop: 8,
+    paddingBottom: 24,
   },
-  datePillText: { fontSize: 12, color: '#555', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 },
+  heroLeft: { flex: 1 },
+  signNameText: { fontSize: 40, fontWeight: '700', color: 'rgba(0, 0, 0, 0.90)', lineHeight: 44 },
+  signDateText: { fontSize: 12, color: '#000', fontWeight: '500', lineHeight: 24, marginTop: 4 },
+  heroImageWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 100,
+    backgroundColor: 'rgba(196, 49, 0, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  zodiacImage: { width: 90, height: 90 },
+  // Metrics section (no card wrapper)
+  metricsContainer: {
+    marginHorizontal: 20,
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 24,
+  },
+  leftMetrics: { flex: 1.3, gap: 16 },
+  centerMetric: { flex: 0.8, alignItems: 'center', gap: 4 },
+  rightMetrics: { flex: 1, gap: 16 },
+  metricBarItem: { gap: 4 },
+  metricBarTrack: {
+    height: 36,
+    borderWidth: 1,
+    borderColor: 'rgba(153,153,153,0.36)',
+    borderRadius: 8,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  metricBarFill: {
+    height: '100%',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  metricBarText: { color: '#000', fontSize: 13, fontWeight: '700' },
+  metricBarLabel: { fontSize: 12, color: '#000', fontWeight: '600' },
+  metricLabel: { fontSize: 12, color: '#000', fontWeight: '600', marginTop: 4 },
+  verticalBarTrack: {
+    width: 68,
+    height: 132,
+    borderWidth: 1,
+    borderColor: 'rgba(153,153,153,0.36)',
+    borderRadius: 8,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  verticalBarFill: {
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verticalBarText: { color: '#000', fontSize: 14, fontWeight: '700' },
+  luckyItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  luckyNumberBox: {
+    width: 73,
+    height: 62,
+    borderWidth: 1,
+    borderColor: 'rgba(153,153,153,0.36)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  luckyColorBox: {
+    width: 73,
+    height: 62,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  luckyValue: { fontSize: 20, fontWeight: '600', color: '#111' },
+  luckyLabel: { fontSize: 11, fontWeight: '600', color: '#000', textAlign: 'center' },
+  // AI card
+  aiCard: {
+    marginHorizontal: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  aiCardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+  aiCardTitle: { fontSize: 16, fontWeight: '600', color: '#231917', lineHeight: 24 },
+  aiCardSubtitle: { fontSize: 12, color: '#85736E', marginTop: 2, fontWeight: '400', lineHeight: 19.5 },
+  aiCardBody: { fontSize: 14, color: '#53433F', lineHeight: 20, marginBottom: 14, fontWeight: '400' },
+  aiTagsRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  aiTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#FFD9A8',
+  },
+  aiTagText: { fontSize: 11, color: '#FF8C00', fontWeight: '700' },
+  aiButton: {
+    backgroundColor: '#FF7B00',
+    borderRadius: 12,
+    minHeight: 48,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  aiButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
+  // Prediction sections
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginVertical: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(244, 123, 62, 0.3)',
+  },
+  predictionRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  predictionLeftIcon: {
+    width: 44,
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 20,
+  },
+  predictionRightContent: {
+    flex: 1,
+  },
+  predictionSectionLabel: { fontSize: 12, fontWeight: '800', color: '#F47B3E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
+  predictionSectionText: { fontSize: 13, color: '#444', lineHeight: 20, fontWeight: '500' },
   content: { paddingHorizontal: 20, marginTop: 16 },
   predictionCard: {
     borderRadius: 24,
@@ -435,129 +697,38 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '500',
   },
-  signHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginTop: 20,
-  },
-  signTitleCol: { flex: 1 },
-  signNameText: { fontSize: 44, fontWeight: '900', color: '#111', letterSpacing: -1.5 },
-  signDatesText: { fontSize: 15, color: '#666', fontWeight: '600', marginTop: 2, letterSpacing: 0.5 },
-  signIllustrationContainer: {
-    width: 100,
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  illustrationBg: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.05)',
-    overflow: 'hidden',
-  },
-  zodiacImage: { width: 90, height: 90 },
-  largeZodiacEmoji: { fontSize: 48 },
-  metricsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: 24,
-    gap: 12,
-  },
-  leftMetrics: { flex: 1.2, gap: 12 },
-  centerMetric: { flex: 0.8, alignItems: 'center' },
-  rightMetrics: { flex: 1, gap: 10 },
-  metricBarItem: { gap: 4 },
-  metricBarTrack: {
-    height: 28,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-  },
-  metricBarFill: {
-    height: '100%',
-    justifyContent: 'center',
-    paddingLeft: 10,
-  },
-  metricBarText: { color: '#FFF', fontSize: 12, fontWeight: '900' },
-  metricLabel: { fontSize: 12, color: '#444', fontWeight: '700', marginTop: 2 },
-  verticalBarContainer: {
-    width: 50,
-    height: 120,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    borderRadius: 12,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-  },
-  verticalBarFill: {
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  verticalBarText: { color: '#FFF', fontSize: 12, fontWeight: '900' },
-  luckyBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-    minHeight: 60,
-  },
-  luckyValue: { fontSize: 18, fontWeight: '900', color: '#111' },
-  luckyLabel: { fontSize: 10, fontWeight: '700', color: '#444', textAlign: 'center', marginTop: 2 },
-  predictionContent: { paddingHorizontal: 24, marginTop: 10 },
-  sectionDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255, 107, 0, 0.3)' },
-  dividerIcon: { marginHorizontal: 8 },
-  sectionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
-  sectionIconCol: { width: 40, marginTop: 4 },
-  sectionTextCol: { flex: 1 },
-  sectionLabel: { fontSize: 14, fontWeight: '900', color: '#FF6B00', marginBottom: 6 },
-  sectionDescription: { fontSize: 15, color: '#333', lineHeight: 22, fontWeight: '500' },
+
+  // Dropdown
   dropdownOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     zIndex: 1000,
   },
   dropdownContent: {
     backgroundColor: '#FFF',
     marginHorizontal: 20,
     marginTop: 60,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 10,
-    maxHeight: 400,
+    maxHeight: 420,
     elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   dropdownOption: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#F5F5F5',
   },
-  dropdownOptionIcon: { fontSize: 20, marginRight: 12 },
-  dropdownOptionName: { fontSize: 16, fontWeight: '700', color: '#333' },
+  dropdownOptionName: { fontSize: 15, fontWeight: '700', color: '#222', flex: 1 },
+  dropdownOptionHindi: { fontSize: 13, color: '#F47B3E', fontWeight: '600' },
   errorContainer: { padding: 40, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  errorText: { color: COLORS.error, textAlign: 'center', fontSize: 14, fontWeight: '500' },
-  retryButton: { paddingHorizontal: 24, paddingVertical: 10, backgroundColor: COLORS.primary, borderRadius: 20 },
-  retryText: { color: COLORS.surface, fontWeight: '700' },
+  errorText: { color: '#FFF', textAlign: 'center', fontSize: 14, fontWeight: '500' },
+  retryButton: { paddingHorizontal: 24, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.6)' },
+  retryText: { color: '#FFF', fontWeight: '700' },
 });
