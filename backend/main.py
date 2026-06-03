@@ -7077,8 +7077,8 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
             resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
             if resp.status_code >= 400:
-                if "expired" in str(resp_data).lower() or resp.status_code == 401:
-                    logger.warning("Sandbox subscription expired, falling back to mock Aadhaar OTP generation")
+                if "expired" in str(resp_data).lower() or resp.status_code in [401, 403, 502, 503, 504]:
+                    logger.warning(f"Sandbox returned status {resp.status_code}, falling back to mock Aadhaar OTP generation")
                     use_mock = True
                 else:
                     raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP generation failed")
@@ -7095,8 +7095,8 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
                 logger.warning(f"Sandbox authenticate / request failed: {exc_str}, falling back to mock Aadhaar OTP generation")
                 use_mock = True
             elif isinstance(exc, HTTPException):
-                # Re-raise explicit validation HTTPExceptions unless they are auth issues
-                if exc.status_code in [401, 403, 502]:
+                # Re-raise explicit validation HTTPExceptions unless they are auth or network issues
+                if exc.status_code in [401, 403, 502, 503, 504]:
                     logger.warning(f"Sandbox HTTP error {exc.status_code}: {exc.detail}, falling back to mock Aadhaar OTP generation")
                     use_mock = True
                 else:
@@ -7159,8 +7159,8 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
             resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
             if resp.status_code >= 400:
-                if "expired" in str(resp_data).lower() or resp.status_code == 401:
-                    logger.warning("Sandbox subscription expired, falling back to mock verify")
+                if "expired" in str(resp_data).lower() or resp.status_code in [401, 403, 502, 503, 504]:
+                    logger.warning(f"Sandbox subscription status {resp.status_code}, falling back to mock verify")
                     use_mock = True
                 else:
                     raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP verification failed")
@@ -7170,7 +7170,7 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
                 logger.warning(f"Sandbox verify exception: {exc_str}, falling back to mock verify")
                 use_mock = True
             elif isinstance(exc, HTTPException):
-                if exc.status_code in [401, 403, 502]:
+                if exc.status_code in [401, 403, 502, 503, 504]:
                     logger.warning(f"Sandbox verify HTTP error {exc.status_code}: {exc.detail}, falling back to mock verify")
                     use_mock = True
                 else:
@@ -7190,6 +7190,38 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
         "verified": True,
         "sandbox_response": resp_data,
     }
+
+
+async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: str = "kyc") -> Optional[str]:
+    if not base64_str:
+        return None
+    try:
+        # Decode base64 to bytes
+        normalized = base64_str.split(',', 1)[-1]
+        file_bytes = base64.b64decode(normalized)
+        
+        # Determine content type (default to image/jpeg)
+        content_type = "image/jpeg"
+        if "data:image/png" in base64_str:
+            content_type = "image/png"
+        elif "data:image/webp" in base64_str:
+            content_type = "image/webp"
+            
+        extension = _get_extension_from_content_type(content_type)
+        bucket = _get_post_storage_bucket()
+        
+        object_path = f"{folder}/{user_id}/{uuid4().hex}.{extension}"
+        blob = bucket.blob(object_path)
+        download_token = uuid4().hex
+        blob.metadata = {'firebaseStorageDownloadTokens': download_token}
+        blob.upload_from_string(file_bytes, content_type=content_type)
+        blob.patch()
+        
+        media_url = _build_firebase_public_url(bucket.name, object_path, download_token)
+        return media_url
+    except Exception as e:
+        logger.error(f"Failed to upload KYC base64 to storage for user {user_id}: {e}")
+        return None
 
 
 @api_router.post("/kyc/submit")
@@ -7238,14 +7270,20 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         # if otp_aadhaar and otp_aadhaar != id_number:
         #     raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
     
-    # Compress photos if provided
+    # Compress and upload photos if provided
     id_photo = data.get('id_photo')
     if id_photo and is_valid_image(id_photo):
         id_photo = compress_base64_image(id_photo, max_size=800, quality=80)
+        uploaded_url = await _upload_kyc_base64_to_storage(user_id, id_photo, "kyc/id_photos")
+        if uploaded_url:
+            id_photo = uploaded_url
     
     selfie_photo = data.get('selfie_photo')
     if selfie_photo and is_valid_image(selfie_photo):
         selfie_photo = compress_base64_image(selfie_photo, max_size=512, quality=80)
+        uploaded_url = await _upload_kyc_base64_to_storage(user_id, selfie_photo, "kyc/selfie_photos")
+        if uploaded_url:
+            selfie_photo = uploaded_url
     
     # Store KYC documents (for admin review)
     kyc_data = {
@@ -7397,7 +7435,7 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
     
     elif action == 'reject':
         update_data = {
-            'kyc_status': 'rejected',
+            'kyc_status': 'pending',
             'kyc_rejection_reason': data.get('rejection_reason', 'Documents not acceptable')
         }
         await db.update_document('users', user_id, update_data)
