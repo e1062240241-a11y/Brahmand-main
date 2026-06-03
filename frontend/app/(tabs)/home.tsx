@@ -2582,8 +2582,9 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     </ScrollView>
+                  </View>
 
-                    <View style={styles.twoButtonsRow}>
+                  <View style={styles.twoButtonsRow}>
                       {/* Mumbai Community Card */}
                       {(() => {
                         const cityComm = communities.find(c => c.type === 'city');
@@ -2664,11 +2665,10 @@ export default function HomeScreen() {
                           </TouchableOpacity>
                         );
                       })()}
-                    </View>
-                  </View>
-                </View>
-              )}
             </View>
+          </View>
+        )}
+      </View>
 
             {!(loadingFeed && feedPosts.length === 0) && (
               <View style={styles.stickyFeedTabsShell}>
