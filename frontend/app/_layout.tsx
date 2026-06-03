@@ -24,6 +24,7 @@ import { initSyncQueueListener } from '../src/services/syncQueueService';
 import { socketService } from '../src/services/socket';
 
 import { originalAlert } from '../src/utils/nativeAlert';
+import { setAudioModeAsync } from 'expo-audio';
 
 LogBox.ignoreLogs(['UIKitCore] RCTScrollViewComponentView', 'RCTScrollViewComponentView implements focusItemsInRect:']);
 
@@ -537,6 +538,27 @@ export default function RootLayout() {
   useAppBackHandler();
   useNotificationResponseHandler();
   useMutedNotificationFilter();
+
+  useEffect(() => {
+    const initAudio = async () => {
+      try {
+        await setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          interruptionModeIOS: 1, // InterruptionModeIOS.DoNotMix
+          allowsRecordingIOS: false,
+          shouldRouteThroughEarpieceAndroid: false,
+          interruptionModeAndroid: 1, // InterruptionModeAndroid.DoNotMix
+          shouldDuckAndroid: true,
+          playThroughReceiverOnAndroid: false,
+        });
+      } catch (error) {
+        console.warn('[Audio] Failed to set default audio mode:', error);
+      }
+    };
+    if (Platform.OS !== 'web') {
+      initAudio();
+    }
+  }, []);
 
   // Configure Android status bar and bottom navigation bar globally once to prevent flickering/glitching
   useEffect(() => {

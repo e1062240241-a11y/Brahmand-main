@@ -20,6 +20,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -366,16 +367,28 @@ try {
   ExpoVideoModule = require('expo-video');
 } catch (error) {}
 
-const CommunityMediaItem = ({ media, style, onPress }: { media: string | any, style: any, onPress?: () => void }) => {
+const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media: string | any, style: any, onPress?: () => void, isActive?: boolean }) => {
   const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
-  const isVideo = typeof mediaUrl === 'string' && (mediaUrl.toLowerCase().startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl));
+  const isVideo = typeof mediaUrl === 'string' && (
+    mediaUrl.toLowerCase().startsWith('video') || 
+    mediaUrl.toLowerCase().includes('video') || 
+    mediaUrl.toLowerCase().includes('expopicker') ||
+    mediaUrl.toLowerCase().includes('imagepicker') ||
+    /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl)
+  );
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
+  const isFocused = useIsFocused();
+  const shouldPlay = isFocused && isActive;
 
-  const player = ExpoVideoModule?.useVideoPlayer ? ExpoVideoModule.useVideoPlayer(isVideo ? mediaUrl : null, (p: any) => {
+  const player = ExpoVideoModule?.useVideoPlayer ? ExpoVideoModule.useVideoPlayer(isVideo && shouldPlay ? mediaUrl : null, (p: any) => {
     if (p) {
       p.loop = true;
       p.muted = isMuted;
-      p.play();
+      if (shouldPlay) {
+        p.play();
+      } else {
+        p.pause();
+      }
     }
   }) : null;
 
@@ -385,17 +398,27 @@ const CommunityMediaItem = ({ media, style, onPress }: { media: string | any, st
     }
   }, [isMuted, player]);
 
+  useEffect(() => {
+    if (player) {
+      if (shouldPlay) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    }
+  }, [shouldPlay, player]);
+
   const Wrapper = onPress ? TouchableOpacity : View;
   const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
 
   if (isVideo && ExpoVideoModule?.VideoView && player) {
     const flattenedStyle = StyleSheet.flatten(style) || {};
     return (
-      <Wrapper {...wrapperProps} style={[flattenedStyle, { position: 'relative', overflow: 'hidden' }]}>
+      <Wrapper {...wrapperProps} style={[flattenedStyle, { position: 'relative', overflow: 'hidden', backgroundColor: '#000' }]}>
         <ExpoVideoModule.VideoView
           player={player}
           style={{ width: '100%', height: '100%' }}
-          contentFit="cover"
+          contentFit="contain"
           nativeControls={false}
         />
         <TouchableOpacity
@@ -501,6 +524,34 @@ export default function CommunityDetailScreen() {
     return cachedData?.events || [];
   });
   const [discussionPosts, setDiscussionPosts] = useState<DiscussionPost[]>([]);
+
+  const [activeVideoKey, setActiveVideoKey] = useState<string | null>(null);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    const isVideoItem = (item: any) => {
+      if (!item) return false;
+      const url = item.image || item.image_url || item.media_url || '';
+      const mediaUrl = typeof url === 'string' ? url : (url?.uri || '');
+      return typeof mediaUrl === 'string' && (
+        mediaUrl.toLowerCase().startsWith('video') || 
+        mediaUrl.toLowerCase().includes('video') || 
+        mediaUrl.toLowerCase().includes('expopicker') ||
+        mediaUrl.toLowerCase().includes('imagepicker') ||
+        /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl)
+      );
+    };
+
+    const firstVideoItem = viewableItems.find((vi: any) => isVideoItem(vi.item));
+    if (firstVideoItem) {
+      setActiveVideoKey(String(firstVideoItem.key));
+    } else {
+      setActiveVideoKey(null);
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50
+  }).current;
 
   // interest state: requestId -> { count, userInterested }
   const [interestMap, setInterestMap] = useState<Record<string, { count: number; userInterested: boolean }>>({});
@@ -1845,6 +1896,7 @@ export default function CommunityDetailScreen() {
               <CommunityMediaItem
                 media={item.image}
                 style={styles.postMediaImage}
+                isActive={activeVideoKey === (item.id ? String(item.id) : '')}
                 onPress={() => setFullScreenMedia(typeof item.image === 'string' ? item.image : ((item.image as any)?.uri || ''))}
               />
             )}
@@ -1917,6 +1969,27 @@ export default function CommunityDetailScreen() {
     );
   };
 
+  const handleOpenMap = (location: string) => {
+    if (!location || location === 'Online' || location === 'Local') return;
+    const query = encodeURIComponent(location.trim());
+    const nativeUrl = Platform.OS === 'ios' 
+      ? `maps://0,0?q=${query}` 
+      : `geo:0,0?q=${query}`;
+    const webUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+
+    const { Linking } = require('react-native');
+    // Try opening native map app directly first
+    Linking.openURL(nativeUrl)
+      .catch((err: any) => {
+        console.warn('Could not open native map, trying browser fallback:', err);
+        return Linking.openURL(webUrl);
+      })
+      .catch((webErr: any) => {
+        console.error('Failed to open web maps fallback:', webErr);
+        Alert.alert('Error', 'Unable to open maps application.');
+      });
+  };
+
   const handleWhatsAppPress = (phone: any, title: string) => {
     const phoneStr = typeof phone === 'string' ? phone : '';
     if (!phoneStr) {
@@ -1950,6 +2023,7 @@ export default function CommunityDetailScreen() {
             <CommunityMediaItem
               media={item.image || item.image_url || item.media_url}
               style={styles.festEventImage}
+              isActive={activeVideoKey === (item.id ? String(item.id) : '')}
               onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}
             />
           )}
@@ -2100,6 +2174,7 @@ export default function CommunityDetailScreen() {
             <CommunityMediaItem
               media={item.image_url || item.image || item.media_url}
               style={styles.festEventImage}
+              isActive={activeVideoKey === (item.id ? String(item.id) : '')}
               onPress={() => setFullScreenMedia(typeof (item.image_url || item.image || item.media_url) === 'string' ? (item.image_url || item.image || item.media_url) : (item.image_url || item.image || item.media_url).uri)}
             />
           )}
@@ -2128,10 +2203,15 @@ export default function CommunityDetailScreen() {
                   })()}
                 </Text>
               </View>
-              <View style={styles.festMetaRow}>
-                <Ionicons name="location-outline" size={14} color="#FF3B30" />
-                <Text style={styles.festMetaText} numberOfLines={1}>{item.location || 'Online'}</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.festMetaRow}
+                onPress={() => handleOpenMap(item.location || 'Online')}
+                disabled={!item.location || item.location === 'Online'}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location-outline" size={14} color={item.location && item.location !== 'Online' ? "#FF6B00" : "#FF3B30"} />
+                <Text style={[styles.festMetaText, item.location && item.location !== 'Online' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location || 'Online'}</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.festMetaRow}
                 onPress={() => isCreator ? handleViewAttendees(item) : null}
@@ -2321,15 +2401,24 @@ export default function CommunityDetailScreen() {
   const renderFestivalEvent = ({ item }: { item: any }) => (
     <View style={styles.festEventCard}>
       <View style={styles.festEventMain}>
-        <CommunityMediaItem media={item.image} style={styles.festEventImage} />
+        <CommunityMediaItem
+          media={item.image}
+          style={styles.festEventImage}
+          isActive={activeVideoKey === (item.id ? String(item.id) : '')}
+        />
         <View style={styles.festEventInfo}>
           <Text style={styles.festEventTitle}>{item.title}</Text>
           <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
           <View style={styles.festEventMeta}>
-            <View style={styles.festMetaRow}>
-              <Ionicons name="location-outline" size={14} color="#FF3B30" />
-              <Text style={styles.festMetaText} numberOfLines={1}>{item.location}</Text>
-            </View>
+            <TouchableOpacity 
+              style={styles.festMetaRow}
+              onPress={() => handleOpenMap(item.location)}
+              disabled={!item.location || item.location === 'Online' || item.location === 'Local'}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="location-outline" size={14} color={item.location && item.location !== 'Online' && item.location !== 'Local' ? "#FF6B00" : "#FF3B30"} />
+              <Text style={[styles.festMetaText, item.location && item.location !== 'Online' && item.location !== 'Local' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location}</Text>
+            </TouchableOpacity>
             <View style={styles.festMetaRow}>
               <Ionicons name="time-outline" size={14} color="#FF3B30" />
               <Text style={styles.festMetaText} numberOfLines={1}>{item.time}</Text>
@@ -2397,6 +2486,7 @@ export default function CommunityDetailScreen() {
             <CommunityMediaItem
               media={item.image || item.image_url || item.media_url}
               style={styles.festEventImage}
+              isActive={activeVideoKey === (item.id ? String(item.id) : '')}
               onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}
             />
           )}
@@ -2407,12 +2497,16 @@ export default function CommunityDetailScreen() {
             ) : null}
             <View style={styles.festEventMeta}>
               {item.location ? (
-                <View style={styles.festMetaRow}>
-                  <Ionicons name="location" size={14} color="#64748B" />
-                  <Text style={[styles.festMetaText, { color: '#64748B' }]} numberOfLines={1}>
+                <TouchableOpacity 
+                  style={styles.festMetaRow}
+                  onPress={() => handleOpenMap(item.location)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="location" size={14} color="#FF6B00" />
+                  <Text style={[styles.festMetaText, { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>
                     {item.location}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ) : null}
               <View style={styles.festMetaRow}>
                 <Ionicons name={iconDetails.name as any} size={14} color={iconDetails.color} />
@@ -3038,19 +3132,30 @@ export default function CommunityDetailScreen() {
     (async () => {
       let uploadedUrl: string | undefined = undefined;
       const localImageToUpload = selectedImage;
-
       if (localImageToUpload) {
         try {
           const { uploadChatMedia } = require('../../src/services/api');
+          const isVideoFile = typeof localImageToUpload === 'string' && (
+            localImageToUpload.toLowerCase().endsWith('.mp4') || 
+            localImageToUpload.toLowerCase().endsWith('.mov') || 
+            localImageToUpload.toLowerCase().endsWith('.m4v') || 
+            localImageToUpload.toLowerCase().endsWith('.webm') ||
+            localImageToUpload.toLowerCase().includes('video') ||
+            localImageToUpload.toLowerCase().includes('expopicker') ||
+            localImageToUpload.toLowerCase().includes('imagepicker')
+          );
+          const fileExtension = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4') : 'jpg';
+          const fileMime = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4') : 'image/jpeg';
+
           const uploadRes = await uploadChatMedia({
             uri: localImageToUpload,
-            name: `community_post_${Date.now()}.jpg`,
-            type: 'image/jpeg'
+            name: `community_post_${Date.now()}.${fileExtension}`,
+            type: fileMime
           });
           uploadedUrl = uploadRes?.data?.media_url || uploadRes?.data?.mediaUrl || uploadRes?.data?.url || uploadRes?.url || uploadRes?.mediaUrl;
-          console.log('[Community] Image uploaded successfully:', uploadedUrl);
+          console.log('[Community] Media uploaded successfully:', uploadedUrl);
         } catch (error) {
-          console.error('[Community] Image upload failed:', error);
+          console.error('[Community] Media upload failed:', error);
         }
       }
 
@@ -3296,6 +3401,8 @@ export default function CommunityDetailScreen() {
           if (item.id) return String(item.id);
           return `${item.type || 'item'}-${index}`;
         }}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (
@@ -3663,7 +3770,7 @@ export default function CommunityDetailScreen() {
                     </TouchableOpacity>
                   ) : (
                     <View style={{ position: 'relative', marginTop: 10, borderRadius: 12, overflow: 'hidden', width: '100%', height: 250 }}>
-                      <Image source={{ uri: selectedImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      <CommunityMediaItem media={selectedImage} style={{ width: '100%', height: '100%' }} isActive={true} />
                       <TouchableOpacity
                         style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }}
                         onPress={() => setSelectedImage(null)}
