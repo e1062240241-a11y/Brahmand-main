@@ -1971,25 +1971,22 @@ export default function CommunityDetailScreen() {
 
   const handleOpenMap = (location: string) => {
     if (!location || location === 'Online' || location === 'Local') return;
-    const query = encodeURIComponent(location);
-    const url = Platform.OS === 'ios' 
+    const query = encodeURIComponent(location.trim());
+    const nativeUrl = Platform.OS === 'ios' 
       ? `maps://0,0?q=${query}` 
       : `geo:0,0?q=${query}`;
+    const webUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
 
     const { Linking } = require('react-native');
-    Linking.canOpenURL(url)
-      .then((supported: boolean) => {
-        if (supported) {
-          return Linking.openURL(url);
-        } else {
-          const browserUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-          return Linking.openURL(browserUrl);
-        }
-      })
+    // Try opening native map app directly first
+    Linking.openURL(nativeUrl)
       .catch((err: any) => {
-        console.error('An error occurred opening map', err);
-        const browserUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-        Linking.openURL(browserUrl);
+        console.warn('Could not open native map, trying browser fallback:', err);
+        return Linking.openURL(webUrl);
+      })
+      .catch((webErr: any) => {
+        console.error('Failed to open web maps fallback:', webErr);
+        Alert.alert('Error', 'Unable to open maps application.');
       });
   };
 
