@@ -570,6 +570,8 @@ export default function RootLayout() {
         // Keep bottom navigation bar consistently dark to avoid layout updates & flickering during page transitions
         await (NavigationBar as any).setBackgroundColorAsync('#000000');
         await (NavigationBar as any).setButtonStyleAsync('light');
+        await (NavigationBar as any).setVisibilityAsync('visible');
+        await (NavigationBar as any).setBehaviorAsync('inset-touch');
 
         // Configure top status bar transparency
         const { StatusBar: RNStatusBar } = require('react-native');

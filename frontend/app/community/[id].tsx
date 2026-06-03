@@ -18,6 +18,8 @@ import {
   ImageBackground,
   Dimensions,
   Keyboard,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -460,6 +462,10 @@ const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media:
     </Wrapper>
   );
 };
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function CommunityDetailScreen() {
   const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
@@ -2835,6 +2841,9 @@ export default function CommunityDetailScreen() {
   };
 
   const handleLike = (postId: string) => {
+    if (Platform.OS === 'android') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
     // Check in discussionPosts
     setDiscussionPosts(prev => prev.map(post => {
       if (post.id === postId) {
@@ -3050,6 +3059,10 @@ export default function CommunityDetailScreen() {
 
   const executeCreatePost = async (categoryOverride?: string) => {
     if (!newMessage.trim() && !selectedImage) return;
+
+    if (Platform.OS === 'android') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
 
     // Use activeTab as default category (but map 'Others' or empty to 'Feed')
     const finalCategory = (categoryOverride === 'Others' || !categoryOverride) ? 'Feed' : categoryOverride;
@@ -3403,6 +3416,11 @@ export default function CommunityDetailScreen() {
         }}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
+        updateCellsBatchingPeriod={50}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (
@@ -3587,6 +3605,7 @@ export default function CommunityDetailScreen() {
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
+            pointerEvents={(showDatePicker || showTimePicker) && Platform.OS === 'android' ? 'none' : 'auto'}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
               <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); }}>
@@ -3742,6 +3761,7 @@ export default function CommunityDetailScreen() {
                       opacity: postCategory ? 1 : 0.6
                     }}
                     autoFocus={!!postCategory}
+                    disableFullscreenUI={true}
                   />
 
                   {/* Add Photo option directly beneath the input box for better accessibility */}
@@ -3810,35 +3830,39 @@ export default function CommunityDetailScreen() {
                       </View>
 
                       {showDatePicker && (
-                        <DateTimePicker
-                          value={eventDate || new Date()}
-                          mode="date"
-                          display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                          onChange={(event, selectedDate) => {
-                            setShowDatePicker(false);
-                            if (selectedDate) {
-                              const currentDate = eventDate || new Date();
-                              selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
-                              setEventDate(selectedDate);
-                            }
-                          }}
-                        />
+                        <View style={Platform.OS === 'android' ? { position: 'absolute', opacity: 0 } : null}>
+                          <DateTimePicker
+                            value={eventDate || new Date()}
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                            onChange={(event, selectedDate) => {
+                              setShowDatePicker(false);
+                              if (selectedDate) {
+                                const currentDate = eventDate || new Date();
+                                selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
+                                setEventDate(selectedDate);
+                              }
+                            }}
+                          />
+                        </View>
                       )}
 
                       {showTimePicker && (
-                        <DateTimePicker
-                          value={eventDate || new Date()}
-                          mode="time"
-                          display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                          onChange={(event, selectedDate) => {
-                            setShowTimePicker(false);
-                            if (selectedDate) {
-                              const newDate = new Date(eventDate || new Date());
-                              newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
-                              setEventDate(newDate);
-                            }
-                          }}
-                        />
+                        <View style={Platform.OS === 'android' ? { position: 'absolute', opacity: 0 } : null}>
+                          <DateTimePicker
+                            value={eventDate || new Date()}
+                            mode="time"
+                            display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+                            onChange={(event, selectedDate) => {
+                              setShowTimePicker(false);
+                              if (selectedDate) {
+                                const newDate = new Date(eventDate || new Date());
+                                newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+                                setEventDate(newDate);
+                              }
+                            }}
+                          />
+                        </View>
                       )}
                     </View>
                   )}

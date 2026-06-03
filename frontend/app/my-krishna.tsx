@@ -15,6 +15,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -271,6 +272,7 @@ export default function MyKrishnaChat() {
         />
 
         <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar style="light" translucent />
 
         {/* ── Header ── */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -304,8 +306,8 @@ export default function MyKrishnaChat() {
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
           {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
@@ -365,6 +367,8 @@ export default function MyKrishnaChat() {
                 returnKeyType="send"
                 onSubmitEditing={handleSend}
                 editable={!historyLoading}
+                disableFullscreenUI={true}
+                textAlignVertical="top"
               />
               <Pressable
                 style={({ pressed }) => [
