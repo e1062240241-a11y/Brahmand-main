@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   RefreshControl,
   ScrollView,
@@ -21,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getNakshatraReport } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
+import { BrandedLoading } from '../src/components/BrandedLoading';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -87,14 +87,7 @@ export default function AstrologyScreen() {
 
   if (loading) {
     return (
-      <LinearGradient 
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
-        locations={[0, 0.0913, 0.25]} 
-        style={styles.loaderContainer}
-      >
-        <ActivityIndicator size="large" color="#C67C4E" />
-        <Text style={styles.loaderText}>Mapping your cosmic stars...</Text>
-      </LinearGradient>
+      <BrandedLoading message="Mapping your cosmic stars..." />
     );
   }
 

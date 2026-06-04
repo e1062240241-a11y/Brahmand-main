@@ -1,17 +1,16 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '../src/store/authStore';
 import { COLORS } from '../src/constants/theme';
+import { BrandedLoading } from '../src/components/BrandedLoading';
 
 export default function IndexRoute() {
   const { token, isLoading } = useAuthStore();
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <BrandedLoading />
     );
   }
 

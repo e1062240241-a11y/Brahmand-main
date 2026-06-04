@@ -17,7 +17,8 @@ import { MuteProvider } from '../src/contexts/MuteContext';
 import { useNotificationStore } from '../src/store/notificationStore';
 import { ToastContainer } from '../src/components/ToastContainer';
 import { toast } from '../src/store/toastStore';
-import { Alert as RNAlert } from 'react-native';
+import { Alert as RNAlert, Animated } from 'react-native';
+import { BrandedLoading } from '../src/components/BrandedLoading';
 import { syncDatabase } from '../src/database/sync';
 import { GlobalFAB } from '../src/components/GlobalFAB';
 import { initSyncQueueListener } from '../src/services/syncQueueService';
@@ -496,16 +497,11 @@ function SafeSlot() {
     // For navigation errors, show a more user-friendly message
     if ((error as any)?.message?.includes('stale')) {
       return (
-        <View style={styles.fallbackContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.fallbackText}>Loading...</Text>
-        </View>
+        <BrandedLoading message="Loading..." />
       );
     }
     return (
-      <View style={styles.fallbackContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <BrandedLoading />
     );
   }
 }
@@ -670,11 +666,21 @@ export default function RootLayout() {
   }, [isLoading, isAuthenticated, token, pathname]);
 
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!isLoading && fontsLoaded) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isLoading, fontsLoaded]);
+
   if (isLoading || !fontsLoaded) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <BrandedLoading />
     );
   }
 
@@ -682,7 +688,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style={isDarkScreen ? 'light' : 'dark'} translucent />
-        <View style={styles.root}>
+        <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
           <MuteProvider>
             <Stack screenOptions={{
               headerShown: false,
@@ -801,7 +807,7 @@ export default function RootLayout() {
             <GlobalFAB />
             <ToastContainer />
           </MuteProvider>
-        </View>
+        </Animated.View>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
