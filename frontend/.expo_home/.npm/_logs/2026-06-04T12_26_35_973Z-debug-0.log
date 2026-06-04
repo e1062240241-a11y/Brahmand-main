@@ -7,8 +7,8 @@
 6 silly config load:file:/usr/local/etc/npmrc
 7 verbose title npm exec expo export --platform web
 8 verbose argv "exec" "--" "expo" "export" "--platform" "web"
-9 verbose logfile logs-max:10 dir:/Users/developer/Desktop/Brahmand-main/frontend/.expo_home/.npm/_logs/2026-06-04T11_47_06_936Z-
-10 verbose logfile /Users/developer/Desktop/Brahmand-main/frontend/.expo_home/.npm/_logs/2026-06-04T11_47_06_936Z-debug-0.log
+9 verbose logfile logs-max:10 dir:/Users/developer/Desktop/Brahmand-main/frontend/.expo_home/.npm/_logs/2026-06-04T12_26_35_973Z-
+10 verbose logfile /Users/developer/Desktop/Brahmand-main/frontend/.expo_home/.npm/_logs/2026-06-04T12_26_35_973Z-debug-0.log
 11 silly logfile start cleaning logs, removing 2 files
 12 silly logfile done cleaning log files
 13 verbose cwd /Users/developer/Desktop/Brahmand-main/frontend
