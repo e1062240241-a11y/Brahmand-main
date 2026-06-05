@@ -953,354 +953,330 @@ export default function VendorScreen() {
       locations={[0, 0.09, 0.25]}
       style={styles.container}
     >
-      {/* Top Tabs */}
-      <View style={[styles.tabsContainer, { paddingTop: insets.top || SPACING.sm }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => {
-                requestAnimationFrame(() => {
-                  setActiveTab(tab);
-                });
-              }}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab === 'Nearby' ? localT('nearby') : tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <Animated.View
-          style={[
-            styles.inlineSearchContainer,
-            {
-              width: searchAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 230],
-              }),
-              opacity: searchAnim,
-            },
-          ]}
-          pointerEvents={showSearch ? 'auto' : 'none'}
-        >
-          <Ionicons name="search" size={16} color={COLORS.textLight} />
-          <Pressable
-            style={styles.inlineInputWrapper}
-            onPress={() => searchInputRef.current?.focus()}
-          >
-            {!searchTerm && (
-              <View style={styles.inlinePlaceholderRow} pointerEvents="box-none">
-                <Text style={styles.inlinePlaceholderText}>{localT('searchFor')}</Text>
-                <Pressable
-                  onPress={handleSkillPlaceholderPress}
-                  onHoverIn={() => setIsPlaceholderPaused(true)}
-                  onHoverOut={() => setIsPlaceholderPaused(false)}
-                >
-                  <Text style={styles.inlinePlaceholderBold}>
-                    {(() => {
-                      const skillKey = typedSkillPlaceholder.toLowerCase() as any;
-                      return localT(skillKey) || typedSkillPlaceholder;
-                    })()}
-                  </Text>
-                </Pressable>
-                <Text style={styles.inlinePlaceholderText}>"</Text>
-              </View>
-            )}
-            <TextInput
-              ref={searchInputRef}
-              style={styles.inlineSearchInput}
-              placeholder=""
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-              returnKeyType="search"
-              blurOnSubmit={false}
-            />
-          </Pressable>
-          {!!searchTerm && (
-            <TouchableOpacity onPress={() => setSearchTerm('')}>
-              <Ionicons name="close-circle" size={16} color={COLORS.textLight} />
-            </TouchableOpacity>
-          )}
-        </Animated.View>
-
-        <TouchableOpacity
-          style={styles.inlineFilterButton}
-          onPress={() => {
-            if (!showSearch) {
-              setShowSearch(true);
-            }
-            setShowCategoryFilter((prev) => !prev);
-          }}
-        >
-          <Ionicons name={showCategoryFilter ? 'close' : 'filter'} size={18} color={COLORS.primary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.headerIcon}
-          onPress={() => {
-            if (showSearch) {
-              setShowSearch(false);
-              setShowCategoryFilter(false);
-            } else {
-              setShowSearch(true);
-            }
-          }}
-        >
-          <Ionicons name={showSearch ? 'close' : 'search'} size={22} color={COLORS.text} />
-        </TouchableOpacity>
+      {/* Top Search Bar (Figma Design) */}
+      <View style={styles.figmaSearchContainer}>
+        <Ionicons name="search" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
+        <TextInput
+          ref={searchInputRef}
+          style={styles.figmaSearchInput}
+          placeholder="Search requests..."
+          placeholderTextColor="#9CA3AF"
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+        />
+        {!!searchTerm && (
+          <TouchableOpacity onPress={() => setSearchTerm('')}>
+            <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      <Animated.View
-        style={[
-          styles.inlineFilterPanelWrapper,
-          {
-            opacity: filterAnim,
-            maxHeight: filterAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 500],
-            }),
-            overflow: 'hidden',
-          },
-        ]}
-        pointerEvents={showCategoryFilter ? 'auto' : 'none'}
-      >
-        <View style={styles.filterPanel}>
-          <View style={[styles.chipsContainer, { flexWrap: 'wrap' }]}>
-            <TouchableOpacity
-              style={[styles.categoryChip, searchCategory === 'All' && styles.categoryChipActive]}
-              onPress={() => {
-                setSearchCategory('All');
-                setShowCategoryFilter(false);
-              }}
-            >
-              <Text style={[styles.categoryChipText, searchCategory === 'All' && styles.categoryChipTextActive]}>{localT('all')}</Text>
-            </TouchableOpacity>
-            
-            {(activeSection === 'Jobs' ? jobProfessionFilters : categories)
-              .slice(0, showExpandedCategories ? undefined : 7)
-              .map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.categoryChip, searchCategory === cat && styles.categoryChipActive]}
-                onPress={() => {
-                  setSearchCategory(cat);
-                  setShowCategoryFilter(false);
-                }}
-              >
-                <Text style={[styles.categoryChipText, searchCategory === cat && styles.categoryChipTextActive]}>
-                  {localT(cat.toLowerCase() as any) || cat}
-                </Text>
+      {!searchTerm ? (
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          onScroll={onVendorScrollTabBar}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+          }
+        >
+          {/* Categories Row */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.figmaCategoriesRow}>
+            {['GYM', 'Travel', 'Halvai', 'Beauty', 'Decorator'].map((cat, i) => (
+              <TouchableOpacity key={i} style={styles.figmaCategoryItem} onPress={() => setSearchTerm(cat)}>
+                <Image
+                  source={
+                    cat === 'GYM' ? require('../../assets/images/tab bar/rashi/vendor/gym.png') :
+                    cat === 'Travel' ? require('../../assets/images/tab bar/rashi/vendor/travel.png') :
+                    cat === 'Halvai' ? require('../../assets/images/tab bar/rashi/vendor/halvai.png') :
+                    cat === 'Beauty' ? require('../../assets/images/tab bar/rashi/vendor/Beauty.png') :
+                    require('../../assets/images/tab bar/rashi/vendor/Decorator.png')
+                  }
+                  style={{ width: 36, height: 36, tintColor: '#F26522' }}
+                  resizeMode="contain"
+                />
+                <Text style={styles.figmaCategoryText}>{cat}</Text>
               </TouchableOpacity>
             ))}
-            
-            {!showExpandedCategories && (activeSection === 'Jobs' ? jobProfessionFilters : categories).length > 7 && (
-              <TouchableOpacity
-                style={styles.categoryChip}
-                onPress={() => setShowExpandedCategories(true)}
-              >
-                <Text style={styles.categoryChipText}>{localT('more')}</Text>
-              </TouchableOpacity>
-            )}
-            
-            {showExpandedCategories && (
-              <TouchableOpacity
-                style={styles.categoryChip}
-                onPress={() => setShowExpandedCategories(false)}
-              >
-                <Text style={styles.categoryChipText}>{localT('showLess')}</Text>
-              </TouchableOpacity>
-            )}
+          </ScrollView>
+
+          {/* KYC Banner */}
+          <View style={styles.figmaCapsuleContainer}>
+            <View style={[styles.figmaCapsule, { backgroundColor: '#FDF2E2' }]}>
+              <Text style={[styles.figmaCapsuleText, { color: '#000', marginRight: 6 }]}>All vendors are KYC verified.</Text>
+              <Ionicons name="shield-checkmark" size={14} color="#F26522" />
+            </View>
           </View>
-        </View>
-      </Animated.View>
 
-      {!!searchTerm && searchSuggestions.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.suggestionsScroll}
-          contentContainerStyle={styles.suggestionsContent}
-        >
-          {searchSuggestions.map((suggestion) => (
-            <TouchableOpacity
-              key={`${suggestion.type}-${suggestion.label}`}
-              style={styles.suggestionChip}
-              onPress={() => {
-                if (suggestion.type === 'category' || suggestion.type === 'profession') {
-                  setSearchCategory(suggestion.label);
-                  setSearchTerm('');
-                } else {
-                  setSearchTerm(suggestion.label);
-                }
-              }}
+          {/* Services Grid (3x2) */}
+          <View style={[styles.figmaServicesGrid, { marginTop: 24 }]}>
+            {/* Left Column (Astrologer spans 2 rows) */}
+            <TouchableOpacity 
+              style={[styles.figmaServiceCard, { height: 208, alignItems: 'flex-start', paddingBottom: 8, paddingLeft: 8 }]} 
+              onPress={() => setSearchTerm('Astrologer')}
             >
-              <Text style={styles.suggestionText}>
-                {suggestion.type === 'category'
-                  ? `${localT('categoryPrefix')}${localT(suggestion.label.toLowerCase() as any) || suggestion.label}`
-                  : suggestion.type === 'profession'
-                    ? `${localT('professionPrefix')}${localT(suggestion.label.toLowerCase() as any) || suggestion.label}`
-                    : suggestion.label}
-              </Text>
+              {/* Manual crop offset for landscape Astrologer image */}
+              <Image 
+                source={require('../../assets/images/tab bar/rashi/vendor/Astrologer.jpg')} 
+                style={{ position: 'absolute', width: 331, height: 208, left: -110, borderRadius: 12 }} 
+                resizeMode="cover" 
+              />
+              <View style={styles.figmaServiceBadge}>
+                <Ionicons name="notifications-outline" size={12} color="#000" />
+                <Text style={styles.figmaServiceBadgeText}>Astrologer</Text>
+              </View>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
 
-      {/* My Business Section (if vendor owner) */}
-      {activeSection === 'Services' && myVendor && (
-        <View style={styles.myBusinessCard}>
-          <TouchableOpacity 
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-            onPress={() => {
-              router.push('/vendor/dashboard');
-            }}
-          >
-            <View style={styles.myBusinessIcon}>
-              <Ionicons name="storefront" size={24} color={COLORS.primary} />
-            </View>
-            <View style={styles.myBusinessInfo}>
-              <Text style={styles.myBusinessLabel}>{localT('manageMyService')}</Text>
-              <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
-              {hasVerifiedKyc ? (
-                <View style={{ marginTop: SPACING.xs }}>
-                  <View style={styles.kycStatusBadge}>
-                    <Ionicons name="checkmark-circle" size={12} color="#2E7D32" style={{ marginRight: SPACING.xs }} />
-                    <Text style={[styles.kycStatusText, { color: '#2E7D32' }]}>
-                      {localT('kycVerified')}
-                    </Text>
-                  </View>
+            {/* Right Columns (2x2 grid) */}
+            <View style={{ width: 228, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {/* Electrician */}
+              <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => setSearchTerm('Electrician')}>
+                <Image source={require('../../assets/images/tab bar/rashi/vendor/Electrician.jpg')} style={{ position: 'absolute', width: 150, height: 100, left: -20, borderRadius: 12 }} resizeMode="cover" />
+                <View style={styles.figmaServiceBadge}>
+                  <Ionicons name="flash-outline" size={12} color="#000" />
+                  <Text style={styles.figmaServiceBadgeText}>Electrician</Text>
                 </View>
-              ) : (
-                (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
-                  <View style={{ marginTop: SPACING.xs }}>
-                    <View style={styles.kycStatusBadge}>
-                      <View style={[
-                        styles.kycStatusDot,
-                        { 
-                          backgroundColor: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning 
-                        }
-                      ]} />
-                      <Text style={[
-                        styles.kycStatusText,
-                        { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
-                      ]}>
-                        {myVendor.kyc_status === 'rejected'
-                          ? localT('kycRejected')
-                          : myVendor.kyc_status === 'manual_review'
-                            ? localT('verificationInReview')
-                            : localT('pendingKyc')}
-                      </Text>
-                    </View>
-                  </View>
-                )
-              )}
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} style={{ marginRight: 8 }} />
-          </TouchableOpacity>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: COLORS.divider }}>
-            {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
-              <TouchableOpacity
-                style={{
-                  backgroundColor: COLORS.primary,
-                  paddingVertical: 6,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-                onPress={() => {
-                  router.push('/kyc');
-                }}
-              >
-                <Text style={{ color: COLORS.surface, fontSize: 11, fontWeight: '700' }}>
-                  {localT('verify')}
-                </Text>
               </TouchableOpacity>
-            )}
+              {/* Panditji */}
+              <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => setSearchTerm('Panditji')}>
+                <Image source={require('../../assets/images/tab bar/rashi/vendor/panditji.jpg')} style={{ position: 'absolute', width: 150, height: 100, left: -20, borderRadius: 12 }} resizeMode="cover" />
+                <View style={styles.figmaServiceBadge}>
+                  <Ionicons name="flame-outline" size={12} color="#000" />
+                  <Text style={styles.figmaServiceBadgeText}>Panditji</Text>
+                </View>
+              </TouchableOpacity>
+              {/* Carpenter */}
+              <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => setSearchTerm('Carpenter')}>
+                <Image source={require('../../assets/images/tab bar/rashi/vendor/carpener.png')} style={{ position: 'absolute', width: 150, height: 100, left: -20, borderRadius: 12 }} resizeMode="cover" />
+                <View style={styles.figmaServiceBadge}>
+                  <Ionicons name="hammer-outline" size={12} color="#000" />
+                  <Text style={styles.figmaServiceBadgeText}>Carpenter</Text>
+                </View>
+              </TouchableOpacity>
+              {/* Plumber */}
+              <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => setSearchTerm('Plumber')}>
+                <Image source={require('../../assets/images/tab bar/rashi/vendor/plumber.png')} style={{ position: 'absolute', width: 157, height: 100, left: -23, borderRadius: 12 }} resizeMode="cover" />
+                <View style={styles.figmaServiceBadge}>
+                  <Ionicons name="water-outline" size={12} color="#000" />
+                  <Text style={styles.figmaServiceBadgeText}>Plumber</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-            <TouchableOpacity
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: 'rgba(211, 47, 47, 0.1)',
+          {/* Services Header */}
+          <View style={[styles.figmaCapsuleContainer, { marginTop: 16 }]}>
+            <View style={[styles.figmaCapsule, { backgroundColor: '#FDF2E2' }]}>
+              <Text style={[styles.figmaCapsuleText, { color: '#000' }]}>Sanatani Services Around You</Text>
+            </View>
+          </View>
+
+          {/* Colorful Background Container for the Business Section */}
+          <View style={{ marginTop: 24, paddingBottom: 32, alignItems: 'center' }}>
+            <Image 
+              source={require('../../assets/images/tab bar/rashi/vendor/background.png')} 
+              style={{ position: 'absolute', width: 487, height: 364, top: 0 }} 
+              resizeMode="stretch" 
+            />
+            
+            {/* Business Header */}
+            <View style={[styles.figmaCapsuleContainer, { marginBottom: 24 }]}>
+              <View style={{
+                width: 228,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: 'rgba(255, 255, 255, 0.10)',
                 justifyContent: 'center',
                 alignItems: 'center',
-              }}
-              onPress={handleDeleteVendor}
-            >
-              <Ionicons name="trash" size={18} color={COLORS.error} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-
-      {/* Create button */}
-      {activeSection === 'Services' && !myVendor && (
-        <TouchableOpacity 
-          style={styles.registerButton}
-          onPress={() => setShowRegistrationModal(true)}
-        >
-          <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.registerText}>{localT('registerYourService')}</Text>
-        </TouchableOpacity>
-      )}
-
-      {activeSection === 'Jobs' && (
-        <TouchableOpacity
-          style={styles.registerButton}
-          onPress={() => setShowJobProfileModal(true)}
-        >
-          <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.registerText}>{myJobProfile ? localT('updateJobProfile') : localT('createJobProfile')}</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Loading State */}
-      {((activeSection === 'Services' && loading && vendors.length === 0) || (activeSection === 'Jobs' && jobsLoading && jobProfiles.length === 0)) && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      )}
-
-      {/* Listing */}
-      <FlatList
-        key={activeSection}
-        data={activeSection === 'Jobs' ? displayJobProfiles : displayVendors}
-        renderItem={activeSection === 'Jobs' ? (renderJobProfile as any) : (renderVendor as any)}
-        keyExtractor={(item: any) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
-        onScroll={onVendorScrollTabBar}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
-          />
-        }
-        ListEmptyComponent={
-          !((activeSection === 'Services' && loading) || (activeSection === 'Jobs' && jobsLoading)) ? (
-            <View style={styles.emptyState}>
-              <Ionicons name={activeSection === 'Jobs' ? 'briefcase-outline' : 'storefront-outline'} size={48} color={COLORS.textLight} />
-              <Text style={styles.emptyText}>
-                {searchTerm
-                  ? getNoItemsInAreaText(searchTerm)
-                  : (activeSection === 'Jobs' ? localT('noJobsFound') : localT('noServicesFound'))}
-              </Text>
-              {!searchTerm && (
-                <Text style={styles.emptySubtext}>
-                  {activeSection === 'Jobs' ? localT('createJobProfileSub') : localT('beFirstRegisterSub')}
-                </Text>
-              )}
+              }}>
+                <Text style={{
+                  color: '#000',
+                  textAlign: 'center',
+                  fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+                  fontSize: 12,
+                  fontStyle: 'normal',
+                  fontWeight: '600',
+                }}>Sanatani Business's Around You</Text>
+              </View>
             </View>
-          ) : null
-        }
-      />
+
+            {/* Business Grid */}
+            <View style={styles.figmaBusinessGrid}>
+              <View style={styles.figmaBusinessLeftCol}>
+                <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => setSearchTerm('General Store')}>
+                  <Image source={require('../../assets/images/tab bar/rashi/vendor/generalstore.jpg')} style={{ position: 'absolute', width: 228, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                  <View style={styles.figmaServiceBadge}>
+                    <Ionicons name="basket-outline" size={12} color="#000" />
+                    <Text style={styles.figmaServiceBadgeText}>General Store</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => setSearchTerm('Dairy')}>
+                  <Image source={require('../../assets/images/tab bar/rashi/vendor/dairy.jpg')} style={{ position: 'absolute', width: 228, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                  <View style={styles.figmaServiceBadge}>
+                    <Ionicons name="pint-outline" size={12} color="#000" />
+                    <Text style={styles.figmaServiceBadgeText}>Dairy</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.figmaBusinessRightCol}>
+                <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => setSearchTerm('Salon')}>
+                  <Image source={require('../../assets/images/tab bar/rashi/vendor/salon.png')} style={{ position: 'absolute', width: 345, height: 195, left: -119, borderRadius: 11 }} resizeMode="cover" />
+                  <View style={styles.figmaServiceBadge}>
+                    <Ionicons name="cut-outline" size={12} color="#000" />
+                    <Text style={styles.figmaServiceBadgeText}>Salon</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* My Business Section (if vendor owner) */}
+          {activeSection === 'Services' && myVendor && (
+            <View style={[styles.myBusinessCard, { marginHorizontal: 24, marginTop: 32 }]}>
+              <TouchableOpacity 
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => {
+                  router.push('/vendor/dashboard');
+                }}
+              >
+                <View style={styles.myBusinessIcon}>
+                  <Ionicons name="storefront" size={24} color={COLORS.primary} />
+                </View>
+                <View style={styles.myBusinessInfo}>
+                  <Text style={styles.myBusinessLabel}>{localT('manageMyService')}</Text>
+                  <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
+                  {hasVerifiedKyc ? (
+                    <View style={{ marginTop: SPACING.xs }}>
+                      <View style={styles.kycStatusBadge}>
+                        <Ionicons name="checkmark-circle" size={12} color="#2E7D32" style={{ marginRight: SPACING.xs }} />
+                        <Text style={[styles.kycStatusText, { color: '#2E7D32' }]}>
+                          {localT('kycVerified')}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
+                      <View style={{ marginTop: SPACING.xs }}>
+                        <View style={styles.kycStatusBadge}>
+                          <View style={[
+                            styles.kycStatusDot,
+                            { 
+                              backgroundColor: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning 
+                            }
+                          ]} />
+                          <Text style={[
+                            styles.kycStatusText,
+                            { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
+                          ]}>
+                            {myVendor.kyc_status === 'rejected'
+                              ? localT('kycRejected')
+                              : myVendor.kyc_status === 'manual_review'
+                                ? localT('verificationInReview')
+                                : localT('pendingKyc')}
+                          </Text>
+                        </View>
+                      </View>
+                    )
+                  )}
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} style={{ marginRight: 8 }} />
+              </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: COLORS.divider }}>
+                {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: COLORS.primary,
+                      paddingVertical: 6,
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                    onPress={() => {
+                      router.push('/kyc');
+                    }}
+                  >
+                    <Text style={{ color: COLORS.surface, fontSize: 11, fontWeight: '700' }}>
+                      {localT('verify')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                  onPress={handleDeleteVendor}
+                >
+                  <Ionicons name="trash" size={18} color={COLORS.error} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Create button */}
+          {activeSection === 'Services' && !myVendor && (
+            <TouchableOpacity 
+              style={[styles.registerButton, { marginHorizontal: 24, marginTop: 32 }]}
+              onPress={() => setShowRegistrationModal(true)}
+            >
+              <Ionicons name="add-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.registerText}>{localT('registerYourService')}</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      ) : (
+        <View style={{ flex: 1 }}>
+          {/* Loading State */}
+          {((activeSection === 'Services' && loading && vendors.length === 0) || (activeSection === 'Jobs' && jobsLoading && jobProfiles.length === 0)) && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
+          )}
+
+          {/* Listing */}
+          <FlatList
+            key={activeSection}
+            data={activeSection === 'Jobs' ? displayJobProfiles : displayVendors}
+            renderItem={activeSection === 'Jobs' ? (renderJobProfile as any) : (renderVendor as any)}
+            keyExtractor={(item: any) => item.id}
+            contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
+            onScroll={onVendorScrollTabBar}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={handleRefresh}
+                colors={[COLORS.primary]}
+              />
+            }
+            ListEmptyComponent={
+              !((activeSection === 'Services' && loading) || (activeSection === 'Jobs' && jobsLoading)) ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name={activeSection === 'Jobs' ? 'briefcase-outline' : 'storefront-outline'} size={48} color={COLORS.textLight} />
+                  <Text style={styles.emptyText}>
+                    {searchTerm
+                      ? getNoItemsInAreaText(searchTerm)
+                      : (activeSection === 'Jobs' ? localT('noJobsFound') : localT('noServicesFound'))}
+                  </Text>
+                  {!searchTerm && (
+                    <Text style={styles.emptySubtext}>
+                      {activeSection === 'Jobs' ? localT('createJobProfileSub') : localT('beFirstRegisterSub')}
+                    </Text>
+                  )}
+                </View>
+              ) : null
+            }
+          />
+        </View>
+      )}
 
       {/* Vendor Registration Modal */}
       <VendorRegistrationModal
@@ -1774,5 +1750,119 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
+  },
+  figmaSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 20,
+    borderRadius: 26,
+    height: 52,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  figmaSearchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
+  },
+  figmaCategoriesRow: {
+    paddingHorizontal: 24,
+    gap: 20,
+    marginBottom: 24,
+  },
+  figmaCategoryItem: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  figmaCategoryIconContainer: {
+    // Deprecated for categories, but keeping if needed elsewhere
+  },
+  figmaCategoryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#000000',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  figmaCapsuleContainer: {
+    alignItems: 'center',
+  },
+  figmaCapsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  figmaCapsuleText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  figmaServicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  figmaServiceCard: {
+    width: 110,
+    height: 100,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F26522',
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 8,
+  },
+  figmaServiceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F26522',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    gap: 4,
+  },
+  figmaServiceBadgeText: {
+    color: '#000',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    fontSize: 11,
+    fontStyle: 'normal',
+    fontWeight: '700',
+  },
+  figmaBusinessGrid: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  figmaBusinessLeftCol: {
+    width: 228,
+    justifyContent: 'space-between',
+  },
+  figmaBusinessRightCol: {
+    width: 107,
+  },
+  figmaBusinessCard: {
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#FF6B01',
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 7,
   },
 });
