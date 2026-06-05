@@ -4,20 +4,21 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Platform }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePassportStore } from '../../../src/store/passportStore';
+import withObservables from '@nozbe/with-observables';
+import { database } from '../../../src/database';
 import { Button } from '../../../src/components/Button';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 
-export default function PassportJourneyDetailScreen() {
+function PassportJourneyDetailScreen({ observedJourneys }: { observedJourneys: any[] }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const loadPassport = usePassportStore((state) => state.loadPassport);
-  const journeys = usePassportStore((state) => state.journeys);
 
   useEffect(() => {
     loadPassport();
   }, []);
 
-  const journey = useMemo(() => journeys.find((item) => item.id === id), [journeys, id]);
+  const journey = useMemo(() => observedJourneys.find((item) => item.id === id), [observedJourneys, id]);
 
   if (!journey) {
     return (
@@ -161,3 +162,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
 });
+
+const enhance = withObservables([], () => ({
+  observedJourneys: database.get('passport_journeys').query().observe(),
+}));
+
+export default enhance(PassportJourneyDetailScreen);

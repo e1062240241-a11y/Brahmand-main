@@ -9,6 +9,6 @@ export default class Chat extends Model {
   @text('sender_name') senderName: string
   @text('content') content: string
   @text('message_type') messageType: string
-  @readonly @date('created_at') createdAt: Date
-  @readonly @date('updated_at') updatedAt: Date
+  @date('created_at') createdAt: Date
+  @date('updated_at') updatedAt: Date
 }
