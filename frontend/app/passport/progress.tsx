@@ -43,9 +43,13 @@ export default function PassportProgressScreen() {
       return;
     }
     const days = parseInt(completionDays, 10) || 0;
-    await completeBook(bookName.trim(), days, new Date().toISOString().slice(0, 10));
-    await awardBadge('First Book Completion', `Completed ${bookName.trim()}`);
-    Alert.alert('Certificate created', `${bookName.trim()} has been marked complete.`);
+    const trimmedBookName = bookName.trim();
+    await completeBook(trimmedBookName, days, new Date().toISOString().slice(0, 10));
+    await awardBadge(trimmedBookName, `Completed reading ${trimmedBookName}`);
+    if (booksCompleted === 0) {
+      await awardBadge('First Book Completion', `Completed ${trimmedBookName}`);
+    }
+    Alert.alert('Certificate created', `${trimmedBookName} has been marked complete.`);
     setBookName('');
     setCompletionDays('30');
   };

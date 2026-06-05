@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   RefreshControl,
   ScrollView,
@@ -23,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { getPanchang, askAstrologyAI } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
+import { BrandedLoading } from '../src/components/BrandedLoading';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -586,10 +586,7 @@ export default function PanchangScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#9B4500']} />}
       >
         {loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator size="large" color="#9B4500" />
-            <Text style={styles.loadingText}>Fetching Cosmic Calculations...</Text>
-          </View>
+          <BrandedLoading message="Fetching Cosmic Calculations..." />
         ) : error ? (
           <Text style={styles.emptyText}>{error}</Text>
         ) : (

@@ -10,16 +10,18 @@ import {
   ImageBackground,
   Animated,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { aiChat, getChatHistory, clearChatHistory } from '../src/services/api';
 import { FONTS } from '../src/constants/theme';
+import { BrandedLoading } from '../src/components/BrandedLoading';
 import { useAuthStore } from '../src/store/authStore';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -271,6 +273,7 @@ export default function MyKrishnaChat() {
         />
 
         <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar style="light" translucent />
 
         {/* ── Header ── */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -304,15 +307,12 @@ export default function MyKrishnaChat() {
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
           {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
-            <View style={styles.loaderContainer}>
-              <ActivityIndicator color="#FFD700" size="large" />
-              <Text style={styles.loaderText}>Krishna ke vichar sun rahe hain...</Text>
-            </View>
+            <BrandedLoading message="Krishna ke vichar sun rahe hain..." />
           ) : (
             <FlatList
               ref={flatListRef}
@@ -365,6 +365,8 @@ export default function MyKrishnaChat() {
                 returnKeyType="send"
                 onSubmitEditing={handleSend}
                 editable={!historyLoading}
+                disableFullscreenUI={true}
+                textAlignVertical="top"
               />
               <Pressable
                 style={({ pressed }) => [

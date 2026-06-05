@@ -33,6 +33,12 @@ def create_jwt_token(user_id: str, sl_id: str) -> str:
 
 def decode_jwt_token(token: str) -> Dict[str, Any]:
     """Decode and validate JWT token"""
+    try:
+        with open("/Users/developer/Desktop/Brahmand-main/backend/auth_debug.log", "a") as f:
+            f.write(f"{datetime.utcnow().isoformat()} - DEBUGAUTH: decode_jwt_token received token: {repr(token)} (length: {len(token) if token else 0})\n")
+    except Exception as e:
+        logger.error(f"Failed to write auth debug log: {e}")
+    logger.warning(f"DEBUGAUTH: decode_jwt_token received token: {repr(token)} (length: {len(token) if token else 0})")
     current_secret = settings.JWT_SECRET
     legacy_default_secret = 'sanatan-lok-secret-key-2025-v2'
     candidate_secrets = [current_secret]

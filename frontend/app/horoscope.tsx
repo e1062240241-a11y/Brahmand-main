@@ -1,7 +1,6 @@
 // accessibility: placeholder
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
-  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +19,7 @@ import { Image as ExpoImage } from 'expo-image';
 
 import { getDailyHoroscope } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
+import { BrandedLoading } from '../src/components/BrandedLoading';
 
 import { useAuthStore } from '../src/store/authStore';
 
@@ -41,8 +41,8 @@ const ZODIAC_SIGNS = [
 ];
 
 const PREDICTION_SECTIONS = [
-  { label: 'PERSONAL LIFE', keys: ['fiance', 'personal_life', 'personal'], icon: require('../assets/images/tab bar/rashi/Person-Fill Streamline Phosphor-Fill.png'), fallback: 'Something feels slightly tense in your interactions today. Small adjustments in tone and timing can help you avoid unnecessary friction.' },
-  { label: 'PROFESSION', keys: ['love', 'profession', 'career'], icon: require('../assets/images/tab bar/rashi/Briefcase-Fill Streamline Phosphor-Fill.png'), fallback: 'Work matters feel more demanding as expectations rise. Focus on clear priorities and give your actions structure.' },
+  { label: 'PERSONAL LIFE', keys: ['fiance', 'personal_life', 'personal'], icon: require('../assets/images/tab bar/rashi/Person-Fill Streamline Phosphor-Fill.png'), fallback: 'Something feels slightly tense in your interactions today, and you can sense it without anyone saying it directly. You may expect others to respond quickly or clearly, yet their pace feels slower than yours. That gap can create irritation if left unchecked. Instead of reacting fast, pause and observe what is actually being said. Small adjustments in tone and timing can help you avoid unnecessary friction during the day today.' },
+  { label: 'PROFESSION', keys: ['love', 'profession', 'career'], icon: require('../assets/images/tab bar/rashi/Briefcase-Fill Streamline Phosphor-Fill.png'), fallback: 'Work matters feel more demanding as expectations rise and responses feel sharper than usual. With the Moon in Capricorn in your tenth house squaring Mars in Aries, you may feel pushed to prove something quickly. But rushing decisions can lead to missteps. Focus on clear priorities and give your actions structure. When you slow your reactions, your authority comes through stronger and people take you more seriously over time now.' },
   { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/tab bar/rashi/heart.png'), fallback: 'Pay attention to how you breathe. Slowing down will calm your system faster than forcing yourself to relax.' },
   { label: 'EMOTIONS', keys: ['overall', 'emotion', 'emotions'], icon: require('../assets/images/tab bar/rashi/Smiley-Melting-Fill Streamline Phosphor-Fill.png'), fallback: 'You are reacting faster than you are processing. Give yourself space before responding, even in small conversations.' },
   { label: 'TRAVEL', keys: ['travel'], icon: require('../assets/images/tab bar/rashi/Trolley-Suitcase-Fill Streamline Phosphor-Fill.png'), fallback: 'If you have plans to move, keep them simple and leave room for delays or changes. Staying flexible will make the experience smoother.' },
@@ -111,11 +111,7 @@ export default function HoroscopeScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
-        <LinearGradient colors={['#FFAD7E', '#FFCCAB', '#FFFFFF']} style={StyleSheet.absoluteFill} />
-        <ActivityIndicator size="large" color="#FF6B00" />
-        <Text style={styles.loaderText}>Consulting the heavens...</Text>
-      </View>
+      <BrandedLoading message="Consulting the heavens..." />
     );
   }
 
@@ -248,10 +244,7 @@ export default function HoroscopeScreen() {
           </View>
 
           {loading ? (
-            <View style={styles.loaderInline}>
-              <ActivityIndicator size="large" color="#FFF" />
-              <Text style={styles.loaderText}>Consulting the heavens...</Text>
-            </View>
+            <BrandedLoading message="Consulting the heavens..." />
           ) : error ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle-outline" size={48} color="#FFF" />
@@ -353,6 +346,15 @@ export default function HoroscopeScreen() {
                 // Fallback text if backend doesn't provide it
                 if (!text) {
                   text = section.fallback;
+                }
+
+                // Explicit override for Aries page as requested
+                if (selectedZodiac.id === 'aries') {
+                  if (section.label === 'PERSONAL LIFE') {
+                    text = 'Something feels slightly tense in your interactions today, and you can sense it without anyone saying it directly. You may expect others to respond quickly or clearly, yet their pace feels slower than yours. That gap can create irritation if left unchecked. Instead of reacting fast, pause and observe what is actually being said. Small adjustments in tone and timing can help you avoid unnecessary friction during the day today.';
+                  } else if (section.label === 'PROFESSION') {
+                    text = 'Work matters feel more demanding as expectations rise and responses feel sharper than usual. With the Moon in Capricorn in your tenth house squaring Mars in Aries, you may feel pushed to prove something quickly. But rushing decisions can lead to missteps. Focus on clear priorities and give your actions structure. When you slow your reactions, your authority comes through stronger and people take you more seriously over time now.';
+                  }
                 }
 
                 return (
@@ -627,7 +629,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   predictionSectionLabel: { fontSize: 12, fontWeight: '800', color: '#F47B3E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  predictionSectionText: { fontSize: 13, color: '#444', lineHeight: 20, fontWeight: '500' },
+  predictionSectionText: { fontSize: 16, color: '#000', lineHeight: 24, fontWeight: '500' },
   content: { paddingHorizontal: 20, marginTop: 16 },
   predictionCard: {
     borderRadius: 24,
