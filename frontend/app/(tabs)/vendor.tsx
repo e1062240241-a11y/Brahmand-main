@@ -954,7 +954,7 @@ export default function VendorScreen() {
       style={styles.container}
     >
       {/* Top Search Bar (Figma Design) */}
-      <View style={styles.figmaSearchContainer}>
+      <View style={[styles.figmaSearchContainer, { marginTop: insets.top > 0 ? insets.top + 16 : 28 }]}>
         <Ionicons name="search" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
         <TextInput
           ref={searchInputRef}
@@ -1143,7 +1143,7 @@ export default function VendorScreen() {
             />
             
             {/* Business Header */}
-            <View style={[styles.figmaCapsuleContainer, { marginBottom: 24 }]}>
+            <View style={[styles.figmaCapsuleContainer, { marginTop: 24, marginBottom: 24 }]}>
               <View style={styles.figmaBusinessCapsule}>
                 <Text 
                   numberOfLines={1}
@@ -1217,7 +1217,7 @@ export default function VendorScreen() {
 
           {/* My Business Section (if vendor owner) */}
           {activeSection === 'Services' && myVendor && (
-            <View style={[styles.myBusinessCard, { marginHorizontal: 24, marginTop: 32 }]}>
+            <View style={[styles.myBusinessCard, { marginHorizontal: 24, marginTop: 56 }]}>
               <TouchableOpacity 
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                 onPress={() => {
@@ -1308,7 +1308,7 @@ export default function VendorScreen() {
           {/* Create button */}
           {activeSection === 'Services' && !myVendor && (
             <TouchableOpacity 
-              style={[styles.registerButton, { marginHorizontal: 24, marginTop: 32 }]}
+              style={[styles.registerButton, { marginHorizontal: 24, marginTop: 56 }]}
               onPress={() => setShowRegistrationModal(true)}
             >
               <Ionicons name="add-circle" size={20} color={COLORS.primary} />
