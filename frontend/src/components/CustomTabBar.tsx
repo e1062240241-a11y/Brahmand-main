@@ -8,7 +8,7 @@ import { Svg, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 
 const ACTIVE_ORANGE = '#FF8A00';
-const INACTIVE_COLOR = '#FFF';
+const INACTIVE_COLOR = '#8A8A8F';
 const CAPSULE_BG = '#1C1C1C';
 const BORDER_COLOR = '#CECECE';
 
@@ -22,13 +22,13 @@ const TAB_META: Record<string, { label: string; activeIcon: string; inactiveIcon
   },
   messages: {
     label: 'Community',
-    activeIcon: 'community',
-    inactiveIcon: 'community',
+    activeIcon: 'people',
+    inactiveIcon: 'people-outline',
   },
   vendor: {
     label: 'Service',
-    activeIcon: 'service',
-    inactiveIcon: 'service',
+    activeIcon: 'accessibility',
+    inactiveIcon: 'accessibility-outline',
   },
   jaap: {
     label: 'Temple',
@@ -37,8 +37,8 @@ const TAB_META: Record<string, { label: string; activeIcon: string; inactiveIcon
   },
   profile: {
     label: 'Profile',
-    activeIcon: 'profile',
-    inactiveIcon: 'profile',
+    activeIcon: 'person',
+    inactiveIcon: 'person-outline',
   },
 };
 
@@ -134,38 +134,6 @@ const getPath = (activeIndex: number): string => {
   return buildPath(X1, X2, singleBridgeX);
 };
 
-interface CapsuleDef {
-  left: number;
-  width: number;
-  isFocused: boolean;
-}
-
-const getCapsules = (activeIndex: number): CapsuleDef[] => {
-  const capsules: CapsuleDef[] = [];
-  
-  if (activeIndex === 0) {
-    capsules.push({ left: 0, width: 126, isFocused: true });
-    capsules.push({ left: 132, width: 241, isFocused: false });
-  } else if (activeIndex === 1) {
-    capsules.push({ left: 0, width: 68, isFocused: false });
-    capsules.push({ left: 74, width: 126, isFocused: true });
-    capsules.push({ left: 206, width: 167, isFocused: false });
-  } else if (activeIndex === 2) {
-    capsules.push({ left: 0, width: 132.5, isFocused: false });
-    capsules.push({ left: 138.5, width: 100, isFocused: true });
-    capsules.push({ left: 244.5, width: 128.5, isFocused: false });
-  } else if (activeIndex === 3) {
-    capsules.push({ left: 0, width: 161, isFocused: false });
-    capsules.push({ left: 167, width: 104, isFocused: true });
-    capsules.push({ left: 277, width: 96, isFocused: false });
-  } else if (activeIndex === 4) {
-    capsules.push({ left: 0, width: 241, isFocused: false });
-    capsules.push({ left: 247, width: 126, isFocused: true });
-  }
-  
-  return capsules;
-};
-
 export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { tabBarTranslateY } = useTabBar();
@@ -195,40 +163,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   };
 
   const renderTabIcon = (routeName: string, focused: boolean) => {
-    if (routeName === 'vendor') {
-      return (
-        <Image
-          source={focused ? require('../../assets/images/tab bar/service.png') : require('../../assets/images/tab bar/ser.png')}
-          style={styles.jaapIcon}
-          contentFit="contain"
-          tintColor={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
-        />
-      );
-    }
     if (routeName === 'jaap') {
       return (
         <Image
-          source={focused ? require('../../assets/images/tab bar/temple.png') : require('../../assets/images/tab bar/temp.png')}
-          style={styles.jaapIcon}
-          contentFit="contain"
-          tintColor={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
-        />
-      );
-    }
-    if (routeName === 'messages') {
-      return (
-        <Image
-          source={focused ? require('../../assets/images/tab bar/community.png') : require('../../assets/images/tab bar/comunity2.png')}
-          style={styles.jaapIcon}
-          contentFit="contain"
-          tintColor={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
-        />
-      );
-    }
-    if (routeName === 'profile') {
-      return (
-        <Image
-          source={focused ? require('../../assets/images/tab bar/profile.png') : require('../../assets/images/tab bar/profile2.png')}
+          source={focused ? require('../../assets/images/tab bar/temp.png') : require('../../assets/images/tab bar/temple.png')}
           style={styles.jaapIcon}
           contentFit="contain"
           tintColor={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
@@ -240,18 +178,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
     return (
       <Ionicons
         name={iconName}
-        size={24}
+        size={22}
         color={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
-        style={[
-          focused ? styles.activeIconGlow : null,
-          { 
-            width: 35, 
-            height: 26, 
-            aspectRatio: 35/26, 
-            textAlign: 'center', 
-            alignSelf: 'center'
-          }
-        ]}
+        style={focused ? styles.activeIconGlow : null}
       />
     );
   };
@@ -276,22 +205,15 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   return (
     <Animated.View style={[styles.outerContainer, { bottom: insets.bottom > 0 ? insets.bottom : 15 }, animatedStyle]}>
       <View style={styles.tabBarContainer}>
-        {/* Separate Floating Capsules */}
-        {getCapsules(activeIndex).map((cap, idx) => (
-          <View
-            key={idx}
-            style={{
-              position: 'absolute',
-              left: cap.left,
-              width: cap.width,
-              height: 69,
-              backgroundColor: CAPSULE_BG,
-              borderColor: BORDER_COLOR,
-              borderWidth: 1.5,
-              borderRadius: 34.5,
-            }}
+        {/* Dynamic Connected SVG Background */}
+        <Svg width={373} height={69} viewBox="0 0 373 69" style={styles.svgBackground}>
+          <Path
+            d={getPath(activeIndex)}
+            fill={CAPSULE_BG}
+            stroke={BORDER_COLOR}
+            strokeWidth={1.5}
           />
-        ))}
+        </Svg>
 
         {/* Dynamic Slotted Tab Items */}
         {visibleRoutes.map((route: any, index: number) => {
@@ -389,8 +311,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
   jaapIcon: {
-    width: 35,
-    height: 26,
-    aspectRatio: 35/26,
+    width: 22,
+    height: 22,
   },
 });
