@@ -361,6 +361,10 @@ export default function HoroscopeScreen() {
                     text = 'Something feels slightly tense in your interactions today, and you can sense it without anyone saying it directly. You may expect others to respond quickly or clearly, yet their pace feels slower than yours. That gap can create irritation if left unchecked. Instead of reacting fast, pause and observe what is actually being said. Small adjustments in tone and timing can help you avoid unnecessary friction during the day today.';
                   } else if (section.label === 'PROFESSION') {
                     text = 'Work matters feel more demanding as expectations rise and responses feel sharper than usual. With the Moon in Capricorn in your tenth house squaring Mars in Aries, you may feel pushed to prove something quickly. But rushing decisions can lead to missteps. Focus on clear priorities and give your actions structure. When you slow your reactions, your authority comes through stronger and people take you more seriously over time now.';
+                  } else if (section.label === 'HEALTH') {
+                    text = 'That push to stay on top of everything can show up in your body as tightness or restlessness. You might notice tension in your shoulders or a tendency to rush through meals or routines. Slow your pace where you can. Even short breaks help reset your system. Pay attention to how you breathe, because steady breathing will calm your system faster than forcing yourself to relax in moments like this.';
+                  } else if (section.label === 'EMOTIONS') {
+                    text = 'You are reacting faster than you are processing, and that creates inner pressure. Give yourself space before responding, even in small conversations. When you allow a gap between feeling and action, your emotional clarity improves and you stop carrying tension from one situation into another.';
                   }
                 }
 
