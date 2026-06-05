@@ -1,7 +1,6 @@
 // accessibility: placeholder
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
-  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +19,7 @@ import { Image as ExpoImage } from 'expo-image';
 
 import { getDailyHoroscope } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
+import { BrandedLoading } from '../src/components/BrandedLoading';
 
 import { useAuthStore } from '../src/store/authStore';
 
@@ -111,11 +111,7 @@ export default function HoroscopeScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
-        <LinearGradient colors={['#FFAD7E', '#FFCCAB', '#FFFFFF']} style={StyleSheet.absoluteFill} />
-        <ActivityIndicator size="large" color="#FF6B00" />
-        <Text style={styles.loaderText}>Consulting the heavens...</Text>
-      </View>
+      <BrandedLoading message="Consulting the heavens..." />
     );
   }
 
@@ -248,10 +244,7 @@ export default function HoroscopeScreen() {
           </View>
 
           {loading ? (
-            <View style={styles.loaderInline}>
-              <ActivityIndicator size="large" color="#FFF" />
-              <Text style={styles.loaderText}>Consulting the heavens...</Text>
-            </View>
+            <BrandedLoading message="Consulting the heavens..." />
           ) : error ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle-outline" size={48} color="#FFF" />
