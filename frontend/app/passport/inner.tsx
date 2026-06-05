@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
@@ -113,7 +114,7 @@ export default function PassportInnerScreen() {
               <Text style={[styles.fieldValue, { fontSize: 12, marginBottom: 8 }]}>Z6477975</Text>
 
               <View style={styles.photoContainer}>
-                <Image source={{ uri: userPhoto }} style={styles.photo} />
+                <Image source={{ uri: userPhoto }} style={styles.photo} contentFit="cover" />
               </View>
 
               <View style={styles.signatureContainer}>

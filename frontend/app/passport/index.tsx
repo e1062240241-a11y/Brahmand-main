@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
+import { useAuthStore } from '../../src/store/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -11,6 +13,7 @@ const { width: windowWidth } = Dimensions.get('window');
 export default function PassportCoverScreen() {
   const router = useRouter();
   const loadPassport = usePassportStore((state) => state.loadPassport);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     loadPassport();
@@ -28,7 +31,8 @@ export default function PassportCoverScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       {/* Background Peach to Cream Gradient */}
       <LinearGradient 
-        colors={['#FFB085', '#FFF7F2', '#FFFDFB']} 
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+        locations={[0, 0.0913, 0.25]}
         style={StyleSheet.absoluteFillObject}
       />
       
@@ -38,7 +42,6 @@ export default function PassportCoverScreen() {
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>BRAHMAND PASSPORT</Text>
-        <View style={styles.headerRightPlaceholder} />
       </View>
 
       {/* Main Content Area */}
@@ -51,11 +54,13 @@ export default function PassportCoverScreen() {
           <Image 
             source={require('../../assets/images/pass.png')}
             style={styles.passportImage}
-            resizeMode="contain"
+            contentFit="contain"
           />
+          <View style={styles.textOverlay}>
+            <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
+            <Text style={styles.subText}>Your Sanatani Passport</Text>
+          </View>
         </TouchableOpacity>
-        
-        <Text style={styles.helperText}>Tap cover to view stamps</Text>
       </View>
     </SafeAreaView>
   );
@@ -66,36 +71,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    height: 56,
+    paddingTop: 10,
+    paddingBottom: 20,
+    alignItems: 'center',
   },
   backButton: {
+    position: 'absolute',
+    left: 16,
+    top: 10,
     padding: 8,
-    marginLeft: -8,
+    zIndex: 10,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    marginTop: 40,
+    fontSize: 20,
+    fontWeight: '700',
     color: '#000',
-    letterSpacing: 0.5,
     textAlign: 'center',
-  },
-  headerRightPlaceholder: {
-    width: 40,
   },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 40,
+    paddingBottom: 160,
   },
   cardContainer: {
-    width: windowWidth * 0.8,
-    maxWidth: 320,
-    aspectRatio: 0.72,
+    width: 287,
+    height: 364,
+    aspectRatio: 41 / 52,
     borderRadius: 20,
     backgroundColor: 'transparent',
     shadowColor: '#000',
@@ -104,11 +108,30 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 12,
     marginBottom: 24,
+    alignItems: 'center',
   },
   passportImage: {
     width: '100%',
     height: '100%',
     borderRadius: 20,
+    position: 'absolute',
+  },
+  textOverlay: {
+    position: 'absolute',
+    bottom: 50,
+    alignItems: 'center',
+    width: '100%',
+  },
+  userName: {
+    color: '#FED274',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  subText: {
+    color: '#FED274',
+    fontSize: 10,
+    fontWeight: '600',
   },
   helperText: {
     fontSize: 14,

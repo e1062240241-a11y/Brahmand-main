@@ -5,7 +5,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   Image,
   Dimensions,
@@ -18,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
+import { BrandedLoading } from '../src/components/BrandedLoading';
 
 const CARD_COLORS = [
   '#FFE082', // Yellow
@@ -133,9 +133,7 @@ const FestivalPage = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
-      </View>
+      <BrandedLoading />
     );
   }
 
