@@ -159,22 +159,29 @@ export default function PassportTimelineScreen() {
               {badges.map((badge) => (
                 <TouchableOpacity 
                   key={badge.id} 
-                  style={styles.badgeItem}
+                  style={[styles.badgeItem, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                   activeOpacity={0.8}
                   onPress={() => router.push({
                     pathname: '/passport/badge',
                     params: { badgeTitle: badge.title }
                   } as any)}
                 >
-                  <View style={styles.badgeHeader}>
-                    <Text style={styles.badgeName}>{badge.title}</Text>
-                    {badge.count && badge.count > 1 && (
-                      <View style={styles.badgeCountBadge}>
-                        <Text style={styles.badgeCountText}>x{badge.count}</Text>
-                      </View>
-                    )}
+                  <View style={{ flex: 1, paddingRight: 16 }}>
+                    <View style={styles.badgeHeader}>
+                      <Text style={styles.badgeName}>{badge.title}</Text>
+                      {badge.count && badge.count > 1 && (
+                        <View style={styles.badgeCountBadge}>
+                          <Text style={styles.badgeCountText}>x{badge.count}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.badgeDesc}>{badge.description}</Text>
                   </View>
-                  <Text style={styles.badgeDesc}>{badge.description}</Text>
+                  <Image 
+                    source={require('../../assets/images/gita_badge.png')}
+                    style={{ width: 64, height: 64 }}
+                    contentFit="contain"
+                  />
                 </TouchableOpacity>
               ))}
             </View>
@@ -210,27 +217,11 @@ export default function PassportTimelineScreen() {
           
           {/* Certificate Illustration */}
           <View style={styles.illustrationWrapper}>
-            <View style={styles.illustrationRosette}>
-              {/* Laurel Leaves left */}
-              <View style={styles.laurelLeft}>
-                <Ionicons name="leaf-outline" size={12} color="#FF6F00" />
-                <Ionicons name="leaf-outline" size={12} color="#FF6F00" style={{ transform: [{ scaleX: -1 }] }} />
-              </View>
-              
-              {/* Mini Document */}
-              <View style={styles.miniDoc}>
-                <View style={styles.miniDocLine} />
-                <View style={styles.miniDocLine} />
-                <View style={[styles.miniDocLine, { width: '60%' }]} />
-                <View style={styles.miniDocBadge} />
-              </View>
-              
-              {/* Laurel Leaves right */}
-              <View style={styles.laurelRight}>
-                <Ionicons name="leaf-outline" size={12} color="#FF6F00" style={{ transform: [{ scaleX: -1 }] }} />
-                <Ionicons name="leaf-outline" size={12} color="#FF6F00" />
-              </View>
-            </View>
+            <Image 
+              source={require('../../assets/images/certificate.png')}
+              style={{ width: 120, height: 120 }}
+              contentFit="contain"
+            />
           </View>
         </View>
 
@@ -448,8 +439,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   illustrationWrapper: {
-    width: 90,
-    height: 90,
+    width: 120,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 16,

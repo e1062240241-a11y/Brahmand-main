@@ -4,13 +4,13 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  Image, 
   Dimensions, 
   FlatList, 
   Modal, 
   Platform,
   Alert 
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { usePassportStore } from '../../../src/store/passportStore';
@@ -159,7 +159,7 @@ export default function PassportBadgeScreen() {
           <Image 
             source={require('../../../assets/images/PhotoshopPreview_Image 1.png')} 
             style={styles.gitaBadgeImage} 
-            resizeMode="contain"
+            contentFit="contain"
           />
         ) : (
           <View style={styles.medalOuter}>
@@ -171,7 +171,7 @@ export default function PassportBadgeScreen() {
               <Image 
                 source={getBadgeImage(item.title)} 
                 style={styles.medalImage} 
-                resizeMode="cover"
+                contentFit="cover"
               />
             </View>
             

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Share, Dimensions, Modal, Pressable, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Share, Dimensions, Modal, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../../src/store/authStore';
@@ -72,22 +73,16 @@ export default function CertificateDetailScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Certificate Frame Card */}
         <View style={styles.certCard}>
-          <ImageBackground
-            source={require('../../../assets/images/CC.png')}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-          >
+          <View style={styles.certCardInner}>
+            <Image
+              source={require('../../../assets/images/gita_cert.png')}
+              style={[styles.backgroundImage, StyleSheet.absoluteFillObject]}
+              contentFit="cover"
+            />
             {/* Dynamic Name Overlay (covers the letter "S" or custom cert name field) */}
             <View style={styles.nameOverlay}>
               <Text style={styles.nameText} numberOfLines={1} adjustsFontSizeToFit>
                 {user?.name || 'SMINIL SHARAD LONDHE'}
-              </Text>
-            </View>
-
-            {/* Dynamic Book Title Overlay (covers the book name field) */}
-            <View style={styles.bookOverlay}>
-              <Text style={styles.bookText} numberOfLines={1} adjustsFontSizeToFit>
-                {certificate.book_name.toUpperCase()}
               </Text>
             </View>
 
@@ -97,7 +92,7 @@ export default function CertificateDetailScreen() {
                 {formattedDate}
               </Text>
             </View>
-          </ImageBackground>
+          </View>
         </View>
       </ScrollView>
 
@@ -162,7 +157,7 @@ const styles = StyleSheet.create({
   certCard: {
     width: windowWidth * 0.92,
     maxWidth: 380,
-    aspectRatio: 1024 / 1792, // Standard DALL-E vertical aspect ratio (0.5714)
+    aspectRatio: 853 / 1844,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -171,6 +166,10 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
     backgroundColor: '#FAF5EC',
+  },
+  certCardInner: {
+    width: '100%',
+    height: '100%',
   },
   backgroundImage: {
     width: '100%',
@@ -185,29 +184,12 @@ const styles = StyleSheet.create({
   },
   nameText: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     fontStyle: 'italic',
     color: '#0D2C59',
-    backgroundColor: '#FAF5EC', // Blends with warm certificate parchment color
+    backgroundColor: 'transparent',
     paddingHorizontal: 16,
-    textAlign: 'center',
-  },
-  bookOverlay: {
-    position: 'absolute',
-    top: '40.8%', // Centered on the book name line
-    left: '5%',
-    right: '5%',
-    alignItems: 'center',
-  },
-  bookText: {
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#0D2C59',
-    letterSpacing: 0.8,
-    backgroundColor: '#FAF5EC',
-    paddingHorizontal: 12,
     textAlign: 'center',
   },
   dateOverlay: {
@@ -221,7 +203,7 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     fontWeight: '700',
     color: '#0D2C59',
-    backgroundColor: '#FAF5EC',
+    backgroundColor: 'transparent',
     paddingHorizontal: 2,
     textAlign: 'center',
   },

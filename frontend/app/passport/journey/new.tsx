@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Platform, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Platform, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -156,7 +157,7 @@ export default function NewPassportJourneyScreen() {
           <View style={styles.mediaPreviewRow}>
             {media.map((item) => (
               <View key={item.id} style={styles.mediaPreview}>
-                <Image source={{ uri: item.uri }} style={styles.mediaImage} />
+                <Image source={{ uri: item.uri }} style={styles.mediaImage} contentFit="cover" />
                 <Text style={styles.mediaLabel}>{item.type === 'photo' ? 'Photo' : 'Video'}</Text>
               </View>
             ))}
