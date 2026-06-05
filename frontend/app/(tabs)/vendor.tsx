@@ -1858,7 +1858,7 @@ const styles = StyleSheet.create({
   },
   figmaCategoriesRow: {
     paddingHorizontal: 24,
-    gap: 20,
+    gap: 40,
     marginBottom: 24,
   },
   figmaCategoryItem: {
