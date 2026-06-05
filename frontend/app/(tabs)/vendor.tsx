@@ -1003,9 +1003,15 @@ export default function VendorScreen() {
 
           {/* KYC Banner */}
           <View style={styles.figmaCapsuleContainer}>
-            <View style={[styles.figmaCapsule, { backgroundColor: '#FDF2E2' }]}>
-              <Text style={[styles.figmaCapsuleText, { color: '#000', marginRight: 6 }]}>All vendors are KYC verified.</Text>
-              <Ionicons name="shield-checkmark" size={14} color="#F26522" />
+            <View style={styles.figmaKycCapsule}>
+              <Text 
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={styles.figmaKycCapsuleText}
+              >
+                All vendors are KYC verified.
+              </Text>
+              <Ionicons name="checkmark-circle" size={14} color="#F26522" />
             </View>
           </View>
 
@@ -1019,12 +1025,22 @@ export default function VendorScreen() {
               {/* Manual crop offset for landscape Astrologer image */}
               <Image 
                 source={require('../../assets/images/tab bar/rashi/vendor/Astrologer.jpg')} 
-                style={{ position: 'absolute', width: 331, height: 208, left: -110, borderRadius: 12 }} 
+                style={{ position: 'absolute', width: 331, height: 210, left: -110, top: -1, borderRadius: 11 }} 
                 resizeMode="cover" 
               />
               <View style={styles.figmaServiceBadge}>
-                <Ionicons name="notifications-outline" size={12} color="#000" />
-                <Text style={styles.figmaServiceBadgeText}>Astrologer</Text>
+                <Image 
+                  source={require('../../assets/images/tab bar/rashi/vendor/siren.png')} 
+                  style={{ width: 12, height: 12, marginRight: 2 }} 
+                  resizeMode="contain"
+                />
+                <Text 
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={styles.figmaServiceBadgeText}
+                >
+                  Astrologer
+                </Text>
               </View>
             </TouchableOpacity>
 
@@ -1032,34 +1048,74 @@ export default function VendorScreen() {
             <View style={{ width: 228, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {/* Electrician */}
               <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => setSearchTerm('Electrician')}>
-                <Image source={require('../../assets/images/tab bar/rashi/vendor/Electrician.jpg')} style={{ position: 'absolute', width: 150, height: 100, left: -20, borderRadius: 12 }} resizeMode="cover" />
+                <Image source={require('../../assets/images/tab bar/rashi/vendor/Electrician.jpg')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
                 <View style={styles.figmaServiceBadge}>
-                  <Ionicons name="flash-outline" size={12} color="#000" />
-                  <Text style={styles.figmaServiceBadgeText}>Electrician</Text>
+                  <Image 
+                    source={require('../../assets/images/tab bar/rashi/vendor/lightning.png')} 
+                    style={{ width: 12, height: 12, marginRight: 2 }} 
+                    resizeMode="contain"
+                  />
+                  <Text 
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.figmaServiceBadgeText}
+                  >
+                    Electrician
+                  </Text>
                 </View>
               </TouchableOpacity>
               {/* Panditji */}
               <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => setSearchTerm('Panditji')}>
-                <Image source={require('../../assets/images/tab bar/rashi/vendor/panditji.jpg')} style={{ position: 'absolute', width: 150, height: 100, left: -20, borderRadius: 12 }} resizeMode="cover" />
+                <Image source={require('../../assets/images/tab bar/rashi/vendor/panditji.jpg')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
                 <View style={styles.figmaServiceBadge}>
-                  <Ionicons name="flame-outline" size={12} color="#000" />
-                  <Text style={styles.figmaServiceBadgeText}>Panditji</Text>
+                  <Image 
+                    source={require('../../assets/images/tab bar/rashi/vendor/panditji_icon.png')} 
+                    style={{ width: 12, height: 12, marginRight: 2 }} 
+                    resizeMode="contain"
+                  />
+                  <Text 
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.figmaServiceBadgeText}
+                  >
+                    Panditji
+                  </Text>
                 </View>
               </TouchableOpacity>
               {/* Carpenter */}
               <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => setSearchTerm('Carpenter')}>
-                <Image source={require('../../assets/images/tab bar/rashi/vendor/carpener.png')} style={{ position: 'absolute', width: 150, height: 100, left: -20, borderRadius: 12 }} resizeMode="cover" />
+                <Image source={require('../../assets/images/tab bar/rashi/vendor/carpener.png')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
                 <View style={styles.figmaServiceBadge}>
-                  <Ionicons name="hammer-outline" size={12} color="#000" />
-                  <Text style={styles.figmaServiceBadgeText}>Carpenter</Text>
+                  <Image 
+                    source={require('../../assets/images/tab bar/rashi/vendor/hammer_custom.png')} 
+                    style={{ width: 12, height: 12, marginRight: 2 }} 
+                    resizeMode="contain"
+                />
+                  <Text 
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.figmaServiceBadgeText}
+                  >
+                    Carpenter
+                  </Text>
                 </View>
               </TouchableOpacity>
               {/* Plumber */}
               <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => setSearchTerm('Plumber')}>
-                <Image source={require('../../assets/images/tab bar/rashi/vendor/plumber.png')} style={{ position: 'absolute', width: 157, height: 100, left: -23, borderRadius: 12 }} resizeMode="cover" />
+                <Image source={require('../../assets/images/tab bar/rashi/vendor/plumber.png')} style={{ position: 'absolute', width: 157, height: 102, left: -23, top: -1, borderRadius: 11 }} resizeMode="cover" />
                 <View style={styles.figmaServiceBadge}>
-                  <Ionicons name="water-outline" size={12} color="#000" />
-                  <Text style={styles.figmaServiceBadgeText}>Plumber</Text>
+                  <Image 
+                    source={require('../../assets/images/tab bar/rashi/vendor/plumber_icon.png')} 
+                    style={{ width: 12, height: 12, marginRight: 2 }} 
+                    resizeMode="contain"
+                  />
+                  <Text 
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.figmaServiceBadgeText}
+                  >
+                    Plumber
+                  </Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -1067,8 +1123,14 @@ export default function VendorScreen() {
 
           {/* Services Header */}
           <View style={[styles.figmaCapsuleContainer, { marginTop: 16 }]}>
-            <View style={[styles.figmaCapsule, { backgroundColor: '#FDF2E2' }]}>
-              <Text style={[styles.figmaCapsuleText, { color: '#000' }]}>Sanatani Services Around You</Text>
+            <View style={styles.figmaServicesCapsule}>
+              <Text 
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={styles.figmaServicesCapsuleText}
+              >
+                Sanatani Services Around You
+              </Text>
             </View>
           </View>
 
@@ -1082,22 +1144,14 @@ export default function VendorScreen() {
             
             {/* Business Header */}
             <View style={[styles.figmaCapsuleContainer, { marginBottom: 24 }]}>
-              <View style={{
-                width: 228,
-                height: 24,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.10)',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-                <Text style={{
-                  color: '#000',
-                  textAlign: 'center',
-                  fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-                  fontSize: 12,
-                  fontStyle: 'normal',
-                  fontWeight: '600',
-                }}>Sanatani Business's Around You</Text>
+              <View style={styles.figmaBusinessCapsule}>
+                <Text 
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={styles.figmaBusinessCapsuleText}
+                >
+                  Sanatani Business’s Around You
+                </Text>
               </View>
             </View>
 
@@ -1107,24 +1161,54 @@ export default function VendorScreen() {
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => setSearchTerm('General Store')}>
                   <Image source={require('../../assets/images/tab bar/rashi/vendor/generalstore.jpg')} style={{ position: 'absolute', width: 228, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons name="basket-outline" size={12} color="#000" />
-                    <Text style={styles.figmaServiceBadgeText}>General Store</Text>
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/general_store.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
+                    />
+                    <Text 
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={styles.figmaServiceBadgeText}
+                    >
+                      General Store
+                    </Text>
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => setSearchTerm('Dairy')}>
                   <Image source={require('../../assets/images/tab bar/rashi/vendor/dairy.jpg')} style={{ position: 'absolute', width: 228, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons name="pint-outline" size={12} color="#000" />
-                    <Text style={styles.figmaServiceBadgeText}>Dairy</Text>
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/cow.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
+                    />
+                    <Text 
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={styles.figmaServiceBadgeText}
+                    >
+                      Dairy
+                    </Text>
                   </View>
                 </TouchableOpacity>
               </View>
               <View style={styles.figmaBusinessRightCol}>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => setSearchTerm('Salon')}>
-                  <Image source={require('../../assets/images/tab bar/rashi/vendor/salon.png')} style={{ position: 'absolute', width: 345, height: 195, left: -119, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab bar/rashi/vendor/salon.png')} style={{ position: 'absolute', width: 345, height: 197, left: -119, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons name="cut-outline" size={12} color="#000" />
-                    <Text style={styles.figmaServiceBadgeText}>Salon</Text>
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/salon_icon.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
+                    />
+                    <Text 
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={styles.figmaServiceBadgeText}
+                    >
+                      Salon
+                    </Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -1806,6 +1890,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  figmaBusinessCapsule: {
+    width: 228,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF1A',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  figmaBusinessCapsuleText: {
+    color: '#000000',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 12,
+    fontStyle: 'normal',
+    fontWeight: '600',
+  },
+  figmaServicesCapsule: {
+    width: 218,
+    height: 24,
+    borderRadius: 13.5,
+    backgroundColor: '#FFFFFF1A',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  figmaServicesCapsuleText: {
+    color: '#000000',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 12,
+    fontStyle: 'normal',
+    fontWeight: '600',
+  },
+  figmaKycCapsule: {
+    height: 24,
+    borderRadius: 13.5,
+    backgroundColor: '#FFFFFF1A',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+  },
+  figmaKycCapsuleText: {
+    color: '#000000',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 12,
+    fontStyle: 'normal',
+    fontWeight: '600',
+    marginRight: 6,
+  },
   figmaServicesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1816,7 +1956,7 @@ const styles = StyleSheet.create({
   figmaServiceCard: {
     width: 110,
     height: 100,
-    borderRadius: 12,
+    borderRadius: 11,
     borderWidth: 1,
     borderColor: '#F26522',
     overflow: 'hidden',
@@ -1828,17 +1968,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7ED',
     borderWidth: 1,
     borderColor: '#F26522',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    borderRadius: 9.5,
+    minWidth: 89,
+    height: 19,
+    paddingTop: 3,
+    paddingRight: 9,
+    paddingBottom: 3,
+    paddingLeft: 10,
     gap: 4,
   },
   figmaServiceBadgeText: {
-    color: '#000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    color: '#000000',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontSize: 11,
     fontStyle: 'normal',
     fontWeight: '700',
@@ -1859,7 +2003,7 @@ const styles = StyleSheet.create({
   figmaBusinessCard: {
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: '#FF6B01',
+    borderColor: '#F26522',
     overflow: 'hidden',
     justifyContent: 'flex-end',
     alignItems: 'center',
