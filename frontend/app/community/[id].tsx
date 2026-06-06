@@ -1346,6 +1346,9 @@ export default function CommunityDetailScreen() {
         }
       }
       setCommunity(nextCommunity);
+      
+      // Stop blocking the UI - show the community header and empty state while we fetch messages
+      setLoading(false);
 
       const currentSubgroup = nextCommunity.type === 'state'
         ? 'state'

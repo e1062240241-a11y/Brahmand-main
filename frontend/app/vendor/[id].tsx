@@ -85,7 +85,7 @@ export default function VendorProfileScreen() {
 
   if (!vendor) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
@@ -95,7 +95,7 @@ export default function VendorProfileScreen() {
           <Ionicons name="storefront-outline" size={48} color={COLORS.textLight} />
           <Text style={styles.errorText}>Vendor not found</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -162,7 +162,7 @@ export default function VendorProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack}>
@@ -370,7 +370,7 @@ export default function VendorProfileScreen() {
           <Text style={styles.actionButtonText}>Get Directions</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -109,7 +109,7 @@ export default function AstrologyScreen() {
   return (
     <LinearGradient 
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
-      locations={[0, 0.0913, 0.25]} 
+      locations={[0, 0.2, 0.8]} 
       style={styles.container}
     >
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>

@@ -111,6 +111,7 @@ export default function JaapLandingScreen() {
   const hanumanStatus = getCurrentHanumanStatus(now);
   const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
+  const [sessionReminders, setSessionReminders] = useState<Record<string, boolean>>({});
 
   const sendJaapInviteFromCard = async (jaapId: string, mantraType: string, title: string) => {
     try {
@@ -350,10 +351,10 @@ export default function JaapLandingScreen() {
     : (liveActive ? 'Mahamrityunjaya Mantra' : 'Evening Gayatri Chanting');
   const heroTagline = t('language') === 'hi'
     ? (liveActive
-        ? 'हम जाप करते हैं। हम ठीक होते हैं। हम एक साथ उठते हैं।'
+        ? 'हम जाप करते हैं। हम ठीक होते हैं।\nहम एक साथ उठते हैं।'
         : 'दिव्य प्रकाश से जुड़ें। शाम 6:00 बजे से शुरू।')
     : (liveActive
-        ? 'We chant. We heal. We rise together.'
+        ? 'We chant. We heal.\nWe rise together.'
         : 'Connect with the divine light. Starting at 6:00 PM.');
   const heroTimeLabel = t('language') === 'hi'
     ? (liveActive
@@ -404,28 +405,61 @@ export default function JaapLandingScreen() {
                 />
 
                 <View style={styles.bannerContent}>
-                  <View style={styles.bannerTopRow}>
-                    <View style={styles.bannerTopSpacer} />
-                    <View style={[styles.mockupLiveBadge, !liveActive && styles.mockupScheduledBadge]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                        <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                        <Text style={{
+                          color: '#FFF',
+                          fontFamily: 'System',
+                          fontSize: 15,
+                          fontStyle: 'normal',
+                          fontWeight: '700',
+                          letterSpacing: 1,
+                          textShadowColor: 'rgba(0,0,0,0.9)',
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 6,
+                        }}>
+                          {heroTitle}
+                        </Text>
+                      </View>
+
+                      <Text style={{
+                        color: '#FFF',
+                        fontWeight: '600',
+                        opacity: 0.9,
+                        textShadowColor: 'rgba(0,0,0,0.8)',
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 4,
+                        marginLeft: 14,
+                        marginTop: 0,
+                        marginBottom: 2,
+                        fontSize: 13
+                      }}>
+                        {heroTagline}
+                      </Text>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                        <Ionicons name="time-outline" size={13} color="#FFF" />
+                        <Text style={{
+                          marginTop: 0,
+                          marginLeft: 4,
+                          color: '#FFF',
+                          fontWeight: '600',
+                          fontSize: 12
+                        }}>
+                          {heroTimeLabel}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.mockupLiveBadge, !liveActive && styles.mockupScheduledBadge, { alignSelf: 'flex-start' }]}>
                       <View style={styles.liveDot} />
                       <Text style={styles.mockupLiveText}>
                         {liveActive 
                           ? (t('language') === 'hi' ? 'लाइव' : 'LIVE') 
                           : (t('language') === 'hi' ? 'जल्द ही' : 'SOON')}
                       </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.bannerTextBlock}>
-                    <Text style={styles.mockupMainTitle} numberOfLines={2}>
-                      {heroTitle}
-                    </Text>
-                    <Text style={styles.mockupTagline} numberOfLines={2}>
-                      {heroTagline}
-                    </Text>
-                    <View style={styles.bannerTimeRow}>
-                      <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.92)" />
-                      <Text style={styles.bannerTimeText}>{heroTimeLabel}</Text>
                     </View>
                   </View>
 
@@ -681,18 +715,41 @@ export default function JaapLandingScreen() {
                     </View>
                     {/* Reminder button */}
                     <TouchableOpacity
-                      style={styles.reminderBtn}
+                      style={[
+                        styles.reminderBtn, 
+                        sessionReminders[session.id] && { backgroundColor: '#FF6600' }
+                      ]}
                       activeOpacity={0.8}
                       onPress={() => {
-                        const alertTitle = t('language') === 'hi' ? '🔔 रिमाइंडर सेट!' : '🔔 Reminder Set!';
-                        const alertMsg = t('language') === 'hi' 
-                          ? `आपको ${dateText} को ${session.time} पर "${titleText}" के लिए याद दिलाया जाएगा।`
-                          : `You will be reminded for "${session.title}" on ${session.date} at ${session.time}.`;
-                        Alert.alert(alertTitle, alertMsg, [{ text: t('language') === 'hi' ? 'ठीक है' : 'OK', style: 'default' }]);
+                        const isSet = sessionReminders[session.id];
+                        setSessionReminders(prev => ({ ...prev, [session.id]: !isSet }));
+
+                        if (!isSet) {
+                          const alertTitle = t('language') === 'hi' ? '🔔 रिमाइंडर सेट!' : '🔔 Reminder Set!';
+                          const alertMsg = t('language') === 'hi' 
+                            ? `आपको ${dateText} को ${session.time} पर "${titleText}" के लिए याद दिलाया जाएगा।`
+                            : `You will be reminded for "${session.title}" on ${session.date} at ${session.time}.`;
+                          Alert.alert(alertTitle, alertMsg, [{ text: t('language') === 'hi' ? 'ठीक है' : 'OK', style: 'default' }]);
+                        } else {
+                          const alertTitle = t('language') === 'hi' ? '🔔 रिमाइंडर हटाया गया' : '🔔 Reminder Removed';
+                          const alertMsg = t('language') === 'hi'
+                            ? `"${titleText}" का रिमाइंडर हटा दिया गया है।`
+                            : `Reminder for "${session.title}" has been removed.`;
+                          Alert.alert(alertTitle, alertMsg, [{ text: t('language') === 'hi' ? 'ठीक है' : 'OK', style: 'default' }]);
+                        }
                       }}
                     >
-                      <Ionicons name="notifications-outline" size={16} color="#FF6600" />
-                      <Text style={styles.reminderBtnText}>{t('language') === 'hi' ? 'रिमाइंडर' : 'Reminder'}</Text>
+                      <Ionicons 
+                        name={sessionReminders[session.id] ? "notifications" : "notifications-outline"} 
+                        size={16} 
+                        color={sessionReminders[session.id] ? "#FFF" : "#FF6600"} 
+                      />
+                      <Text style={[
+                        styles.reminderBtnText, 
+                        sessionReminders[session.id] && { color: '#FFF' }
+                      ]}>
+                        {t('language') === 'hi' ? 'रिमाइंडर' : 'Reminder'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 );
@@ -723,43 +780,68 @@ export default function JaapLandingScreen() {
                   style={StyleSheet.absoluteFillObject}
                 />
                 <View style={styles.bannerContent}>
-                  <View style={styles.bannerTopRow}>
-                    <View style={styles.bannerTopSpacer} />
-                    <View style={styles.mockupLiveBadge}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                        <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                        <Text style={{
+                          color: '#FFF',
+                          fontFamily: 'System',
+                          fontSize: 15,
+                          fontStyle: 'normal',
+                          fontWeight: '700',
+                          letterSpacing: 1,
+                          textShadowColor: 'rgba(0,0,0,0.9)',
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 6,
+                        }}>
+                          {t('language') === 'hi' ? 'सोमनाथ मंदिर' : 'Somnath Mandir'}
+                        </Text>
+                      </View>
+
+                      <Text style={{
+                        color: '#FFF',
+                        fontWeight: '600',
+                        opacity: 0.9,
+                        textShadowColor: 'rgba(0,0,0,0.8)',
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 4,
+                        marginLeft: 14,
+                        marginTop: 0,
+                        marginBottom: 2,
+                        fontSize: 13
+                      }}>
+                        {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
+                      </Text>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                        <Ionicons name="time-outline" size={13} color="#FFF" />
+                        <Text style={{
+                          marginTop: 0,
+                          marginLeft: 4,
+                          color: '#FFF',
+                          fontWeight: '600',
+                          fontSize: 12
+                        }}>
+                          {t('language') === 'hi' ? 'शाम 5:00 बजे तक लाइव' : 'Live until 5:00 PM'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.mockupLiveBadge, { alignSelf: 'flex-start' }]}>
                       <View style={styles.liveDot} />
                       <Text style={styles.mockupLiveText}>{t('language') === 'hi' ? 'लाइव' : 'LIVE'}</Text>
-                    </View>
-                  </View>
-                  <View style={[styles.bannerTextBlock, { marginBottom: 15 }]}>
-                    <Text style={styles.mockupMainTitle} numberOfLines={2}>
-                      {t('language') === 'hi' ? 'सोमनाथ मंदिर' : 'Somnath Mandir'}
-                    </Text>
-                    <Text style={styles.mockupTagline} numberOfLines={1}>
-                      {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
-                    </Text>
-                    <View style={styles.bannerTimeRow}>
-                      <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.92)" />
-                      <Text style={styles.bannerTimeText}>
-                        {t('language') === 'hi' ? 'शाम 5:00 बजे तक लाइव' : 'Live until 5:00 PM'}
-                      </Text>
                     </View>
                   </View>
                   <View style={[styles.bannerFooter, { paddingBottom: 0 }]}>
                     <TouchableOpacity style={styles.mockupJoinNowBtn} activeOpacity={0.9}>
                       <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
-                        <MaterialCommunityIcons name="waveform" size={17} color="#FFF" />
                         <Text style={styles.mockupJoinJaapText}>
                           {t('language') === 'hi' ? 'लाइव आरती में शामिल हों' : 'Join Live Aarti'}
                         </Text>
                         <Ionicons name="chevron-forward" size={15} color="#FFF" />
                       </LinearGradient>
                     </TouchableOpacity>
-                    <View style={[styles.bannerDotsRow, { bottom: 6 }]} pointerEvents="none">
-                       <View style={[styles.bannerDot, styles.bannerDotActive]} />
-                       <View style={styles.bannerDot} />
-                       <View style={styles.bannerDot} />
-                       <View style={styles.bannerDot} />
-                    </View>
                   </View>
                 </View>
               </ImageBackground>
@@ -1030,7 +1112,6 @@ const styles = StyleSheet.create({
   mockupJoinNowBtn: {
     alignSelf: 'flex-start',
     borderRadius: 26,
-    overflow: 'hidden',
     zIndex: 4,
     maxWidth: '78%',
     elevation: 8,
@@ -1038,6 +1119,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
+    backgroundColor: '#FF6B00',
   },
   mockupJoinGradient: {
     flexDirection: 'row',

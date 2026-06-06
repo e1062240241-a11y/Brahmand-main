@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   View,
@@ -47,6 +47,9 @@ import {
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
 import { syncDatabase } from '../../src/database/sync';
+import withObservables from '@nozbe/with-observables';
+import { Q } from '@nozbe/watermelondb';
+import { database } from '../../src/database';
 
 const { width } = Dimensions.get('window');
 const CONVERSATIONS_CACHE_KEY = 'conversations_cache';
@@ -113,12 +116,20 @@ interface DMConversation {
     name: string;
     sl_id: string;
     photo?: string;
+    is_verified?: boolean;
   };
   last_message?: string;
   last_message_at?: string;
+  unread_count?: number;
 }
 
-export default function MessagesScreen() {
+function MessagesScreen({
+  observedCommunities,
+  observedConversations,
+}: {
+  observedCommunities: any[];
+  observedConversations: any[];
+}) {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
   const { user, logout } = useAuthStore();
@@ -130,11 +141,43 @@ export default function MessagesScreen() {
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
   const [activeRequestIndex, setActiveRequestIndex] = useState(0);
   const activeRequestScrollRef = useRef<ScrollView>(null);
-  const [communities, setCommunities] = useState<Community[]>([]);
+  const communities = useMemo(() =>
+    observedCommunities.filter(c => c.type !== 'user_group')
+  , [observedCommunities]);
+
+  const circles = useMemo(() =>
+    observedConversations
+      .filter(c => c.type === 'circle')
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        photo: c.photo,
+        member_count: c.memberCount || 0,
+        last_message: c.lastMessage,
+        last_message_time: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      }))
+  , [observedConversations]);
+
+  const conversations = useMemo(() =>
+    observedConversations
+      .filter(c => c.type === 'dm')
+      .map(c => ({
+        id: c.id,
+        conversation_id: c.id,
+        user: {
+          id: c.otherUserId || '',
+          name: c.name,
+          sl_id: c.slId || '',
+          photo: c.photo,
+          is_verified: false, // Could be enhanced by storing in DB
+        },
+        last_message: c.lastMessage,
+        last_message_at: c.lastMessageAt ? new Date(c.lastMessageAt).toISOString() : undefined,
+      }))
+  , [observedConversations]);
+
   const [userGroups, setUserGroups] = useState<Community[]>([]);
-  const [circles, setCircles] = useState<Circle[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
-  const [conversations, setConversations] = useState<DMConversation[]>([]);
   const [mutedConversations, setMutedConversations] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -702,16 +745,7 @@ export default function MessagesScreen() {
           return true;
         });
 
-        // Offline-first: Load communities from cache
-        try {
-          const cachedComms = await getCachedData(COMMUNITIES_CACHE_KEY);
-          if (cachedComms?.data && cachedComms.data.length > 0) {
-            setCommunities(cachedComms.data);
-            setLoading(false);
-          }
-        } catch (e) {}
-
-        // Trigger background sync for WatermelonDB to keep local chats updated
+        // Trigger background sync for WatermelonDB
         syncDatabase().catch(e => console.warn('[Messages] Background sync failed:', e));
 
         const [communityRes, requestRes, myPendingRes] = await Promise.all([
@@ -721,15 +755,34 @@ export default function MessagesScreen() {
         ]);
 
         const allComms = communityRes.data || [];
-        const verifiedComms = allComms.filter(
-          (item: Community) => item.type !== 'home_area' && item.type !== 'area' && item.type !== 'cultural' && item.type !== 'user_group'
-        );
-        const userGroupsList = allComms.filter(
-          (item: Community) => item.type === 'user_group'
-        );
 
-        setCommunities(verifiedComms);
-        setCachedData(COMMUNITIES_CACHE_KEY, verifiedComms);
+        // Persist to WatermelonDB
+        if (Platform.OS !== 'web') {
+          await database.write(async () => {
+            const communitiesCollection = database.get('communities');
+            for (const comm of allComms) {
+              try {
+                const existing = await communitiesCollection.find(comm.id);
+                await existing.update((record: any) => {
+                  record.name = comm.name;
+                  record.description = comm.description;
+                  record.photo = comm.photo;
+                  record.type = comm.type;
+                  record.memberCount = comm.member_count || 0;
+                });
+              } catch {
+                await communitiesCollection.create((record: any) => {
+                  record._raw.id = comm.id;
+                  record.name = comm.name;
+                  record.description = comm.description;
+                  record.photo = comm.photo;
+                  record.type = comm.type;
+                  record.memberCount = comm.member_count || 0;
+                });
+              }
+            }
+          });
+        }
 
         // Fetch ALL user_group communities — load from cache first, then refresh
         try {
@@ -784,26 +837,84 @@ export default function MessagesScreen() {
         setRequests(requestRes.data || []);
       } else {
         setLoading((prev) => {
-          if (circles.length > 0) return false;
+          if (circles.length > 0 || conversations.length > 0) return false;
           return true;
         });
         
-        // Offline-first: Load conversations from cache
-        try {
-          const cachedConvos = await getCachedData(CONVERSATIONS_CACHE_KEY);
-          if (cachedConvos?.data) {
-            if (cachedConvos.data.circles) setCircles(cachedConvos.data.circles);
-            if (cachedConvos.data.conversations) {
-               setConversations(cachedConvos.data.conversations);
-               setLoadingConversations(false);
-            }
-            setLoading(false);
-          }
-        } catch (e) {}
+        const [circlesRes, convRes] = await Promise.all([
+          getCircles(),
+          getConversations()
+        ]);
         
-        const res = await getCircles();
-        setCircles(res.data || []);
-        fetchConversations();
+        const allCircles = circlesRes.data || [];
+        const allDMs = convRes.data || [];
+
+        // Persist to WatermelonDB
+        if (Platform.OS !== 'web') {
+          await database.write(async () => {
+            const conversationsCollection = database.get('conversations');
+
+            // Upsert Circles
+            for (const circle of allCircles) {
+              try {
+                const existing = await conversationsCollection.find(circle.id);
+                await existing.update((record: any) => {
+                  record.name = circle.name;
+                  record.photo = circle.photo;
+                  record.lastMessage = circle.last_message;
+                  record.lastMessageAt = circle.last_message_time ? new Date(circle.last_message_time) : undefined;
+                  record.memberCount = circle.member_count;
+                  record.type = 'circle';
+                  record.updatedAt = new Date();
+                });
+              } catch {
+                await conversationsCollection.create((record: any) => {
+                  record._raw.id = circle.id;
+                  record.name = circle.name;
+                  record.photo = circle.photo;
+                  record.lastMessage = circle.last_message;
+                  record.lastMessageAt = circle.last_message_time ? new Date(circle.last_message_time) : undefined;
+                  record.memberCount = circle.member_count;
+                  record.type = 'circle';
+                  record.unreadCount = 0;
+                  record.updatedAt = new Date();
+                });
+              }
+            }
+
+            // Upsert DMs
+            for (const dm of allDMs) {
+              const dmId = dm.conversation_id || dm.id;
+              try {
+                const existing = await conversationsCollection.find(dmId);
+                await existing.update((record: any) => {
+                  record.name = dm.user?.name;
+                  record.photo = dm.user?.photo;
+                  record.lastMessage = dm.last_message;
+                  record.lastMessageAt = dm.last_message_at ? new Date(dm.last_message_at) : undefined;
+                  record.unreadCount = dm.unread_count || 0;
+                  record.type = 'dm';
+                  record.slId = dm.user?.sl_id;
+                  record.otherUserId = dm.user?.id;
+                  record.updatedAt = new Date();
+                });
+              } catch {
+                await conversationsCollection.create((record: any) => {
+                  record._raw.id = dmId;
+                  record.name = dm.user?.name;
+                  record.photo = dm.user?.photo;
+                  record.lastMessage = dm.last_message;
+                  record.lastMessageAt = dm.last_message_at ? new Date(dm.last_message_at) : undefined;
+                  record.unreadCount = dm.unread_count || 0;
+                  record.type = 'dm';
+                  record.slId = dm.user?.sl_id;
+                  record.otherUserId = dm.user?.id;
+                  record.updatedAt = new Date();
+                });
+              }
+            }
+          });
+        }
       }
     } catch (error: any) {
       console.warn('Error fetching data:', error.message || error);
@@ -821,21 +932,8 @@ export default function MessagesScreen() {
   }, []);
 
   const fetchConversations = async () => {
-    setLoadingConversations((prev) => conversations.length === 0 ? true : prev);
-    try {
-      const response = await getConversations();
-      const newConvos = response.data || [];
-      setConversations(newConvos);
-      // Cache both circles and conversations together
-      setCachedData(CONVERSATIONS_CACHE_KEY, { circles, conversations: newConvos });
-    } catch (error: any) {
-      console.warn('Error fetching conversations:', error.message || error);
-      if (error.response?.status === 401) {
-        logout();
-      }
-    } finally {
-      setLoadingConversations(false);
-    }
+    // No-op: fetchData now handles both circles and conversations,
+    // and observers update the UI automatically.
   };
 
   const fetchUserLokSangma = useCallback(async () => {
@@ -909,7 +1007,7 @@ export default function MessagesScreen() {
     useCallback(() => {
       getAllMutedConversations().then(setMutedConversations);
       if (activeTopTab === 'Private Chat') {
-        fetchConversations();
+        fetchData();
       }
     }, [activeTopTab])
   );
@@ -1984,3 +2082,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
+
+const enhance = withObservables([], () => ({
+  observedCommunities: database.get('communities').query().observe(),
+  observedConversations: database.get('conversations').query(Q.sortBy('last_message_at', Q.desc)).observe(),
+}));
+
+export default enhance(MessagesScreen);

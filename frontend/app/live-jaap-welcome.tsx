@@ -57,6 +57,19 @@ const MANTRA_PREVIEW: Record<string, string> = {
   shiva: 'ॐ नमः शिवाय । ॐ नमः शिवाय । नागेन्द्रहाराय त्रिलोचनाय भस्माङ्गरागाय महेश्वराय । नित्याय शुद्धाय दिगम्बराय तस्मै नकाराय नमः शिवाय...',
   mrityunjaya: 'ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात् । ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम्...',
   kedarnath: 'जय केदार उदार शंकर, मन हरत छवि आपकी । ध्यान धरत सुर-नर-मुनि सब, जय हो केदारनाथ की ॥ जय शिव ओंकारा, जय हर शिव ओंकारा, ब्रह्मा विष्णु सदाशिव अर्द्धांगी धारा ॥ ॐ जय केदारनाथ देवा...',
+  ganesh: 'वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ । निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा ॥',
+  laxmi: 'ॐ श्रीं ह्रीं क्लीं महालक्ष्म्यै नमः । ॐ श्रीं ह्रीं क्लीं महालक्ष्म्यै नमः ।',
+};
+
+const MANTRA_PREVIEW_EN: Record<string, string> = {
+  gayatri: 'Om Bhuur-Bhuvah Svah Tat-Savitur-Varenyam Bhargo Devasya Dhiimahi Dhiyo Yo Nah Pracodayaat |',
+  hanuman: 'Shree Guru Charan Saroj Raj, Nij Manu Mukur Sudhaari. Barnau Raghuvar Bimal Jasu, Jo Dayaku Phal Chaari...',
+  krishna: 'Hare Krishna Hare Krishna Krishna Krishna Hare Hare, Hare Rama Hare Rama Rama Rama Hare Hare.',
+  shiva: 'Om Namah Shivaya | Om Namah Shivaya | Nagendra Haaraaya Trilocanaaya Bhasmaangaraagaaya Maheshvaraaya...',
+  mrityunjaya: 'Om Tryambakam Yajaamahe Sugandhim Pushtivardhanam | Urvaarukamiva Bandhanaan Mrityormukshiiya Maamrutaat |',
+  kedarnath: 'Jai Kedarnath Udar Shankar, Man Harat Chhavi Aapki. Dhyan Dharat Sur-Nar-Muni Sab, Jai Ho Kedarnath Ki...',
+  ganesh: 'Vakratunda Mahakaya Surya Koti Samaprabha | Nirvighnam Kuru Me Deva Sarva Karyeshu Sarvada ||',
+  laxmi: 'Om Shreem Hreem Kleem Maha Lakshmyai Namah | Om Shreem Hreem Kleem Maha Lakshmyai Namah |',
 };
 
 export default function LiveJaapWelcomeScreen() {
@@ -195,9 +208,9 @@ export default function LiveJaapWelcomeScreen() {
           {/* MANTRA PREVIEW - SCROLLABLE FOR LONG TEXTS LIKE HANUMAN CHALISA */}
           <View style={styles.mantraPreviewBox}>
             <Text style={styles.mantraPreviewText}>
-              {t('language') === 'hi' 
-                ? `श्रीगुरु चरन सरोज रज, निज मनु मुकुर सुधारि\nबरनऊँ रघुबर बिमल जसु, जो दायकु फल चारि`
-                : `Shree Guru Charan Saroj Raj, Nij Manu Mukur Sudhaari\nBarnau Raghuvar Bimal Jasu, Jo Dayaku Phal Chaari`}
+              {t('language') === 'hi'
+                ? MANTRA_PREVIEW[mantraType || 'hanuman'] || MANTRA_PREVIEW['hanuman']
+                : MANTRA_PREVIEW_EN[mantraType || 'hanuman'] || MANTRA_PREVIEW_EN['hanuman']}
             </Text>
           </View>
 
@@ -211,16 +224,22 @@ export default function LiveJaapWelcomeScreen() {
           </View>
 
           {/* GUIDELINES LIST */}
-          <View style={styles.guidelinesContainer}>
-            {getGuidelines(t('language')).map((item, index, arr) => (
-              <View key={item.id} style={[styles.card, index === arr.length - 1 ? styles.cardNoBorder : null]}>
-                <View style={styles.cardTextContent}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text style={styles.cardDesc}>{item.desc}</Text>
+          <ScrollView 
+            style={{ flex: 1, marginTop: 15 }} 
+            contentContainerStyle={{ paddingBottom: 20, alignItems: 'center' }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.guidelinesContainer}>
+              {getGuidelines(t('language')).map((item, index, arr) => (
+                <View key={item.id} style={[styles.card, index === arr.length - 1 ? styles.cardNoBorder : null]}>
+                  <View style={styles.cardTextContent}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text style={styles.cardDesc}>{item.desc}</Text>
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          </ScrollView>
 
           {/* JOIN BUTTON */}
           <View style={styles.footerContainer}>
@@ -390,8 +409,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     alignSelf: 'center',
-    marginTop: 30, 
-    flex: 1 
+    marginTop: 10,
   },
   card: {
     width: '100%',

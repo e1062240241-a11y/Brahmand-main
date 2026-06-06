@@ -107,14 +107,16 @@ export default function AllLiveJaapsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" />
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
 
-      {/* Header with gradient */}
-      <LinearGradient
-        colors={['#FFFBF5', '#FFF3E8']}
-        style={styles.header}
-      >
+        {/* Header */}
+        <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backBtn} 
           onPress={() => {
@@ -136,7 +138,7 @@ export default function AllLiveJaapsScreen() {
           </View>
         </View>
         <View style={{ width: 40 }} />
-      </LinearGradient>
+      </View>
 
       {/* Devotee count banner */}
       <LinearGradient
@@ -261,13 +263,14 @@ export default function AllLiveJaapsScreen() {
         <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFBF5',
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
