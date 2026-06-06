@@ -16,6 +16,9 @@ import { useChatStore } from '../../../src/store/chatStore';
 import { Message } from '../../../src/types';
 import { Avatar } from '../../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
+import withObservables from '@nozbe/with-observables';
+import { Q } from '@nozbe/watermelondb';
+import { database } from '../../../src/database';
 
 let chatImageManipulator: typeof ImageManipulatorType | null = null;
 const getChatImageManipulator = async () => {
@@ -211,13 +214,19 @@ const getChatContacts = async () => {
   return chatContacts;
 };
 
-const ChatScreen = () => {
-  const { type, id, subgroup, name: rawName } = useLocalSearchParams<{ 
-    type: string; 
-    id: string; 
-    subgroup?: string; 
-    name?: string 
-  }>();
+const ChatScreen = ({
+  observedMessages,
+  type,
+  id,
+  subgroup,
+  name: rawName
+}: {
+  observedMessages: any[];
+  type: string;
+  id: string;
+  subgroup?: string;
+  name?: string;
+}) => {
   const name = rawName ? decodeURIComponent(rawName) : '';
   const router = useRouter();
   const { user } = useAuthStore();
@@ -240,10 +249,18 @@ const ChatScreen = () => {
 
   const roomKey = type === 'community' ? `community_${id}_${subgroup}` : `circle_${id}`;
 
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const cachedData = useChatStore.getState().caches[roomKey];
-    return cachedData?.messages || [];
-  });
+  const messages = useMemo(() => {
+    return observedMessages.map((msg: any) => ({
+      id: msg.id,
+      sender_id: msg.senderId || msg.sender_id,
+      sender_name: msg.senderName || msg.sender_name,
+      content: msg.content,
+      text: msg.content,
+      message_type: msg.messageType || msg.message_type,
+      created_at: msg.createdAt || msg.created_at,
+      updated_at: msg.updatedAt || msg.updated_at
+    }));
+  }, [observedMessages]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(() => {
     const cachedData = useChatStore.getState().caches[roomKey];
@@ -313,47 +330,40 @@ const ChatScreen = () => {
     });
   }, [type, clearedAtMs]);
 
-  const addRealtimeMessage = useCallback((message: any) => {
+  const addRealtimeMessage = useCallback(async (message: any) => {
     if (!message) return;
     if (type === 'circle' && message.circle_id !== id) return;
     if (type === 'community' && (message.community_id !== id || message.subgroup_type !== subgroup)) return;
 
-    const normalized: Message = {
-      id: message.id || message._id || String(message._id ?? Date.now()),
-      sender_id: message.sender_id || '',
-      sender_name: message.sender_name || message.sender || 'Unknown',
-      sender_photo: message.sender_photo,
-      text: message.text || message.content || '',
-      content: message.content || message.text || '',
-      created_at: message.created_at || message.timestamp || new Date().toISOString(),
-      message_type: message.message_type || 'text',
-      ...message,
-    } as Message;
+    const msgId = message.id || message._id || String(message._id ?? Date.now());
+    const filterId = type === 'community' ? `community_${id}_${subgroup}` : id;
 
-    if (type === 'circle' && clearedAtMs) {
-      const ts = new Date(normalized.created_at).getTime();
-      if (!Number.isFinite(ts) || ts <= clearedAtMs) return;
+    if (Platform.OS !== 'web') {
+      try {
+        await database.write(async () => {
+          const tableName = type === 'community' ? 'community_messages' : 'chats';
+          const collection = database.get(tableName);
+
+          await collection.create((record: any) => {
+            record._raw.id = msgId;
+            if (type === 'community') {
+              record.community_id = filterId;
+            } else {
+              record.chatId = filterId;
+            }
+            record.senderId = message.sender_id || '';
+            record.senderName = message.sender_name || message.sender || 'Unknown';
+            record.content = message.content || message.text || '';
+            record.messageType = message.message_type || 'text';
+            record.created_at = new Date(message.created_at || message.timestamp || Date.now());
+            record.updated_at = new Date();
+          });
+        });
+      } catch (err) {
+        console.warn('[Chat] Failed to persist realtime message:', err);
+      }
     }
-
-    setMessages((prev) => {
-      const normalizedTs = new Date(normalized.created_at).getTime();
-      const exists = prev.some((m) => {
-        if (m.id && normalized.id && m.id === normalized.id) return true;
-        if (m.id === String(message._id)) return true;
-
-        const mTs = new Date(m.created_at).getTime();
-        const sameSender = m.sender_id === normalized.sender_id;
-        const sameContent = m.content === normalized.content;
-        const closeTime = Number.isFinite(normalizedTs) && Number.isFinite(mTs) && Math.abs(mTs - normalizedTs) < 5000;
-        return sameSender && sameContent && closeTime;
-      });
-
-      if (exists) return prev;
-      const updated = [...prev, normalized];
-      useChatStore.getState().setChatCache(roomKey, { messages: updated });
-      return updated;
-    });
-  }, [type, id, subgroup, clearedAtMs, roomKey]);
+  }, [type, id, subgroup]);
 
   const fetchMessages = useCallback(async (force = false, offset = 0) => {
     const cachedData = useChatStore.getState().caches[roomKey];
@@ -426,9 +436,43 @@ const ChatScreen = () => {
         response = await getCircleMessages(id!);
         setIsVerified(true); // Circles don't require verification
       }
-      const fetchedMsgs = applyClientClearFilter(response.data || []);
-      setMessages(fetchedMsgs);
-      useChatStore.getState().setChatCache(roomKey, { messages: response.data || [], lastFetched: Date.now() });
+      const fetchedMsgs = response.data || [];
+
+      if (Platform.OS !== 'web' && fetchedMsgs.length > 0) {
+        await database.write(async () => {
+          const tableName = type === 'community' ? 'community_messages' : 'chats';
+          const collection = database.get(tableName);
+          const filterId = type === 'community' ? `community_${id}_${subgroup}` : id;
+
+          for (const msg of fetchedMsgs) {
+            const msgId = msg.id || msg._id;
+            try {
+              const existing = await collection.find(msgId);
+              await existing.update((record: any) => {
+                record.content = msg.content;
+                record.senderName = msg.sender_name || msg.sender;
+              });
+            } catch {
+              await collection.create((record: any) => {
+                record._raw.id = msgId;
+                if (type === 'community') {
+                  record.community_id = filterId;
+                } else {
+                  record.chatId = filterId;
+                }
+                record.senderId = msg.sender_id || '';
+                record.senderName = msg.sender_name || msg.sender || 'Unknown';
+                record.content = msg.content || msg.text || '';
+                record.messageType = msg.message_type || 'text';
+                record.created_at = new Date(msg.created_at || msg.timestamp || Date.now());
+                record.updated_at = new Date();
+              });
+            }
+          }
+        });
+      }
+
+      useChatStore.getState().setChatCache(roomKey, { lastFetched: Date.now() });
       return true;
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -600,35 +644,52 @@ const ChatScreen = () => {
       message_type: 'text',
     };
 
-    // Optimistically show message instantly
-    setMessages((prev) => {
-      const updated = [...prev, tempMessage];
-      useChatStore.getState().setChatCache(roomKey, { messages: updated });
-      return updated;
-    });
+    // Optimistically persist to WatermelonDB
+    const filterId = type === 'community' ? `community_${id}_${subgroup}` : id;
+    if (Platform.OS !== 'web') {
+      try {
+        await database.write(async () => {
+          const tableName = type === 'community' ? 'community_messages' : 'chats';
+          const collection = database.get(tableName);
+          await collection.create((record: any) => {
+            record._raw.id = tempMessage.id;
+            if (type === 'community') {
+              record.community_id = filterId;
+            } else {
+              record.chatId = filterId;
+            }
+            record.senderId = tempMessage.sender_id;
+            record.senderName = tempMessage.sender_name;
+            record.content = tempMessage.content;
+            record.messageType = tempMessage.message_type;
+            record.created_at = new Date();
+            record.updated_at = new Date();
+          });
+        });
+      } catch (err) {
+        console.warn('[Chat] Optimistic write failed:', err);
+      }
+    }
     setNewMessage('');
 
     try {
-      let response;
       if (type === 'community') {
-        response = await sendCommunityMessage(id!, subgroup || 'city', messageText);
+        await sendCommunityMessage(id!, subgroup || 'city', messageText);
       } else {
-        response = await sendCircleMessage(id!, messageText);
+        await sendCircleMessage(id!, messageText);
       }
-
-      // Server event should also arrive soon via socket; just fallback if not
-      setTimeout(async () => {
-        if (!tempMessage.id) return;
-        // in case socket hasn't echoed yet, force-refresh the list
-        await fetchMessages(true);
-      }, 1200);
     } catch (error: any) {
       // rollback optimistic message
-      setMessages((prev) => {
-        const updated = prev.filter((m) => m.id !== tempMessage.id);
-        useChatStore.getState().setChatCache(roomKey, { messages: updated });
-        return updated;
-      });
+      if (Platform.OS !== 'web') {
+        try {
+          const tableName = type === 'community' ? 'community_messages' : 'chats';
+          const collection = database.get(tableName);
+          const record = await collection.find(tempMessage.id);
+          await database.write(async () => {
+            await record.destroyPermanently();
+          });
+        } catch (e) {}
+      }
       Alert.alert('Error', error.response?.data?.detail || 'Failed to send message');
     }
   };
@@ -638,8 +699,19 @@ const ChatScreen = () => {
     const nowMs = Date.now();
     await AsyncStorage.setItem(clearChatStorageKey, String(nowMs));
     setClearedAtMs(nowMs);
-    setMessages([]);
-    useChatStore.getState().setChatCache(roomKey, { messages: [] });
+
+    if (Platform.OS !== 'web') {
+      try {
+        await database.write(async () => {
+          const collection = database.get('chats');
+          const records = await collection.query(Q.where('chat_id', id)).fetch();
+          for (const record of records) {
+            await record.destroyPermanently();
+          }
+        });
+      } catch (err) {}
+    }
+
     Alert.alert('Chat Cleared', 'This chat is cleared on this device only.');
   };
 
@@ -880,7 +952,23 @@ const ChatScreen = () => {
         await leaveCircle(id);
         Alert.alert('Left Group', 'You have left the group.');
         setCircleInfo(null);
-        setMessages([]);
+
+        if (Platform.OS !== 'web') {
+          try {
+            await database.write(async () => {
+              const chatsColl = database.get('chats');
+              const msgs = await chatsColl.query(Q.where('chat_id', id)).fetch();
+              for (const m of msgs) await m.destroyPermanently();
+
+              const convsColl = database.get('conversations');
+              try {
+                const conv = await convsColl.find(id);
+                await conv.destroyPermanently();
+              } catch (e) {}
+            });
+          } catch (e) {}
+        }
+
         useChatStore.getState().setChatCache(roomKey, { messages: [], circleInfo: null });
         navigateToPrivateChatTab();
       } catch (error: any) {
@@ -2875,4 +2963,26 @@ const styles = StyleSheet.create({
     marginVertical: SPACING.md,
   },
 });
-export default ChatScreen;
+const ChatScreenWrapper = () => {
+  const { type, id, subgroup, name } = useLocalSearchParams<{
+    type: string;
+    id: string;
+    subgroup?: string;
+    name?: string
+  }>();
+
+  const filterId = type === 'community' ? `community_${id}_${subgroup}` : id;
+  const tableName = type === 'community' ? 'community_messages' : 'chats';
+  const filterCol = type === 'community' ? 'community_id' : 'chat_id';
+
+  const EnhancedChat = useMemo(() => withObservables(['id', 'subgroup'], ({ id, subgroup }: any) => ({
+    observedMessages: database.get(tableName).query(
+      Q.where(filterCol, filterId),
+      Q.sortBy('created_at', Q.asc)
+    ).observe()
+  }))(ChatScreen), [type, id, subgroup, tableName, filterCol, filterId]);
+
+  return <EnhancedChat type={type} id={id} subgroup={subgroup} name={name} />;
+};
+
+export default ChatScreenWrapper;

@@ -14,6 +14,8 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { usePassportStore } from '../../../src/store/passportStore';
+import withObservables from '@nozbe/with-observables';
+import { database } from '../../../src/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
@@ -28,11 +30,11 @@ interface FlattenedBadge {
   instanceIndex: number;
 }
 
-export default function PassportBadgeScreen() {
+function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
   const router = useRouter();
   const { badgeTitle } = useLocalSearchParams<{ badgeTitle?: string }>();
-  const badges = usePassportStore((state) => state.badges);
   const loadPassport = usePassportStore((state) => state.loadPassport);
+  const badges = observedBadges;
   
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -453,3 +455,9 @@ const styles = StyleSheet.create({
     height: 150,
   },
 });
+
+const enhance = withObservables([], () => ({
+  observedBadges: database.get('passport_badges').query().observe(),
+}));
+
+export default enhance(PassportBadgeScreen);

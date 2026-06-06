@@ -11,6 +11,11 @@ import Follow from './models/Follow'
 import Community from './models/Community'
 import Vendor from './models/Vendor'
 import SyncQueue from './models/SyncQueue'
+import Conversation from './models/Conversation'
+import LibraryProgress from './models/LibraryProgress'
+import PassportJourney from './models/PassportJourney'
+import PassportBadge from './models/PassportBadge'
+import PassportCertificate from './models/PassportCertificate'
 
 const adapter = new SQLiteAdapter({
   schema,
@@ -24,5 +29,19 @@ const adapter = new SQLiteAdapter({
 
 export const database = new Database({
   adapter,
-  modelClasses: [User, Feed, Chat, CommunityMessage, Follow, Community, Vendor, SyncQueue],
+  modelClasses: [
+    User,
+    Feed,
+    Chat,
+    CommunityMessage,
+    Follow,
+    Community,
+    Vendor,
+    SyncQueue,
+    Conversation,
+    LibraryProgress,
+    PassportJourney,
+    PassportBadge,
+    PassportCertificate
+  ],
 })

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { secureStorage } from '../utils/secureStorage';
+import { database } from '../database';
 import {
   PassportAnswer,
   PassportCertificate,
@@ -79,28 +80,47 @@ export const usePassportStore = create<PassportState>((set, get) => ({
       });
       return nextState;
     });
+
+    // Write to WatermelonDB
+    try {
+      await database.write(async () => {
+        await database.get('passport_journeys').create((record: any) => {
+          record._raw.id = newJourney.id;
+          record.location = newJourney.location;
+          record.date = newJourney.date;
+          record.story = newJourney.generated_story;
+          record.answers = JSON.stringify(newJourney.answers);
+          record.created_at = Date.now();
+        });
+      });
+    } catch (e) {
+      console.warn('[PassportStore] DB write journey failed:', e);
+    }
   },
 
   awardBadge: async (title, description) => {
+    let targetBadge: any = null;
     set((state) => {
       const existingBadgeIndex = state.badges.findIndex((badge) => badge.title === title);
       const updatedBadges = [...state.badges];
       
       if (existingBadgeIndex !== -1) {
         const existing = updatedBadges[existingBadgeIndex];
-        updatedBadges[existingBadgeIndex] = {
+        targetBadge = {
           ...existing,
           count: (existing.count || 1) + 1,
           earned_at: new Date().toISOString(),
         };
+        updatedBadges[existingBadgeIndex] = targetBadge;
       } else {
-        updatedBadges.push({
+        targetBadge = {
           id: `passport_badge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           title,
           description,
           earned_at: new Date().toISOString(),
           count: 1,
-        });
+        };
+        updatedBadges.push(targetBadge);
       }
 
       const nextState = {
@@ -116,6 +136,29 @@ export const usePassportStore = create<PassportState>((set, get) => ({
       });
       return nextState;
     });
+
+    if (targetBadge) {
+      try {
+        await database.write(async () => {
+          const coll = database.get('passport_badges');
+          try {
+            const existing = await coll.find(targetBadge.id);
+            await existing.update((record: any) => {
+              record.count = targetBadge.count;
+              record.earnedAt = targetBadge.earned_at;
+            });
+          } catch {
+            await coll.create((record: any) => {
+              record._raw.id = targetBadge.id;
+              record.title = targetBadge.title;
+              record.description = targetBadge.description;
+              record.earnedAt = targetBadge.earned_at;
+              record.count = targetBadge.count;
+            });
+          }
+        });
+      } catch (e) {}
+    }
   },
 
   addJaap: async (count) => {
@@ -136,6 +179,7 @@ export const usePassportStore = create<PassportState>((set, get) => ({
   },
 
   completeBook: async (book_name, completion_days, date) => {
+    const certId = `passport_certificate_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     set((state) => {
       const nextState = {
         ...state,
@@ -143,7 +187,7 @@ export const usePassportStore = create<PassportState>((set, get) => ({
         certificates: [
           ...state.certificates,
           {
-            id: `passport_certificate_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            id: certId,
             book_name,
             completion_days,
             date,
@@ -159,5 +203,16 @@ export const usePassportStore = create<PassportState>((set, get) => ({
       });
       return nextState;
     });
+
+    try {
+      await database.write(async () => {
+        await database.get('passport_certificates').create((record: any) => {
+          record._raw.id = certId;
+          record.bookName = book_name;
+          record.completionDays = completion_days;
+          record.date = date;
+        });
+      });
+    } catch (e) {}
   },
 }));

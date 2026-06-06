@@ -18,6 +18,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
 import { useGitaStore } from '../../src/store/gitaStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
+import withObservables from '@nozbe/with-observables';
+import { database } from '../../src/database';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -63,7 +65,7 @@ const BOOK_COVERS: Record<string, any> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────
-export default function LibraryPage() {
+function LibraryPage({ observedProgress }: { observedMessages: any[], observedProgress: any[] }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
@@ -152,13 +154,20 @@ export default function LibraryPage() {
 
         {/* ── Dynamic Continue Reading (All Books) ── */}
         {(() => {
-          const progresses = useLibraryStore(state => state.progresses);
           const gitaState = useGitaStore();
           
-          let recentBooks = Object.values(progresses);
+          let recentBooks = observedProgress.map(p => ({
+            id: p.bookId,
+            chapterName: p.chapterName,
+            chapterNum: p.chapterNum,
+            lastReadPage: p.lastReadPage,
+            totalPages: p.totalPages,
+            progressPercent: p.progressPercent,
+            lastOpenedTime: p.lastOpenedTime
+          }));
           
           // Fallback migration for Bhagavad Gita if not in libraryStore yet
-          if (!progresses['bhagvad-geeta'] && (gitaState.progressPercent > 0 || gitaState.lastReadChapter > 1)) {
+          if (!recentBooks.find(b => b.id === 'bhagvad-geeta') && (gitaState.progressPercent > 0 || gitaState.lastReadChapter > 1)) {
             recentBooks.push({
               id: 'bhagvad-geeta',
               chapterName: `Chapter ${gitaState.lastReadChapter}`,
@@ -686,3 +695,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+const enhance = withObservables([], () => ({
+  observedProgress: database.get('library_progress').query().observe(),
+}));
+
+export default enhance(LibraryPage);
