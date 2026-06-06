@@ -60,6 +60,7 @@ type PostFeedCardProps = {
   theme?: 'light' | 'dark';
   openCommentsOnCaptionPress?: boolean;
   isBlackBackground?: boolean;
+  isFirstReel?: boolean;
 };
 
 const formatTime = (raw: any) => {
@@ -94,6 +95,7 @@ export const PostFeedCard = memo(({
   theme = 'light',
   openCommentsOnCaptionPress = false,
   isBlackBackground = false,
+  isFirstReel = false,
 }: PostFeedCardProps) => {
   const { t } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
@@ -394,22 +396,22 @@ export const PostFeedCard = memo(({
   return (
     <View style={[styles.card, isBlackBackground && { backgroundColor: '#000' }]} onLayout={onLayout}>
       {/* Header */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, isFirstReel && { backgroundColor: '#FFFFFF', paddingTop: SPACING.md, paddingBottom: SPACING.md }]}>
         <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
           <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
           <View style={styles.userMeta}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[styles.username, theme === 'light' ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+              <Text style={[styles.username, (theme === 'light' || isFirstReel) ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
               {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
             </View>
-            <Text style={[styles.timeText, theme === 'light' ? styles.timeTextLight : { color: '#FFFFFF', fontWeight: '900' }]}>{postTimeText}</Text>
+            <Text style={[styles.timeText, (theme === 'light' || isFirstReel) ? styles.timeTextLight : { color: '#FFFFFF', fontWeight: '900' }]}>{postTimeText}</Text>
           </View>
         </TouchableOpacity>
 
         {onPostMenuPress && postMenuType && (
           <View style={styles.menuWrap}>
             <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(!menuVisible)}>
-              <Ionicons name="ellipsis-horizontal" size={18} color={theme === 'light' ? '#333' : '#FFFFFF'} />
+              <Ionicons name="ellipsis-horizontal" size={18} color={(theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF'} />
             </TouchableOpacity>
             {menuVisible && (
               <View style={styles.dropdownMenu}>

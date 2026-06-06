@@ -698,7 +698,7 @@ export default function MessagesScreen() {
       if (activeTopTab === 'Community') {
         setLoading((prev) => {
           // If we have existing data, don't show loading spinner (Stale-While-Revalidate)
-          if (communities.length > 0 && requests.length > 0) return false;
+          if (communities.length > 0) return false;
           return true;
         });
 

@@ -41,13 +41,33 @@ const ZODIAC_SIGNS = [
 ];
 
 const PREDICTION_SECTIONS = [
-  { label: 'PERSONAL LIFE', keys: ['fiance', 'personal_life', 'personal'], icon: require('../assets/images/tab bar/rashi/Person-Fill Streamline Phosphor-Fill.png'), fallback: 'Something feels slightly tense in your interactions today, and you can sense it without anyone saying it directly. You may expect others to respond quickly or clearly, yet their pace feels slower than yours. That gap can create irritation if left unchecked. Instead of reacting fast, pause and observe what is actually being said. Small adjustments in tone and timing can help you avoid unnecessary friction during the day today.' },
-  { label: 'PROFESSION', keys: ['love', 'profession', 'career'], icon: require('../assets/images/tab bar/rashi/Briefcase-Fill Streamline Phosphor-Fill.png'), fallback: 'Work matters feel more demanding as expectations rise and responses feel sharper than usual. With the Moon in Capricorn in your tenth house squaring Mars in Aries, you may feel pushed to prove something quickly. But rushing decisions can lead to missteps. Focus on clear priorities and give your actions structure. When you slow your reactions, your authority comes through stronger and people take you more seriously over time now.' },
-  { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/tab bar/rashi/heart.png'), fallback: 'Pay attention to how you breathe. Slowing down will calm your system faster than forcing yourself to relax.' },
-  { label: 'EMOTIONS', keys: ['overall', 'emotion', 'emotions'], icon: require('../assets/images/tab bar/rashi/Smiley-Melting-Fill Streamline Phosphor-Fill.png'), fallback: 'You are reacting faster than you are processing. Give yourself space before responding, even in small conversations.' },
-  { label: 'TRAVEL', keys: ['travel'], icon: require('../assets/images/tab bar/rashi/Trolley-Suitcase-Fill Streamline Phosphor-Fill.png'), fallback: 'If you have plans to move, keep them simple and leave room for delays or changes. Staying flexible will make the experience smoother.' },
-  { label: 'LUCK', keys: ['luck'], icon: require('../assets/images/tab bar/rashi/Clover-Fill Streamline Phosphor-Fill.png'), fallback: 'Things work better when you slow reactions and act with intention. When your actions match your priorities, you create your own sense of timing.' },
+  { label: 'PERSONAL LIFE', keys: ['fiance', 'personal_life', 'personal'], icon: require('../assets/images/tab bar/rashi/person_fill.png'), fallback: 'Focus on harmony and understanding in your personal relationships today.' },
+  { label: 'PROFESSION', keys: ['love', 'profession', 'career'], icon: require('../assets/images/tab bar/rashi/briefcase_fill.png'), fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
+  { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/tab bar/rashi/heart.png'), fallback: 'Take time to rest and recharge. Balance your physical and mental well-being.' },
+  { label: 'EMOTIONS', keys: ['overall', 'emotion', 'emotions'], icon: require('../assets/images/tab bar/rashi/smiley_fill.png'), fallback: 'Allow yourself to feel and process your emotions without judgment today.' },
+  { label: 'TRAVEL', keys: ['travel'], icon: require('../assets/images/tab bar/rashi/trolley_fill.png'), fallback: 'Whether commuting or planning a trip, stay organized and adaptable to changes.' },
+  { label: 'LUCK', keys: ['luck'], icon: require('../assets/images/tab bar/rashi/clover_fill.png'), fallback: 'Trust your intuition. Small moments of serendipity may guide you today.' },
 ];
+
+const getLuckyColorConfig = (colorName: string) => {
+  const name = colorName.toLowerCase().trim();
+  let gradient = ['#FC8260', '#D84315']; // Default orange-red
+  let textColor = '#FFF';
+
+  if (name.includes('red')) { gradient = ['#FF6B6B', '#C92A2A']; }
+  else if (name.includes('blue')) { gradient = ['#4DABF7', '#1864AB']; }
+  else if (name.includes('green')) { gradient = ['#69DB7C', '#2B8A3E']; }
+  else if (name.includes('yellow')) { gradient = ['#FFE066', '#E67700']; textColor = '#000'; }
+  else if (name.includes('orange')) { gradient = ['#FFA94D', '#D9480F']; }
+  else if (name.includes('pink')) { gradient = ['#FF93D2', '#A61E4D']; }
+  else if (name.includes('purple')) { gradient = ['#B197FC', '#5F3DC4']; }
+  else if (name.includes('white')) { gradient = ['#F8F9FA', '#CED4DA']; textColor = '#000'; }
+  else if (name.includes('black')) { gradient = ['#495057', '#212529']; }
+  else if (name.includes('brown')) { gradient = ['#D9A566', '#8B4513']; }
+  else if (name.includes('grey') || name.includes('gray')) { gradient = ['#ADB5BD', '#495057']; }
+
+  return { gradient, textColor };
+};
 
 export default function HoroscopeScreen() {
   const router = useRouter();
@@ -122,6 +142,8 @@ export default function HoroscopeScreen() {
     color: String(payload?.lucky_color || payload?.lucky?.color || 'Red'),
     colorHex: String(payload?.lucky_color_hex || payload?.lucky?.colorHex || '#FF6B00'),
   };
+  
+  const luckyColorConfig = getLuckyColorConfig(lucky.color);
 
   const normalizeTextBlock = (value: any) => {
     const text = Array.isArray(value)
@@ -213,7 +235,7 @@ export default function HoroscopeScreen() {
       {/* Full gradient background */}
       <LinearGradient
         colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-        locations={[0, 0.0913, 0.25]}
+        locations={[0, 0.2, 0.8]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -221,12 +243,10 @@ export default function HoroscopeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setViewMode('grid')} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={24} color="#FFF" />
+            <Ionicons name="chevron-back" size={28} color="#FFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Cosmic Guidance</Text>
-          <TouchableOpacity onPress={toggleDropdown} style={styles.backBtn}>
-            <Ionicons name="apps-outline" size={20} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
         </View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -268,13 +288,12 @@ export default function HoroscopeScreen() {
                 <View style={styles.centerMetric}>
                   <View style={styles.verticalBarTrack}>
                     <LinearGradient
-                      colors={['#FFF4C6', '#FFD738']}
-                      locations={[0, 0.5668]}
+                      colors={['#FFF9DF', '#FDE047']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 0, y: 1 }}
-                      style={[styles.verticalBarFill, { height: `${scores.overall}%` as any }]}
+                      style={[styles.verticalBarFill, { height: `${scores.overall ?? 66}%` as any }]}
                     >
-                      <Text style={styles.verticalBarText}>{scores.overall}%</Text>
+                      <Text style={styles.verticalBarText}>{scores.overall ?? 66}%</Text>
                     </LinearGradient>
                   </View>
                   <Text style={styles.metricLabel}>Overall</Text>
@@ -291,10 +310,10 @@ export default function HoroscopeScreen() {
                   
                   <View style={styles.luckyItem}>
                     <LinearGradient 
-                      colors={['#FFAF95', '#E13F08']} 
+                      colors={luckyColorConfig.gradient} 
                       style={styles.luckyColorBox}
                     >
-                      <Text style={[styles.luckyValue, { color: '#FFF', fontSize: 16 }]}>{lucky.color}</Text>
+                      <Text style={[styles.luckyValue, { color: luckyColorConfig.textColor, fontSize: 16 }]}>{lucky.color}</Text>
                     </LinearGradient>
                     <Text style={styles.luckyLabel}>Lucky{'\n'}Colour</Text>
                   </View>
@@ -348,19 +367,6 @@ export default function HoroscopeScreen() {
                   text = section.fallback;
                 }
 
-                // Explicit override for Aries page as requested
-                if (selectedZodiac.id === 'aries') {
-                  if (section.label === 'PERSONAL LIFE') {
-                    text = 'Something feels slightly tense in your interactions today, and you can sense it without anyone saying it directly. You may expect others to respond quickly or clearly, yet their pace feels slower than yours. That gap can create irritation if left unchecked. Instead of reacting fast, pause and observe what is actually being said. Small adjustments in tone and timing can help you avoid unnecessary friction during the day today.';
-                  } else if (section.label === 'PROFESSION') {
-                    text = 'Work matters feel more demanding as expectations rise and responses feel sharper than usual. With the Moon in Capricorn in your tenth house squaring Mars in Aries, you may feel pushed to prove something quickly. But rushing decisions can lead to missteps. Focus on clear priorities and give your actions structure. When you slow your reactions, your authority comes through stronger and people take you more seriously over time now.';
-                  } else if (section.label === 'HEALTH') {
-                    text = 'That push to stay on top of everything can show up in your body as tightness or restlessness. You might notice tension in your shoulders or a tendency to rush through meals or routines. Slow your pace where you can. Even short breaks help reset your system. Pay attention to how you breathe, because steady breathing will calm your system faster than forcing yourself to relax in moments like this.';
-                  } else if (section.label === 'EMOTIONS') {
-                    text = 'You are reacting faster than you are processing, and that creates inner pressure. Give yourself space before responding, even in small conversations. When you allow a gap between feeling and action, your emotional clarity improves and you stop carrying tension from one situation into another.';
-                  }
-                }
-
                 return (
                   <View key={section.label}>
                     <View style={styles.dividerContainer}>
@@ -370,7 +376,7 @@ export default function HoroscopeScreen() {
                     </View>
                     <View style={styles.predictionRow}>
                       <View style={styles.predictionLeftIcon}>
-                        <ExpoImage source={section.icon} style={{ width: 32, height: 32 }} tintColor="#F47B3E" contentFit="contain" />
+                        <Image source={section.icon} style={{ width: 32, height: 32, tintColor: '#F47B3E' }} resizeMode="contain" />
                       </View>
                       <View style={styles.predictionRightContent}>
                         <Text style={styles.predictionSectionLabel}>{section.label}</Text>
@@ -409,8 +415,7 @@ const MetricBar = ({ label, value }: { label: string; value: number }) => (
   <View style={styles.metricBarItem}>
     <View style={styles.metricBarTrack}>
       <LinearGradient 
-        colors={['#FFD738', '#FFF4C6']} 
-        locations={[0.0029, 0.5673]}
+        colors={['#FDF48A', '#FFF9E1']} 
         start={{ x: 0, y: 0 }} 
         end={{ x: 1, y: 0 }}
         style={[styles.metricBarFill, { width: `${value}%` as any }]}
@@ -478,39 +483,40 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
-  heroLeft: { flex: 1 },
-  signNameText: { fontSize: 40, fontWeight: '700', color: 'rgba(0, 0, 0, 0.90)', lineHeight: 44 },
-  signDateText: { fontSize: 12, color: '#000', fontWeight: '500', lineHeight: 24, marginTop: 4 },
+  heroLeft: { flex: 1, paddingTop: 10 },
+  signNameText: { fontSize: 48, fontWeight: '800', color: '#111', lineHeight: 54 },
+  signDateText: { fontSize: 15, color: '#111', fontWeight: '600', lineHeight: 24, marginTop: 4 },
   heroImageWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 100,
-    backgroundColor: 'rgba(196, 49, 0, 0.25)',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
-  zodiacImage: { width: 90, height: 90 },
-  // Metrics section (no card wrapper)
+  zodiacImage: { width: 100, height: 100 },
+  // Metrics section
   metricsContainer: {
     marginHorizontal: 20,
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
+    justifyContent: 'space-between',
+    marginBottom: 0, // Set to 0 to bring AI card closer
   },
-  leftMetrics: { flex: 1.3, gap: 16 },
-  centerMetric: { flex: 0.8, alignItems: 'center', gap: 4 },
-  rightMetrics: { flex: 1, gap: 16 },
-  metricBarItem: { gap: 4 },
+  leftMetrics: { flex: 1.4 },
+  centerMetric: { flex: 0.8, alignItems: 'center' },
+  rightMetrics: { flex: 1, alignItems: 'center' },
+  metricBarItem: { marginBottom: 16 },
   metricBarTrack: {
     height: 36,
     borderWidth: 1,
-    borderColor: 'rgba(153,153,153,0.36)',
+    borderColor: 'rgba(0,0,0,0.06)',
     borderRadius: 8,
     overflow: 'hidden',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   metricBarFill: {
     height: '100%',
@@ -518,51 +524,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  metricBarText: { color: '#000', fontSize: 13, fontWeight: '700' },
-  metricBarLabel: { fontSize: 12, color: '#000', fontWeight: '600' },
-  metricLabel: { fontSize: 12, color: '#000', fontWeight: '600', marginTop: 4 },
+  metricBarText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  metricBarLabel: { fontSize: 15, color: '#000', fontWeight: '600', marginTop: 6 },
+  metricLabel: { fontSize: 15, color: '#000', fontWeight: '600', marginTop: 8 },
   verticalBarTrack: {
-    width: 68,
-    height: 132,
+    width: 64,
+    height: 180,
     borderWidth: 1,
-    borderColor: 'rgba(153,153,153,0.36)',
+    borderColor: 'rgba(0,0,0,0.06)',
     borderRadius: 8,
     justifyContent: 'flex-end',
     overflow: 'hidden',
+    backgroundColor: 'transparent',
   },
   verticalBarFill: {
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  verticalBarText: { color: '#000', fontSize: 14, fontWeight: '700' },
+  verticalBarText: { color: '#000', fontSize: 16, fontWeight: '800' },
   luckyItem: {
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 20,
   },
   luckyNumberBox: {
-    width: 73,
-    height: 62,
+    width: 72,
+    height: 72,
     borderWidth: 1,
-    borderColor: 'rgba(153,153,153,0.36)',
+    borderColor: 'rgba(0,0,0,0.06)',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+    backgroundColor: 'transparent',
   },
   luckyColorBox: {
-    width: 73,
-    height: 62,
+    width: 72,
+    height: 72,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  luckyValue: { fontSize: 20, fontWeight: '600', color: '#111' },
-  luckyLabel: { fontSize: 11, fontWeight: '600', color: '#000', textAlign: 'center' },
+  luckyValue: { fontSize: 22, fontWeight: '800', color: '#111' },
+  luckyLabel: { fontSize: 14, fontWeight: '600', color: '#000', textAlign: 'center', lineHeight: 20 },
   // AI card
   aiCard: {
     marginHorizontal: 16,
+    marginTop: -8, // Negative margin to move it even higher
     backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 18,
@@ -633,7 +642,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   predictionSectionLabel: { fontSize: 12, fontWeight: '800', color: '#F47B3E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  predictionSectionText: { fontSize: 16, color: '#000', lineHeight: 24, fontWeight: '500' },
+  predictionSectionText: { fontSize: 14, color: '#53433F', lineHeight: 20, fontWeight: '400' },
   content: { paddingHorizontal: 20, marginTop: 16 },
   predictionCard: {
     borderRadius: 24,
@@ -671,10 +680,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   predictionText: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: '#222',
-    fontWeight: '500',
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#53433F',
+    fontWeight: '400',
+    textAlign: 'center',
+    marginHorizontal: 20,
+    marginBottom: 16,
   },
   categoriesContainer: {
     flexDirection: 'row',

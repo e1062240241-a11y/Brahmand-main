@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -93,6 +93,8 @@ const getActionBadge = (item: any) => {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const filter = params.filter;
   const { user, updateUser } = useAuthStore();
   const { dismissBadge } = useNotificationStore();
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -117,6 +119,17 @@ export default function NotificationsScreen() {
       setUnreadCount(countValue || 0);
       
       let notificationsList = Array.isArray(notificationsRes.data) ? notificationsRes.data : [];
+      
+      if (filter === 'vendor') {
+        notificationsList = notificationsList.filter((notif) => {
+          const itemData = typeof notif.data === 'string'
+            ? (() => { try { return JSON.parse(notif.data); } catch { return null; } })()
+            : notif.data;
+          const action = (itemData?.action || notif.type || '').toLowerCase();
+          return action.includes('vendor') || action.includes('business');
+        });
+      }
+      
       // Show all notifications for all functionalities without deduplication filter
       setNotifications(notificationsList);
 
@@ -479,7 +492,7 @@ export default function NotificationsScreen() {
             <Ionicons name="chevron-back" size={24} color="#000" />
           </TouchableOpacity>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.title}>Notifications</Text>
+            <Text style={styles.title}>{filter === 'vendor' ? 'Vendor Notifications' : 'Notifications'}</Text>
           </View>
           <View style={{ width: 40, height: 40 }} />
         </View>

@@ -85,7 +85,7 @@ export const BrandedLoading: React.FC<BrandedLoadingProps> = ({
       )}
 
       <View style={styles.footer}>
-        <Text style={styles.brandName}>Sanatan Lok</Text>
+        <Text style={styles.brandName}>Brahmand</Text>
         <Text style={styles.tagline}>Spreading Spiritual Wisdom</Text>
       </View>
     </View>

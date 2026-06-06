@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
@@ -30,47 +31,49 @@ const CARD_COLORS = [
 ];
 
 // Mapping for festival images in assets/images/festival_image/
+const ONAM_IMG = require('../assets/images/festival_image/Onam.jpg');
+
 const festivalImageMap: Record<string, any> = {
-  'Akshaya Tritiya': require('../assets/images/festival_image/Akshaya Tritiya.jpg.webp'),
-  'Anant Chaturdashi': require('../assets/images/festival_image/Anant Chaturdashi.jpg.webp'),
+  'Akshaya Tritiya': ONAM_IMG,
+  'Anant Chaturdashi': ONAM_IMG,
   'Ashadhi Ekadashi': require('../assets/images/festival_image/Ashadhi Ekadashi_.jpg'),
   'Bhai Dooj': require('../assets/images/festival_image/Bhai Dooj.jpg'),
-  'Bohag Bihu': require('../assets/images/festival_image/Bohag Bihu .jpg.webp'),
+  'Bohag Bihu': ONAM_IMG,
   'Chaitra Sukhladi': require('../assets/images/festival_image/Chaitra Sukhladi .jpg'),
   'Chhath Puja': require('../assets/images/festival_image/Chhath Puja.jpg'),
-  'Dhanteras': require('../assets/images/festival_image/Dhanteras.jpg.avif'),
+  'Dhanteras': ONAM_IMG,
   'Dhanu Sankranti': require('../assets/images/festival_image/Dhanu Sankranti.jpeg'),
   'Diwali': require('../assets/images/festival_image/Diwali .jpeg'),
   'Durga Ashtami': require('../assets/images/festival_image/Durga Ashtami.jpeg'),
   'Dussehra': require('../assets/images/festival_image/Dussehra.jpg'),
   'Ganesh Chaturthi': require('../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
-  'Geeta Jayanti': require('../assets/images/festival_image/Geeta Jayanti.jpg.avif'),
+  'Geeta Jayanti': ONAM_IMG,
   'Govardhan Puja': require('../assets/images/festival_image/Govardhan Puja.jpg'),
-  'Guru Purnima': require('../assets/images/festival_image/Guru Purnima.png.avif'),
+  'Guru Purnima': ONAM_IMG,
   'Hanuman janmotsav': require('../assets/images/festival_image/Hanuman janmotsav.jpg'),
-  'Holi': require('../assets/images/festival_image/Happy Holi.jpg.webp'),
+  'Holi': ONAM_IMG,
   'Hariyali Teej': require('../assets/images/festival_image/Hariyali Teej.jpeg'),
-  'Hindi New Year': require('../assets/images/festival_image/Hindi New Year.jpg.webp'),
-  'Holika Dahan': require('../assets/images/festival_image/Holika Dahan.png.avif'),
-  'Jagannath Rath Yatra': require('../assets/images/festival_image/Jagannath Rath Yatra.webp'),
+  'Hindi New Year': ONAM_IMG,
+  'Holika Dahan': ONAM_IMG,
+  'Jagannath Rath Yatra': ONAM_IMG,
   'Janmashtami': require('../assets/images/festival_image/Janmashtami.jpg'),
   'Kajari Teej': require('../assets/images/festival_image/Kajari Teej.jpeg'),
   'Kartik Purnima': require('../assets/images/festival_image/Kartik Purnima.jpeg'),
-  'Karva Chauth': require('../assets/images/festival_image/Karva Chauth.jpg.webp'),
+  'Karva Chauth': ONAM_IMG,
   'Magh Bihu': require('../assets/images/festival_image/Magh Bihu.jpg'),
   'Maha Navami': require('../assets/images/festival_image/Maha Navami.jpeg'),
-  'Maha Saptami': require('../assets/images/festival_image/Maha Saptami.jpg.webp'),
+  'Maha Saptami': ONAM_IMG,
   'Maha Shivaratri': require('../assets/images/festival_image/Maha Shivaratri.jpeg'),
   'Mahalaya Amavasya': require('../assets/images/festival_image/Mahalaya Amavasya.jpg'),
   'Maharishi Valmiki Jayanti': require('../assets/images/festival_image/Maharishi Valmiki Jayanti.jpg'),
-  'Makar Sankranti': require('../assets/images/festival_image/Makar Sankranti .jpg.webp.jpeg'),
+  'Makar Sankranti': ONAM_IMG,
   'Nag Panchami': require('../assets/images/festival_image/Nag Panchami.jpg'),
-  'Onam': require('../assets/images/festival_image/Onam.jpg'),
+  'Onam': ONAM_IMG,
   'Raksha Bandhan': require('../assets/images/festival_image/Raksha Bandhan.jpg'),
   'Ram Navami': require('../assets/images/festival_image/Ram Navami.jpg'),
   'Savitri Pooja': require('../assets/images/festival_image/Savitri Pooja_.jpg'),
   'Sharad Navratri': require('../assets/images/festival_image/Sharad Navratri.jpg'),
-  'Sharad Purnima': require('../assets/images/festival_image/Sharad Purnima.jpg.webp'),
+  'Sharad Purnima': ONAM_IMG,
   'Thaipusam': require('../assets/images/festival_image/Thaipusam.jpg'),
   'Vaisakhi': require('../assets/images/festival_image/Vaisakhi.jpg'),
   'Vasant Panchami': require('../assets/images/festival_image/Vasant Panchami.jpg'),
@@ -78,13 +81,15 @@ const festivalImageMap: Record<string, any> = {
 };
 
 const getFestivalImage = (name: string) => {
-  if (!name) return null;
+  const fallback = require('../assets/images/traditional_diya_footer.png');
+  if (!name) return fallback;
   // Try exact match
   if (festivalImageMap[name]) return festivalImageMap[name];
   
-  // Try partial match
-  const key = Object.keys(festivalImageMap).find(k => name.includes(k) || k.includes(name));
-  return key ? festivalImageMap[key] : null;
+  // Try partial case-insensitive match
+  const searchName = name.toLowerCase();
+  const key = Object.keys(festivalImageMap).find(k => searchName.includes(k.toLowerCase()) || k.toLowerCase().includes(searchName));
+  return key ? festivalImageMap[key] : fallback;
 };
 
 const formatFestivalDate = (dateStr: string) => {
@@ -138,86 +143,92 @@ const FestivalPage = () => {
   }
 
   return (
-    <SafeAreaView style={styles.page} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
-          <Ionicons name="apps-outline" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <View style={{ width: 44 }} />
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView} 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* White Hero Card */}
-        <View style={styles.heroCard}>
-          <Text style={styles.statisticsLabel}>Discover</Text>
-          <Text style={styles.heroTitle}>
-            Hello {userName} 👋{'\n'}upcoming{'\n'}
-            <Text style={styles.heroTitleBold}>festivals</Text>
-          </Text>
-
-          <View style={styles.pillsRow}>
-            <View style={styles.pill}>
-              <Ionicons name="calendar-outline" size={14} color="#D32F2F" />
-              <Text style={styles.pillText} numberOfLines={1}>{nextFestivalName}</Text>
-            </View>
-            <View style={styles.arrowIconContainer}>
-              <Ionicons name="arrow-up-outline" size={18} color="#000000" style={{ transform: [{ rotate: '45deg' }] }} />
-            </View>
-          </View>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={styles.page} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
+            <Ionicons name="apps-outline" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={{ width: 44 }} />
         </View>
 
-        {/* Festival Cards with Background Images and Glass Design */}
-        {festivals.map((festival, index) => {
-          const color = CARD_COLORS[index % CARD_COLORS.length];
-          const festivalImg = getFestivalImage(festival.name);
-          
-          return (
-            <TouchableOpacity 
-              key={festival.name || index}
-              style={[styles.festivalCardContainer, { marginBottom: 12 }]}
-              activeOpacity={0.9}
-              onPress={() => router.push(`/festival-detail?index=${index}`)}
-            >
-              <ImageBackground
-                source={festivalImg}
-                style={[styles.festivalCard, { backgroundColor: color }]}
-                imageStyle={{ borderRadius: 32, opacity: 0.8 }}
-                resizeMode="cover"
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* White Hero Card */}
+          <View style={styles.heroCard}>
+            <Text style={styles.statisticsLabel}>Discover</Text>
+            <Text style={styles.heroTitle}>
+              Hello {userName} 👋{'\n'}upcoming{'\n'}
+              <Text style={styles.heroTitleBold}>festivals</Text>
+            </Text>
+
+            <View style={styles.pillsRow}>
+              <View style={styles.pill}>
+                <Ionicons name="calendar-outline" size={14} color="#D32F2F" />
+                <Text style={styles.pillText} numberOfLines={1}>{nextFestivalName}</Text>
+              </View>
+              <View style={styles.arrowIconContainer}>
+                <Ionicons name="arrow-up-outline" size={18} color="#000000" style={{ transform: [{ rotate: '45deg' }] }} />
+              </View>
+            </View>
+          </View>
+
+          {/* Festival Cards with Background Images and Glass Design */}
+          {festivals.map((festival, index) => {
+            const color = CARD_COLORS[index % CARD_COLORS.length];
+            const festivalImg = getFestivalImage(festival.name);
+            
+            return (
+              <TouchableOpacity 
+                key={festival.name || index}
+                style={[styles.festivalCardContainer, { marginBottom: 12 }]}
+                activeOpacity={0.9}
+                onPress={() => router.push(`/festival-detail?index=${index}`)}
               >
-                {/* White Glass Overlay */}
-                <View style={styles.glassOverlay}>
-                  <View style={styles.cardContent}>
-                    <View style={styles.cardTextContainer}>
-                      <Text style={styles.cardLabel}>Festival</Text>
-                      <Text style={styles.cardName}>{festival.name}</Text>
-                      <Text style={styles.cardDate}>{formatFestivalDate(festival.date)}</Text>
-                    </View>
-                    <View style={styles.cardRight}>
-                      <View style={styles.festivalIconWrapper}>
-                        <Image source={festivalImg} style={styles.festivalIconImage} />
+                <ImageBackground
+                  source={festivalImg}
+                  style={[styles.festivalCard, { backgroundColor: color }]}
+                  imageStyle={{ borderRadius: 32, opacity: 0.8 }}
+                  resizeMode="cover"
+                >
+                  {/* White Glass Overlay */}
+                  <View style={styles.glassOverlay}>
+                    <View style={styles.cardContent}>
+                      <View style={styles.cardTextContainer}>
+                        <Text style={styles.cardLabel}>Festival</Text>
+                        <Text style={styles.cardName}>{festival.name}</Text>
+                        <Text style={styles.cardDate}>{formatFestivalDate(festival.date)}</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={20} color="#000000" style={styles.chevronIcon} />
+                      <View style={styles.cardRight}>
+                        <View style={styles.festivalIconWrapper}>
+                          <Image source={festivalImg} style={styles.festivalIconImage} />
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color="#000000" style={styles.chevronIcon} />
+                      </View>
                     </View>
                   </View>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </SafeAreaView>
+                </ImageBackground>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',

@@ -1742,6 +1742,7 @@ export default function HomeScreen() {
           isActive={activePostKey === postKey}
           theme="dark"
           isBlackBackground={true}
+          isFirstReel={index === 0}
         />
       </View>
     );
@@ -2131,9 +2132,9 @@ export default function HomeScreen() {
                                     <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
                                   </View>
                                 ) : item.label === 'Festival' ? (
-                                  <View style={[styles.featureIconWrap, { overflow: 'visible' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 54, height: 54, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 34, height: 34 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Brahmand Library' ? (
@@ -2773,6 +2774,7 @@ export default function HomeScreen() {
                               isActive={activePostKey === postKey}
                               theme="dark"
                               isBlackBackground={true}
+                              isFirstReel={index === 0}
                             />
                           )}
                         </View>
@@ -3690,9 +3692,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
-    gap: 12,
-    marginHorizontal: -PAGE_PADDING,
-    paddingHorizontal: PAGE_PADDING,
+    gap: 6,
+    paddingHorizontal: 10,
   },
   bigServiceButton: {
     width: 174,
