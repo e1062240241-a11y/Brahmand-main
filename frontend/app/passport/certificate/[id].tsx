@@ -5,24 +5,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../../src/store/authStore';
 import { usePassportStore } from '../../../src/store/passportStore';
+import withObservables from '@nozbe/with-observables';
+import { database } from '../../../src/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: windowWidth } = Dimensions.get('window');
 
-export default function CertificateDetailScreen() {
+function CertificateDetailScreen({ observedCertificates }: { observedCertificates: any[] }) {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const user = useAuthStore((state) => state.user);
-  const certificates = usePassportStore((state) => state.certificates);
+  const certificates = observedCertificates;
   
   const [menuVisible, setMenuVisible] = useState(false);
 
   // Find current certificate or use dummy data from mockup as fallback
   const certificate = certificates.find((c) => c.id === id) || {
     id: 'dummy',
-    book_name: 'BHAGAWAD GITA',
-    completion_days: 12,
+    bookName: 'BHAGAWAD GITA',
+    completionDays: 12,
     date: '2024-05-25T00:00:00.000Z'
   };
 
@@ -44,7 +46,7 @@ export default function CertificateDetailScreen() {
     setMenuVisible(false);
     try {
       await Share.share({
-        message: `I have successfully completed reading ${certificate.book_name} on Brahmand App! Here is my Certificate of Completion.`,
+        message: `I have successfully completed reading ${certificate.bookName || certificate.book_name} on Brahmand App! Here is my Certificate of Completion.`,
       });
     } catch (error) {
       console.log('Error sharing:', error);
@@ -243,3 +245,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
 });
+
+const enhance = withObservables([], () => ({
+  observedCertificates: database.get('passport_certificates').query().observe(),
+}));
+
+export default enhance(CertificateDetailScreen);

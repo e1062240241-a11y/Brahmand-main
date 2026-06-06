@@ -109,6 +109,7 @@ from utils.helpers import (
 from utils.cache import cache_manager
 from utils.helpers import generate_community_code, generate_circle_code, SUBGROUPS
 from offensive_detector import is_offensive, is_text_safe
+from services.firebase_messaging_service import FirebaseMessagingService as MessagingService
 
 # Configure logging
 logging.basicConfig(
@@ -11686,7 +11687,12 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
         "chats": {"created": [], "updated": [], "deleted": []},
         "community_messages": {"created": [], "updated": [], "deleted": []},
         "follows": {"created": [], "updated": [], "deleted": []},
-        "communities": {"created": [], "updated": [], "deleted": []}
+        "communities": {"created": [], "updated": [], "deleted": []},
+        "conversations": {"created": [], "updated": [], "deleted": []},
+        "library_progress": {"created": [], "updated": [], "deleted": []},
+        "passport_journeys": {"created": [], "updated": [], "deleted": []},
+        "passport_badges": {"created": [], "updated": [], "deleted": []},
+        "passport_certificates": {"created": [], "updated": [], "deleted": []}
     }
     
     # 1. Pull users
@@ -11746,8 +11752,39 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     except Exception as e:
         logger.error("Error pulling feeds in sync: %s", e)
 
-    # 3. Pull messages across chats
+    # 3. Pull messages across chats & conversations list
     try:
+        # DM Conversations
+        dm_convs = await MessagingService.get_conversations(user_id)
+        for conv in dm_convs:
+            changes["conversations"]["updated"].append({
+                "id": conv["conversation_id"],
+                "name": conv["user"].get("name", "User"),
+                "photo": conv["user"].get("photo"),
+                "last_message": conv.get("last_message", ""),
+                "last_message_at": int(conv["last_message_at"].timestamp() * 1000) if isinstance(conv.get("last_message_at"), datetime) else int(datetime.utcnow().timestamp() * 1000),
+                "unread_count": conv.get("unread_count", 0),
+                "type": "dm",
+                "sl_id": conv["user"].get("sl_id"),
+                "other_user_id": conv["user"].get("id"),
+                "updated_at": int(datetime.utcnow().timestamp() * 1000)
+            })
+
+        # Circles (Groups)
+        circles = await get_circles(token_data)
+        for circle in circles:
+            changes["conversations"]["updated"].append({
+                "id": circle["id"],
+                "name": circle["name"],
+                "photo": circle.get("photo"),
+                "last_message": circle.get("last_message", ""),
+                "last_message_at": int(datetime.utcnow().timestamp() * 1000), # Circles API lacks timestamp currently
+                "unread_count": 0, # Backend doesn't track unread for circles yet
+                "type": "circle",
+                "member_count": circle.get("member_count", 1),
+                "updated_at": int(datetime.utcnow().timestamp() * 1000)
+            })
+
         chats = await db.get_user_chats(user_id)
         for chat in chats:
             chat_id = chat['id']
@@ -11789,6 +11826,8 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                             "name": comm_doc.get('name', 'Community'),
                             "description": comm_doc.get('description', ''),
                             "photo": comm_doc.get('photo'),
+                            "type": comm_doc.get('type', 'city'),
+                            "member_count": len(comm_doc.get('members', [])),
                             "created_at": created_ts,
                             "updated_at": created_ts
                         })
@@ -11832,6 +11871,58 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                         logger.error("Error pulling community messages for %s: %s", chat_id, ex)
     except Exception as e:
         logger.error("Error pulling communities & messages in sync: %s", e)
+
+    # 5. Pull library and passport data
+    try:
+        if user_doc:
+            # Library progress
+            lib_progress = user_doc.get('library_progress', {})
+            for book_id, prog in lib_progress.items():
+                changes["library_progress"]["updated"].append({
+                    "id": book_id,
+                    "book_id": book_id,
+                    "chapter_name": prog.get('chapterName', ''),
+                    "chapter_num": prog.get('chapterNum', 0),
+                    "last_read_page": prog.get('lastReadPage', 0),
+                    "total_pages": prog.get('totalPages', 0),
+                    "progress_percent": prog.get('progressPercent', 0),
+                    "last_opened_time": prog.get('lastOpenedTime', int(datetime.utcnow().timestamp() * 1000))
+                })
+
+            # Passport Journeys
+            journeys = user_doc.get('passport_journeys', [])
+            for j in journeys:
+                changes["passport_journeys"]["updated"].append({
+                    "id": j.get('id', str(uuid4())),
+                    "location": j.get('location', ''),
+                    "date": j.get('date', ''),
+                    "story": j.get('story', ''),
+                    "answers": json.dumps(j.get('answers', [])),
+                    "created_at": int(datetime.utcnow().timestamp() * 1000)
+                })
+
+            # Passport Badges
+            badges = user_doc.get('passport_badges', [])
+            for b in badges:
+                changes["passport_badges"]["updated"].append({
+                    "id": b.get('id', str(uuid4())),
+                    "title": b.get('title', ''),
+                    "description": b.get('description', ''),
+                    "earned_at": b.get('earned_at', ''),
+                    "count": b.get('count', 1)
+                })
+
+            # Passport Certificates
+            certs = user_doc.get('passport_certificates', [])
+            for c in certs:
+                changes["passport_certificates"]["updated"].append({
+                    "id": c.get('id', str(uuid4())),
+                    "book_name": c.get('book_name', ''),
+                    "completion_days": c.get('completion_days', 0),
+                    "date": c.get('date', '')
+                })
+    except Exception as e:
+        logger.error("Error pulling library/passport in sync: %s", e)
 
     timestamp = int(datetime.utcnow().timestamp() * 1000)
     return {"changes": changes, "timestamp": timestamp}

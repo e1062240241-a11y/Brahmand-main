@@ -5,17 +5,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { usePassportStore } from '../../src/store/passportStore';
+import withObservables from '@nozbe/with-observables';
+import { database } from '../../src/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: windowWidth } = Dimensions.get('window');
 
-export default function PassportInnerScreen() {
+function PassportInnerScreen({
+  observedJourneys,
+  observedBadges,
+}: {
+  observedJourneys: any[];
+  observedBadges: any[];
+}) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const journeys = usePassportStore((state) => state.journeys);
   const totalJaap = usePassportStore((state) => state.total_jaap);
-  const badges = usePassportStore((state) => state.badges);
   const loadPassport = usePassportStore((state) => state.loadPassport);
 
   useEffect(() => {
@@ -31,9 +37,9 @@ export default function PassportInnerScreen() {
   };
 
   // Get dynamic stats or use exact dummy values from screenshot as fallbacks
-  const journeysCount = journeys.length > 0 ? journeys.length : 2;
+  const journeysCount = observedJourneys.length > 0 ? observedJourneys.length : 2;
   const jaapCount = totalJaap > 0 ? totalJaap : 4;
-  const badgesCount = badges.length > 0 ? badges.length : 7;
+  const badgesCount = observedBadges.length > 0 ? observedBadges.length : 7;
 
   // Use user's real avatar if available, otherwise standard dummy photo
   const userPhoto = user?.photo || 'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?auto=format&fit=crop&w=500&q=80';
@@ -479,3 +485,10 @@ const styles = StyleSheet.create({
     color: '#000',
   },
 });
+
+const enhance = withObservables([], () => ({
+  observedJourneys: database.get('passport_journeys').query().observe(),
+  observedBadges: database.get('passport_badges').query().observe(),
+}));
+
+export default enhance(PassportInnerScreen);

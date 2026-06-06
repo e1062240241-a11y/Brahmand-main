@@ -3,14 +3,19 @@ import { View, Text, StyleSheet, ScrollView, TextInput, Alert } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
 import { usePassportStore } from '../../src/store/passportStore';
+import withObservables from '@nozbe/with-observables';
+import { database } from '../../src/database';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
-export default function PassportProgressScreen() {
+function PassportProgressScreen({
+  observedBadges,
+}: {
+  observedBadges: any[];
+}) {
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const totalJaap = usePassportStore((state) => state.total_jaap);
   const booksCompleted = usePassportStore((state) => state.books_completed);
-  const certificates = usePassportStore((state) => state.certificates);
-  const badges = usePassportStore((state) => state.badges);
+  const badges = observedBadges;
   const addJaap = usePassportStore((state) => state.addJaap);
   const completeBook = usePassportStore((state) => state.completeBook);
   const awardBadge = usePassportStore((state) => state.awardBadge);
@@ -219,3 +224,9 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 });
+
+const enhance = withObservables([], () => ({
+  observedBadges: database.get('passport_badges').query().observe(),
+}));
+
+export default enhance(PassportProgressScreen);

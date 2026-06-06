@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
 import { PassportJourney } from '../../src/types/passport';
+import withObservables from '@nozbe/with-observables';
+import { database } from '../../src/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -14,11 +16,16 @@ const monthNames = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-export default function PassportTimelineScreen() {
+function PassportTimelineScreen({
+  observedJourneys,
+  observedBadges,
+  observedCertificates,
+}: {
+  observedJourneys: any[];
+  observedBadges: any[];
+  observedCertificates: any[];
+}) {
   const router = useRouter();
-  const journeys = usePassportStore((state) => state.journeys);
-  const badges = usePassportStore((state) => state.badges);
-  const certificates = usePassportStore((state) => state.certificates);
   const totalJaap = usePassportStore((state) => state.total_jaap);
   const booksCompleted = usePassportStore((state) => state.books_completed);
   const loadPassport = usePassportStore((state) => state.loadPassport);
@@ -31,12 +38,12 @@ export default function PassportTimelineScreen() {
   }, []);
 
   const filteredJourneys = useMemo(() => {
-    return journeys.filter((journey) => {
+    return observedJourneys.filter((journey) => {
       const locationMatch = queryLocation ? journey.location.toLowerCase().includes(queryLocation.toLowerCase()) : true;
       const dateMatch = queryDate ? new Date(journey.date).toDateString().toLowerCase().includes(queryDate.toLowerCase()) : true;
       return locationMatch && dateMatch;
     });
-  }, [journeys, queryLocation, queryDate]);
+  }, [observedJourneys, queryLocation, queryDate]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -89,7 +96,7 @@ export default function PassportTimelineScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statCol}>
               <Text style={styles.statLabel}>Journeys</Text>
-              <Text style={styles.statValue}>{journeys.length}</Text>
+              <Text style={styles.statValue}>{observedJourneys.length}</Text>
             </View>
             
             <View style={styles.statDivider} />
@@ -150,13 +157,13 @@ export default function PassportTimelineScreen() {
         {/* Badges Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Badges</Text>
-          {badges.length === 0 ? (
+          {observedBadges.length === 0 ? (
             <Text style={styles.sectionSubtitle}>
               Earn badges for first journey, first jaap milestone and first book completion.
             </Text>
           ) : (
             <View style={styles.badgeList}>
-              {badges.map((badge) => (
+              {observedBadges.map((badge) => (
                 <TouchableOpacity 
                   key={badge.id} 
                   style={[styles.badgeItem, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
@@ -192,22 +199,22 @@ export default function PassportTimelineScreen() {
         <View style={[styles.section, styles.certificatesRow]}>
           <View style={styles.certificatesTextContainer}>
             <Text style={styles.sectionTitle}>Certificates</Text>
-            {certificates.length === 0 ? (
+            {observedCertificates.length === 0 ? (
               <Text style={styles.sectionSubtitle}>
                 Complete a book to generate your first certificate.
               </Text>
             ) : (
               <View style={{ marginTop: 8 }}>
-                {certificates.map((cert) => (
+                {observedCertificates.map((cert) => (
                   <TouchableOpacity 
                     key={cert.id} 
                     style={styles.certItem}
                     activeOpacity={0.8}
                     onPress={() => router.push(`/passport/certificate/${cert.id}` as any)}
                   >
-                    <Text style={styles.certName}>{cert.book_name}</Text>
+                    <Text style={styles.certName}>{cert.bookName || cert.book_name}</Text>
                     <Text style={styles.certMeta}>
-                      Completed in {cert.completion_days} days • {new Date(cert.date).toLocaleDateString()}
+                      Completed in {cert.completionDays || cert.completion_days} days • {new Date(cert.date).toLocaleDateString()}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -504,3 +511,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 });
+
+const enhance = withObservables([], () => ({
+  observedJourneys: database.get('passport_journeys').query().observe(),
+  observedBadges: database.get('passport_badges').query().observe(),
+  observedCertificates: database.get('passport_certificates').query().observe(),
+}));
+
+export default enhance(PassportTimelineScreen);
