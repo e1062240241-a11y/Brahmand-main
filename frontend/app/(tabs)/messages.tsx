@@ -1216,7 +1216,7 @@ function MessagesScreen({
 
             {/* Local Communities Slider */}
             {userGroupsToRender.length > 0 ? (
-              <View style={{ marginBottom: 10 }}>
+              <View style={{ marginBottom: 10, minHeight: 190 }}>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1244,7 +1244,7 @@ function MessagesScreen({
                     <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={{ marginTop: 10 }}>
+                <View style={{ marginTop: 10, minHeight: 230 }}>
                   <ScrollView
                     ref={activeRequestScrollRef}
                     horizontal

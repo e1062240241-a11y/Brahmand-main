@@ -64,8 +64,18 @@ const FestivalSectionDetailPage = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#000000" />
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace(`/festival-detail?index=${festivalIndex}`);
+            }
+          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={28} color="#000000" />
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={styles.container}>

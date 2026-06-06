@@ -31,49 +31,47 @@ const CARD_COLORS = [
 ];
 
 // Mapping for festival images in assets/images/festival_image/
-const ONAM_IMG = require('../assets/images/festival_image/Onam.jpg');
-
 const festivalImageMap: Record<string, any> = {
-  'Akshaya Tritiya': ONAM_IMG,
-  'Anant Chaturdashi': ONAM_IMG,
+  'Akshaya Tritiya': require('../assets/images/festival_image/Akshaya Tritiya.jpg.webp'),
+  'Anant Chaturdashi': require('../assets/images/festival_image/Anant Chaturdashi.jpg.webp'),
   'Ashadhi Ekadashi': require('../assets/images/festival_image/Ashadhi Ekadashi_.jpg'),
   'Bhai Dooj': require('../assets/images/festival_image/Bhai Dooj.jpg'),
-  'Bohag Bihu': ONAM_IMG,
+  'Bohag Bihu': require('../assets/images/festival_image/Bohag Bihu .jpg.webp'),
   'Chaitra Sukhladi': require('../assets/images/festival_image/Chaitra Sukhladi .jpg'),
   'Chhath Puja': require('../assets/images/festival_image/Chhath Puja.jpg'),
-  'Dhanteras': ONAM_IMG,
+  'Dhanteras': require('../assets/images/festival_image/Dhanteras.jpg.avif'),
   'Dhanu Sankranti': require('../assets/images/festival_image/Dhanu Sankranti.jpeg'),
   'Diwali': require('../assets/images/festival_image/Diwali .jpeg'),
   'Durga Ashtami': require('../assets/images/festival_image/Durga Ashtami.jpeg'),
   'Dussehra': require('../assets/images/festival_image/Dussehra.jpg'),
   'Ganesh Chaturthi': require('../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
-  'Geeta Jayanti': ONAM_IMG,
+  'Geeta Jayanti': require('../assets/images/festival_image/Geeta Jayanti.jpg.avif'),
   'Govardhan Puja': require('../assets/images/festival_image/Govardhan Puja.jpg'),
-  'Guru Purnima': ONAM_IMG,
+  'Guru Purnima': require('../assets/images/festival_image/Guru Purnima.png.avif'),
   'Hanuman janmotsav': require('../assets/images/festival_image/Hanuman janmotsav.jpg'),
-  'Holi': ONAM_IMG,
+  'Holi': require('../assets/images/festival_image/Happy Holi.jpg.webp'),
   'Hariyali Teej': require('../assets/images/festival_image/Hariyali Teej.jpeg'),
-  'Hindi New Year': ONAM_IMG,
-  'Holika Dahan': ONAM_IMG,
-  'Jagannath Rath Yatra': ONAM_IMG,
+  'Hindi New Year': require('../assets/images/festival_image/Hindi New Year.jpg.webp'),
+  'Holika Dahan': require('../assets/images/festival_image/Holika Dahan.png.avif'),
+  'Jagannath Rath Yatra': require('../assets/images/festival_image/Jagannath Rath Yatra.webp'),
   'Janmashtami': require('../assets/images/festival_image/Janmashtami.jpg'),
   'Kajari Teej': require('../assets/images/festival_image/Kajari Teej.jpeg'),
   'Kartik Purnima': require('../assets/images/festival_image/Kartik Purnima.jpeg'),
-  'Karva Chauth': ONAM_IMG,
+  'Karva Chauth': require('../assets/images/festival_image/Karva Chauth.jpg.webp'),
   'Magh Bihu': require('../assets/images/festival_image/Magh Bihu.jpg'),
   'Maha Navami': require('../assets/images/festival_image/Maha Navami.jpeg'),
-  'Maha Saptami': ONAM_IMG,
+  'Maha Saptami': require('../assets/images/festival_image/Maha Saptami.jpg.webp'),
   'Maha Shivaratri': require('../assets/images/festival_image/Maha Shivaratri.jpeg'),
   'Mahalaya Amavasya': require('../assets/images/festival_image/Mahalaya Amavasya.jpg'),
   'Maharishi Valmiki Jayanti': require('../assets/images/festival_image/Maharishi Valmiki Jayanti.jpg'),
-  'Makar Sankranti': ONAM_IMG,
+  'Makar Sankranti': require('../assets/images/festival_image/Makar Sankranti .jpg.webp.jpeg'),
   'Nag Panchami': require('../assets/images/festival_image/Nag Panchami.jpg'),
-  'Onam': ONAM_IMG,
+  'Onam': require('../assets/images/festival_image/Onam.jpg'),
   'Raksha Bandhan': require('../assets/images/festival_image/Raksha Bandhan.jpg'),
   'Ram Navami': require('../assets/images/festival_image/Ram Navami.jpg'),
   'Savitri Pooja': require('../assets/images/festival_image/Savitri Pooja_.jpg'),
   'Sharad Navratri': require('../assets/images/festival_image/Sharad Navratri.jpg'),
-  'Sharad Purnima': ONAM_IMG,
+  'Sharad Purnima': require('../assets/images/festival_image/Sharad Purnima.jpg.webp'),
   'Thaipusam': require('../assets/images/festival_image/Thaipusam.jpg'),
   'Vaisakhi': require('../assets/images/festival_image/Vaisakhi.jpg'),
   'Vasant Panchami': require('../assets/images/festival_image/Vasant Panchami.jpg'),
@@ -134,7 +132,7 @@ const FestivalPage = () => {
   }, []);
 
   const userName = user?.name?.split(' ')[0] || 'Daniel';
-  const nextFestivalName = festivals[0]?.name || 'Upcoming';
+  const nextFestivalName = festivals[0]?.name || festivals[0]?.festival_name || 'Upcoming';
 
   if (loading) {
     return (
@@ -151,8 +149,18 @@ const FestivalPage = () => {
       <SafeAreaView style={styles.page} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
-            <Ionicons name="apps-outline" size={24} color="#FFFFFF" />
+          <TouchableOpacity 
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/');
+              }
+            }} 
+            style={styles.headerIcon}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={{ width: 44 }} />
         </View>
@@ -184,11 +192,12 @@ const FestivalPage = () => {
           {/* Festival Cards with Background Images and Glass Design */}
           {festivals.map((festival, index) => {
             const color = CARD_COLORS[index % CARD_COLORS.length];
-            const festivalImg = getFestivalImage(festival.name);
+            const festivalName = festival.name || festival.festival_name || '';
+            const festivalImg = getFestivalImage(festivalName);
             
             return (
               <TouchableOpacity 
-                key={festival.name || index}
+                key={festivalName || index}
                 style={[styles.festivalCardContainer, { marginBottom: 12 }]}
                 activeOpacity={0.9}
                 onPress={() => router.push(`/festival-detail?index=${index}`)}
@@ -197,14 +206,14 @@ const FestivalPage = () => {
                   source={festivalImg}
                   style={[styles.festivalCard, { backgroundColor: color }]}
                   imageStyle={{ borderRadius: 32, opacity: 0.8 }}
-                  resizeMode="cover"
+                  resizeMode="stretch"
                 >
                   {/* White Glass Overlay */}
                   <View style={styles.glassOverlay}>
                     <View style={styles.cardContent}>
                       <View style={styles.cardTextContainer}>
                         <Text style={styles.cardLabel}>Festival</Text>
-                        <Text style={styles.cardName}>{festival.name}</Text>
+                        <Text style={styles.cardName}>{festivalName}</Text>
                         <Text style={styles.cardDate}>{formatFestivalDate(festival.date)}</Text>
                       </View>
                       <View style={styles.cardRight}>
@@ -361,7 +370,7 @@ const styles = StyleSheet.create({
   festivalIconImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    resizeMode: 'stretch',
   },
   chevronIcon: {
     marginLeft: 12,
