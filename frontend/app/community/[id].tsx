@@ -3764,7 +3764,6 @@ export default function CommunityDetailScreen() {
                       opacity: postCategory ? 1 : 0.6
                     }}
                     autoFocus={!!postCategory}
-                    disableFullscreenUI={true}
                   />
 
                   {/* Add Photo option directly beneath the input box for better accessibility */}

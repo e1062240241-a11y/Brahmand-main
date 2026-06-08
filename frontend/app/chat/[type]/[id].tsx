@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated, Keyboard } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -249,18 +249,52 @@ const ChatScreen = ({
 
   const roomKey = type === 'community' ? `community_${id}_${subgroup}` : `circle_${id}`;
 
+  const [webMessages, setWebMessages] = useState<any[]>([]);
+
   const messages = useMemo(() => {
-    return observedMessages.map((msg: any) => ({
-      id: msg.id,
-      sender_id: msg.senderId || msg.sender_id,
-      sender_name: msg.senderName || msg.sender_name,
-      content: msg.content,
-      text: msg.content,
-      message_type: msg.messageType || msg.message_type,
-      created_at: msg.createdAt || msg.created_at,
-      updated_at: msg.updatedAt || msg.updated_at
-    }));
-  }, [observedMessages]);
+    const sourceMessages = Platform.OS === 'web' ? webMessages : (observedMessages || []);
+    return sourceMessages.map((msg: any) => {
+      let msgDateStr = new Date().toISOString();
+      try {
+        const rawDate = msg.createdAt || msg.created_at || msg.timestamp;
+        if (rawDate) {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) {
+            msgDateStr = d.toISOString();
+          }
+        }
+      } catch (e) {}
+
+      let msgUpdatedStr = msgDateStr;
+      try {
+        const rawUpdate = msg.updatedAt || msg.updated_at;
+        if (rawUpdate) {
+          const d = new Date(rawUpdate);
+          if (!isNaN(d.getTime())) {
+            msgUpdatedStr = d.toISOString();
+          }
+        }
+      } catch (e) {}
+
+      return {
+        id: msg.id || msg._raw?.id || msg._id || String(msg.created_at || Date.now()),
+        sender_id: msg.senderId || msg.sender_id || msg.sender || '',
+        sender_name: msg.senderName || msg.sender_name || msg.sender || 'Unknown',
+        content: msg.content || msg.text || '',
+        text: msg.content || msg.text || '',
+        message_type: msg.messageType || msg.message_type || 'text',
+        created_at: msgDateStr,
+        updated_at: msgUpdatedStr,
+      };
+    });
+  }, [observedMessages, webMessages]);
+
+  const setMessages = useCallback((updater: any) => {
+    if (Platform.OS === 'web') {
+      setWebMessages(updater);
+    }
+  }, []);
+
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(() => {
     const cachedData = useChatStore.getState().caches[roomKey];
@@ -395,20 +429,44 @@ const ChatScreen = ({
               Q.take(14)
             ).fetch();
             
-          if (localMessages && localMessages.length > 0) {
-            const mapped = localMessages.reverse().map((msg: any) => ({
-              id: msg.id,
-              sender_id: msg.senderId || msg.sender_id,
-              sender_name: msg.senderName || msg.sender_name,
-              content: msg.content,
-              text: msg.content,
-              message_type: msg.messageType || msg.message_type,
-              created_at: msg.createdAt || msg.created_at,
-              updated_at: msg.updatedAt || msg.updated_at
-            }));
+           if (localMessages && localMessages.length > 0) {
+            const mapped = localMessages.reverse().map((msg: any) => {
+              let msgDateStr = new Date().toISOString();
+              try {
+                const rawDate = msg.createdAt || msg.created_at;
+                if (rawDate) {
+                  const d = new Date(rawDate);
+                  if (!isNaN(d.getTime())) {
+                    msgDateStr = d.toISOString();
+                  }
+                }
+              } catch (e) {}
+
+              let msgUpdatedStr = msgDateStr;
+              try {
+                const rawUpdate = msg.updatedAt || msg.updated_at;
+                if (rawUpdate) {
+                  const d = new Date(rawUpdate);
+                  if (!isNaN(d.getTime())) {
+                    msgUpdatedStr = d.toISOString();
+                  }
+                }
+              } catch (e) {}
+
+              return {
+                id: msg.id,
+                sender_id: msg.senderId || msg.sender_id || '',
+                sender_name: msg.senderName || msg.sender_name || 'Unknown',
+                content: msg.content,
+                text: msg.content,
+                message_type: msg.messageType || msg.message_type || 'text',
+                created_at: msgDateStr,
+                updated_at: msgUpdatedStr,
+              };
+            });
             const filteredLocal = applyClientClearFilter(mapped);
             
-            setMessages(prev => isInitialLoad ? filteredLocal : [...filteredLocal, ...prev]);
+            setMessages((prev: any[]) => isInitialLoad ? filteredLocal : [...filteredLocal, ...prev]);
             setHasMore(localMessages.length === 14);
             
             if (isInitialLoad) setLoading(false);

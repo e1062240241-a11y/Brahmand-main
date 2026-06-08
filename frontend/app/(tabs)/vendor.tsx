@@ -667,11 +667,9 @@ export default function VendorScreen() {
         userLocation ? fetchVendors(userLocation) : fetchVendors()
       ]).catch(err => console.warn('Background fetch error:', err));
       
-      // Check vendor status and prompt accordingly
+      const targetCategory = data.categories && data.categories[0];
       const kycStatus = newVendor?.kyc_status;
-      
-      console.log('KYC Status from registration:', kycStatus);
-      
+
       if (kycStatus === 'verified' || hasVerifiedKyc) {
         Alert.alert(
           localT('approvedTitle'), 
@@ -679,7 +677,13 @@ export default function VendorScreen() {
           [
             {
               text: localT('goDashboard'),
-              onPress: () => router.push('/vendor/dashboard')
+              onPress: () => {
+                if (targetCategory) {
+                  router.push(`/vendor/category/${targetCategory}` as any);
+                } else {
+                  router.push('/vendor/dashboard');
+                }
+              }
             }
           ]
         );
@@ -693,7 +697,11 @@ export default function VendorScreen() {
               text: localT('later'), 
               style: 'cancel',
               onPress: () => {
-                router.push('/vendor/dashboard');
+                if (targetCategory) {
+                  router.push(`/vendor/category/${targetCategory}` as any);
+                } else {
+                  router.push('/vendor/dashboard');
+                }
               }
             },
             { 
@@ -982,7 +990,7 @@ export default function VendorScreen() {
           }
         >
           {/* Categories Row */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.figmaCategoriesRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.figmaCategoriesRow, { zIndex: 10 }]}>
             {['GYM', 'Travel', 'Halvai', 'Beauty', 'Decorator'].map((cat, i) => (
               <TouchableOpacity key={i} style={styles.figmaCategoryItem} onPress={() => router.push(`/vendor/category/${cat}` as any)}>
                 <Image
@@ -993,13 +1001,30 @@ export default function VendorScreen() {
                     cat === 'Beauty' ? require('../../assets/images/tab bar/rashi/vendor/Beauty.png') :
                     require('../../assets/images/tab bar/rashi/vendor/Decorator.png')
                   }
-                  style={{ width: 36, height: 36, tintColor: '#F26522' }}
+                  style={{ width: 24, height: 24, tintColor: '#F26522' }}
                   resizeMode="contain"
                 />
                 <Text style={styles.figmaCategoryText}>{cat}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
+
+          {/* Registration Button */}
+          <TouchableOpacity 
+            style={[styles.figmaRegisterBtn, { zIndex: 10 }]}
+            onPress={() => {
+              if (myVendor) {
+                router.push('/vendor/dashboard');
+              } else {
+                setShowRegistrationModal(true);
+              }
+            }}
+          >
+            <Text style={styles.figmaRegisterBtnText}>
+              {myVendor ? 'Manage My Service' : 'Register Your Business/Service'}
+            </Text>
+            <Ionicons name="arrow-forward" size={20} color="#FFF" />
+          </TouchableOpacity>
 
           {/* KYC Banner and Services Grid Wrapper */}
           <View style={{ width: 394, height: 360, backgroundColor: '#FCECD1', alignSelf: 'center', borderRadius: 20, paddingTop: 24, marginTop: -10, paddingBottom: 20 }}>
@@ -1138,7 +1163,7 @@ export default function VendorScreen() {
           </View>
 
           {/* Colorful Background Container for the Business Section */}
-          <View style={{ marginTop: 0, paddingBottom: 32, alignItems: 'center' }}>
+          <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
             <Image 
               source={require('../../assets/images/tab bar/rashi/vendor/background.png')} 
               style={{ position: 'absolute', width: 487, height: 364, top: 0 }} 
@@ -1218,95 +1243,6 @@ export default function VendorScreen() {
             </View>
           </View>
 
-          {/* My Business Section (if vendor owner) */}
-          {activeSection === 'Services' && myVendor && (
-            <View style={[styles.myBusinessCard, { marginHorizontal: 24, marginTop: 56 }]}>
-              <TouchableOpacity 
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-                onPress={() => {
-                  router.push('/vendor/dashboard');
-                }}
-              >
-                <View style={styles.myBusinessIcon}>
-                  <Ionicons name="storefront" size={24} color={COLORS.primary} />
-                </View>
-                <View style={styles.myBusinessInfo}>
-                  <Text style={styles.myBusinessLabel}>{localT('manageMyService')}</Text>
-                  <Text style={styles.myBusinessName}>{myVendor.business_name}</Text>
-                  {hasVerifiedKyc ? (
-                    <View style={{ marginTop: SPACING.xs }}>
-                      <View style={styles.kycStatusBadge}>
-                        <Ionicons name="checkmark-circle" size={12} color="#2E7D32" style={{ marginRight: SPACING.xs }} />
-                        <Text style={[styles.kycStatusText, { color: '#2E7D32' }]}>
-                          {localT('kycVerified')}
-                        </Text>
-                      </View>
-                    </View>
-                  ) : (
-                    (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'manual_review' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
-                      <View style={{ marginTop: SPACING.xs }}>
-                        <View style={styles.kycStatusBadge}>
-                          <View style={[
-                            styles.kycStatusDot,
-                            { 
-                              backgroundColor: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning 
-                            }
-                          ]} />
-                          <Text style={[
-                            styles.kycStatusText,
-                            { color: myVendor.kyc_status === 'rejected' ? COLORS.error : COLORS.warning }
-                          ]}>
-                            {myVendor.kyc_status === 'rejected'
-                              ? localT('kycRejected')
-                              : myVendor.kyc_status === 'manual_review'
-                                ? localT('verificationInReview')
-                                : localT('pendingKyc')}
-                          </Text>
-                        </View>
-                      </View>
-                    )
-                  )}
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} style={{ marginRight: 8 }} />
-              </TouchableOpacity>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: COLORS.divider }}>
-                {!hasVerifiedKyc && (myVendor.kyc_status === 'pending' || myVendor.kyc_status === 'rejected' || !myVendor.kyc_status) && (
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: COLORS.primary,
-                      paddingVertical: 6,
-                      paddingHorizontal: 12,
-                      borderRadius: 12,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                    onPress={() => {
-                      router.push('/kyc');
-                    }}
-                  >
-                    <Text style={{ color: COLORS.surface, fontSize: 11, fontWeight: '700' }}>
-                      {localT('verify')}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: 'rgba(211, 47, 47, 0.1)',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                  onPress={handleDeleteVendor}
-                >
-                  <Ionicons name="trash" size={18} color={COLORS.error} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
 
           {/* Create button */}
           {activeSection === 'Services' && !myVendor && (
@@ -1877,6 +1813,33 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
+  figmaRegisterBtn: {
+    flexDirection: 'row',
+    width: 361,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 16,
+    backgroundColor: '#F97316',
+    shadowColor: '#FED7AA',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 8,
+    alignSelf: 'center',
+    marginBottom: 0,
+  },
+  figmaRegisterBtnText: {
+    color: '#FFF',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    fontSize: 16,
+    fontStyle: 'normal',
+    fontWeight: '600',
+    lineHeight: 24,
+  },
   figmaCapsuleContainer: {
     alignItems: 'center',
   },
@@ -1897,9 +1860,9 @@ const styles = StyleSheet.create({
     width: 228,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF1A',
+    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#F26522',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1912,12 +1875,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   figmaServicesCapsule: {
-    width: 218,
+    width: 228,
     height: 24,
-    borderRadius: 13.5,
-    backgroundColor: '#FFFFFF1A',
+    borderRadius: 12,
+    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#F26522',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1930,11 +1893,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   figmaKycCapsule: {
+    width: 228,
     height: 24,
-    borderRadius: 13.5,
-    backgroundColor: '#FFFFFF1A',
+    borderRadius: 12,
+    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#F26522',
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',

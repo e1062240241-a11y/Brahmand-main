@@ -52,7 +52,7 @@ const PREDICTION_SECTIONS = [
 
 const getLuckyColorConfig = (colorName: string) => {
   const name = colorName.toLowerCase().trim();
-  let gradient = ['#FC8260', '#D84315']; // Default orange-red
+  let gradient: [string, string, ...string[]] = ['#FC8260', '#D84315']; // Default orange-red
   let textColor = '#FFF';
 
   if (name.includes('red')) { gradient = ['#FF6B6B', '#C92A2A']; }
