@@ -7956,8 +7956,7 @@ Every reply should feel:
 - peaceful yet strong,
 - like guidance from a calm soul who truly understands life."""
 
-    # --- RAG: Retrieve relevant Gita shlokas ---
-    rag_context = ""
+    # --- RAG & Personalization Engine Initialization ---
     latest_user_msg = ""
     for msg in reversed(messages):
         if msg.get("role") == "user":
@@ -7985,13 +7984,101 @@ Every reply should feel:
                 ]
             }
 
+    # Load/initialize user profile and session boundaries from Firestore
+    profile = {
+        "mood": "Neutral",
+        "focus_area": "General",
+        "persona": "Philosophical"
+    }
+    history_summaries = []
+    last_updated_str = None
+    new_session = False
+    db_messages = []
+    user_id = token_data["user_id"]
+
+    try:
+        from datetime import datetime, timezone
+        db = await get_firestore()
+        chat_ref = db.collection('krishna_chats').document(user_id)
+        chat_doc = chat_ref.get()
+        if chat_doc.exists:
+            chat_data = chat_doc.to_dict()
+            db_messages = chat_data.get("messages", [])
+            profile = chat_data.get("profile", profile)
+            history_summaries = chat_data.get("history_summaries", [])
+            last_updated_str = chat_data.get("updated_at")
+    except Exception as fs_err:
+        logger.warning(f"Failed to fetch profile/history from Firestore: {fs_err}")
+
+    # Session Boundary Check & Chat Summarization
+    from utils.krishna_personalizer import check_session_boundary, extract_user_profile, generate_chat_summary
+    if check_session_boundary(last_updated_str, 900): # 15 minutes boundary
+        new_session = True
+        if db_messages:
+            try:
+                summary = await generate_chat_summary(db_messages)
+                if summary:
+                    history_summaries.append(summary)
+                    history_summaries = history_summaries[-10:] # Keep last 10 summaries
+            except Exception as sum_err:
+                logger.error(f"Failed to generate previous session summary: {sum_err}")
+
+    # Extract user profile if it's a new session or not found
+    if new_session or not profile or profile.get("mood") == "Neutral":
+        try:
+            if latest_user_msg:
+                profile = await extract_user_profile(latest_user_msg, db_messages)
+        except Exception as ext_err:
+            logger.error(f"Failed to extract profile: {ext_err}")
+
+    # Dynamic Persona Adaptation
+    persona_instruction = ""
+    mood_lower = profile.get("mood", "Neutral").lower()
+    if "anx" in mood_lower or mood_lower == "anxious":
+        persona_instruction = """
+DYNAMIC PERSONA ACTIVATION: 'Friend/Sakha'
+Focus: Comfort, Slow pace.
+Speak like a close, caring friend (Sakha). Give the user emotional warmth, reassure them that they are not alone, and keep the guidance gentle and soothing. Avoid overwhelming them with complicated tasks; prioritize emotional healing and calmness.
+"""
+    elif "conf" in mood_lower or mood_lower == "confused":
+        persona_instruction = """
+DYNAMIC PERSONA ACTIVATION: 'Guide/Sarathi'
+Focus: Clarity, Action steps.
+Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide clear, logical direction and break down their problem into practical, actionable steps. Bring structured clarity to their mind.
+"""
+    elif "cur" in mood_lower or mood_lower == "curious":
+        persona_instruction = """
+DYNAMIC PERSONA ACTIVATION: 'Teacher/Guru'
+Focus: Deep philosophy, Shlokas.
+Speak like a spiritual master (Guru). Explore the deeper philosophical concepts of the Bhagavad Gita and explain cosmic truths. ground your response in scriptural knowledge, logic, and shlokas.
+"""
+    else:
+        persona_instruction = """
+DYNAMIC PERSONA ACTIVATION: 'Guide/Sarathi'
+Focus: Clarity, Action steps.
+Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide clear, logical direction and break down their problem into practical, actionable steps.
+"""
+    
+    system_prompt = system_prompt + f"\n\n{persona_instruction}"
+
+    # Inject long-term history summaries if available
+    if history_summaries:
+        summaries_context = "\n".join([f"- {s}" for s in history_summaries])
+        system_prompt = system_prompt + f"\n\nUSER HISTORY & LONG-TERM MEMORY (Summary of past interactions):\n{summaries_context}\nUse this past context to maintain consistency in your relationship and wisdom with the user."
+
+    # RAG search query enhancement
+    rag_query = latest_user_msg
+    if profile and profile.get("focus_area") and profile.get("focus_area").lower() not in ("general", "none", ""):
+        rag_query = f"Bhagavad Gita wisdom for {latest_user_msg} in {profile['focus_area']}"
+
+    rag_context = ""
     try:
         from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
         if latest_user_msg:
-            shlokas = await retrieve_relevant_shlokas_async(latest_user_msg, top_k=5)
+            shlokas = await retrieve_relevant_shlokas_async(rag_query, top_k=5)
             rag_context = build_rag_context(shlokas)
             if rag_context:
-                logger.info(f"RAG: Injecting {len(shlokas)} Gita shlokas into Krishna response")
+                logger.info(f"RAG: Injecting {len(shlokas)} Gita shlokas into Krishna response for enhanced query: '{rag_query}'")
     except Exception as rag_err:
         logger.warning(f"RAG retrieval skipped (non-fatal): {rag_err}")
         rag_context = ""
@@ -8008,7 +8095,6 @@ Every reply should feel:
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
         contents = []
-        # Prepend system instruction for Gemma
         combined_messages = []
         combined_messages.append({"role": "user", "content": f"System Instruction:\n{final_system_prompt}"})
         combined_messages.append({"role": "model", "content": "Understood. I will follow those instructions and act as Lord Krishna."})
@@ -8058,14 +8144,8 @@ Every reply should feel:
         try:
             from datetime import datetime, timezone
             db = await get_firestore()
-            user_id = token_data["user_id"]
             chat_ref = db.collection('krishna_chats').document(user_id)
             
-            chat_doc = chat_ref.get()
-            db_messages = []
-            if chat_doc.exists:
-                db_messages = chat_doc.to_dict().get("messages", [])
-                
             db_messages.append({
                 "role": "user",
                 "content": latest_user_msg,
@@ -8082,6 +8162,8 @@ Every reply should feel:
             
             chat_ref.set({
                 "messages": db_messages,
+                "profile": profile,
+                "history_summaries": history_summaries,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             })
         except Exception as fs_err:
