@@ -90,6 +90,7 @@ from routes.mahabharata_routes import router as mahabharata_router
 from routes.rigveda_routes import router as rigveda_router
 from routes.ramayan_routes import router as ramayan_router
 from routes.yajurveda_routes import router as yajurveda_router
+from routes.jaap_routes import router as jaap_routes_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -1064,6 +1065,7 @@ api_router.include_router(mahabharata_router)
 api_router.include_router(rigveda_router)
 api_router.include_router(ramayan_router)
 api_router.include_router(yajurveda_router)
+api_router.include_router(jaap_routes_router)
 
 
 @api_router.get("/firebase-config")
@@ -7952,8 +7954,7 @@ Every reply should feel:
 - peaceful yet strong,
 - like guidance from a calm soul who truly understands life."""
 
-    # --- RAG: Retrieve relevant Gita shlokas ---
-    rag_context = ""
+    # --- RAG & Personalization Engine Initialization ---
     latest_user_msg = ""
     for msg in reversed(messages):
         if msg.get("role") == "user":
@@ -7981,13 +7982,101 @@ Every reply should feel:
                 ]
             }
 
+    # Load/initialize user profile and session boundaries from Firestore
+    profile = {
+        "mood": "Neutral",
+        "focus_area": "General",
+        "persona": "Philosophical"
+    }
+    history_summaries = []
+    last_updated_str = None
+    new_session = False
+    db_messages = []
+    user_id = token_data["user_id"]
+
+    try:
+        from datetime import datetime, timezone
+        db = await get_firestore()
+        chat_ref = db.collection('krishna_chats').document(user_id)
+        chat_doc = chat_ref.get()
+        if chat_doc.exists:
+            chat_data = chat_doc.to_dict()
+            db_messages = chat_data.get("messages", [])
+            profile = chat_data.get("profile", profile)
+            history_summaries = chat_data.get("history_summaries", [])
+            last_updated_str = chat_data.get("updated_at")
+    except Exception as fs_err:
+        logger.warning(f"Failed to fetch profile/history from Firestore: {fs_err}")
+
+    # Session Boundary Check & Chat Summarization
+    from utils.krishna_personalizer import check_session_boundary, extract_user_profile, generate_chat_summary
+    if check_session_boundary(last_updated_str, 900): # 15 minutes boundary
+        new_session = True
+        if db_messages:
+            try:
+                summary = await generate_chat_summary(db_messages)
+                if summary:
+                    history_summaries.append(summary)
+                    history_summaries = history_summaries[-10:] # Keep last 10 summaries
+            except Exception as sum_err:
+                logger.error(f"Failed to generate previous session summary: {sum_err}")
+
+    # Extract user profile if it's a new session or not found
+    if new_session or not profile or profile.get("mood") == "Neutral":
+        try:
+            if latest_user_msg:
+                profile = await extract_user_profile(latest_user_msg, db_messages)
+        except Exception as ext_err:
+            logger.error(f"Failed to extract profile: {ext_err}")
+
+    # Dynamic Persona Adaptation
+    persona_instruction = ""
+    mood_lower = profile.get("mood", "Neutral").lower()
+    if "anx" in mood_lower or mood_lower == "anxious":
+        persona_instruction = """
+DYNAMIC PERSONA ACTIVATION: 'Friend/Sakha'
+Focus: Comfort, Slow pace.
+Speak like a close, caring friend (Sakha). Give the user emotional warmth, reassure them that they are not alone, and keep the guidance gentle and soothing. Avoid overwhelming them with complicated tasks; prioritize emotional healing and calmness.
+"""
+    elif "conf" in mood_lower or mood_lower == "confused":
+        persona_instruction = """
+DYNAMIC PERSONA ACTIVATION: 'Guide/Sarathi'
+Focus: Clarity, Action steps.
+Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide clear, logical direction and break down their problem into practical, actionable steps. Bring structured clarity to their mind.
+"""
+    elif "cur" in mood_lower or mood_lower == "curious":
+        persona_instruction = """
+DYNAMIC PERSONA ACTIVATION: 'Teacher/Guru'
+Focus: Deep philosophy, Shlokas.
+Speak like a spiritual master (Guru). Explore the deeper philosophical concepts of the Bhagavad Gita and explain cosmic truths. ground your response in scriptural knowledge, logic, and shlokas.
+"""
+    else:
+        persona_instruction = """
+DYNAMIC PERSONA ACTIVATION: 'Guide/Sarathi'
+Focus: Clarity, Action steps.
+Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide clear, logical direction and break down their problem into practical, actionable steps.
+"""
+    
+    system_prompt = system_prompt + f"\n\n{persona_instruction}"
+
+    # Inject long-term history summaries if available
+    if history_summaries:
+        summaries_context = "\n".join([f"- {s}" for s in history_summaries])
+        system_prompt = system_prompt + f"\n\nUSER HISTORY & LONG-TERM MEMORY (Summary of past interactions):\n{summaries_context}\nUse this past context to maintain consistency in your relationship and wisdom with the user."
+
+    # RAG search query enhancement
+    rag_query = latest_user_msg
+    if profile and profile.get("focus_area") and profile.get("focus_area").lower() not in ("general", "none", ""):
+        rag_query = f"Bhagavad Gita wisdom for {latest_user_msg} in {profile['focus_area']}"
+
+    rag_context = ""
     try:
         from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
         if latest_user_msg:
-            shlokas = await retrieve_relevant_shlokas_async(latest_user_msg, top_k=5)
+            shlokas = await retrieve_relevant_shlokas_async(rag_query, top_k=5)
             rag_context = build_rag_context(shlokas)
             if rag_context:
-                logger.info(f"RAG: Injecting {len(shlokas)} Gita shlokas into Krishna response")
+                logger.info(f"RAG: Injecting {len(shlokas)} Gita shlokas into Krishna response for enhanced query: '{rag_query}'")
     except Exception as rag_err:
         logger.warning(f"RAG retrieval skipped (non-fatal): {rag_err}")
         rag_context = ""
@@ -8004,7 +8093,6 @@ Every reply should feel:
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
         contents = []
-        # Prepend system instruction for Gemma
         combined_messages = []
         combined_messages.append({"role": "user", "content": f"System Instruction:\n{final_system_prompt}"})
         combined_messages.append({"role": "model", "content": "Understood. I will follow those instructions and act as Lord Krishna."})
@@ -8054,14 +8142,8 @@ Every reply should feel:
         try:
             from datetime import datetime, timezone
             db = await get_firestore()
-            user_id = token_data["user_id"]
             chat_ref = db.collection('krishna_chats').document(user_id)
             
-            chat_doc = chat_ref.get()
-            db_messages = []
-            if chat_doc.exists:
-                db_messages = chat_doc.to_dict().get("messages", [])
-                
             db_messages.append({
                 "role": "user",
                 "content": latest_user_msg,
@@ -8078,6 +8160,8 @@ Every reply should feel:
             
             chat_ref.set({
                 "messages": db_messages,
+                "profile": profile,
+                "history_summaries": history_summaries,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             })
         except Exception as fs_err:
@@ -11444,6 +11528,20 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
     import asyncio
     import json
     import random
+    from datetime import datetime
+    from utils.cache import cache_manager
+    
+    zodiac_clean = zodiac_name.lower().strip()
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    cache_key = f"horoscope:daily:{zodiac_clean}:{today}"
+    
+    try:
+        cached_data = await cache_manager.get(cache_key)
+        if cached_data:
+            logger.info("Serving cached daily horoscope for %s on %s", zodiac_clean, today)
+            return cached_data
+    except Exception as e:
+        logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
     def _call():
         import google.genai as genai
@@ -11452,16 +11550,20 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         model = "gemma-4-26b-a4b-it"
         prompt = (
             f"Generate a highly detailed, comprehensive, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. "
-            f"Return ONLY a valid JSON object in this exact format, with no markdown formatting:\n"
-            f'{{"prediction": "A detailed general prediction text summing up the day.", '
-            f'"lucky_number": "7", '
-            f'"lucky_color": "Blue", '
-            f'"lucky_color_hex": "#3B82F6", '
-            f'"scores": {{"finance": 80, "love": 75, "health": 90, "overall": 82}}, '
-            f'"detailed_predictions": {{"finance": "A detailed paragraph advising on financial decisions, wealth, expenses and career prospects today.", '
-            f'"love": "A detailed paragraph advising on relationships, family, partners and emotional bonds today.", '
-            f'"health": "A detailed paragraph advising on physical wellness, energy, diet, mental peace and stress management today.", '
-            f'"overall": "A detailed paragraph summarizing the spiritual flow and main path of your entire day today."}}}}'
+            f"Return ONLY a valid JSON object in this exact schema structure, with no markdown formatting. Do not copy placeholder descriptions; generate real predictions:\n"
+            f'{{\n'
+            f'  "prediction": "General daily prediction paragraph for {zodiac_name}",\n'
+            f'  "lucky_number": "Random number from 1 to 9",\n'
+            f'  "lucky_color": "Name of lucky color",\n'
+            f'  "lucky_color_hex": "Hex color code",\n'
+            f'  "scores": {{"finance": 80, "love": 75, "health": 90, "overall": 82}},\n'
+            f'  "detailed_predictions": {{\n'
+            f'    "finance": "Detailed paragraph about career and money for {zodiac_name} today",\n'
+            f'    "love": "Detailed paragraph about relationships and emotions for {zodiac_name} today",\n'
+            f'    "health": "Detailed paragraph about physical and mental health for {zodiac_name} today",\n'
+            f'    "overall": "Detailed paragraph about spiritual path and overall flow for {zodiac_name} today"\n'
+            f'  }}\n'
+            f'}}'
         )
         from google.genai import types
         config = types.GenerateContentConfig(
@@ -11495,21 +11597,59 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
                 "health": f"Maintain your vitality with mindful practices like yoga or meditation. Keep your energy high.",
                 "overall": f"A beautiful day focused on self-reflection and spiritual growth. The stars favor your determination."
             }
+        
+        # Cache the generated result for 12 hours
+        try:
+            await cache_manager.set(cache_key, data, ttl=43200)
+        except Exception as e:
+            logger.warning("Failed to cache daily horoscope for %s: %s", zodiac_clean, e)
+            
         return data
     except Exception as e:
         logger.warning("Gemini horoscope generation failed, using mock generator: %s", e)
-        fin = random.randint(60, 95)
-        lov = random.randint(55, 95)
-        hea = random.randint(60, 95)
+        
+        # Seed random to ensure different signs have completely different, day-consistent values
+        import hashlib
+        seed_str = f"{zodiac_clean}:{today}"
+        seed_val = int(hashlib.md5(seed_str.encode('utf-8')).hexdigest()[:8], 16)
+        local_rand = random.Random(seed_val)
+        
+        fin = local_rand.randint(65, 95)
+        lov = local_rand.randint(60, 95)
+        hea = local_rand.randint(65, 95)
         ovr = int((fin + lov + hea) / 3)
+        
         colors = [
             ("Orange", "#FF6B00"), ("Purple", "#8E44AD"), ("Green", "#2ECC71"), 
             ("Blue", "#3498DB"), ("Yellow", "#F1C40F"), ("Red", "#E74C3C")
         ]
-        chosen_color = random.choice(colors)
-        return {
-            "prediction": f"Today is a day of spiritual growth and inner peace for {zodiac_name.capitalize()}. Stay positive and focus on your spiritual journey.",
-            "lucky_number": str(random.randint(1, 9)),
+        chosen_color = local_rand.choice(colors)
+        
+        # Predictions list for variation
+        finance_predictions = [
+            f"Financial decisions require care today for {zodiac_clean.capitalize()}. Avoid impulsive spending and focus on saving.",
+            f"Opportunities for wealth and professional growth are on the horizon for {zodiac_clean.capitalize()}. Stay alert.",
+            f"A stable day for career and money matters. {zodiac_clean.capitalize()} should plan for long-term investments."
+        ]
+        love_predictions = [
+            f"Spiritual bonds and family connections will deepen for {zodiac_clean.capitalize()} today. Speak from the heart.",
+            f"Express your feelings clearly to avoid misunderstandings. {zodiac_clean.capitalize()} will find emotional balance today.",
+            f"A beautiful day for sharing love and joy with close ones. {zodiac_clean.capitalize()}'s relationships will flourish."
+        ]
+        health_predictions = [
+            f"Prioritize rest and mental peace. Practicing yoga or breathing exercises will benefit {zodiac_clean.capitalize()} today.",
+            f"Vitality is high. {zodiac_clean.capitalize()} should focus on clean eating and light exercise to maintain energy.",
+            f"Listen to your body. Rejuvenating your mind through meditation is highly recommended for {zodiac_clean.capitalize()}."
+        ]
+        overall_predictions = [
+            f"A promising day of alignment and inner growth. The universe supports {zodiac_clean.capitalize()}'s spiritual path.",
+            f"A peaceful flow of energy guides {zodiac_clean.capitalize()} today. Keep your thoughts positive and actions pure.",
+            f"New insights and positive transformations await {zodiac_clean.capitalize()} today. Trust the divine timing."
+        ]
+        
+        fallback_data = {
+            "prediction": f"Today brings a wave of positive energy and spiritual focus for {zodiac_clean.capitalize()}. Embrace the changes with grace.",
+            "lucky_number": str(local_rand.randint(1, 9)),
             "lucky_color": chosen_color[0],
             "lucky_color_hex": chosen_color[1],
             "scores": {
@@ -11519,12 +11659,20 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
                 "overall": ovr
             },
             "detailed_predictions": {
-                "finance": f"A good day to review budgets and plan long-term savings. Keep an eye out for minor financial opportunities.",
-                "love": f"Express your feelings clearly to your partner or friends. Listen actively to foster emotional balance.",
-                "health": f"Focus on hydration and balanced nutrition. A light walk in nature will rejuvenate your mind and body.",
-                "overall": f"A promising day where alignment in your thoughts and actions brings peace and progress across all fronts."
+                "finance": local_rand.choice(finance_predictions),
+                "love": local_rand.choice(love_predictions),
+                "health": local_rand.choice(health_predictions),
+                "overall": local_rand.choice(overall_predictions)
             }
         }
+        
+        # Cache the fallback result for 12 hours
+        try:
+            await cache_manager.set(cache_key, fallback_data, ttl=43200)
+        except Exception as e:
+            logger.warning("Failed to cache daily horoscope for %s: %s", zodiac_clean, e)
+            
+        return fallback_data
 
 
 @api_router.get("/horoscope/daily/{zodiac_name}")
