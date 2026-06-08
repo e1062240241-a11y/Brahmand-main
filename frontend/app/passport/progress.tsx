@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
 import { usePassportStore } from '../../src/store/passportStore';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 function PassportProgressScreen({
   observedBadges,
@@ -14,6 +16,7 @@ function PassportProgressScreen({
   observedBadges: any[];
   observedCertificates: any[];
 }) {
+  const router = useRouter();
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const totalJaap = usePassportStore((state) => state.total_jaap);
   const booksCompleted = usePassportStore((state) => state.books_completed);
@@ -62,10 +65,25 @@ function PassportProgressScreen({
     setCompletionDays('30');
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/passport/inner' as any);
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Passport Progress</Text>
+      </View>
+
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Passport Progress</Text>
         <Text style={styles.subtitle}>Update jaap, awards and reading achievements instantly.</Text>
 
         <View style={styles.statsRow}>
@@ -135,11 +153,16 @@ function PassportProgressScreen({
           {certificates.length === 0 ? (
             <Text style={styles.emptyText}>No certificates yet. Complete a reading to generate one.</Text>
           ) : (
-            certificates.map((certificate) => (
-              <View key={certificate.id} style={styles.certificateRow}>
+            certificates.map((certificate: any) => (
+              <TouchableOpacity 
+                key={certificate.id} 
+                style={styles.certificateRow}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/passport/certificate/${certificate.id}` as any)}
+              >
                 <Text style={styles.certificateTitle}>{certificate.bookName || certificate.book_name}</Text>
-                <Text style={styles.certificateMeta}>{certificate.completionDays || certificate.completion_days} days • {new Date(certificate.date).toDateString()}</Text>
-              </View>
+                <Text style={styles.certificateMeta}>{(certificate.completionDays || certificate.completion_days)} days • {new Date(certificate.date).toDateString()}</Text>
+              </TouchableOpacity>
             ))
           )}
         </View>
@@ -152,6 +175,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    height: 56,
+    borderBottomWidth: 0.8,
+    borderBottomColor: COLORS.surface,
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginLeft: SPACING.sm,
   },
   content: {
     padding: SPACING.lg,

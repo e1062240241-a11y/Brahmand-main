@@ -8,6 +8,7 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 
 import SOSMap from '../src/components/SOSMap';
+import { LocationPickerModal, LocationData } from '../src/components/LocationPickerModal';
 
 
 import { useAuthStore } from '../src/store/authStore';
@@ -67,6 +68,28 @@ export default function SOSScreen() {
   const [loadingText, setLoadingText] = useState<string>('Sending SOS Alert...');
   const [existingSOS, setExistingSOS] = useState<any>(null);
   const [resolving, setResolving] = useState(false);
+  const [pickerVisible, setPickerVisible] = useState(false);
+
+  const handleConfirmManualLocation = (locData: LocationData) => {
+    if (locData.latitude && locData.longitude) {
+      setLocation({
+        coords: {
+          latitude: locData.latitude,
+          longitude: locData.longitude,
+          altitude: null,
+          accuracy: 1.0,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+        },
+        timestamp: Date.now(),
+      });
+      const parts = [locData.area, locData.city, locData.state].filter(Boolean);
+      setMicroLocation(parts.join(', ') || locData.display_name || '');
+      setGpsErrorType(null);
+    }
+    setPickerVisible(false);
+  };
 
   const pulse1 = useRef(new Animated.Value(0)).current;
   const pulse2 = useRef(new Animated.Value(0)).current;
@@ -435,6 +458,17 @@ export default function SOSScreen() {
                     View Live GPS Link ({location.coords.latitude.toFixed(5)}, {location.coords.longitude.toFixed(5)})
                   </Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.mapsLinkBtn, { marginTop: 10, backgroundColor: '#FFF5EB', borderColor: '#FFD7C2' }]} 
+                  onPress={() => setPickerVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="pencil-sharp" size={16} color="#FF6B00" />
+                  <Text style={[styles.mapsLinkText, { color: '#FF6B00' }]}>
+                    Choose Manually (Map / Search)
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.warningContainer}>
@@ -475,6 +509,15 @@ export default function SOSScreen() {
                         <Text style={styles.actionRetryText}>Retry</Text>
                       </TouchableOpacity>
                     </View>
+
+                    <TouchableOpacity 
+                      style={[styles.mapsLinkBtn, { marginTop: 15, width: '100%', justifyContent: 'center' }]} 
+                      onPress={() => setPickerVisible(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="map-outline" size={16} color="#FF3B30" />
+                      <Text style={styles.mapsLinkText}>Choose Location Manually (Map / Search)</Text>
+                    </TouchableOpacity>
                   </>
                 )}
 
@@ -521,6 +564,15 @@ export default function SOSScreen() {
                         <Text style={styles.actionRetryText}>Retry</Text>
                       </TouchableOpacity>
                     </View>
+
+                    <TouchableOpacity 
+                      style={[styles.mapsLinkBtn, { marginTop: 15, width: '100%', justifyContent: 'center' }]} 
+                      onPress={() => setPickerVisible(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="map-outline" size={16} color="#FF3B30" />
+                      <Text style={styles.mapsLinkText}>Choose Location Manually (Map / Search)</Text>
+                    </TouchableOpacity>
                   </>
                 )}
 
@@ -538,6 +590,15 @@ export default function SOSScreen() {
                     >
                       <Ionicons name="refresh" size={16} color="#FFF" />
                       <Text style={styles.retryFetchText}>Retry Fetching GPS</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[styles.retryFetchBtn, { backgroundColor: '#FF6B00', marginTop: 10 }]} 
+                      onPress={() => setPickerVisible(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="map-outline" size={16} color="#FFF" />
+                      <Text style={styles.retryFetchText}>Select Manually on Map</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -650,6 +711,14 @@ export default function SOSScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      <LocationPickerModal
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onConfirm={handleConfirmManualLocation}
+        title="Confirm SOS Location"
+        initialCoords={location ? { latitude: location.coords.latitude, longitude: location.coords.longitude } : null}
+      />
     </SafeAreaView>
   );
 }
