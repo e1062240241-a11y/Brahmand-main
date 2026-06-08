@@ -722,8 +722,6 @@ function MessagesScreen({
         </View>
 
         {renderHierarchyAccordion(cityItem, stateItem, nationalItem)}
-
-        {others.map((item) => renderVerifiedCommunityRow(item))}
       </View>
     );
   };
@@ -748,92 +746,95 @@ function MessagesScreen({
         // Trigger background sync for WatermelonDB
         syncDatabase().catch(e => console.warn('[Messages] Background sync failed:', e));
 
+        console.log('[DEBUG] fetchData: starting community fetch...');
         const [communityRes, requestRes, myPendingRes] = await Promise.all([
-          getCommunities(),
-          getCommunityRequests({ status: 'active', limit: 10 }),
-          getMyCreationRequests().catch(() => ({ data: [] })),
+          getCommunities().catch((err) => { console.warn('getCommunities err', err); return { data: [] }; }),
+          getCommunityRequests({ status: 'active', limit: 10 }).catch((err) => { console.warn('getCommunityRequests err', err); return { data: [] }; }),
+          getMyCreationRequests().catch((err) => { console.warn('getMyCreationRequests err', err); return { data: [] }; }),
         ]);
+        console.log('[DEBUG] communityRes:', communityRes?.data?.length, 'requestRes:', requestRes?.data?.length);
 
         const allComms = communityRes.data || [];
 
-        // Persist to WatermelonDB
+        // Persist to WatermelonDB (non-blocking - failure here should not break the UI)
         if (Platform.OS !== 'web') {
-          await database.write(async () => {
-            const communitiesCollection = database.get('communities');
-            for (const comm of allComms) {
-              try {
-                const existing = await communitiesCollection.find(comm.id);
-                await existing.update((record: any) => {
-                  record.name = comm.name;
-                  record.description = comm.description;
-                  record.photo = comm.photo;
-                  record.type = comm.type;
-                  record.memberCount = comm.member_count || 0;
-                });
-              } catch {
-                await communitiesCollection.create((record: any) => {
-                  record._raw.id = comm.id;
-                  record.name = comm.name;
-                  record.description = comm.description;
-                  record.photo = comm.photo;
-                  record.type = comm.type;
-                  record.memberCount = comm.member_count || 0;
-                });
+          try {
+            await database.write(async () => {
+              const communitiesCollection = database.get('communities');
+              for (const comm of allComms) {
+                try {
+                  const existing = await communitiesCollection.find(comm.id);
+                  await existing.update((record: any) => {
+                    record.name = comm.name;
+                    record.description = comm.description;
+                    record.photo = comm.photo;
+                    record.type = comm.type;
+                    record.memberCount = comm.member_count || 0;
+                  });
+                } catch {
+                  await communitiesCollection.create((record: any) => {
+                    record._raw.id = comm.id;
+                    record.name = comm.name;
+                    record.description = comm.description;
+                    record.photo = comm.photo;
+                    record.type = comm.type;
+                    record.memberCount = comm.member_count || 0;
+                  });
+                }
               }
-            }
-          });
+            });
+          } catch (dbErr) {
+            console.warn('[DEBUG] WatermelonDB write failed (non-fatal):', dbErr);
+          }
         }
 
         // Fetch ALL user_group communities — load from cache first, then refresh
         try {
             const pendingGroups = (myPendingRes.data || []).map((req: any) => ({
               ...req,
-              type: 'user_group',
+              type: req.type || 'local',
               is_pending: true,
               member_count: req.member_ids?.length || 1,
             }));
+          console.log('[DEBUG] pendingGroups:', pendingGroups.length);
 
-          // Show cached user groups immediately
-          const cachedGroups = await AsyncStorage.getItem(USER_GROUPS_CACHE_KEY);
-          if (cachedGroups) {
-            const { data: cachedData, timestamp } = JSON.parse(cachedGroups);
-            if (Array.isArray(cachedData) && cachedData.length > 0) {
-              setUserGroups(cachedData);
-              // Skip network if cache is fresh
-              if (Date.now() - timestamp < USER_GROUPS_CACHE_TTL) {
-                setRequests(requestRes.data || []);
-                return;
-              }
-            }
-          }
-          // Fetch fresh from discover endpoint
+          // Fetch fresh from discover endpoint EVERY TIME for now to avoid stale cache issues
           const discoverRes = await discoverCommunities();
           const allDiscovered = discoverRes.data || [];
+          console.log('[DEBUG] discoverRes total:', allDiscovered.length, 'items:', allDiscovered.map((c: any) => `${c.name}(${c.type})`));
           const allUserGroups = allDiscovered.filter(
-            (item: Community) => item.type === 'user_group'
+            (item: Community) => item.type === 'user_group' || item.type === 'local'
           );
+          console.log('[DEBUG] allUserGroups after filter:', allUserGroups.length);
           // Also include any user_group the current user is a member of (from getCommunities)
-          const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group');
+          const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group' || item.type === 'local');
+          console.log('[DEBUG] allComms total:', allComms.length, 'myUserGroups:', myUserGroups.length);
+          
           // Merge and deduplicate by id, prioritize pending ones for the current user
           const merged = [...pendingGroups, ...allUserGroups, ...myUserGroups];
           const unique = merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+          console.log('[DEBUG] final unique userGroups:', unique.length, unique.map((c: any) => c.name));
+          
           setUserGroups(unique);
           // Persist to cache
           await AsyncStorage.setItem(USER_GROUPS_CACHE_KEY, JSON.stringify({ data: unique, timestamp: Date.now() }));
-        } catch {
+        } catch (e) {
+          console.log('[DEBUG] error in userGroups logic:', e);
           // Fallback if discover fails
-          const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group');
+          const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group' || item.type === 'local');
           const pendingGroups = (myPendingRes.data || []).map((req: any) => ({
             ...req,
-            type: 'user_group',
+            type: req.type || 'local',
             is_pending: true,
             member_count: req.member_ids?.length || 1,
           }));
           const merged = [...pendingGroups, ...myUserGroups];
           const unique = merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+          console.log('[DEBUG] setting fallback unique:', unique);
           setUserGroups(unique);
         }
 
+        console.log('[DEBUG] requestRes.data:', requestRes.data?.length, requestRes.data?.map((r: any) => r.title));
         setRequests(requestRes.data || []);
       } else {
         setLoading((prev) => {
@@ -1006,9 +1007,7 @@ function MessagesScreen({
   useFocusEffect(
     useCallback(() => {
       getAllMutedConversations().then(setMutedConversations);
-      if (activeTopTab === 'Private Chat') {
-        fetchData();
-      }
+      fetchData();
     }, [activeTopTab])
   );
 

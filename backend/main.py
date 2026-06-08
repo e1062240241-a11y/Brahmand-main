@@ -6225,12 +6225,8 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                     )
                     
                     if is_cultural:
-                        # If it doesn't match the current key, remove it silently
-                        if not current_cultural_key or circle.get('cultural_group_key') != current_cultural_key:
-                            logger.info(f"Auto-removing user {user_id} from legacy cultural circle {cid}")
-                            await db.array_remove_update('users', user_id, 'circles', [cid])
-                            await db.array_remove_update('circles', cid, 'members', [user_id])
-                            continue
+                        # Keep user in the cultural circle even if they changed their primary one
+                        pass
 
                     member_names = []
                     for member_id in circle.get('members', []):
@@ -10219,8 +10215,8 @@ async def get_community_requests(
     )
     if not isinstance(location_area, dict):
         location_area = {}
-    
-    requests = await db.query_documents('community_requests', filters=filters, limit=limit)
+    # Do not apply limit at DB level to avoid fetching oldest documents first
+    requests = await db.query_documents('community_requests', filters=filters)
     
     # Filter requests based on visibility level
     visible_requests = []
@@ -10306,6 +10302,10 @@ async def get_community_requests(
         return (priority, -ts)
 
     filtered_clean_requests.sort(key=_final_sort_key)
+    
+    # Apply limit
+    if limit:
+        filtered_clean_requests = filtered_clean_requests[:limit]
             
     # 2. Store in cache with 30-second TTL
     await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)

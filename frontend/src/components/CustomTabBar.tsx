@@ -7,7 +7,7 @@ import { Svg, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 
 const ACTIVE_ORANGE = '#FF8A00';
-const INACTIVE_COLOR = '#8A8A8F';
+const INACTIVE_COLOR = '#FFFFFF';
 const CAPSULE_BG = '#1C1C1C';
 const BORDER_COLOR = '#CECECE';
 
@@ -46,15 +46,15 @@ const getIconPositions = (activeIndex: number): number[] => {
     return [63, 160, 215, 270, 325];
   }
   if (activeIndex === 1) {
-    return [34, 131, 224, 276, 328];
+    return [31, 131, 224, 276, 328];
   }
   if (activeIndex === 2) {
     // Left capsule (0-136.5) centers: 38, 94. Active: 186.5. Right capsule (236.5-373) centers: 279, 335.
     return [38, 94, 186.5, 279, 335];
   }
   if (activeIndex === 3) {
-    // Left capsule (0-167) centers: 32, 84, 136. Active: 219. Right capsule (271-373) center: 322.
-    return [32, 84, 136, 219, 322];
+    // Left capsule (0-167) centers: 32, 84, 136. Active: 219. Right capsule (271-373) center: 325.
+    return [32, 84, 136, 219, 325];
   }
   if (activeIndex === 4) {
     return [48, 103, 158, 213, 310];
@@ -79,25 +79,28 @@ const getBackgroundRects = (activeIndex: number) => {
   const L_active = centerX - tabWidth / 2;
   const R_active = centerX + tabWidth / 2;
 
+  const ACTIVE_BORDER_COLOR = '#CECECE';
+  const INACTIVE_BORDER_COLOR = '#FFFFFF';
+
   const rects = [];
 
   // Left Inactive Group
   if (L_active > 20) {
     rects.push(
-      <Rect key="left" x={0} y={0} width={L_active - GAP} height={69} rx={34.5} fill={CAPSULE_BG} stroke={BORDER_COLOR} strokeWidth={1.5} />
+      <Rect key="left" x={0} y={0} width={L_active - GAP} height={69} rx={34.5} fill={CAPSULE_BG} stroke={INACTIVE_BORDER_COLOR} strokeWidth={1.5} />
     );
   }
 
   // Right Inactive Group
   if (R_active < 353) {
     rects.push(
-      <Rect key="right" x={R_active + GAP} y={0} width={373 - (R_active + GAP)} height={69} rx={34.5} fill={CAPSULE_BG} stroke={BORDER_COLOR} strokeWidth={1.5} />
+      <Rect key="right" x={R_active + GAP} y={0} width={373 - (R_active + GAP)} height={69} rx={34.5} fill={CAPSULE_BG} stroke={INACTIVE_BORDER_COLOR} strokeWidth={1.5} />
     );
   }
 
   // Active Tab Capsule
   rects.push(
-    <Rect key="active" x={L_active} y={0} width={tabWidth} height={69} rx={34.5} fill={CAPSULE_BG} stroke={BORDER_COLOR} strokeWidth={1.5} />
+    <Rect key="active" x={L_active} y={0} width={tabWidth} height={69} rx={34.5} fill={CAPSULE_BG} stroke={ACTIVE_BORDER_COLOR} strokeWidth={1.5} />
   );
 
   return rects;

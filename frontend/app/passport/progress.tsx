@@ -15,6 +15,7 @@ function PassportProgressScreen({
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const totalJaap = usePassportStore((state) => state.total_jaap);
   const booksCompleted = usePassportStore((state) => state.books_completed);
+  const certificates = usePassportStore((state) => state.certificates);
   const badges = observedBadges;
   const addJaap = usePassportStore((state) => state.addJaap);
   const completeBook = usePassportStore((state) => state.completeBook);
