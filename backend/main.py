@@ -90,6 +90,7 @@ from routes.mahabharata_routes import router as mahabharata_router
 from routes.rigveda_routes import router as rigveda_router
 from routes.ramayan_routes import router as ramayan_router
 from routes.yajurveda_routes import router as yajurveda_router
+from routes.jaap_routes import router as jaap_routes_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -1064,6 +1065,7 @@ api_router.include_router(mahabharata_router)
 api_router.include_router(rigveda_router)
 api_router.include_router(ramayan_router)
 api_router.include_router(yajurveda_router)
+api_router.include_router(jaap_routes_router)
 
 
 @api_router.get("/firebase-config")
