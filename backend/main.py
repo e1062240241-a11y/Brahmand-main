@@ -1412,8 +1412,13 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     user = await db.get_document('users', user_id)
     
     circles = []
-    for cid in user.get('circles', []):
-        circle = await db.get_document('circles', cid)
+    circle_ids = user.get('circles', [])
+    if not circle_ids:
+        return circles
+
+    fetched_circles = await db.get_documents('circles', circle_ids)
+
+    for circle in fetched_circles:
         if circle:
             circles.append({
                 "id": circle['id'],

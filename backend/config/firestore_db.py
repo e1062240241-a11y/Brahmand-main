@@ -69,6 +69,27 @@ class FirestoreDB:
         
         return await self._run_sync(_get)
     
+    async def get_documents(self, collection: str, doc_ids: List[str]) -> List[Optional[Dict[str, Any]]]:
+        """Get multiple documents by ID using batch get_all"""
+        if not doc_ids:
+            return []
+
+        def _get_batch():
+            refs = [self.client.collection(collection).document(doc_id) for doc_id in doc_ids]
+            docs = self.client.get_all(refs)
+
+            result = []
+            for doc in docs:
+                if doc.exists:
+                    data = doc.to_dict()
+                    data['id'] = doc.id
+                    result.append(data)
+                else:
+                    result.append(None)
+            return result
+
+        return await self._run_sync(_get_batch)
+
     async def update_document(self, collection: str, doc_id: str, data: Dict[str, Any]) -> bool:
         """Update a document"""
         data['updated_at'] = datetime.utcnow()
