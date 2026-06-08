@@ -41,8 +41,8 @@ const ZODIAC_SIGNS = [
 ];
 
 const PREDICTION_SECTIONS = [
-  { label: 'PERSONAL LIFE', keys: ['fiance', 'personal_life', 'personal'], icon: require('../assets/images/tab bar/rashi/person_fill.png'), fallback: 'Focus on harmony and understanding in your personal relationships today.' },
-  { label: 'PROFESSION', keys: ['love', 'profession', 'career'], icon: require('../assets/images/tab bar/rashi/briefcase_fill.png'), fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
+  { label: 'PERSONAL LIFE', keys: ['love', 'personal_life', 'personal'], icon: require('../assets/images/tab bar/rashi/person_fill.png'), fallback: 'Focus on harmony and understanding in your personal relationships today.' },
+  { label: 'PROFESSION', keys: ['finance', 'profession', 'career'], icon: require('../assets/images/tab bar/rashi/briefcase_fill.png'), fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
   { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/tab bar/rashi/heart.png'), fallback: 'Take time to rest and recharge. Balance your physical and mental well-being.' },
   { label: 'EMOTIONS', keys: ['overall', 'emotion', 'emotions'], icon: require('../assets/images/tab bar/rashi/smiley_fill.png'), fallback: 'Allow yourself to feel and process your emotions without judgment today.' },
   { label: 'TRAVEL', keys: ['travel'], icon: require('../assets/images/tab bar/rashi/trolley_fill.png'), fallback: 'Whether commuting or planning a trip, stay organized and adaptable to changes.' },
@@ -82,15 +82,17 @@ export default function HoroscopeScreen() {
   const [error, setError] = useState('');
 
   const isMountedRef = useRef(true);
+  const hasSetDefaultRashiRef = useRef(false);
 
   // Set default rashi on mount if user profile has one
   useEffect(() => {
     isMountedRef.current = true;
     const rashi = user?.rashi;
-    if (rashi) {
+    if (rashi && !hasSetDefaultRashiRef.current) {
       const match = ZODIAC_SIGNS.find(z => z.hindi.toLowerCase() === rashi.toLowerCase() || z.name.toLowerCase() === rashi.toLowerCase());
       if (match) {
         setSelectedZodiac(match);
+        hasSetDefaultRashiRef.current = true;
       }
     }
     return () => { isMountedRef.current = false; };
