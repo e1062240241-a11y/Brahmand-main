@@ -53,7 +53,7 @@ function PassportJourneyDetailScreen({ observedJourneys }: { observedJourneys: a
         {journey.media.length > 0 && (
           <View style={styles.mediaSection}>
             <Text style={styles.sectionTitle}>Media</Text>
-            {journey.media.map((item) => (
+            {journey.media.map((item: any) => (
               <Text key={item.id} style={styles.mediaItem}>{item.type.toUpperCase()}: {item.uri}</Text>
             ))}
           </View>
@@ -61,7 +61,7 @@ function PassportJourneyDetailScreen({ observedJourneys }: { observedJourneys: a
 
         <View style={styles.answersSection}>
           <Text style={styles.sectionTitle}>Journey Notes</Text>
-          {journey.answers.map((item) => (
+          {journey.answers.map((item: any) => (
             <View key={item.question} style={styles.answerBlock}>
               <Text style={styles.question}>{item.question}</Text>
               <Text style={styles.answer}>{item.answer || 'No note added.'}</Text>

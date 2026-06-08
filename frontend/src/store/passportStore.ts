@@ -89,8 +89,13 @@ export const usePassportStore = create<PassportState>((set, get) => ({
           record.location = newJourney.location;
           record.date = newJourney.date;
           record.story = newJourney.generated_story;
-          record.answers = JSON.stringify(newJourney.answers);
-          record.created_at = Date.now();
+          record.rawAnswers = JSON.stringify({
+            title: newJourney.title,
+            media: newJourney.media,
+            visibility: newJourney.visibility,
+            answersList: newJourney.answers,
+          });
+          record.createdAt = new Date();
         });
       });
     } catch (e) {

@@ -9,14 +9,17 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 function PassportProgressScreen({
   observedBadges,
+  observedCertificates,
 }: {
   observedBadges: any[];
+  observedCertificates: any[];
 }) {
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const totalJaap = usePassportStore((state) => state.total_jaap);
   const booksCompleted = usePassportStore((state) => state.books_completed);
   const certificates = usePassportStore((state) => state.certificates);
   const badges = observedBadges;
+  const certificates = observedCertificates;
   const addJaap = usePassportStore((state) => state.addJaap);
   const completeBook = usePassportStore((state) => state.completeBook);
   const awardBadge = usePassportStore((state) => state.awardBadge);
@@ -228,6 +231,7 @@ const styles = StyleSheet.create({
 
 const enhance = withObservables([], () => ({
   observedBadges: database.get('passport_badges').query().observe(),
+  observedCertificates: database.get('passport_certificates').query().observe(),
 }));
 
 export default enhance(PassportProgressScreen);
