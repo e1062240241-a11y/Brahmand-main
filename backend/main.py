@@ -11550,16 +11550,20 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         model = "gemma-4-26b-a4b-it"
         prompt = (
             f"Generate a highly detailed, comprehensive, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. "
-            f"Return ONLY a valid JSON object in this exact format, with no markdown formatting:\n"
-            f'{{"prediction": "A detailed general prediction text summing up the day.", '
-            f'"lucky_number": "7", '
-            f'"lucky_color": "Blue", '
-            f'"lucky_color_hex": "#3B82F6", '
-            f'"scores": {{"finance": 80, "love": 75, "health": 90, "overall": 82}}, '
-            f'"detailed_predictions": {{"finance": "A detailed paragraph advising on financial decisions, wealth, expenses and career prospects today.", '
-            f'"love": "A detailed paragraph advising on relationships, family, partners and emotional bonds today.", '
-            f'"health": "A detailed paragraph advising on physical wellness, energy, diet, mental peace and stress management today.", '
-            f'"overall": "A detailed paragraph summarizing the spiritual flow and main path of your entire day today."}}}}'
+            f"Return ONLY a valid JSON object in this exact schema structure, with no markdown formatting. Do not copy placeholder descriptions; generate real predictions:\n"
+            f'{{\n'
+            f'  "prediction": "General daily prediction paragraph for {zodiac_name}",\n'
+            f'  "lucky_number": "Random number from 1 to 9",\n'
+            f'  "lucky_color": "Name of lucky color",\n'
+            f'  "lucky_color_hex": "Hex color code",\n'
+            f'  "scores": {{"finance": 80, "love": 75, "health": 90, "overall": 82}},\n'
+            f'  "detailed_predictions": {{\n'
+            f'    "finance": "Detailed paragraph about career and money for {zodiac_name} today",\n'
+            f'    "love": "Detailed paragraph about relationships and emotions for {zodiac_name} today",\n'
+            f'    "health": "Detailed paragraph about physical and mental health for {zodiac_name} today",\n'
+            f'    "overall": "Detailed paragraph about spiritual path and overall flow for {zodiac_name} today"\n'
+            f'  }}\n'
+            f'}}'
         )
         from google.genai import types
         config = types.GenerateContentConfig(
@@ -11603,19 +11607,49 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         return data
     except Exception as e:
         logger.warning("Gemini horoscope generation failed, using mock generator: %s", e)
-        fin = random.randint(60, 95)
-        lov = random.randint(55, 95)
-        hea = random.randint(60, 95)
+        
+        # Seed random to ensure different signs have completely different, day-consistent values
+        import hashlib
+        seed_str = f"{zodiac_clean}:{today}"
+        seed_val = int(hashlib.md5(seed_str.encode('utf-8')).hexdigest()[:8], 16)
+        local_rand = random.Random(seed_val)
+        
+        fin = local_rand.randint(65, 95)
+        lov = local_rand.randint(60, 95)
+        hea = local_rand.randint(65, 95)
         ovr = int((fin + lov + hea) / 3)
+        
         colors = [
             ("Orange", "#FF6B00"), ("Purple", "#8E44AD"), ("Green", "#2ECC71"), 
             ("Blue", "#3498DB"), ("Yellow", "#F1C40F"), ("Red", "#E74C3C")
         ]
-        chosen_color = random.choice(colors)
+        chosen_color = local_rand.choice(colors)
+        
+        # Predictions list for variation
+        finance_predictions = [
+            f"Financial decisions require care today for {zodiac_clean.capitalize()}. Avoid impulsive spending and focus on saving.",
+            f"Opportunities for wealth and professional growth are on the horizon for {zodiac_clean.capitalize()}. Stay alert.",
+            f"A stable day for career and money matters. {zodiac_clean.capitalize()} should plan for long-term investments."
+        ]
+        love_predictions = [
+            f"Spiritual bonds and family connections will deepen for {zodiac_clean.capitalize()} today. Speak from the heart.",
+            f"Express your feelings clearly to avoid misunderstandings. {zodiac_clean.capitalize()} will find emotional balance today.",
+            f"A beautiful day for sharing love and joy with close ones. {zodiac_clean.capitalize()}'s relationships will flourish."
+        ]
+        health_predictions = [
+            f"Prioritize rest and mental peace. Practicing yoga or breathing exercises will benefit {zodiac_clean.capitalize()} today.",
+            f"Vitality is high. {zodiac_clean.capitalize()} should focus on clean eating and light exercise to maintain energy.",
+            f"Listen to your body. Rejuvenating your mind through meditation is highly recommended for {zodiac_clean.capitalize()}."
+        ]
+        overall_predictions = [
+            f"A promising day of alignment and inner growth. The universe supports {zodiac_clean.capitalize()}'s spiritual path.",
+            f"A peaceful flow of energy guides {zodiac_clean.capitalize()} today. Keep your thoughts positive and actions pure.",
+            f"New insights and positive transformations await {zodiac_clean.capitalize()} today. Trust the divine timing."
+        ]
         
         fallback_data = {
-            "prediction": f"Today is a day of spiritual growth and inner peace for {zodiac_name.capitalize()}. Stay positive and focus on your spiritual journey.",
-            "lucky_number": str(random.randint(1, 9)),
+            "prediction": f"Today brings a wave of positive energy and spiritual focus for {zodiac_clean.capitalize()}. Embrace the changes with grace.",
+            "lucky_number": str(local_rand.randint(1, 9)),
             "lucky_color": chosen_color[0],
             "lucky_color_hex": chosen_color[1],
             "scores": {
@@ -11625,10 +11659,10 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
                 "overall": ovr
             },
             "detailed_predictions": {
-                "finance": f"A good day to review budgets and plan long-term savings. Keep an eye out for minor financial opportunities.",
-                "love": f"Express your feelings clearly to your partner or friends. Listen actively to foster emotional balance.",
-                "health": f"Focus on hydration and balanced nutrition. A light walk in nature will rejuvenate your mind and body.",
-                "overall": f"A promising day where alignment in your thoughts and actions brings peace and progress across all fronts."
+                "finance": local_rand.choice(finance_predictions),
+                "love": local_rand.choice(love_predictions),
+                "health": local_rand.choice(health_predictions),
+                "overall": local_rand.choice(overall_predictions)
             }
         }
         
