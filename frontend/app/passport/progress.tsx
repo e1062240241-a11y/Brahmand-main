@@ -17,7 +17,6 @@ function PassportProgressScreen({
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const totalJaap = usePassportStore((state) => state.total_jaap);
   const booksCompleted = usePassportStore((state) => state.books_completed);
-  const certificates = usePassportStore((state) => state.certificates);
   const badges = observedBadges;
   const certificates = observedCertificates;
   const addJaap = usePassportStore((state) => state.addJaap);
@@ -138,8 +137,8 @@ function PassportProgressScreen({
           ) : (
             certificates.map((certificate) => (
               <View key={certificate.id} style={styles.certificateRow}>
-                <Text style={styles.certificateTitle}>{certificate.book_name}</Text>
-                <Text style={styles.certificateMeta}>{certificate.completion_days} days • {new Date(certificate.date).toDateString()}</Text>
+                <Text style={styles.certificateTitle}>{certificate.bookName || certificate.book_name}</Text>
+                <Text style={styles.certificateMeta}>{certificate.completionDays || certificate.completion_days} days • {new Date(certificate.date).toDateString()}</Text>
               </View>
             ))
           )}
