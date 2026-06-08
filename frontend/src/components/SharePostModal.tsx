@@ -112,8 +112,16 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
       const msg = String((e as any)?.message || e || '').toLowerCase();
       if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
       console.warn('WhatsApp share error:', e);
-      // Still try basic text link share
-      await openWhatsAppWithText();
+      try {
+        await Share.share({ message });
+        onClose();
+      } catch {
+        Alert.alert(
+          t('language') === 'hi' ? 'साझा करें' : 'Share',
+          message,
+          [{ text: 'OK' }]
+        );
+      }
     }
   };
 

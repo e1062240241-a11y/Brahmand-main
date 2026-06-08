@@ -41,9 +41,50 @@ export default function AIJyotishScreen() {
     }
   ]);
   const [askNowModalVisible, setAskNowModalVisible] = useState(true);
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [timeOfBirth, setTimeOfBirth] = useState('');
+  const [placeOfBirth, setPlaceOfBirth] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleCalculateHoroscope = () => {
+    setAskNowModalVisible(false);
+    
+    // Format the date
+    const dobStr = date ? date.toLocaleDateString('en-GB') : 'Not specified';
+    const tobStr = timeOfBirth.trim() || 'Not specified';
+    const pobStr = placeOfBirth.trim() || 'Not specified';
+    
+    // Add user message with birth details
+    const userMsgText = `My Birth Details:\n• Date of Birth: ${dobStr}\n• Time of Birth: ${tobStr}\n• Place of Birth: ${pobStr}`;
+    
+    const newUserMsg: ChatMessage = {
+      id: Date.now().toString(),
+      text: userMsgText,
+      sender: 'user',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    
+    setMessages((prev) => [...prev, newUserMsg]);
+    
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+
+    // AI Response
+    setTimeout(() => {
+      const newAIMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: `Thank you for sharing your birth details. The cosmic alignments for ${dobStr} at ${tobStr} in ${pobStr} indicate a unique stellar signature.\n\nCalculating your planetary positions, lagna, and current dasha alignments now. how can I guide your spiritual/personal path today?`,
+        sender: 'ai',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages((prev) => [...prev, newAIMsg]);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }, 1500);
+  };
 
   const handleSend = () => {
     if (!message.trim()) return;
@@ -158,81 +199,99 @@ export default function AIJyotishScreen() {
 
         {/* Ask Now / Birth Details Modal */}
         <Modal visible={askNowModalVisible} transparent={true} animationType="fade">
-          <View style={styles.askNowOverlay}>
-            <TouchableWithoutFeedback onPress={() => setAskNowModalVisible(false)}>
-              <View style={StyleSheet.absoluteFill} />
-            </TouchableWithoutFeedback>
-            <View style={styles.askNowModal}>
-              <Text style={styles.askNowTitle}>Enter Birth Details</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            <View style={styles.askNowOverlay}>
+              <TouchableWithoutFeedback onPress={() => setAskNowModalVisible(false)}>
+                <View style={StyleSheet.absoluteFill} />
+              </TouchableWithoutFeedback>
+              
+              <View style={[styles.askNowModal, { maxHeight: '80%' }]}>
+                <Text style={styles.askNowTitle}>Enter Birth Details</Text>
+                
+                <ScrollView 
+                  style={{ width: '100%', flexGrow: 0 }}
+                  contentContainerStyle={{ gap: 16 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.askNowInputGroup}>
+                    <View style={styles.askNowLabelRow}>
+                      <Ionicons name="calendar-outline" size={14} color="#5A4136" />
+                      <Text style={styles.askNowLabel}>Date of Birth</Text>
+                    </View>
+                    <TouchableOpacity 
+                      activeOpacity={0.8} 
+                      onPress={() => setShowDatePicker(!showDatePicker)} 
+                      style={[styles.askNowInput, { justifyContent: 'center' }]}
+                    >
+                      <Text style={{ fontSize: 16, color: date ? '#1B1C1C' : '#A9968F' }}>
+                        {date ? date.toLocaleDateString('en-GB') : 'dd/mm/yyyy'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
 
-              <TouchableOpacity activeOpacity={0.8} onPress={() => setShowDatePicker(!showDatePicker)} style={styles.askNowInputGroup}>
-                <View style={styles.askNowLabelRow}>
-                  <Ionicons name="calendar-outline" size={14} color="#5A4136" />
-                  <Text style={styles.askNowLabel}>Date of Birth</Text>
-                </View>
-                <View pointerEvents="none">
-                  <TextInput
-                    style={styles.askNowInput}
-                    placeholder="dd/mm/yyyy"
-                    placeholderTextColor="#A9968F"
-                    value={date.toLocaleDateString('en-GB')}
-                    editable={false}
-                  />
-                </View>
-              </TouchableOpacity>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={date || new Date()}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                      onChange={(event, selectedDate) => {
+                        if (Platform.OS === 'android') {
+                          setShowDatePicker(false);
+                        }
+                        if (selectedDate) {
+                          setDate(selectedDate);
+                        }
+                      }}
+                      style={{ alignSelf: 'center', width: '100%', backgroundColor: '#FFF', borderRadius: 12 }}
+                    />
+                  )}
 
-              {showDatePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(Platform.OS === 'ios' && event.type !== 'set' ? true : false);
-                    if (selectedDate) {
-                      setDate(selectedDate);
-                    }
-                  }}
-                  style={{ alignSelf: 'center', width: '100%', backgroundColor: '#FFF', borderRadius: 12 }}
-                />
-              )}
+                  <View style={styles.askNowInputGroup}>
+                    <View style={styles.askNowLabelRow}>
+                      <Ionicons name="time-outline" size={14} color="#5A4136" />
+                      <Text style={styles.askNowLabel}>Time of Birth</Text>
+                    </View>
+                    <TextInput
+                      style={styles.askNowInput}
+                      placeholder="--:-- --"
+                      placeholderTextColor="#A9968F"
+                      value={timeOfBirth}
+                      onChangeText={setTimeOfBirth}
+                    />
+                  </View>
 
-              <View style={styles.askNowInputGroup}>
-                <View style={styles.askNowLabelRow}>
-                  <Ionicons name="time-outline" size={14} color="#5A4136" />
-                  <Text style={styles.askNowLabel}>Time of Birth</Text>
-                </View>
-                <TextInput
-                  style={styles.askNowInput}
-                  placeholder="--:-- --"
-                  placeholderTextColor="#A9968F"
-                />
+                  <View style={styles.askNowInputGroup}>
+                    <View style={styles.askNowLabelRow}>
+                      <Ionicons name="location-outline" size={14} color="#5A4136" />
+                      <Text style={styles.askNowLabel}>Place of Birth</Text>
+                    </View>
+                    <TextInput
+                      style={styles.askNowInput}
+                      placeholder="City, State or Country"
+                      placeholderTextColor="#A9968F"
+                      value={placeOfBirth}
+                      onChangeText={setPlaceOfBirth}
+                    />
+                  </View>
+
+                  <View style={styles.askNowNotice}>
+                    <Ionicons name="information-circle-outline" size={20} color="#FF7B00" />
+                    <Text style={styles.askNowNoticeText}>
+                      Precise birth details ensure high-accuracy planetary alignments for your Dashas and Yogis.
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity style={styles.askNowCalcBtn} onPress={handleCalculateHoroscope}>
+                    <Text style={styles.askNowCalcBtnText}>Calculate Horoscope</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#FFF" />
+                  </TouchableOpacity>
+                </ScrollView>
               </View>
-
-              <View style={styles.askNowInputGroup}>
-                <View style={styles.askNowLabelRow}>
-                  <Ionicons name="location-outline" size={14} color="#5A4136" />
-                  <Text style={styles.askNowLabel}>Place of Birth</Text>
-                </View>
-                <TextInput
-                  style={styles.askNowInput}
-                  placeholder="City, State or Country"
-                  placeholderTextColor="#A9968F"
-                />
-              </View>
-
-              <View style={styles.askNowNotice}>
-                <Ionicons name="information-circle-outline" size={20} color="#FF7B00" />
-                <Text style={styles.askNowNoticeText}>
-                  Precise birth details ensure high-accuracy planetary alignments for your Dashas and Yogis.
-                </Text>
-              </View>
-
-              <TouchableOpacity style={styles.askNowCalcBtn} onPress={() => setAskNowModalVisible(false)}>
-                <Text style={styles.askNowCalcBtnText}>Calculate Horoscope</Text>
-                <Ionicons name="chevron-forward" size={18} color="#FFF" />
-              </TouchableOpacity>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </SafeAreaView>
     </KeyboardAvoidingView>
