@@ -354,6 +354,22 @@ class FirebaseCommunityService:
             limit=100
         )
 
+        # Also fetch top user_group communities specifically to ensure they appear
+        # We don't order_by here to avoid requiring a composite index in Firestore
+        try:
+            user_groups = await db.query_documents(
+                'communities',
+                filters=[('type', '==', 'user_group')],
+                limit=50
+            )
+            seen_ids = {c['id'] for c in communities}
+            for ug in user_groups:
+                if ug['id'] not in seen_ids:
+                    communities.append(ug)
+                    seen_ids.add(ug['id'])
+        except Exception as e:
+            logger.warning(f"Could not fetch specific user_group communities: {e}")
+
         # Fetch user's joined communities to mark is_member
         joined_set: set = set()
         if user_id:
@@ -369,6 +385,7 @@ class FirebaseCommunityService:
             "name": c['name'],
             "type": c['type'],
             "code": c.get('code', ''),
+            "photo": c.get('photo'),
             "member_count": len(c.get('members', [])),
             "is_member": c['id'] in joined_set
         } for c in communities]
