@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -16,44 +16,124 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useAuthStore } from '../src/store/authStore';
+
+type ChatMessage = {
+  id: string;
+  text: string;
+  sender: 'user' | 'ai';
+  time: string;
+};
 
 export default function AIJyotishScreen() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const userName = user?.name ? user.name.split(' ')[0] : 'Seeker';
+  
   const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      text: `Namaste, ${userName} . Based on the current planetary alignments, today is an auspicious day for inner reflection. How can I guide your spiritual journey today?`,
+      sender: 'ai',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }
+  ]);
   const [askNowModalVisible, setAskNowModalVisible] = useState(true);
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+    
+    const newUserMsg: ChatMessage = {
+      id: Date.now().toString(),
+      text: message.trim(),
+      sender: 'user',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    
+    setMessages((prev) => [...prev, newUserMsg]);
+    setMessage('');
+    
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+
+    setTimeout(() => {
+      const newAIMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: 'The stars have received your query. Analyzing the cosmic alignment...',
+        sender: 'ai',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages((prev) => [...prev, newAIMsg]);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }, 1500);
+  };
 
   return (
     <KeyboardAvoidingView 
-      style={{ flex: 1 }} 
+      style={{ flex: 1, backgroundColor: '#FFEEE5' }} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <LinearGradient
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-        locations={[0, 0.0913, 0.25]}
-        style={StyleSheet.absoluteFill}
-      />
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 150, backgroundColor: '#FB905E' }} />
+      <SafeAreaView style={styles.container} edges={['top']}>
         {/* Top Navigation */}
         <View style={styles.topNav}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-            <Ionicons name="chevron-back" size={24} color="#000" />
-          </TouchableOpacity>
+          <View style={styles.topLeftGroup}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="chevron-back" size={24} color="#000" />
+            </TouchableOpacity>
 
-          <View style={styles.navTitleContainer}>
-            <View style={styles.avatarCircle}>
-              <Ionicons name="scale-outline" size={18} color="#FFF" />
+            <View style={styles.navTitleContainer}>
+              <View style={[styles.avatarImage, { backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="headset-outline" size={20} color="#FFF" />
+              </View>
+              <Text style={styles.navTitle}>AI Jyotish</Text>
             </View>
-            <Text style={styles.navTitle}>AI Jyotish</Text>
           </View>
 
           <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
+            <Ionicons name="ellipsis-vertical" size={24} color="#000" />
           </TouchableOpacity>
         </View>
 
         {/* Chat Area */}
-        <ScrollView style={styles.chatContainer} contentContainerStyle={styles.chatContent}>
-          {/* Chat messages will be rendered here dynamically */}
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.chatContainer} 
+          contentContainerStyle={styles.chatContent}
+        >
+          <View style={styles.dateDividerContainer}>
+            <Text style={styles.dateDividerText}>Today</Text>
+          </View>
+          {messages.map((msg) => (
+            msg.sender === 'user' ? (
+              <View key={msg.id} style={styles.userMessageContainer}>
+                <View style={styles.userBubble}>
+                  <Text style={styles.userMessageText}>{msg.text}</Text>
+                </View>
+                <Text style={styles.statusText}>{msg.time} • Sent</Text>
+              </View>
+            ) : (
+              <View key={msg.id} style={styles.aiMessageContainer}>
+                <View style={styles.aiAvatar}>
+                  <Ionicons name="headset-outline" size={16} color="#FFF" />
+                </View>
+                <View style={styles.aiBubbleContainer}>
+                  <View style={styles.aiBubble}>
+                    <Text style={styles.aiMessageText}>{msg.text}</Text>
+                  </View>
+                  <Text style={styles.statusText}>{msg.time}</Text>
+                </View>
+              </View>
+            )
+          ))}
         </ScrollView>
 
         {/* Bottom Input Area */}
@@ -67,11 +147,11 @@ export default function AIJyotishScreen() {
               onChangeText={setMessage}
             />
             <TouchableOpacity style={styles.micBtn}>
-              <Ionicons name="mic-outline" size={20} color="#000" />
+              <Ionicons name="mic-outline" size={24} color="rgba(0,0,0,0.50)" />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.sendBtn}>
+          <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
             <Ionicons name="paper-plane" size={18} color="#FFF" style={{ marginLeft: -2 }} />
           </TouchableOpacity>
         </View>
@@ -85,17 +165,36 @@ export default function AIJyotishScreen() {
             <View style={styles.askNowModal}>
               <Text style={styles.askNowTitle}>Enter Birth Details</Text>
 
-              <View style={styles.askNowInputGroup}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setShowDatePicker(!showDatePicker)} style={styles.askNowInputGroup}>
                 <View style={styles.askNowLabelRow}>
                   <Ionicons name="calendar-outline" size={14} color="#5A4136" />
                   <Text style={styles.askNowLabel}>Date of Birth</Text>
                 </View>
-                <TextInput
-                  style={styles.askNowInput}
-                  placeholder="dd/mm/yyyy"
-                  placeholderTextColor="#A9968F"
+                <View pointerEvents="none">
+                  <TextInput
+                    style={styles.askNowInput}
+                    placeholder="dd/mm/yyyy"
+                    placeholderTextColor="#A9968F"
+                    value={date.toLocaleDateString('en-GB')}
+                    editable={false}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(Platform.OS === 'ios' && event.type !== 'set' ? true : false);
+                    if (selectedDate) {
+                      setDate(selectedDate);
+                    }
+                  }}
+                  style={{ alignSelf: 'center', width: '100%', backgroundColor: '#FFF', borderRadius: 12 }}
                 />
-              </View>
+              )}
 
               <View style={styles.askNowInputGroup}>
                 <View style={styles.askNowLabelRow}>
@@ -145,11 +244,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topNav: {
+    width: '100%',
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    height: 56,
   },
   iconBtn: {
     width: 40,
@@ -157,32 +257,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  topLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   navTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatarCircle: {
+  avatarImage: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FF8A00',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 10,
   },
   navTitle: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#000',
     fontFamily: 'System',
+    fontSize: 16,
+    fontStyle: 'normal',
+    fontWeight: '700',
   },
   chatContainer: {
     flex: 1,
+    backgroundColor: '#FFEEE5',
   },
   chatContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 40,
+  },
+  dateDividerContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  dateDividerText: {
+    color: '#A9968F',
+    fontSize: 12,
+    fontFamily: 'System',
+    fontWeight: '500',
   },
   // User Bubble
   userMessageContainer: {
@@ -303,22 +417,28 @@ const styles = StyleSheet.create({
   },
   // Input Area
   inputContainer: {
+    width: '100%',
+    height: 96,
+    backgroundColor: '#EAE7E7',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'transparent',
   },
   textInputBox: {
     flex: 1,
     height: 44,
+    paddingTop: 10,
+    paddingRight: 17,
+    paddingBottom: 10,
+    paddingLeft: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.50)',
+    gap: 10,
     borderRadius: 22,
-    paddingLeft: 16,
-    paddingRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.50)',
     backgroundColor: '#FFF',
   },
   textInput: {
@@ -329,11 +449,12 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   micBtn: {
-    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sendBtn: {
     width: 44,
-    height: 42,
+    height: 44,
     backgroundColor: '#FF8A00',
     borderRadius: 22,
     justifyContent: 'center',
