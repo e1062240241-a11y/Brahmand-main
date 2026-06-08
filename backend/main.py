@@ -11528,6 +11528,20 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
     import asyncio
     import json
     import random
+    from datetime import datetime
+    from utils.cache import cache_manager
+    
+    zodiac_clean = zodiac_name.lower().strip()
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    cache_key = f"horoscope:daily:{zodiac_clean}:{today}"
+    
+    try:
+        cached_data = await cache_manager.get(cache_key)
+        if cached_data:
+            logger.info("Serving cached daily horoscope for %s on %s", zodiac_clean, today)
+            return cached_data
+    except Exception as e:
+        logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
     def _call():
         import google.genai as genai
@@ -11579,6 +11593,13 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
                 "health": f"Maintain your vitality with mindful practices like yoga or meditation. Keep your energy high.",
                 "overall": f"A beautiful day focused on self-reflection and spiritual growth. The stars favor your determination."
             }
+        
+        # Cache the generated result for 12 hours
+        try:
+            await cache_manager.set(cache_key, data, ttl=43200)
+        except Exception as e:
+            logger.warning("Failed to cache daily horoscope for %s: %s", zodiac_clean, e)
+            
         return data
     except Exception as e:
         logger.warning("Gemini horoscope generation failed, using mock generator: %s", e)
@@ -11591,7 +11612,8 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             ("Blue", "#3498DB"), ("Yellow", "#F1C40F"), ("Red", "#E74C3C")
         ]
         chosen_color = random.choice(colors)
-        return {
+        
+        fallback_data = {
             "prediction": f"Today is a day of spiritual growth and inner peace for {zodiac_name.capitalize()}. Stay positive and focus on your spiritual journey.",
             "lucky_number": str(random.randint(1, 9)),
             "lucky_color": chosen_color[0],
@@ -11609,6 +11631,14 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
                 "overall": f"A promising day where alignment in your thoughts and actions brings peace and progress across all fronts."
             }
         }
+        
+        # Cache the fallback result for 12 hours
+        try:
+            await cache_manager.set(cache_key, fallback_data, ttl=43200)
+        except Exception as e:
+            logger.warning("Failed to cache daily horoscope for %s: %s", zodiac_clean, e)
+            
+        return fallback_data
 
 
 @api_router.get("/horoscope/daily/{zodiac_name}")
