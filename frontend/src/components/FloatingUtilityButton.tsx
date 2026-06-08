@@ -632,12 +632,17 @@ export const FloatingUtilityButton = () => {
 
   const RADIUS_LEVELS = [5, 15, 50];
 
-  const handleCreateSOS = async (data: { type: string; microLocation: string }, level = 0) => {
+  const handleCreateSOS = async (data: { type: string; microLocation: string; latitude?: number; longitude?: number }, level = 0) => {
     setSOSLoading(true);
     try {
       const { type, microLocation: mLoc } = data;
       let latitude: number, longitude: number;
-      if (fetchedCoordinates) {
+
+      // Priority: manual picker coords > previously fetched coords > live GPS
+      if (data.latitude && data.longitude) {
+        latitude = data.latitude;
+        longitude = data.longitude;
+      } else if (fetchedCoordinates) {
         latitude = fetchedCoordinates.latitude;
         longitude = fetchedCoordinates.longitude;
       } else {
@@ -664,6 +669,7 @@ export const FloatingUtilityButton = () => {
       setSOSLoading(false);
     }
   };
+
 
   useEffect(() => {
     if (!activeSOS) {
