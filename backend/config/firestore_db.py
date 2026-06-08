@@ -264,6 +264,24 @@ class FirestoreDB:
         
         await self._run_sync(_update)
     
+
+    async def batch_update_chat_messages(self, chat_id: str, updates: list) -> None:
+        """Update multiple messages in a chat using a batch"""
+        def _batch_update():
+            batch = self.client.batch()
+            messages_ref = self.client.collection('chats').document(chat_id).collection('messages')
+
+            for update in updates:
+                msg_id = update['message_id']
+                data = update['data']
+                doc_ref = messages_ref.document(msg_id)
+                batch.update(doc_ref, data)
+
+            batch.commit()
+
+        if updates:
+            await self._run_sync(_batch_update)
+
     async def array_remove_update(self, collection: str, doc_id: str, field: str, values: list) -> None:
         """Remove values from an array field"""
         def _update():
