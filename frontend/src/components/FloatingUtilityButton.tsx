@@ -47,7 +47,8 @@ import {
   updateCurrentLocation,
   respondToSOS,
   getPanchang,
-  getNextFestival
+  getNextFestival,
+  reportSOSMisuse
 } from '../services/api';
 import * as Location from 'expo-location';
 import LocationService from '../services/location';
@@ -745,6 +746,53 @@ export const FloatingUtilityButton = () => {
     }
   };
 
+  const handleReportMisuse = (sosId: string) => {
+    Alert.alert(
+      t('language') === 'hi' ? 'दुरुपयोग की रिपोर्ट करें' : 'Report Misuse',
+      t('language') === 'hi'
+        ? 'कृपया इस SOS अनुरोध की रिपोर्ट करने का कारण चुनें:'
+        : 'Please select a reason for reporting this SOS request:',
+      [
+        { text: t('language') === 'hi' ? 'रद्द करें' : 'Cancel', style: 'cancel' },
+        {
+          text: t('language') === 'hi' ? 'झूठी आपात स्थिति' : 'False Emergency',
+          onPress: () => submitReport(sosId, 'False Emergency')
+        },
+        {
+          text: t('language') === 'hi' ? 'शरारत अनुरोध' : 'Prank Request',
+          onPress: () => submitReport(sosId, 'Prank Request')
+        },
+        {
+          text: t('language') === 'hi' ? 'सहायता की आवश्यकता नहीं है' : 'No Assistance Needed',
+          onPress: () => submitReport(sosId, 'No Assistance Needed')
+        },
+        {
+          text: t('language') === 'hi' ? 'गलत जानकारी' : 'Wrong Information',
+          onPress: () => submitReport(sosId, 'Wrong Information')
+        },
+        {
+          text: t('language') === 'hi' ? 'अन्य' : 'Other',
+          onPress: () => submitReport(sosId, 'Other')
+        }
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const submitReport = async (sosId: string, reason: string) => {
+    try {
+      await reportSOSMisuse(sosId, reason);
+      Alert.alert(
+        t('language') === 'hi' ? 'सफलता' : 'Success',
+        t('language') === 'hi'
+          ? 'इस SOS को सफलतापूर्वक रिपोर्ट कर दिया गया है।'
+          : 'This SOS alert has been reported successfully.'
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to report misuse');
+    }
+  };
+
   const handleResolveActiveSOS = async (status: 'resolved' | 'cancelled') => {
     if (!activeSOS) return;
     if (status === 'cancelled') {
@@ -1054,13 +1102,23 @@ export const FloatingUtilityButton = () => {
                       <Ionicons name="call" size={22} color="#FFF" />
                       <Text style={styles.responderBtnText}>{t('call')}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.responderBtn, { backgroundColor: '#2196F3' }]}
-                      onPress={() => openNearbySOSLocation(nearbySOSAlerts[0])}
-                    >
-                      <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
-                      <Text style={styles.responderBtnText}>{t('openMap')}</Text>
-                    </TouchableOpacity>
+                    {nearbySOSAlerts[0].responders?.some((r: any) => r.user_id === user?.id) ? (
+                      <TouchableOpacity
+                        style={[styles.responderBtn, { backgroundColor: '#D32F2F' }]}
+                        onPress={() => handleReportMisuse(nearbySOSAlerts[0].id)}
+                      >
+                        <MaterialCommunityIcons name="alert-octagon" size={22} color="#FFF" />
+                        <Text style={styles.responderBtnText}>{t('language') === 'hi' ? 'दुरुपयोग की रिपोर्ट' : 'REPORT MISUSE'}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.responderBtn, { backgroundColor: '#2196F3' }]}
+                        onPress={() => openNearbySOSLocation(nearbySOSAlerts[0])}
+                      >
+                        <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
+                        <Text style={styles.responderBtnText}>{t('openMap')}</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
  
                   <TouchableOpacity style={styles.closeAlertX} onPress={closeUtilityModal}>

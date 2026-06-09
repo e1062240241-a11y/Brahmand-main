@@ -10919,6 +10919,38 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     return sos_data
 
 
+@api_router.post("/sos/{sos_id}/report-misuse")
+async def report_sos_misuse(sos_id: str, reason: str = Body(..., embed=True), token_data: dict = Depends(verify_token)):
+    """Report an SOS alert as misuse"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    
+    alert = await db.get_document('sos_alerts', sos_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="SOS alert not found")
+        
+    # Verify the user has accepted/responded to this SOS
+    responders = alert.get('responders', []) or []
+    has_responded = any(r.get('user_id') == user_id for r in responders)
+    if not has_responded:
+        raise HTTPException(status_code=403, detail="Only responders who accepted the SOS can report it as misuse")
+        
+    # Save the misuse report to database
+    report_data = {
+        "sos_id": sos_id,
+        "reporter_id": user_id,
+        "reporter_name": token_data.get("name", "Responder"),
+        "creator_id": alert.get("user_id"),
+        "creator_name": alert.get("user_name"),
+        "reason": reason,
+        "created_at": datetime.utcnow().isoformat() + 'Z'
+    }
+    
+    report_id = await db.create_document('sos_misuse_reports', report_data)
+    logger.info(f"SOS misuse report {report_id} created by user {user_id} for SOS {sos_id}")
+    return {"message": "SOS misuse reported successfully", "report_id": report_id}
+
+
 @api_router.get("/sos/nearby")
 async def get_nearby_sos_alerts(
     lat: Optional[float] = None,

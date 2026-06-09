@@ -396,6 +396,14 @@ export default function SOSScreen() {
               })}
             </View>
 
+            <View style={styles.disclaimerBox}>
+              <Ionicons name="information-circle-outline" size={18} color="#FF6B00" style={{ marginRight: 8, marginTop: 1 }} />
+              <Text style={styles.disclaimerText}>
+                <Text style={{ fontWeight: '700' }}>Disclaimer: </Text>
+                Brahmand is not a police, ambulance, fire, or emergency medical service. In life-threatening emergencies, contact official emergency services immediately.
+              </Text>
+            </View>
+
             <View style={{ flex: 1 }} />
 
             <TouchableOpacity 
@@ -1067,5 +1075,22 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 13,
     fontWeight: '800',
+  },
+  disclaimerBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF8F5',
+    borderColor: '#FFEBE0',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 15,
+    marginBottom: 15,
+    alignItems: 'flex-start',
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: '#D85A00',
+    lineHeight: 18,
+    flex: 1,
   },
 });

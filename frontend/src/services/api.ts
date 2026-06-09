@@ -1870,6 +1870,9 @@ export const resolveMyActiveSOS = (status: 'resolved' | 'cancelled') =>
 export const respondToSOS = (sosId: string, response: 'coming' | 'called') =>
   api.post(`/sos/${sosId}/respond`, { response });
 
+export const reportSOSMisuse = (sosId: string, reason: string) =>
+  api.post(`/sos/${sosId}/report-misuse`, { reason });
+
 // =================== SPEECH TRANSCRIPTION API ===================
 
 export const transcribeAudio = async (audioBase64: string, languageCode: string = 'en-IN') => {
