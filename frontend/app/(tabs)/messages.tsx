@@ -35,9 +35,6 @@ import {
   getCommunities,
   getCommunityRequests,
   getConversations,
-  getCulturalCommunities,
-  getUserCulturalCommunity,
-  updateUserCulturalCommunity,
   parseApiError,
   resolveCommunityRequest,
   discoverCommunities,
@@ -325,7 +322,7 @@ function MessagesScreen({
     if (nameLower.includes('mumbai') || item.type === 'city') {
       return {
         label: t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY',
-        name: t('language') === 'hi' ? 'मुंबई समुदाय' : (item.name || 'Mumbai Community'),
+        name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
         memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '13K सदस्य' : '13K members'),
         avatarBadge: '+8',
         iconBg: '#FFFFFF',
@@ -427,7 +424,6 @@ function MessagesScreen({
 
   const openCommunity = (item: Community, isLocked: boolean, lockedLabel?: string) => {
     if (isLocked) {
-      setShowLockedBanner(lockedLabel || 'Community');
       return;
     }
     const resolved = resolveCommunityForNavigation(item);
@@ -687,7 +683,7 @@ function MessagesScreen({
     const { city, state, national, others } = partitionVerifiedCommunities();
     const fallbackCity: Community = {
       id: 'mumbai-fallback',
-      name: t('language') === 'hi' ? 'मुंबई समुदाय' : 'Mumbai Community',
+      name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
       type: 'city',
       member_count: 13000,
     };
@@ -725,14 +721,6 @@ function MessagesScreen({
       </View>
     );
   };
-
-  // Lok Sangam State
-  const [userLokSangma, setUserLokSangma] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
-  const [showLokSangmaModal, setShowLokSangmaModal] = useState(false);
-  const [lokSangmaSearch, setLokSangmaSearch] = useState('');
-  const [lokSangmaList, setLokSangmaList] = useState<string[]>([]);
-  const [lokSangmaLoading, setLokSangmaLoading] = useState(false);
-  const [showLockedBanner, setShowLockedBanner] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -937,55 +925,8 @@ function MessagesScreen({
     // and observers update the UI automatically.
   };
 
-  const fetchUserLokSangma = useCallback(async () => {
-    try {
-      const res = await getUserCulturalCommunity();
-      setUserLokSangma(res.data);
-    } catch (error: any) {
-      console.warn('Error fetching Lok Sangam:', error.message || error);
-      if (error.response?.status === 401) {
-        logout();
-      }
-    }
-  }, [logout]);
-
-  const loadLokSangmaOptions = async (search?: string) => {
-    setLokSangmaLoading(true);
-    try {
-      const res = await getCulturalCommunities(search);
-      setLokSangmaList(res.data || []);
-    } catch (error: any) {
-      console.warn('Error loading Lok Sangam options:', error.message || error);
-    } finally {
-      setLokSangmaLoading(false);
-    }
-  };
-
-  const handleSelectLokSangma = async (community: string) => {
-    if (userLokSangma?.is_locked) {
-      Alert.alert('Locked', 'You can only change your Lok Sangam once. It is now locked.');
-      return;
-    }
-    Alert.alert('Confirm', `Set your Lok Sangam to "${community}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Confirm',
-        onPress: async () => {
-          try {
-            await updateUserCulturalCommunity(community);
-            await fetchUserLokSangma();
-            setShowLokSangmaModal(false);
-          } catch (error: any) {
-            Alert.alert('Error', parseApiError(error));
-          }
-        }
-      }
-    ]);
-  };
-
   useEffect(() => {
     fetchData();
-    fetchUserLokSangma();
   }, [fetchData]);
 
   useEffect(() => {
@@ -1357,34 +1298,6 @@ function MessagesScreen({
         )}
       </ScrollView>
       {/* Locked Group Banner */}
-      {showLockedBanner && (
-        <View style={[styles.lockedBannerContainer, { bottom: 90 }]}>
-          <TouchableOpacity
-            style={styles.lockedBannerContent}
-            onPress={() => {
-              setShowLockedBanner(null);
-              router.push('/profile/personality-verification');
-            }}
-          >
-            <View style={styles.lockedBannerIcon}>
-              <Ionicons name="lock-closed" size={20} color="#FF6600" />
-            </View>
-            <View style={styles.lockedBannerTextCol}>
-              <Text style={styles.lockedBannerTitle}>
-                {t('language') === 'hi' ? 'पहुंच प्रतिबंधित' : 'Access Restricted'}
-              </Text>
-              <Text style={styles.lockedBannerSub}>
-                {t('language') === 'hi' 
-                  ? `यह ${showLockedBanner === 'National Community' ? 'राष्ट्रीय समुदाय' : 'राज्य समुदाय'} सत्यापित व्यक्तियों के लिए है। खुद को सत्यापित करने के लिए क्लिक करें।` 
-                  : `This ${showLockedBanner} is for verified personalities. Click to verify yourself.`}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={() => setShowLockedBanner(null)} style={styles.lockedBannerClose}>
-              <Ionicons name="close" size={20} color="#AAA" />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* Detailed Modal Bottom Sheet */}
       {selectedRequest && (

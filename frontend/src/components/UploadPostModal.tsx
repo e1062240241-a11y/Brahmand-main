@@ -615,7 +615,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   return (
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={resetAndClose}>
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           
           <View style={styles.appBar}>
             <TouchableOpacity onPress={resetAndClose} style={styles.iconBtn}>

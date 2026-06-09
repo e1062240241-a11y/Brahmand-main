@@ -249,52 +249,18 @@ const ChatScreen = ({
 
   const roomKey = type === 'community' ? `community_${id}_${subgroup}` : `circle_${id}`;
 
-  const [webMessages, setWebMessages] = useState<any[]>([]);
-
   const messages = useMemo(() => {
-    const sourceMessages = Platform.OS === 'web' ? webMessages : (observedMessages || []);
-    return sourceMessages.map((msg: any) => {
-      let msgDateStr = new Date().toISOString();
-      try {
-        const rawDate = msg.createdAt || msg.created_at || msg.timestamp;
-        if (rawDate) {
-          const d = new Date(rawDate);
-          if (!isNaN(d.getTime())) {
-            msgDateStr = d.toISOString();
-          }
-        }
-      } catch (e) {}
-
-      let msgUpdatedStr = msgDateStr;
-      try {
-        const rawUpdate = msg.updatedAt || msg.updated_at;
-        if (rawUpdate) {
-          const d = new Date(rawUpdate);
-          if (!isNaN(d.getTime())) {
-            msgUpdatedStr = d.toISOString();
-          }
-        }
-      } catch (e) {}
-
-      return {
-        id: msg.id || msg._raw?.id || msg._id || String(msg.created_at || Date.now()),
-        sender_id: msg.senderId || msg.sender_id || msg.sender || '',
-        sender_name: msg.senderName || msg.sender_name || msg.sender || 'Unknown',
-        content: msg.content || msg.text || '',
-        text: msg.content || msg.text || '',
-        message_type: msg.messageType || msg.message_type || 'text',
-        created_at: msgDateStr,
-        updated_at: msgUpdatedStr,
-      };
-    });
-  }, [observedMessages, webMessages]);
-
-  const setMessages = useCallback((updater: any) => {
-    if (Platform.OS === 'web') {
-      setWebMessages(updater);
-    }
-  }, []);
-
+    return observedMessages.map((msg: any) => ({
+      id: msg.id,
+      sender_id: msg.senderId || msg.sender_id,
+      sender_name: msg.senderName || msg.sender_name,
+      content: msg.content,
+      text: msg.content,
+      message_type: msg.messageType || msg.message_type,
+      created_at: msg.createdAt || msg.created_at,
+      updated_at: msg.updatedAt || msg.updated_at
+    }));
+  }, [observedMessages]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(() => {
     const cachedData = useChatStore.getState().caches[roomKey];
@@ -398,7 +364,6 @@ const ChatScreen = ({
       }
     }
   }, [type, id, subgroup]);
-
   const fetchMessages = useCallback(async (force = false, offset = 0) => {
     const cachedData = useChatStore.getState().caches[roomKey];
     const isInitialLoad = offset === 0;
@@ -408,91 +373,19 @@ const ChatScreen = ({
       setLoading(false);
       return;
     }
-    
-    if (offset > 0) setLoadingMore(true);
 
-    // Offline-first approach for messages (now handles paginated requests natively)
-    if ((isInitialLoad && (!cachedData?.messages || cachedData.messages.length === 0)) || offset > 0) {
-      try {
-        const { Q } = require('@nozbe/watermelondb');
-        const { database } = require('../../../src/database');
-        if (database) {
-          const tableName = type === 'community' ? 'community_messages' : 'chats';
-          const filterCol = type === 'community' ? 'community_id' : 'chat_id';
-          const filterId = type === 'community' ? `community_${id}_${subgroup}` : id;
-          
-          const localMessages = await database.get(tableName)
-            .query(
-              Q.where(filterCol, filterId),
-              Q.sortBy('created_at', Q.desc),
-              Q.skip(offset),
-              Q.take(14)
-            ).fetch();
-            
-           if (localMessages && localMessages.length > 0) {
-            const mapped = localMessages.reverse().map((msg: any) => {
-              let msgDateStr = new Date().toISOString();
-              try {
-                const rawDate = msg.createdAt || msg.created_at;
-                if (rawDate) {
-                  const d = new Date(rawDate);
-                  if (!isNaN(d.getTime())) {
-                    msgDateStr = d.toISOString();
-                  }
-                }
-              } catch (e) {}
-
-              let msgUpdatedStr = msgDateStr;
-              try {
-                const rawUpdate = msg.updatedAt || msg.updated_at;
-                if (rawUpdate) {
-                  const d = new Date(rawUpdate);
-                  if (!isNaN(d.getTime())) {
-                    msgUpdatedStr = d.toISOString();
-                  }
-                }
-              } catch (e) {}
-
-              return {
-                id: msg.id,
-                sender_id: msg.senderId || msg.sender_id || '',
-                sender_name: msg.senderName || msg.sender_name || 'Unknown',
-                content: msg.content,
-                text: msg.content,
-                message_type: msg.messageType || msg.message_type || 'text',
-                created_at: msgDateStr,
-                updated_at: msgUpdatedStr,
-              };
-            });
-            const filteredLocal = applyClientClearFilter(mapped);
-            
-            setMessages((prev: any[]) => isInitialLoad ? filteredLocal : [...filteredLocal, ...prev]);
-            setHasMore(localMessages.length === 14);
-            
-            if (isInitialLoad) setLoading(false);
-            if (offset > 0) setLoadingMore(false);
-          } else {
-            setHasMore(false);
-            if (isInitialLoad) setLoading(false);
-            if (offset > 0) setLoadingMore(false);
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to load local messages:', err);
-        if (offset > 0) setLoadingMore(false);
-      }
+    if (!isInitialLoad) {
+      return;
     }
-    
-    if (isInitialLoad) {
-      try {
+
+    try {
       let response;
       if (type === 'community') {
         response = await getCommunityMessages(id!, subgroup || 'city');
-        // All users can post in community chats - no KYC required
         setIsVerified(true);
       } else {
         response = await getCircleMessages(id!);
-        setIsVerified(true); // Circles don't require verification
+        setIsVerified(true);
       }
       const fetchedMsgs = response.data || [];
 
@@ -510,7 +403,7 @@ const ChatScreen = ({
                 record.content = msg.content;
                 record.senderName = msg.sender_name || msg.sender;
               });
-            } catch {
+            } catch (_e) {
               await collection.create((record: any) => {
                 record._raw.id = msgId;
                 if (type === 'community') {
@@ -535,14 +428,12 @@ const ChatScreen = ({
     } catch (error: any) {
       console.error('Error fetching messages:', error);
       if (error?.response?.status === 404) {
-        // Stop fetching if the circle/community is not found (deleted or removed)
         setLoading(false);
         return false;
       }
       return true;
-      } finally {
-        setLoading(false);
-      }
+    } finally {
+      setLoading(false);
     }
   }, [type, id, subgroup, applyClientClearFilter, roomKey]);
 
@@ -931,7 +822,7 @@ const ChatScreen = ({
         reader.readAsDataURL(blob);
       });
       return dataUrl || null;
-    } catch {
+    } catch (_e) {
       return null;
     }
   };
@@ -1162,7 +1053,7 @@ const ChatScreen = ({
         name: contactData?.name || 'Contact',
         phone: contactData?.phone || source,
       };
-    } catch {
+    } catch (_e) {
       const newlineParts = source.split('\n').map((part) => part.trim()).filter(Boolean);
       if (newlineParts.length >= 2) {
         return { name: newlineParts[0] || 'Contact', phone: newlineParts[1] };
@@ -1569,7 +1460,7 @@ const ChatScreen = ({
 
       {/* Messages */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.chatContainer}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
       >

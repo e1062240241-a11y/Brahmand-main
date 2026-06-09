@@ -480,11 +480,11 @@ export default function CommunityDetailScreen() {
   const { t } = useTranslation();
 
   const getTranslatedCommunityName = (name: string) => {
-    if (t('language') !== 'hi') return name;
     const nameLower = name.toLowerCase();
     if (nameLower.includes('mumbai')) {
-      return 'मुंबई समुदाय';
+      return t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
     }
+    if (t('language') !== 'hi') return name;
     if (nameLower.includes('maharashtra')) {
       return 'महाराष्ट्र समुदाय';
     }
@@ -635,7 +635,7 @@ export default function CommunityDetailScreen() {
   const [attendeesLoading, setAttendeesLoading] = useState(false);
 
   const isLocalUserCommunity = useMemo(() => {
-    return !['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type);
+    return !['city', 'state', 'country'].includes(community?.type);
   }, [community?.type]);
 
   useEffect(() => {
@@ -1341,6 +1341,30 @@ export default function CommunityDetailScreen() {
             members_count: 236,
             description: 'A community group for sharing food in Pune.'
           };
+        } else if (id === 'mumbai-fallback' || id === 'city_default') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
+            type: 'city',
+            members_count: 13000,
+            description: 'My Community Group'
+          };
+        } else if (id === 'maharashtra-fallback') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
+            type: 'state',
+            members_count: 14000,
+            description: 'Maharashtra State Community Group'
+          };
+        } else if (id === 'bharat-fallback') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
+            type: 'country',
+            members_count: 15000,
+            description: 'Bharat National Community Group'
+          };
         } else {
           throw err;
         }
@@ -1389,7 +1413,7 @@ export default function CommunityDetailScreen() {
         getFestivalList().catch(() => ({ data: [] }))
       ];
 
-      const isLocalCommunity = nextCommunity.type === 'city' || nextCommunity.type === 'cultural' || nextCommunity.type === 'user_group' || nextCommunity.type === 'area';
+      const isLocalCommunity = nextCommunity.type === 'city' || nextCommunity.type === 'user_group';
       if (isLocalCommunity) {
         promises.push(getCommunityRequests({ status: 'active', limit: 50 }).catch(() => ({ data: [] })));
       }
@@ -1710,7 +1734,7 @@ export default function CommunityDetailScreen() {
           <Text style={styles.headerCreateBtnText}>{t('language') === 'hi' ? 'बनाएं' : 'Create'}</Text>
         </TouchableOpacity>
         
-        {(!['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type)) && (
+        {(!['city', 'state', 'country'].includes(community?.type)) && (
           <TouchableOpacity 
             style={{ position: 'absolute', right: 100, zIndex: 10, padding: 8 }}
             onPress={() => setShowGroupInfoModal(true)}
@@ -2710,7 +2734,7 @@ export default function CommunityDetailScreen() {
       const groupName = getTranslatedCommunityName(community?.name || 'Mumbai Group');
       const messageText = t('language') === 'hi'
         ? `हरे कृष्णा! मैंने ${groupName} में आपका अनुरोध '${item.title}' देखा और मैं अपनी सहायता/मदद देना चाहूंगा।`
-        : `Hare Krishna! I saw your request '${item.title}' in the ${community?.name || 'Mumbai Group'} and would like to offer my support/help.`;
+        : `Hare Krishna! I saw your request '${item.title}' in the ${groupName} and would like to offer my support/help.`;
       const confirmedMsg = t('language') === 'hi'
         ? `क्या आप चैट शुरू करके ${item.user_name || 'भक्त'} की मदद करना चाहते हैं?\n\nसंदेश: "${messageText}"`
         : `Would you like to offer help to ${item.user_name || 'devotee'} by starting a chat?\n\nMessage: "${messageText}"`;
@@ -2747,7 +2771,7 @@ export default function CommunityDetailScreen() {
                     const groupName = getTranslatedCommunityName(community?.name || 'Mumbai Group');
                     const messageText = t('language') === 'hi'
                       ? `हरे कृष्णा! मैंने ${groupName} में आपका अनुरोध '${item.title}' देखा और मैं अपनी सहायता/मदद देना चाहूंगा।`
-                      : `Hare Krishna! I saw your request '${item.title}' in the ${community?.name || 'Mumbai Group'} and would like to offer my support/help.`;
+                      : `Hare Krishna! I saw your request '${item.title}' in the ${groupName} and would like to offer my support/help.`;
                     const response = await sendDirectMessage(targetSlId, messageText);
                     const conversationId = response.data?.chat_id || response.data?.conversation_id;
                     if (conversationId) {
@@ -2806,7 +2830,7 @@ export default function CommunityDetailScreen() {
       await Share.share({
         message: t('language') === 'hi'
           ? `ब्रह्मांड पर ${getTranslatedCommunityName(community?.name || 'Mumbai Group')} में शामिल हों!\n\n${appLink}`
-          : `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${appLink}`,
+          : `Join the ${getTranslatedCommunityName(community?.name || 'Mumbai Community')} on Brahmand!\n\n${appLink}`,
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -3406,7 +3430,7 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
       {renderHeader()}
@@ -3606,7 +3630,7 @@ export default function CommunityDetailScreen() {
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
             pointerEvents={(showDatePicker || showTimePicker) && Platform.OS === 'android' ? 'none' : 'auto'}
           >
@@ -4054,7 +4078,7 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           style={styles.modalOverlay}
         >

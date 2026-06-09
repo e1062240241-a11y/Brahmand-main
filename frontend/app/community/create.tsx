@@ -409,15 +409,6 @@ export default function CreateCommunityScreen() {
           )}
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Area / Locality (Optional)</Text>
-          <TouchableOpacity style={styles.selector}>
-            <Text style={formData.area ? styles.selectorText : styles.selectorPlaceholder}>
-              {formData.area || 'Select area'}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#888" />
-          </TouchableOpacity>
-        </View>
       </ScrollView>
       <TouchableOpacity
         style={[styles.continueButton, !formData.name || !formData.description ? styles.disabledButton : null]}
@@ -682,7 +673,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.reviewValue}>{formData.description}</Text>
 
           <Text style={[styles.reviewLabel, { marginTop: 16 }]}>LOCATION</Text>
-          <Text style={styles.reviewValue}>{formData.city}{formData.area ? `, ${formData.area}` : ''}</Text>
+          <Text style={styles.reviewValue}>{formData.city}</Text>
 
           <Text style={[styles.reviewLabel, { marginTop: 16 }]}>TEAM MEMBERS</Text>
           <View style={styles.teamList}>
@@ -719,7 +710,7 @@ export default function CreateCommunityScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >

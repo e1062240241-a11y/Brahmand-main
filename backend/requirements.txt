@@ -15,9 +15,9 @@ google-cloud-speech
 twilio
 requests
 groq
-agora-token-builder
+pycryptodome
 pymongo
 
-google-genai==2.6.0
+google-genai==1.65.0
 tzdata
 chromadb-client>=1.5.9

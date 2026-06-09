@@ -1910,17 +1910,7 @@ export default function HomeScreen() {
                             <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
                             <Ionicons name="pencil" size={12} color="#000" style={{ marginLeft: 6 }} />
                           </TouchableOpacity>
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.liveLocationBadge}
-                            onPress={() => setLocationPickerVisible(true)}
-                          >
-                            <Ionicons name="location" size={10} color="#FF6B00" />
-                            <Text style={styles.liveLocationText} numberOfLines={1}>
-                              {liveLocation}
-                            </Text>
-                            <Ionicons name="pencil-outline" size={9} color="#FF6B00" style={{ marginLeft: 2 }} />
-                          </TouchableOpacity>
+
                         </View>
                       </View>
 
@@ -2647,12 +2637,8 @@ export default function HomeScreen() {
                       {(() => {
                         const cityComm = communities.find(c => c.type === 'city');
                         let cityName = cityComm?.name || 'City Community';
-                        if (t('language') === 'hi') {
-                          if (cityName === 'City Community') {
-                            cityName = 'शहर समुदाय';
-                          } else if (cityName.toLowerCase().includes('mumbai')) {
-                            cityName = 'मुंबई समुदाय';
-                          }
+                        if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
+                          cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
                         }
                         const cityId = cityComm?.id || 'city_default';
                         return (
@@ -2682,7 +2668,7 @@ export default function HomeScreen() {
                       {/* Local Community Card */}
                       {(() => {
                         const localComm =
-                          communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area' || c.type === 'user_group' || c.type === 'local') ||
+                          communities.find(c => c.is_default || c.type === 'user_group' || c.type === 'local') ||
                           localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
                         const localId = localComm?.id || 'food_pune';
                         let realGroupName = localComm?.name || 'Pune Food Sharing Group';
@@ -2992,7 +2978,7 @@ export default function HomeScreen() {
           >
             <KeyboardAvoidingView
               style={styles.commentOverlay}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
             >
               <TouchableOpacity
@@ -3318,6 +3304,8 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
   },
   headerRight: {
     flexDirection: 'row',
@@ -3358,6 +3346,7 @@ const styles = StyleSheet.create({
   },
   greetingBlock: {
     marginLeft: 12,
+    flex: 1,
   },
   greeting: {
     color: '#000',

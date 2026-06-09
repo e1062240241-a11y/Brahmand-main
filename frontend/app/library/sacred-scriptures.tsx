@@ -43,7 +43,7 @@ const ANCIENT_BOOKS = [
     snippet: 'Explorations of the true nature of reality (Brahman) and the...',
     cover: atharvavedCover,
     progress: 0.33,
-    route: '/library/atharvaved',
+    route: '/library/upanishads',
   },
   {
     id: 'vedas',

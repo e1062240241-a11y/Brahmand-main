@@ -543,6 +543,7 @@ export default function RootLayout() {
           interruptionMode: 'doNotMix',
           allowsRecording: false,
           shouldRouteThroughEarpiece: false,
+          shouldPlayInBackground: false,
         });
       } catch (error) {
         console.warn('[Audio] Failed to set default audio mode:', error);
@@ -695,6 +696,7 @@ export default function RootLayout() {
             }}>
               {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
               <Stack.Screen
+                key="(tabs)"
                 name="(tabs)"
                 options={{
                   animation: 'fade',
@@ -702,6 +704,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="index"
                 name="index"
                 options={{
                   animation: 'fade',
@@ -710,6 +713,7 @@ export default function RootLayout() {
               />
               {/* Modals and Creation Forms - Slide from Bottom */}
               <Stack.Screen
+                key="community-request/blood"
                 name="community-request/blood"
                 options={{
                   animation: 'slide_from_bottom',
@@ -717,6 +721,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="community-request/food"
                 name="community-request/food"
                 options={{
                   animation: 'slide_from_bottom',
@@ -724,6 +729,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="community-request/gau-seva"
                 name="community-request/gau-seva"
                 options={{
                   animation: 'slide_from_bottom',
@@ -731,6 +737,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="community-request/animal-care"
                 name="community-request/animal-care"
                 options={{
                   animation: 'slide_from_bottom',
@@ -738,6 +745,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="community-request/temple-help"
                 name="community-request/temple-help"
                 options={{
                   animation: 'slide_from_bottom',
@@ -745,6 +753,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="community-request/emergency"
                 name="community-request/emergency"
                 options={{
                   animation: 'slide_from_bottom',
@@ -752,6 +761,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="community-request/other"
                 name="community-request/other"
                 options={{
                   animation: 'slide_from_bottom',
@@ -759,6 +769,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="sos"
                 name="sos"
                 options={{
                   animation: 'slide_from_bottom',
@@ -766,6 +777,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="kyc-submit"
                 name="kyc-submit"
                 options={{
                   animation: 'slide_from_bottom',
@@ -773,6 +785,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="live-jaap-welcome"
                 name="live-jaap-welcome"
                 options={{
                   animation: 'slide_from_bottom',
@@ -780,6 +793,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="circle/create"
                 name="circle/create"
                 options={{
                   animation: 'slide_from_bottom',
@@ -787,6 +801,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="community/create"
                 name="community/create"
                 options={{
                   animation: 'slide_from_bottom',
@@ -794,6 +809,7 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                key="community-tweets"
                 name="community-tweets"
                 options={{
                   animation: 'slide_from_right',

@@ -45,7 +45,7 @@ class FirestoreDB:
     
     # =================== GENERIC OPERATIONS ===================
     
-    async def create_document(self, collection: str, data: Dict[str, Any], doc_id: str = None) -> str:
+    async def create_document(self, collection: str, data: Dict[str, Any], doc_id: str = None, overwrite: bool = True) -> str:
         """Create a document in a collection"""
         now_iso = datetime.utcnow().isoformat() + 'Z'
         if 'created_at' not in data:
@@ -56,7 +56,10 @@ class FirestoreDB:
         def _create():
             coll = self.client.collection(collection)
             if doc_id:
-                coll.document(doc_id).set(data)
+                if overwrite:
+                    coll.document(doc_id).set(data)
+                else:
+                    coll.document(doc_id).create(data)
                 return doc_id
             else:
                 _, doc_ref = coll.add(data)
