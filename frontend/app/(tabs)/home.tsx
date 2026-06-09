@@ -1910,17 +1910,7 @@ export default function HomeScreen() {
                             <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
                             <Ionicons name="pencil" size={12} color="#000" style={{ marginLeft: 6 }} />
                           </TouchableOpacity>
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.liveLocationBadge}
-                            onPress={() => setLocationPickerVisible(true)}
-                          >
-                            <Ionicons name="location" size={10} color="#FF6B00" />
-                            <Text style={styles.liveLocationText} numberOfLines={1}>
-                              {liveLocation}
-                            </Text>
-                            <Ionicons name="pencil-outline" size={9} color="#FF6B00" style={{ marginLeft: 2 }} />
-                          </TouchableOpacity>
+
                         </View>
                       </View>
 
@@ -3314,6 +3304,8 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
   },
   headerRight: {
     flexDirection: 'row',
@@ -3354,6 +3346,7 @@ const styles = StyleSheet.create({
   },
   greetingBlock: {
     marginLeft: 12,
+    flex: 1,
   },
   greeting: {
     color: '#000',
