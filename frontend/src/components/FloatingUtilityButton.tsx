@@ -539,7 +539,7 @@ export const FloatingUtilityButton = () => {
     // Listen for real-time SOS alerts via socket
     const handleSOSAlert = (data: any) => {
       console.log('[Socket] Real-time SOS alert:', data);
-      if (data.creator_id !== user?.id) {
+      if (data.creator_id !== user?.id && data.user_id !== user?.id) {
         setIncomingSOS(data);
         setSosResponderModalVisible(true);
         Vibration.vibrate([0, 1000, 500, 1000, 500, 1000], true); // true = repeat
