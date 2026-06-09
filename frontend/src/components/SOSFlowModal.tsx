@@ -448,6 +448,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
     </View>
   );
 
+  return (
     <>
       <Modal visible={visible} transparent animationType="slide">
         <View style={styles.overlay}>

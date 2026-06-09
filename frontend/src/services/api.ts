@@ -902,6 +902,9 @@ export const getYajurvedaChapter = (chapterNumber: number = 1) =>
 export const getMahabharataBook = (bookNumber: number = 1) =>
   api.get(`/library/mahabharata/book/${bookNumber}`);
 
+export const getUpanishadsChapter = (chapterNumber: number = 1) =>
+  api.get(`/library/upanishads/chapter/${chapterNumber}`);
+
 // Community APIs
 export const getCommunities = () =>
   api.get('/communities');

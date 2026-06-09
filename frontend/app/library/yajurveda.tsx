@@ -11,6 +11,7 @@ import {
   ImageBackground,
   Image,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -26,9 +27,9 @@ import Animated, {
   interpolate,
   Extrapolate,
 } from 'react-native-reanimated';
-import { useGitaStore } from '../../src/store/gitaStore';
+import { useScriptureStore } from '../../src/store/scriptureStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
-// from '../../src/store/gitaStore';
+import { getYajurvedaChapter } from '../../src/services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,18 +39,21 @@ const geeta3DImage = require('../../assets/images/tab bar/books/Yujurveda.png');
 const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
 const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');
 
-// Load full original scripture data with all 18 chapters and 700 verses
-import gitaDataJson from '../../assets/data/gita_data.json';
-const GITA_DATA: Record<number, any> = gitaDataJson;
+const BOOK_ID = 'yajurveda';
+const TOTAL_CHAPTERS = 40;
 
-export default function BhagavadGita3DPage() {
+export default function YajurvedaPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [isOpened, setIsOpened] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   
   const { updateProgress } = useLibraryStore();
-  const { lastReadChapter, lastReadScrollY, bookmarks, setLastRead, toggleBookmark } = useGitaStore();
+  const { getBookProgress, setLastRead, toggleBookmark } = useScriptureStore();
+  
+  const progress = getBookProgress(BOOK_ID);
+  const { lastReadChapter, lastReadScrollY, bookmarks } = progress;
+  
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -58,45 +62,82 @@ export default function BhagavadGita3DPage() {
   const [contentHeight, setContentHeight] = useState(0);
   const [layoutHeight, setLayoutHeight] = useState(0);
   const [progressTrackWidth, setProgressTrackWidth] = useState(0);
+
+  const [loading, setLoading] = useState(false);
+  const [verses, setVerses] = useState<any[]>([]);
+  const [totalVerses, setTotalVerses] = useState(0);
+  const [initialScrollRestored, setInitialScrollRestored] = useState(false);
   
   const isBookmarked = bookmarks.some(b => b.chapter === currentChapter);
 
   const handleToggleBookmark = () => {
-    const title = GITA_DATA[currentChapter]?.title || `अध्याय ${currentChapter}`;
-    toggleBookmark(currentChapter, 0, title);
+    const title = `अध्याय ${currentChapter}`;
+    toggleBookmark(BOOK_ID, currentChapter, 0, title);
   };
 
   const handleScroll = (event: any) => {
     const scrollY = event.nativeEvent.contentOffset.y;
-    const contentHeight = event.nativeEvent.contentSize.height;
-    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
-    const scrollableHeight = contentHeight - layoutHeight;
-    const progress = scrollableHeight > 0 ? (scrollY / scrollableHeight) * 100 : 0;
-    const clampedProgress = Math.min(Math.max(progress, 0), 100);
+    const contentH = event.nativeEvent.contentSize.height;
+    const layoutH = event.nativeEvent.layoutMeasurement.height;
+    const scrollableHeight = contentH - layoutH;
+    const progressVal = scrollableHeight > 0 ? (scrollY / scrollableHeight) * 100 : 0;
+    const clampedProgress = Math.min(Math.max(progressVal, 0), 100);
     
     setScrollProgress(clampedProgress);
-    // Save progress instantly (zustand persist handles debouncing implicitly if set up, but frequent saves to AsyncStorage might be heavy. We'll throttle it visually)
-    
-    setLastRead(currentChapter, scrollY, clampedProgress);
+    setLastRead(BOOK_ID, currentChapter, scrollY, clampedProgress);
     
     // Update Library Store
     updateProgress({
-      id: 'yajurveda',
-      chapterName: GITA_DATA[currentChapter]?.title || `अध्याय ${currentChapter}`,
+      id: BOOK_ID,
+      chapterName: `अध्याय ${currentChapter}`,
       chapterNum: currentChapter,
-      lastReadPage: Math.max(1, Math.min(Math.ceil(contentHeight / (layoutHeight || 1)), Math.ceil((clampedProgress / 100) * Math.max(1, Math.ceil(contentHeight / (layoutHeight || 1)) - 1)) + 1)),
-      totalPages: Math.max(1, Math.ceil(contentHeight / (layoutHeight || 1))),
+      lastReadPage: Math.max(1, Math.min(Math.ceil(contentH / (layoutH || 1)), Math.ceil((clampedProgress / 100) * Math.max(1, Math.ceil(contentH / (layoutH || 1)) - 1)) + 1)),
+      totalPages: Math.max(1, Math.ceil(contentH / (layoutH || 1))),
       progressPercent: clampedProgress,
       lastOpenedTime: Date.now(),
     });
-
   };
 
   const handleChapterChange = (chNum: number) => {
     setCurrentChapter(chNum);
-    setLastRead(chNum, 0, 0);
+    setLastRead(BOOK_ID, chNum, 0, 0);
+    setInitialScrollRestored(false);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
+
+  // Fetch chapter data from Backend
+  const fetchChapterData = async (chNum: number) => {
+    setLoading(true);
+    try {
+      const response = await getYajurvedaChapter(chNum);
+      if (response && response.data) {
+        setVerses(response.data.verses || []);
+        setTotalVerses(response.data.total_verses || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch chapter:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpened) {
+      fetchChapterData(currentChapter);
+    }
+  }, [currentChapter, isOpened]);
+
+  // Restore scroll position after loaded
+  useEffect(() => {
+    if (isOpened && !loading && verses.length > 0 && !initialScrollRestored) {
+      if (lastReadScrollY > 0) {
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y: lastReadScrollY, animated: true });
+        }, 300);
+      }
+      setInitialScrollRestored(true);
+    }
+  }, [isOpened, loading, verses, initialScrollRestored]);
 
   // Animation values
   const floatingY = useSharedValue(0);
@@ -134,23 +175,13 @@ export default function BhagavadGita3DPage() {
 
     setTimeout(() => {
       setIsOpened(true);
-      // Automatically restore position smoothly after opening
-      if (lastReadScrollY > 0) {
-        setTimeout(() => {
-          scrollViewRef.current?.scrollTo({ y: lastReadScrollY, animated: true });
-        }, 100);
-      }
     }, 1200);
   };
 
   const bookAnimatedStyle = useAnimatedStyle(() => {
-    // Rotate cover from right to left like a book opening
     const rotateY = interpolate(openProgress.value, [0, 1], [0, -110]);
-    // Move to the left so the spine stays somewhat grounded
     const translateX = interpolate(openProgress.value, [0, 1], [0, -SCREEN_WIDTH * 0.6]);
-    // Bring it closer before fading
     const scale = interpolate(openProgress.value, [0, 0.5, 1], [1, 1.15, 1.4]);
-    // Fade out the cover as it fully opens and transitions to pages
     const opacity = interpolate(openProgress.value, [0, 0.7, 1], [1, 1, 0]);
 
     return {
@@ -191,62 +222,43 @@ export default function BhagavadGita3DPage() {
 
   return (
     <View style={styles.root}>
-      <StatusBar translucent backgroundColor="transparent" barStyle={isOpened ? "dark-content" : "dark-content"} />
-
-      {/* Ambient background matching book cover */}
-      <LinearGradient
-        colors={['#FF9B6A', '#FFD5B8', '#FFF3EB']}
-        locations={[0, 0.4, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Glowing transition effect */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, glowAnimatedStyle, { zIndex: 5 }]} pointerEvents="none">
-        <LinearGradient
-          colors={['rgba(255, 230, 150, 0.8)', 'rgba(255, 200, 100, 0.4)', 'transparent']}
-          style={StyleSheet.absoluteFillObject}
-        />
-      </Animated.View>
-
+      <StatusBar translucent backgroundColor="transparent" barStyle={nightMode ? "light-content" : "dark-content"} />
+      
       {!isOpened ? (
-        /* Closed Book State */
-        <View style={StyleSheet.absoluteFillObject}>
-          {/* Header with back button */}
-          <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <View style={styles.contentContainer}>
+          {/* Subtle Glow behind the book */}
+          <Animated.View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }, glowAnimatedStyle]}>
+            <LinearGradient
+              colors={['rgba(255, 107, 0, 0.25)', 'transparent']}
+              style={{ width: SCREEN_WIDTH * 0.9, height: SCREEN_WIDTH * 0.9, borderRadius: SCREEN_WIDTH * 0.45 }}
+            />
+          </Animated.View>
+
+          {/* Opening Header */}
+          <View style={[styles.header, { position: 'absolute', top: insets.top + 10, left: 0, right: 0 }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={24} color="#1B1C1C" />
+              <Ionicons name="chevron-back" size={24} color="#5C250A" />
             </TouchableOpacity>
           </View>
-          <Pressable style={styles.contentContainer} onPress={handleOpenBook}>
-            <Animated.Image
-              source={geeta3DImage}
-              style={[styles.bookImage, bookAnimatedStyle]}
-              resizeMode="contain"
-            />
-            <Animated.View style={[styles.instructionBadge, { opacity: interpolate(openProgress.value, [0, 0.1], [1, 0]) }]}>
-              <Ionicons name="hand-left-outline" size={16} color="#B85D19" style={{ marginRight: 6 }} />
-              <Text style={styles.instructionText}>Tap to open</Text>
-            </Animated.View>
-          </Pressable>
+
+          <Animated.View style={bookAnimatedStyle}>
+            <Pressable onPress={handleOpenBook}>
+              <Image 
+                source={geeta3DImage} 
+                style={styles.bookImage}
+                resizeMode="contain"
+              />
+            </Pressable>
+          </Animated.View>
+
+          <View style={styles.instructionBadge}>
+            <Ionicons name="sparkles" size={16} color="#B85D19" style={{ marginRight: 6 }} />
+            <Text style={styles.instructionText}>यात्रा शुरू करने के लिए छुएं</Text>
+          </View>
         </View>
       ) : (
-        /* Inside Pages - Sacred Manuscript UI */
         <Animated.View style={[StyleSheet.absoluteFillObject, readingScreenStyle]}>
-          <ImageBackground
-            source={require('../../assets/images/clean_parchment_bg.png')}
-            style={StyleSheet.absoluteFillObject}
-            resizeMode="cover"
-          >
-            {nightMode && (
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(20, 10, 5, 0.85)' }]} />
-            )}
-            {/* Subtle parchment texture overlay just to balance lighting if needed */}
-            <LinearGradient
-              colors={nightMode ? ['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.5)'] : ['rgba(140,58,0,0.05)', 'rgba(255,255,255,0.1)', 'rgba(140,58,0,0.1)']}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-            
+          <ImageBackground source={require('../../assets/images/clean_parchment_bg.png')} style={styles.root}>
             {/* Sticky Top Header Container */}
             <View style={[styles.stickyTopHeader, { 
               paddingTop: insets.top + 10,
@@ -264,7 +276,7 @@ export default function BhagavadGita3DPage() {
               {/* Title Header sticky in center */}
               <View style={styles.stickyChapterTitle}>
                 <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* यजुर्वेद *</Text>
-                <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* {GITA_DATA[currentChapter]?.title} *</Text>
+                <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* अध्याय {convertToHindiNumerals(currentChapter)} *</Text>
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -310,7 +322,7 @@ export default function BhagavadGita3DPage() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.chapterNavContainer}
               >
-                {Array.from({ length: 18 }, (_, i) => i + 1).map((chNum) => (
+                {Array.from({ length: TOTAL_CHAPTERS }, (_, i) => i + 1).map((chNum) => (
                   <TouchableOpacity
                     key={chNum}
                     style={[
@@ -333,34 +345,53 @@ export default function BhagavadGita3DPage() {
 
               {/* Subtitle */}
               <View style={styles.chapterSubHeader}>
-                <Text style={[styles.subHeaderText, nightMode && styles.textNight]}>{GITA_DATA[currentChapter]?.name}</Text>
+                <Text style={[styles.subHeaderText, nightMode && styles.textNight]}>
+                  {verses.length > 0 ? `कुल मंत्र/श्लोक: ${convertToHindiNumerals(totalVerses || verses.length)}` : ''}
+                </Text>
               </View>
 
               {/* Verses */}
-              {GITA_DATA[currentChapter]?.verses.map((verse: any, index: number) => (
-                <View key={verse.id} style={styles.verseContainer}>
-                  {/* Sanskrit Text */}
-                  <View style={styles.sanskritWrapper}>
-                    <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{verse.sanskrit}</Text>
-                    <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.id)}</Text>
-                  </View>
-
-                  {/* Hindi Translation */}
-                  <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
-                    <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.id)}. </Text>
-                    {verse.hindi}
+              {loading ? (
+                <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={nightMode ? "#FFD5B8" : "#8C3A00"} />
+                  <Text style={[{ marginTop: 16, fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
+                    पाठ्य सामग्री लोड हो रही है...
                   </Text>
-
-                  {/* Divider */}
-                  {index < GITA_DATA[currentChapter].verses.length - 1 && (
-                    <View style={styles.dividerContainer}>
-                      <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
-                      <View style={[styles.dividerDot, nightMode && { backgroundColor: '#6e4733' }]} />
-                      <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
-                    </View>
-                  )}
                 </View>
-              ))}
+              ) : verses.length === 0 ? (
+                <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
+                  <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
+                    सामग्री लोड करने में विफल। कृपया पुनः प्रयास करें।
+                  </Text>
+                </View>
+              ) : (
+                verses.map((verse: any, index: number) => (
+                  <View key={verse.verse} style={styles.verseContainer}>
+                    {/* Sanskrit Text */}
+                    <View style={styles.sanskritWrapper}>
+                      <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{verse.text}</Text>
+                      <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}</Text>
+                    </View>
+
+                    {/* Hindi Translation */}
+                    {(verse.translations?.hindi || verse.translations?.english) ? (
+                      <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
+                        <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}. </Text>
+                        {verse.translations.hindi || verse.translations.english}
+                      </Text>
+                    ) : null}
+
+                    {/* Divider */}
+                    {index < verses.length - 1 && (
+                      <View style={styles.dividerContainer}>
+                        <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
+                        <View style={[styles.dividerDot, nightMode && { backgroundColor: '#6e4733' }]} />
+                        <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
+                      </View>
+                    )}
+                  </View>
+                ))
+              )}
               
               {/* Bottom Chapter Navigation */}
               <View style={styles.bottomNavContainer}>
@@ -371,7 +402,7 @@ export default function BhagavadGita3DPage() {
                   </TouchableOpacity>
                 ) : <View style={{ width: 100 }} />}
                 
-                {currentChapter < 18 ? (
+                {currentChapter < TOTAL_CHAPTERS ? (
                   <TouchableOpacity style={[styles.bottomNavBtn, nightMode && styles.bottomNavBtnNight]} onPress={() => handleChapterChange(currentChapter + 1)}>
                     <Text style={[styles.bottomNavText, nightMode && styles.textNight]}>अगला अध्याय</Text>
                     <Ionicons name="arrow-forward" size={16} color={nightMode ? "#EBD7B6" : "#691F0A"} />
@@ -444,10 +475,9 @@ export default function BhagavadGita3DPage() {
                     onPress={() => {
                       setShowBookmarksMenu(false);
                       handleChapterChange(bm.chapter);
-                      // After chapter loads, scroll to bookmark position
                       setTimeout(() => {
                         scrollViewRef.current?.scrollTo({ y: bm.scrollY, animated: true });
-                      }, 200);
+                      }, 400);
                     }}
                   >
                     <View>
