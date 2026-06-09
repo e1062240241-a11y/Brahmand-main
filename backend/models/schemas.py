@@ -589,12 +589,6 @@ class JobProfileUpdate(BaseModel):
     cv_url: Optional[str] = None
 
 
-# ================= CULTURAL COMMUNITY MODELS =================
-
-class CulturalCommunityUpdate(BaseModel):
-    cultural_community: str = Field(..., min_length=2, max_length=100)
-
-
 # ================= SOS MODELS =================
 
 class SOSCreate(BaseModel):

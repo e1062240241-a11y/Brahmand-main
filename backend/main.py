@@ -1836,8 +1836,6 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     # Community type labels for UI display
     TYPE_LABELS = {
-        'home_area': 'Home Area',
-        'office_area': 'Office Area',
         'city': 'City Community',
         'state': 'State Community',
         'country': 'National Community'
@@ -1845,11 +1843,9 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     # Community type order for sorting
     TYPE_ORDER = {
-        'home_area': 1,
-        'office_area': 2,
-        'city': 3,
-        'state': 4,
-        'country': 5
+        'city': 1,
+        'state': 2,
+        'country': 3
     }
     
     async def create_or_get_community(name: str, comm_type: str, location: dict):
@@ -1908,26 +1904,9 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         })
         default_community_ids.append(country_id)
     
-    # 2. Process office location (Office Area Group)
     if locations.office_location:
         office_loc = locations.office_location
         update_data['office_location'] = office_loc
-        
-        # Office Area Group
-        office_area_val = office_loc.get('area')
-        office_area_name = f"{office_area_val.title()} Group" if office_area_val else ""
-        
-        # Check if it's different from home area
-        home_area_val = locations.home_location.get('area') if locations.home_location else None
-        home_area_name = f"{home_area_val.title()} Group" if home_area_val else ""
-        
-        if office_area_name and office_area_name != home_area_name:
-            office_area_id = await create_or_get_community(office_area_name, 'office_area', office_loc)
-            # Insert office area after home area (index 1)
-            if len(default_community_ids) >= 1:
-                default_community_ids.insert(1, office_area_id)
-            else:
-                default_community_ids.append(office_area_id)
     
     # Remove duplicates while preserving order
     seen = set()
@@ -6233,10 +6212,6 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
     
-    # Auto-cleanup: Ensure user only sees the current cultural group in their list
-    current_cultural_community = user.get('cultural_community')
-    current_cultural_key = _community_group_key(current_cultural_community) if current_cultural_community else None
-    
     circles = []
     user_circle_ids = list(user.get('circles', []))
     
@@ -6248,14 +6223,10 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                     cid = circle['id']
                     # Check if this is a cultural group
                     is_cultural = (
-                        circle.get('type') == 'cultural' or 
-                        'Culture Group' in circle.get('name', '') or 
+                        circle.get('type') == 'cultural' or
+                        'Culture Group' in circle.get('name', '') or
                         circle.get('cultural_group_key') is not None
                     )
-                    
-                    if is_cultural:
-                        # Keep user in the cultural circle even if they changed their primary one
-                        pass
 
                     member_names = []
                     for member_id in circle.get('members', []):
@@ -6278,6 +6249,7 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                         "member_count": len(circle.get('members', [])),
                         "member_names": member_names,
                         "is_admin": _is_circle_admin(circle, user_id),
+                        "is_cultural": is_cultural,
                         "created_at": circle.get('created_at')
                     })
         except Exception as e:
@@ -9878,221 +9850,6 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
 
 
 # =================== CULTURAL COMMUNITY ===================
-
-# Comprehensive list of Sanatan communities
-CULTURAL_COMMUNITIES = [
-    # Patel communities
-    "Leuva Patel", "Kadva Patel", "Anjana Patel", "Chaudhary Patel",
-    # Brahmin communities
-    "Brahmin", "Anavil Brahmin", "Audichya Brahmin", "Gaur Brahmin", "Kanyakubja Brahmin",
-    "Maithil Brahmin", "Nagar Brahmin", "Saraswat Brahmin", "Saryuparin Brahmin",
-    "Chitpavan Brahmin", "Deshastha Brahmin", "Karhade Brahmin", "Kokanastha Brahmin",
-    "Iyer", "Iyengar", "Namboothiri", "Telugu Brahmin", "Kannada Brahmin",
-    # Kshatriya communities
-    "Rajput", "Maratha", "Kshatriya", "Nair", "Bunts", "Thakur", "Chauhan",
-    "Rathore", "Sisodia", "Parmar", "Solanki", "Jadeja", "Jhala",
-    # Vaishya communities  
-    "Bania", "Agarwal", "Gupta", "Jain", "Marwari", "Maheshwari", "Oswal",
-    "Khandelwal", "Porwal", "Lohana", "Vaish", "Arora", "Khatri",
-    # Other major communities
-    "Yadav", "Kurmi", "Lodhi", "Jat", "Gujjar", "Ahir", "Koeri", "Mali",
-    "Teli", "Saini", "Kamma", "Kapu", "Reddy", "Naidu", "Velama",
-    "Lingayat", "Vokkaliga", "Gowda", "Nair", "Ezhava", "Menon",
-    "Pillai", "Chettiars", "Mudaliar", "Gounder", "Vanniyar", "Thevar",
-    # Artisan communities
-    "Vishwakarma", "Lohar", "Sonar", "Kumhar", "Darji", "Mochi",
-    "Suthar", "Kumbhar", "Soni", "Panchal", "Prajapati",
-    # Professional communities
-    "Kayastha", "Vaishya", "Baidya", "Teli", "Gandhi",
-    # Religious communities
-    "Swaminarayan", "Pushtimarg", "Vallabhacharya", "Nimbarka", "Ramanandi",
-    "Shaiva", "Vaishnava", "Shakta", "Smarta", "Goswami",
-    # Regional communities
-    "Sindhi", "Punjabi", "Gujarati", "Marathi", "Bengali", "Tamil",
-    "Telugu", "Kannada", "Malayalam", "Odia", "Assamese", "Bihari",
-    # Others
-    "Patidar", "Sikh", "Meena", "Bhil", "Gond", "Santhal", "Munda",
-    "Oraon", "Khasi", "Naga", "Mizo", "Manipuri", "Bodo", "Rabha"
-]
-
-@api_router.get("/cultural-communities")
-async def get_cultural_communities(search: Optional[str] = None):
-    """Get list of all cultural communities"""
-    communities = CULTURAL_COMMUNITIES.copy()
-    
-    if search:
-        search_lower = search.lower()
-        communities = [c for c in communities if search_lower in c.lower()]
-    
-    return sorted(communities)
-
-
-@api_router.get("/user/cultural-community")
-async def get_user_cultural_community(token_data: dict = Depends(verify_token)):
-    """Get user's cultural community info"""
-    db = await get_db()
-    user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
-    
-    change_count = user.get('cultural_change_count', 0)
-    community_id = None
-    if user.get('cultural_community'):
-        comm = await db.find_one('communities', [('cultural_group_key', '==', _community_group_key(user['cultural_community']))])
-        if comm:
-            community_id = comm.get('id')
-
-    return {
-        "cultural_community": user.get('cultural_community'),
-        "community_id": community_id,
-        "change_count": change_count,
-        "is_locked": change_count >= 1
-    }
-
-
-def _community_group_key(value: str) -> str:
-    if not value: return ""
-    return ''.join(ch.lower() if ch.isalnum() else '-' for ch in value).strip('-')
-
-@api_router.put("/user/cultural-community")
-async def update_cultural_community(data: CulturalCommunityUpdate, token_data: dict = Depends(verify_token)):
-    """
-    Update user's cultural community.
-    Rules:
-    1. A user can only belong to ONE cultural community/circle at a time.
-    2. Changing is allowed only once (Total 2 sets including initial).
-    3. Auto-leaves previous cultural community and its chat circle.
-    4. Auto-joins/Creates matching cultural community AND a corresponding Circle for chat.
-    """
-    try:
-        from google.cloud import firestore
-        db = await get_db()
-        
-        user_id = token_data["user_id"]
-        user = await db.get_document('users', user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Enforce change limit (Allowed only once after initial set)
-        current_count = user.get('cultural_change_count', 0)
-        if current_count >= 2:
-            raise HTTPException(status_code=400, detail="Culture group can only be changed once. You have already reached the limit.")
-
-        current_community = user.get('cultural_community')
-        
-        # 1. CLEANUP: Leave all existing cultural communities and circles
-        # We find them by querying joined communities/circles with type 'cultural' or name pattern
-        user_communities = list(user.get('communities', []))
-        user_circles = list(user.get('circles', []))
-        
-        for comm_id in user_communities:
-            comm = await db.get_document('communities', comm_id)
-            if comm:
-                # Be aggressive: check type, name pattern, and existence of cultural_group_key
-                is_cultural = (
-                    comm.get('type') == 'cultural' or 
-                    'Culture Group' in comm.get('name', '') or 
-                    comm.get('cultural_group_key') is not None
-                )
-                if is_cultural:
-                    await db.array_remove_update('communities', comm_id, 'members', [user_id])
-                    await db.array_remove_update('users', user_id, 'communities', [comm_id])
-                    # Decrement count
-                    await db.update_document('communities', comm_id, {'member_count': max(0, comm.get('member_count', 1) - 1)})
-
-        for circle_id in user_circles:
-            circle = await db.get_document('circles', circle_id)
-            if circle:
-                is_cultural = (
-                    circle.get('type') == 'cultural' or 
-                    'Culture Group' in circle.get('name', '') or 
-                    circle.get('cultural_group_key') is not None
-                )
-                if is_cultural:
-                    await db.array_remove_update('circles', circle_id, 'members', [user_id])
-                    await db.array_remove_update('users', user_id, 'circles', [circle_id])
-
-        selected_key = _community_group_key(data.cultural_community)
-        if not selected_key:
-            raise HTTPException(status_code=400, detail="Invalid community name")
-
-        # Cleanup any old cultural communities for this user, but keep the selected target.
-        old_cultural_comm_ids = []
-        try:
-            existing_cultural_comms = await db.query_documents('communities', filters=[('members', 'array_contains', user_id), ('type', '==', 'cultural')])
-            for comm in existing_cultural_comms:
-                if comm.get('cultural_group_key') != selected_key:
-                    old_cultural_comm_ids.append(comm['id'])
-                    await db.array_remove_update('communities', comm['id'], 'members', [user_id])
-                    await db.array_remove_update('users', user_id, 'communities', [comm['id']])
-        except Exception as ce:
-            logger.warning(f"Cultural community cleanup failed: {ce}")
-
-        # 2. Find or create the NEW cultural community and remove duplicate communities with same key.
-        same_key_comms = await db.query_documents('communities', filters=[('cultural_group_key', '==', selected_key)])
-        target_comm_id = None
-        if not comm_query:
-            target_comm_data = {
-                "name": f"My Culture Group • {data.cultural_community}",
-                "type": "cultural",
-                "cultural_group_key": selected_key,
-                "members": [user_id],
-                "member_count": 1,
-                "code": generate_community_code(data.cultural_community),
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            }
-            target_comm_id = await db.create_document('communities', target_comm_data)
-        else:
-            target_comm_id = comm_query[0]['id']
-            await db.array_union_update('communities', target_comm_id, 'members', [user_id])
-            await db.update_document('communities', target_comm_id, {'member_count': comm_query[0].get('member_count', 0) + 1})
-
-        # 3. Find or create the corresponding CIRCLE (for Chat visibility)
-        circle_query = await db.query_documents('circles', filters=[('cultural_group_key', '==', selected_key)], limit=1)
-        
-        target_circle_id = None
-        if not circle_query:
-            circle_data = {
-                "name": f"Culture Group • {data.cultural_community}",
-                "description": f"Private chat circle for members of {data.cultural_community}",
-                "type": "cultural",
-                "cultural_group_key": selected_key,
-                "code": generate_circle_code(data.cultural_community),
-                "privacy": "invite_code",
-                "members": [user_id],
-                "admin_ids": [user_id],
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            }
-            target_circle_id = await db.create_document('circles', circle_data)
-        else:
-            target_circle_id = circle_query[0]['id']
-            await db.array_union_update('circles', target_circle_id, 'members', [user_id])
-
-        # 4. Update user profile
-        new_count = current_count + 1
-        await db.update_document('users', user_id, {
-            'cultural_community': data.cultural_community,
-            'cultural_change_count': new_count,
-            'communities': firestore.ArrayUnion([target_comm_id]),
-            'circles': firestore.ArrayUnion([target_circle_id]),
-            'updated_at': datetime.utcnow()
-        })
-        
-        await cache_manager.invalidate_user_communities(user_id)
-        return {
-            "message": "Cultural community and chat group joined",
-            "cultural_community": data.cultural_community,
-            "community_id": target_comm_id,
-            "circle_id": target_circle_id,
-            "change_count": new_count
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in update_cultural_community: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
-
 
 @api_router.get("/debug-info")
 async def get_debug_info():

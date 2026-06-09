@@ -1763,17 +1763,6 @@ export const uploadJobProfileFile = (
   })();
 };
 
-// =================== CULTURAL COMMUNITY APIS ===================
-
-export const getCulturalCommunities = (search?: string) =>
-  api.get('/cultural-communities', { params: { search } });
-
-export const getUserCulturalCommunity = () =>
-  api.get('/user/cultural-community');
-
-export const updateUserCulturalCommunity = (cultural_community: string) =>
-  api.put('/user/cultural-community', { cultural_community });
-
 // =================== UTILITY APIS ===================
 
 export const getWisdom = () =>

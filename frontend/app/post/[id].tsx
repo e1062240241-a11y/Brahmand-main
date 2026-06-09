@@ -469,7 +469,7 @@ const PostScreen = () => {
       >
         <KeyboardAvoidingView
           style={styles.commentModalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={0}
         >
           <TouchableOpacity

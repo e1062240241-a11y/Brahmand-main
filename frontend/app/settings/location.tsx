@@ -520,20 +520,6 @@ export default function ChangeLocationScreen() {
                 {t('language') === 'hi' ? 'अपडेट के बाद आपके समुदाय:' : 'Your Communities After Update:'}
               </Text>
               <View style={styles.previewItem}>
-                <Ionicons name="home" size={16} color={COLORS.success} />
-                <Text style={styles.previewText}>
-                  {homeLocation.area || 'Home Area'} {t('language') === 'hi' ? 'समुदाय' : 'Community'}
-                </Text>
-              </View>
-              {officeLocation && (
-                <View style={styles.previewItem}>
-                  <Ionicons name="business" size={16} color={COLORS.info} />
-                  <Text style={styles.previewText}>
-                    {officeLocation.area || 'Office Area'} {t('language') === 'hi' ? 'कार्यालय समुदाय' : 'Office Community'}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.previewItem}>
                 <Ionicons name="location" size={16} color="#9B59B6" />
                 <Text style={styles.previewText}>
                   {homeLocation.city} {t('language') === 'hi' ? 'समुदाय' : 'Community'}

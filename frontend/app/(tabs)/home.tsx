@@ -2668,7 +2668,7 @@ export default function HomeScreen() {
                       {/* Local Community Card */}
                       {(() => {
                         const localComm =
-                          communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area' || c.type === 'user_group' || c.type === 'local') ||
+                          communities.find(c => c.is_default || c.type === 'user_group' || c.type === 'local') ||
                           localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
                         const localId = localComm?.id || 'food_pune';
                         let realGroupName = localComm?.name || 'Pune Food Sharing Group';
@@ -2978,7 +2978,7 @@ export default function HomeScreen() {
           >
             <KeyboardAvoidingView
               style={styles.commentOverlay}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
             >
               <TouchableOpacity

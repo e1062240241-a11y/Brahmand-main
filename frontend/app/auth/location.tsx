@@ -315,7 +315,7 @@ export default function LocationSetupScreen() {
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color={COLORS.info} />
             <Text style={styles.infoText}>
-              Both locations are required. You'll be added to 5 communities based on your Home and Office areas for connecting with local Sanatan communities.
+              Both locations are required. You'll be added to 3 communities based on your Home and Office areas for connecting with local Sanatan communities.
             </Text>
           </View>
 
