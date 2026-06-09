@@ -3,6 +3,8 @@ import subprocess
 import sys
 import random
 
+os.environ["CLOUDSDK_PYTHON"] = "/usr/local/bin/python3.11"
+
 def run_cmd(cmd):
     print(f"Running: {cmd}")
     result = subprocess.run(cmd, shell=True, text=True)
