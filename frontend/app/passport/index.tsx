@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -175,11 +175,20 @@ const styles = StyleSheet.create({
     aspectRatio: 41 / 52,
     borderRadius: 20,
     backgroundColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 0,
+      },
+      default: {
+        elevation: 0,
+      }
+    }),
     marginBottom: 24,
     alignItems: 'center',
   },
