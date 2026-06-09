@@ -25,6 +25,7 @@ import formatDistance from '../../src/utils/formatDistance';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
+import VendorCategories from '../../src/components/VendorCategories';
 import { useTranslation } from '../../src/utils/i18n';
 
 import { useAuthStore } from '../../src/store/authStore';
@@ -990,24 +991,7 @@ export default function VendorScreen() {
           }
         >
           {/* Categories Row */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.figmaCategoriesRow, { zIndex: 10 }]}>
-            {['GYM', 'Travel', 'Halvai', 'Beauty', 'Decorator'].map((cat, i) => (
-              <TouchableOpacity key={i} style={styles.figmaCategoryItem} onPress={() => router.push(`/vendor/category/${cat}` as any)}>
-                <Image
-                  source={
-                    cat === 'GYM' ? require('../../assets/images/tab bar/rashi/vendor/gym.png') :
-                    cat === 'Travel' ? require('../../assets/images/tab bar/rashi/vendor/travel.png') :
-                    cat === 'Halvai' ? require('../../assets/images/tab bar/rashi/vendor/halvai.png') :
-                    cat === 'Beauty' ? require('../../assets/images/tab bar/rashi/vendor/Beauty.png') :
-                    require('../../assets/images/tab bar/rashi/vendor/Decorator.png')
-                  }
-                  style={{ width: 24, height: 24, tintColor: '#F26522' }}
-                  resizeMode="contain"
-                />
-                <Text style={styles.figmaCategoryText}>{cat}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <VendorCategories />
 
           {/* Registration Button */}
           <TouchableOpacity 

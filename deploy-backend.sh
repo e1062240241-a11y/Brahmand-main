@@ -1,4 +1,5 @@
 #!/bin/bash
+export CLOUDSDK_PYTHON=/usr/local/bin/python3.11
 cd backend
 
 echo "Deploying Backend to Google Cloud Run..."
