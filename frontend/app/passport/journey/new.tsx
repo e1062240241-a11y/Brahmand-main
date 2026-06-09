@@ -12,13 +12,12 @@ import { createMediaItem } from '../../../src/services/passportService';
 
 const questions = [
   'How did you travel to this place?',
-  'What did you experience on the journey?',
-  'How was the crowd during your visit?',
-  'What did you eat and enjoy?',
-  'Where did you stay and how was it?',
-  'How was the weather and surroundings?',
-  'What was the most meaningful moment?',
-  'Any final thoughts from the journey?'
+  'What did you experience at the temple?',
+  'How was the crowd and nearby area/surroundings during your visit?',
+  'What did you eat and enjoy nearby?',
+  'Where did you stay and how was the location?',
+  'What was the most meaningful spiritual moment?',
+  'Any final thoughts on your temple visit?'
 ];
 
 export default function NewPassportJourneyScreen() {

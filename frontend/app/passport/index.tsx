@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,16 @@ import { usePassportStore } from '../../src/store/passportStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  Easing,
+  interpolate,
+} from 'react-native-reanimated';
+import { useIsFocused } from '@react-navigation/native';
 
 const { width: windowWidth } = Dimensions.get('window');
 
@@ -14,10 +24,34 @@ export default function PassportCoverScreen() {
   const router = useRouter();
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const { user } = useAuthStore();
+  const isFocused = useIsFocused();
+
+  // Animation values
+  const floatingY = useSharedValue(0);
+  const openProgress = useSharedValue(0);
+  const [isOpening, setIsOpening] = useState(false);
 
   useEffect(() => {
     loadPassport();
   }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      // Reset animation states when returning to cover screen
+      openProgress.value = 0;
+      setIsOpening(false);
+      
+      // Start subtle floating animation while idle
+      floatingY.value = withRepeat(
+        withSequence(
+          withTiming(-8, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) })
+        ),
+        -1,
+        true
+      );
+    }
+  }, [isFocused]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -26,6 +60,43 @@ export default function PassportCoverScreen() {
       router.replace('/(tabs)/home' as any);
     }
   };
+
+  const handleOpenPassport = () => {
+    if (isOpening) return;
+    setIsOpening(true);
+
+    // Stop floating smoothly
+    floatingY.value = withTiming(0, { duration: 300 });
+
+    // Animate book opening
+    openProgress.value = withTiming(1, {
+      duration: 1200,
+      easing: Easing.bezier(0.25, 1, 0.5, 1),
+    });
+
+    setTimeout(() => {
+      router.push('/passport/inner' as any);
+    }, 1000);
+  };
+
+  const animatedCoverStyle = useAnimatedStyle(() => {
+    const rotateY = interpolate(openProgress.value, [0, 1], [0, -110]);
+    // Move to the left so the spine stays somewhat grounded
+    const translateX = interpolate(openProgress.value, [0, 1], [0, -windowWidth * 0.3]);
+    const scale = interpolate(openProgress.value, [0, 0.5, 1], [1, 1.15, 1.3]);
+    const opacity = interpolate(openProgress.value, [0, 0.8, 1], [1, 1, 0]);
+
+    return {
+      opacity,
+      transform: [
+        { perspective: 1200 },
+        { translateY: floatingY.value },
+        { translateX },
+        { scale },
+        { rotateY: `${rotateY}deg` },
+      ],
+    };
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -47,19 +118,21 @@ export default function PassportCoverScreen() {
       {/* Main Content Area */}
       <View style={styles.content}>
         <TouchableOpacity 
-          style={styles.cardContainer}
           activeOpacity={0.9}
-          onPress={() => router.push('/passport/inner' as any)}
+          onPress={handleOpenPassport}
+          disabled={isOpening}
         >
-          <Image 
-            source={require('../../assets/images/pass.png')}
-            style={styles.passportImage}
-            contentFit="contain"
-          />
-          <View style={styles.textOverlay}>
-            <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
-            <Text style={styles.subText}>Your Sanatani Passport</Text>
-          </View>
+          <Animated.View style={[styles.cardContainer, animatedCoverStyle]}>
+            <Image 
+              source={require('../../assets/images/pass.png')}
+              style={styles.passportImage}
+              contentFit="contain"
+            />
+            <View style={styles.textOverlay}>
+              <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
+              <Text style={styles.subText}>Your Sanatani Passport</Text>
+            </View>
+          </Animated.View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
