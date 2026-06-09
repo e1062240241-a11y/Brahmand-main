@@ -1274,15 +1274,12 @@ async def reset_database(confirm: str = ""):
         chats = await db.query_documents('chats', [])
         for chat in chats:
             # Delete messages subcollection
-            messages = await db.get_chat_messages(chat['id'], 1000)
-            for msg in messages:
-                try:
-                    def _delete_msg():
-                        db.client.collection('chats').document(chat['id']).collection('messages').document(msg['id']).delete()
-                    await db._run_sync(_delete_msg)
-                    deleted["messages"] += 1
-                except:
-                    pass
+            try:
+                deleted_messages = await db.delete_subcollection('chats', chat['id'], 'messages')
+                deleted["messages"] += deleted_messages
+            except Exception as e:
+                logger.error(f"Failed to delete messages for chat {chat['id']}: {e}")
+
             await db.delete_document('chats', chat['id'])
             deleted["chats"] += 1
         
