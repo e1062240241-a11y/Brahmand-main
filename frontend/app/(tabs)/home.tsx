@@ -2647,12 +2647,8 @@ export default function HomeScreen() {
                       {(() => {
                         const cityComm = communities.find(c => c.type === 'city');
                         let cityName = cityComm?.name || 'City Community';
-                        if (t('language') === 'hi') {
-                          if (cityName === 'City Community') {
-                            cityName = 'शहर समुदाय';
-                          } else if (cityName.toLowerCase().includes('mumbai')) {
-                            cityName = 'मुंबई समुदाय';
-                          }
+                        if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
+                          cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
                         }
                         const cityId = cityComm?.id || 'city_default';
                         return (
