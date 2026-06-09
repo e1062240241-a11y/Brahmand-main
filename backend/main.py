@@ -76,7 +76,7 @@ from models.schemas import (
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
     CircleCreate, CircleJoin, CircleUpdate, CircleInvite, CirclePrivacy,
     HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
-    VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate, CulturalCommunityUpdate,
+    VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate,
     SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel,
     MSG91TokenRequest, CommunityCreate
 )
@@ -7623,6 +7623,37 @@ async def resolve_report(report_id: str, data: dict = Body(default={}), token_da
     return await review_report(report_id, {**data, 'action': mapped_action}, token_data)
 
 
+@api_router.get("/admin/sos-misuse-reports")
+async def get_admin_sos_misuse_reports(token_data: dict = Depends(verify_token)):
+    """Get all SOS misuse reports for admin review"""
+    db, _ = await _ensure_admin_user(token_data)
+    reports = await db.query_documents('sos_misuse_reports')
+    reports.sort(key=lambda item: item.get('created_at') or datetime.min, reverse=True)
+    return reports
+
+
+@api_router.post("/admin/users/{user_id}/block-sos")
+async def admin_block_sos(user_id: str, token_data: dict = Depends(verify_token)):
+    """Block user from creating or responding to SOS alerts"""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.update_document('users', user_id, {"is_sos_blocked": True})
+    return {"message": "User SOS privileges suspended successfully", "user_id": user_id, "is_sos_blocked": True}
+
+
+@api_router.post("/admin/users/{user_id}/unblock-sos")
+async def admin_unblock_sos(user_id: str, token_data: dict = Depends(verify_token)):
+    """Restore user's SOS privileges"""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.update_document('users', user_id, {"is_sos_blocked": False})
+    return {"message": "User SOS privileges restored successfully", "user_id": user_id, "is_sos_blocked": False}
+
+
 # =================== SAMPLE DATA INITIALIZATION ===================
 
 @api_router.post("/admin/init-sample-temples")
@@ -10522,6 +10553,8 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     db = await get_db()
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
+    if user and user.get('is_sos_blocked', False):
+        raise HTTPException(status_code=403, detail="Your SOS creation privileges have been suspended due to reported misuse.")
     
     # Check if user already has an active SOS
     existing = await db.find_one('sos_alerts', [
@@ -10825,6 +10858,8 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     db = await get_db()
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
+    if user and user.get('is_sos_blocked', False):
+        raise HTTPException(status_code=403, detail="Your SOS privileges have been suspended.")
     
     alert = await db.get_document('sos_alerts', sos_id)
     if not alert:
