@@ -437,6 +437,36 @@ export const adminReviewReport = (
     { headers: { Authorization: `Bearer ${adminToken}` } }
   );
 
+export interface AdminSOSMisuseReport {
+  id: string;
+  sos_id: string;
+  reporter_id: string;
+  reporter_name: string;
+  creator_id: string;
+  creator_name: string;
+  reason: string;
+  created_at: string;
+}
+
+export const getAdminSOSMisuseReports = (adminToken: string) =>
+  adminApi.get<AdminSOSMisuseReport[]>('/admin/sos-misuse-reports', {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+
+export const adminBlockSOS = (adminToken: string, userId: string) =>
+  adminApi.post(
+    `/admin/users/${userId}/block-sos`,
+    {},
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
+export const adminUnblockSOS = (adminToken: string, userId: string) =>
+  adminApi.post(
+    `/admin/users/${userId}/unblock-sos`,
+    {},
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
 export interface AdminPersonalityVerification {
   id: string;
   user_id: string;
