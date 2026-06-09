@@ -1068,6 +1068,31 @@ api_router.include_router(yajurveda_router)
 api_router.include_router(jaap_routes_router)
 
 
+@api_router.get("/jaap/active-count")
+async def get_jaap_active_count(rooms: str):
+    """
+    Get the number of active users connected via Socket.IO in the specified rooms.
+    `rooms` parameter should be a comma-separated list of room names.
+    """
+    room_list = [r.strip() for r in rooms.split(",") if r.strip()]
+    counts = {}
+    for room in room_list:
+        try:
+            # Under the default namespace '/', sio.manager.rooms holds client SIDs in a dict/set
+            room_clients = sio.manager.rooms.get('/', {}).get(room, {})
+            # It can be a dictionary of sid -> true, or a set/list
+            if isinstance(room_clients, dict):
+                counts[room] = len(room_clients)
+            elif hasattr(room_clients, '__len__'):
+                counts[room] = len(room_clients)
+            else:
+                counts[room] = 0
+        except Exception as e:
+            logger.warning(f"Error getting socket client count for room {room}: {e}")
+            counts[room] = 0
+    return counts
+
+
 @api_router.get("/firebase-config")
 async def get_firebase_config():
     """Get Firebase web config for frontend SDK"""

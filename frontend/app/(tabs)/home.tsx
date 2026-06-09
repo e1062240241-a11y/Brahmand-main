@@ -259,6 +259,7 @@ import { SirenIcon } from '../../src/components/SirenIcon';
 import { SacredIcon } from '../../src/components/SacredIcon';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
 import {
+  api,
   addPostComment,
   createCommunityRequest,
   deletePost,
@@ -434,6 +435,37 @@ export default function HomeScreen() {
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
+
+  const [hanumanChantCount, setHanumanChantCount] = useState(1248);
+  const [shivaChantCount, setShivaChantCount] = useState(1248);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    
+    let active = true;
+    const fetchActiveCounts = async () => {
+      try {
+        const response = await api.get('/jaap/active-count', {
+          params: { rooms: 'jaap_hanuman,jaap_shiva' }
+        });
+        if (active && response && response.data) {
+          const hanuman = response.data.jaap_hanuman || 0;
+          const shiva = response.data.jaap_shiva || 0;
+          setHanumanChantCount(hanuman);
+          setShivaChantCount(shiva);
+        }
+      } catch (error) {
+        console.warn('Error fetching active jaap counts:', error);
+      }
+    };
+
+    fetchActiveCounts();
+    const interval = setInterval(fetchActiveCounts, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isFocused]);
 
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
   const [liveCoords, setLiveCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -2240,7 +2272,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>1,248 devotees are chanting</Text>
+                                  }]}>{hanumanChantCount.toLocaleString()} devotees are chanting</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2326,7 +2358,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>1,248 {t('devoteesChanting')}</Text>
+                                  }]}>{shivaChantCount.toLocaleString()} {t('devoteesChanting')}</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2615,12 +2647,8 @@ export default function HomeScreen() {
                       {(() => {
                         const cityComm = communities.find(c => c.type === 'city');
                         let cityName = cityComm?.name || 'City Community';
-                        if (t('language') === 'hi') {
-                          if (cityName === 'City Community') {
-                            cityName = 'शहर समुदाय';
-                          } else if (cityName.toLowerCase().includes('mumbai')) {
-                            cityName = 'मुंबई समुदाय';
-                          }
+                        if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
+                          cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
                         }
                         const cityId = cityComm?.id || 'city_default';
                         return (

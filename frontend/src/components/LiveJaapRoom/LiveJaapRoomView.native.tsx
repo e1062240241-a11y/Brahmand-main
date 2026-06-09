@@ -34,6 +34,7 @@ import {
 import { getAgoraToken } from '../../services/api';
 import { usePassportStore } from '../../store/passportStore';
 import { useTranslation } from '../../utils/i18n';
+import { socketService } from '../../services/socket';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
@@ -723,6 +724,17 @@ export default function LiveJaapRoomView() {
     setupAgora();
     return () => { cleanupAgora(); };
   }, []);
+
+  useEffect(() => {
+    const rName = 'jaap_' + (mantraType || 'gayatri');
+    socketService.connect().then(() => {
+      socketService.joinRoom(rName);
+    }).catch(err => console.warn('Socket connection failed in LiveJaapRoomView.native:', err));
+
+    return () => {
+      socketService.leaveRoom(rName);
+    };
+  }, [mantraType]);
 
   useEffect(() => {
     if (mantraType === 'hanuman') return;

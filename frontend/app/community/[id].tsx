@@ -480,11 +480,11 @@ export default function CommunityDetailScreen() {
   const { t } = useTranslation();
 
   const getTranslatedCommunityName = (name: string) => {
-    if (t('language') !== 'hi') return name;
     const nameLower = name.toLowerCase();
     if (nameLower.includes('mumbai')) {
-      return 'मुंबई समुदाय';
+      return t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
     }
+    if (t('language') !== 'hi') return name;
     if (nameLower.includes('maharashtra')) {
       return 'महाराष्ट्र समुदाय';
     }
@@ -1341,6 +1341,30 @@ export default function CommunityDetailScreen() {
             members_count: 236,
             description: 'A community group for sharing food in Pune.'
           };
+        } else if (id === 'mumbai-fallback' || id === 'city_default') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
+            type: 'city',
+            members_count: 13000,
+            description: 'My Community Group'
+          };
+        } else if (id === 'maharashtra-fallback') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
+            type: 'state',
+            members_count: 14000,
+            description: 'Maharashtra State Community Group'
+          };
+        } else if (id === 'bharat-fallback') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
+            type: 'country',
+            members_count: 15000,
+            description: 'Bharat National Community Group'
+          };
         } else {
           throw err;
         }
@@ -1757,8 +1781,7 @@ export default function CommunityDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        <Vie
-        w style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
+        <View style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
 
         {dynamicTabs.map(tab => (
           <TouchableOpacity
@@ -2711,7 +2734,7 @@ export default function CommunityDetailScreen() {
       const groupName = getTranslatedCommunityName(community?.name || 'Mumbai Group');
       const messageText = t('language') === 'hi'
         ? `हरे कृष्णा! मैंने ${groupName} में आपका अनुरोध '${item.title}' देखा और मैं अपनी सहायता/मदद देना चाहूंगा।`
-        : `Hare Krishna! I saw your request '${item.title}' in the ${community?.name || 'Mumbai Group'} and would like to offer my support/help.`;
+        : `Hare Krishna! I saw your request '${item.title}' in the ${groupName} and would like to offer my support/help.`;
       const confirmedMsg = t('language') === 'hi'
         ? `क्या आप चैट शुरू करके ${item.user_name || 'भक्त'} की मदद करना चाहते हैं?\n\nसंदेश: "${messageText}"`
         : `Would you like to offer help to ${item.user_name || 'devotee'} by starting a chat?\n\nMessage: "${messageText}"`;
@@ -2748,7 +2771,7 @@ export default function CommunityDetailScreen() {
                     const groupName = getTranslatedCommunityName(community?.name || 'Mumbai Group');
                     const messageText = t('language') === 'hi'
                       ? `हरे कृष्णा! मैंने ${groupName} में आपका अनुरोध '${item.title}' देखा और मैं अपनी सहायता/मदद देना चाहूंगा।`
-                      : `Hare Krishna! I saw your request '${item.title}' in the ${community?.name || 'Mumbai Group'} and would like to offer my support/help.`;
+                      : `Hare Krishna! I saw your request '${item.title}' in the ${groupName} and would like to offer my support/help.`;
                     const response = await sendDirectMessage(targetSlId, messageText);
                     const conversationId = response.data?.chat_id || response.data?.conversation_id;
                     if (conversationId) {
@@ -2807,7 +2830,7 @@ export default function CommunityDetailScreen() {
       await Share.share({
         message: t('language') === 'hi'
           ? `ब्रह्मांड पर ${getTranslatedCommunityName(community?.name || 'Mumbai Group')} में शामिल हों!\n\n${appLink}`
-          : `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${appLink}`,
+          : `Join the ${getTranslatedCommunityName(community?.name || 'Mumbai Community')} on Brahmand!\n\n${appLink}`,
       });
     } catch (error) {
       console.error('Error sharing community:', error);

@@ -325,7 +325,7 @@ function MessagesScreen({
     if (nameLower.includes('mumbai') || item.type === 'city') {
       return {
         label: t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY',
-        name: t('language') === 'hi' ? 'मुंबई समुदाय' : (item.name || 'Mumbai Community'),
+        name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
         memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '13K सदस्य' : '13K members'),
         avatarBadge: '+8',
         iconBg: '#FFFFFF',
@@ -687,7 +687,7 @@ function MessagesScreen({
     const { city, state, national, others } = partitionVerifiedCommunities();
     const fallbackCity: Community = {
       id: 'mumbai-fallback',
-      name: t('language') === 'hi' ? 'मुंबई समुदाय' : 'Mumbai Community',
+      name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
       type: 'city',
       member_count: 13000,
     };
