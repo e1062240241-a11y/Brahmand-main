@@ -9,7 +9,6 @@ import {
   Image,
   Dimensions,
   Platform,
-  ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -32,35 +31,35 @@ const CARD_COLORS = [
 
 // Mapping for festival images in assets/images/festival_image/
 const festivalImageMap: Record<string, any> = {
-  'Akshaya Tritiya': require('../assets/images/festival_image/Akshaya Tritiya.jpg.webp'),
-  'Anant Chaturdashi': require('../assets/images/festival_image/Anant Chaturdashi.jpg.webp'),
+  'Akshaya Tritiya': require('../assets/images/festival_image/Akshaya Tritiya.jpg'),
+  'Anant Chaturdashi': require('../assets/images/festival_image/Anant Chaturdashi.jpg'),
   'Ashadhi Ekadashi': require('../assets/images/festival_image/Ashadhi Ekadashi_.jpg'),
   'Bhai Dooj': require('../assets/images/festival_image/Bhai Dooj.jpg'),
-  'Bohag Bihu': require('../assets/images/festival_image/Bohag Bihu .jpg.webp'),
+  'Bohag Bihu': require('../assets/images/festival_image/Bohag Bihu .jpg'),
   'Chaitra Sukhladi': require('../assets/images/festival_image/Chaitra Sukhladi .jpg'),
   'Chhath Puja': require('../assets/images/festival_image/Chhath Puja.jpg'),
-  'Dhanteras': require('../assets/images/festival_image/Dhanteras.jpg.avif'),
+  'Dhanteras': require('../assets/images/festival_image/Dhanteras.jpg'),
   'Dhanu Sankranti': require('../assets/images/festival_image/Dhanu Sankranti.jpeg'),
   'Diwali': require('../assets/images/festival_image/Diwali .jpeg'),
   'Durga Ashtami': require('../assets/images/festival_image/Durga Ashtami.jpeg'),
   'Dussehra': require('../assets/images/festival_image/Dussehra.jpg'),
   'Ganesh Chaturthi': require('../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
-  'Geeta Jayanti': require('../assets/images/festival_image/Geeta Jayanti.jpg.avif'),
+  'Geeta Jayanti': require('../assets/images/festival_image/Geeta Jayanti.jpg'),
   'Govardhan Puja': require('../assets/images/festival_image/Govardhan Puja.jpg'),
-  'Guru Purnima': require('../assets/images/festival_image/Guru Purnima.png.avif'),
+  'Guru Purnima': require('../assets/images/festival_image/Guru Purnima.jpg'),
   'Hanuman janmotsav': require('../assets/images/festival_image/Hanuman janmotsav.jpg'),
-  'Holi': require('../assets/images/festival_image/Happy Holi.jpg.webp'),
+  'Holi': require('../assets/images/festival_image/Happy Holi.jpg'),
   'Hariyali Teej': require('../assets/images/festival_image/Hariyali Teej.jpeg'),
-  'Hindi New Year': require('../assets/images/festival_image/Hindi New Year.jpg.webp'),
-  'Holika Dahan': require('../assets/images/festival_image/Holika Dahan.png.avif'),
-  'Jagannath Rath Yatra': require('../assets/images/festival_image/Jagannath Rath Yatra.webp'),
+  'Hindi New Year': require('../assets/images/festival_image/Hindi New Year.jpg'),
+  'Holika Dahan': require('../assets/images/festival_image/Holika Dahan.jpg'),
+  'Jagannath Rath Yatra': require('../assets/images/festival_image/Jagannath Rath Yatra.jpg'),
   'Janmashtami': require('../assets/images/festival_image/Janmashtami.jpg'),
   'Kajari Teej': require('../assets/images/festival_image/Kajari Teej.jpeg'),
   'Kartik Purnima': require('../assets/images/festival_image/Kartik Purnima.jpeg'),
-  'Karva Chauth': require('../assets/images/festival_image/Karva Chauth.jpg.webp'),
+  'Karva Chauth': require('../assets/images/festival_image/Karva Chauth.jpg'),
   'Magh Bihu': require('../assets/images/festival_image/Magh Bihu.jpg'),
   'Maha Navami': require('../assets/images/festival_image/Maha Navami.jpeg'),
-  'Maha Saptami': require('../assets/images/festival_image/Maha Saptami.jpg.webp'),
+  'Maha Saptami': require('../assets/images/festival_image/Maha Saptami.jpg'),
   'Maha Shivaratri': require('../assets/images/festival_image/Maha Shivaratri.jpeg'),
   'Mahalaya Amavasya': require('../assets/images/festival_image/Mahalaya Amavasya.jpg'),
   'Maharishi Valmiki Jayanti': require('../assets/images/festival_image/Maharishi Valmiki Jayanti.jpg'),
@@ -71,7 +70,7 @@ const festivalImageMap: Record<string, any> = {
   'Ram Navami': require('../assets/images/festival_image/Ram Navami.jpg'),
   'Savitri Pooja': require('../assets/images/festival_image/Savitri Pooja_.jpg'),
   'Sharad Navratri': require('../assets/images/festival_image/Sharad Navratri.jpg'),
-  'Sharad Purnima': require('../assets/images/festival_image/Sharad Purnima.jpg.webp'),
+  'Sharad Purnima': require('../assets/images/festival_image/Sharad Purnima.jpg'),
   'Thaipusam': require('../assets/images/festival_image/Thaipusam.jpg'),
   'Vaisakhi': require('../assets/images/festival_image/Vaisakhi.jpg'),
   'Vasant Panchami': require('../assets/images/festival_image/Vasant Panchami.jpg'),
@@ -198,17 +197,17 @@ const FestivalPage = () => {
             return (
               <TouchableOpacity 
                 key={festivalName || index}
-                style={[styles.festivalCardContainer, { marginBottom: 12 }]}
                 activeOpacity={0.9}
+                style={{ marginBottom: 12 }}
                 onPress={() => router.push(`/festival-detail?index=${index}`)}
               >
-                <ImageBackground
-                  source={festivalImg}
-                  style={[styles.festivalCard, { backgroundColor: color }]}
-                  imageStyle={{ borderRadius: 32, opacity: 0.8 }}
-                  resizeMode="stretch"
-                >
-                  {/* White Glass Overlay */}
+                {/* Inner View needed so overflow:hidden clips absolute Image on iOS */}
+                <View style={[styles.festivalCardContainer, { backgroundColor: color }]}>
+                  <Image
+                    source={festivalImg}
+                    style={[StyleSheet.absoluteFillObject, { opacity: 0.85 }]}
+                    resizeMode="cover"
+                  />
                   <View style={styles.glassOverlay}>
                     <View style={styles.cardContent}>
                       <View style={styles.cardTextContainer}>
@@ -218,13 +217,17 @@ const FestivalPage = () => {
                       </View>
                       <View style={styles.cardRight}>
                         <View style={styles.festivalIconWrapper}>
-                          <Image source={festivalImg} style={styles.festivalIconImage} />
+                          <Image
+                            source={festivalImg}
+                            style={styles.festivalIconImage}
+                            resizeMode="cover"
+                          />
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#000000" style={styles.chevronIcon} />
                       </View>
                     </View>
                   </View>
-                </ImageBackground>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -313,6 +316,7 @@ const styles = StyleSheet.create({
   festivalCardContainer: {
     borderRadius: 32,
     overflow: 'hidden',
+    minHeight: 120,
   },
   festivalCard: {
     borderRadius: 32,
@@ -368,9 +372,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.8)',
   },
   festivalIconImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'stretch',
+    width: 48,
+    height: 48,
   },
   chevronIcon: {
     marginLeft: 12,

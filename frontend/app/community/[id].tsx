@@ -1757,7 +1757,8 @@ export default function CommunityDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        <View style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
+        <Vie
+        w style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
 
         {dynamicTabs.map(tab => (
           <TouchableOpacity
@@ -3764,7 +3765,6 @@ export default function CommunityDetailScreen() {
                       opacity: postCategory ? 1 : 0.6
                     }}
                     autoFocus={!!postCategory}
-                    disableFullscreenUI={true}
                   />
 
                   {/* Add Photo option directly beneath the input box for better accessibility */}

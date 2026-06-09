@@ -560,19 +560,36 @@ const DirectMessageScreen = () => {
             ).fetch();
             
           if (localMessages && localMessages.length > 0) {
-            const mapped = localMessages.reverse().map((msg: any) => ({
-              id: msg.id,
-              sender_id: msg.senderId || '',
-              sender_name: msg.senderName || 'Unknown',
-              sender_photo: undefined,
-              text: msg.content || '',
-              content: msg.content || '',
-              message_type: msg.messageType || 'text',
-              status: 'sent',
-              created_at: new Date(msg.createdAt).toISOString(),
-              timestamp: new Date(msg.createdAt).toISOString(),
-              is_verified: false,
-            }));
+            const mapped = localMessages.reverse().map((msg: any) => {
+              let msgDateStr = new Date().toISOString();
+              try {
+                if (msg.createdAt) {
+                  const d = new Date(msg.createdAt);
+                  if (!isNaN(d.getTime())) {
+                    msgDateStr = d.toISOString();
+                  }
+                } else if (msg.created_at) {
+                  const d = new Date(msg.created_at);
+                  if (!isNaN(d.getTime())) {
+                    msgDateStr = d.toISOString();
+                  }
+                }
+              } catch (e) {}
+
+              return {
+                id: msg.id,
+                sender_id: msg.senderId || '',
+                sender_name: msg.senderName || 'Unknown',
+                sender_photo: undefined,
+                text: msg.content || '',
+                content: msg.content || '',
+                message_type: msg.messageType || 'text',
+                status: 'sent',
+                created_at: msgDateStr,
+                timestamp: msgDateStr,
+                is_verified: false,
+              };
+            });
             setMessages(mapped);
             setLoading(false);
           }

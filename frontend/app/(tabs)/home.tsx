@@ -288,6 +288,7 @@ import * as Location from 'expo-location';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
+import { LocationPickerModal, LocationData } from '../../src/components/LocationPickerModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
@@ -435,6 +436,17 @@ export default function HomeScreen() {
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
 
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+  const [liveCoords, setLiveCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
+
+  const handleConfirmHomeLocation = (locData: LocationData) => {
+    const parts = [locData.area, locData.city, locData.state].filter(Boolean);
+    setLiveLocation(parts.slice(0, 2).join(', ') || locData.display_name || 'Bharat');
+    if (locData.latitude && locData.longitude) {
+      setLiveCoords({ latitude: locData.latitude, longitude: locData.longitude });
+    }
+    setLocationPickerVisible(false);
+  };
   const scrollViewRef = useRef<ScrollView>(null);
   const currentScrollY = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
@@ -734,6 +746,8 @@ export default function HomeScreen() {
         const loc = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
+
+        setLiveCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
 
         // Use native reverse geocoding for exact details
         const reverse = await Location.reverseGeocodeAsync({
@@ -1863,6 +1877,17 @@ export default function HomeScreen() {
                           >
                             <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
                             <Ionicons name="pencil" size={12} color="#000" style={{ marginLeft: 6 }} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            style={styles.liveLocationBadge}
+                            onPress={() => setLocationPickerVisible(true)}
+                          >
+                            <Ionicons name="location" size={10} color="#FF6B00" />
+                            <Text style={styles.liveLocationText} numberOfLines={1}>
+                              {liveLocation}
+                            </Text>
+                            <Ionicons name="pencil-outline" size={9} color="#FF6B00" style={{ marginLeft: 2 }} />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -3155,6 +3180,14 @@ export default function HomeScreen() {
           </Modal>
         </LinearGradient>
       </SafeAreaView>
+
+      <LocationPickerModal
+        visible={locationPickerVisible}
+        onClose={() => setLocationPickerVisible(false)}
+        onConfirm={handleConfirmHomeLocation}
+        title="Choose Your Location"
+        initialCoords={liveCoords}
+      />
     </View>
   );
 }

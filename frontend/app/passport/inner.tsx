@@ -15,9 +15,11 @@ const { width: windowWidth } = Dimensions.get('window');
 function PassportInnerScreen({
   observedJourneys,
   observedBadges,
+  observedCertificates,
 }: {
   observedJourneys: any[];
   observedBadges: any[];
+  observedCertificates: any[];
 }) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -40,6 +42,7 @@ function PassportInnerScreen({
   const journeysCount = observedJourneys.length > 0 ? observedJourneys.length : 2;
   const jaapCount = totalJaap > 0 ? totalJaap : 4;
   const badgesCount = observedBadges.length > 0 ? observedBadges.length : 7;
+  const certificatesCount = observedCertificates.length > 0 ? observedCertificates.length : 1;
 
   // Use user's real avatar if available, otherwise standard dummy photo
   const userPhoto = user?.photo || 'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?auto=format&fit=crop&w=500&q=80';
@@ -179,17 +182,25 @@ function PassportInnerScreen({
           <Text style={styles.recordTitle}>SPIRITUAL RECORD</Text>
           
           <View style={styles.recordGrid}>
-            <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>Total Journeys</Text>
+            <TouchableOpacity 
+              style={styles.recordCol}
+              activeOpacity={0.7}
+              onPress={() => router.push('/passport/timeline' as any)}
+            >
+              <Text style={styles.recordLabel}>Journeys</Text>
               <Text style={styles.recordValue}>{journeysCount}</Text>
-            </View>
+            </TouchableOpacity>
             
             <View style={styles.recordDivider} />
 
-            <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>Jaap Count's</Text>
+            <TouchableOpacity 
+              style={styles.recordCol}
+              activeOpacity={0.7}
+              onPress={() => router.push('/passport/progress' as any)}
+            >
+              <Text style={styles.recordLabel}>Jaap</Text>
               <Text style={styles.recordValue}>{jaapCount}</Text>
-            </View>
+            </TouchableOpacity>
             
             <View style={styles.recordDivider} />
 
@@ -198,8 +209,19 @@ function PassportInnerScreen({
               activeOpacity={0.7}
               onPress={() => router.push('/passport/badge' as any)}
             >
-              <Text style={styles.recordLabel}>Earned Badges</Text>
+              <Text style={styles.recordLabel}>Badges</Text>
               <Text style={styles.recordValue}>{badgesCount}</Text>
+            </TouchableOpacity>
+
+            <View style={styles.recordDivider} />
+
+            <TouchableOpacity 
+              style={styles.recordCol}
+              activeOpacity={0.7}
+              onPress={() => router.push('/passport/progress' as any)}
+            >
+              <Text style={styles.recordLabel}>Certificates</Text>
+              <Text style={styles.recordValue}>{certificatesCount}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -428,7 +450,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#C5BA9D',
   },
   recordLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#4f4f4f',
     fontWeight: '800',
     marginBottom: 6,
@@ -489,6 +511,7 @@ const styles = StyleSheet.create({
 const enhance = withObservables([], () => ({
   observedJourneys: database.get('passport_journeys').query().observe(),
   observedBadges: database.get('passport_badges').query().observe(),
+  observedCertificates: database.get('passport_certificates').query().observe(),
 }));
 
 export default enhance(PassportInnerScreen);

@@ -539,13 +539,10 @@ export default function RootLayout() {
     const initAudio = async () => {
       try {
         await setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          interruptionModeIOS: 1, // InterruptionModeIOS.DoNotMix
-          allowsRecordingIOS: false,
-          shouldRouteThroughEarpieceAndroid: false,
-          interruptionModeAndroid: 1, // InterruptionModeAndroid.DoNotMix
-          shouldDuckAndroid: true,
-          playThroughReceiverOnAndroid: false,
+          playsInSilentMode: true,
+          interruptionMode: 'doNotMix',
+          allowsRecording: false,
+          shouldRouteThroughEarpiece: false,
         });
       } catch (error) {
         console.warn('[Audio] Failed to set default audio mode:', error);
