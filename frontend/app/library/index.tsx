@@ -196,11 +196,13 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
                   {recentBooks.map((book) => {
                     const timeAgo = Math.round((Date.now() - book.lastOpenedTime) / 60000);
                     const timeString = timeAgo < 60 ? `${timeAgo}m ago` : timeAgo < 1440 ? `${Math.floor(timeAgo/60)}h ago` : `${Math.floor(timeAgo/1440)}d ago`;
+                    const bookMeta = BOOKS.find(b => b.id === book.id);
+                    const targetRoute = bookMeta ? bookMeta.route : `/library/${book.id}`;
                     return (
                       <TouchableOpacity
                         key={book.id}
                         style={[styles.gitaProgressCard, { marginHorizontal: 0, width: SCREEN_WIDTH * 0.85 }]}
-                        onPress={() => router.push(`/library/${book.id}` as any)}
+                        onPress={() => router.push(targetRoute as any)}
                         activeOpacity={0.9}
                       >
                         <Image source={BOOK_COVERS[book.id] || BOOK_COVERS['upanishads']} style={styles.gitaProgressImg} resizeMode="cover" />

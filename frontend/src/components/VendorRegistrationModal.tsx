@@ -576,74 +576,99 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             {/* Categories */}
             <Text style={styles.label}>Categories (e.g. Plumber, Electrician) *</Text>
             <View style={{ marginBottom: SPACING.md }}>
-              <TextInput
-                style={styles.input}
-                placeholder="Search or enter a category"
-                placeholderTextColor={COLORS.textLight}
-                value={categoryInput}
-                onChangeText={(text) => {
-                  const filtered = text.replace(/[^a-zA-Z\s]/g, '');
-                  setCategoryInput(filtered.slice(0, 30));
-                  setShowCategoryDropdown(true);
-                }}
-                onFocus={() => setShowCategoryDropdown(true)}
-                onSubmitEditing={() => {
-                  const cat = categoryInput.trim();
-                  if (cat && !categories.includes(cat)) {
-                    if (categories.length >= 5) {
-                      Alert.alert('Limit reached', 'Maximum 5 categories allowed');
-                      return;
-                    }
-                    setCategories([...categories, cat]);
-                  }
-                  setCategoryInput('');
-                  setShowCategoryDropdown(false);
-                }}
-              />
-            </View>
-
-            {/* Category Dropdown (Pills) */}
-            {categoryInput.trim().length > 0 && (
-              <View style={styles.categoryDropdown}>
-                {filteredCategories.slice(0, 10).map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={styles.suggestionPill}
-                    onPress={() => {
+              <View style={styles.dropdownInputContainer}>
+                <TextInput
+                  style={[styles.input, { flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
+                  placeholder="Select or search a category"
+                  placeholderTextColor={COLORS.textLight}
+                  value={categoryInput}
+                  onChangeText={(text) => {
+                    const filtered = text.replace(/[^a-zA-Z\s]/g, '');
+                    setCategoryInput(filtered.slice(0, 30));
+                    setShowCategoryDropdown(true);
+                  }}
+                  onFocus={() => setShowCategoryDropdown(true)}
+                  onSubmitEditing={() => {
+                    const cat = categoryInput.trim();
+                    if (cat && !categories.includes(cat)) {
                       if (categories.length >= 5) {
                         Alert.alert('Limit reached', 'Maximum 5 categories allowed');
                         return;
                       }
                       setCategories([...categories, cat]);
-                      setCategoryInput('');
-                      setShowCategoryDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.suggestionPillText}>{cat}</Text>
-                    <Ionicons name="add" size={14} color={COLORS.text} style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
-                ))}
-                
-                {/* Custom Category Add */}
-                {categoryInput.trim() && !filteredCategories.includes(categoryInput.trim()) && (
-                  <TouchableOpacity
-                    style={[styles.suggestionPill, { backgroundColor: `${COLORS.primary}15`, borderColor: COLORS.primary }]}
-                    onPress={() => {
-                      if (categories.length >= 5) {
-                        Alert.alert('Limit reached', 'Maximum 5 categories allowed');
-                        return;
-                      }
-                      setCategories([...categories, categoryInput.trim()]);
-                      setCategoryInput('');
-                      setShowCategoryDropdown(false);
-                    }}
-                  >
-                    <Text style={[styles.suggestionPillText, { color: COLORS.primary }]}>Add "{categoryInput.trim()}"</Text>
-                    <Ionicons name="add-circle" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
-                )}
+                    }
+                    setCategoryInput('');
+                    setShowCategoryDropdown(false);
+                  }}
+                />
+                <TouchableOpacity 
+                  style={styles.dropdownToggleButton}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setShowCategoryDropdown(!showCategoryDropdown);
+                  }}
+                >
+                  <Ionicons name={showCategoryDropdown ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
               </View>
-            )}
+
+              {/* Category Dropdown List */}
+              {showCategoryDropdown && (
+                <View style={styles.dropdownListContainer}>
+                  <ScrollView 
+                    style={{ maxHeight: 200 }}
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {filteredCategories.length > 0 ? (
+                      filteredCategories.map((cat) => (
+                        <TouchableOpacity
+                          key={cat}
+                          style={styles.dropdownListItem}
+                          onPress={() => {
+                            if (categories.length >= 5) {
+                              Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                              return;
+                            }
+                            setCategories([...categories, cat]);
+                            setCategoryInput('');
+                            setShowCategoryDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownListItemText}>{cat}</Text>
+                          <Ionicons name="add" size={16} color={COLORS.primary} />
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View style={styles.dropdownListEmpty}>
+                        <Text style={styles.dropdownListEmptyText}>No matching categories</Text>
+                      </View>
+                    )}
+                    
+                    {/* Add Custom Category Option */}
+                    {categoryInput.trim() && !filteredCategories.includes(categoryInput.trim()) && (
+                      <TouchableOpacity
+                        style={[styles.dropdownListItem, { borderTopWidth: 1, borderTopColor: COLORS.divider }]}
+                        onPress={() => {
+                          if (categories.length >= 5) {
+                            Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                            return;
+                          }
+                          setCategories([...categories, categoryInput.trim()]);
+                          setCategoryInput('');
+                          setShowCategoryDropdown(false);
+                        }}
+                      >
+                        <Text style={[styles.dropdownListItemText, { color: COLORS.primary, fontWeight: '600' }]}>
+                          Add "{categoryInput.trim()}"
+                        </Text>
+                        <Ionicons name="add-circle" size={18} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
             {/* Selected Categories */}
             {categories.length > 0 && (
@@ -662,74 +687,99 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             {/* Sub Categories */}
             <Text style={styles.label}>Sub Categories *</Text>
             <View style={{ marginBottom: SPACING.md }}>
-              <TextInput
-                style={styles.input}
-                placeholder="Search or enter a sub category"
-                placeholderTextColor={COLORS.textLight}
-                value={subCategoryInput}
-                onChangeText={(text) => {
-                  const filtered = text.replace(/[^a-zA-Z\s]/g, '');
-                  setSubCategoryInput(filtered.slice(0, 30));
-                  setShowSubCategoryDropdown(true);
-                }}
-                onFocus={() => setShowSubCategoryDropdown(true)}
-                onSubmitEditing={() => {
-                  const subCat = subCategoryInput.trim();
-                  if (subCat && !subCategories.includes(subCat)) {
-                    if (subCategories.length >= 5) {
-                      Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
-                      return;
-                    }
-                    setSubCategories([...subCategories, subCat]);
-                  }
-                  setSubCategoryInput('');
-                  setShowSubCategoryDropdown(false);
-                }}
-              />
-            </View>
-
-            {/* Sub Category Dropdown (Pills) */}
-            {subCategoryInput.trim().length > 0 && (
-              <View style={styles.categoryDropdown}>
-                {filteredSubCategories.slice(0, 10).map((subCat) => (
-                  <TouchableOpacity
-                    key={subCat}
-                    style={styles.suggestionPill}
-                    onPress={() => {
+              <View style={styles.dropdownInputContainer}>
+                <TextInput
+                  style={[styles.input, { flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
+                  placeholder="Select or search a subcategory"
+                  placeholderTextColor={COLORS.textLight}
+                  value={subCategoryInput}
+                  onChangeText={(text) => {
+                    const filtered = text.replace(/[^a-zA-Z\s]/g, '');
+                    setSubCategoryInput(filtered.slice(0, 30));
+                    setShowSubCategoryDropdown(true);
+                  }}
+                  onFocus={() => setShowSubCategoryDropdown(true)}
+                  onSubmitEditing={() => {
+                    const subCat = subCategoryInput.trim();
+                    if (subCat && !subCategories.includes(subCat)) {
                       if (subCategories.length >= 5) {
                         Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
                         return;
                       }
                       setSubCategories([...subCategories, subCat]);
-                      setSubCategoryInput('');
-                      setShowSubCategoryDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.suggestionPillText}>{subCat}</Text>
-                    <Ionicons name="add" size={14} color={COLORS.text} style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
-                ))}
-                
-                {/* Custom Sub Category Add */}
-                {subCategoryInput.trim() && !filteredSubCategories.includes(subCategoryInput.trim()) && (
-                  <TouchableOpacity
-                    style={[styles.suggestionPill, { backgroundColor: `${COLORS.primary}15`, borderColor: COLORS.primary }]}
-                    onPress={() => {
-                      if (subCategories.length >= 5) {
-                        Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
-                        return;
-                      }
-                      setSubCategories([...subCategories, subCategoryInput.trim()]);
-                      setSubCategoryInput('');
-                      setShowSubCategoryDropdown(false);
-                    }}
-                  >
-                    <Text style={[styles.suggestionPillText, { color: COLORS.primary }]}>Add "{subCategoryInput.trim()}"</Text>
-                    <Ionicons name="add-circle" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
-                )}
+                    }
+                    setSubCategoryInput('');
+                    setShowSubCategoryDropdown(false);
+                  }}
+                />
+                <TouchableOpacity 
+                  style={styles.dropdownToggleButton}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setShowSubCategoryDropdown(!showSubCategoryDropdown);
+                  }}
+                >
+                  <Ionicons name={showSubCategoryDropdown ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
               </View>
-            )}
+
+              {/* Sub Category Dropdown List */}
+              {showSubCategoryDropdown && (
+                <View style={styles.dropdownListContainer}>
+                  <ScrollView 
+                    style={{ maxHeight: 200 }}
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {filteredSubCategories.length > 0 ? (
+                      filteredSubCategories.map((subCat) => (
+                        <TouchableOpacity
+                          key={subCat}
+                          style={styles.dropdownListItem}
+                          onPress={() => {
+                            if (subCategories.length >= 5) {
+                              Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
+                              return;
+                            }
+                            setSubCategories([...subCategories, subCat]);
+                            setSubCategoryInput('');
+                            setShowSubCategoryDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownListItemText}>{subCat}</Text>
+                          <Ionicons name="add" size={16} color={COLORS.primary} />
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View style={styles.dropdownListEmpty}>
+                        <Text style={styles.dropdownListEmptyText}>No matching subcategories</Text>
+                      </View>
+                    )}
+                    
+                    {/* Add Custom Sub Category Option */}
+                    {subCategoryInput.trim() && !filteredSubCategories.includes(subCategoryInput.trim()) && (
+                      <TouchableOpacity
+                        style={[styles.dropdownListItem, { borderTopWidth: 1, borderTopColor: COLORS.divider }]}
+                        onPress={() => {
+                          if (subCategories.length >= 5) {
+                            Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
+                            return;
+                          }
+                          setSubCategories([...subCategories, subCategoryInput.trim()]);
+                          setSubCategoryInput('');
+                          setShowSubCategoryDropdown(false);
+                        }}
+                      >
+                        <Text style={[styles.dropdownListItemText, { color: COLORS.primary, fontWeight: '600' }]}>
+                          Add "{subCategoryInput.trim()}"
+                        </Text>
+                        <Ionicons name="add-circle" size={18} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
             {/* Selected Sub Categories */}
             {subCategories.length > 0 && (
@@ -1021,5 +1071,54 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  dropdownInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  dropdownToggleButton: {
+    paddingHorizontal: SPACING.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    minHeight: 50,
+  },
+  dropdownListContainer: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    borderRadius: 16,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  dropdownListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  dropdownListItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  dropdownListEmpty: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  dropdownListEmptyText: {
+    fontSize: 13,
+    color: COLORS.textLight,
   },
 });
