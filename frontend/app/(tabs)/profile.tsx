@@ -42,9 +42,6 @@ import api, {
   addPostComment,
   repostPost,
   reportPost,
-  getCulturalCommunities,
-  getUserCulturalCommunity,
-  updateUserCulturalCommunity,
   uploadUserPost,
   updateProfile,
   uploadChatMedia,
@@ -134,7 +131,6 @@ export default function ProfileScreen() {
       title: t('support'),
       items: [
         { id: 'guidelines', icon: 'document-text', label: t('communityGuidelines'), route: '/settings/guidelines', color: '#92400E' },
-        { id: 'culture', icon: 'people', label: t('myCultureGroup'), value: user?.cultural_community || (t('language') === 'hi' ? 'सेट नहीं है' : 'Not set'), color: '#854D0E' },
         { id: 'logout', icon: 'log-out', label: t('logout'), action: 'logout', color: '#B91C1C' },
       ],
     },
@@ -163,14 +159,7 @@ export default function ProfileScreen() {
   const hasScrolledToPost = useRef(false);
   const [activeTab, setActiveTab] = useState('grid');
 
-  // Cultural Group states
-  const [showCGModal, setShowCGModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [cgSearch, setCGSearch] = useState('');
-  const [cgList, setCGList] = useState<string[]>([]);
-  const [cgLoading, setCGLoading] = useState(false);
-  const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
-
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -571,7 +560,6 @@ export default function ProfileScreen() {
     if (item.id === 'culture') {
       setShowSettingsModal(false);
       setTimeout(() => {
-        handleOpenCGModal();
       }, Platform.OS === 'ios' ? 400 : 50);
       return;
     }
@@ -606,65 +594,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const fetchUserCG = async () => {
-    try {
-      const res = await getUserCulturalCommunity();
-      setUserCG(res.data);
-    } catch (error) {
-      console.warn('Failed to fetch user CG:', error);
-    }
-  };
-
-  const fetchCGList = async (search = '') => {
-    setCGLoading(true);
-    try {
-      const res = await getCulturalCommunities(search);
-      // Filter out any duplicates to avoid key collisions
-      const uniqueList = Array.from(new Set(res.data || []));
-      setCGList(uniqueList as string[]);
-    } catch (error) {
-      console.warn('Failed to fetch culture groups:', error);
-    } finally {
-      setCGLoading(false);
-    }
-  };
-
-  const handleOpenCGModal = () => {
-    fetchCGList();
-    fetchUserCG();
-    setShowCGModal(true);
-  };
-
-  const handleSelectCG = async (community: string) => {
-    if (userCG?.is_locked) {
-      Alert.alert('Locked', 'You can only change your culture group once. It is now locked.');
-      return;
-    }
-
-    if (userCG?.cultural_community === community) {
-      showToast('You are already in this culture group.');
-      setShowCGModal(false);
-      return;
-    }
-
-    try {
-      await updateUserCulturalCommunity(community);
-      await fetchUserCG();
-      // Update local auth store so the UI updates immediately
-      if (user) {
-        updateUser({ ...user, cultural_community: community });
-      }
-      setShowCGModal(false);
-      showToast(t('language') === 'hi' ? 'संस्कृति समूह अपडेट हो गया!' : 'Culture group updated!');
-    } catch (error: any) {
-      console.error('Error updating culture group:', error);
-      if (error.response?.data) {
-        console.log('Error data:', error.response.data);
-      }
-      const msg = error.response?.data?.detail || error.message || 'Failed to update';
-      showToast(msg);
-    }
-  };
 
   const performLogout = async () => {
     try {
@@ -1526,7 +1455,7 @@ export default function ProfileScreen() {
             }}
           >
             <KeyboardAvoidingView 
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               style={styles.sheetOverlay}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
@@ -1715,89 +1644,6 @@ export default function ProfileScreen() {
               </View>
             </KeyboardAvoidingView>
           </Modal>
-        </View>
-      </Modal>
-
-      {/* Culture Group Modal */}
-      <Modal visible={showCGModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.cgModalContent}>
-            <View style={styles.cgModalHeader}>
-              <Text style={styles.cgModalTitle}>
-                {t('language') === 'hi' ? 'संस्कृति समूह चुनें' : 'Select Culture Group'}
-              </Text>
-              <TouchableOpacity onPress={() => setShowCGModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-
-            {(userCG?.change_count ?? 0) >= 2 && (
-              <View style={styles.limitReachedContainer}>
-                <Ionicons name="alert-circle" size={20} color="#991B1B" />
-                <Text style={styles.limitReachedText}>
-                  {t('language') === 'hi' ? 'परिवर्तन सीमा समाप्त। आप दोबारा अपना संस्कृति समूह नहीं बदल सकते।' : 'Change limit reached. You cannot change your culture group again.'}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.cgSearchContainer}>
-              <Ionicons name="search" size={20} color={COLORS.textLight} />
-              <TextInput
-                style={styles.cgSearchInput}
-                placeholder={t('language') === 'hi' ? 'संस्कृति समूह खोजें...' : 'Search culture groups...'}
-                placeholderTextColor={COLORS.textLight}
-                value={cgSearch}
-                onChangeText={(text) => {
-                  setCGSearch(text);
-                  fetchCGList(text);
-                }}
-              />
-            </View>
-
-            {cgLoading ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
-            ) : (
-              <FlatList
-                data={cgList}
-                keyExtractor={(item, index) => `${item}-${index}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.cgItem,
-                      userCG?.cultural_community === item && styles.cgItemSelected,
-                      ((userCG?.change_count ?? 0) >= 2 && userCG?.cultural_community !== item) && { opacity: 0.5 }
-                    ]}
-                    onPress={() => {
-                      if ((userCG?.change_count ?? 0) >= 2 && userCG?.cultural_community !== item) {
-                        Alert.alert(
-                          t('language') === 'hi' ? 'सीमा समाप्त' : 'Limit Reached',
-                          t('language') === 'hi' ? 'आप अपने संस्कृति समूह को बदलने की सीमा तक पहले ही पहुँच चुके हैं।' : 'You have already reached the limit for changing your culture group.'
-                        );
-                        return;
-                      }
-                      handleSelectCG(item);
-                    }}
-                  >
-                    <Text style={[
-                      styles.cgItemText,
-                      userCG?.cultural_community === item && styles.cgItemTextSelected,
-                    ]}>
-                      {item}
-                    </Text>
-                    {userCG?.cultural_community === item && (
-                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                    )}
-                  </TouchableOpacity>
-                )}
-                style={styles.cgList}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>
-                    {t('language') === 'hi' ? 'कोई समुदाय नहीं मिला' : 'No communities found'}
-                  </Text>
-                }
-              />
-            )}
-          </View>
         </View>
       </Modal>
 

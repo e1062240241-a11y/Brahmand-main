@@ -635,7 +635,7 @@ export default function CommunityDetailScreen() {
   const [attendeesLoading, setAttendeesLoading] = useState(false);
 
   const isLocalUserCommunity = useMemo(() => {
-    return !['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type);
+    return !['city', 'state', 'country'].includes(community?.type);
   }, [community?.type]);
 
   useEffect(() => {
@@ -1389,7 +1389,7 @@ export default function CommunityDetailScreen() {
         getFestivalList().catch(() => ({ data: [] }))
       ];
 
-      const isLocalCommunity = nextCommunity.type === 'city' || nextCommunity.type === 'cultural' || nextCommunity.type === 'user_group' || nextCommunity.type === 'area';
+      const isLocalCommunity = nextCommunity.type === 'city' || nextCommunity.type === 'user_group';
       if (isLocalCommunity) {
         promises.push(getCommunityRequests({ status: 'active', limit: 50 }).catch(() => ({ data: [] })));
       }
@@ -1710,7 +1710,7 @@ export default function CommunityDetailScreen() {
           <Text style={styles.headerCreateBtnText}>{t('language') === 'hi' ? 'बनाएं' : 'Create'}</Text>
         </TouchableOpacity>
         
-        {(!['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type)) && (
+        {(!['city', 'state', 'country'].includes(community?.type)) && (
           <TouchableOpacity 
             style={{ position: 'absolute', right: 100, zIndex: 10, padding: 8 }}
             onPress={() => setShowGroupInfoModal(true)}
@@ -3406,7 +3406,7 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
       {renderHeader()}
@@ -3606,7 +3606,7 @@ export default function CommunityDetailScreen() {
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
             pointerEvents={(showDatePicker || showTimePicker) && Platform.OS === 'android' ? 'none' : 'auto'}
           >
@@ -4055,7 +4055,7 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           style={styles.modalOverlay}
         >

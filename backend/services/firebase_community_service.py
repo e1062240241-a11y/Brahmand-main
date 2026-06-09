@@ -91,8 +91,7 @@ class FirebaseCommunityService:
             "description": data.get('description'),
             "short_name": data.get('short_name'),
             "location": {
-                "city": data.get('city'),
-                "area": data.get('area')
+                "city": data.get('city')
             },
             "category": data.get('category'),
             "photo": photo_url,
