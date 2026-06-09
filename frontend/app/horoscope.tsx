@@ -1,4 +1,5 @@
 // accessibility: placeholder
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   ScrollView,
@@ -260,7 +261,7 @@ export default function HoroscopeScreen() {
             <View style={styles.heroLeft}>
               <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
               <Text style={styles.signDateText}>
-                Today {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Today {formatDateIST(new Date())}
               </Text>
             </View>
             <View style={styles.heroImageWrapper}>

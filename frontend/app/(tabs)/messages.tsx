@@ -1,4 +1,5 @@
 // accessibility: placeholder
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -151,7 +152,7 @@ function MessagesScreen({
         photo: c.photo,
         member_count: c.memberCount || 0,
         last_message: c.lastMessage,
-        last_message_time: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        last_message_time: c.lastMessageAt ? formatTimeIST(c.lastMessageAt) : '',
       }))
   , [observedConversations]);
 

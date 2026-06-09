@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useState, useCallback, useEffect } from 'react';
 import { 
   View, 
@@ -190,7 +191,7 @@ export default function CommunityScreen() {
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
+    return formatDateIST(date);
   };
 
 

@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -142,7 +143,7 @@ function PassportTimelineScreen({
     for (let i = 2; i >= 0; i--) {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
       months.push({
-        name: d.toLocaleDateString('en-US', { month: 'long' }),
+        name: formatDateIST(d),
         monthIndex: d.getMonth(),
         year: d.getFullYear()
       });
@@ -203,7 +204,7 @@ function PassportTimelineScreen({
         onPress={() => router.push(`/passport/journey/${journey.id}` as any)}
       >
         <Text style={styles.journeyTitle}>{journey.title}</Text>
-        <Text style={styles.journeyMeta}>{journey.location} · {new Date(journey.date).toLocaleDateString()}</Text>
+        <Text style={styles.journeyMeta}>{journey.location} · {formatDateIST(journey.date)}</Text>
         <Text style={styles.journeyPreview} numberOfLines={2}>{preview}</Text>
       </TouchableOpacity>
     );
@@ -386,7 +387,7 @@ function PassportTimelineScreen({
                   >
                     <Text style={styles.certName}>{cert.bookName || cert.book_name}</Text>
                     <Text style={styles.certMeta}>
-                      Completed in {cert.completionDays || cert.completion_days} days • {new Date(cert.date).toLocaleDateString()}
+                      Completed in {cert.completionDays || cert.completion_days} days • {formatDateIST(cert.date)}
                     </Text>
                   </TouchableOpacity>
                 ))}

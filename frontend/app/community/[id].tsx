@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
@@ -1905,7 +1906,7 @@ export default function CommunityDetailScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="calendar-outline" size={16} color="#166534" />
                   <Text style={[styles.sevaInfoText, { color: '#166534' }]}>
-                    {new Date((item as any).start_time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                    {formatDateTimeIST(new Date((item as any).start_time))}
                   </Text>
                 </View>
               </View>
@@ -3850,7 +3851,7 @@ export default function CommunityDetailScreen() {
                         >
                           <Ionicons name="time-outline" size={18} color="#FF6600" />
                           <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
-                            {eventDate ? eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select Time'}
+                            {eventDate ? formatTimeIST(eventDate) : 'Select Time'}
                           </Text>
                         </TouchableOpacity>
                       </View>

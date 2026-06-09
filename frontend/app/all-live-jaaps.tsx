@@ -1,4 +1,5 @@
 // accessibility: placeholder
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React from 'react';
 import {
   View,
@@ -178,7 +179,7 @@ export default function AllLiveJaapsScreen() {
               }
             } else {
               if (hanumanStatus.nextSessionStart) {
-                const timeStr = hanumanStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const timeStr = formatTimeIST(hanumanStatus.nextSessionStart);
                 liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
               } else {
                 liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
@@ -191,7 +192,7 @@ export default function AllLiveJaapsScreen() {
               liveLabel = t('language') === 'hi' ? 'लाइव' : 'LIVE';
             } else {
               if (otherStatus.nextSessionStart) {
-                const timeStr = otherStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const timeStr = formatTimeIST(otherStatus.nextSessionStart);
                 liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
               } else {
                 liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';

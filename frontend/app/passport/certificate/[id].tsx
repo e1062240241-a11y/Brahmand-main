@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../../src/utils/dateUtils';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Share, Dimensions, Modal, Pressable } from 'react-native';
 import { Image } from 'expo-image';
@@ -28,11 +29,7 @@ function CertificateDetailScreen({ observedCertificates }: { observedCertificate
     date: '2024-05-25T00:00:00.000Z'
   };
 
-  const formattedDate = new Date(certificate.date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  const formattedDate = formatDateIST(certificate.date);
 
   const handleBack = () => {
     if (router.canGoBack()) {

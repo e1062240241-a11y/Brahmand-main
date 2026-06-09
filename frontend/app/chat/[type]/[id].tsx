@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated, Keyboard } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -1034,7 +1035,7 @@ const ChatScreen = ({
 
   const formatTime = useCallback((dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatTimeIST(date);
   }, []);
 
   const isMediaUrl = (url: string, type: 'image' | 'video') => {
@@ -1315,11 +1316,7 @@ const ChatScreen = ({
 
     if (isSameDay(date, now)) return 'Today';
     if (isSameDay(date, yesterday)) return 'Yesterday';
-    return date.toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
-    });
+    return formatDateIST(date);
   }, []);
 
   const shouldShowDateSeparator = useCallback((index: number, currentDateString: string) => {

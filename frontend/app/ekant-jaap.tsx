@@ -1,4 +1,5 @@
 // accessibility: placeholder
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -602,7 +603,7 @@ const EkantJaapPage = () => {
                             </Text>
                         ) : (
                             <Text style={styles.focusSubtitle}>
-                                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {new Date(Date.now() + timeLeft * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatTimeIST(new Date())} → {formatTimeIST(new Date(Date.now() + timeLeft * 1000))}
                             </Text>
                         )}
                     </View>

@@ -23,7 +23,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
-import { formatTimeAgo } from '../utils/dateUtils';
+import { formatTimeAgo, formatDateTimeIST } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
@@ -67,7 +67,7 @@ const formatTime = (raw: any) => {
   if (!raw) return 'now';
   const date = new Date(raw);
   if (isNaN(date.getTime())) return 'now';
-  return date.toLocaleString();
+  return formatDateTimeIST(date);
 };
 
 const parseCaption = (caption: string): { text: string; isHashtag: boolean; isMention: boolean }[] => {

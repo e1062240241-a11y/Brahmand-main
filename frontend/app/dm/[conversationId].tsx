@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, 
@@ -445,7 +446,7 @@ const DirectMessageScreen = () => {
         const diffHours = Math.floor(diffMins / 60);
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffHours < 48) return 'Yesterday';
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        return formatDateIST(date);
       } catch {
         return '';
       }
@@ -472,7 +473,7 @@ const DirectMessageScreen = () => {
         : 'Approve or deny this message request to continue chat.';
     }
     if (requestStatus === 'rejected' && isRequester && cooldownActive && retryAfterDate) {
-      return `Your request was denied. You can send a new request after ${retryAfterDate.toLocaleString()}.`;
+      return `Your request was denied. You can send a new request after ${formatDateTimeIST(retryAfterDate)}.`;
     }
     return '';
   })();
@@ -1031,7 +1032,7 @@ const DirectMessageScreen = () => {
   const formatTime = useCallback((dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatTimeIST(date);
   }, []);
 
   const isMediaUrl = (url: string, type: 'image' | 'video') => {
@@ -1394,11 +1395,7 @@ const DirectMessageScreen = () => {
 
     if (isSameDay(date, now)) return 'Today';
     if (isSameDay(date, yesterday)) return 'Yesterday';
-    return date.toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
-    });
+    return formatDateIST(date);
   }, []);
 
   const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {

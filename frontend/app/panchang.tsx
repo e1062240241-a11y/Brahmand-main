@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Platform,
@@ -125,7 +126,7 @@ export default function PanchangScreen() {
       const { dob, tob, pob } = useJyotishStore.getState();
       let finalQuestion = q;
       if (dob && tob && pob) {
-        const dStr = new Date(dob).toLocaleDateString('en-GB');
+        const dStr = formatDateIST(dob);
         finalQuestion = `My birth details are Date: ${dStr}, Time: ${tob}, Place: ${pob}. Please consider this context. Question: ${q}`;
       }
 

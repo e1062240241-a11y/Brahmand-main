@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
@@ -40,7 +41,7 @@ const getDateLabel = (timestamp: number) => {
   } else if (date.toDateString() === yesterday.toDateString()) {
     return 'Yesterday';
   } else {
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    return formatDateIST(date);
   }
 };
 
@@ -130,7 +131,7 @@ export default function AIJyotishScreen() {
       id: '1',
       text: `Namaste, ${userName} . Based on the current planetary alignments, today is an auspicious day for inner reflection. How can I guide your spiritual journey today?`,
       sender: 'ai',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: formatTimeIST(new Date()),
       timestamp: Date.now(),
     }
   ]);
@@ -195,7 +196,7 @@ export default function AIJyotishScreen() {
     // Save to global store
     setBirthDetails(dobStr, tobStr, pobStr);
     
-    const displayDobStr = date.toLocaleDateString('en-GB');
+    const displayDobStr = formatDateIST(date);
     
     // Add user message with birth details
     const userMsgText = `My Birth Details:\n• Date of Birth: ${displayDobStr}\n• Time of Birth: ${tobStr}\n• Place of Birth: ${pobStr}`;
@@ -204,7 +205,7 @@ export default function AIJyotishScreen() {
       id: Date.now().toString(),
       text: userMsgText,
       sender: 'user',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: formatTimeIST(new Date()),
       timestamp: Date.now(),
     };
     
@@ -224,7 +225,7 @@ export default function AIJyotishScreen() {
         id: (Date.now() + 1).toString(),
         text: `Thank you for sharing your birth details. The cosmic alignments for ${displayDobStr} at ${tobStr} in ${pobStr} indicate a unique stellar signature.\n\nCalculating your planetary positions, lagna, and current dasha alignments now. how can I guide your spiritual/personal path today?`,
         sender: 'ai',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: formatTimeIST(new Date()),
         timestamp: Date.now(),
       };
       setMessages((prev) => {
@@ -245,7 +246,7 @@ export default function AIJyotishScreen() {
       id: Date.now().toString(),
       text: message.trim(),
       sender: 'user',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: formatTimeIST(new Date()),
       timestamp: Date.now(),
     };
     
@@ -265,7 +266,7 @@ export default function AIJyotishScreen() {
         id: (Date.now() + 1).toString(),
         text: 'The stars have received your query. Analyzing the cosmic alignment...',
         sender: 'ai',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: formatTimeIST(new Date()),
         timestamp: Date.now(),
       };
       setMessages((prev) => {
@@ -404,7 +405,7 @@ export default function AIJyotishScreen() {
                       style={[styles.askNowInput, { justifyContent: 'center' }]}
                     >
                       <Text style={{ fontSize: 16, color: date ? '#1B1C1C' : '#A9968F' }}>
-                        {date ? date.toLocaleDateString('en-GB') : 'dd/mm/yyyy'}
+                        {date ? formatDateIST(date) : 'dd/mm/yyyy'}
                       </Text>
                     </TouchableOpacity>
                   </View>

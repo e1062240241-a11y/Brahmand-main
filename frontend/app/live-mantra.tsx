@@ -1,4 +1,5 @@
 // accessibility: placeholder
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
@@ -60,7 +61,7 @@ const LiveMantraPage = () => {
         <View style={styles.statusCard}>
           <Text style={styles.statusLabel}>{statusText}</Text>
           {active && currentEnd ? (
-            <Text style={styles.statusValue}>Ends at {currentEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            <Text style={styles.statusValue}>Ends at {formatTimeIST(currentEnd)}</Text>
           ) : (
             <Text style={styles.statusValue}>
               {nextChanting.slot}: {nextChanting.formattedTime}
