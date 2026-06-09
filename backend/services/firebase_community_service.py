@@ -217,21 +217,22 @@ class FirebaseCommunityService:
         community_ids = user.get("communities", [])
         communities = []
         
-        for cid in community_ids:
+        if community_ids:
             try:
-                community = await db.get_document('communities', cid)
-                if community and community.get('type') not in ['home_area', 'area']:
-                    communities.append({
-                        "id": community['id'],
-                        "name": community['name'],
-                        "type": community['type'],
-                        "code": community.get('code', ''),
-                        "photo": community.get('photo'),
-                        "member_count": len(community.get('members', [])),
-                        "subgroups": community.get('subgroups', [])
-                    })
+                fetched_communities = await db.get_documents_batch('communities', list(community_ids))
+                for community in fetched_communities:
+                    if community and community.get('type') not in ['home_area', 'area']:
+                        communities.append({
+                            "id": community.get('id'),
+                            "name": community.get('name', 'Unknown'),
+                            "type": community.get('type', 'other'),
+                            "code": community.get('code', ''),
+                            "photo": community.get('photo'),
+                            "member_count": len(community.get('members', [])),
+                            "subgroups": community.get('subgroups', [])
+                        })
             except Exception as e:
-                logger.error(f"Error fetching community {cid}: {e}")
+                logger.error(f"Error batch fetching communities for user {user_id}: {e}")
         
         await cache_manager.set_communities(user_id, communities)
         return communities
