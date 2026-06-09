@@ -48,9 +48,9 @@ const reverseGeocodeWithTimeout = async (
 };
 
 const SOS_TYPES = [
-  { label: 'Medical', value: 'medical', icon: 'medical' },
-  { label: 'Accident', value: 'accident', icon: 'car-sport' },
   { label: 'Safety', value: 'safety', icon: 'shield-checkmark' },
+  { label: 'Medical', value: 'medical', icon: 'medkit' },
+  { label: 'Accident', value: 'accident', icon: 'car-sport' },
   { label: 'Other', value: 'other', icon: 'warning' },
 ];
 

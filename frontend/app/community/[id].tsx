@@ -1757,8 +1757,7 @@ export default function CommunityDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        <Vie
-        w style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
+        <View style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
 
         {dynamicTabs.map(tab => (
           <TouchableOpacity

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -17,14 +17,107 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../src/store/authStore';
+import { useJyotishStore } from '../src/store/jyotishStore';
 
 type ChatMessage = {
   id: string;
   text: string;
   sender: 'user' | 'ai';
   time: string;
+  timestamp?: number;
 };
+
+const getDateLabel = (timestamp: number) => {
+  const date = new Date(timestamp);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today';
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  } else {
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+};
+
+const CITIES_DB = [
+  "Mumbai, Maharashtra, India",
+  "Delhi, NCR, India",
+  "Bengaluru, Karnataka, India",
+  "Kolkata, West Bengal, India",
+  "Chennai, Tamil Nadu, India",
+  "Hyderabad, Telangana, India",
+  "Pune, Maharashtra, India",
+  "Ahmedabad, Gujarat, India",
+  "Surat, Gujarat, India",
+  "Jaipur, Rajasthan, India",
+  "Lucknow, Uttar Pradesh, India",
+  "Kanpur, Uttar Pradesh, India",
+  "Nagpur, Maharashtra, India",
+  "Indore, Madhya Pradesh, India",
+  "Thane, Maharashtra, India",
+  "Bhopal, Madhya Pradesh, India",
+  "Visakhapatnam, Andhra Pradesh, India",
+  "Pimpri-Chinchwad, Maharashtra, India",
+  "Patna, Bihar, India",
+  "Vadodara, Gujarat, India",
+  "Ghaziabad, Uttar Pradesh, India",
+  "Ludhiana, Punjab, India",
+  "Agra, Uttar Pradesh, India",
+  "Nashik, Maharashtra, India",
+  "Ranchi, Jharkhand, India",
+  "Faridabad, Haryana, India",
+  "Meerut, Uttar Pradesh, India",
+  "Rajkot, Gujarat, India",
+  "Kalyan-Dombivli, Maharashtra, India",
+  "Vasai-Virar, Maharashtra, India",
+  "Varanasi, Uttar Pradesh, India",
+  "Srinagar, Jammu & Kashmir, India",
+  "Aurangabad, Maharashtra, India",
+  "Dhanbad, Jharkhand, India",
+  "Amritsar, Punjab, India",
+  "Navi Mumbai, Maharashtra, India",
+  "Allahabad, Uttar Pradesh, India",
+  "Howrah, West Bengal, India",
+  "Gwalior, Madhya Pradesh, India",
+  "Jabalpur, Madhya Pradesh, India",
+  "Coimbatore, Tamil Nadu, India",
+  "Vijayawada, Andhra Pradesh, India",
+  "Jodhpur, Rajasthan, India",
+  "Madurai, Tamil Nadu, India",
+  "Raipur, Chhattisgarh, India",
+  "Kota, Rajasthan, India",
+  "Chandigarh, India",
+  "Guwahati, Assam, India",
+  "Solapur, Maharashtra, India",
+  "Hubli-Dharwad, Karnataka, India",
+  "Mysore, Karnataka, India",
+  "Trivandrum, Kerala, India",
+  "Kochi, Kerala, India",
+  "Dehradun, Uttarakhand, India",
+  "Rishikesh, Uttarakhand, India",
+  "Haridwar, Uttarakhand, India",
+  "Shimla, Himachal Pradesh, India",
+  "Dharamshala, Himachal Pradesh, India",
+  "Jammu, Jammu & Kashmir, India",
+  "Udaipur, Rajasthan, India",
+  "Ajmer, Rajasthan, India",
+  "Pushkar, Rajasthan, India",
+  "New York, USA",
+  "London, UK",
+  "Toronto, Canada",
+  "Dubai, UAE",
+  "Singapore",
+  "Sydney, Australia",
+  "Melbourne, Australia",
+  "Paris, France",
+  "Berlin, Germany",
+  "Tokyo, Japan",
+];
 
 export default function AIJyotishScreen() {
   const router = useRouter();
@@ -38,34 +131,88 @@ export default function AIJyotishScreen() {
       text: `Namaste, ${userName} . Based on the current planetary alignments, today is an auspicious day for inner reflection. How can I guide your spiritual journey today?`,
       sender: 'ai',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now(),
     }
   ]);
   const [askNowModalVisible, setAskNowModalVisible] = useState(true);
+  const { dob: storedDob, tob: storedTob, pob: storedPob, setBirthDetails, loadBirthDetails } = useJyotishStore();
   const [date, setDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeOfBirth, setTimeOfBirth] = useState('');
   const [placeOfBirth, setPlaceOfBirth] = useState('');
+  const [filteredCities, setFilteredCities] = useState<string[]>([]);
+  const [validationError, setValidationError] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
+  useEffect(() => {
+    loadBirthDetails();
+  }, []);
+
+  useEffect(() => {
+    if (storedDob && storedTob && storedPob) {
+      const parsedDate = new Date(storedDob);
+      setDate(isNaN(parsedDate.getTime()) ? null : parsedDate);
+      setTimeOfBirth(storedTob);
+      setPlaceOfBirth(storedPob);
+      setAskNowModalVisible(false);
+    }
+  }, [storedDob, storedTob, storedPob]);
+
+  useEffect(() => {
+    
+    const loadMessages = async () => {
+      try {
+        const storedMessages = await AsyncStorage.getItem('jyotish:messages');
+        if (storedMessages) {
+          const parsed = JSON.parse(storedMessages);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load messages:', err);
+      }
+    };
+
+    loadBirthDetails();
+    loadMessages();
+  }, []);
+
   const handleCalculateHoroscope = () => {
+    if (!date || !timeOfBirth.trim() || !placeOfBirth.trim()) {
+      setValidationError('All fields (Date, Time, and Place of Birth) are mandatory.');
+      return;
+    }
+    setValidationError('');
     setAskNowModalVisible(false);
     
     // Format the date
-    const dobStr = date ? date.toLocaleDateString('en-GB') : 'Not specified';
-    const tobStr = timeOfBirth.trim() || 'Not specified';
-    const pobStr = placeOfBirth.trim() || 'Not specified';
+    const dobStr = date.toISOString();
+    const tobStr = timeOfBirth.trim();
+    const pobStr = placeOfBirth.trim();
+    
+    // Save to global store
+    setBirthDetails(dobStr, tobStr, pobStr);
+    
+    const displayDobStr = date.toLocaleDateString('en-GB');
     
     // Add user message with birth details
-    const userMsgText = `My Birth Details:\n• Date of Birth: ${dobStr}\n• Time of Birth: ${tobStr}\n• Place of Birth: ${pobStr}`;
+    const userMsgText = `My Birth Details:\n• Date of Birth: ${displayDobStr}\n• Time of Birth: ${tobStr}\n• Place of Birth: ${pobStr}`;
     
     const newUserMsg: ChatMessage = {
       id: Date.now().toString(),
       text: userMsgText,
       sender: 'user',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now(),
     };
     
-    setMessages((prev) => [...prev, newUserMsg]);
+    setMessages((prev) => {
+      const updated = [...prev, newUserMsg];
+      AsyncStorage.setItem('jyotish:messages', JSON.stringify(updated)).catch(console.warn);
+      return updated;
+    });
     
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -75,11 +222,16 @@ export default function AIJyotishScreen() {
     setTimeout(() => {
       const newAIMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: `Thank you for sharing your birth details. The cosmic alignments for ${dobStr} at ${tobStr} in ${pobStr} indicate a unique stellar signature.\n\nCalculating your planetary positions, lagna, and current dasha alignments now. how can I guide your spiritual/personal path today?`,
+        text: `Thank you for sharing your birth details. The cosmic alignments for ${displayDobStr} at ${tobStr} in ${pobStr} indicate a unique stellar signature.\n\nCalculating your planetary positions, lagna, and current dasha alignments now. how can I guide your spiritual/personal path today?`,
         sender: 'ai',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, newAIMsg]);
+      setMessages((prev) => {
+        const updated = [...prev, newAIMsg];
+        AsyncStorage.setItem('jyotish:messages', JSON.stringify(updated)).catch(console.warn);
+        return updated;
+      });
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -93,10 +245,15 @@ export default function AIJyotishScreen() {
       id: Date.now().toString(),
       text: message.trim(),
       sender: 'user',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now(),
     };
     
-    setMessages((prev) => [...prev, newUserMsg]);
+    setMessages((prev) => {
+      const updated = [...prev, newUserMsg];
+      AsyncStorage.setItem('jyotish:messages', JSON.stringify(updated)).catch(console.warn);
+      return updated;
+    });
     setMessage('');
     
     setTimeout(() => {
@@ -108,9 +265,14 @@ export default function AIJyotishScreen() {
         id: (Date.now() + 1).toString(),
         text: 'The stars have received your query. Analyzing the cosmic alignment...',
         sender: 'ai',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, newAIMsg]);
+      setMessages((prev) => {
+        const updated = [...prev, newAIMsg];
+        AsyncStorage.setItem('jyotish:messages', JSON.stringify(updated)).catch(console.warn);
+        return updated;
+      });
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -122,7 +284,7 @@ export default function AIJyotishScreen() {
       style={{ flex: 1, backgroundColor: '#FFEEE5' }} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 150, backgroundColor: '#FB905E' }} />
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 150, backgroundColor: '#FB905E' }} pointerEvents="none" />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Top Navigation */}
         <View style={styles.topNav}>
@@ -132,15 +294,15 @@ export default function AIJyotishScreen() {
             </TouchableOpacity>
 
             <View style={styles.navTitleContainer}>
-              <View style={[styles.avatarImage, { backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center' }]}>
-                <Ionicons name="headset-outline" size={20} color="#FFF" />
+              <View style={[styles.avatarImage, { backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }]}>
+                <Image source={require('../assets/images/jyotish/ai_avatar.png')} style={{ width: '100%', height: '100%' }} />
               </View>
               <Text style={styles.navTitle}>AI Jyotish</Text>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="ellipsis-vertical" size={24} color="#000" />
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setAskNowModalVisible(true)}>
+            <Ionicons name="pencil-sharp" size={22} color="#000" />
           </TouchableOpacity>
         </View>
 
@@ -149,32 +311,47 @@ export default function AIJyotishScreen() {
           ref={scrollViewRef}
           style={styles.chatContainer} 
           contentContainerStyle={styles.chatContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.dateDividerContainer}>
-            <Text style={styles.dateDividerText}>Today</Text>
-          </View>
-          {messages.map((msg) => (
-            msg.sender === 'user' ? (
-              <View key={msg.id} style={styles.userMessageContainer}>
-                <View style={styles.userBubble}>
-                  <Text style={styles.userMessageText}>{msg.text}</Text>
-                </View>
-                <Text style={styles.statusText}>{msg.time} • Sent</Text>
-              </View>
-            ) : (
-              <View key={msg.id} style={styles.aiMessageContainer}>
-                <View style={styles.aiAvatar}>
-                  <Ionicons name="headset-outline" size={16} color="#FFF" />
-                </View>
-                <View style={styles.aiBubbleContainer}>
-                  <View style={styles.aiBubble}>
-                    <Text style={styles.aiMessageText}>{msg.text}</Text>
-                  </View>
-                  <Text style={styles.statusText}>{msg.time}</Text>
-                </View>
-              </View>
-            )
-          ))}
+          {(() => {
+            let lastDateLabel = '';
+            return messages.map((msg) => {
+              const msgTimestamp = msg.timestamp || Date.now();
+              const currentDateLabel = getDateLabel(msgTimestamp);
+              const showDivider = currentDateLabel !== lastDateLabel;
+              lastDateLabel = currentDateLabel;
+
+              return (
+                <React.Fragment key={msg.id}>
+                  {showDivider && (
+                    <View style={styles.dateDividerContainer}>
+                      <Text style={styles.dateDividerText}>{currentDateLabel}</Text>
+                    </View>
+                  )}
+                  {msg.sender === 'user' ? (
+                    <View style={styles.userMessageContainer}>
+                      <View style={styles.userBubble}>
+                        <Text style={styles.userMessageText}>{msg.text}</Text>
+                      </View>
+                      <Text style={styles.statusText}>{msg.time} • Sent</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.aiMessageContainer}>
+                      <View style={[styles.aiAvatar, { overflow: 'hidden' }]}>
+                        <Image source={require('../assets/images/jyotish/ai_avatar.png')} style={{ width: '100%', height: '100%' }} />
+                      </View>
+                      <View style={styles.aiBubbleContainer}>
+                        <View style={styles.aiBubble}>
+                          <Text style={styles.aiMessageText}>{msg.text}</Text>
+                        </View>
+                        <Text style={styles.statusText}>{msg.time}</Text>
+                      </View>
+                    </View>
+                  )}
+                </React.Fragment>
+              );
+            });
+          })()}
         </ScrollView>
 
         {/* Bottom Input Area */}
@@ -254,14 +431,39 @@ export default function AIJyotishScreen() {
                       <Ionicons name="time-outline" size={14} color="#5A4136" />
                       <Text style={styles.askNowLabel}>Time of Birth</Text>
                     </View>
-                    <TextInput
-                      style={styles.askNowInput}
-                      placeholder="--:-- --"
-                      placeholderTextColor="#A9968F"
-                      value={timeOfBirth}
-                      onChangeText={setTimeOfBirth}
-                    />
+                    <TouchableOpacity 
+                      activeOpacity={0.8} 
+                      onPress={() => setShowTimePicker(!showTimePicker)} 
+                      style={[styles.askNowInput, { justifyContent: 'center' }]}
+                    >
+                      <Text style={{ fontSize: 16, color: timeOfBirth ? '#1B1C1C' : '#A9968F' }}>
+                        {timeOfBirth ? timeOfBirth : '--:-- --'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
+
+                  {showTimePicker && (
+                    <DateTimePicker
+                      value={new Date()}
+                      mode="time"
+                      is24Hour={false}
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(event, selectedTime) => {
+                        if (Platform.OS === 'android') {
+                          setShowTimePicker(false);
+                        }
+                        if (selectedTime) {
+                          const hours = selectedTime.getHours();
+                          const minutes = selectedTime.getMinutes();
+                          const ampm = hours >= 12 ? 'PM' : 'AM';
+                          const displayHours = hours % 12 || 12;
+                          const displayMinutes = minutes < 10 ? `0${minutes}` : minutes;
+                          setTimeOfBirth(`${displayHours}:${displayMinutes} ${ampm}`);
+                        }
+                      }}
+                      style={{ alignSelf: 'center', width: '100%', backgroundColor: '#FFF', borderRadius: 12 }}
+                    />
+                  )}
 
                   <View style={styles.askNowInputGroup}>
                     <View style={styles.askNowLabelRow}>
@@ -273,8 +475,35 @@ export default function AIJyotishScreen() {
                       placeholder="City, State or Country"
                       placeholderTextColor="#A9968F"
                       value={placeOfBirth}
-                      onChangeText={setPlaceOfBirth}
+                      onChangeText={(val) => {
+                        setPlaceOfBirth(val);
+                        if (val.trim().length >= 2) {
+                          const filtered = CITIES_DB.filter(city => 
+                            city.toLowerCase().includes(val.toLowerCase())
+                          );
+                          setFilteredCities(filtered.slice(0, 5));
+                        } else {
+                          setFilteredCities([]);
+                        }
+                      }}
                     />
+                    {filteredCities.length > 0 && (
+                      <View style={styles.suggestionsContainer}>
+                        {filteredCities.map((city, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.suggestionItem}
+                            onPress={() => {
+                              setPlaceOfBirth(city);
+                              setFilteredCities([]);
+                            }}
+                          >
+                            <Ionicons name="location-outline" size={14} color="#8E7164" style={{ marginRight: 8 }} />
+                            <Text style={styles.suggestionText}>{city}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.askNowNotice}>
@@ -283,6 +512,10 @@ export default function AIJyotishScreen() {
                       Precise birth details ensure high-accuracy planetary alignments for your Dashas and Yogis.
                     </Text>
                   </View>
+
+                  {!!validationError && (
+                    <Text style={styles.errorText}>{validationError}</Text>
+                  )}
 
                   <TouchableOpacity style={styles.askNowCalcBtn} onPress={handleCalculateHoroscope}>
                     <Text style={styles.askNowCalcBtnText}>Calculate Horoscope</Text>
@@ -309,6 +542,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+    zIndex: 10,
+    elevation: 10,
   },
   iconBtn: {
     width: 40,
@@ -484,6 +719,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    zIndex: 10,
+    elevation: 10,
   },
   textInputBox: {
     flex: 1,
@@ -627,5 +864,42 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textTransform: 'capitalize',
     marginRight: 8,
+  },
+  suggestionsContainer: {
+    backgroundColor: '#FFF',
+    borderColor: '#E2BFB0',
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    marginTop: -4,
+    paddingTop: 4,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2ECE9',
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#1B1C1C',
+  },
+  errorText: {
+    color: '#D93838',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    alignSelf: 'stretch',
+    marginBottom: 8,
+    fontFamily: 'Inter',
   },
 });
