@@ -160,8 +160,8 @@ function PassportProgressScreen({
                 activeOpacity={0.7}
                 onPress={() => router.push(`/passport/certificate/${certificate.id}` as any)}
               >
-                <Text style={styles.certificateTitle}>{certificate.book_name || certificate.bookName}</Text>
-                <Text style={styles.certificateMeta}>{(certificate.completion_days || certificate.completionDays)} days • {new Date(certificate.date).toDateString()}</Text>
+                <Text style={styles.certificateTitle}>{certificate.bookName || certificate.book_name}</Text>
+                <Text style={styles.certificateMeta}>{(certificate.completionDays || certificate.completion_days)} days • {new Date(certificate.date).toDateString()}</Text>
               </TouchableOpacity>
             ))
           )}
