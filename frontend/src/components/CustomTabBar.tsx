@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
 import { Svg, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -115,7 +115,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
       tabBarTranslateY.value,
       [0, 150],
       [1, 0.85],
-      Extrapolation.CLAMP
+      Extrapolate.CLAMP
     );
     
     // When shrinking, we move it down a bit so it looks like it sticks to the bottom
@@ -123,7 +123,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
       tabBarTranslateY.value,
       [0, 150],
       [0, Platform.OS === 'android' ? 15 : 20],
-      Extrapolation.CLAMP
+      Extrapolate.CLAMP
     );
 
     return {

@@ -67,14 +67,14 @@ function PassportInnerScreen({
 
   // Dynamic Country Code mapping
   const countryCode = localUser?.home_location?.country
-    ? (localUser.home_location.country.toUpperCase() === 'BHARAT' || localUser.home_location.country.toUpperCase() === 'INDIA' ? 'IND' : localUser.home_location.country.substring(0, 3).toUpperCase())
+    ? (String(localUser.home_location.country).toUpperCase() === 'BHARAT' || String(localUser.home_location.country).toUpperCase() === 'INDIA' ? 'IND' : String(localUser.home_location.country).substring(0, 3).toUpperCase())
     : 'IND';
 
   // Dynamic National ID (derive from phone)
-  const phoneDigits = localUser?.phone ? localUser.phone.replace(/[^0-9]/g, '') : '';
+  const phoneDigits = localUser?.phone ? String(localUser.phone).replace(/[^0-9]/g, '') : '';
   const nationalId = phoneDigits
     ? phoneDigits.padEnd(12, '0').slice(-12).replace(/(\d{4})/g, '$1 ').trim()
-    : (localUser?.id ? localUser.id.replace(/[^0-9]/g, '').padEnd(12, '9').slice(-12).replace(/(\d{4})/g, '$1 ').trim() : 'XXXX XXXX XXXX');
+    : (localUser?.id ? String(localUser.id).replace(/[^0-9]/g, '').padEnd(12, '9').slice(-12).replace(/(\d{4})/g, '$1 ').trim() : 'XXXX XXXX XXXX');
 
   // Dynamic Date of Birth
   const getDob = () => {
@@ -89,7 +89,7 @@ function PassportInnerScreen({
   const dobFormatted = getDob();
 
   // Dynamic Sex/Gender
-  const userGender = localUser?.gender || personalityData?.gender || '';
+  const userGender = String(localUser?.gender || personalityData?.gender || '');
   const isFemale = userGender.toLowerCase().includes('female') || userGender.toLowerCase() === 'f';
   const sexLabel = isFemale ? 'महिला / F' : 'पुरुष / M';
 
@@ -104,11 +104,11 @@ function PassportInnerScreen({
   // Dynamic Passport Number
   const getPassportNo = () => {
     if (localUser?.sl_id) {
-      const sl = localUser.sl_id.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+      const sl = String(localUser.sl_id).replace(/[^A-Z0-9]/ig, '').toUpperCase();
       return `Z${sl.padEnd(7, '0').substring(0, 7)}`;
     }
     if (localUser?.id) {
-      const numericId = localUser.id.replace(/[^0-9]/g, '');
+      const numericId = String(localUser.id).replace(/[^0-9]/g, '');
       return `Z${numericId.padEnd(7, '7').substring(0, 7)}`;
     }
     return 'Z6477975';
@@ -128,7 +128,7 @@ function PassportInnerScreen({
 
   // Dynamic MRZ Zone
   const getMrzText = () => {
-    const name = localUser?.name ? localUser.name.toUpperCase().replace(/[^A-Z]/g, ' ') : 'SANATANI';
+    const name = localUser?.name ? String(localUser.name).toUpperCase().replace(/[^A-Z]/g, ' ') : 'SANATANI';
     const parts = name.split(' ').filter(Boolean);
     const lastName = parts[parts.length - 1] || 'MEMBER';
     const firstNames = parts.slice(0, parts.length - 1).join('<');
