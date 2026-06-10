@@ -27,9 +27,6 @@ export default function PassportCoverScreen() {
   useEffect(() => {
     if (isFocused) {
       setIsOpening(false);
-<<<<<<< HEAD
-=======
-
       // Fetch latest profile from backend
       const fetchLatest = async () => {
         try {
@@ -42,17 +39,6 @@ export default function PassportCoverScreen() {
         }
       };
       fetchLatest();
-      
-      // Start subtle floating animation while idle
-      floatingY.value = withRepeat(
-        withSequence(
-          withTiming(-8, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) })
-        ),
-        -1,
-        true
-      );
->>>>>>> cace84c09feea4de3c0bca98f3602af4bc9b0986
     }
   }, [isFocused]);
 
