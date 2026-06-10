@@ -100,6 +100,17 @@ const UPCOMING_SESSIONS = [
   { id: '4', category: 'MEDITATION', title: 'Breathing & Meditation', desc: 'Find calm within.', date: '22 May', time: '6:00 AM', going: '2.1K going', image: require('../../assets/images/yoga_session_img.png') },
 ];
 
+const getMantraRoomName = (id: string) => {
+  if (id === '1') return 'jaap_hanuman';
+  if (id === '2') return 'jaap_krishna';
+  if (id === '3') return 'jaap_shiva';
+  if (id === '4') return 'jaap_gayatri';
+  if (id === '5') return 'jaap_ganesh';
+  if (id === '6') return 'jaap_laxmi';
+  if (id === '7') return 'jaap_krishna';
+  return 'jaap_gayatri';
+};
+
 export default function JaapLandingScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -113,6 +124,32 @@ export default function JaapLandingScreen() {
   const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [sessionReminders, setSessionReminders] = useState<Record<string, boolean>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!isFocused || activeSection !== 'jaap') return;
+    
+    let active = true;
+    const fetchActiveCounts = async () => {
+      try {
+        const response = await api.get('/jaap/active-count', {
+          params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }
+        });
+        if (active && response && response.data) {
+          setActiveCounts(response.data);
+        }
+      } catch (error) {
+        console.warn('Error fetching active jaap counts:', error);
+      }
+    };
+
+    fetchActiveCounts();
+    const interval = setInterval(fetchActiveCounts, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isFocused, activeSection]);
 
   const sendJaapInviteFromCard = async (jaapId: string, mantraType: string, title: string) => {
     try {
@@ -611,7 +648,7 @@ export default function JaapLandingScreen() {
                         <View style={styles.exactCountBadge}>
                           <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 2 }} />
                           <Text style={styles.exactCountText}>
-                            {t('language') === 'hi' ? jaap.devotees.replace('K', 'k') : jaap.devotees}
+                            {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
                           </Text>
                         </View>
                       </View>

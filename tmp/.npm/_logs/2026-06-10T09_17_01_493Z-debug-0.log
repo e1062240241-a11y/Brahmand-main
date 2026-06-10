@@ -6,8 +6,8 @@
 5 silly config load:file:/usr/local/etc/npmrc
 6 verbose title npm config get prefix
 7 verbose argv "config" "--global" "get" "prefix"
-8 verbose logfile logs-max:10 dir:/Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-09T12_15_31_065Z-
-9 verbose logfile /Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-09T12_15_31_065Z-debug-0.log
+8 verbose logfile logs-max:10 dir:/Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-10T09_17_01_493Z-
+9 verbose logfile /Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-10T09_17_01_493Z-debug-0.log
 10 verbose cwd /Users/developer/Desktop/Brahmand-main/frontend
 11 verbose os Darwin 22.6.0
 12 verbose node v25.6.1
