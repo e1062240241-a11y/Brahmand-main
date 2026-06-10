@@ -1,5 +1,13 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,9 +19,9 @@ import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { formatDateIST } from '../../src/utils/dateUtils';
 
 const { width: windowWidth } = Dimensions.get('window');
+const CARD_WIDTH = Math.min(windowWidth - 32, 361);
 
 function PassportInnerScreen({
   observedJourneys,
@@ -29,12 +37,10 @@ function PassportInnerScreen({
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const personalityData = usePersonalityStore((state) => state.data);
 
-  // Guarantee local reactivity to avoid HOC caching / stale state on first render
   const [localUser, setLocalUser] = React.useState<any>(user);
 
   useEffect(() => {
     loadPassport();
-
     const fetchLatest = async () => {
       try {
         const res = await getUserProfile();
@@ -61,22 +67,30 @@ function PassportInnerScreen({
   const jaapCount = totalJaap || 0;
   const badgesCount = observedBadges.length;
 
-  // Use user's real avatar if available, otherwise standard dummy photo
-  const userPhoto = localUser?.photo || 'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?auto=format&fit=crop&w=500&q=80';
+  // ── Derived data (English only) ────────────────────────────
+
+  const userPhoto =
+    localUser?.photo ||
+    'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?auto=format&fit=crop&w=500&q=80';
+
   const userNameEnglish = (localUser?.name || 'SANATANI').toUpperCase();
 
-  // Dynamic Country Code mapping
-  const countryCode = localUser?.home_location?.country
-    ? (String(localUser.home_location.country).toUpperCase() === 'BHARAT' || String(localUser.home_location.country).toUpperCase() === 'INDIA' ? 'IND' : String(localUser.home_location.country).substring(0, 3).toUpperCase())
-    : 'IND';
+  const countryCode =
+    localUser?.home_location?.country
+      ? String(localUser.home_location.country).toUpperCase() === 'BHARAT' ||
+        String(localUser.home_location.country).toUpperCase() === 'INDIA'
+        ? 'IND'
+        : String(localUser.home_location.country).substring(0, 3).toUpperCase()
+      : 'IND';
 
-  // Dynamic National ID (derive from phone)
-  const phoneDigits = localUser?.phone ? String(localUser.phone).replace(/[^0-9]/g, '') : '';
-  const nationalId = phoneDigits
-    ? phoneDigits.padEnd(12, '0').slice(-12).replace(/(\d{4})/g, '$1 ').trim()
-    : (localUser?.id ? String(localUser.id).replace(/[^0-9]/g, '').padEnd(12, '9').slice(-12).replace(/(\d{4})/g, '$1 ').trim() : 'XXXX XXXX XXXX');
+  // Brahmand ID = sl_id (fallback to padded user id)
+  const brahmandId = localUser?.sl_id
+    ? String(localUser.sl_id)
+    : localUser?.id
+    ? String(localUser.id).replace(/[^0-9]/g, '').padEnd(12, '0').slice(0, 12)
+    : '456712340098';
 
-  // Dynamic Date of Birth
+  // Date of birth
   const getDob = () => {
     if (!localUser?.date_of_birth) return 'N/A';
     const dob = localUser.date_of_birth;
@@ -88,64 +102,38 @@ function PassportInnerScreen({
   };
   const dobFormatted = getDob();
 
-  // Dynamic Sex/Gender
+  // Sex
   const userGender = String(localUser?.gender || personalityData?.gender || '');
-  const isFemale = userGender.toLowerCase().includes('female') || userGender.toLowerCase() === 'f';
-  const sexLabel = isFemale ? 'महिला / F' : 'पुरुष / M';
+  const isFemale =
+    userGender.toLowerCase().includes('female') || userGender.toLowerCase() === 'f';
+  const sexLabel = isFemale ? 'F' : 'M';
 
-  // Dynamic Nationality
-  const nationalityText = countryCode === 'IND' ? 'भारतीय / INDIAN' : `${localUser?.home_location?.country || 'INDIAN'}`.toUpperCase();
+  // Nationality
+  const nationalityEnglish =
+    countryCode === 'IND'
+      ? 'INDIAN'
+      : String(localUser?.home_location?.country || 'INDIAN').toUpperCase();
 
-  // Dynamic Place of Birth
-  const placeOfBirthText = localUser?.place_of_birth || 'MUMBAI, MAHARASHTRA';
-  const placeOfBirthEnglish = placeOfBirthText.toUpperCase();
-  const placeOfBirthHindi = placeOfBirthText;
-
-  // Dynamic Passport Number
-  const getPassportNo = () => {
-    if (localUser?.sl_id) {
-      const sl = String(localUser.sl_id).replace(/[^A-Z0-9]/ig, '').toUpperCase();
-      return `Z${sl.padEnd(7, '0').substring(0, 7)}`;
-    }
-    if (localUser?.id) {
-      const numericId = String(localUser.id).replace(/[^0-9]/g, '');
-      return `Z${numericId.padEnd(7, '7').substring(0, 7)}`;
-    }
-    return 'Z6477975';
-  };
-  const passportNo = getPassportNo();
-
-  // Dynamic Signature Name
-  const signatureName = localUser?.name ? localUser.name.split(' ')[0] : 'Sanatani';
-
-  // Dynamic Address (balanced left-right split)
+  // Place of birth
   const homeLoc = localUser?.home_location || localUser?.location;
-  const addressLine1Hindi = [homeLoc?.area, homeLoc?.city].filter(Boolean).join(', ') || 'नया इलाका';
-  const addressLine2Hindi = [homeLoc?.state, homeLoc?.country || 'भारत'].filter(Boolean).join(', ');
+  const placeOfBirthEnglish = (
+    localUser?.place_of_birth ||
+    [homeLoc?.city, homeLoc?.state].filter(Boolean).join(', ') ||
+    'MUMBAI, MAHARASHTRA'
+  ).toUpperCase();
 
-  const addressLine1English = [homeLoc?.area, homeLoc?.city].filter(Boolean).join(', ').toUpperCase() || 'NEW AREA';
-  const addressLine2English = [homeLoc?.state, homeLoc?.country || 'INDIA'].filter(Boolean).map(s => s.toUpperCase()).join(', ');
-
-  // Dynamic MRZ Zone
-  const getMrzText = () => {
-    const name = localUser?.name ? String(localUser.name).toUpperCase().replace(/[^A-Z]/g, ' ') : 'SANATANI';
-    const parts = name.split(' ').filter(Boolean);
-    const lastName = parts[parts.length - 1] || 'MEMBER';
-    const firstNames = parts.slice(0, parts.length - 1).join('<');
-    const basemrz = firstNames ? `P<IND${lastName}<<${firstNames}` : `P<IND${lastName}`;
-    return basemrz.padEnd(44, '<').substring(0, 44);
-  };
-  const mrzText = getMrzText();
+  // Signature
+  const signatureName = localUser?.name ? localUser.name.split(' ')[0] : 'Sanatani';
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      <LinearGradient 
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
         locations={[0, 0.0913, 0.25]}
         style={StyleSheet.absoluteFillObject}
       />
-      
-      {/* Header */}
+
+      {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="chevron-back" size={24} color="#000" />
@@ -154,172 +142,102 @@ function PassportInnerScreen({
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Top Card: Identity Card Page */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── ID Card ── */}
         <View style={styles.idCard}>
-          <Text style={styles.cardTitleEnglish}>BRAHMAND PASSPORT</Text>
+          {/* Card title */}
+          <Text style={styles.cardTitle}>BRAHMAND PASSPORT</Text>
 
+          {/* Two-column grid */}
           <View style={styles.gridContainer}>
-            {/* Left Fields Column */}
+
+            {/* LEFT: passport fields */}
             <View style={styles.leftColumn}>
-              
-              <View style={styles.rowField}>
-                <View style={styles.labelCol}>
-                  <Text style={styles.fieldLabelEnglish}>COUNTRY CODE</Text>
-                </View>
-                <View style={styles.valueCol}>
-                  <Text style={styles.fieldValueBig}>IND</Text>
-                </View>
+
+              {/* COUNTRY CODE – inline */}
+              <View style={styles.inlineRow}>
+                <Text style={styles.inlineLabel}>COUNTRY CODE</Text>
+                <Text style={styles.fieldValueLarge}>{countryCode}</Text>
               </View>
 
-              <View style={styles.rowField}>
-                <View style={styles.labelCol}>
-                  <Text style={styles.fieldLabelEnglish}>BRAHAMND ID</Text>
-                </View>
-                <View style={styles.valueCol}>
-                  <Text style={styles.fieldValueBig}>{passportId}</Text>
-                </View>
+              {/* BRAHMAND ID – inline */}
+              <View style={styles.inlineRow}>
+                <Text style={styles.inlineLabel}>BRAHMAND ID</Text>
+                <Text style={styles.fieldValueLarge}>{brahmandId}</Text>
               </View>
 
-              <View style={[styles.rowField, { marginTop: 12 }]}>
-                <View style={styles.labelCol}>
-                  <Text style={styles.fieldLabelEnglish}>FULL NAME</Text>
-                </View>
-                <View style={styles.valueCol}>
-                  <Text style={styles.fieldValueEnglish}>{userNameEnglish}</Text>
-                </View>
+              {/* FULL NAME – inline */}
+              <View style={styles.inlineRow}>
+                <Text style={styles.inlineLabel}>FULL NAME</Text>
+                <Text style={styles.fieldValueName}>{userNameEnglish}</Text>
               </View>
 
-              {/* Date of Birth & Sex Row */}
-              <View style={[styles.inlineRow, { marginTop: 16 }]}>
-                <View style={{ width: 140 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.fieldLabelEnglish}>DATE OF BIRTH</Text>
-                  </View>
-                  <Text style={styles.fieldValueBig}>{dob}</Text>
-                </View>
-
-                <View>
-                  <Text style={styles.fieldLabel}>कंट्री कोड / COUNTRY CODE</Text>
-                  <Text style={styles.fieldValue}>{countryCode}</Text>
-                </View>
-                <View style={{ marginRight: 24 }}>
-                  <Text style={styles.fieldLabel}>प्रकार / TYPE</Text>
-                  <Text style={styles.fieldValue}>P</Text>
-                </View>
-              </View>
-
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>राष्ट्रीय पहचान / NATIONAL ID</Text>
-                <Text style={styles.fieldValue}>{nationalId}</Text>
-              </View>
-
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>पूरा नाम / FULL NAME</Text>
-                <Text style={styles.fieldValueHindi}>{localUser?.name || 'सनतनी'}</Text>
-                <Text style={styles.fieldValue}>{userNameEnglish}</Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <View>
-                  <Text style={styles.fieldLabel}>जन्म तिथि / DATE OF BIRTH</Text>
+              {/* DATE OF BIRTH  +  SEX (stacked side-by-side, NOT inline) */}
+              <View style={styles.inlineFields}>
+                <View style={styles.dobBlock}>
+                  <Text style={styles.fieldLabel}>DATE OF BIRTH</Text>
                   <Text style={styles.fieldValue}>{dobFormatted}</Text>
                 </View>
-                <View style={{ marginRight: 16 }}>
-                  <Text style={styles.fieldLabel}>लिंग / SEX</Text>
+                <View style={styles.sexBlock}>
+                  <Text style={styles.fieldLabel}>SEX</Text>
                   <Text style={styles.fieldValue}>{sexLabel}</Text>
                 </View>
               </View>
 
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>राष्ट्रीयता / NATIONALITY</Text>
-                <Text style={styles.fieldValue}>{nationalityText}</Text>
+              {/* NATIONALITY – inline */}
+              <View style={styles.inlineRow}>
+                <Text style={styles.inlineLabel}>NATIONALITY</Text>
+                <Text style={styles.fieldValue}>{nationalityEnglish}</Text>
               </View>
 
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>जन्म स्थान / PLACE OF BIRTH</Text>
-                <Text style={styles.fieldValueHindi}>{placeOfBirthHindi}</Text>
-                <Text style={styles.fieldValue}>{placeOfBirthEnglish}</Text>
+              {/* PLACE OF BIRTH – inline */}
+              <View style={styles.inlineRow}>
+                <Text style={styles.inlineLabel}>PLACE OF BIRTH</Text>
+                <Text style={[styles.fieldValue, { flex: 1 }]}>{placeOfBirthEnglish}</Text>
               </View>
+
             </View>
 
-            {/* Right Photo Column */}
+            {/* RIGHT: photo + signature */}
             <View style={styles.rightColumn}>
-              <Text style={styles.fieldLabel}>PASSPORT NO.</Text>
-              <Text style={[styles.fieldValue, { fontSize: 12, marginBottom: 8 }]}>{passportNo}</Text>
-
               <View style={styles.photoContainer}>
-                <Image source={{ uri: userPhoto }} style={styles.photo} contentFit="cover" />
+                <Image
+                  source={{ uri: userPhoto }}
+                  style={styles.photo}
+                  contentFit="cover"
+                />
               </View>
 
               <View style={styles.signatureContainer}>
-                <View style={styles.signatureWrapper}>
-                  <Text style={styles.signatureText}>
-                    {signatureName}
-                  </Text>
-                </View>
+                <Text style={styles.signatureText}>{signatureName}</Text>
                 <View style={styles.signatureLine} />
-                <Text style={styles.signatureLabel}>SIGNATURE</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Address Section */}
-          <View style={styles.addressSection}>
-            <Text style={styles.fieldLabel}>पता / Address</Text>
-            
-            <View style={styles.addressGrid}>
-              <View style={styles.addressCol}>
-                <Text style={styles.addressTextHindi}>
-                  {addressLine1Hindi}
-                </Text>
-              </View>
-              <View style={styles.addressCol}>
-                <Text style={styles.addressTextHindi}>
-                  {addressLine2Hindi}
-                </Text>
+                <Text style={styles.signatureLabel}>OWNER / SIGNATURE</Text>
               </View>
             </View>
 
-            <View style={[styles.addressGrid, { marginTop: 4 }]}>
-              <View style={styles.addressCol}>
-                <Text style={styles.addressText}>
-                  {addressLine1English}
-                </Text>
-              </View>
-              <View style={styles.addressCol}>
-                <Text style={styles.addressText}>
-                  {addressLine2English}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Machine Readable Zone */}
-          <View style={styles.mrzSection}>
-            <Text style={styles.mrzText} numberOfLines={1} adjustsFontSizeToFit>
-              {mrzText}
-            </Text>
           </View>
         </View>
 
-        {/* Bottom Card: Spiritual Record */}
+        {/* ── Spiritual Record Card ── */}
         <View style={styles.spiritualRecordCard}>
-          <Text style={styles.recordTitle}>SPIRITUAL RECORD</Text>
-          
+          <Text style={styles.recordTitle}>STIRITUAL RECORD</Text>
+
           <View style={styles.recordGrid}>
             <View style={styles.recordCol}>
               <Text style={styles.recordLabel}>Total Journeys</Text>
               <Text style={styles.recordValue}>{journeysCount}</Text>
             </View>
-            
+
             <View style={styles.recordDivider} />
 
             <View style={styles.recordCol}>
               <Text style={styles.recordLabel}>{"Jaap Count's"}</Text>
               <Text style={styles.recordValue}>{jaapCount}</Text>
             </View>
-            
+
             <View style={styles.recordDivider} />
 
             <View style={styles.recordCol}>
@@ -329,18 +247,18 @@ function PassportInnerScreen({
           </View>
         </View>
 
-        {/* Navigation Buttons */}
+        {/* ── Action Buttons ── */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.primaryButton}
             activeOpacity={0.8}
             onPress={() => router.push('/passport/timeline' as any)}
           >
             <Text style={styles.primaryButtonText}>Turn Page &amp; View Stamps</Text>
-            <Ionicons name="arrow-forward" size={16} color="#000" />
+            <Ionicons name="arrow-forward" size={16} color="#000" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.secondaryButton}
             activeOpacity={0.8}
             onPress={() => router.push('/passport/journey/new' as any)}
@@ -354,178 +272,216 @@ function PassportInnerScreen({
   );
 }
 
+// ─── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    height: 56,
+    height: 52,
   },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
+  backButton: { padding: 8, marginLeft: -8 },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#000',
+    flex: 1,
+    textAlign: 'center',
   },
+
+  // Scroll
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: 40,
     alignItems: 'center',
   },
+
+  // ── ID Card ──────────────────────────────────────────────────
   idCard: {
-    width: 361,
-    maxWidth: '100%',
+    width: CARD_WIDTH,
     backgroundColor: '#FFF5F1',
     borderRadius: 15,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
-    marginBottom: 24,
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    elevation: 10,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.10)',
   },
-  cardTitleEnglish: {
-    fontSize: 16,
-    fontWeight: '800',
+  cardTitle: {
     color: '#000',
+    fontFamily: 'SF Pro',
+    fontSize: 12,
+    fontStyle: 'normal',
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
+
+  // Two-column grid
   gridContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   leftColumn: {
     flex: 1,
     paddingRight: 12,
   },
   rightColumn: {
-    width: 105,
-    alignItems: 'flex-end',
-  },
-  rowField: {
-    flexDirection: 'row',
+    width: 108,
     alignItems: 'center',
-    marginBottom: 8,
   },
-  labelCol: {
-    width: 80,
-    justifyContent: 'center',
+
+  // Fields
+  fieldBlock: {
+    marginBottom: 4,
   },
-  valueCol: {
-    flex: 1,
-    justifyContent: 'center',
-  },
+  // Inline row: label left, value right
   inlineRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
   },
-  fieldLabelEnglish: {
-    fontSize: 8,
-    color: '#000',
+  inlineLabel: {
+    fontSize: 7.5,
+    color: '#555',
     fontWeight: '600',
     textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    width: 82,          // fixed width so all values start at same x
+    flexShrink: 0,
   },
-  fieldValueBig: {
-    fontSize: 16,
+  fieldLabel: {
+    fontSize: 7.5,
+    color: '#555',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 1,
+  },
+  fieldValueLarge: {
     color: '#000',
-    fontWeight: '800',
+    fontFamily: 'SF Pro',
+    fontSize: 11,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    flex: 1,
   },
-  fieldValueEnglish: {
-    fontSize: 13,
+  fieldValueName: {
     color: '#000',
-    fontWeight: '800',
-    marginTop: 2,
+    fontFamily: 'SF Pro',
+    fontSize: 11,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    flex: 1,
   },
+  fieldValue: {
+    color: '#000',
+    fontFamily: 'SF Pro',
+    fontSize: 11,
+    fontStyle: 'normal',
+    fontWeight: '700',
+  },
+
+  // DOB + SEX stacked side by side (NOT inline)
+  inlineFields: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 12,
+  },
+  dobBlock: {
+    marginRight: 20,
+  },
+  sexBlock: {},
+
+  // Photo
   photoContainer: {
-    width: 105,
-    height: 135,
+    width: 108,
+    height: 136,
     borderRadius: 6,
     overflow: 'hidden',
-    backgroundColor: '#E5DDC7',
+    backgroundColor: '#D8D0BA',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.1)',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  photo: {
-    width: '100%',
-    height: '100%',
-  },
+  photo: { width: '100%', height: '100%' },
+
+  // Signature
   signatureContainer: {
-    width: 105,
-    height: 38,
-    borderRadius: 4,
+    width: 108,
+    paddingTop: 4,
+    paddingBottom: 4,
+    paddingHorizontal: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 2,
+    borderColor: 'rgba(0,0,0,0.12)',
+    borderRadius: 4,
     backgroundColor: '#fff',
-  },
-  signatureWrapper: {
-    position: 'absolute',
-    top: 0,
-    width: '100%',
-    height: 24,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   signatureText: {
     fontFamily: Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif',
-    fontSize: 16,
+    fontSize: 14,
     fontStyle: 'italic',
     color: '#111',
     fontWeight: '700',
+    marginBottom: 3,
   },
   signatureLine: {
     width: '100%',
-    height: 0,
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    marginBottom: 3,
   },
   signatureLabel: {
     fontSize: 6,
     color: '#666',
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
+
+  // ── Spiritual Record Card ──────────────────────────────────
   spiritualRecordCard: {
     width: 361,
-    maxWidth: '100%',
     height: 111,
     backgroundColor: '#FFF5F1',
     borderRadius: 15,
     paddingTop: 17,
-    paddingBottom: 22,
     paddingRight: 11,
-    paddingLeft: 11,
+    paddingBottom: 22,
+    paddingLeft: 0,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
-    marginBottom: 24,
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    elevation: 10,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.10)',
   },
   recordTitle: {
+    width: 147,
+    height: 14,
     fontSize: 12,
     fontWeight: '700',
     color: '#000',
     textAlign: 'center',
-    marginBottom: 16,
+    fontFamily: 'SF Pro',
   },
   recordGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
   recordCol: {
@@ -534,20 +490,26 @@ const styles = StyleSheet.create({
   },
   recordDivider: {
     width: 1,
-    height: 43,
-    backgroundColor: 'rgba(0, 0, 0, 0.10)',
+    height: 44,
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
   recordLabel: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#000',
     fontWeight: '700',
-    marginBottom: 6,
+    fontFamily: 'SF Pro',
+    textAlign: 'center',
+    marginBottom: 8,
   },
   recordValue: {
     fontSize: 12,
     fontWeight: '700',
     color: '#000',
+    textAlign: 'center',
+    fontFamily: 'SF Pro',
   },
+
+  // ── Buttons ────────────────────────────────────────────────
   buttonContainer: {
     width: '100%',
     alignItems: 'center',
@@ -558,38 +520,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 277,
-    height: 52,
+    paddingTop: 17,
+    paddingRight: 27,
+    paddingBottom: 15,
+    paddingLeft: 28,
     backgroundColor: '#FFF',
-    borderRadius: 25,
+    borderRadius: 26,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.10)',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   primaryButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#000',
-    marginRight: 6,
   },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     width: 277,
-    height: 51,
+    paddingTop: 17,
+    paddingRight: 27,
+    paddingBottom: 15,
+    paddingLeft: 28,
     backgroundColor: '#FFF',
-    borderRadius: 25,
+    borderRadius: 26,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.10)',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   secondaryButtonText: {
     fontSize: 14,
