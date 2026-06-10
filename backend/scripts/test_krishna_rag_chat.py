@@ -131,6 +131,7 @@ Speak directly to the user's issue, naturally weaving the reference (e.g., "Gita
             safety_settings=safety_settings,
             temperature=0.7,
             max_output_tokens=2048,
+            thinking_config=genai_types.ThinkingConfig(thinking_level="MINIMAL"),
         )
 
         contents = [
@@ -150,7 +151,7 @@ Speak directly to the user's issue, naturally weaving the reference (e.g., "Gita
 
         import traceback
         response = gemini_client.models.generate_content(
-            model="gemma-4-26b-a4b-it",
+            model="gemma-4-31b-it",
             contents=contents,
             config=config,
         )

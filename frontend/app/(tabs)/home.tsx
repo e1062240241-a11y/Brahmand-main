@@ -2978,7 +2978,7 @@ export default function HomeScreen() {
           >
             <KeyboardAvoidingView
               style={styles.commentOverlay}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
             >
               <TouchableOpacity

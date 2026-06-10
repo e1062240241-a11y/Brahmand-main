@@ -173,7 +173,7 @@ export default function OTPScreen() {
       <MandalaPattern />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>

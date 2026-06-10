@@ -1469,7 +1469,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             }}
           >
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{
                 backgroundColor: '#FFF',
                 borderTopLeftRadius: 24,
