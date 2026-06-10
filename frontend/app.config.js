@@ -103,6 +103,16 @@ try {
 }
 
 module.exports = ({ config }) => {
+  // Detect target platform (Android vs iOS)
+  // EAS Build sets EAS_BUILD_PLATFORM (either 'android' or 'ios')
+  // For local prebuilds, we check process.argv
+  const isAndroid = process.env.EAS_BUILD_PLATFORM === 'android' || 
+                    process.argv.some(arg => arg.includes('android') || arg.includes('run:android'));
+  const isIos = process.env.EAS_BUILD_PLATFORM === 'ios' || 
+                process.argv.some(arg => arg.includes('ios') || arg.includes('run:ios'));
+
+  console.log(`[app.config.js] Detecting build platform: isAndroid=${isAndroid}, isIos=${isIos}`);
+
   // Inject Google Maps API key dynamically
   if (!config.ios) config.ios = {};
   if (!config.ios.config) config.ios.config = {};
@@ -112,18 +122,36 @@ module.exports = ({ config }) => {
   if (!config.android.config) config.android.config = {};
   if (!config.android.config.googleMaps) config.android.config.googleMaps = {};
   config.android.config.googleMaps.apiKey = googleMapsApiKey;
-  
+
   if (config.plugins) {
     config.plugins = config.plugins.map(plugin => {
+      // Handle react-native-maps config injection
       if (Array.isArray(plugin) && plugin[0] === 'react-native-maps') {
         return ['react-native-maps', { 
           androidGoogleMapsApiKey: googleMapsApiKey,
           iosGoogleMapsApiKey: googleMapsApiKey 
         }];
       }
+      
+      // Handle sound filtering for expo-notifications to prevent incompatible platforms from breaking builds
+      if (Array.isArray(plugin) && plugin[0] === 'expo-notifications') {
+        const options = plugin[1] || {};
+        if (options.sounds) {
+          const originalSounds = options.sounds;
+          if (isAndroid) {
+            // Android doesn't support Apple .caf files. Copying them to res/raw causes AAPT2 compilation failures.
+            options.sounds = options.sounds.filter(sound => !sound.endsWith('.caf'));
+          } else if (isIos) {
+            // iOS should only copy its compatible audio formats (or specifically .caf)
+            options.sounds = options.sounds.filter(sound => !sound.endsWith('.mp3'));
+          }
+          console.log(`[app.config.js] Filtered sounds for expo-notifications. Original: ${originalSounds.length}, Filtered: ${options.sounds.length}`);
+        }
+        return [plugin[0], options];
+      }
       return plugin;
     });
   }
-  
+
   return config;
 };
