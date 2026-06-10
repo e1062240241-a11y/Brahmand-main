@@ -131,6 +131,13 @@ export default function NotificationsScreen() {
         });
       }
       
+      // Sort notifications by time or created_at descending (latest first)
+      notificationsList.sort((a: any, b: any) => {
+        const timeA = new Date(a.time || a.created_at || 0).getTime();
+        const timeB = new Date(b.time || b.created_at || 0).getTime();
+        return timeB - timeA;
+      });
+
       // Show all notifications for all functionalities without deduplication filter
       setNotifications(notificationsList);
 

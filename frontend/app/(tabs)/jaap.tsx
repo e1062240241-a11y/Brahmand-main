@@ -70,27 +70,6 @@ const LIVE_JAAPS = [
     image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.png'),
     slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...'
   },
-  { 
-    id: '5', 
-    title: 'Ganesh\nMantra', 
-    devotees: '8.2K', 
-    image: require('../../assets/images/ganesh_jaap_card.png'),
-    slok: 'ॐ गं गणपतये नमः ॐ गं गणपतये नमः...'
-  },
-  { 
-    id: '6', 
-    title: 'Laxmi\nMantra', 
-    devotees: '6.1K', 
-    image: require('../../assets/images/laxmi_jaap_card.png'),
-    slok: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं...'
-  },
-  { 
-    id: '7', 
-    title: 'Krishna\nJaap', 
-    devotees: '7.2K', 
-    image: require('../../assets/images/krishna_jaap_card_v3.png'),
-    slok: 'राधे राधे राधे राधे श्याम मिलाए दे...'
-  },
 ];
 
 const UPCOMING_SESSIONS = [

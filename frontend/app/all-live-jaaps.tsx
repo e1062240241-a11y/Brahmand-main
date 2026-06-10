@@ -71,33 +71,6 @@ const LIVE_JAAPS = [
     slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...',
     color: '#D4AF37',
   },
-  {
-    id: '5',
-    title: 'Ganesh\nMantra',
-    devotees: '8.2K',
-    mantraType: 'ganesh',
-    image: require('../assets/images/ganesh_jaap_card.png'),
-    slok: 'ॐ गं गणपतये नमः ॐ गं गणपतये नमः...',
-    color: '#E07820',
-  },
-  {
-    id: '6',
-    title: 'Laxmi\nMantra',
-    devotees: '6.1K',
-    mantraType: 'laxmi',
-    image: require('../assets/images/laxmi_jaap_card.png'),
-    slok: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं...',
-    color: '#C2185B',
-  },
-  {
-    id: '7',
-    title: 'Krishna\nJaap',
-    devotees: '7.2K',
-    mantraType: 'krishna',
-    image: require('../assets/images/krishna_jaap_card_v3.png'),
-    slok: 'राधे राधे राधे राधे श्याम मिलाए दे...',
-    color: '#283593',
-  },
 ];
 
 export default function AllLiveJaapsScreen() {

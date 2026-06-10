@@ -1058,6 +1058,9 @@ export const sendDirectMessage = (recipientSlId: string, content: string, messag
 export const getConversations = () =>
   api.get('/dm/conversations', { timeout: 120000 });
 
+export const getDMConversationMetadata = (conversationId: string) =>
+  api.get(`/dm/${conversationId}/metadata`);
+
 export const getDirectMessages = (conversationId: string, limit: number = 50) =>
   api.get(`/dm/${conversationId}?limit=${limit}`, { timeout: 120000 });
 

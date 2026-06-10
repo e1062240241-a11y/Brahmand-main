@@ -1073,8 +1073,8 @@ export default function LiveJaapRoomView() {
 
                 {/* Controls Bar */}
                 <View style={styles.controlsBarNew}>
-                  <TouchableOpacity style={styles.controlIconBtnNew}>
-                    <Ionicons name="mic-outline" size={24} color="#000" />
+                  <TouchableOpacity onPress={() => setIsMicEnabled(!isMicEnabled)} style={styles.controlIconBtnNew}>
+                    <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={24} color={isMicEnabled ? "#FF8A00" : "#000"} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.volumeMuteBtnNew}>
                     <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={26} color="#FFF" />
