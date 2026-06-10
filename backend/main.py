@@ -8149,12 +8149,13 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         config = types.GenerateContentConfig(
             temperature=0.7,
             max_output_tokens=2048,
+            thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
         try:
             response = client.models.generate_content(
-                model="gemma-2-27b-it",
+                model="gemma-4-31b-it",
                 contents=contents,
                 config=config,
             )
@@ -11397,7 +11398,7 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         import google.genai as genai
 
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-        model = "gemma-2-27b-it"
+        model = "gemma-4-31b-it"
         prompt = (
             f"Generate a highly detailed, comprehensive, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. "
             f"Return ONLY a valid JSON object in this exact schema structure, with no markdown formatting. Do not copy placeholder descriptions; generate real predictions:\n"

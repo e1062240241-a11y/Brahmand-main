@@ -79,7 +79,7 @@ async def extract_user_profile(user_message: str, chat_history: list = None) -> 
                 max_output_tokens=300
             )
             response = client.models.generate_content(
-                model="gemma-2-27b-it",
+                model="gemma-4-31b-it",
                 contents=prompt,
                 config=config
             )
@@ -140,7 +140,7 @@ async def generate_chat_summary(messages: list) -> str:
                 max_output_tokens=150
             )
             response = client.models.generate_content(
-                model="gemma-2-27b-it",
+                model="gemma-4-31b-it",
                 contents=prompt,
                 config=config
             )
