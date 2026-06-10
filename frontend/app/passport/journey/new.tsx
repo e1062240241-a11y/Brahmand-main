@@ -664,8 +664,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressBarFill: {
-    height: '100%',
-    backgroundColor: '#E87030',
+    height: 8,
+    backgroundColor: '#FF7B00',
     borderRadius: 9999,
   },
   card: {
