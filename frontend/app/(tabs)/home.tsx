@@ -2269,7 +2269,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>{hanumanChantCount.toLocaleString()} devotees are chanting</Text>
+                                  }]}>{(hanumanChantCount * 18).toLocaleString()} devotees are chanting</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2355,7 +2355,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>{shivaChantCount.toLocaleString()} {t('devoteesChanting')}</Text>
+                                  }]}>{(shivaChantCount * 18).toLocaleString()} {t('devoteesChanting')}</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />

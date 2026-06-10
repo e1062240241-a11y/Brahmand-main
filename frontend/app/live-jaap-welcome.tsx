@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -245,7 +246,7 @@ export default function LiveJaapWelcomeScreen() {
           <View style={styles.footerContainer}>
             {mantraType === 'gayatri' ? (
               <TouchableOpacity
-                style={styles.tapJoinButton}
+                style={[styles.tapJoinButton, { overflow: 'hidden' }]}
                 activeOpacity={0.8}
                 onPress={() => {
                   router.push({
@@ -261,6 +262,16 @@ export default function LiveJaapWelcomeScreen() {
                   });
                 }}
               >
+                <Svg height="100%" width="100%" style={{ position: 'absolute' }}>
+                  <Defs>
+                    <RadialGradient id="gradTap" cx="50%" cy="50%" rx="66.59%" ry="50%" fx="50%" fy="50%">
+                      <Stop offset="0%" stopColor="#FFF" stopOpacity="1" />
+                      <Stop offset="40.87%" stopColor="#FFDED1" stopOpacity="1" />
+                      <Stop offset="100%" stopColor="#FFC085" stopOpacity="1" />
+                    </RadialGradient>
+                  </Defs>
+                  <Rect x="0" y="0" width="100%" height="100%" fill="url(#gradTap)" />
+                </Svg>
                 <Text style={styles.tapJoinButtonText}>
                   {t('language') === 'hi' ? 'अभी लाइव जाप में शामिल हों' : 'Join Live Jaap Now'}
                 </Text>
@@ -444,7 +455,6 @@ const styles = StyleSheet.create({
   tapJoinButton: {
     width: '100%',
     height: 56,
-    backgroundColor: '#E8630A',
     borderRadius: 28,
     flexDirection: 'row',
     alignItems: 'center',
@@ -459,7 +469,7 @@ const styles = StyleSheet.create({
   tapJoinButtonText: {
     flex: 1,
     textAlign: 'center',
-    color: '#FFF',
+    color: '#D35400',
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 48,
