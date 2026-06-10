@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
@@ -118,12 +118,11 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
       Extrapolation.CLAMP
     );
     
-    // Move the tab bar slightly down by 10 by default
-    // When shrinking, we move it down a bit more so it looks like it sticks to the bottom
-    const translateY = 10 + interpolate(
+    // When shrinking, we move it down a bit so it looks like it sticks to the bottom
+    const translateY = interpolate(
       tabBarTranslateY.value,
       [0, 150],
-      [0, 20],
+      [0, Platform.OS === 'android' ? 15 : 20],
       Extrapolation.CLAMP
     );
 
@@ -131,6 +130,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
       transform: [{ translateY }, { scale }],
     };
   });
+
+  // Move the tab bar down slightly by default, taking Android into account
+  const bottomPosition = Platform.OS === 'android' ? 5 : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
 
   const visibleRoutes = state.routes.filter((route: any) => !HIDDEN_ROUTES.has(route.name));
 
@@ -219,7 +221,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   };
 
   return (
-    <Animated.View style={[styles.outerContainer, { bottom: insets.bottom > 0 ? insets.bottom : 15 }, animatedStyle]}>
+    <Animated.View style={[styles.outerContainer, { bottom: bottomPosition }, animatedStyle]}>
       <View style={styles.tabBarContainer}>
         {/* Dynamic Separate Background */}
         <Svg width={373} height={69} viewBox="0 0 373 69" style={styles.svgBackground}>
