@@ -16,6 +16,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -817,7 +818,25 @@ export default function LiveJaapRoomView() {
   };
 
   return (
-    <LinearGradient colors={['#FFDFAC', '#FFDEAD', '#FFFFFF']} locations={[0, 0.4471, 1]} style={styles.container}>
+    <View style={styles.container}>
+      <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
+        <Defs>
+          <RadialGradient
+            id="grad"
+            cx="50%"
+            cy="50%"
+            rx="66.59%"
+            ry="50%"
+            fx="50%"
+            fy="50%"
+          >
+            <Stop offset="0%" stopColor="#FFF" stopOpacity="1" />
+            <Stop offset="40.87%" stopColor="#FFDED1" stopOpacity="1" />
+            <Stop offset="100%" stopColor="#FFC085" stopOpacity="1" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
+      </Svg>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
         {/* NEW HEADER */}
@@ -1081,7 +1100,7 @@ export default function LiveJaapRoomView() {
           }]}>{r.emoji}</Animated.Text>
         ))}
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
