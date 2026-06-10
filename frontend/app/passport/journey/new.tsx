@@ -18,7 +18,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { usePassportStore } from '../../../src/store/passportStore';
 import { PassportAnswer, PassportMediaItem, PassportJourneyVisibility } from '../../../src/types/passport';
-import { createMediaItem } from '../../../src/services/passportService';
 
 const { width } = Dimensions.get('window');
 
@@ -128,7 +127,11 @@ export default function NewPassportJourneyScreen() {
 
   const handleBack = () => {
     if (step === 1) {
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.push('/passport/timeline' as any);
+      }
       return;
     }
     setStep(step - 1);
