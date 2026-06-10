@@ -5,15 +5,15 @@
 4 silly config load:file:/Users/developer/Desktop/Brahmand-main/frontend/.npmrc
 5 silly config load:file:/Users/developer/Desktop/Brahmand-main/tmp/.npmrc
 6 silly config load:file:/usr/local/etc/npmrc
-7 verbose title npm exec eas build:view ***
-8 verbose argv "exec" "--" "eas" "build:view" "***"
-9 verbose logfile logs-max:10 dir:/Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-09T12_12_41_107Z-
-10 verbose logfile /Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-09T12_12_41_107Z-debug-0.log
-11 silly logfile done cleaning log files
-12 http fetch GET https://registry.npmjs.org/npm attempt 1 failed with ENOTFOUND
+7 verbose title npm exec expo export
+8 verbose argv "exec" "--" "expo" "export"
+9 verbose logfile logs-max:10 dir:/Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-10T09_16_35_061Z-
+10 verbose logfile /Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-10T09_16_35_061Z-debug-0.log
+11 silly logfile start cleaning logs, removing 2 files
+12 silly logfile done cleaning log files
 13 verbose cwd /Users/developer/Desktop/Brahmand-main/frontend
 14 verbose os Darwin 22.6.0
 15 verbose node v25.6.1
 16 verbose npm  v11.9.0
-17 verbose exit 1
-18 verbose code 1
+17 verbose exit 0
+18 info ok

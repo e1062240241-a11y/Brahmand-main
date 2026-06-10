@@ -5,10 +5,10 @@
 4 silly config load:file:/Users/developer/Desktop/Brahmand-main/frontend/.npmrc
 5 silly config load:file:/Users/developer/Desktop/Brahmand-main/tmp/.npmrc
 6 silly config load:file:/usr/local/etc/npmrc
-7 verbose title npm exec expo export
-8 verbose argv "exec" "--" "expo" "export"
-9 verbose logfile logs-max:10 dir:/Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-09T12_14_58_414Z-
-10 verbose logfile /Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-09T12_14_58_414Z-debug-0.log
+7 verbose title npm exec expo prebuild --platform android --clean
+8 verbose argv "exec" "--" "expo" "prebuild" "--platform" "android" "--clean"
+9 verbose logfile logs-max:10 dir:/Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-10T09_12_26_569Z-
+10 verbose logfile /Users/developer/Desktop/Brahmand-main/tmp/.npm/_logs/2026-06-10T09_12_26_569Z-debug-0.log
 11 silly logfile done cleaning log files
 12 verbose cwd /Users/developer/Desktop/Brahmand-main/frontend
 13 verbose os Darwin 22.6.0
