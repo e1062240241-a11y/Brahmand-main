@@ -26,10 +26,10 @@ function CertificateDetailScreen({ observedCertificates }: { observedCertificate
     id: 'dummy',
     bookName: 'BHAGAWAD GITA',
     completionDays: 12,
-    date: '2024-05-25T00:00:00.000Z'
+    date: new Date().toISOString()
   };
 
-  const formattedDate = formatDateIST(certificate.date);
+  const formattedDate = formatDateIST(new Date().toISOString());
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -74,7 +74,7 @@ function CertificateDetailScreen({ observedCertificates }: { observedCertificate
         <View style={styles.certCard}>
           <View style={styles.certCardInner}>
             <Image
-              source={require('../../../assets/images/gita_cert.png')}
+              source={require('../../../assets/images/gita_cert_fixed.png')}
               style={[styles.backgroundImage, StyleSheet.absoluteFillObject]}
               contentFit="cover"
             />
@@ -187,8 +187,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontStyle: 'italic',
     color: '#0D2C59',
-    backgroundColor: 'transparent',
-    paddingHorizontal: 16,
+    backgroundColor: '#FAF4EB', // Added to cover any remaining artifacts
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
     textAlign: 'center',
   },
   dateOverlay: {
@@ -199,11 +201,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dateText: {
-    fontSize: 8.5,
+    fontSize: 9.5,
     fontWeight: '700',
     color: '#0D2C59',
-    backgroundColor: 'transparent',
-    paddingHorizontal: 2,
+    backgroundColor: '#FAF4EB', // Added to cover any remaining artifacts
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 2,
+    overflow: 'hidden',
     textAlign: 'center',
   },
   modalBackdrop: {

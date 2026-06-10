@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
 import { Svg, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -110,9 +110,29 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { tabBarTranslateY } = useTabBar();
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: 0 }], // Disabled hide-on-scroll to keep tab bar fixed
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      tabBarTranslateY.value,
+      [0, 150],
+      [1, 0.85],
+      Extrapolate.CLAMP
+    );
+    
+    // When shrinking, we move it down a bit so it looks like it sticks to the bottom
+    const translateY = interpolate(
+      tabBarTranslateY.value,
+      [0, 150],
+      [0, Platform.OS === 'android' ? 15 : 20],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      transform: [{ translateY }, { scale }],
+    };
+  });
+
+  // Move the tab bar down slightly by default, taking Android into account
+  const bottomPosition = Platform.OS === 'android' ? 5 : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
 
   const visibleRoutes = state.routes.filter((route: any) => !HIDDEN_ROUTES.has(route.name));
 
@@ -201,7 +221,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   };
 
   return (
-    <Animated.View style={[styles.outerContainer, { bottom: insets.bottom > 0 ? insets.bottom : 15 }, animatedStyle]}>
+    <Animated.View style={[styles.outerContainer, { bottom: bottomPosition }, animatedStyle]}>
       <View style={styles.tabBarContainer}>
         {/* Dynamic Separate Background */}
         <Svg width={373} height={69} viewBox="0 0 373 69" style={styles.svgBackground}>

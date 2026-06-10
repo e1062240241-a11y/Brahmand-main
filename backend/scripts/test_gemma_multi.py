@@ -13,13 +13,14 @@ contents = [
 ]
 
 config = types.GenerateContentConfig(
+    thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
     automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
 )
 
 print("Calling...")
 try:
     response = client.models.generate_content(
-        model="gemma-4-26b-a4b-it",
+        model="gemma-4-31b-it",
         contents=contents,
         config=config,
     )

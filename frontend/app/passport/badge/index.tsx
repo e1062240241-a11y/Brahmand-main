@@ -48,19 +48,46 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
   const flattenedBadges: FlattenedBadge[] = [];
   
   const filteredBadges = badgeTitle 
-    ? badges.filter(b => b.title.toLowerCase() === badgeTitle.toLowerCase())
+    ? badges.filter(b => {
+        const bt = badgeTitle.toLowerCase();
+        const t = b.title?.toLowerCase() || '';
+        
+        // Match specific badge categories to avoid cross-matching
+        if (bt.includes('yatra')) {
+          return t.includes('yatra') || t.includes('journey');
+        }
+        if (bt.includes('book')) {
+          return t.includes('book');
+        }
+        if (bt.includes('jaap')) {
+          return t.includes('jaap');
+        }
+        
+        // Fallback exact match
+        return t === bt;
+      })
     : badges;
 
-  // If the store is empty, inject a default Bhagawad Gita badge for demonstration (as in the screenshot)
-  const activeBadges = filteredBadges.length > 0 ? filteredBadges : [
-    {
-      id: 'demo_gita_1',
-      title: 'Bhagawad Gita',
-      description: 'Completed reading Bhagawad Gita',
-      earned_at: new Date().toISOString(),
-      count: 2
-    }
-  ];
+  // If the store is empty or the specific badge isn't found, inject a fallback
+  const activeBadges = filteredBadges.length > 0 ? filteredBadges : (
+    badgeTitle ? [
+      {
+        id: `demo_${badgeTitle.replace(/\s+/g, '_')}`,
+        title: badgeTitle,
+        description: `Complete your ${badgeTitle} to unlock this badge!`,
+        earned_at: new Date().toISOString(),
+        count: 1
+      }
+    ] : [
+      {
+        id: 'demo_gita_1',
+        title: 'Bhagawad Gita',
+        description: 'Completed reading Bhagawad Gita',
+        earned_at: new Date().toISOString(),
+        count: 2
+      }
+    ]
+  );
 
   activeBadges.forEach((badge) => {
     const loopCount = badge.count || 1;
