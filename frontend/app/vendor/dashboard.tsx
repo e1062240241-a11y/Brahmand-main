@@ -524,7 +524,7 @@ export default function VendorDashboardScreen() {
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>

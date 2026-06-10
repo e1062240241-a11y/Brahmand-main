@@ -209,7 +209,7 @@ export default function BloodRequestScreen() {
 
         <KeyboardAvoidingView
           style={styles.cardContainerWrapper}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <View style={styles.cardContainer}>

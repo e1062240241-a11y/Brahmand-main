@@ -283,7 +283,7 @@ export default function AIJyotishScreen() {
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1, backgroundColor: '#FFEEE5' }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 150, backgroundColor: '#FB905E' }} pointerEvents="none" />
       <SafeAreaView style={styles.container} edges={['top']}>

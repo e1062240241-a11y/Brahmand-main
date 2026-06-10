@@ -185,7 +185,7 @@ class GroqService:
 
         try:
             response = self.client.models.generate_content(
-                model="gemma-4-26b-a4b-it",
+                model="gemma-2-27b-it",
                 contents=contents,
                 config=config,
             )

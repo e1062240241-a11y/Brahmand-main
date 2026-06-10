@@ -150,7 +150,7 @@ Speak directly to the user's issue, naturally weaving the reference (e.g., "Gita
 
         import traceback
         response = gemini_client.models.generate_content(
-            model="gemma-4-26b-a4b-it",
+            model="gemma-2-27b-it",
             contents=contents,
             config=config,
         )
