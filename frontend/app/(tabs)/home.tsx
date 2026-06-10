@@ -28,6 +28,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useAudioPlayer } from 'expo-audio';
 import { useAuthStore } from '../../src/store/authStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
@@ -394,6 +395,7 @@ const formatFestivalDate = (dateStr: string) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const bellPlayer = useAudioPlayer(require('../../assets/notifysound/bell.mp3'));
   const { t } = useTranslation();
   const onHomeScrollTabBar = useScrollToHideTabBar();
   const navigation = useNavigation();
@@ -889,6 +891,11 @@ export default function HomeScreen() {
   }, [isFocused, initializeHome, setUnreadCount]);
 
   const handleNotificationPress = () => {
+    try {
+      bellPlayer.play();
+    } catch (err) {
+      console.warn('Failed to play bell sound:', err);
+    }
     setUnreadCount(0);
     router.push('/notifications');
     markAllNotificationsRead().catch((err) => {

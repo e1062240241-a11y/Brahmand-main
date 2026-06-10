@@ -7782,8 +7782,8 @@ async def cancel_event_attendance(event_id: str, token_data: dict = Depends(veri
 
 @api_router.get("/notifications")
 async def get_notifications(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    return await db.query_documents('notifications', filters=[('user_id', '==', token_data["user_id"])], limit=50)
+    from services.firebase_notification_service import FirebaseNotificationService
+    return await FirebaseNotificationService.get_user_notifications(token_data["user_id"], limit=50)
 
 
 @api_router.get("/notifications/unread-count")
