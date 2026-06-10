@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
 import { Svg, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -110,9 +110,27 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { tabBarTranslateY } = useTabBar();
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: 0 }], // Disabled hide-on-scroll to keep tab bar fixed
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      tabBarTranslateY.value,
+      [0, 150],
+      [1, 0.85],
+      Extrapolation.CLAMP
+    );
+    
+    // Move the tab bar slightly down by 10 by default
+    // When shrinking, we move it down a bit more so it looks like it sticks to the bottom
+    const translateY = 10 + interpolate(
+      tabBarTranslateY.value,
+      [0, 150],
+      [0, 20],
+      Extrapolation.CLAMP
+    );
+
+    return {
+      transform: [{ translateY }, { scale }],
+    };
+  });
 
   const visibleRoutes = state.routes.filter((route: any) => !HIDDEN_ROUTES.has(route.name));
 

@@ -95,7 +95,6 @@ export const usePassportStore = create<PassportState>((set, get) => ({
             visibility: newJourney.visibility,
             answersList: newJourney.answers,
           });
-          record.createdAt = new Date();
         });
       });
     } catch (e) {

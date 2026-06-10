@@ -1,4 +1,9 @@
-import React, { useEffect } from 'react';
+import os
+
+filepath = "/Users/Developer/Desktop/Brahmand-main/frontend/app/passport/inner.tsx"
+
+with open(filepath, 'w') as f:
+    f.write('''import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,9 +13,7 @@ import { usePassportStore } from '../../src/store/passportStore';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { formatDateIST } from '../../src/utils/dateUtils';
-import { getUserProfile } from '../../src/services/api';
 
 const { width: windowWidth } = Dimensions.get('window');
 
@@ -28,17 +31,6 @@ function PassportInnerScreen({
 
   useEffect(() => {
     loadPassport();
-    const fetchProfile = async () => {
-      try {
-        const response = await getUserProfile();
-        if (response.data) {
-          useAuthStore.getState().updateUser(response.data);
-        }
-      } catch (err) {
-        console.warn('Failed to fetch user profile in passport:', err);
-      }
-    };
-    fetchProfile();
   }, []);
 
   const handleBack = () => {
@@ -55,29 +47,18 @@ function PassportInnerScreen({
 
   const userPhoto = user?.photo || 'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?auto=format&fit=crop&w=500&q=80';
   const userNameEnglish = (user?.name || '').toUpperCase();
-
-  let dob = '';
-  if (user?.date_of_birth) {
-    const rawDob = user.date_of_birth;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(rawDob)) {
-      const [y, m, d] = rawDob.split('-');
-      dob = `${d}/${m}/${y}`;
-    } else {
-      dob = formatDateIST(rawDob) || rawDob;
-    }
-  }
+  const userNameHindi = userNameEnglish; // Fallback to English name
+  const dob = user?.date_of_birth ? formatDateIST(user.date_of_birth) : '';
   const sex = 'M'; // gender not available in User type
+  const sexHindi = 'पुरुष'; 
   const placeOfBirth = user?.place_of_birth || '';
+  const placeOfBirthHindi = placeOfBirth === 'MUMBAI, MAHARASHTRA' ? 'मुंबई, महाराष्ट्र' : placeOfBirth;
   const passportId = user?.sl_id || ''; 
   const firstName = user?.name ? user.name.split(' ')[0].toUpperCase() : '';
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      <LinearGradient 
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
-        locations={[0, 0.0913, 0.25]}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#FFF5F1' }]} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -91,6 +72,7 @@ function PassportInnerScreen({
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Top Card: Identity Card Page */}
         <View style={styles.idCard}>
+          <Text style={styles.cardTitleHindi}>ब्रह्मांड पासपोर्ट</Text>
           <Text style={styles.cardTitleEnglish}>BRAHMAND PASSPORT</Text>
 
           <View style={styles.gridContainer}>
@@ -99,6 +81,7 @@ function PassportInnerScreen({
               
               <View style={styles.rowField}>
                 <View style={styles.labelCol}>
+                  <Text style={styles.fieldLabelHindi}>कंट्री कोड</Text>
                   <Text style={styles.fieldLabelEnglish}>COUNTRY CODE</Text>
                 </View>
                 <View style={styles.valueCol}>
@@ -108,6 +91,7 @@ function PassportInnerScreen({
 
               <View style={styles.rowField}>
                 <View style={styles.labelCol}>
+                  <Text style={styles.fieldLabelHindi}>राष्ट्रीय पहचान</Text>
                   <Text style={styles.fieldLabelEnglish}>BRAHAMND ID</Text>
                 </View>
                 <View style={styles.valueCol}>
@@ -117,46 +101,57 @@ function PassportInnerScreen({
 
               <View style={[styles.rowField, { marginTop: 12 }]}>
                 <View style={styles.labelCol}>
+                  <Text style={styles.fieldLabelHindi}>पूरा नाम</Text>
                   <Text style={styles.fieldLabelEnglish}>FULL NAME</Text>
                 </View>
                 <View style={styles.valueCol}>
+                  <Text style={styles.fieldValueHindi}>{userNameHindi}</Text>
                   <Text style={styles.fieldValueEnglish}>{userNameEnglish}</Text>
                 </View>
               </View>
 
               {/* Date of Birth & Sex Row */}
-              <View style={[styles.inlineRow, { marginTop: 16 }]}>
-                <View style={{ width: 140 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.fieldLabelEnglish}>DATE OF BIRTH</Text>
+              <View style={[styles.inlineRow, { marginTop: 12 }]}>
+                <View style={{ marginRight: 24 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                    <Text style={styles.fieldLabelHindiInline}>जन्म तिथि</Text>
+                    <Text style={[styles.fieldLabelEnglish, { marginLeft: 4 }]}>DATE OF BIRTH</Text>
                   </View>
                   <Text style={styles.fieldValueBig}>{dob}</Text>
                 </View>
 
                 <View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.fieldLabelEnglish}>SEX</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                    <Text style={styles.fieldLabelHindiInline}>लिंग</Text>
+                    <Text style={[styles.fieldLabelEnglish, { marginLeft: 4 }]}>SEX</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.fieldValueBig}>{sex}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                    <Text style={styles.fieldValueHindi}>{sexHindi}</Text>
+                    <Text style={[styles.fieldValueBig, { marginLeft: 8 }]}>{sex}</Text>
                   </View>
                 </View>
               </View>
 
               {/* Nationality */}
-              <View style={[styles.inlineRow, { marginTop: 16 }]}>
-                <View>
-                  <Text style={styles.fieldLabelEnglish}>NATIONALITY</Text>
-                  <Text style={[styles.fieldValueEnglish, { fontSize: 15 }]}>INDIAN</Text>
+              <View style={{ marginTop: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={styles.fieldLabelHindiInline}>राष्ट्रीयता</Text>
+                  <Text style={[styles.fieldLabelEnglish, { marginLeft: 30 }]}>NATIONALITY</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Text style={[styles.fieldValueHindi, { fontSize: 16 }]}>भारतीय</Text>
+                  <Text style={[styles.fieldValueEnglish, { fontSize: 15, marginLeft: 24 }]}>INDIAN</Text>
                 </View>
               </View>
 
               {/* Place of Birth */}
               <View style={[styles.rowField, { marginTop: 16 }]}>
                 <View style={styles.labelCol}>
+                  <Text style={styles.fieldLabelHindi}>जन्म स्थान</Text>
                   <Text style={styles.fieldLabelEnglish}>PLACE OF BIRTH</Text>
                 </View>
                 <View style={styles.valueCol}>
+                  <Text style={styles.fieldValueHindi}>{placeOfBirthHindi}</Text>
                   <Text style={styles.fieldValueEnglish}>{placeOfBirth.toUpperCase()}</Text>
                 </View>
               </View>
@@ -170,13 +165,9 @@ function PassportInnerScreen({
               </View>
 
               <View style={styles.signatureContainer}>
-                <View style={styles.signatureWrapper}>
-                  <Text style={styles.signatureText} numberOfLines={1}>
-                    {firstName || 'SMINIL'}
-                  </Text>
-                </View>
+                <Image source={require('../../assets/images/signature_placeholder.png')} style={styles.signatureImage} contentFit="contain" />
                 <View style={styles.signatureLine} />
-                <Text style={styles.signatureLabel}>SIGNATURE</Text>
+                <Text style={styles.signatureLabel}>हस्ताक्षर / SIGNATURE</Text>
               </View>
             </View>
           </View>
@@ -195,7 +186,7 @@ function PassportInnerScreen({
             <View style={styles.recordDivider} />
 
             <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>{"Jaap Count's"}</Text>
+              <Text style={styles.recordLabel}>Jaap Count's</Text>
               <Text style={styles.recordValue}>{jaapCount}</Text>
             </View>
             
@@ -236,6 +227,7 @@ function PassportInnerScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFF5F1',
   },
   header: {
     flexDirection: 'row',
@@ -267,12 +259,18 @@ const styles = StyleSheet.create({
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 8,
     marginBottom: 24,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.10)',
+  },
+  cardTitleHindi: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000',
+    textAlign: 'center',
   },
   cardTitleEnglish: {
     fontSize: 16,
@@ -309,6 +307,16 @@ const styles = StyleSheet.create({
   inlineRow: {
     flexDirection: 'row',
   },
+  fieldLabelHindi: {
+    fontSize: 8,
+    color: '#000',
+    fontWeight: '700',
+  },
+  fieldLabelHindiInline: {
+    fontSize: 9,
+    color: '#000',
+    fontWeight: '700',
+  },
   fieldLabelEnglish: {
     fontSize: 8,
     color: '#000',
@@ -317,6 +325,11 @@ const styles = StyleSheet.create({
   },
   fieldValueBig: {
     fontSize: 16,
+    color: '#000',
+    fontWeight: '800',
+  },
+  fieldValueHindi: {
+    fontSize: 14,
     color: '#000',
     fontWeight: '800',
   },
@@ -351,20 +364,11 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
     backgroundColor: '#fff',
   },
-  signatureWrapper: {
+  signatureImage: {
+    width: '80%',
+    height: 20,
     position: 'absolute',
-    top: 0,
-    width: '100%',
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  signatureText: {
-    fontFamily: Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif',
-    fontSize: 16,
-    fontStyle: 'italic',
-    color: '#111',
-    fontWeight: '700',
+    top: 4,
   },
   signatureLine: {
     width: '100%',
@@ -388,7 +392,7 @@ const styles = StyleSheet.create({
     paddingLeft: 11,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 8,
     marginBottom: 24,
@@ -483,3 +487,4 @@ const enhance = withObservables([], () => ({
 }));
 
 export default enhance(PassportInnerScreen);
+''')
