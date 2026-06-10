@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { usePassportStore } from '../../src/store/passportStore';
+import { usePersonalityStore } from '../../src/store/personalityStore';
+import { getUserProfile } from '../../src/services/api';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,11 +25,17 @@ function PassportInnerScreen({
 }) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const updateUser = useAuthStore((state) => state.updateUser);
   const totalJaap = usePassportStore((state) => state.total_jaap);
   const loadPassport = usePassportStore((state) => state.loadPassport);
+  const personalityData = usePersonalityStore((state) => state.data);
+
+  // Guarantee local reactivity to avoid HOC caching / stale state on first render
+  const [localUser, setLocalUser] = React.useState<any>(user);
 
   useEffect(() => {
     loadPassport();
+<<<<<<< HEAD
     const fetchProfile = async () => {
       try {
         const response = await getUserProfile();
@@ -39,6 +47,21 @@ function PassportInnerScreen({
       }
     };
     fetchProfile();
+=======
+
+    const fetchLatest = async () => {
+      try {
+        const res = await getUserProfile();
+        if (res.data) {
+          setLocalUser(res.data);
+          updateUser(res.data);
+        }
+      } catch (err) {
+        console.warn('[PassportInner] Profile fetch failed:', err);
+      }
+    };
+    fetchLatest();
+>>>>>>> cace84c09feea4de3c0bca98f3602af4bc9b0986
   }, []);
 
   const handleBack = () => {
@@ -53,6 +76,7 @@ function PassportInnerScreen({
   const jaapCount = totalJaap || 0;
   const badgesCount = observedBadges.length;
 
+<<<<<<< HEAD
   const userPhoto = user?.photo || 'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?auto=format&fit=crop&w=500&q=80';
   const userNameEnglish = (user?.name || '').toUpperCase();
 
@@ -70,6 +94,83 @@ function PassportInnerScreen({
   const placeOfBirth = user?.place_of_birth || '';
   const passportId = user?.sl_id || ''; 
   const firstName = user?.name ? user.name.split(' ')[0].toUpperCase() : '';
+=======
+  // Use user's real avatar if available, otherwise standard dummy photo
+  const userPhoto = localUser?.photo || 'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?auto=format&fit=crop&w=500&q=80';
+  const userNameEnglish = (localUser?.name || 'SANATANI').toUpperCase();
+
+  // Dynamic Country Code mapping
+  const countryCode = localUser?.home_location?.country
+    ? (localUser.home_location.country.toUpperCase() === 'BHARAT' || localUser.home_location.country.toUpperCase() === 'INDIA' ? 'IND' : localUser.home_location.country.substring(0, 3).toUpperCase())
+    : 'IND';
+
+  // Dynamic National ID (derive from phone)
+  const phoneDigits = localUser?.phone ? localUser.phone.replace(/[^0-9]/g, '') : '';
+  const nationalId = phoneDigits
+    ? phoneDigits.padEnd(12, '0').slice(-12).replace(/(\d{4})/g, '$1 ').trim()
+    : (localUser?.id ? localUser.id.replace(/[^0-9]/g, '').padEnd(12, '9').slice(-12).replace(/(\d{4})/g, '$1 ').trim() : 'XXXX XXXX XXXX');
+
+  // Dynamic Date of Birth
+  const getDob = () => {
+    if (!localUser?.date_of_birth) return 'N/A';
+    const dob = localUser.date_of_birth;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+      const [y, m, d] = dob.split('-');
+      return `${d}/${m}/${y}`;
+    }
+    return dob;
+  };
+  const dobFormatted = getDob();
+
+  // Dynamic Sex/Gender
+  const userGender = localUser?.gender || personalityData?.gender || '';
+  const isFemale = userGender.toLowerCase().includes('female') || userGender.toLowerCase() === 'f';
+  const sexLabel = isFemale ? 'महिला / F' : 'पुरुष / M';
+
+  // Dynamic Nationality
+  const nationalityText = countryCode === 'IND' ? 'भारतीय / INDIAN' : `${localUser?.home_location?.country || 'INDIAN'}`.toUpperCase();
+
+  // Dynamic Place of Birth
+  const placeOfBirthText = localUser?.place_of_birth || 'MUMBAI, MAHARASHTRA';
+  const placeOfBirthEnglish = placeOfBirthText.toUpperCase();
+  const placeOfBirthHindi = placeOfBirthText;
+
+  // Dynamic Passport Number
+  const getPassportNo = () => {
+    if (localUser?.sl_id) {
+      const sl = localUser.sl_id.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+      return `Z${sl.padEnd(7, '0').substring(0, 7)}`;
+    }
+    if (localUser?.id) {
+      const numericId = localUser.id.replace(/[^0-9]/g, '');
+      return `Z${numericId.padEnd(7, '7').substring(0, 7)}`;
+    }
+    return 'Z6477975';
+  };
+  const passportNo = getPassportNo();
+
+  // Dynamic Signature Name
+  const signatureName = localUser?.name ? localUser.name.split(' ')[0] : 'Sanatani';
+
+  // Dynamic Address (balanced left-right split)
+  const homeLoc = localUser?.home_location || localUser?.location;
+  const addressLine1Hindi = [homeLoc?.area, homeLoc?.city].filter(Boolean).join(', ') || 'नया इलाका';
+  const addressLine2Hindi = [homeLoc?.state, homeLoc?.country || 'भारत'].filter(Boolean).join(', ');
+
+  const addressLine1English = [homeLoc?.area, homeLoc?.city].filter(Boolean).join(', ').toUpperCase() || 'NEW AREA';
+  const addressLine2English = [homeLoc?.state, homeLoc?.country || 'INDIA'].filter(Boolean).map(s => s.toUpperCase()).join(', ');
+
+  // Dynamic MRZ Zone
+  const getMrzText = () => {
+    const name = localUser?.name ? localUser.name.toUpperCase().replace(/[^A-Z]/g, ' ') : 'SANATANI';
+    const parts = name.split(' ').filter(Boolean);
+    const lastName = parts[parts.length - 1] || 'MEMBER';
+    const firstNames = parts.slice(0, parts.length - 1).join('<');
+    const basemrz = firstNames ? `P<IND${lastName}<<${firstNames}` : `P<IND${lastName}`;
+    return basemrz.padEnd(44, '<').substring(0, 44);
+  };
+  const mrzText = getMrzText();
+>>>>>>> cace84c09feea4de3c0bca98f3602af4bc9b0986
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -134,6 +235,7 @@ function PassportInnerScreen({
                 </View>
 
                 <View>
+<<<<<<< HEAD
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={styles.fieldLabelEnglish}>SEX</Text>
                   </View>
@@ -161,18 +263,72 @@ function PassportInnerScreen({
                 </View>
               </View>
 
+=======
+                  <Text style={styles.fieldLabel}>कंट्री कोड / COUNTRY CODE</Text>
+                  <Text style={styles.fieldValue}>{countryCode}</Text>
+                </View>
+                <View style={{ marginRight: 24 }}>
+                  <Text style={styles.fieldLabel}>प्रकार / TYPE</Text>
+                  <Text style={styles.fieldValue}>P</Text>
+                </View>
+              </View>
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>राष्ट्रीय पहचान / NATIONAL ID</Text>
+                <Text style={styles.fieldValue}>{nationalId}</Text>
+              </View>
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>पूरा नाम / FULL NAME</Text>
+                <Text style={styles.fieldValueHindi}>{localUser?.name || 'सनतनी'}</Text>
+                <Text style={styles.fieldValue}>{userNameEnglish}</Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <View>
+                  <Text style={styles.fieldLabel}>जन्म तिथि / DATE OF BIRTH</Text>
+                  <Text style={styles.fieldValue}>{dobFormatted}</Text>
+                </View>
+                <View style={{ marginRight: 16 }}>
+                  <Text style={styles.fieldLabel}>लिंग / SEX</Text>
+                  <Text style={styles.fieldValue}>{sexLabel}</Text>
+                </View>
+              </View>
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>राष्ट्रीयता / NATIONALITY</Text>
+                <Text style={styles.fieldValue}>{nationalityText}</Text>
+              </View>
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>जन्म स्थान / PLACE OF BIRTH</Text>
+                <Text style={styles.fieldValueHindi}>{placeOfBirthHindi}</Text>
+                <Text style={styles.fieldValue}>{placeOfBirthEnglish}</Text>
+              </View>
+>>>>>>> cace84c09feea4de3c0bca98f3602af4bc9b0986
             </View>
 
             {/* Right Photo Column */}
             <View style={styles.rightColumn}>
+<<<<<<< HEAD
+=======
+              <Text style={styles.fieldLabel}>PASSPORT NO.</Text>
+              <Text style={[styles.fieldValue, { fontSize: 12, marginBottom: 8 }]}>{passportNo}</Text>
+
+>>>>>>> cace84c09feea4de3c0bca98f3602af4bc9b0986
               <View style={styles.photoContainer}>
                 <Image source={{ uri: userPhoto }} style={styles.photo} contentFit="cover" />
               </View>
 
               <View style={styles.signatureContainer}>
                 <View style={styles.signatureWrapper}>
+<<<<<<< HEAD
                   <Text style={styles.signatureText} numberOfLines={1}>
                     {firstName || 'SMINIL'}
+=======
+                  <Text style={styles.signatureText}>
+                    {signatureName}
+>>>>>>> cace84c09feea4de3c0bca98f3602af4bc9b0986
                   </Text>
                 </View>
                 <View style={styles.signatureLine} />
@@ -180,6 +336,47 @@ function PassportInnerScreen({
               </View>
             </View>
           </View>
+<<<<<<< HEAD
+=======
+
+          {/* Address Section */}
+          <View style={styles.addressSection}>
+            <Text style={styles.fieldLabel}>पता / Address</Text>
+            
+            <View style={styles.addressGrid}>
+              <View style={styles.addressCol}>
+                <Text style={styles.addressTextHindi}>
+                  {addressLine1Hindi}
+                </Text>
+              </View>
+              <View style={styles.addressCol}>
+                <Text style={styles.addressTextHindi}>
+                  {addressLine2Hindi}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.addressGrid, { marginTop: 4 }]}>
+              <View style={styles.addressCol}>
+                <Text style={styles.addressText}>
+                  {addressLine1English}
+                </Text>
+              </View>
+              <View style={styles.addressCol}>
+                <Text style={styles.addressText}>
+                  {addressLine2English}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Machine Readable Zone */}
+          <View style={styles.mrzSection}>
+            <Text style={styles.mrzText} numberOfLines={1} adjustsFontSizeToFit>
+              {mrzText}
+            </Text>
+          </View>
+>>>>>>> cace84c09feea4de3c0bca98f3602af4bc9b0986
         </View>
 
         {/* Bottom Card: Spiritual Record */}

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
 import { useAuthStore } from '../../src/store/authStore';
+import { getUserProfile } from '../../src/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
@@ -26,6 +27,32 @@ export default function PassportCoverScreen() {
   useEffect(() => {
     if (isFocused) {
       setIsOpening(false);
+<<<<<<< HEAD
+=======
+
+      // Fetch latest profile from backend
+      const fetchLatest = async () => {
+        try {
+          const res = await getUserProfile();
+          if (res.data) {
+            useAuthStore.getState().updateUser(res.data);
+          }
+        } catch (e) {
+          console.warn('[PassportCover] Profile fetch failed:', e);
+        }
+      };
+      fetchLatest();
+      
+      // Start subtle floating animation while idle
+      floatingY.value = withRepeat(
+        withSequence(
+          withTiming(-8, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) })
+        ),
+        -1,
+        true
+      );
+>>>>>>> cace84c09feea4de3c0bca98f3602af4bc9b0986
     }
   }, [isFocused]);
 

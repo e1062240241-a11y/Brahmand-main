@@ -119,7 +119,7 @@ export default function PhoneScreen() {
       <MandalaPattern />
       
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         {Platform.OS === 'web' ? <div id="recaptcha-container-fixed"></div> : null}

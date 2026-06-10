@@ -823,7 +823,7 @@ default_allowed_origins = [
     "https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app",
 ]
 allowed_origins = []
-allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)(:\d+)?$"
+allow_origin_regex = r"^https?://.*$"
 if cors_origins == '*':
     # When using wildcard, we must be careful with allow_credentials=True.
     # We use a broad regex instead of "*" in allow_origins.
@@ -833,7 +833,7 @@ elif cors_origins:
     configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
     allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
     # Still keep the regex for localhost/loca.lt/run.app support
-    allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)(:\d+)?$"
+    allow_origin_regex = r"^https?://.*$"
 else:
     allowed_origins = default_allowed_origins.copy()
 
@@ -1274,15 +1274,12 @@ async def reset_database(confirm: str = ""):
         chats = await db.query_documents('chats', [])
         for chat in chats:
             # Delete messages subcollection
-            messages = await db.get_chat_messages(chat['id'], 1000)
-            for msg in messages:
-                try:
-                    def _delete_msg():
-                        db.client.collection('chats').document(chat['id']).collection('messages').document(msg['id']).delete()
-                    await db._run_sync(_delete_msg)
-                    deleted["messages"] += 1
-                except:
-                    pass
+            try:
+                deleted_messages = await db.delete_subcollection('chats', chat['id'], 'messages')
+                deleted["messages"] += deleted_messages
+            except Exception as e:
+                logger.error(f"Failed to delete messages for chat {chat['id']}: {e}")
+
             await db.delete_document('chats', chat['id'])
             deleted["chats"] += 1
         
@@ -8152,17 +8149,20 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         config = types.GenerateContentConfig(
             temperature=0.7,
             max_output_tokens=2048,
+            thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
-        response = client.models.generate_content(
-            model="gemma-4-26b-a4b-it",
-            contents=contents,
-            config=config,
-        )
         try:
+            response = client.models.generate_content(
+                model="gemma-4-31b-it",
+                contents=contents,
+                config=config,
+            )
             return response.text or ""
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.error(f"Gemini API Error: {e}")
             return "Priya mitra, mai kewal aadhyaatmik aur jeevan ke maargdarshan ke liye hoon. Kripya shishtta banaye rakhein. Radhe Radhe! 🙏"
 
     try:
@@ -11398,7 +11398,7 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         import google.genai as genai
 
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-        model = "gemma-4-26b-a4b-it"
+        model = "gemma-4-31b-it"
         prompt = (
             f"Generate a highly detailed, comprehensive, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. "
             f"Return ONLY a valid JSON object in this exact schema structure, with no markdown formatting. Do not copy placeholder descriptions; generate real predictions:\n"

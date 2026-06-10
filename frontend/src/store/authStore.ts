@@ -64,6 +64,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     await secureStorage.removeItem('auth_token');
     await secureStorage.removeItem('user');
+
+    // Clear passport database tables on logout to prevent cross-user leakage!
+    try {
+      const { database } = require('../database');
+      await database.write(async () => {
+        const journeys = await database.get('passport_journeys').query().fetch();
+        const badges = await database.get('passport_badges').query().fetch();
+        const certs = await database.get('passport_certificates').query().fetch();
+        
+        for (const j of journeys) {
+          await j.destroyPermanently();
+        }
+        for (const b of badges) {
+          await b.destroyPermanently();
+        }
+        for (const c of certs) {
+          await c.destroyPermanently();
+        }
+      });
+    } catch (dbErr) {
+      console.warn('[Auth] Failed to clear local passport database on logout:', dbErr);
+    }
+
     set({ user: null, token: null, isAuthenticated: false, fcmToken: null });
   },
 

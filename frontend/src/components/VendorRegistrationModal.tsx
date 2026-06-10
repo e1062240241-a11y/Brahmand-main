@@ -12,8 +12,8 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import * as Location from 'expo-location';
@@ -482,7 +482,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.overlay}
       >
         <View style={styles.container}>
@@ -840,8 +840,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       </KeyboardAvoidingView>
 
       {/* Map Picker Modal */}
-      <Modal visible={mapPickerVisible} animationType="slide" onRequestClose={() => setMapPickerVisible(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }}>
+      <Modal visible={mapPickerVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMapPickerVisible(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }} edges={["top", "bottom"]}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <TouchableOpacity onPress={() => setMapPickerVisible(false)} style={{ marginRight: SPACING.md }}>
