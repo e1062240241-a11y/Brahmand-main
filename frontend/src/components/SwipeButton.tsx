@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { View, Text, StyleSheet, Animated, PanResponder, Dimensions } from 'react-native';
+import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -76,6 +77,16 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
 
   return (
     <View style={styles.container}>
+      <Svg height="100%" width="100%" style={{ position: 'absolute', borderRadius: 28, overflow: 'hidden' }}>
+        <Defs>
+          <RadialGradient id="grad" cx="50%" cy="50%" rx="66.59%" ry="50%" fx="50%" fy="50%">
+            <Stop offset="0%" stopColor="#FFF" stopOpacity="1" />
+            <Stop offset="40.87%" stopColor="#FFDED1" stopOpacity="1" />
+            <Stop offset="100%" stopColor="#FFC085" stopOpacity="1" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
+      </Svg>
       <Animated.Text style={[styles.text, { opacity: textOpacity }]}>
         {title}
       </Animated.Text>
@@ -93,7 +104,6 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     height: 56,
-    backgroundColor: '#E8630A',
     borderRadius: 28,
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -102,7 +112,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     textAlign: 'center',
-    color: '#FFF',
+    color: '#D35400',
     fontSize: 18,
     fontWeight: 'bold',
   },
