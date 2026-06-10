@@ -5962,6 +5962,48 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
     return result
 
 
+@api_router.get("/dm/{chat_id}/metadata")
+async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Get metadata for a single private chat conversation (strongly consistent by ID)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    members = chat.get('members', [])
+    other_id = [m for m in members if m != user_id]
+    other_id = other_id[0] if other_id else None
+
+    other_user = {}
+    if other_id:
+        other_user_doc = await db.get_document('users', other_id)
+        if other_user_doc:
+            other_user = {
+                "id": other_id,
+                "name": other_user_doc.get('name', 'Unknown'),
+                "sl_id": other_user_doc.get('sl_id', ''),
+                "photo": other_user_doc.get('photo'),
+                "is_verified": other_user_doc.get('is_verified', False),
+                "verification_level": other_user_doc.get('verification_level', 'state')
+            }
+
+    return {
+        "conversation_id": chat_id,
+        "chat_id": chat_id,
+        "user": other_user,
+        "last_message": chat.get('last_message', ''),
+        "last_message_at": chat.get('updated_at', chat.get('created_at')),
+        "created_at": chat.get('created_at'),
+        "request_status": chat.get('request_status', 'approved'),
+        "request_by": chat.get('request_by'),
+        "request_retry_after": chat.get('request_retry_after'),
+    }
+
+
 @api_router.get("/dm/{chat_id}")
 async def get_dm_messages(chat_id: str, limit: int = 50, token_data: dict = Depends(verify_token)):
     """Get messages from a private chat"""
@@ -7783,7 +7825,18 @@ async def cancel_event_attendance(event_id: str, token_data: dict = Depends(veri
 @api_router.get("/notifications")
 async def get_notifications(token_data: dict = Depends(verify_token)):
     from services.firebase_notification_service import FirebaseNotificationService
-    return await FirebaseNotificationService.get_user_notifications(token_data["user_id"], limit=50)
+    try:
+        return await FirebaseNotificationService.get_user_notifications(token_data["user_id"], limit=50)
+    except Exception as e:
+        logger.warning(f"Failed to query notifications via service: {e}. Falling back to unsorted local query.")
+        db = await get_db()
+        notifications = await db.query_documents(
+            'notifications', 
+            filters=[('user_id', '==', token_data["user_id"])], 
+            limit=50
+        )
+        notifications.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        return notifications
 
 
 @api_router.get("/notifications/unread-count")

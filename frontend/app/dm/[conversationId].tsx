@@ -28,6 +28,7 @@ import type * as ContactsType from 'expo-contacts';
 import {
   sendDirectMessage,
   getConversations,
+  getDMConversationMetadata,
   getDirectMessages,
   clearDirectMessages,
   markDirectMessagesRead,
@@ -521,14 +522,15 @@ const DirectMessageScreen = () => {
   // Fetch conversation details
   const fetchConversation = useCallback(async () => {
     try {
-      const convResponse = await getConversations();
-      const conversations = Array.isArray(convResponse?.data) ? convResponse.data : [];
-      const conv = conversations.find((c: Conversation) => 
-        c.conversation_id === conversationId || c.chat_id === conversationId
-      );
-      if (conv) {
-        setConversation(conv);
-      } else if (conversationId === 'new') {
+      if (conversationId && conversationId !== 'new') {
+        const metadataResponse = await getDMConversationMetadata(conversationId);
+        if (metadataResponse?.data) {
+          setConversation(metadataResponse.data);
+          return;
+        }
+      }
+      
+      if (conversationId === 'new') {
         setConversation({
           conversation_id: 'new',
           chat_id: 'new',
@@ -541,7 +543,19 @@ const DirectMessageScreen = () => {
         } as unknown as Conversation);
       }
     } catch (error) {
-      console.error('Error fetching conversation:', error);
+      console.warn('Error fetching conversation details by ID, falling back to conversations list:', error);
+      try {
+        const convResponse = await getConversations();
+        const conversations = Array.isArray(convResponse?.data) ? convResponse.data : [];
+        const conv = conversations.find((c: Conversation) => 
+          c.conversation_id === conversationId || c.chat_id === conversationId
+        );
+        if (conv) {
+          setConversation(conv);
+        }
+      } catch (fbError) {
+        console.error('Fallback error fetching conversation:', fbError);
+      }
     }
   }, [conversationId, userId, userName, userSL]);
 
@@ -684,10 +698,26 @@ const DirectMessageScreen = () => {
       };
     }
 
+    const handleRequestUpdated = (data: any) => {
+      if (data && (data.chat_id === conversationId || data.conversation_id === conversationId)) {
+        console.log('[Chat] dm_request_updated event received:', data);
+        setConversation((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            request_status: data.request_status,
+            request_by: data.request_by,
+            request_retry_after: data.request_retry_after,
+          };
+        });
+      }
+    };
+
     (async () => {
       try {
         await socketService.connect();
         socketService.joinRoom(conversationId!);
+        socketService.onEvent('dm_request_updated', handleRequestUpdated);
         socketService.onMessage(socketListenerId, async (message: any) => {
           if (message && (message.chat_id === conversationId || message.conversation_id === conversationId)) {
             setMessages((prev) => {
@@ -732,6 +762,7 @@ const DirectMessageScreen = () => {
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {
+      socketService.offEvent('dm_request_updated', handleRequestUpdated);
       socketService.offMessage(socketListenerId);
       socketService.leaveRoom(conversationId!);
       if (pollingInterval) clearInterval(pollingInterval);
