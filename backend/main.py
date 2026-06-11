@@ -7835,7 +7835,7 @@ async def get_notifications(token_data: dict = Depends(verify_token)):
             filters=[('user_id', '==', token_data["user_id"])], 
             limit=50
         )
-        notifications.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        notifications.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
         return notifications
 
 
