@@ -2988,10 +2988,10 @@ export default function HomeScreen() {
             }}
           >
             <KeyboardAvoidingView
-              style={styles.commentOverlay}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-            >
+                style={styles.commentOverlay}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+              >
               <TouchableOpacity
                 style={styles.modalBackgroundDismiss}
                 activeOpacity={1}
