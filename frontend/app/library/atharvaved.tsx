@@ -306,22 +306,13 @@ export default function AtharvavedPage() {
               </View>
             </View>
 
-          <ScrollView
-            ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onContentSizeChange={(_, h) => setContentHeight(h)}
-            onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
-          >
-            <View style={styles.pageContent}>
-              {/* Chapter Navigator */}
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chapterNavContainer}
-              >
+              {/* Sticky Chapter Navigator */}
+              <View style={{ backgroundColor: nightMode ? '#1C1510' : '#FAF6ED', zIndex: 10 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chapterNavContainer}
+                >
                 {Array.from({ length: TOTAL_CHAPTERS }, (_, i) => i + 1).map((chNum) => (
                   <TouchableOpacity
                     key={chNum}
@@ -340,9 +331,20 @@ export default function AtharvavedPage() {
                       काण्ड {convertToHindiNumerals(chNum)}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                                  ))}
+                </ScrollView>
+              </View>
 
+          <ScrollView
+            ref={scrollViewRef}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onContentSizeChange={(_, h) => setContentHeight(h)}
+            onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
+          >
+            <View style={styles.pageContent}>
               {/* Subtitle */}
               <View style={styles.chapterSubHeader}>
                 <Text style={[styles.subHeaderText, nightMode && styles.textNight]}>

@@ -124,7 +124,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
         <View style={styles.container}>

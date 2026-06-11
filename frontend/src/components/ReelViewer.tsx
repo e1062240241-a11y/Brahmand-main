@@ -25,7 +25,7 @@ import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
 import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import { formatTimeAgo } from '../utils/dateUtils';
+import { formatTimeAgo, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { useRouter } from 'expo-router';
 import SharePostModal from './SharePostModal';
@@ -77,7 +77,7 @@ const ReelVideoItem = React.memo(({
   onOpenOptions,
   shouldLoad,
 }: any) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [showPlayPause, setShowPlayPause] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -94,7 +94,7 @@ const ReelVideoItem = React.memo(({
   const captionText = String(localPost?.caption || '');
   const captionWords = captionText.trim().split(/\s+/).filter(Boolean);
   const isLongCaption = captionWords.length > 4 || captionText.length > 45;
-  const reelPostTimeText = formatTimeAgo(localPost?.created_at || localPost?.createdAt || localPost?.createdAtUtc || null);
+  const reelPostTimeText = formatReelDate(localPost?.created_at || localPost?.createdAt || localPost?.createdAtUtc || null, language);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -1469,7 +1469,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             }}
           >
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               style={{
                 backgroundColor: '#FFF',
                 borderTopLeftRadius: 24,

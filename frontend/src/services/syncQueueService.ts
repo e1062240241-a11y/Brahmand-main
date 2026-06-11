@@ -78,7 +78,6 @@ export async function queueRequest(url: string, method: string, data: any) {
         record.url = url;
         record.method = method.toUpperCase();
         record.payload = serializePayload(data);
-        record.createdAt = new Date();
       });
     });
     console.log(`[SyncQueue] Queued offline request: ${method} ${url}`);

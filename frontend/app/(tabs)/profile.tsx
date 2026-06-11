@@ -1459,7 +1459,7 @@ export default function ProfileScreen() {
             }}
           >
             <KeyboardAvoidingView 
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               style={styles.sheetOverlay}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
