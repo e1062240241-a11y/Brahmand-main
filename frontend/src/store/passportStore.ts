@@ -18,12 +18,21 @@ interface PassportState {
   certificates: PassportCertificate[];
   total_jaap: number;
   books_completed: number;
+  daily_hanuman_count?: Record<string, number>;
+  daily_other_jaap_count?: Record<string, number>;
   loadPassport: () => Promise<void>;
   addJourney: (journey: Omit<PassportJourney, 'id' | 'generated_story'>) => Promise<string>;
   awardBadge: (title: string, description: string) => Promise<void>;
-  addJaap: (count: number) => Promise<void>;
+  addJaap: (count: number, mantraType?: string) => Promise<void>;
   completeBook: (book_name: string, completion_days: number, date: string) => Promise<void>;
 }
+
+const getLocalDateString = () => {
+  const d = new Date();
+  const offset = d.getTimezoneOffset();
+  const localDate = new Date(d.getTime() - offset * 60 * 1000);
+  return localDate.toISOString().split('T')[0];
+};
 
 const generateJourneyStory = (journey: Omit<PassportJourney, 'id' | 'generated_story'>) => {
   const answers = Array.isArray(journey.answers) ? journey.answers : [];
@@ -58,7 +67,7 @@ export const usePassportStore = create<PassportState>((set, get) => ({
       const storageKey = userId ? `brahmand_passport_data_${userId}` : PASSPORT_STORAGE_KEY;
       const raw = await secureStorage.getItem(storageKey);
       if (!raw) {
-        set({ journeys: [], badges: [], certificates: [], total_jaap: 0, books_completed: 0 });
+        set({ journeys: [], badges: [], certificates: [], total_jaap: 0, books_completed: 0, daily_hanuman_count: {}, daily_other_jaap_count: {} });
         return;
       }
       const parsed = JSON.parse(raw) as Omit<PassportState, 'loadPassport' | 'addJourney' | 'awardBadge' | 'addJaap' | 'completeBook'>;
@@ -91,6 +100,8 @@ export const usePassportStore = create<PassportState>((set, get) => ({
         certificates: nextState.certificates,
         total_jaap: nextState.total_jaap,
         books_completed: nextState.books_completed,
+        daily_hanuman_count: nextState.daily_hanuman_count,
+        daily_other_jaap_count: nextState.daily_other_jaap_count,
       });
       return nextState;
     });
@@ -153,6 +164,8 @@ export const usePassportStore = create<PassportState>((set, get) => ({
         certificates: nextState.certificates,
         total_jaap: nextState.total_jaap,
         books_completed: nextState.books_completed,
+        daily_hanuman_count: nextState.daily_hanuman_count,
+        daily_other_jaap_count: nextState.daily_other_jaap_count,
       });
       return nextState;
     });
@@ -181,21 +194,52 @@ export const usePassportStore = create<PassportState>((set, get) => ({
     }
   },
 
-  addJaap: async (count) => {
+  addJaap: async (count, mantraType) => {
+    const today = getLocalDateString();
     set((state) => {
+      const isHanuman = mantraType === 'hanuman';
+      const nextDailyHanuman = { ...(state.daily_hanuman_count || {}) };
+      const nextDailyOther = { ...(state.daily_other_jaap_count || {}) };
+
+      if (isHanuman) {
+        nextDailyHanuman[today] = (nextDailyHanuman[today] || 0) + count;
+      } else {
+        nextDailyOther[today] = (nextDailyOther[today] || 0) + count;
+      }
+
       const nextState = {
         ...state,
         total_jaap: state.total_jaap + count,
+        daily_hanuman_count: nextDailyHanuman,
+        daily_other_jaap_count: nextDailyOther,
       };
+
       persistPassportState({
         journeys: nextState.journeys,
         badges: nextState.badges,
         certificates: nextState.certificates,
         total_jaap: nextState.total_jaap,
         books_completed: nextState.books_completed,
+        daily_hanuman_count: nextState.daily_hanuman_count,
+        daily_other_jaap_count: nextState.daily_other_jaap_count,
       });
       return nextState;
     });
+
+    // Check if daily target met
+    const current = get();
+    const hanumanCount = current.daily_hanuman_count?.[today] || 0;
+    const otherCount = current.daily_other_jaap_count?.[today] || 0;
+
+    // Target: 1 Hanuman Chalisa (>=1) AND 5 Malas of other jaaps (>= 5 * 108 = 540)
+    if (hanumanCount >= 1 && otherCount >= 540) {
+      const badgeTitle = `Daily Jaap Sadhak - ${today}`;
+      const badgeDescription = `Completed 1 Hanuman Chalisa and 5 Malas of other Jaap on ${today}.`;
+      const alreadyAwarded = current.badges.some((b) => b.title === badgeTitle);
+      if (!alreadyAwarded) {
+        await current.awardBadge(badgeTitle, badgeDescription);
+      }
+    }
   },
 
   completeBook: async (book_name, completion_days, date) => {
@@ -220,6 +264,8 @@ export const usePassportStore = create<PassportState>((set, get) => ({
         certificates: nextState.certificates,
         total_jaap: nextState.total_jaap,
         books_completed: nextState.books_completed,
+        daily_hanuman_count: nextState.daily_hanuman_count,
+        daily_other_jaap_count: nextState.daily_other_jaap_count,
       });
       return nextState;
     });

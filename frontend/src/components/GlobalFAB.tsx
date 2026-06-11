@@ -73,8 +73,12 @@ export function GlobalFAB() {
       const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== res.data?.id);
       setNearbySOSAlerts(otherSOS);
 
-    } catch (e) {
-      console.error('Failed to check SOS status:', e);
+    } catch (e: any) {
+      if (e?.message === 'Network Error') {
+        console.warn('Failed to check SOS status: Backend server is offline or unreachable');
+      } else {
+        console.warn('Failed to check SOS status:', e?.message || e);
+      }
     }
   }, []);
 
@@ -755,7 +759,7 @@ const fabStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
-    elevation: 100, // Make elevation very high for persistent visibility
+    elevation: 8, // Reduced to prevent harsh black box shadow on Android
     zIndex: 99999, // Super high zIndex
     borderWidth: 3,
     borderColor: '#FFD5B8',
