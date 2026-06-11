@@ -12,45 +12,44 @@ import {
   TextStyle 
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Map of category names to their respective local assets
-const CATEGORY_IMAGES: Record<string, any> = {
-  gym: require('../../assets/images/tab bar/rashi/vendor/gym.png'),
-  travel: require('../../assets/images/tab bar/rashi/vendor/travel.png'),
-  halvai: require('../../assets/images/tab bar/rashi/vendor/halvai.png'),
-  beauty: require('../../assets/images/tab bar/rashi/vendor/Beauty.png'),
-  decorator: require('../../assets/images/tab bar/rashi/vendor/Decorator.png'),
-  astrologer: require('../../assets/images/tab bar/rashi/vendor/Astrologer.jpg'),
-  electrician: require('../../assets/images/tab bar/rashi/vendor/Electrician.jpg'),
-  panditji: require('../../assets/images/tab bar/rashi/vendor/panditji.jpg'),
-  carpenter: require('../../assets/images/tab bar/rashi/vendor/carpener.png'),
-  plumber: require('../../assets/images/tab bar/rashi/vendor/plumber.png'),
-  'general store': require('../../assets/images/tab bar/rashi/vendor/generalstore.jpg'),
-  dairy: require('../../assets/images/tab bar/rashi/vendor/dairy.jpg'),
-  salon: require('../../assets/images/tab bar/rashi/vendor/salon.png'),
-  cow: require('../../assets/images/tab bar/rashi/vendor/cow.png'),
-  general_store_icon: require('../../assets/images/tab bar/rashi/vendor/general_store.png'),
-  lightning: require('../../assets/images/tab bar/rashi/vendor/lightning.png'),
-  panditji_icon: require('../../assets/images/tab bar/rashi/vendor/panditji_icon.png'),
-  plumber_icon: require('../../assets/images/tab bar/rashi/vendor/plumber_icon.png'),
-  salon_icon: require('../../assets/images/tab bar/rashi/vendor/salon_icon.png'),
-  siren: require('../../assets/images/tab bar/rashi/vendor/siren.png'),
-  hammer: require('../../assets/images/tab bar/rashi/vendor/hammer_custom.png'),
+const CATEGORY_VECTOR_ICONS: Record<string, keyof typeof MaterialCommunityIcons.glyphMap> = {
+  gym: 'dumbbell',
+  travel: 'airplane',
+  halvai: 'food-variant',
+  beauty: 'flower-poppy',
+  decorator: 'palette',
+  astrologer: 'orbit',
+  electrician: 'flash',
+  panditji: 'bell-ring',
+  carpenter: 'hammer',
+  plumber: 'wrench',
+  'general store': 'store',
+  dairy: 'cow',
+  salon: 'content-cut',
+  cow: 'cow',
+  general_store_icon: 'store',
+  lightning: 'flash',
+  panditji_icon: 'bell-ring',
+  plumber_icon: 'wrench',
+  salon_icon: 'content-cut',
+  siren: 'alert-circle',
+  hammer: 'hammer',
 };
 
-const getCategoryIconSource = (category: string) => {
+const getCategoryVectorIcon = (category: string): keyof typeof MaterialCommunityIcons.glyphMap => {
   const normalized = category.toLowerCase().trim();
-  if (CATEGORY_IMAGES[normalized]) {
-    return CATEGORY_IMAGES[normalized];
+  if (CATEGORY_VECTOR_ICONS[normalized]) {
+    return CATEGORY_VECTOR_ICONS[normalized];
   }
-  // Substring match
-  for (const key of Object.keys(CATEGORY_IMAGES)) {
+  for (const key of Object.keys(CATEGORY_VECTOR_ICONS)) {
     if (normalized.includes(key) || key.includes(normalized)) {
-      return CATEGORY_IMAGES[key];
+      return CATEGORY_VECTOR_ICONS[key];
     }
   }
-  // Default fallback image
-  return require('../../assets/images/tab bar/rashi/vendor/Decorator.png');
+  return 'store'; // fallback
 };
 
 export interface VendorCategoriesProps {
@@ -99,13 +98,10 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
         ]}
         onPress={() => handlePress(category)}
       >
-        <Image
-          source={getCategoryIconSource(category)}
-          style={[
-            { width: imageSize, height: imageSize, tintColor: isActive ? '#FF8D57' : tintColor },
-            styles.image
-          ]}
-          resizeMode="contain"
+        <MaterialCommunityIcons
+          name={getCategoryVectorIcon(category)}
+          size={imageSize}
+          color={isActive ? '#FF8D57' : tintColor}
         />
         <Text 
           style={[

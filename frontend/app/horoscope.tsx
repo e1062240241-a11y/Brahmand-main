@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
@@ -30,25 +30,25 @@ import { useAuthStore } from '../src/store/authStore';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const ZODIAC_SIGNS = [
-  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: '♈', dates: '21 March - 19 April', color: '#FF6B00', image: require('../assets/images/tab bar/rashi/Aries.png') },
-  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: '♉', dates: '20 April - 20 May', color: '#8E44AD', image: require('../assets/images/tab bar/rashi/Taurus.png') },
-  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', icon: '♊', dates: '21 May - 20 June', color: '#2ECC71', image: require('../assets/images/tab bar/rashi/gemini.png') },
-  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: '♋', dates: '21 June - 22 July', color: '#3498DB', image: require('../assets/images/tab bar/rashi/cancer.png') },
-  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: '♌', dates: '23 July - 22 August', color: '#F1C40F', image: require('../assets/images/tab bar/rashi/Leo.png') },
-  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: '♍', dates: '23 August - 22 September', color: '#16A085', image: require('../assets/images/tab bar/rashi/Virgo.png') },
-  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: '♎', dates: '23 September - 22 October', color: '#E67E22', image: require('../assets/images/tab bar/rashi/Libra.png') },
-  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: '♏', dates: '23 October - 21 November', color: '#C0392B', image: require('../assets/images/tab bar/rashi/Scorpio.png') },
-  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: '♐', dates: '22 November - 21 December', color: '#2980B9', image: require('../assets/images/tab bar/rashi/sagittarius.png') },
-  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: '♑', dates: '22 December - 19 January', color: '#273C75', image: require('../assets/images/tab bar/rashi/Capricorn.png') },
-  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: '♒', dates: '20 January - 18 February', color: '#192A56', image: require('../assets/images/tab bar/rashi/Aquarius.png') },
-  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: '♓', dates: '19 February - 20 March', color: '#44BD32', image: require('../assets/images/tab bar/rashi/Pisces.png') },
+  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: '♈', dates: '21 March - 19 April', color: '#FF6B00' },
+  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: '♉', dates: '20 April - 20 May', color: '#8E44AD' },
+  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', icon: '♊', dates: '21 May - 20 June', color: '#2ECC71' },
+  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: '♋', dates: '21 June - 22 July', color: '#3498DB' },
+  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: '♌', dates: '23 July - 22 August', color: '#F1C40F' },
+  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: '♍', dates: '23 August - 22 September', color: '#16A085' },
+  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: '♎', dates: '23 September - 22 October', color: '#E67E22' },
+  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: '♏', dates: '23 October - 21 November', color: '#C0392B' },
+  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: '♐', dates: '22 November - 21 December', color: '#2980B9' },
+  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: '♑', dates: '22 December - 19 January', color: '#273C75' },
+  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: '♒', dates: '20 January - 18 February', color: '#192A56' },
+  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: '♓', dates: '19 February - 20 March', color: '#44BD32' },
 ];
 
 const PREDICTION_SECTIONS = [
-  { label: 'LOVE', keys: ['love', 'fiance', 'personal_life', 'personal'], icon: require('../assets/images/jyotish/love.png'), fallback: 'Focus on harmony and understanding in your personal relationships today.' },
-  { label: 'FINANCE', keys: ['finance', 'profession', 'career'], icon: require('../assets/images/jyotish/finance.png'), fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
-  { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/jyotish/health.png'), fallback: 'Take time to rest and recharge. Balance your physical and mental well-being.' },
-  { label: 'OVERALL', keys: ['overall', 'emotion', 'emotions', 'luck'], icon: require('../assets/images/jyotish/overall.png'), fallback: 'A generally positive day ahead. Trust your intuition.' },
+  { label: 'LOVE', keys: ['love', 'fiance', 'personal_life', 'personal'], iconType: 'Ionicons', iconName: 'heart-outline', color: '#EF4899', fallback: 'Focus on harmony and understanding in your personal relationships today.' },
+  { label: 'FINANCE', keys: ['finance', 'profession', 'career'], iconType: 'Ionicons', iconName: 'briefcase-outline', color: '#F59E0B', fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
+  { label: 'HEALTH', keys: ['health'], iconType: 'Ionicons', iconName: 'fitness-outline', color: '#10B981', fallback: 'Take time to rest and recharge. Balance your physical and mental well-being.' },
+  { label: 'OVERALL', keys: ['overall', 'emotion', 'emotions', 'luck'], iconType: 'Ionicons', iconName: 'sparkles-outline', color: '#3B82F6', fallback: 'A generally positive day ahead. Trust your intuition.' },
 ];
 
 const getLuckyColorConfig = (colorName: string) => {
@@ -224,7 +224,9 @@ export default function HoroscopeScreen() {
                     onPress={() => selectZodiac(zodiac)}
                     activeOpacity={0.75}
                   >
-                    <ExpoImage source={zodiac.image} style={{ width: 100, height: 100, marginBottom: 10 }} contentFit="contain" />
+                    <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: zodiac.color + '15', justifyContent: 'center', alignItems: 'center', marginBottom: 10, borderWidth: 1.5, borderColor: zodiac.color }}>
+                      <Text style={{ fontSize: 44, color: zodiac.color }}>{zodiac.icon}</Text>
+                    </View>
                     <Text style={styles.gridName}>{zodiac.name}</Text>
                   </TouchableOpacity>
                 );
@@ -264,8 +266,8 @@ export default function HoroscopeScreen() {
                 Today {formatDateIST(new Date())}
               </Text>
             </View>
-            <View style={styles.heroImageWrapper}>
-              <ExpoImage source={selectedZodiac.image} style={styles.zodiacImage} contentFit="contain" />
+            <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: selectedZodiac.color + '15', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: selectedZodiac.color }}>
+              <Text style={{ fontSize: 56, color: selectedZodiac.color }}>{selectedZodiac.icon}</Text>
             </View>
           </View>
 
@@ -390,14 +392,11 @@ export default function HoroscopeScreen() {
                             borderWidth: 1,
                           }
                         ]}>
-                          <Image 
-                            source={section.icon} 
-                            style={[
-                              styles.cosmicTabIcon,
-                              { tintColor: '#FFFFFF' }
-                            ]} 
-                            resizeMode="contain" 
-                          />
+                          {section.iconType === 'Ionicons' ? (
+                            <Ionicons name={section.iconName as any} size={24} color="#FFFFFF" />
+                          ) : (
+                            <MaterialCommunityIcons name={section.iconName as any} size={24} color="#FFFFFF" />
+                          )}
                         </View>
                         <Text style={[
                           styles.cosmicTabLabel,
@@ -440,7 +439,11 @@ export default function HoroscopeScreen() {
               return (
                 <>
                   <View style={styles.modalIconContainer}>
-                    <Image source={section.icon} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
+                    {section.iconType === 'Ionicons' ? (
+                      <Ionicons name={section.iconName as any} size={28} color="#FFFFFF" />
+                    ) : (
+                      <MaterialCommunityIcons name={section.iconName as any} size={28} color="#FFFFFF" />
+                    )}
                   </View>
                   <Text style={styles.modalTitle}>{section.label}</Text>
                   <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
@@ -463,7 +466,9 @@ export default function HoroscopeScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {ZODIAC_SIGNS.map((z) => (
                 <TouchableOpacity key={z.id} style={styles.dropdownOption} onPress={() => selectZodiac(z)}>
-                  <ExpoImage source={z.image} style={{ width: 28, height: 28, marginRight: 12 }} contentFit="contain" />
+                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: z.color + '15', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: z.color }}>
+                    <Text style={{ fontSize: 16, color: z.color }}>{z.icon}</Text>
+                  </View>
                   <Text style={styles.dropdownOptionName}>{z.name}</Text>
                   <Text style={styles.dropdownOptionHindi}>{z.hindi}</Text>
                 </TouchableOpacity>

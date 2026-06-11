@@ -23,7 +23,7 @@ const rigvedaCover = require('../../assets/images/ancient_new_2.jpg');
 const ramayanCover = require('../../assets/images/ancient_new_4.jpg');
 const ramcharitmanasCover = require('../../assets/images/Ramcharitmanas.jpg');
 const yajurvedaCover = require('../../assets/images/Yajurveda.jpg');
-const parchmentBg = require('../../assets/images/clean_parchment_bg.png');
+
 
 // ── Color tokens ──────────────────────────────────────────────────────────
 const ORANGE = '#FF6B00';
@@ -140,7 +140,7 @@ export default function SacredScripturesPage() {
         {/* ── Featured Card (Bhagavad Geeta) ── */}
         <View style={styles.featuredWrapper}>
           <View style={styles.featuredCard}>
-            <Image source={parchmentBg} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#FAF3EB' }]} />
             {/* Full-width cover image */}
             <View style={styles.featuredCoverBox}>
               <Image source={geetaCover} style={styles.featuredCover} resizeMode="stretch" />
@@ -219,7 +219,7 @@ export default function SacredScripturesPage() {
               onPress={() => router.push(book.route as any)}
               activeOpacity={0.88}
             >
-              <Image source={parchmentBg} style={[StyleSheet.absoluteFillObject, { borderRadius: 12, opacity: 0.6 }]} resizeMode="cover" />
+              <View style={[StyleSheet.absoluteFillObject, { borderRadius: 12, backgroundColor: '#FAF3EB', opacity: 0.6 }]} />
               {/* Cover */}
               <Image source={book.cover} style={styles.listCover} resizeMode="stretch" />
 

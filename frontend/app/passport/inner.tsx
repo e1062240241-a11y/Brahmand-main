@@ -93,9 +93,12 @@ function PassportInnerScreen({
   // Date of birth
   const getDob = () => {
     if (!localUser?.date_of_birth) return 'N/A';
-    const dob = localUser.date_of_birth;
+    const dob = String(localUser.date_of_birth);
     if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-      const [y, m, d] = dob.split('-');
+      const parts = dob.split('-');
+      const y = parts[0] || '';
+      const m = parts[1] || '';
+      const d = parts[2] || '';
       return `${d}/${m}/${y}`;
     }
     return dob;
@@ -116,14 +119,14 @@ function PassportInnerScreen({
 
   // Place of birth
   const homeLoc = localUser?.home_location || localUser?.location;
-  const placeOfBirthEnglish = (
+  const placeOfBirthEnglish = String(
     localUser?.place_of_birth ||
     [homeLoc?.city, homeLoc?.state].filter(Boolean).join(', ') ||
     'MUMBAI, MAHARASHTRA'
   ).toUpperCase();
 
   // Signature
-  const signatureName = localUser?.name ? localUser.name.split(' ')[0] : 'Sanatani';
+  const signatureName = typeof localUser?.name === 'string' ? localUser.name.split(' ')[0] : 'Sanatani';
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>

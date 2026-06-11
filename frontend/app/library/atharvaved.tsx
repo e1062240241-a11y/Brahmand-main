@@ -34,10 +34,9 @@ import { getAtharvavedChapter } from '../../src/services/api';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Atharvaved image provided by the user
-const geeta3DImage = require('../../assets/images/tab bar/books/Atharveda.png');
+const geeta3DImage = require('../../assets/images/atharva_veda.jpg');
 // Custom bookmark icons
-const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
-const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');
+
 
 const BOOK_ID = 'atharvaved';
 const TOTAL_CHAPTERS = 20;
@@ -258,7 +257,7 @@ export default function AtharvavedPage() {
         </View>
       ) : (
         <Animated.View style={[StyleSheet.absoluteFillObject, readingScreenStyle]}>
-          <ImageBackground source={require('../../assets/images/clean_parchment_bg.png')} style={styles.root}>
+          <View style={[styles.root, { backgroundColor: nightMode ? '#1C1510' : '#FFF3EB' }]}>
             {/* Sticky Top Header Container */}
             <View style={[styles.stickyTopHeader, { 
               paddingTop: insets.top + 10,
@@ -293,14 +292,11 @@ export default function AtharvavedPage() {
                   style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
                   onPress={handleToggleBookmark}
                 >
-                  <Image 
-                    source={isBookmarked ? bookmarkIconFilledImage : bookmarkIconImage} 
-                    style={{
-                      width: 26, 
-                      height: 26, 
-                      tintColor: isBookmarked ? (nightMode ? '#FFD5B8' : '#8C3A00') : (nightMode ? '#887766' : '#A09B93'),
-                      opacity: isBookmarked ? 1 : 0.7
-                    }} 
+                  <Ionicons 
+                    name={isBookmarked ? "bookmark" : "bookmark-outline"} 
+                    size={24} 
+                    color={isBookmarked ? (nightMode ? '#FFD5B8' : '#8C3A00') : (nightMode ? '#887766' : '#A09B93')}
+                    style={{ opacity: isBookmarked ? 1 : 0.7 }}
                   />
                 </TouchableOpacity>
               </View>
@@ -451,7 +447,7 @@ export default function AtharvavedPage() {
               <View style={{ width: 36 }} />
             </View>
           </View>
-          </ImageBackground>
+          </View>
         </Animated.View>
       )}
 

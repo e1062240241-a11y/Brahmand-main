@@ -161,7 +161,7 @@ function PassportProgressScreen({
                 onPress={() => router.push(`/passport/certificate/${certificate.id}` as any)}
               >
                 <Text style={styles.certificateTitle}>{certificate.bookName || certificate.book_name}</Text>
-                <Text style={styles.certificateMeta}>{(certificate.completionDays || certificate.completion_days)} days • {new Date(certificate.date).toDateString()}</Text>
+                <Text style={styles.certificateMeta}>{(certificate.completionDays || certificate.completion_days)} days • {certificate.date && !isNaN(new Date(certificate.date).getTime()) ? new Date(certificate.date).toDateString() : String(certificate.date || '')}</Text>
               </TouchableOpacity>
             ))
           )}

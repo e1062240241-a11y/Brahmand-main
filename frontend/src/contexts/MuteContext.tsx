@@ -7,7 +7,7 @@ type MuteContextType = {
 };
 
 const MuteContext = createContext<MuteContextType>({
-  isGloballyMuted: false,
+  isGloballyMuted: true,
   toggleMute: () => {},
   setMuted: () => {},
 });
@@ -15,7 +15,7 @@ const MuteContext = createContext<MuteContextType>({
 export const useGlobalMute = () => useContext(MuteContext);
 
 export const MuteProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isGloballyMuted, setIsGloballyMuted] = useState(false);
+  const [isGloballyMuted, setIsGloballyMuted] = useState(true);
 
   const toggleMute = useCallback(() => {
     setIsGloballyMuted(prev => !prev);

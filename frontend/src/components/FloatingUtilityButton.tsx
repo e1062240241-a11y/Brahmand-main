@@ -887,12 +887,8 @@ export const FloatingUtilityButton = () => {
               </View>
             ) : (
               <View style={styles.fabDefaultContent}>
-                <View style={styles.fabAvatarRing}>
-                  <ExpoImage
-                    source={require('../../assets/images/tab bar/my_krishna.png')}
-                    style={styles.fabAvatar}
-                    contentFit="cover"
-                  />
+                <View style={[styles.fabAvatarRing, { backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Ionicons name="heart" size={24} color="#FF7B00" />
                 </View>
                 <View style={styles.fabSparkBadge}>
                   <Ionicons name="sparkles" size={11} color="#FFF8E1" />
@@ -956,8 +952,8 @@ export const FloatingUtilityButton = () => {
                   </View>
  
                   <View style={styles.centerGuruContainerSOS}>
-                    <View style={styles.guruImageWrapperSOS}>
-                      <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={styles.guruImage} contentFit="cover" />
+                    <View style={[styles.guruImageWrapperSOS, { backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }]}>
+                      <Ionicons name="heart" size={40} color="#FF3B30" />
                     </View>
                   </View>
  
@@ -991,20 +987,20 @@ export const FloatingUtilityButton = () => {
                   </TouchableOpacity>
  
                   {/* Red Themed Menu Items in Background */}
-                  <View style={[styles.menuItem, styles.posTopLeft, { opacity: 0.4 }]}>
-                    <Image source={require('../../assets/images/custom_library_icon.png')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
+                  <View style={[styles.menuItem, styles.posTopLeft, { opacity: 0.4, alignItems: 'center' }]}>
+                    <Ionicons name="library-outline" size={20} color="#FFF" />
                     <Text style={styles.itemTitleSOSSmall}>{t('brahmandLibrary').replace('\n', ' ')}</Text>
                   </View>
-                  <View style={[styles.menuItem, styles.posTopRight, { opacity: 0.4 }]}>
-                    <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
+                  <View style={[styles.menuItem, styles.posTopRight, { opacity: 0.4, alignItems: 'center' }]}>
+                    <Ionicons name="compass-outline" size={20} color="#FFF" />
                     <Text style={styles.itemTitleSOSSmall}>{t('brahmandPassport').replace('\n', ' ')}</Text>
                   </View>
-                  <View style={[styles.menuItem, styles.posBottomLeft, { opacity: 0.4 }]}>
-                    <Image source={require('../../assets/images/custom_festival_icon.png')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
+                  <View style={[styles.menuItem, styles.posBottomLeft, { opacity: 0.4, alignItems: 'center' }]}>
+                    <Ionicons name="star-outline" size={20} color="#FFF" />
                     <Text style={styles.itemTitleSOSSmall}>{t('horoscope')}</Text>
                   </View>
-                  <View style={[styles.menuItem, styles.posLeft, { opacity: 0.4 }]}>
-                    <Image source={require('../../assets/images/custom_panchang_icon.png')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
+                  <View style={[styles.menuItem, styles.posLeft, { opacity: 0.4, alignItems: 'center' }]}>
+                    <Ionicons name="today-outline" size={20} color="#FFF" />
                     <Text style={styles.itemTitleSOSSmall}>{t('panchang')}</Text>
                   </View>
  
@@ -1142,19 +1138,25 @@ export const FloatingUtilityButton = () => {
  
                   <View style={styles.wheelWrapper}>
                     <TouchableOpacity style={[styles.menuItem, styles.posTopLeft]} onPress={() => { setModalVisible(false); router.push('/library'); }}>
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_library_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={styles.iconBox}>
+                        <Ionicons name="library" size={24} color="#FF7B00" />
+                      </View>
                       <Text style={styles.itemTitle}>{t('brahmandLibrary')}</Text>
                       <Text style={styles.itemSub}>{t('knowledgeWisdom')}</Text>
                     </TouchableOpacity>
  
                     <TouchableOpacity style={[styles.menuItem, styles.posTopRight]} onPress={() => { setModalVisible(false); router.push('/passport'); }}>
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_passport_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={styles.iconBox}>
+                        <Ionicons name="compass" size={24} color="#FF7B00" />
+                      </View>
                       <Text style={styles.itemTitle}>{t('brahmandPassport')}</Text>
                       <Text style={styles.itemSub}>{t('spiritualJourney')}</Text>
                     </TouchableOpacity>
  
                     <TouchableOpacity style={[styles.menuItem, styles.posRight]} onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}>
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={styles.iconBox}>
+                        <Ionicons name="planet" size={24} color="#FF7B00" />
+                      </View>
                       <Text style={styles.itemTitle}>{t('kundli')}</Text>
                       <Text style={styles.itemSub}>{t('planetView')}</Text>
                     </TouchableOpacity>
@@ -1172,13 +1174,17 @@ export const FloatingUtilityButton = () => {
                     </TouchableOpacity>
  
                     <TouchableOpacity style={[styles.menuItem, styles.posBottomLeft]} onPress={() => { setModalVisible(false); router.push('/horoscope'); }}>
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={styles.iconBox}>
+                        <Ionicons name="star" size={24} color="#FF7B00" />
+                      </View>
                       <Text style={styles.itemTitle}>{t('horoscope')}</Text>
                       <Text style={styles.itemSub}>{t('dailyPredictions')}</Text>
                     </TouchableOpacity>
  
                     <TouchableOpacity style={[styles.menuItem, styles.posLeft]} onPress={openPanchangWithLocation}>
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_panchang_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={styles.iconBox}>
+                        <Ionicons name="today" size={24} color="#FF7B00" />
+                      </View>
                       <Text style={styles.itemTitle}>{t('panchang')}</Text>
                       <Text style={styles.itemSub}>{t('dailyHinduCalendar')}</Text>
                     </TouchableOpacity>
@@ -1189,8 +1195,8 @@ export const FloatingUtilityButton = () => {
                     activeOpacity={0.9}
                     onPress={() => { setModalVisible(false); router.push('/my-krishna'); }}
                   >
-                    <View style={styles.guruImageWrapper}>
-                      <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={styles.guruImage} contentFit="cover" />
+                    <View style={[styles.guruImageWrapper, { backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }]}>
+                      <Ionicons name="heart" size={32} color="#FF7B00" />
                     </View>
                     <View style={styles.guruTitleBox}>
                       <Ionicons name="leaf" size={16} color="#FFD54F" style={{ marginBottom: -2 }} />
