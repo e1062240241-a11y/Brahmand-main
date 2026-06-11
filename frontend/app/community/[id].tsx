@@ -3794,24 +3794,30 @@ export default function CommunityDetailScreen() {
                   {/* Add Photo option directly beneath the input box for better accessibility */}
                   {!selectedImage ? (
                     <TouchableOpacity
-                      onPress={handlePickImage}
+                      onPress={() => {
+                        if (!isLocalUserCommunity && !postCategory) {
+                          Alert.alert('', t('language') === 'hi' ? 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...' : 'Select a category above to start writing...');
+                          return;
+                        }
+                        handlePickImage();
+                      }}
                       activeOpacity={0.7}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
                         alignSelf: 'flex-start',
                         gap: 6,
-                        backgroundColor: 'rgba(255, 102, 0, 0.08)',
+                        backgroundColor: (!isLocalUserCommunity && !postCategory) ? '#F0F0F0' : 'rgba(255, 102, 0, 0.08)',
                         paddingHorizontal: 14,
                         paddingVertical: 8,
                         borderRadius: 20,
                         marginTop: 10,
                         borderWidth: 1,
-                        borderColor: 'rgba(255, 102, 0, 0.2)',
+                        borderColor: (!isLocalUserCommunity && !postCategory) ? '#E0E0E0' : 'rgba(255, 102, 0, 0.2)',
                       }}
                     >
-                      <Ionicons name="images-outline" size={18} color="#FF6600" />
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#FF6600', fontFamily: FONTS.bold }}>
+                      <Ionicons name="images-outline" size={18} color={(!isLocalUserCommunity && !postCategory) ? "#A0A0A0" : "#FF6600"} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: (!isLocalUserCommunity && !postCategory) ? "#A0A0A0" : "#FF6600", fontFamily: FONTS.bold }}>
                         Add Media
                       </Text>
                     </TouchableOpacity>
