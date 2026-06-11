@@ -276,7 +276,20 @@ export default function NewPassportJourneyScreen() {
         { question: 'I will remember this journey because...', answer: rememberBecause },
       ].filter(a => a.answer.trim() !== '');
       const allAnswers = [...answers, ...step4Answers];
-      const newJourneyId = await addJourney({ title: title.trim(), location: location.trim(), date, media, answers: allAnswers, visibility });
+
+      // Convert DD/MM/YYYY → ISO string for consistent storage & display
+      const dateISO = (() => {
+        if (!date) return new Date().toISOString();
+        const parts = date.split('/');
+        if (parts.length === 3) {
+          const [d, m, y] = parts.map(Number);
+          const parsed = new Date(y, m - 1, d);
+          if (!isNaN(parsed.getTime())) return parsed.toISOString();
+        }
+        return date; // fallback as-is
+      })();
+
+      const newJourneyId = await addJourney({ title: title.trim(), location: location.trim(), date: dateISO, media, answers: allAnswers, visibility });
       if (journeyCount === 0) {
         await awardBadge('First Journey', 'Created your first Brahmand Passport journey');
       }
@@ -285,6 +298,7 @@ export default function NewPassportJourneyScreen() {
         params: { justRecorded: 'true' }
       } as any);
     } catch (error) {
+      console.error('[NewJourney] Save failed:', error);
       Alert.alert('Save Failed', 'Unable to save the journey. Please try again.');
     } finally {
       setLoading(false);
@@ -294,7 +308,7 @@ export default function NewPassportJourneyScreen() {
   const handleImageUpload = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'] as any,
         allowsEditing: true,
         quality: 0.8,
       });

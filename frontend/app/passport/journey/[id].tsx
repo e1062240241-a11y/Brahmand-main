@@ -228,7 +228,7 @@ function PassportJourneyDetailScreen({ observedJourneys }: { observedJourneys: a
             <Text style={styles.contentTitle}>DARSHAN EXPERIENCE</Text>
             <Text style={styles.contentBody}>
               {displayStory}
-              {mainContentText.length > 150 && (
+              {(mainContentText?.length ?? 0) > 150 && (
                 <Text style={styles.moreLink} onPress={() => setShowFullStory(!showFullStory)}>
                   {showFullStory ? '  less.....' : '  more.....'}
                 </Text>
