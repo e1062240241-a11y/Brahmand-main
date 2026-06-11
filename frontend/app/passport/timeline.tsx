@@ -38,7 +38,7 @@ function PassportTimelineScreen({
   const [queryLocation, setQueryLocation] = useState('');
   const [showFilterOptions, setShowFilterOptions] = useState(false);
   const [activeFilter, setActiveFilter] = useState<{
-    type: 'all' | 'week' | 'month' | 'year' | 'specific-month';
+    type: 'all' | 'week' | 'three-weeks' | 'month' | 'two-months' | 'year' | 'specific-month';
     value: string;
     monthIndex?: number;
     yearValue?: number;

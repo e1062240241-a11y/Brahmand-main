@@ -3431,7 +3431,7 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
       {renderHeader()}
@@ -3631,7 +3631,7 @@ export default function CommunityDetailScreen() {
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
             pointerEvents={(showDatePicker || showTimePicker) && Platform.OS === 'android' ? 'none' : 'auto'}
           >
@@ -3857,39 +3857,35 @@ export default function CommunityDetailScreen() {
                       </View>
 
                       {showDatePicker && (
-                        <View style={Platform.OS === 'android' ? { position: 'absolute', opacity: 0 } : null}>
-                          <DateTimePicker
-                            value={eventDate || new Date()}
-                            mode="date"
-                            display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                            onChange={(event, selectedDate) => {
-                              setShowDatePicker(false);
-                              if (selectedDate) {
-                                const currentDate = eventDate || new Date();
-                                selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
-                                setEventDate(selectedDate);
-                              }
-                            }}
-                          />
-                        </View>
+                        <DateTimePicker
+                          value={eventDate || new Date()}
+                          mode="date"
+                          display="default"
+                          onChange={(event, selectedDate) => {
+                            setShowDatePicker(false);
+                            if (event.type === 'set' && selectedDate) {
+                              const currentDate = eventDate || new Date();
+                              selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
+                              setEventDate(selectedDate);
+                            }
+                          }}
+                        />
                       )}
 
                       {showTimePicker && (
-                        <View style={Platform.OS === 'android' ? { position: 'absolute', opacity: 0 } : null}>
-                          <DateTimePicker
-                            value={eventDate || new Date()}
-                            mode="time"
-                            display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                            onChange={(event, selectedDate) => {
-                              setShowTimePicker(false);
-                              if (selectedDate) {
-                                const newDate = new Date(eventDate || new Date());
-                                newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
-                                setEventDate(newDate);
-                              }
-                            }}
-                          />
-                        </View>
+                        <DateTimePicker
+                          value={eventDate || new Date()}
+                          mode="time"
+                          display="default"
+                          onChange={(event, selectedDate) => {
+                            setShowTimePicker(false);
+                            if (event.type === 'set' && selectedDate) {
+                              const newDate = new Date(eventDate || new Date());
+                              newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+                              setEventDate(newDate);
+                            }
+                          }}
+                        />
                       )}
                     </View>
                   )}
@@ -4079,7 +4075,7 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           style={styles.modalOverlay}
         >

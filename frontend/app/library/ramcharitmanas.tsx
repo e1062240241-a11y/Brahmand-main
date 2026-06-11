@@ -316,6 +316,35 @@ export default function RamcharitmanasPage() {
               </View>
             </View>
 
+              {/* Sticky Chapter Navigator */}
+              <View style={{ backgroundColor: nightMode ? '#1C1510' : '#FAF6ED', zIndex: 10 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chapterNavContainer}
+                >
+                  {Array.from({ length: TOTAL_CHAPTERS }, (_, i) => i + 1).map((chNum) => (
+                    <TouchableOpacity
+                      key={chNum}
+                      style={[
+                        styles.chapterTab,
+                        nightMode && styles.chapterTabNight,
+                        currentChapter === chNum && (nightMode ? styles.chapterTabActiveNight : styles.chapterTabActive)
+                      ]}
+                      onPress={() => handleChapterChange(chNum)}
+                    >
+                      <Text style={[
+                        styles.chapterTabText,
+                        nightMode && styles.textNightMuted,
+                        currentChapter === chNum && (nightMode ? styles.textNight : styles.chapterTabTextActive)
+                      ]}>
+                        {KAND_NAMES[chNum - 1]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
@@ -326,33 +355,6 @@ export default function RamcharitmanasPage() {
             onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
           >
             <View style={styles.pageContent}>
-              {/* Chapter Navigator */}
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chapterNavContainer}
-              >
-                {Array.from({ length: TOTAL_CHAPTERS }, (_, i) => i + 1).map((chNum) => (
-                  <TouchableOpacity
-                    key={chNum}
-                    style={[
-                      styles.chapterTab,
-                      nightMode && styles.chapterTabNight,
-                      currentChapter === chNum && (nightMode ? styles.chapterTabActiveNight : styles.chapterTabActive)
-                    ]}
-                    onPress={() => handleChapterChange(chNum)}
-                  >
-                    <Text style={[
-                      styles.chapterTabText,
-                      nightMode && styles.textNightMuted,
-                      currentChapter === chNum && (nightMode ? styles.textNight : styles.chapterTabTextActive)
-                    ]}>
-                      {KAND_NAMES[chNum - 1]}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
               {/* Subtitle */}
               <View style={styles.chapterSubHeader}>
                 <Text style={[styles.subHeaderText, nightMode && styles.textNight]}>
