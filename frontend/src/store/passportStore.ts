@@ -19,19 +19,20 @@ interface PassportState {
   total_jaap: number;
   books_completed: number;
   loadPassport: () => Promise<void>;
-  addJourney: (journey: Omit<PassportJourney, 'id' | 'generated_story'>) => Promise<void>;
+  addJourney: (journey: Omit<PassportJourney, 'id' | 'generated_story'>) => Promise<string>;
   awardBadge: (title: string, description: string) => Promise<void>;
   addJaap: (count: number) => Promise<void>;
   completeBook: (book_name: string, completion_days: number, date: string) => Promise<void>;
 }
 
 const generateJourneyStory = (journey: Omit<PassportJourney, 'id' | 'generated_story'>) => {
-  const answersText = journey.answers
-    .filter((item) => item.answer.trim())
-    .map((item) => `${item.question} ${item.answer.trim()}`)
+  const answers = Array.isArray(journey.answers) ? journey.answers : [];
+  const answersText = answers
+    .filter((item) => item && typeof item.answer === 'string' && item.answer.trim())
+    .map((item) => `${item.question || ''} ${String(item.answer).trim()}`)
     .join(' ');
 
-  return `On ${journey.date} I traveled to ${journey.location}. ${answersText} This journey is recorded as part of my Brahmand Passport.`;
+  return `On ${journey.date || ''} I traveled to ${journey.location || ''}. ${answersText} This journey is recorded as part of my Brahmand Passport.`;
 };
 
 const persistPassportState = async (state: Omit<PassportState, 'loadPassport' | 'addJourney' | 'awardBadge' | 'addJaap' | 'completeBook'>) => {
@@ -71,7 +72,12 @@ export const usePassportStore = create<PassportState>((set, get) => ({
     const newJourney: PassportJourney = {
       id: `passport_journey_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       generated_story: generateJourneyStory(journey),
-      ...journey,
+      title: journey.title || 'My Spiritual Journey',
+      location: journey.location || '',
+      date: journey.date || new Date().toISOString().split('T')[0],
+      answers: journey.answers || [],
+      media: journey.media || [],
+      visibility: journey.visibility || 'private',
     };
 
     set((state) => {
@@ -108,6 +114,8 @@ export const usePassportStore = create<PassportState>((set, get) => ({
     } catch (e) {
       console.warn('[PassportStore] DB write journey failed:', e);
     }
+
+    return newJourney.id;
   },
 
   awardBadge: async (title, description) => {

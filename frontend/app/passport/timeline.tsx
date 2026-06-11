@@ -51,8 +51,8 @@ function PassportTimelineScreen({
     
     observedJourneys.forEach(j => {
       if (j.title && j.location) {
-        allLocations.add(`${j.title}, ${j.location}`);
-      } else if (j.location) {
+        allLocations.add(`${String(j.title)}, ${String(j.location)}`);
+      } else if (j.location && typeof j.location === 'string') {
         allLocations.add(j.location.trim());
       }
     });
@@ -170,12 +170,12 @@ function PassportTimelineScreen({
 
     return observedJourneys.filter((journey) => {
       const locationMatch = queryLocation 
-        ? journey.location.toLowerCase().includes(queryLocation.toLowerCase()) ||
-          journey.title.toLowerCase().includes(queryLocation.toLowerCase())
+        ? (typeof journey.location === 'string' && journey.location.toLowerCase().includes(queryLocation.toLowerCase())) ||
+          (typeof journey.title === 'string' && journey.title.toLowerCase().includes(queryLocation.toLowerCase()))
         : true;
       
       let dateMatch = true;
-      const journeyDateObj = new Date(journey.date);
+      const journeyDateObj = journey.date ? new Date(journey.date) : new Date(0);
       const journeyTime = journeyDateObj.getTime();
 
       if (activeFilter.type === 'week') {
@@ -194,7 +194,11 @@ function PassportTimelineScreen({
       }
 
       return locationMatch && dateMatch;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }).sort((a, b) => {
+      const tA = a.date ? new Date(a.date).getTime() : 0;
+      const tB = b.date ? new Date(b.date).getTime() : 0;
+      return tB - tA;
+    });
   }, [observedJourneys, queryLocation, activeFilter]);
 
   const handleBack = () => {
