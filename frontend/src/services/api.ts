@@ -735,20 +735,49 @@ export const uploadUserPost = (
         const uploadUrl = `${API_URL}/api/posts/upload`;
         console.info('[API] Retrying post upload via native fetch:', uploadUrl);
 
-        const response = await fetch(uploadUrl, {
-          method: 'POST',
-          headers,
-          body: formData,
-        });
+        // Start simulated progress indicator
+        let simulatedProgress = 0;
+        const progressInterval = setInterval(() => {
+          if (simulatedProgress < 90) {
+            simulatedProgress += Math.random() * 8 + 4;
+            if (simulatedProgress > 90) simulatedProgress = 90;
+            if (onProgress) {
+              onProgress({
+                loaded: Math.round(simulatedProgress),
+                total: 100
+              });
+            }
+          }
+        }, 400);
 
-        if (!response.ok) {
-          const text = await response.text();
-          console.error('[API] Native fetch post upload failed:', response.status, text);
-          throw new Error(`Upload failed: ${response.status} ${text}`);
+        try {
+          const response = await fetch(uploadUrl, {
+            method: 'POST',
+            headers,
+            body: formData,
+          });
+
+          clearInterval(progressInterval);
+
+          if (!response.ok) {
+            const text = await response.text();
+            console.error('[API] Native fetch post upload failed:', response.status, text);
+            throw new Error(`Upload failed: ${response.status} ${text}`);
+          }
+
+          if (onProgress) {
+            onProgress({
+              loaded: 100,
+              total: 100
+            });
+          }
+
+          const data = await response.json();
+          return { data };
+        } catch (fetchErr) {
+          clearInterval(progressInterval);
+          throw fetchErr;
         }
-
-        const data = await response.json();
-        return { data };
       }
       throw error;
     }

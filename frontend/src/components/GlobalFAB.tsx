@@ -73,8 +73,12 @@ export function GlobalFAB() {
       const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== res.data?.id);
       setNearbySOSAlerts(otherSOS);
 
-    } catch (e) {
-      console.error('Failed to check SOS status:', e);
+    } catch (e: any) {
+      if (e?.message === 'Network Error') {
+        console.warn('Failed to check SOS status: Backend server is offline or unreachable');
+      } else {
+        console.warn('Failed to check SOS status:', e?.message || e);
+      }
     }
   }, []);
 

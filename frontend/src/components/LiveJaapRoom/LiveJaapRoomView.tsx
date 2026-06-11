@@ -539,7 +539,7 @@ export default function LiveJaapRoomView() {
               AsyncStorage.setItem(countKeyRef.current, next.toString());
               
               // Record to Passport Store
-              usePassportStore.getState().addJaap(1);
+              usePassportStore.getState().addJaap(1, mantraType);
               if (isHanuman) {
                 usePassportStore.getState().awardBadge(
                   "Hanuman Chalisa Completed",

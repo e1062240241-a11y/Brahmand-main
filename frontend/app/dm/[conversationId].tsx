@@ -482,10 +482,13 @@ const DirectMessageScreen = () => {
   const handleApproveRequest = async () => {
     if (!conversationId) return;
     setRequestActionLoading(true);
+    // Optimistically update conversation state so requestCard disappears immediately
+    setConversation(prev => prev ? { ...prev, request_status: 'approved' } : prev);
     try {
       await approveDirectMessageRequest(conversationId);
       await fetchConversation();
     } catch (error: any) {
+      await fetchConversation();
       Alert.alert('Error', error.response?.data?.detail || 'Failed to approve request');
     } finally {
       setRequestActionLoading(false);
@@ -495,10 +498,13 @@ const DirectMessageScreen = () => {
   const handleDenyRequest = async () => {
     if (!conversationId) return;
     setRequestActionLoading(true);
+    // Optimistically update conversation state so requestCard disappears/updates immediately
+    setConversation(prev => prev ? { ...prev, request_status: 'rejected' } : prev);
     try {
       await denyDirectMessageRequest(conversationId);
       await fetchConversation();
     } catch (error: any) {
+      await fetchConversation();
       Alert.alert('Error', error.response?.data?.detail || 'Failed to deny request');
     } finally {
       setRequestActionLoading(false);
