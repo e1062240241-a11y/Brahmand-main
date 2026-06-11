@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-container: {
+  container: {
     flex: 1,
   },
   header: {
