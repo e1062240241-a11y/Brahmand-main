@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Platform,
@@ -14,6 +15,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { getPanchang, askAstrologyAI } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
+import { useJyotishStore } from '../src/store/jyotishStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -120,8 +123,15 @@ export default function PanchangScreen() {
     const q = question.trim();
     setChatLoading(true);
     try {
+      const { dob, tob, pob } = useJyotishStore.getState();
+      let finalQuestion = q;
+      if (dob && tob && pob) {
+        const dStr = formatDateIST(dob);
+        finalQuestion = `My birth details are Date: ${dStr}, Time: ${tob}, Place: ${pob}. Please consider this context. Question: ${q}`;
+      }
+
       const response = await askAstrologyAI({
-        question: q,
+        question: finalQuestion,
         astrology: { kind: 'panchang', payload },
       });
       if (isMountedRef.current) {
@@ -608,7 +618,7 @@ export default function PanchangScreen() {
         onRequestClose={() => setAiModalVisible(false)}
       >
         <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>

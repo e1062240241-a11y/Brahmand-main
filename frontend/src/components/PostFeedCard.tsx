@@ -23,7 +23,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
-import { formatTimeAgo } from '../utils/dateUtils';
+import { formatTimeAgo, formatDateTimeIST, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
@@ -67,7 +67,7 @@ const formatTime = (raw: any) => {
   if (!raw) return 'now';
   const date = new Date(raw);
   if (isNaN(date.getTime())) return 'now';
-  return date.toLocaleString();
+  return formatDateTimeIST(date);
 };
 
 const parseCaption = (caption: string): { text: string; isHashtag: boolean; isMention: boolean }[] => {
@@ -97,7 +97,7 @@ export const PostFeedCard = memo(({
   isBlackBackground = false,
   isFirstReel = false,
 }: PostFeedCardProps) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
   const [isPausedByUser, setIsPausedByUser] = useState(false);
@@ -382,7 +382,8 @@ export const PostFeedCard = memo(({
   const captionSegments = captionText ? parseCaption(captionText) : [];
   const router = useRouter();
   const postedAt = post?.created_at || post?.createdAt || post?.createdAtUtc || post?.created_at || null;
-  const postTimeText = formatTimeAgo(postedAt);
+  const isReel = post?.category === 'reels' || isVideo;
+  const postTimeText = isReel ? formatReelDate(postedAt, language) : formatTimeAgo(postedAt);
 
   const handleMentionPress = useCallback(async (username: string) => {
     try {

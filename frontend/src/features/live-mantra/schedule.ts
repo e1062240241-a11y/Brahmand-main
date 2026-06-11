@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../../src/utils/dateUtils';
 // Mantra chanting time slots configuration
 
 export type TimeSlot = {
@@ -161,11 +162,7 @@ export const getCurrentGayatriEnd = (date = new Date()) => {
 };
 // Compatibility helpers
 export const formatTime = (date: Date) => {
-  return date.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
+  return formatTimeIST(date);
 };
 
 export const getNextGayatriStart = (date = new Date()) => {

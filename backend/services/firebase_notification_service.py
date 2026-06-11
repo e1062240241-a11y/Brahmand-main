@@ -32,7 +32,8 @@ class FirebaseNotificationService:
         body: str,
         notification_type: str,
         data: Optional[Dict[str, Any]] = None,
-        notification_id: Optional[str] = None
+        notification_id: Optional[str] = None,
+        overwrite: bool = True
     ) -> Dict[str, Any]:
         """Create and store notification"""
         db = await FirebaseNotificationService.get_db()
@@ -47,7 +48,7 @@ class FirebaseNotificationService:
             "created_at": datetime.utcnow().isoformat() + 'Z'
         }
         
-        inserted_id = await db.create_document('notifications', notification_data, doc_id=notification_id)
+        inserted_id = await db.create_document('notifications', notification_data, doc_id=notification_id, overwrite=overwrite)
         notification_data['id'] = inserted_id
         
         logger.info(f"Notification created for user {user_id}")
@@ -595,14 +596,23 @@ class FirebaseNotificationService:
         notification_id: Optional[str] = None
     ):
         """Store notification and send push notification to user's device"""
-        await FirebaseNotificationService.create_notification(
-            user_id=user_id,
-            title=title,
-            body=body,
-            notification_type="jaap_reminder",
-            data={"mantra_type": mantra_type, "session_name": session_name},
-            notification_id=notification_id
-        )
+        try:
+            await FirebaseNotificationService.create_notification(
+                user_id=user_id,
+                title=title,
+                body=body,
+                notification_type="jaap_reminder",
+                data={"mantra_type": mantra_type, "session_name": session_name},
+                notification_id=notification_id,
+                overwrite=False
+            )
+        except Exception as e:
+            from google.api_core.exceptions import AlreadyExists
+            if isinstance(e, AlreadyExists) or "AlreadyExists" in type(e).__name__ or "409" in str(e):
+                logger.info(f"Skipping duplicate jaap reminder for user {user_id} (AlreadyExists in DB)")
+                return
+            raise e
+
         await FirebaseNotificationService.send_push_notification(
             user_id=user_id,
             title=title,

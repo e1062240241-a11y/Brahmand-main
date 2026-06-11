@@ -28,6 +28,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useAudioPlayer } from 'expo-audio';
 import { useAuthStore } from '../../src/store/authStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
@@ -259,6 +260,7 @@ import { SirenIcon } from '../../src/components/SirenIcon';
 import { SacredIcon } from '../../src/components/SacredIcon';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
 import {
+  api,
   addPostComment,
   createCommunityRequest,
   deletePost,
@@ -288,6 +290,7 @@ import * as Location from 'expo-location';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
+import { LocationPickerModal, LocationData } from '../../src/components/LocationPickerModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
@@ -392,6 +395,7 @@ const formatFestivalDate = (dateStr: string) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const bellPlayer = useAudioPlayer(require('../../assets/notifysound/bell.mp3'));
   const { t } = useTranslation();
   const onHomeScrollTabBar = useScrollToHideTabBar();
   const navigation = useNavigation();
@@ -434,7 +438,49 @@ export default function HomeScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
 
+  const [hanumanChantCount, setHanumanChantCount] = useState(1248);
+  const [shivaChantCount, setShivaChantCount] = useState(1248);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    
+    let active = true;
+    const fetchActiveCounts = async () => {
+      try {
+        const response = await api.get('/jaap/active-count', {
+          params: { rooms: 'jaap_hanuman,jaap_shiva' }
+        });
+        if (active && response && response.data) {
+          const hanuman = response.data.jaap_hanuman || 0;
+          const shiva = response.data.jaap_shiva || 0;
+          setHanumanChantCount(hanuman);
+          setShivaChantCount(shiva);
+        }
+      } catch (error) {
+        console.warn('Error fetching active jaap counts:', error);
+      }
+    };
+
+    fetchActiveCounts();
+    const interval = setInterval(fetchActiveCounts, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isFocused]);
+
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
+  const [liveCoords, setLiveCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
+
+  const handleConfirmHomeLocation = (locData: LocationData) => {
+    const parts = [locData.area, locData.city, locData.state].filter(Boolean);
+    setLiveLocation(parts.slice(0, 2).join(', ') || locData.display_name || 'Bharat');
+    if (locData.latitude && locData.longitude) {
+      setLiveCoords({ latitude: locData.latitude, longitude: locData.longitude });
+    }
+    setLocationPickerVisible(false);
+  };
   const scrollViewRef = useRef<ScrollView>(null);
   const currentScrollY = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
@@ -735,6 +781,8 @@ export default function HomeScreen() {
           accuracy: Location.Accuracy.Balanced,
         });
 
+        setLiveCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+
         // Use native reverse geocoding for exact details
         const reverse = await Location.reverseGeocodeAsync({
           latitude: loc.coords.latitude,
@@ -843,6 +891,11 @@ export default function HomeScreen() {
   }, [isFocused, initializeHome, setUnreadCount]);
 
   const handleNotificationPress = () => {
+    try {
+      bellPlayer.play();
+    } catch (err) {
+      console.warn('Failed to play bell sound:', err);
+    }
     setUnreadCount(0);
     router.push('/notifications');
     markAllNotificationsRead().catch((err) => {
@@ -1864,6 +1917,7 @@ export default function HomeScreen() {
                             <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
                             <Ionicons name="pencil" size={12} color="#000" style={{ marginLeft: 6 }} />
                           </TouchableOpacity>
+
                         </View>
                       </View>
 
@@ -2215,7 +2269,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>1,248 devotees are chanting</Text>
+                                  }]}>{(hanumanChantCount * 18).toLocaleString()} devotees are chanting</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2301,7 +2355,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>1,248 {t('devoteesChanting')}</Text>
+                                  }]}>{(shivaChantCount * 18).toLocaleString()} {t('devoteesChanting')}</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2590,12 +2644,8 @@ export default function HomeScreen() {
                       {(() => {
                         const cityComm = communities.find(c => c.type === 'city');
                         let cityName = cityComm?.name || 'City Community';
-                        if (t('language') === 'hi') {
-                          if (cityName === 'City Community') {
-                            cityName = 'शहर समुदाय';
-                          } else if (cityName.toLowerCase().includes('mumbai')) {
-                            cityName = 'मुंबई समुदाय';
-                          }
+                        if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
+                          cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
                         }
                         const cityId = cityComm?.id || 'city_default';
                         return (
@@ -2625,7 +2675,7 @@ export default function HomeScreen() {
                       {/* Local Community Card */}
                       {(() => {
                         const localComm =
-                          communities.find(c => c.is_default || c.type === 'home_area' || c.type === 'area' || c.type === 'user_group' || c.type === 'local') ||
+                          communities.find(c => c.is_default || c.type === 'user_group' || c.type === 'local') ||
                           localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
                         const localId = localComm?.id || 'food_pune';
                         let realGroupName = localComm?.name || 'Pune Food Sharing Group';
@@ -2935,7 +2985,7 @@ export default function HomeScreen() {
           >
             <KeyboardAvoidingView
               style={styles.commentOverlay}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
             >
               <TouchableOpacity
@@ -3155,6 +3205,14 @@ export default function HomeScreen() {
           </Modal>
         </LinearGradient>
       </SafeAreaView>
+
+      <LocationPickerModal
+        visible={locationPickerVisible}
+        onClose={() => setLocationPickerVisible(false)}
+        onConfirm={handleConfirmHomeLocation}
+        title="Choose Your Location"
+        initialCoords={liveCoords}
+      />
     </View>
   );
 }
@@ -3253,6 +3311,8 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
   },
   headerRight: {
     flexDirection: 'row',
@@ -3293,6 +3353,7 @@ const styles = StyleSheet.create({
   },
   greetingBlock: {
     marginLeft: 12,
+    flex: 1,
   },
   greeting: {
     color: '#000',

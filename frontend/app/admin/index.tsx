@@ -31,6 +31,10 @@ import {
   adminListPersonalityVerifications,
   adminActionPersonalityVerification,
   AdminPersonalityVerification,
+  AdminSOSMisuseReport,
+  getAdminSOSMisuseReports,
+  adminBlockSOS,
+  adminUnblockSOS,
 } from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
 
@@ -46,6 +50,7 @@ export default function AdminPanelScreen() {
   const [reportedPosts, setReportedPosts] = useState<AdminPostReport[]>([]);
   const [anonymousUsers, setAnonymousUsers] = useState<AdminAnonymousUser[]>([]);
   const [personalityRequests, setPersonalityRequests] = useState<AdminPersonalityVerification[]>([]);
+  const [misuseReports, setMisuseReports] = useState<AdminSOSMisuseReport[]>([]);
 
   const isKycCompleted = (record: AdminVendorReview) => {
     const hasOtpVerified = !!record.aadhaar_otp_verified_at;
@@ -86,23 +91,26 @@ export default function AdminPanelScreen() {
   const loadRequests = async () => {
     if (!adminToken) return;
     try {
-      const [vendorResponse, userKycResponse, reportsResponse, anonymousResponse, personalityResponse] = await Promise.all([
+      const [vendorResponse, userKycResponse, reportsResponse, anonymousResponse, personalityResponse, sosReportsResponse] = await Promise.all([
         getAdminVendorReviewQueue(adminToken, 'pending'),
         getAdminPendingKyc(adminToken),
         getAdminReports(adminToken, 'pending', 'post', 150),
         getAdminAnonymousUsers(adminToken),
         adminListPersonalityVerifications(adminToken, 'pending'),
+        getAdminSOSMisuseReports(adminToken),
       ]);
       console.log('[Admin] Loaded requests:', {
         vendors: vendorResponse.data?.length,
         kyc: userKycResponse.data?.length,
-        personality: personalityResponse.data?.length
+        personality: personalityResponse.data?.length,
+        sosReports: sosReportsResponse.data?.length
       });
       setVendorRequests(Array.isArray(vendorResponse.data) ? vendorResponse.data : []);
       setUserKycRequests(Array.isArray(userKycResponse.data) ? userKycResponse.data : []);
       setReportedPosts(Array.isArray(reportsResponse.data) ? reportsResponse.data : []);
       setAnonymousUsers(Array.isArray(anonymousResponse.data?.users) ? anonymousResponse.data.users : []);
       setPersonalityRequests(Array.isArray(personalityResponse.data) ? personalityResponse.data : []);
+      setMisuseReports(Array.isArray(sosReportsResponse.data) ? sosReportsResponse.data : []);
     } catch (error: any) {
       console.error('[Admin] Load failed:', error);
       const detail = error?.response?.data?.detail || 'Failed to load review queue';
@@ -240,6 +248,36 @@ export default function AdminPanelScreen() {
     }
   };
 
+  const handleBlockUserSOS = async (userId: string) => {
+    if (!adminToken) return;
+    setProcessingKey(`block:${userId}`);
+    try {
+      await adminBlockSOS(adminToken, userId);
+      await loadRequests();
+      Alert.alert('Success', 'User SOS privileges suspended.');
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || 'Failed to suspend privileges';
+      Alert.alert('Error', detail);
+    } finally {
+      setProcessingKey(null);
+    }
+  };
+
+  const handleUnblockUserSOS = async (userId: string) => {
+    if (!adminToken) return;
+    setProcessingKey(`unblock:${userId}`);
+    try {
+      await adminUnblockSOS(adminToken, userId);
+      await loadRequests();
+      Alert.alert('Success', 'User SOS privileges restored.');
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || 'Failed to restore privileges';
+      Alert.alert('Error', detail);
+    } finally {
+      setProcessingKey(null);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadRequests();
@@ -367,6 +405,40 @@ export default function AdminPanelScreen() {
       </SafeAreaView>
     );
   }
+
+  const renderMisuseReportItem = ({ item }: { item: AdminSOSMisuseReport }) => {
+    const isBlocking = processingKey === `block:${item.creator_id}`;
+    const isUnblocking = processingKey === `unblock:${item.creator_id}`;
+    
+    return (
+      <View style={styles.card} key={item.id}>
+        <Text style={styles.businessName}>SOS Misuse Report</Text>
+        <Text style={styles.meta}>Report ID: {item.id}</Text>
+        <Text style={styles.meta}>Creator: {item.creator_name || 'N/A'} (ID: {item.creator_id})</Text>
+        <Text style={styles.meta}>Reporter: {item.reporter_name || 'N/A'} (ID: {item.reporter_id})</Text>
+        <Text style={styles.meta}>Reason: {item.reason || 'N/A'}</Text>
+        <Text style={styles.meta}>Timestamp: {item.created_at || 'N/A'}</Text>
+        
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.denyButton, isBlocking && styles.buttonDisabled]}
+            disabled={isBlocking || isUnblocking}
+            onPress={() => handleBlockUserSOS(item.creator_id)}
+          >
+            {isBlocking ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Block Creator</Text>}
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.button, styles.approveButton, isUnblocking && styles.buttonDisabled]}
+            disabled={isBlocking || isUnblocking}
+            onPress={() => handleUnblockUserSOS(item.creator_id)}
+          >
+            {isUnblocking ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Unblock Creator</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   const renderAnonymousUserItem = ({ item }: { item: AdminAnonymousUser }) => {
     const busy = processingKey === `anonymous:${item.id}`;
@@ -533,6 +605,19 @@ export default function AdminPanelScreen() {
               pendingPostReports.map((item) => (
                 <View key={item.id}>
                   {renderReportedPostItem({ item })}
+                </View>
+              ))
+            )}
+
+            <Text style={styles.subtitle}>SOS Misuse Reports ({misuseReports.length})</Text>
+            {misuseReports.length === 0 ? (
+              <View style={styles.centeredCompact}>
+                <Text style={styles.emptyText}>No SOS misuse reports.</Text>
+              </View>
+            ) : (
+              misuseReports.map((item) => (
+                <View key={item.id}>
+                  {renderMisuseReportItem({ item })}
                 </View>
               ))
             )}

@@ -99,7 +99,7 @@ export default function ProfileScreen() {
       <MandalaPattern />
       
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>

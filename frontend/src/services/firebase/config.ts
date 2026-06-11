@@ -10,6 +10,7 @@ import { Platform } from 'react-native';
 // Helper to get env var with fallback - try multiple sources for web compatibility
 const getEnvVar = (key: string, fallback: string = ''): string => {
   // Try process.env first (works with Expo built-in)
+  // eslint-disable-next-line expo/no-dynamic-env-var
   let value = process.env[key];
   
   // For web, also check window.__ENV__ (set by Expo webpack)
@@ -64,7 +65,7 @@ function normalizePhone(phone: string): string {
 export const anonymousPhoneNumbers = new Set(
   anonymousPhoneList
     .split(',')
-    .map((item) => normalizePhone(item.trim()))
+    .map((item: string) => normalizePhone(item.trim()))
     .filter(Boolean)
 );
 

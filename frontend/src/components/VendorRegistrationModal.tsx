@@ -12,13 +12,20 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { DEFAULT_CATEGORIES } from '../store/vendorStore';
+
+const DEFAULT_SUBCATEGORIES = [
+  'Pooja', 'Havan', 'Marriage', 'Astrology', 'Home Delivery', 
+  'Cash on Delivery', 'Personal Training', 'Therapy', 'Consultation',
+  'Cardio', 'Strength Training', 'Spa', 'Facial', 'Hair Styling',
+  'Catering', 'Desserts', 'Plumbing', 'Wiring', 'Repairs'
+];
 
 let MapView: any = null;
 let PROVIDER_GOOGLE: any = null;
@@ -183,12 +190,23 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [categoryInput, setCategoryInput] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
+  const [subCategories, setSubCategories] = useState<string[]>([]);
+  const [subCategoryInput, setSubCategoryInput] = useState('');
+  const [showSubCategoryDropdown, setShowSubCategoryDropdown] = useState(false);
+
   const filteredCategories = categoryInput.trim()
     ? DEFAULT_CATEGORIES.filter(c => 
         c.toLowerCase().includes(categoryInput.toLowerCase()) && 
         !categories.includes(c)
       )
     : DEFAULT_CATEGORIES.filter(c => !categories.includes(c));
+
+  const filteredSubCategories = subCategoryInput.trim()
+    ? DEFAULT_SUBCATEGORIES.filter(c => 
+        c.toLowerCase().includes(subCategoryInput.toLowerCase()) && 
+        !subCategories.includes(c)
+      )
+    : DEFAULT_SUBCATEGORIES.filter(c => !subCategories.includes(c));
 
   const [mapPickerVisible, setMapPickerVisible] = useState(false);
   const [mapRegion, setMapRegion] = useState<any>(null);
@@ -347,6 +365,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     setAddress('');
     setCategories([]);
     setCategoryInput('');
+    setSubCategories([]);
+    setSubCategoryInput('');
   };
 
   const handleSubmit = async () => {
@@ -367,36 +387,15 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       address: trimmedAddress,
     });
 
-    // Regex patterns
-    const businessNameRegex = /^[a-zA-Z0-9\s&.,'-\/]{2,50}$/;
-    const ownerNameRegex = /^[a-zA-Z\s.'-]{2,50}$/;
-    const phoneRegex = /^[6-9]\d{9}$/;
-    const yearsRegex = /^(0|[1-9]\d?)$/;
-    const addressRegex = /^[a-zA-Z0-9\s.,'#\-\/()]{5,150}$/;
+
 
     // Validation
     if (!trimmedBusinessName) {
       Alert.alert('Error', 'Business name is required');
       return;
     }
-    if (trimmedBusinessName.length < 3 || trimmedBusinessName.length > 50) {
-      Alert.alert('Error', 'Business name must be between 3 and 50 characters');
-      return;
-    }
-    if (!/^[a-zA-Z0-9]/.test(trimmedBusinessName)) {
-      Alert.alert('Error', 'Business name must start with a letter or number');
-      return;
-    }
-    if (/\s{2,}/.test(trimmedBusinessName)) {
-      Alert.alert('Error', 'Business name cannot contain consecutive spaces');
-      return;
-    }
-    if (!businessNameRegex.test(trimmedBusinessName)) {
-      Alert.alert('Error', 'Business name contains invalid characters. Can only contain letters, numbers, spaces, and & . , \' - /');
-      return;
-    }
-    if (!trimmedBusinessName.split(/\s+/).every(word => /^[A-Z0-9]/.test(word))) {
-      Alert.alert('Error', 'Each word in the business name must start with a capital letter or number (e.g. "Swiggy Delivery")');
+    if (trimmedBusinessName.length < 2 || trimmedBusinessName.length > 100) {
+      Alert.alert('Error', 'Business name must be between 2 and 100 characters');
       return;
     }
 
@@ -404,24 +403,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Error', 'Owner name is required');
       return;
     }
-    if (trimmedOwnerName.length < 3 || trimmedOwnerName.length > 50) {
-      Alert.alert('Error', 'Owner name must be between 3 and 50 characters');
-      return;
-    }
-    if (!/^[a-zA-Z]/.test(trimmedOwnerName)) {
-      Alert.alert('Error', 'Owner name must start with a letter');
-      return;
-    }
-    if (/\s{2,}/.test(trimmedOwnerName)) {
-      Alert.alert('Error', 'Owner name cannot contain consecutive spaces');
-      return;
-    }
-    if (!ownerNameRegex.test(trimmedOwnerName)) {
-      Alert.alert('Error', 'Owner name must contain only letters, spaces, dots, and hyphens');
-      return;
-    }
-    if (!trimmedOwnerName.split(/\s+/).every(word => /^[A-Z]/.test(word))) {
-      Alert.alert('Error', 'Each word in the owner name must start with a capital letter');
+    if (trimmedOwnerName.length < 2 || trimmedOwnerName.length > 100) {
+      Alert.alert('Error', 'Owner name must be between 2 and 100 characters');
       return;
     }
 
@@ -429,8 +412,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Error', 'Phone number is required');
       return;
     }
-    if (!phoneRegex.test(trimmedPhone)) {
-      Alert.alert('Error', 'Phone number must be a valid 10-digit mobile number starting with 6, 7, 8, or 9');
+    if (trimmedPhone.length !== 10) {
+      Alert.alert('Error', 'Phone number must be a 10-digit number');
       return;
     }
 
@@ -438,7 +421,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Error', 'Years in business is required');
       return;
     }
-    if (!yearsRegex.test(yearsInBusiness)) {
+    const yearsNum = parseInt(yearsInBusiness, 10);
+    if (isNaN(yearsNum) || yearsNum < 0 || yearsNum > 99) {
       Alert.alert('Error', 'Years in business must be a valid number between 0 and 99');
       return;
     }
@@ -447,20 +431,18 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Error', 'Address is required');
       return;
     }
-    if (trimmedAddress.length < 10 || trimmedAddress.length > 150) {
-      Alert.alert('Error', 'Address must be between 10 and 150 characters');
-      return;
-    }
-    if (/\s{2,}/.test(trimmedAddress)) {
-      Alert.alert('Error', 'Address cannot contain consecutive spaces');
-      return;
-    }
-    if (!addressRegex.test(trimmedAddress)) {
-      Alert.alert('Error', 'Address must contain only alphanumeric characters, spaces, and basic symbols (.,\'#-/())');
+    if (trimmedAddress.length < 5 || trimmedAddress.length > 250) {
+      Alert.alert('Error', 'Address must be between 5 and 250 characters');
       return;
     }
 
     console.log('Validation passed');
+
+    const mergedCategories = [...categories, ...subCategories].filter(Boolean).slice(0, 5);
+    if (mergedCategories.length === 0) {
+      Alert.alert('Error', 'Please select or add at least one category or subcategory');
+      return;
+    }
 
     const payload = {
       businessName: trimmedBusinessName,
@@ -468,7 +450,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       phoneNumber: trimmedPhone,
       yearsInBusiness: parseInt(yearsInBusiness, 10),
       address: trimmedAddress,
-      categories: categories.length > 0 ? categories : [],
+      categories: mergedCategories,
     };
 
     if (!onSubmit) {
@@ -500,7 +482,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
         <View style={styles.container}>
@@ -558,18 +540,23 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Phone Number */}
             <Text style={styles.label}>Phone Number *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter 10-digit phone number"
-              placeholderTextColor={COLORS.textLight}
-              value={phoneNumber}
-              onChangeText={(text) => {
-                const numericText = text.replace(/\D/g, '');
-                setPhoneNumber(numericText.slice(0, 10));
-              }}
-              keyboardType="phone-pad"
-              maxLength={10}
-            />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={[styles.input, { justifyContent: 'center', alignItems: 'center', width: 60, paddingHorizontal: 0 }]}>
+                <Text style={{ fontSize: 15, color: COLORS.text, fontWeight: '500' }}>+91</Text>
+              </View>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Enter mobile number"
+                placeholderTextColor={COLORS.textLight}
+                value={phoneNumber}
+                onChangeText={(text) => {
+                  const numericText = text.replace(/\D/g, '');
+                  setPhoneNumber(numericText.slice(0, 10));
+                }}
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
+            </View>
 
             {/* Years in Business */}
             <Text style={styles.label}>Years in Business *</Text>
@@ -589,74 +576,99 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             {/* Categories */}
             <Text style={styles.label}>Categories (e.g. Plumber, Electrician) *</Text>
             <View style={{ marginBottom: SPACING.md }}>
-              <TextInput
-                style={styles.input}
-                placeholder="Search or enter a category"
-                placeholderTextColor={COLORS.textLight}
-                value={categoryInput}
-                onChangeText={(text) => {
-                  const filtered = text.replace(/[^a-zA-Z\s]/g, '');
-                  setCategoryInput(filtered.slice(0, 30));
-                  setShowCategoryDropdown(true);
-                }}
-                onFocus={() => setShowCategoryDropdown(true)}
-                onSubmitEditing={() => {
-                  const cat = categoryInput.trim();
-                  if (cat && !categories.includes(cat)) {
-                    if (categories.length >= 5) {
-                      Alert.alert('Limit reached', 'Maximum 5 categories allowed');
-                      return;
-                    }
-                    setCategories([...categories, cat]);
-                  }
-                  setCategoryInput('');
-                  setShowCategoryDropdown(false);
-                }}
-              />
-            </View>
-
-            {/* Category Dropdown (Pills) */}
-            {categoryInput.trim().length > 0 && (
-              <View style={styles.categoryDropdown}>
-                {filteredCategories.slice(0, 10).map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={styles.suggestionPill}
-                    onPress={() => {
+              <View style={styles.dropdownInputContainer}>
+                <TextInput
+                  style={[styles.input, { flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
+                  placeholder="Select or search a category"
+                  placeholderTextColor={COLORS.textLight}
+                  value={categoryInput}
+                  onChangeText={(text) => {
+                    const filtered = text.replace(/[^a-zA-Z\s]/g, '');
+                    setCategoryInput(filtered.slice(0, 30));
+                    setShowCategoryDropdown(true);
+                  }}
+                  onFocus={() => setShowCategoryDropdown(true)}
+                  onSubmitEditing={() => {
+                    const cat = categoryInput.trim();
+                    if (cat && !categories.includes(cat)) {
                       if (categories.length >= 5) {
                         Alert.alert('Limit reached', 'Maximum 5 categories allowed');
                         return;
                       }
                       setCategories([...categories, cat]);
-                      setCategoryInput('');
-                      setShowCategoryDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.suggestionPillText}>{cat}</Text>
-                    <Ionicons name="add" size={14} color={COLORS.text} style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
-                ))}
-                
-                {/* Custom Category Add */}
-                {categoryInput.trim() && !filteredCategories.includes(categoryInput.trim()) && (
-                  <TouchableOpacity
-                    style={[styles.suggestionPill, { backgroundColor: `${COLORS.primary}15`, borderColor: COLORS.primary }]}
-                    onPress={() => {
-                      if (categories.length >= 5) {
-                        Alert.alert('Limit reached', 'Maximum 5 categories allowed');
-                        return;
-                      }
-                      setCategories([...categories, categoryInput.trim()]);
-                      setCategoryInput('');
-                      setShowCategoryDropdown(false);
-                    }}
-                  >
-                    <Text style={[styles.suggestionPillText, { color: COLORS.primary }]}>Add "{categoryInput.trim()}"</Text>
-                    <Ionicons name="add-circle" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
-                )}
+                    }
+                    setCategoryInput('');
+                    setShowCategoryDropdown(false);
+                  }}
+                />
+                <TouchableOpacity 
+                  style={styles.dropdownToggleButton}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setShowCategoryDropdown(!showCategoryDropdown);
+                  }}
+                >
+                  <Ionicons name={showCategoryDropdown ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
               </View>
-            )}
+
+              {/* Category Dropdown List */}
+              {showCategoryDropdown && (
+                <View style={styles.dropdownListContainer}>
+                  <ScrollView 
+                    style={{ maxHeight: 200 }}
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {filteredCategories.length > 0 ? (
+                      filteredCategories.map((cat) => (
+                        <TouchableOpacity
+                          key={cat}
+                          style={styles.dropdownListItem}
+                          onPress={() => {
+                            if (categories.length >= 5) {
+                              Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                              return;
+                            }
+                            setCategories([...categories, cat]);
+                            setCategoryInput('');
+                            setShowCategoryDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownListItemText}>{cat}</Text>
+                          <Ionicons name="add" size={16} color={COLORS.primary} />
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View style={styles.dropdownListEmpty}>
+                        <Text style={styles.dropdownListEmptyText}>No matching categories</Text>
+                      </View>
+                    )}
+                    
+                    {/* Add Custom Category Option */}
+                    {categoryInput.trim() && !filteredCategories.includes(categoryInput.trim()) && (
+                      <TouchableOpacity
+                        style={[styles.dropdownListItem, { borderTopWidth: 1, borderTopColor: COLORS.divider }]}
+                        onPress={() => {
+                          if (categories.length >= 5) {
+                            Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                            return;
+                          }
+                          setCategories([...categories, categoryInput.trim()]);
+                          setCategoryInput('');
+                          setShowCategoryDropdown(false);
+                        }}
+                      >
+                        <Text style={[styles.dropdownListItemText, { color: COLORS.primary, fontWeight: '600' }]}>
+                          Add "{categoryInput.trim()}"
+                        </Text>
+                        <Ionicons name="add-circle" size={18} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
             {/* Selected Categories */}
             {categories.length > 0 && (
@@ -672,39 +684,139 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               </View>
             )}
 
+            {/* Sub Categories */}
+            <Text style={styles.label}>Sub Categories *</Text>
+            <View style={{ marginBottom: SPACING.md }}>
+              <View style={styles.dropdownInputContainer}>
+                <TextInput
+                  style={[styles.input, { flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
+                  placeholder="Select or search a subcategory"
+                  placeholderTextColor={COLORS.textLight}
+                  value={subCategoryInput}
+                  onChangeText={(text) => {
+                    const filtered = text.replace(/[^a-zA-Z\s]/g, '');
+                    setSubCategoryInput(filtered.slice(0, 30));
+                    setShowSubCategoryDropdown(true);
+                  }}
+                  onFocus={() => setShowSubCategoryDropdown(true)}
+                  onSubmitEditing={() => {
+                    const subCat = subCategoryInput.trim();
+                    if (subCat && !subCategories.includes(subCat)) {
+                      if (subCategories.length >= 5) {
+                        Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
+                        return;
+                      }
+                      setSubCategories([...subCategories, subCat]);
+                    }
+                    setSubCategoryInput('');
+                    setShowSubCategoryDropdown(false);
+                  }}
+                />
+                <TouchableOpacity 
+                  style={styles.dropdownToggleButton}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setShowSubCategoryDropdown(!showSubCategoryDropdown);
+                  }}
+                >
+                  <Ionicons name={showSubCategoryDropdown ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Sub Category Dropdown List */}
+              {showSubCategoryDropdown && (
+                <View style={styles.dropdownListContainer}>
+                  <ScrollView 
+                    style={{ maxHeight: 200 }}
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {filteredSubCategories.length > 0 ? (
+                      filteredSubCategories.map((subCat) => (
+                        <TouchableOpacity
+                          key={subCat}
+                          style={styles.dropdownListItem}
+                          onPress={() => {
+                            if (subCategories.length >= 5) {
+                              Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
+                              return;
+                            }
+                            setSubCategories([...subCategories, subCat]);
+                            setSubCategoryInput('');
+                            setShowSubCategoryDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownListItemText}>{subCat}</Text>
+                          <Ionicons name="add" size={16} color={COLORS.primary} />
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View style={styles.dropdownListEmpty}>
+                        <Text style={styles.dropdownListEmptyText}>No matching subcategories</Text>
+                      </View>
+                    )}
+                    
+                    {/* Add Custom Sub Category Option */}
+                    {subCategoryInput.trim() && !filteredSubCategories.includes(subCategoryInput.trim()) && (
+                      <TouchableOpacity
+                        style={[styles.dropdownListItem, { borderTopWidth: 1, borderTopColor: COLORS.divider }]}
+                        onPress={() => {
+                          if (subCategories.length >= 5) {
+                            Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
+                            return;
+                          }
+                          setSubCategories([...subCategories, subCategoryInput.trim()]);
+                          setSubCategoryInput('');
+                          setShowSubCategoryDropdown(false);
+                        }}
+                      >
+                        <Text style={[styles.dropdownListItemText, { color: COLORS.primary, fontWeight: '600' }]}>
+                          Add "{subCategoryInput.trim()}"
+                        </Text>
+                        <Ionicons name="add-circle" size={18} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            {/* Selected Sub Categories */}
+            {subCategories.length > 0 && (
+              <View style={styles.selectedCategories}>
+                {subCategories.map((subCat, idx) => (
+                  <View key={idx} style={styles.categoryTag}>
+                    <Text style={styles.categoryTagText}>{subCat}</Text>
+                    <TouchableOpacity onPress={() => setSubCategories(subCategories.filter(s => s !== subCat))}>
+                      <Ionicons name="close-circle" size={16} color={COLORS.primary} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {/* Address */}
             <Text style={styles.label}>Full Address *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Enter complete business address"
-              placeholderTextColor={COLORS.textLight}
-              value={address}
-              onChangeText={(text) => {
-                const filtered = text.replace(/[^a-zA-Z0-9\s.,'#\-\/()]/g, '');
-                setAddress(filtered.slice(0, 150));
-              }}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-
-            <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.md }}>
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: `${COLORS.primary}15`, padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                style={[styles.input, styles.textArea, { paddingRight: 40 }]}
+                placeholder="Enter complete business address"
+                placeholderTextColor={COLORS.textLight}
+                value={address}
+                onChangeText={(text) => {
+                  const filtered = text.replace(/[^a-zA-Z0-9\s.,'#\-\/()]/g, '');
+                  setAddress(filtered.slice(0, 150));
+                }}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              <TouchableOpacity 
+                style={{ position: 'absolute', right: 12, top: 12, zIndex: 10 }}
                 onPress={detectLocation}
                 disabled={loading}
               >
-                <Ionicons name="locate" size={18} color={COLORS.primary} />
-                <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Detect</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: `${COLORS.primary}15`, padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
-                onPress={openMap}
-                disabled={loading}
-              >
-                <Ionicons name="map" size={18} color={COLORS.primary} />
-                <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Map</Text>
+                <Ionicons name="locate" size={20} color={COLORS.primary} />
               </TouchableOpacity>
             </View>
 
@@ -728,8 +840,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       </KeyboardAvoidingView>
 
       {/* Map Picker Modal */}
-      <Modal visible={mapPickerVisible} animationType="slide" onRequestClose={() => setMapPickerVisible(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }}>
+      <Modal visible={mapPickerVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMapPickerVisible(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }} edges={["top", "bottom"]}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <TouchableOpacity onPress={() => setMapPickerVisible(false)} style={{ marginRight: SPACING.md }}>
@@ -863,20 +975,25 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
   },
   label: {
+    color: '#000000',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
     fontSize: 14,
+    fontStyle: 'normal',
     fontWeight: '600',
-    color: COLORS.text,
+    lineHeight: 20,
+    letterSpacing: 0.35,
+    textTransform: 'uppercase',
     marginBottom: SPACING.sm,
     marginTop: SPACING.md,
   },
   input: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
     padding: SPACING.md,
     fontSize: 15,
     color: COLORS.text,
     borderWidth: 1,
-    borderColor: COLORS.divider,
+    borderColor: 'rgba(0, 0, 0, 0.00)',
   },
   textArea: {
     height: 80,
@@ -954,5 +1071,54 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  dropdownInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  dropdownToggleButton: {
+    paddingHorizontal: SPACING.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+    minHeight: 50,
+  },
+  dropdownListContainer: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    borderRadius: 16,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  dropdownListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  dropdownListItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  dropdownListEmpty: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  dropdownListEmptyText: {
+    fontSize: 13,
+    color: COLORS.textLight,
   },
 });

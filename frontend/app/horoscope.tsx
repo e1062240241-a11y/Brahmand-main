@@ -1,4 +1,5 @@
 // accessibility: placeholder
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   ScrollView,
@@ -9,6 +10,9 @@ import {
   Dimensions,
   Platform,
   RefreshControl,
+  Modal,
+  TouchableWithoutFeedback,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -41,17 +45,15 @@ const ZODIAC_SIGNS = [
 ];
 
 const PREDICTION_SECTIONS = [
-  { label: 'PERSONAL LIFE', keys: ['fiance', 'personal_life', 'personal'], icon: require('../assets/images/tab bar/rashi/person_fill.png'), fallback: 'Focus on harmony and understanding in your personal relationships today.' },
-  { label: 'PROFESSION', keys: ['love', 'profession', 'career'], icon: require('../assets/images/tab bar/rashi/briefcase_fill.png'), fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
-  { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/tab bar/rashi/heart.png'), fallback: 'Take time to rest and recharge. Balance your physical and mental well-being.' },
-  { label: 'EMOTIONS', keys: ['overall', 'emotion', 'emotions'], icon: require('../assets/images/tab bar/rashi/smiley_fill.png'), fallback: 'Allow yourself to feel and process your emotions without judgment today.' },
-  { label: 'TRAVEL', keys: ['travel'], icon: require('../assets/images/tab bar/rashi/trolley_fill.png'), fallback: 'Whether commuting or planning a trip, stay organized and adaptable to changes.' },
-  { label: 'LUCK', keys: ['luck'], icon: require('../assets/images/tab bar/rashi/clover_fill.png'), fallback: 'Trust your intuition. Small moments of serendipity may guide you today.' },
+  { label: 'LOVE', keys: ['love', 'fiance', 'personal_life', 'personal'], icon: require('../assets/images/jyotish/love.png'), fallback: 'Focus on harmony and understanding in your personal relationships today.' },
+  { label: 'FINANCE', keys: ['finance', 'profession', 'career'], icon: require('../assets/images/jyotish/finance.png'), fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
+  { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/jyotish/health.png'), fallback: 'Take time to rest and recharge. Balance your physical and mental well-being.' },
+  { label: 'OVERALL', keys: ['overall', 'emotion', 'emotions', 'luck'], icon: require('../assets/images/jyotish/overall.png'), fallback: 'A generally positive day ahead. Trust your intuition.' },
 ];
 
 const getLuckyColorConfig = (colorName: string) => {
   const name = colorName.toLowerCase().trim();
-  let gradient = ['#FC8260', '#D84315']; // Default orange-red
+  let gradient: [string, string, ...string[]] = ['#FC8260', '#D84315']; // Default orange-red
   let textColor = '#FFF';
 
   if (name.includes('red')) { gradient = ['#FF6B6B', '#C92A2A']; }
@@ -80,17 +82,21 @@ export default function HoroscopeScreen() {
   const [payload, setPayload] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activeCategory, setActiveCategory] = useState(PREDICTION_SECTIONS[0].label);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const isMountedRef = useRef(true);
+  const hasSetDefaultRashiRef = useRef(false);
 
   // Set default rashi on mount if user profile has one
   useEffect(() => {
     isMountedRef.current = true;
     const rashi = user?.rashi;
-    if (rashi) {
+    if (rashi && !hasSetDefaultRashiRef.current) {
       const match = ZODIAC_SIGNS.find(z => z.hindi.toLowerCase() === rashi.toLowerCase() || z.name.toLowerCase() === rashi.toLowerCase());
       if (match) {
         setSelectedZodiac(match);
+        hasSetDefaultRashiRef.current = true;
       }
     }
     return () => { isMountedRef.current = false; };
@@ -203,7 +209,7 @@ export default function HoroscopeScreen() {
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
           <View style={[styles.header, { backgroundColor: 'transparent', borderBottomWidth: 0 }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="chevron-back" size={24} color="#FFF" />
+              <Ionicons name="chevron-back" size={24} color="#291715" />
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}>
@@ -243,9 +249,9 @@ export default function HoroscopeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setViewMode('grid')} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={28} color="#FFF" />
+            <Ionicons name="chevron-back" size={28} color="#291715" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Cosmic Guidance</Text>
+          <Text style={styles.headerTitle}>Jyotish</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -255,7 +261,7 @@ export default function HoroscopeScreen() {
             <View style={styles.heroLeft}>
               <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
               <Text style={styles.signDateText}>
-                Today {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Today {formatDateIST(new Date())}
               </Text>
             </View>
             <View style={styles.heroImageWrapper}>
@@ -323,73 +329,132 @@ export default function HoroscopeScreen() {
               {/* AI Card */}
               <View style={styles.aiCard}>
                 <View style={styles.aiCardHeader}>
-                  <Ionicons name="sparkles" size={20} color="#FF8C00" />
+                  <View style={{ width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginTop: 3 }}>
+                    <Ionicons name="sparkles" size={20} color="#FF8C00" />
+                  </View>
                   <View style={{ marginLeft: 10 }}>
                     <Text style={styles.aiCardTitle}>Ask AI about your horoscope</Text>
                     <Text style={styles.aiCardSubtitle}>Get insights tailored to your situation</Text>
                   </View>
                 </View>
-                <Text style={styles.aiCardBody}>
-                  Get personalised horoscope guidance for love, career, relationships, timing, and your spiritual journey.
-                </Text>
                 <View style={styles.aiTagsRow}>
                   <View style={styles.aiTag}>
-                    <Ionicons name="time-outline" size={12} color="#FF8C00" />
+                    <ExpoImage source={require('../assets/images/jyotish/love.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
+                    <Text style={styles.aiTagText}>Love</Text>
+                  </View>
+                  <View style={styles.aiTag}>
+                    <ExpoImage source={require('../assets/images/jyotish/career.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
+                    <Text style={styles.aiTagText}>Career</Text>
+                  </View>
+                  <View style={styles.aiTag}>
+                    <ExpoImage source={require('../assets/images/jyotish/health_new.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
+                    <Text style={styles.aiTagText}>Health</Text>
+                  </View>
+                  <View style={styles.aiTag}>
+                    <ExpoImage source={require('../assets/images/jyotish/auspicious.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
                     <Text style={styles.aiTagText}>Auspicious Timing</Text>
                   </View>
                   <View style={styles.aiTag}>
-                    <Ionicons name="flame-outline" size={12} color="#FF8C00" />
+                    <ExpoImage source={require('../assets/images/jyotish/spiritual.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
                     <Text style={styles.aiTagText}>Spiritual Guidance</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.aiButton}>
+                <TouchableOpacity style={styles.aiButton} onPress={() => router.push('/ai-jyotish')}>
                   <Text style={styles.aiButtonText}>Ask Now</Text>
+                  <Ionicons name="chevron-forward" size={18} color="#FFF" />
                 </TouchableOpacity>
               </View>
 
-              {/* Prediction sections */}
-              {renderPrediction()}
-
-              {/* Detailed category sections */}
-              {PREDICTION_SECTIONS.map((section, index) => {
-                let text = '';
-                if (typeof predictionData === 'object' && predictionData !== null) {
-                  for (const k of section.keys) {
-                    if (predictionData[k]) {
-                      text = String(predictionData[k]);
-                      break;
-                    }
-                  }
-                }
+              {/* Cosmic Analysis Section */}
+              <View style={styles.cosmicAnalysisContainer}>
+                <Text style={styles.cosmicAnalysisTitle}>Cosmic Analysis</Text>
                 
-                // Fallback text if backend doesn't provide it
-                if (!text) {
-                  text = section.fallback;
-                }
-
-                return (
-                  <View key={section.label}>
-                    <View style={styles.dividerContainer}>
-                      <View style={styles.dividerLine} />
-                      <Ionicons name="flame" size={14} color="#F47B3E" style={{ marginHorizontal: 8 }} />
-                      <View style={styles.dividerLine} />
-                    </View>
-                    <View style={styles.predictionRow}>
-                      <View style={styles.predictionLeftIcon}>
-                        <Image source={section.icon} style={{ width: 32, height: 32, tintColor: '#F47B3E' }} resizeMode="contain" />
-                      </View>
-                      <View style={styles.predictionRightContent}>
-                        <Text style={styles.predictionSectionLabel}>{section.label}</Text>
-                        <Text style={styles.predictionSectionText}>{text}</Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
+                <View style={styles.cosmicAnalysisTabsContainer}>
+                  {PREDICTION_SECTIONS.map((section) => {
+                    const isActive = activeCategory === section.label;
+                    return (
+                      <TouchableOpacity 
+                        key={section.label}
+                        style={styles.cosmicTabItem}
+                        onPress={() => {
+                          setActiveCategory(section.label);
+                          setModalVisible(true);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[
+                          styles.cosmicTabCircle,
+                          { 
+                            backgroundColor: '#FF7B00',
+                            borderColor: '#FF7B00',
+                            borderWidth: 1,
+                          }
+                        ]}>
+                          <Image 
+                            source={section.icon} 
+                            style={[
+                              styles.cosmicTabIcon,
+                              { tintColor: '#FFFFFF' }
+                            ]} 
+                            resizeMode="contain" 
+                          />
+                        </View>
+                        <Text style={[
+                          styles.cosmicTabLabel,
+                          { color: isActive ? '#994700' : '#A67C52' }
+                        ]}>
+                          {section.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
             </>
           )}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Cosmic Analysis Modal */}
+      <Modal visible={modalVisible} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
+          <View style={styles.modalContainer}>
+            {(() => {
+              const section = PREDICTION_SECTIONS.find(s => s.label === activeCategory);
+              if (!section) return null;
+              
+              let text = '';
+              if (typeof predictionData === 'object' && predictionData !== null) {
+                for (const k of section.keys) {
+                  if (predictionData[k]) {
+                    text = String(predictionData[k]);
+                    break;
+                  }
+                }
+              }
+              const predictionText = text || section.fallback;
+
+              return (
+                <>
+                  <View style={styles.modalIconContainer}>
+                    <Image source={section.icon} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
+                  </View>
+                  <Text style={styles.modalTitle}>{section.label}</Text>
+                  <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
+                    <Text style={styles.modalDescription}>{predictionText}</Text>
+                  </ScrollView>
+                  <TouchableOpacity style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
+                    <Text style={styles.modalCloseText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
 
       {/* Zodiac grid dropdown overlay */}
       {showDropdown && (
@@ -471,7 +536,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#5C2A01', fontFamily: 'System', lineHeight: 24, fontStyle: 'normal' },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loaderInline: { padding: 40, alignItems: 'center', gap: 16 },
   loaderText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
@@ -482,10 +547,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 32,
+    paddingTop: 4,
+    paddingBottom: 12,
   },
-  heroLeft: { flex: 1, paddingTop: 10 },
+  heroLeft: { flex: 1, paddingTop: 0 },
   signNameText: { fontSize: 48, fontWeight: '800', color: '#111', lineHeight: 54 },
   signDateText: { fontSize: 15, color: '#111', fontWeight: '600', lineHeight: 24, marginTop: 4 },
   heroImageWrapper: {
@@ -503,16 +568,17 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 0, // Set to 0 to bring AI card closer
+    marginBottom: 0,
   },
-  leftMetrics: { flex: 1.4 },
-  centerMetric: { flex: 0.8, alignItems: 'center' },
-  rightMetrics: { flex: 1, alignItems: 'center' },
+  leftMetrics: { width: 160 },
+  centerMetric: { alignItems: 'center' },
+  rightMetrics: { alignItems: 'center', width: 73 },
   metricBarItem: { marginBottom: 16 },
   metricBarTrack: {
+    width: 160,
     height: 36,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(153, 153, 153, 0.36)',
     borderRadius: 8,
     overflow: 'hidden',
     justifyContent: 'center',
@@ -525,11 +591,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   metricBarText: { color: '#000', fontSize: 16, fontWeight: '800' },
-  metricBarLabel: { fontSize: 15, color: '#000', fontWeight: '600', marginTop: 6 },
-  metricLabel: { fontSize: 15, color: '#000', fontWeight: '600', marginTop: 8 },
+  metricBarLabel: { fontSize: 14, color: '#000', fontWeight: '500', fontFamily: 'System', fontStyle: 'normal', lineHeight: 24, marginTop: 6 },
+  metricLabel: { width: 48, fontSize: 14, color: '#000', fontWeight: '500', fontFamily: 'System', fontStyle: 'normal', lineHeight: 24, marginTop: 8, textAlign: 'center' },
   verticalBarTrack: {
-    width: 64,
-    height: 180,
+    width: 68,
+    height: 200,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.06)',
     borderRadius: 8,
@@ -548,8 +614,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   luckyNumberBox: {
-    width: 72,
-    height: 72,
+    width: 73,
+    height: 62,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.06)',
     borderRadius: 8,
@@ -559,90 +625,181 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   luckyColorBox: {
-    width: 72,
-    height: 72,
+    width: 73,
+    height: 62,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   luckyValue: { fontSize: 22, fontWeight: '800', color: '#111' },
-  luckyLabel: { fontSize: 14, fontWeight: '600', color: '#000', textAlign: 'center', lineHeight: 20 },
+  luckyLabel: { width: 62, fontSize: 14, color: '#000', textAlign: 'center', fontFamily: 'System', fontStyle: 'normal', fontWeight: '500', lineHeight: 18 },
   // AI card
   aiCard: {
     marginHorizontal: 16,
-    marginTop: -8, // Negative margin to move it even higher
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 18,
+    marginTop: 0,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+    display: 'flex',
+    minHeight: 140,
+    paddingVertical: 16,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 12,
+    alignSelf: 'stretch',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D8C2BC',
+    backgroundColor: '#FFF',
   },
-  aiCardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
-  aiCardTitle: { fontSize: 16, fontWeight: '600', color: '#231917', lineHeight: 24 },
-  aiCardSubtitle: { fontSize: 12, color: '#85736E', marginTop: 2, fontWeight: '400', lineHeight: 19.5 },
-  aiCardBody: { fontSize: 14, color: '#53433F', lineHeight: 20, marginBottom: 14, fontWeight: '400' },
-  aiTagsRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  aiCardHeader: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 22 },
+  aiCardTitle: {
+    alignSelf: 'stretch',
+    color: '#231917',
+    fontFamily: 'System',
+    fontSize: 16,
+    fontStyle: 'normal',
+    fontWeight: '600',
+    lineHeight: 24,
+  },
+  aiCardSubtitle: {
+    alignSelf: 'stretch',
+    color: '#85736E',
+    fontFamily: 'System',
+    fontSize: 12,
+    fontStyle: 'normal',
+    fontWeight: '400',
+    lineHeight: 19.5,
+    marginTop: 2,
+  },
+  aiTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', paddingHorizontal: 22 },
   aiTag: {
     flexDirection: 'row',
+    height: 28,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFF3E0',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: '#FFD9A8',
+    gap: 8,
+    borderRadius: 9999,
+    backgroundColor: '#FFDBD1',
   },
   aiTagText: { fontSize: 11, color: '#FF8C00', fontWeight: '700' },
   aiButton: {
-    backgroundColor: '#FF7B00',
-    borderRadius: 12,
-    minHeight: 48,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: 'flex',
+    width: 315,
+    height: 55,
     flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    alignSelf: 'center',
+    borderRadius: 9999,
+    backgroundColor: '#FF7B00',
   },
   aiButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
-  // Prediction sections
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginVertical: 12,
+  // Cosmic Analysis
+  cosmicAnalysisContainer: {
+    marginTop: 0,
+    marginBottom: 24,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(244, 123, 62, 0.3)',
-  },
-  predictionRow: {
-    flexDirection: 'row',
+  cosmicAnalysisTitle: {
+    color: '#311303',
+    fontFamily: 'System',
+    fontSize: 18,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    lineHeight: 24,
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-  predictionLeftIcon: {
-    width: 44,
+  cosmicAnalysisTabsContainer: {
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
-    marginTop: 20,
+    justifyContent: 'center',
+    gap: 12,
   },
-  predictionRightContent: {
+  cosmicTabItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  cosmicTabCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cosmicTabIcon: {
+    width: 28,
+    height: 28,
+  },
+  cosmicTabLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  
+  // Modal Styles
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
   },
-  predictionSectionLabel: { fontSize: 12, fontWeight: '800', color: '#F47B3E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  predictionSectionText: { fontSize: 14, color: '#53433F', lineHeight: 20, fontWeight: '400' },
+  modalContainer: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 24,
+    borderRadius: 32,
+    padding: 24,
+    paddingTop: 44, // Space for the overlapping icon
+    alignItems: 'center',
+    shadowColor: 'rgba(122, 80, 57, 0.08)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: -28,
+  },
+  modalTitle: {
+    color: '#FF7B00',
+    fontSize: 24,
+    fontWeight: '600',
+    lineHeight: 32,
+    marginBottom: 16,
+    textTransform: 'capitalize',
+  },
+  modalDescription: {
+    color: '#584235',
+    fontSize: 16,
+    lineHeight: 26,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalCloseButton: {
+    backgroundColor: '#FF7B00',
+    width: '100%',
+    height: 56,
+    borderRadius: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalCloseText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+
   content: { paddingHorizontal: 20, marginTop: 16 },
   predictionCard: {
     borderRadius: 24,

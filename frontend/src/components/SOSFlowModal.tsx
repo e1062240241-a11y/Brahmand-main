@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { COLORS, FONTS } from '../constants/theme';
 import { reverseGeocode } from '../services/api';
+import { LocationPickerModal, LocationData } from './LocationPickerModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -53,7 +54,7 @@ const reverseGeocodeWithTimeout = async (
 interface SOSFlowModalProps {
   visible: boolean;
   onClose: () => void;
-  onCreateSOS: (data: { type: string; microLocation: string }) => Promise<void>;
+  onCreateSOS: (data: { type: string; microLocation: string; latitude?: number; longitude?: number }) => Promise<void>;
 }
 
 export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, onCreateSOS }) => {
@@ -64,6 +65,17 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const [address, setAddress] = useState('Fetching location...');
   const [countdown, setCountdown] = useState(10);
   const [loading, setLoading] = useState(false);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
+
+  const handleConfirmManualLocation = (locData: LocationData) => {
+    if (locData.latitude && locData.longitude) {
+      setCoords({ latitude: locData.latitude, longitude: locData.longitude });
+      const parts = [locData.area, locData.city, locData.state].filter(Boolean);
+      setAddress(parts.join(', ') || locData.display_name || 'Selected Location');
+    }
+    setPickerVisible(false);
+  };
 
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -91,6 +103,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
     setMicroLocation('');
     setCountdown(10);
     setLoading(false);
+    setCoords(null);
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
   };
 
@@ -128,6 +141,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
       // Set raw coordinates immediately as a fallback display so user has instant feedback!
       const fallbackAddr = `Lat: ${location.coords.latitude.toFixed(6)}, Lng: ${location.coords.longitude.toFixed(6)}`;
       setAddress(fallbackAddr);
+      setCoords({ latitude: location.coords.latitude, longitude: location.coords.longitude });
 
       // Try geocoding with timeout
       try {
@@ -187,7 +201,12 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const handleFinalCreate = async () => {
     setLoading(true);
     try {
-      await onCreateSOS({ type: emergencyType, microLocation });
+      await onCreateSOS({
+        type: emergencyType,
+        microLocation,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
       onClose();
     } catch (error) {
       console.error(error);
@@ -346,18 +365,33 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         We've detected your location. Add more details to help people find you exactly.
       </Text>
 
-      <View style={styles.locationCard}>
+      <TouchableOpacity 
+        style={styles.locationCard} 
+        onPress={() => setPickerVisible(true)}
+        activeOpacity={0.8}
+      >
         <View style={styles.locationIconBg}>
           <MaterialCommunityIcons name="target" size={24} color="#2E7D32" />
         </View>
         <View style={styles.locationInfo}>
-          <Text style={styles.locationLabel}>Location detected</Text>
+          <Text style={styles.locationLabel}>Location detected (Tap to change)</Text>
           <Text style={styles.locationAddress} numberOfLines={1}>
             {address}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#2E7D32" />
-      </View>
+        <Ionicons name="pencil-outline" size={20} color="#2E7D32" />
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.locationCard, { backgroundColor: '#FFF5EB', borderColor: '#FFD7C2', borderWidth: 1, marginTop: -20, marginBottom: 20 }]} 
+        onPress={() => setPickerVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="map-outline" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
+        <Text style={[styles.locationLabel, { color: COLORS.primary, marginBottom: 0 }]}>
+          Choose Location Manually (Map/Search)
+        </Text>
+      </TouchableOpacity>
 
       <Text style={styles.inputLabel}>Add more details (optional)</Text>
       <View style={styles.inputContainer}>
@@ -415,27 +449,37 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-          <View style={styles.sheetHandle} />
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color="#666" />
-          </TouchableOpacity>
+    <>
+      <Modal visible={visible} transparent animationType="slide">
+        <View style={styles.overlay}>
+          <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.sheetHandle} />
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
 
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
-          {step === 4 && renderStep4()}
-          
-          {loading && (
-            <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color="#FF0000" />
-            </View>
-          )}
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
+            
+            {loading && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#FF0000" />
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      <LocationPickerModal
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onConfirm={handleConfirmManualLocation}
+        title="Confirm SOS Location"
+        initialCoords={coords}
+      />
+    </>
   );
 };
 

@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, 
@@ -27,6 +28,7 @@ import type * as ContactsType from 'expo-contacts';
 import {
   sendDirectMessage,
   getConversations,
+  getDMConversationMetadata,
   getDirectMessages,
   clearDirectMessages,
   markDirectMessagesRead,
@@ -445,7 +447,7 @@ const DirectMessageScreen = () => {
         const diffHours = Math.floor(diffMins / 60);
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffHours < 48) return 'Yesterday';
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        return formatDateIST(date);
       } catch {
         return '';
       }
@@ -472,7 +474,7 @@ const DirectMessageScreen = () => {
         : 'Approve or deny this message request to continue chat.';
     }
     if (requestStatus === 'rejected' && isRequester && cooldownActive && retryAfterDate) {
-      return `Your request was denied. You can send a new request after ${retryAfterDate.toLocaleString()}.`;
+      return `Your request was denied. You can send a new request after ${formatDateTimeIST(retryAfterDate)}.`;
     }
     return '';
   })();
@@ -520,14 +522,15 @@ const DirectMessageScreen = () => {
   // Fetch conversation details
   const fetchConversation = useCallback(async () => {
     try {
-      const convResponse = await getConversations();
-      const conversations = Array.isArray(convResponse?.data) ? convResponse.data : [];
-      const conv = conversations.find((c: Conversation) => 
-        c.conversation_id === conversationId || c.chat_id === conversationId
-      );
-      if (conv) {
-        setConversation(conv);
-      } else if (conversationId === 'new') {
+      if (conversationId && conversationId !== 'new') {
+        const metadataResponse = await getDMConversationMetadata(conversationId);
+        if (metadataResponse?.data) {
+          setConversation(metadataResponse.data);
+          return;
+        }
+      }
+      
+      if (conversationId === 'new') {
         setConversation({
           conversation_id: 'new',
           chat_id: 'new',
@@ -540,7 +543,19 @@ const DirectMessageScreen = () => {
         } as unknown as Conversation);
       }
     } catch (error) {
-      console.error('Error fetching conversation:', error);
+      console.warn('Error fetching conversation details by ID, falling back to conversations list:', error);
+      try {
+        const convResponse = await getConversations();
+        const conversations = Array.isArray(convResponse?.data) ? convResponse.data : [];
+        const conv = conversations.find((c: Conversation) => 
+          c.conversation_id === conversationId || c.chat_id === conversationId
+        );
+        if (conv) {
+          setConversation(conv);
+        }
+      } catch (fbError) {
+        console.error('Fallback error fetching conversation:', fbError);
+      }
     }
   }, [conversationId, userId, userName, userSL]);
 
@@ -560,19 +575,36 @@ const DirectMessageScreen = () => {
             ).fetch();
             
           if (localMessages && localMessages.length > 0) {
-            const mapped = localMessages.reverse().map((msg: any) => ({
-              id: msg.id,
-              sender_id: msg.senderId || '',
-              sender_name: msg.senderName || 'Unknown',
-              sender_photo: undefined,
-              text: msg.content || '',
-              content: msg.content || '',
-              message_type: msg.messageType || 'text',
-              status: 'sent',
-              created_at: new Date(msg.createdAt).toISOString(),
-              timestamp: new Date(msg.createdAt).toISOString(),
-              is_verified: false,
-            }));
+            const mapped = localMessages.reverse().map((msg: any) => {
+              let msgDateStr = new Date().toISOString();
+              try {
+                if (msg.createdAt) {
+                  const d = new Date(msg.createdAt);
+                  if (!isNaN(d.getTime())) {
+                    msgDateStr = d.toISOString();
+                  }
+                } else if (msg.created_at) {
+                  const d = new Date(msg.created_at);
+                  if (!isNaN(d.getTime())) {
+                    msgDateStr = d.toISOString();
+                  }
+                }
+              } catch (e) {}
+
+              return {
+                id: msg.id,
+                sender_id: msg.senderId || '',
+                sender_name: msg.senderName || 'Unknown',
+                sender_photo: undefined,
+                text: msg.content || '',
+                content: msg.content || '',
+                message_type: msg.messageType || 'text',
+                status: 'sent',
+                created_at: msgDateStr,
+                timestamp: msgDateStr,
+                is_verified: false,
+              };
+            });
             setMessages(mapped);
             setLoading(false);
           }
@@ -666,10 +698,26 @@ const DirectMessageScreen = () => {
       };
     }
 
+    const handleRequestUpdated = (data: any) => {
+      if (data && (data.chat_id === conversationId || data.conversation_id === conversationId)) {
+        console.log('[Chat] dm_request_updated event received:', data);
+        setConversation((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            request_status: data.request_status,
+            request_by: data.request_by,
+            request_retry_after: data.request_retry_after,
+          };
+        });
+      }
+    };
+
     (async () => {
       try {
         await socketService.connect();
         socketService.joinRoom(conversationId!);
+        socketService.onEvent('dm_request_updated', handleRequestUpdated);
         socketService.onMessage(socketListenerId, async (message: any) => {
           if (message && (message.chat_id === conversationId || message.conversation_id === conversationId)) {
             setMessages((prev) => {
@@ -714,6 +762,7 @@ const DirectMessageScreen = () => {
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {
+      socketService.offEvent('dm_request_updated', handleRequestUpdated);
       socketService.offMessage(socketListenerId);
       socketService.leaveRoom(conversationId!);
       if (pollingInterval) clearInterval(pollingInterval);
@@ -1014,7 +1063,7 @@ const DirectMessageScreen = () => {
   const formatTime = useCallback((dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatTimeIST(date);
   }, []);
 
   const isMediaUrl = (url: string, type: 'image' | 'video') => {
@@ -1377,11 +1426,7 @@ const DirectMessageScreen = () => {
 
     if (isSameDay(date, now)) return 'Today';
     if (isSameDay(date, yesterday)) return 'Yesterday';
-    return date.toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
-    });
+    return formatDateIST(date);
   }, []);
 
   const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
@@ -1650,7 +1695,7 @@ const DirectMessageScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
         {renderContent()}
       </KeyboardAvoidingView>
     </SafeAreaView>

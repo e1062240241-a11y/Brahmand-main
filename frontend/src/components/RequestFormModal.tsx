@@ -43,7 +43,6 @@ interface RequestFormModalProps {
 }
 
 const VISIBILITY_OPTIONS = [
-  { key: 'area', label: 'My Area Community', icon: 'home' },
   { key: 'city', label: 'My City Community', icon: 'location' },
   { key: 'state', label: 'My State Community', icon: 'map' },
   { key: 'national', label: 'National Community', icon: 'flag' },
@@ -185,10 +184,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
       const userState = user.home_location.state;
       
       const foundCommunity = communities.find(c => {
-        if (visibility === 'area') {
-          // Match by area
-          return c.type === 'home_area' && c.name.toLowerCase().includes(userArea?.toLowerCase() || '');
-        } else if (visibility === 'city') {
+        if (visibility === 'city') {
           return c.type === 'city' && c.name.toLowerCase().includes(userCity?.toLowerCase() || '');
         } else if (visibility === 'state') {
           return c.type === 'state' && c.name.toLowerCase().includes(userState?.toLowerCase() || '');
@@ -704,7 +700,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
         <View style={styles.container}>

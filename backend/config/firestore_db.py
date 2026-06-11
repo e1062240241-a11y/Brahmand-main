@@ -45,7 +45,7 @@ class FirestoreDB:
     
     # =================== GENERIC OPERATIONS ===================
     
-    async def create_document(self, collection: str, data: Dict[str, Any], doc_id: str = None) -> str:
+    async def create_document(self, collection: str, data: Dict[str, Any], doc_id: str = None, overwrite: bool = True) -> str:
         """Create a document in a collection"""
         now_iso = datetime.utcnow().isoformat() + 'Z'
         if 'created_at' not in data:
@@ -56,7 +56,10 @@ class FirestoreDB:
         def _create():
             coll = self.client.collection(collection)
             if doc_id:
-                coll.document(doc_id).set(data)
+                if overwrite:
+                    coll.document(doc_id).set(data)
+                else:
+                    coll.document(doc_id).create(data)
                 return doc_id
             else:
                 _, doc_ref = coll.add(data)
@@ -108,6 +111,32 @@ class FirestoreDB:
         if result:
             await self._cache.delete(f"{collection}:{doc_id}")
         return result
+
+    async def delete_subcollection(self, parent_collection: str, parent_id: str, subcollection: str, batch_size: int = 500) -> int:
+        """Delete all documents in a subcollection using batched writes"""
+        def _delete_all():
+            coll_ref = self.client.collection(parent_collection).document(parent_id).collection(subcollection)
+            deleted_count = 0
+
+            while True:
+                docs = list(coll_ref.limit(batch_size).stream())
+                if not docs:
+                    break
+
+                batch = self.client.batch()
+                for doc in docs:
+                    batch.delete(doc.reference)
+                    deleted_count += 1
+
+                batch.commit()
+
+                # If we retrieved less than batch_size, we're done
+                if len(docs) < batch_size:
+                    break
+
+            return deleted_count
+
+        return await self._run_sync(_delete_all)
     
     async def query_documents(
         self, 

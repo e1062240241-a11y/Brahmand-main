@@ -437,6 +437,36 @@ export const adminReviewReport = (
     { headers: { Authorization: `Bearer ${adminToken}` } }
   );
 
+export interface AdminSOSMisuseReport {
+  id: string;
+  sos_id: string;
+  reporter_id: string;
+  reporter_name: string;
+  creator_id: string;
+  creator_name: string;
+  reason: string;
+  created_at: string;
+}
+
+export const getAdminSOSMisuseReports = (adminToken: string) =>
+  adminApi.get<AdminSOSMisuseReport[]>('/admin/sos-misuse-reports', {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+
+export const adminBlockSOS = (adminToken: string, userId: string) =>
+  adminApi.post(
+    `/admin/users/${userId}/block-sos`,
+    {},
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
+export const adminUnblockSOS = (adminToken: string, userId: string) =>
+  adminApi.post(
+    `/admin/users/${userId}/unblock-sos`,
+    {},
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
 export interface AdminPersonalityVerification {
   id: string;
   user_id: string;
@@ -902,6 +932,9 @@ export const getYajurvedaChapter = (chapterNumber: number = 1) =>
 export const getMahabharataBook = (bookNumber: number = 1) =>
   api.get(`/library/mahabharata/book/${bookNumber}`);
 
+export const getUpanishadsChapter = (chapterNumber: number = 1) =>
+  api.get(`/library/upanishads/chapter/${chapterNumber}`);
+
 // Community APIs
 export const getCommunities = () =>
   api.get('/communities');
@@ -1024,6 +1057,9 @@ export const sendDirectMessage = (recipientSlId: string, content: string, messag
 
 export const getConversations = () =>
   api.get('/dm/conversations', { timeout: 120000 });
+
+export const getDMConversationMetadata = (conversationId: string) =>
+  api.get(`/dm/${conversationId}/metadata`);
 
 export const getDirectMessages = (conversationId: string, limit: number = 50) =>
   api.get(`/dm/${conversationId}?limit=${limit}`, { timeout: 120000 });
@@ -1760,17 +1796,6 @@ export const uploadJobProfileFile = (
   })();
 };
 
-// =================== CULTURAL COMMUNITY APIS ===================
-
-export const getCulturalCommunities = (search?: string) =>
-  api.get('/cultural-communities', { params: { search } });
-
-export const getUserCulturalCommunity = () =>
-  api.get('/user/cultural-community');
-
-export const updateUserCulturalCommunity = (cultural_community: string) =>
-  api.put('/user/cultural-community', { cultural_community });
-
 // =================== UTILITY APIS ===================
 
 export const getWisdom = () =>
@@ -1866,6 +1891,9 @@ export const resolveMyActiveSOS = (status: 'resolved' | 'cancelled') =>
 
 export const respondToSOS = (sosId: string, response: 'coming' | 'called') =>
   api.post(`/sos/${sosId}/respond`, { response });
+
+export const reportSOSMisuse = (sosId: string, reason: string) =>
+  api.post(`/sos/${sosId}/report-misuse`, { reason });
 
 // =================== SPEECH TRANSCRIPTION API ===================
 

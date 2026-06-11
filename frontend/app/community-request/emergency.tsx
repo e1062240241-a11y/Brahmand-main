@@ -131,7 +131,7 @@ export default function CommunityRequestEmergencyPage() {
 
       <KeyboardAvoidingView 
         style={styles.cardContainerWrapper} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.cardContainer}>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">

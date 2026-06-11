@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
@@ -253,7 +254,7 @@ export default function MyKrishnaChat() {
             {item.content}
           </Text>
           <Text style={styles.timestamp}>
-            {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {formatTimeIST(item.timestamp)}
           </Text>
         </View>
       </Animated.View>
@@ -307,8 +308,7 @@ export default function MyKrishnaChat() {
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (

@@ -17,8 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
 
 const mahabharataCover = require('../../assets/images/ancient_new_3.jpg');
-const geetaCover = require('../../assets/images/user_upload_geeta_new.jpg');
-const atharvavedCover = require('../../assets/images/ancient_new_1.jpg');
+const geetaCover = require('../../assets/images/featured_book_6.jpg');
+const atharvavedCover = require('../../assets/images/featured_book_7.jpg');
 const rigvedaCover = require('../../assets/images/ancient_new_2.jpg');
 const ramayanCover = require('../../assets/images/ancient_new_4.jpg');
 const ramcharitmanasCover = require('../../assets/images/Ramcharitmanas.jpg');
@@ -43,7 +43,7 @@ const ANCIENT_BOOKS = [
     snippet: 'Explorations of the true nature of reality (Brahman) and the...',
     cover: atharvavedCover,
     progress: 0.33,
-    route: '/library/atharvaved',
+    route: '/library/upanishads',
   },
   {
     id: 'vedas',

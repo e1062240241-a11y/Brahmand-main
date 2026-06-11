@@ -24,13 +24,13 @@ import { database } from '../../src/database';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ── Assets ────────────────────────────────────────────────────────────────
-const geetaCover = require('../../assets/images/user_upload_2.png');
-const ramcharitmanasCover = require('../../assets/images/Ramcharitmanas.jpg');
+const geetaCover = require('../../assets/images/featured_book_6.jpg');
+const ramcharitmanasCover = require('../../assets/images/featured_book_1.jpg');
 const atharvavedCover = require('../../assets/images/user_upload_0.png');
-const mahabharataCover = require('../../assets/images/user_upload_1.png');
-const rigvedaCover = require('../../assets/images/Rigveda.jpg');
-const ramayanCover = require('../../assets/images/Ramayan-hardcover-front-scaled.jpg');
-const yajurvedaCover = require('../../assets/images/Yajurveda.jpg');
+const mahabharataCover = require('../../assets/images/featured_book_4.jpg');
+const rigvedaCover = require('../../assets/images/featured_book_2.jpg');
+const ramayanCover = require('../../assets/images/featured_book_5.jpg');
+const yajurvedaCover = require('../../assets/images/featured_book_3.jpg');
 const heroImage = require('../../assets/images/library_banner_new.jpg');
 const diyaImage = require('../../assets/images/library_diya_new.jpg');
 
@@ -44,13 +44,14 @@ const BROWN = '#5A4136';
 
 // ── Book data ─────────────────────────────────────────────────────────────
 const BOOKS = [
-  { id: 'atharvaved', title: 'Atharvaved', subtitle: 'THE ATHARVA VEDA', cover: atharvavedCover, route: '/library/atharvaved', progress: 0.45 },
+  { id: 'bhagvad-geeta', title: 'Bhagavad Gita', subtitle: 'THE SONG OF GOD', cover: geetaCover, route: '/library/bhagavad-gita-3d', progress: 0.0 },
   { id: 'mahabharata', title: 'Mahabharata', subtitle: 'THE GREAT EPIC', cover: mahabharataCover, route: '/library/mahabharata', progress: 0.25 },
   { id: 'ramayan', title: 'Ramayan', subtitle: 'VALMIKI RAMAYAN', cover: ramayanCover, route: '/library/ramayan', progress: 0.60 },
-  { id: 'upanishads', title: 'Upanishads', subtitle: 'VEDIC TEXTS', cover: geetaCover, route: '/library/upanishads', progress: 0.30 },
+  { id: 'ramcharitmanas', title: 'Ramcharitmanas', subtitle: 'TULSIDAS', cover: ramcharitmanasCover, route: '/library/ramcharitmanas', progress: 0.20 },
+  { id: 'upanishads', title: 'Upanishads', subtitle: 'VEDIC TEXTS', cover: require('../../assets/images/featured_book_7.jpg'), route: '/library/upanishads', progress: 0.30 },
   { id: 'rigveda', title: 'Rigveda', subtitle: 'RIGVEDA SAMHITA', cover: rigvedaCover, route: '/library/rigveda', progress: 0.15 },
   { id: 'yajurveda', title: 'Yajurveda', subtitle: 'YAJURVEDA', cover: yajurvedaCover, route: '/library/yajurveda', progress: 0.50 },
-  { id: 'ramcharitmanas', title: 'Ramcharitmanas', subtitle: 'TULSIDAS', cover: ramcharitmanasCover, route: '/library/ramcharitmanas', progress: 0.20 },
+  { id: 'atharvaved', title: 'Atharvaved', subtitle: 'THE ATHARVA VEDA', cover: atharvavedCover, route: '/library/atharvaved', progress: 0.45 },
 ];
 
 const BOOK_COVERS: Record<string, any> = {
@@ -195,11 +196,13 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
                   {recentBooks.map((book) => {
                     const timeAgo = Math.round((Date.now() - book.lastOpenedTime) / 60000);
                     const timeString = timeAgo < 60 ? `${timeAgo}m ago` : timeAgo < 1440 ? `${Math.floor(timeAgo/60)}h ago` : `${Math.floor(timeAgo/1440)}d ago`;
+                    const bookMeta = BOOKS.find(b => b.id === book.id);
+                    const targetRoute = bookMeta ? bookMeta.route : `/library/${book.id}`;
                     return (
                       <TouchableOpacity
                         key={book.id}
                         style={[styles.gitaProgressCard, { marginHorizontal: 0, width: SCREEN_WIDTH * 0.85 }]}
-                        onPress={() => router.push(`/library/${book.id}` as any)}
+                        onPress={() => router.push(targetRoute as any)}
                         activeOpacity={0.9}
                       >
                         <Image source={BOOK_COVERS[book.id] || BOOK_COVERS['upanishads']} style={styles.gitaProgressImg} resizeMode="cover" />
@@ -288,16 +291,6 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
         </View>
 
 
-        {/* ── 3D Book Button ── */}
-        <View style={styles.book3dWrapper}>
-          <TouchableOpacity
-            style={styles.book3dBtn}
-            onPress={() => router.push('/library/bhagavad-gita-3d' as any)}
-          >
-            <Text style={styles.book3dBtnTxt}>View 3D Bhagavad Gita</Text>
-            <Ionicons name="book" size={18} color="#FFF" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
-        </View>
 
       </ScrollView>
     </View>

@@ -226,10 +226,53 @@ class PushNotificationService:
                 body=body
             )
             
+            # Detect notification type for custom sound / channel selection
+            notification_type = (data or {}).get('type', '')
+            is_sos = bool(notification_type and (notification_type.startswith('sos') or notification_type == 'sos_alert'))
+            is_msg = bool(notification_type and notification_type in ('message', 'dm', 'chat', 'community', 'circle_message'))
+            is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
+            
+            resolved_channel = 'sos_alerts_v3' if is_sos else ('community_v1' if is_community else ('messages_v4' if is_msg else 'default_v4'))
+            
+            # iOS: .caf is Apple's native audio format — most reliable for APNs custom sounds.
+            # Android: filename WITHOUT extension (matches res/raw/ file name).
+            ios_sound = 'soundreality_mayday_166011_ios.caf' if is_sos else 'bell_ios.caf'
+            android_sound = 'soundreality_mayday_166011' if is_sos else 'bell'
+            
+            # Android specific configuration
+            android_config = messaging.AndroidConfig(
+                priority='high',
+                notification=messaging.AndroidNotification(
+                    channel_id=resolved_channel,
+                    icon='notification_icon',
+                    color='#FF6B35',
+                    sound=android_sound,
+                    click_action='FLUTTER_NOTIFICATION_CLICK',
+                    vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000] if is_sos else [0, 250, 250, 250],
+                )
+            )
+            
+            # iOS APNs configuration — custom .caf sound bundled in app
+            # apns-push-type: alert is required on iOS 13+ for notifications to display.
+            apns_config = messaging.APNSConfig(
+                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        sound=ios_sound,
+                        badge=1 if is_sos else 0,
+                        content_available=True,
+                        mutable_content=True,
+                        category='SOS_ALERT' if is_sos else None,
+                    )
+                )
+            )
+            
             message = messaging.MulticastMessage(
                 notification=notification,
                 data=data or {},
-                tokens=tokens
+                tokens=tokens,
+                android=android_config,
+                apns=apns_config
             )
             
             response = messaging.send_multicast(message)
@@ -289,6 +332,18 @@ class PushNotificationService:
             channel_id='messages'
         )
         
+        try:
+            from services.firebase_notification_service import FirebaseNotificationService
+            await FirebaseNotificationService.create_notification(
+                user_id=recipient_id,
+                title=f"New message from {sender_name}",
+                body=preview,
+                notification_type=FirebaseNotificationService.TYPE_MESSAGE,
+                data={'chat_id': chat_id, 'type': 'dm', 'sender_name': sender_name}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to create DM notification in Firestore: {e}")
+        
         return result is not None
     
     @classmethod
@@ -341,7 +396,7 @@ class PushNotificationService:
         # Truncate message preview
         preview = message_preview[:100] + '...' if len(message_preview) > 100 else message_preview
         
-        return cls.send_multicast(
+        result = cls.send_multicast(
             tokens=tokens,
             title=f"{sender_name} in {community_name}",
             body=preview,
@@ -351,6 +406,21 @@ class PushNotificationService:
                 'community_name': community_name
             }
         )
+        
+        try:
+            from services.firebase_notification_service import FirebaseNotificationService
+            for member_id in member_ids:
+                await FirebaseNotificationService.create_notification(
+                    user_id=member_id,
+                    title=f"{sender_name} in {community_name}",
+                    body=preview,
+                    notification_type=FirebaseNotificationService.TYPE_COMMUNITY,
+                    data={'community_id': community_id, 'type': 'community', 'community_name': community_name}
+                )
+        except Exception as e:
+            logger.warning(f"Failed to create community message notifications in Firestore: {e}")
+        
+        return result
 
     @classmethod
     async def notify_circle_message(
@@ -399,7 +469,7 @@ class PushNotificationService:
             
         preview = message_preview[:100] + '...' if len(message_preview) > 100 else message_preview
         
-        return cls.send_multicast(
+        result = cls.send_multicast(
             tokens=tokens,
             title=f"{sender_name} in {circle_name}",
             body=preview,
@@ -409,6 +479,21 @@ class PushNotificationService:
                 'circle_name': circle_name
             }
         )
+        
+        try:
+            from services.firebase_notification_service import FirebaseNotificationService
+            for member_id in actual_member_ids:
+                await FirebaseNotificationService.create_notification(
+                    user_id=member_id,
+                    title=f"{sender_name} in {circle_name}",
+                    body=preview,
+                    notification_type="circle_message",
+                    data={'circle_id': circle_id, 'type': 'circle_message', 'circle_name': circle_name}
+                )
+        except Exception as e:
+            logger.warning(f"Failed to create circle message notifications in Firestore: {e}")
+        
+        return result
 
     @classmethod
     async def notify_circle_invite(
@@ -440,7 +525,7 @@ class PushNotificationService:
         if not tokens:
             return {'success_count': 0, 'failure_count': 0}
         
-        return cls.send_multicast(
+        result = cls.send_multicast(
             tokens=tokens,
             title=f"Added to Circle: {circle_name}",
             body=f"{inviter_name} added you to {circle_name}. Open the app to start chatting!",
@@ -450,6 +535,21 @@ class PushNotificationService:
                 'circle_name': circle_name
             }
         )
+        
+        try:
+            from services.firebase_notification_service import FirebaseNotificationService
+            for member_id in member_ids:
+                await FirebaseNotificationService.create_notification(
+                    user_id=member_id,
+                    title=f"Added to Circle: {circle_name}",
+                    body=f"{inviter_name} added you to {circle_name}.",
+                    notification_type="circle_invite",
+                    data={'circle_id': circle_id, 'type': 'circle_invite', 'circle_name': circle_name}
+                )
+        except Exception as e:
+            logger.warning(f"Failed to create circle invite notifications in Firestore: {e}")
+        
+        return result
 
 
 # Singleton instance

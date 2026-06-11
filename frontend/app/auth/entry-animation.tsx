@@ -7,13 +7,35 @@ import { useAuthStore } from '../../src/store/authStore';
 
 const { width } = Dimensions.get('window');
 
+const AnimatedText = ({ text, style, delay = 0, duration = 300 }: any) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: duration,
+      delay: delay,
+      useNativeDriver: true,
+    }).start();
+  }, [opacity, delay, duration]);
+
+  return <Animated.Text style={[style, { opacity }]}>{text}</Animated.Text>;
+};
+
 export default function EntryAnimationScreen() {
   const router = useRouter();
   const { token } = useAuthStore();
   const [agreed, setAgreed] = useState(false);
 
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.5)).current;
+  const containerOpacity = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const bottomOpacity = useRef(new Animated.Value(0)).current;
+  const dotScale = useRef(new Animated.Value(0)).current;
+
+  const word = "Brahmand";
+  const letterDelay = 120;
+  const initialDelay = 500;
+  const wordAnimationDuration = initialDelay + word.length * letterDelay + 400;
 
   useEffect(() => {
     if (token) {
@@ -21,31 +43,46 @@ export default function EntryAnimationScreen() {
       return;
     }
 
-    Animated.parallel([
-      Animated.timing(logoOpacity, {
+    Animated.sequence([
+      Animated.timing(containerOpacity, {
         toValue: 1,
-        duration: 800,
+        duration: 500,
         useNativeDriver: true,
       }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        friction: 8,
-        useNativeDriver: true,
-      }),
+      Animated.delay(initialDelay),
     ]).start();
-  }, [logoOpacity, logoScale, router, token]);
+
+    // Start text animation logic happens in AnimatedText components
+    // and wait for it to finish before showing bottom elements
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.spring(dotScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bottomOpacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, wordAnimationDuration);
+
+  }, [containerOpacity, contentOpacity, bottomOpacity, dotScale, router, token, wordAnimationDuration]);
 
   const handleContinue = () => {
     if (!agreed) return;
 
     Animated.parallel([
-      Animated.timing(logoOpacity, {
+      Animated.timing(containerOpacity, {
         toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoScale, {
-        toValue: 0.8,
         duration: 500,
         useNativeDriver: true,
       }),
@@ -59,36 +96,34 @@ export default function EntryAnimationScreen() {
   };
 
   return (
-    <LinearGradient
-      colors={['#FF6600', '#FF9933']}
-      style={styles.container}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <View style={styles.mandalaContainer}>
-        <View style={styles.mandalaCircle} />
-        <View style={[styles.mandalaCircle, styles.mandalaCircle2]} />
-        <View style={[styles.mandalaCircle, styles.mandalaCircle3]} />
-      </View>
-
+    <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
       <View style={styles.content}>
-        <Animated.View
-          style={[
-            styles.logoContainer,
-            {
-              opacity: logoOpacity,
-              transform: [{ scale: logoScale }],
-            },
-          ]}
-        >
-          <View style={styles.logoBg}>
-            <Text style={styles.omSymbol}>ॐ</Text>
+        <View style={styles.logoContainer}>
+          <View style={styles.wordContainer}>
+            {word.split('').map((letter, index) => (
+              <AnimatedText
+                key={index}
+                text={letter}
+                style={styles.appNameLetter}
+                delay={initialDelay + index * letterDelay}
+              />
+            ))}
+            <Animated.View style={[styles.dotContainer, { transform: [{ scale: dotScale }] }]}>
+              <LinearGradient
+                colors={['#4facfe', '#00f2fe']}
+                style={styles.blueDot}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+            </Animated.View>
           </View>
-          <Text style={styles.appName}>Brahmand</Text>
-          <Text style={styles.tagline}>The Sanatan Community</Text>
-        </Animated.View>
 
-        <View style={styles.bottomSection}>
+          <Animated.Text style={[styles.tagline, { opacity: contentOpacity }]}>
+            The Sanatan Community
+          </Animated.Text>
+        </View>
+
+        <Animated.View style={[styles.bottomSection, { opacity: bottomOpacity }]}>
           <View style={styles.checkboxContainer}>
             <TouchableOpacity
               style={[styles.checkbox, agreed && styles.checkboxChecked]}
@@ -121,39 +156,16 @@ export default function EntryAnimationScreen() {
           >
             <Text style={styles.adminLoginText}>Login as Admin</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
-    </LinearGradient>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  mandalaContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.08,
-  },
-  mandalaCircle: {
-    position: 'absolute',
-    width: width * 1.2,
-    height: width * 1.2,
-    borderRadius: width * 0.6,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  mandalaCircle2: {
-    width: width * 0.9,
-    height: width * 0.9,
-    borderRadius: width * 0.45,
-  },
-  mandalaCircle3: {
-    width: width * 0.6,
-    height: width * 0.6,
-    borderRadius: width * 0.3,
+    backgroundColor: '#FFFFFF',
   },
   content: {
     flex: 1,
@@ -163,37 +175,42 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: SPACING.xl * 1.5,
+    marginBottom: SPACING.xl * 2,
+    flex: 1,
+    justifyContent: 'center',
   },
-  logoBg: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  wordContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 8,
+  },
+  appNameLetter: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 2,
+  },
+  dotContainer: {
+    marginLeft: 4,
+    marginBottom: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
   },
-  omSymbol: {
-    fontSize: 80,
-    color: '#FFFFFF',
-    fontWeight: '300',
-  },
-  appName: {
-    fontSize: 38,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-    marginBottom: 8,
+  blueDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   tagline: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
+    color: '#666666',
     letterSpacing: 0.5,
+    marginTop: 10,
   },
   bottomSection: {
     width: '100%',
     maxWidth: 420,
+    paddingBottom: 40,
   },
   checkboxContainer: {
     flexDirection: 'row',
@@ -204,7 +221,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: '#000000',
     borderRadius: 6,
     marginRight: SPACING.sm,
     justifyContent: 'center',
@@ -212,17 +229,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   checkboxChecked: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#000000',
   },
   checkmark: {
     fontSize: 16,
-    color: COLORS.primary,
+    color: '#FFFFFF',
     fontWeight: '700',
     lineHeight: 18,
   },
   termsText: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#333333',
     fontSize: 14,
     lineHeight: 20,
   },
@@ -231,7 +248,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   continueButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#000000',
     borderRadius: BORDER_RADIUS.lg,
     paddingVertical: 14,
     alignItems: 'center',
@@ -241,7 +258,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   continueButtonText: {
-    color: COLORS.primary,
+    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 16,
   },
@@ -250,7 +267,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   adminLoginText: {
-    color: '#FFFFFF',
+    color: '#666666',
     fontSize: 14,
     textDecorationLine: 'underline',
     fontWeight: '600',

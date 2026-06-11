@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -69,27 +70,6 @@ const LIVE_JAAPS = [
     image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.png'),
     slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...'
   },
-  { 
-    id: '5', 
-    title: 'Ganesh\nMantra', 
-    devotees: '8.2K', 
-    image: require('../../assets/images/ganesh_jaap_card.png'),
-    slok: 'ॐ गं गणपतये नमः ॐ गं गणपतये नमः...'
-  },
-  { 
-    id: '6', 
-    title: 'Laxmi\nMantra', 
-    devotees: '6.1K', 
-    image: require('../../assets/images/laxmi_jaap_card.png'),
-    slok: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं...'
-  },
-  { 
-    id: '7', 
-    title: 'Krishna\nJaap', 
-    devotees: '7.2K', 
-    image: require('../../assets/images/krishna_jaap_card_v3.png'),
-    slok: 'राधे राधे राधे राधे श्याम मिलाए दे...'
-  },
 ];
 
 const UPCOMING_SESSIONS = [
@@ -98,6 +78,17 @@ const UPCOMING_SESSIONS = [
   { id: '3', category: 'SANSKRIT CLASS', title: 'Sanskrit Language Basics', desc: 'Learn. Chant. Connect.', date: '21 May', time: '6:30 PM', going: '1.9K going', image: require('../../assets/images/sanskrit_session_v2_exact.png') },
   { id: '4', category: 'MEDITATION', title: 'Breathing & Meditation', desc: 'Find calm within.', date: '22 May', time: '6:00 AM', going: '2.1K going', image: require('../../assets/images/yoga_session_img.png') },
 ];
+
+const getMantraRoomName = (id: string) => {
+  if (id === '1') return 'jaap_hanuman';
+  if (id === '2') return 'jaap_krishna';
+  if (id === '3') return 'jaap_shiva';
+  if (id === '4') return 'jaap_gayatri';
+  if (id === '5') return 'jaap_ganesh';
+  if (id === '6') return 'jaap_laxmi';
+  if (id === '7') return 'jaap_krishna';
+  return 'jaap_gayatri';
+};
 
 export default function JaapLandingScreen() {
   const { t } = useTranslation();
@@ -112,6 +103,32 @@ export default function JaapLandingScreen() {
   const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [sessionReminders, setSessionReminders] = useState<Record<string, boolean>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!isFocused || activeSection !== 'jaap') return;
+    
+    let active = true;
+    const fetchActiveCounts = async () => {
+      try {
+        const response = await api.get('/jaap/active-count', {
+          params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }
+        });
+        if (active && response && response.data) {
+          setActiveCounts(response.data);
+        }
+      } catch (error) {
+        console.warn('Error fetching active jaap counts:', error);
+      }
+    };
+
+    fetchActiveCounts();
+    const interval = setInterval(fetchActiveCounts, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isFocused, activeSection]);
 
   const sendJaapInviteFromCard = async (jaapId: string, mantraType: string, title: string) => {
     try {
@@ -550,7 +567,7 @@ export default function JaapLandingScreen() {
                     }
                   } else {
                     if (hanumanStatus.nextSessionStart) {
-                      const timeStr = hanumanStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const timeStr = formatTimeIST(hanumanStatus.nextSessionStart);
                       liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
                     } else {
                       liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
@@ -564,7 +581,7 @@ export default function JaapLandingScreen() {
                     liveLabel = t('language') === 'hi' ? 'लाइव' : 'LIVE';
                   } else {
                     if (otherStatus.nextSessionStart) {
-                      const timeStr = otherStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const timeStr = formatTimeIST(otherStatus.nextSessionStart);
                       liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
                     } else {
                       liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
@@ -610,7 +627,7 @@ export default function JaapLandingScreen() {
                         <View style={styles.exactCountBadge}>
                           <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 2 }} />
                           <Text style={styles.exactCountText}>
-                            {t('language') === 'hi' ? jaap.devotees.replace('K', 'k') : jaap.devotees}
+                            {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
                           </Text>
                         </View>
                       </View>
@@ -658,103 +675,7 @@ export default function JaapLandingScreen() {
               })}
             </ScrollView>
 
-            <View style={styles.sectionHeaderParity}>
-              <Text style={[styles.sectionTitleText, { flexShrink: 1, marginRight: 12 }]}>{t('upcomingSpiritualSessions')}</Text>
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
-                <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
-                <Ionicons name="chevron-forward" size={18} color="#FF6600" />
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.sessionsColPadding}>
-              {UPCOMING_SESSIONS.map((session) => {
-                let catText = session.category;
-                let titleText = session.title;
-                let descText = session.desc;
-                let dateText = session.date;
-                let goingText = session.going;
-
-                if (t('language') === 'hi') {
-                  if (session.id === '1') {
-                    catText = 'योग क्लास';
-                    titleText = 'प्रातःकाल योग प्रवाह';
-                    descText = 'अपने दिन की शुरुआत ऊर्जा और सकारात्मकता से करें।';
-                    dateText = 'कल';
-                    goingText = '2.4K लोग जा रहे हैं';
-                  } else if (session.id === '2') {
-                    catText = 'गीता पाठ';
-                    titleText = 'भगवद गीता - अध्याय २';
-                    descText = 'ज्ञान की गहराई में उतरें।';
-                    dateText = 'कल';
-                    goingText = '3.2K लोग जा रहे हैं';
-                  } else if (session.id === '3') {
-                    catText = 'संस्कृत क्लास';
-                    titleText = 'संस्कृत भाषा के मूल नियम';
-                    descText = 'सीखें। जपें। जुड़ें।';
-                    dateText = '21 मई';
-                    goingText = '1.9K लोग जा रहे हैं';
-                  } else if (session.id === '4') {
-                    catText = 'ध्यान';
-                    titleText = 'श्वास और ध्यान';
-                    descText = 'अपने भीतर शांति का अनुभव करें।';
-                    dateText = '22 मई';
-                    goingText = '2.1K लोग जा रहे हैं';
-                  }
-                }
-
-                return (
-                  <View key={session.id} style={styles.sessionCard}>
-                    {/* Image + Text row */}
-                    <View style={styles.sessionTopRow}>
-                      <Image source={session.image} style={styles.sessionImg} resizeMode="cover" />
-                      <View style={styles.sessionTextCol}>
-                        <Text style={styles.sessionCat}>{catText}</Text>
-                        <Text style={styles.sessionTitle}>{titleText}</Text>
-                        <Text style={styles.sessionDesc}>{descText}</Text>
-                      </View>
-                    </View>
-                    {/* Reminder button */}
-                    <TouchableOpacity
-                      style={[
-                        styles.reminderBtn, 
-                        sessionReminders[session.id] && { backgroundColor: '#FF6600' }
-                      ]}
-                      activeOpacity={0.8}
-                      onPress={() => {
-                        const isSet = sessionReminders[session.id];
-                        setSessionReminders(prev => ({ ...prev, [session.id]: !isSet }));
-
-                        if (!isSet) {
-                          const alertTitle = t('language') === 'hi' ? '🔔 रिमाइंडर सेट!' : '🔔 Reminder Set!';
-                          const alertMsg = t('language') === 'hi' 
-                            ? `आपको ${dateText} को ${session.time} पर "${titleText}" के लिए याद दिलाया जाएगा।`
-                            : `You will be reminded for "${session.title}" on ${session.date} at ${session.time}.`;
-                          Alert.alert(alertTitle, alertMsg, [{ text: t('language') === 'hi' ? 'ठीक है' : 'OK', style: 'default' }]);
-                        } else {
-                          const alertTitle = t('language') === 'hi' ? '🔔 रिमाइंडर हटाया गया' : '🔔 Reminder Removed';
-                          const alertMsg = t('language') === 'hi'
-                            ? `"${titleText}" का रिमाइंडर हटा दिया गया है।`
-                            : `Reminder for "${session.title}" has been removed.`;
-                          Alert.alert(alertTitle, alertMsg, [{ text: t('language') === 'hi' ? 'ठीक है' : 'OK', style: 'default' }]);
-                        }
-                      }}
-                    >
-                      <Ionicons 
-                        name={sessionReminders[session.id] ? "notifications" : "notifications-outline"} 
-                        size={16} 
-                        color={sessionReminders[session.id] ? "#FFF" : "#FF6600"} 
-                      />
-                      <Text style={[
-                        styles.reminderBtnText, 
-                        sessionReminders[session.id] && { color: '#FFF' }
-                      ]}>
-                        {t('language') === 'hi' ? 'रिमाइंडर' : 'Reminder'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
-            </View>
         </ScrollView>
       ) : (
         <ScrollView

@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
@@ -175,35 +176,35 @@ const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festiv
 
 // Festival image map — mirrors the one in festivals.tsx
 const FESTIVAL_IMAGE_MAP: Record<string, any> = {
-  'Akshaya Tritiya': require('../../assets/images/festival_image/Akshaya Tritiya.jpg.webp'),
-  'Anant Chaturdashi': require('../../assets/images/festival_image/Anant Chaturdashi.jpg.webp'),
+  'Akshaya Tritiya': require('../../assets/images/festival_image/Akshaya Tritiya.jpg'),
+  'Anant Chaturdashi': require('../../assets/images/festival_image/Anant Chaturdashi.jpg'),
   'Ashadhi Ekadashi': require('../../assets/images/festival_image/Ashadhi Ekadashi_.jpg'),
   'Bhai Dooj': require('../../assets/images/festival_image/Bhai Dooj.jpg'),
-  'Bohag Bihu': require('../../assets/images/festival_image/Bohag Bihu .jpg.webp'),
+  'Bohag Bihu': require('../../assets/images/festival_image/Bohag Bihu .jpg'),
   'Chaitra Sukhladi': require('../../assets/images/festival_image/Chaitra Sukhladi .jpg'),
   'Chhath Puja': require('../../assets/images/festival_image/Chhath Puja.jpg'),
-  'Dhanteras': require('../../assets/images/festival_image/Dhanteras.jpg.avif'),
+  'Dhanteras': require('../../assets/images/festival_image/Dhanteras.jpg'),
   'Dhanu Sankranti': require('../../assets/images/festival_image/Dhanu Sankranti.jpeg'),
   'Diwali': require('../../assets/images/festival_image/Diwali .jpeg'),
   'Durga Ashtami': require('../../assets/images/festival_image/Durga Ashtami.jpeg'),
   'Dussehra': require('../../assets/images/festival_image/Dussehra.jpg'),
   'Ganesh Chaturthi': require('../../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
-  'Geeta Jayanti': require('../../assets/images/festival_image/Geeta Jayanti.jpg.avif'),
+  'Geeta Jayanti': require('../../assets/images/festival_image/Geeta Jayanti.jpg'),
   'Govardhan Puja': require('../../assets/images/festival_image/Govardhan Puja.jpg'),
-  'Guru Purnima': require('../../assets/images/festival_image/Guru Purnima.png.avif'),
+  'Guru Purnima': require('../../assets/images/festival_image/Guru Purnima.jpg'),
   'Hanuman janmotsav': require('../../assets/images/festival_image/Hanuman janmotsav.jpg'),
-  'Holi': require('../../assets/images/festival_image/Happy Holi.jpg.webp'),
+  'Holi': require('../../assets/images/festival_image/Happy Holi.jpg'),
   'Hariyali Teej': require('../../assets/images/festival_image/Hariyali Teej.jpeg'),
-  'Hindi New Year': require('../../assets/images/festival_image/Hindi New Year.jpg.webp'),
-  'Holika Dahan': require('../../assets/images/festival_image/Holika Dahan.png.avif'),
-  'Jagannath Rath Yatra': require('../../assets/images/festival_image/Jagannath Rath Yatra.webp'),
+  'Hindi New Year': require('../../assets/images/festival_image/Hindi New Year.jpg'),
+  'Holika Dahan': require('../../assets/images/festival_image/Holika Dahan.jpg'),
+  'Jagannath Rath Yatra': require('../../assets/images/festival_image/Jagannath Rath Yatra.jpg'),
   'Janmashtami': require('../../assets/images/festival_image/Janmashtami.jpg'),
   'Kajari Teej': require('../../assets/images/festival_image/Kajari Teej.jpeg'),
   'Kartik Purnima': require('../../assets/images/festival_image/Kartik Purnima.jpeg'),
-  'Karva Chauth': require('../../assets/images/festival_image/Karva Chauth.jpg.webp'),
+  'Karva Chauth': require('../../assets/images/festival_image/Karva Chauth.jpg'),
   'Magh Bihu': require('../../assets/images/festival_image/Magh Bihu.jpg'),
   'Maha Navami': require('../../assets/images/festival_image/Maha Navami.jpeg'),
-  'Maha Saptami': require('../../assets/images/festival_image/Maha Saptami.jpg.webp'),
+  'Maha Saptami': require('../../assets/images/festival_image/Maha Saptami.jpg'),
   'Maha Shivaratri': require('../../assets/images/festival_image/Maha Shivaratri.jpeg'),
   'Mahalaya Amavasya': require('../../assets/images/festival_image/Mahalaya Amavasya.jpg'),
   'Maharishi Valmiki Jayanti': require('../../assets/images/festival_image/Maharishi Valmiki Jayanti.jpg'),
@@ -215,7 +216,7 @@ const FESTIVAL_IMAGE_MAP: Record<string, any> = {
   'Ram Navami': require('../../assets/images/festival_image/Ram Navami.jpg'),
   'Savitri Pooja': require('../../assets/images/festival_image/Savitri Pooja_.jpg'),
   'Sharad Navratri': require('../../assets/images/festival_image/Sharad Navratri.jpg'),
-  'Sharad Purnima': require('../../assets/images/festival_image/Sharad Purnima.jpg.webp'),
+  'Sharad Purnima': require('../../assets/images/festival_image/Sharad Purnima.jpg'),
   'Thaipusam': require('../../assets/images/festival_image/Thaipusam.jpg'),
   'Vaisakhi': require('../../assets/images/festival_image/Vaisakhi.jpg'),
   'Vasant Panchami': require('../../assets/images/festival_image/Vasant Panchami.jpg'),
@@ -480,11 +481,11 @@ export default function CommunityDetailScreen() {
   const { t } = useTranslation();
 
   const getTranslatedCommunityName = (name: string) => {
-    if (t('language') !== 'hi') return name;
     const nameLower = name.toLowerCase();
     if (nameLower.includes('mumbai')) {
-      return 'मुंबई समुदाय';
+      return t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
     }
+    if (t('language') !== 'hi') return name;
     if (nameLower.includes('maharashtra')) {
       return 'महाराष्ट्र समुदाय';
     }
@@ -635,7 +636,7 @@ export default function CommunityDetailScreen() {
   const [attendeesLoading, setAttendeesLoading] = useState(false);
 
   const isLocalUserCommunity = useMemo(() => {
-    return !['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type);
+    return !['city', 'state', 'country'].includes(community?.type);
   }, [community?.type]);
 
   useEffect(() => {
@@ -1341,6 +1342,30 @@ export default function CommunityDetailScreen() {
             members_count: 236,
             description: 'A community group for sharing food in Pune.'
           };
+        } else if (id === 'mumbai-fallback' || id === 'city_default') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
+            type: 'city',
+            members_count: 13000,
+            description: 'My Community Group'
+          };
+        } else if (id === 'maharashtra-fallback') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
+            type: 'state',
+            members_count: 14000,
+            description: 'Maharashtra State Community Group'
+          };
+        } else if (id === 'bharat-fallback') {
+          nextCommunity = {
+            id: id,
+            name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
+            type: 'country',
+            members_count: 15000,
+            description: 'Bharat National Community Group'
+          };
         } else {
           throw err;
         }
@@ -1389,7 +1414,7 @@ export default function CommunityDetailScreen() {
         getFestivalList().catch(() => ({ data: [] }))
       ];
 
-      const isLocalCommunity = nextCommunity.type === 'city' || nextCommunity.type === 'cultural' || nextCommunity.type === 'user_group' || nextCommunity.type === 'area';
+      const isLocalCommunity = nextCommunity.type === 'city' || nextCommunity.type === 'user_group';
       if (isLocalCommunity) {
         promises.push(getCommunityRequests({ status: 'active', limit: 50 }).catch(() => ({ data: [] })));
       }
@@ -1710,7 +1735,7 @@ export default function CommunityDetailScreen() {
           <Text style={styles.headerCreateBtnText}>{t('language') === 'hi' ? 'बनाएं' : 'Create'}</Text>
         </TouchableOpacity>
         
-        {(!['city', 'state', 'country', 'home_area', 'office_area', 'area'].includes(community?.type)) && (
+        {(!['city', 'state', 'country'].includes(community?.type)) && (
           <TouchableOpacity 
             style={{ position: 'absolute', right: 100, zIndex: 10, padding: 8 }}
             onPress={() => setShowGroupInfoModal(true)}
@@ -1881,7 +1906,7 @@ export default function CommunityDetailScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="calendar-outline" size={16} color="#166534" />
                   <Text style={[styles.sevaInfoText, { color: '#166534' }]}>
-                    {new Date((item as any).start_time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                    {formatDateTimeIST(new Date((item as any).start_time))}
                   </Text>
                 </View>
               </View>
@@ -2710,7 +2735,7 @@ export default function CommunityDetailScreen() {
       const groupName = getTranslatedCommunityName(community?.name || 'Mumbai Group');
       const messageText = t('language') === 'hi'
         ? `हरे कृष्णा! मैंने ${groupName} में आपका अनुरोध '${item.title}' देखा और मैं अपनी सहायता/मदद देना चाहूंगा।`
-        : `Hare Krishna! I saw your request '${item.title}' in the ${community?.name || 'Mumbai Group'} and would like to offer my support/help.`;
+        : `Hare Krishna! I saw your request '${item.title}' in the ${groupName} and would like to offer my support/help.`;
       const confirmedMsg = t('language') === 'hi'
         ? `क्या आप चैट शुरू करके ${item.user_name || 'भक्त'} की मदद करना चाहते हैं?\n\nसंदेश: "${messageText}"`
         : `Would you like to offer help to ${item.user_name || 'devotee'} by starting a chat?\n\nMessage: "${messageText}"`;
@@ -2747,7 +2772,7 @@ export default function CommunityDetailScreen() {
                     const groupName = getTranslatedCommunityName(community?.name || 'Mumbai Group');
                     const messageText = t('language') === 'hi'
                       ? `हरे कृष्णा! मैंने ${groupName} में आपका अनुरोध '${item.title}' देखा और मैं अपनी सहायता/मदद देना चाहूंगा।`
-                      : `Hare Krishna! I saw your request '${item.title}' in the ${community?.name || 'Mumbai Group'} and would like to offer my support/help.`;
+                      : `Hare Krishna! I saw your request '${item.title}' in the ${groupName} and would like to offer my support/help.`;
                     const response = await sendDirectMessage(targetSlId, messageText);
                     const conversationId = response.data?.chat_id || response.data?.conversation_id;
                     if (conversationId) {
@@ -2806,7 +2831,7 @@ export default function CommunityDetailScreen() {
       await Share.share({
         message: t('language') === 'hi'
           ? `ब्रह्मांड पर ${getTranslatedCommunityName(community?.name || 'Mumbai Group')} में शामिल हों!\n\n${appLink}`
-          : `Join the ${community?.name || 'Mumbai Community'} on Brahmand!\n\n${appLink}`,
+          : `Join the ${getTranslatedCommunityName(community?.name || 'Mumbai Community')} on Brahmand!\n\n${appLink}`,
       });
     } catch (error) {
       console.error('Error sharing community:', error);
@@ -3406,7 +3431,7 @@ export default function CommunityDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
       {renderHeader()}
@@ -3606,7 +3631,7 @@ export default function CommunityDetailScreen() {
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
             pointerEvents={(showDatePicker || showTimePicker) && Platform.OS === 'android' ? 'none' : 'auto'}
           >
@@ -3764,7 +3789,6 @@ export default function CommunityDetailScreen() {
                       opacity: postCategory ? 1 : 0.6
                     }}
                     autoFocus={!!postCategory}
-                    disableFullscreenUI={true}
                   />
 
                   {/* Add Photo option directly beneath the input box for better accessibility */}
@@ -3827,45 +3851,41 @@ export default function CommunityDetailScreen() {
                         >
                           <Ionicons name="time-outline" size={18} color="#FF6600" />
                           <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
-                            {eventDate ? eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select Time'}
+                            {eventDate ? formatTimeIST(eventDate) : 'Select Time'}
                           </Text>
                         </TouchableOpacity>
                       </View>
 
                       {showDatePicker && (
-                        <View style={Platform.OS === 'android' ? { position: 'absolute', opacity: 0 } : null}>
-                          <DateTimePicker
-                            value={eventDate || new Date()}
-                            mode="date"
-                            display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                            onChange={(event, selectedDate) => {
-                              setShowDatePicker(false);
-                              if (selectedDate) {
-                                const currentDate = eventDate || new Date();
-                                selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
-                                setEventDate(selectedDate);
-                              }
-                            }}
-                          />
-                        </View>
+                        <DateTimePicker
+                          value={eventDate || new Date()}
+                          mode="date"
+                          display="default"
+                          onChange={(event, selectedDate) => {
+                            setShowDatePicker(false);
+                            if (event.type === 'set' && selectedDate) {
+                              const currentDate = eventDate || new Date();
+                              selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
+                              setEventDate(selectedDate);
+                            }
+                          }}
+                        />
                       )}
 
                       {showTimePicker && (
-                        <View style={Platform.OS === 'android' ? { position: 'absolute', opacity: 0 } : null}>
-                          <DateTimePicker
-                            value={eventDate || new Date()}
-                            mode="time"
-                            display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                            onChange={(event, selectedDate) => {
-                              setShowTimePicker(false);
-                              if (selectedDate) {
-                                const newDate = new Date(eventDate || new Date());
-                                newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
-                                setEventDate(newDate);
-                              }
-                            }}
-                          />
-                        </View>
+                        <DateTimePicker
+                          value={eventDate || new Date()}
+                          mode="time"
+                          display="default"
+                          onChange={(event, selectedDate) => {
+                            setShowTimePicker(false);
+                            if (event.type === 'set' && selectedDate) {
+                              const newDate = new Date(eventDate || new Date());
+                              newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+                              setEventDate(newDate);
+                            }
+                          }}
+                        />
                       )}
                     </View>
                   )}
@@ -4055,7 +4075,7 @@ export default function CommunityDetailScreen() {
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           style={styles.modalOverlay}
         >

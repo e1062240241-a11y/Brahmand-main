@@ -76,7 +76,7 @@ from models.schemas import (
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
     CircleCreate, CircleJoin, CircleUpdate, CircleInvite, CirclePrivacy,
     HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
-    VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate, CulturalCommunityUpdate,
+    VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate,
     SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel,
     MSG91TokenRequest, CommunityCreate
 )
@@ -90,6 +90,8 @@ from routes.mahabharata_routes import router as mahabharata_router
 from routes.rigveda_routes import router as rigveda_router
 from routes.ramayan_routes import router as ramayan_router
 from routes.yajurveda_routes import router as yajurveda_router
+from routes.jaap_routes import router as jaap_routes_router
+from routes.upanishads_routes import router as upanishads_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -821,7 +823,7 @@ default_allowed_origins = [
     "https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app",
 ]
 allowed_origins = []
-allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)(:\d+)?$"
+allow_origin_regex = r"^https?://.*$"
 if cors_origins == '*':
     # When using wildcard, we must be careful with allow_credentials=True.
     # We use a broad regex instead of "*" in allow_origins.
@@ -831,7 +833,7 @@ elif cors_origins:
     configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
     allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
     # Still keep the regex for localhost/loca.lt/run.app support
-    allow_origin_regex = r"^https?://((localhost|127\.0\.0\.1)(:\d+)?|[a-z0-9-]+\.loca\.lt|[a-z0-9-]+\.a\.run\.app|[a-z0-9-]+\.run\.app|brahmand\.app|www\.brahmand\.app)(:\d+)?$"
+    allow_origin_regex = r"^https?://.*$"
 else:
     allowed_origins = default_allowed_origins.copy()
 
@@ -1064,6 +1066,33 @@ api_router.include_router(mahabharata_router)
 api_router.include_router(rigveda_router)
 api_router.include_router(ramayan_router)
 api_router.include_router(yajurveda_router)
+api_router.include_router(jaap_routes_router)
+api_router.include_router(upanishads_router)
+
+
+@api_router.get("/jaap/active-count")
+async def get_jaap_active_count(rooms: str):
+    """
+    Get the number of active users connected via Socket.IO in the specified rooms.
+    `rooms` parameter should be a comma-separated list of room names.
+    """
+    room_list = [r.strip() for r in rooms.split(",") if r.strip()]
+    counts = {}
+    for room in room_list:
+        try:
+            # Under the default namespace '/', sio.manager.rooms holds client SIDs in a dict/set
+            room_clients = sio.manager.rooms.get('/', {}).get(room, {})
+            # It can be a dictionary of sid -> true, or a set/list
+            if isinstance(room_clients, dict):
+                counts[room] = len(room_clients)
+            elif hasattr(room_clients, '__len__'):
+                counts[room] = len(room_clients)
+            else:
+                counts[room] = 0
+        except Exception as e:
+            logger.warning(f"Error getting socket client count for room {room}: {e}")
+            counts[room] = 0
+    return counts
 
 
 @api_router.get("/firebase-config")
@@ -1245,15 +1274,12 @@ async def reset_database(confirm: str = ""):
         chats = await db.query_documents('chats', [])
         for chat in chats:
             # Delete messages subcollection
-            messages = await db.get_chat_messages(chat['id'], 1000)
-            for msg in messages:
-                try:
-                    def _delete_msg():
-                        db.client.collection('chats').document(chat['id']).collection('messages').document(msg['id']).delete()
-                    await db._run_sync(_delete_msg)
-                    deleted["messages"] += 1
-                except:
-                    pass
+            try:
+                deleted_messages = await db.delete_subcollection('chats', chat['id'], 'messages')
+                deleted["messages"] += deleted_messages
+            except Exception as e:
+                logger.error(f"Failed to delete messages for chat {chat['id']}: {e}")
+
             await db.delete_document('chats', chat['id'])
             deleted["chats"] += 1
         
@@ -1807,8 +1833,6 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     # Community type labels for UI display
     TYPE_LABELS = {
-        'home_area': 'Home Area',
-        'office_area': 'Office Area',
         'city': 'City Community',
         'state': 'State Community',
         'country': 'National Community'
@@ -1816,11 +1840,9 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     # Community type order for sorting
     TYPE_ORDER = {
-        'home_area': 1,
-        'office_area': 2,
-        'city': 3,
-        'state': 4,
-        'country': 5
+        'city': 1,
+        'state': 2,
+        'country': 3
     }
     
     async def create_or_get_community(name: str, comm_type: str, location: dict):
@@ -1879,26 +1901,9 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         })
         default_community_ids.append(country_id)
     
-    # 2. Process office location (Office Area Group)
     if locations.office_location:
         office_loc = locations.office_location
         update_data['office_location'] = office_loc
-        
-        # Office Area Group
-        office_area_val = office_loc.get('area')
-        office_area_name = f"{office_area_val.title()} Group" if office_area_val else ""
-        
-        # Check if it's different from home area
-        home_area_val = locations.home_location.get('area') if locations.home_location else None
-        home_area_name = f"{home_area_val.title()} Group" if home_area_val else ""
-        
-        if office_area_name and office_area_name != home_area_name:
-            office_area_id = await create_or_get_community(office_area_name, 'office_area', office_loc)
-            # Insert office area after home area (index 1)
-            if len(default_community_ids) >= 1:
-                default_community_ids.insert(1, office_area_id)
-            else:
-                default_community_ids.append(office_area_id)
     
     # Remove duplicates while preserving order
     seen = set()
@@ -5957,6 +5962,48 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
     return result
 
 
+@api_router.get("/dm/{chat_id}/metadata")
+async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Get metadata for a single private chat conversation (strongly consistent by ID)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    members = chat.get('members', [])
+    other_id = [m for m in members if m != user_id]
+    other_id = other_id[0] if other_id else None
+
+    other_user = {}
+    if other_id:
+        other_user_doc = await db.get_document('users', other_id)
+        if other_user_doc:
+            other_user = {
+                "id": other_id,
+                "name": other_user_doc.get('name', 'Unknown'),
+                "sl_id": other_user_doc.get('sl_id', ''),
+                "photo": other_user_doc.get('photo'),
+                "is_verified": other_user_doc.get('is_verified', False),
+                "verification_level": other_user_doc.get('verification_level', 'state')
+            }
+
+    return {
+        "conversation_id": chat_id,
+        "chat_id": chat_id,
+        "user": other_user,
+        "last_message": chat.get('last_message', ''),
+        "last_message_at": chat.get('updated_at', chat.get('created_at')),
+        "created_at": chat.get('created_at'),
+        "request_status": chat.get('request_status', 'approved'),
+        "request_by": chat.get('request_by'),
+        "request_retry_after": chat.get('request_retry_after'),
+    }
+
+
 @api_router.get("/dm/{chat_id}")
 async def get_dm_messages(chat_id: str, limit: int = 50, token_data: dict = Depends(verify_token)):
     """Get messages from a private chat"""
@@ -6204,10 +6251,6 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
     
-    # Auto-cleanup: Ensure user only sees the current cultural group in their list
-    current_cultural_community = user.get('cultural_community')
-    current_cultural_key = _community_group_key(current_cultural_community) if current_cultural_community else None
-    
     circles = []
     user_circle_ids = list(user.get('circles', []))
     
@@ -6219,18 +6262,10 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                     cid = circle['id']
                     # Check if this is a cultural group
                     is_cultural = (
-                        circle.get('type') == 'cultural' or 
-                        'Culture Group' in circle.get('name', '') or 
+                        circle.get('type') == 'cultural' or
+                        'Culture Group' in circle.get('name', '') or
                         circle.get('cultural_group_key') is not None
                     )
-                    
-                    if is_cultural:
-                        # If it doesn't match the current key, remove it silently
-                        if not current_cultural_key or circle.get('cultural_group_key') != current_cultural_key:
-                            logger.info(f"Auto-removing user {user_id} from legacy cultural circle {cid}")
-                            await db.array_remove_update('users', user_id, 'circles', [cid])
-                            await db.array_remove_update('circles', cid, 'members', [user_id])
-                            continue
 
                     member_names = []
                     for member_id in circle.get('members', []):
@@ -6253,6 +6288,7 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                         "member_count": len(circle.get('members', [])),
                         "member_names": member_names,
                         "is_admin": _is_circle_admin(circle, user_id),
+                        "is_cultural": is_cultural,
                         "created_at": circle.get('created_at')
                     })
         except Exception as e:
@@ -7626,6 +7662,37 @@ async def resolve_report(report_id: str, data: dict = Body(default={}), token_da
     return await review_report(report_id, {**data, 'action': mapped_action}, token_data)
 
 
+@api_router.get("/admin/sos-misuse-reports")
+async def get_admin_sos_misuse_reports(token_data: dict = Depends(verify_token)):
+    """Get all SOS misuse reports for admin review"""
+    db, _ = await _ensure_admin_user(token_data)
+    reports = await db.query_documents('sos_misuse_reports')
+    reports.sort(key=lambda item: item.get('created_at') or datetime.min, reverse=True)
+    return reports
+
+
+@api_router.post("/admin/users/{user_id}/block-sos")
+async def admin_block_sos(user_id: str, token_data: dict = Depends(verify_token)):
+    """Block user from creating or responding to SOS alerts"""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.update_document('users', user_id, {"is_sos_blocked": True})
+    return {"message": "User SOS privileges suspended successfully", "user_id": user_id, "is_sos_blocked": True}
+
+
+@api_router.post("/admin/users/{user_id}/unblock-sos")
+async def admin_unblock_sos(user_id: str, token_data: dict = Depends(verify_token)):
+    """Restore user's SOS privileges"""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.update_document('users', user_id, {"is_sos_blocked": False})
+    return {"message": "User SOS privileges restored successfully", "user_id": user_id, "is_sos_blocked": False}
+
+
 # =================== SAMPLE DATA INITIALIZATION ===================
 
 @api_router.post("/admin/init-sample-temples")
@@ -7757,8 +7824,19 @@ async def cancel_event_attendance(event_id: str, token_data: dict = Depends(veri
 
 @api_router.get("/notifications")
 async def get_notifications(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    return await db.query_documents('notifications', filters=[('user_id', '==', token_data["user_id"])], limit=50)
+    from services.firebase_notification_service import FirebaseNotificationService
+    try:
+        return await FirebaseNotificationService.get_user_notifications(token_data["user_id"], limit=50)
+    except Exception as e:
+        logger.warning(f"Failed to query notifications via service: {e}. Falling back to unsorted local query.")
+        db = await get_db()
+        notifications = await db.query_documents(
+            'notifications', 
+            filters=[('user_id', '==', token_data["user_id"])], 
+            limit=50
+        )
+        notifications.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        return notifications
 
 
 @api_router.get("/notifications/unread-count")
@@ -8124,17 +8202,20 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         config = types.GenerateContentConfig(
             temperature=0.7,
             max_output_tokens=2048,
+            thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
-        response = client.models.generate_content(
-            model="gemma-4-26b-a4b-it",
-            contents=contents,
-            config=config,
-        )
         try:
+            response = client.models.generate_content(
+                model="gemma-4-31b-it",
+                contents=contents,
+                config=config,
+            )
             return response.text or ""
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.error(f"Gemini API Error: {e}")
             return "Priya mitra, mai kewal aadhyaatmik aur jeevan ke maargdarshan ke liye hoon. Kripya shishtta banaye rakhein. Radhe Radhe! 🙏"
 
     try:
@@ -9854,221 +9935,6 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
 
 # =================== CULTURAL COMMUNITY ===================
 
-# Comprehensive list of Sanatan communities
-CULTURAL_COMMUNITIES = [
-    # Patel communities
-    "Leuva Patel", "Kadva Patel", "Anjana Patel", "Chaudhary Patel",
-    # Brahmin communities
-    "Brahmin", "Anavil Brahmin", "Audichya Brahmin", "Gaur Brahmin", "Kanyakubja Brahmin",
-    "Maithil Brahmin", "Nagar Brahmin", "Saraswat Brahmin", "Saryuparin Brahmin",
-    "Chitpavan Brahmin", "Deshastha Brahmin", "Karhade Brahmin", "Kokanastha Brahmin",
-    "Iyer", "Iyengar", "Namboothiri", "Telugu Brahmin", "Kannada Brahmin",
-    # Kshatriya communities
-    "Rajput", "Maratha", "Kshatriya", "Nair", "Bunts", "Thakur", "Chauhan",
-    "Rathore", "Sisodia", "Parmar", "Solanki", "Jadeja", "Jhala",
-    # Vaishya communities  
-    "Bania", "Agarwal", "Gupta", "Jain", "Marwari", "Maheshwari", "Oswal",
-    "Khandelwal", "Porwal", "Lohana", "Vaish", "Arora", "Khatri",
-    # Other major communities
-    "Yadav", "Kurmi", "Lodhi", "Jat", "Gujjar", "Ahir", "Koeri", "Mali",
-    "Teli", "Saini", "Kamma", "Kapu", "Reddy", "Naidu", "Velama",
-    "Lingayat", "Vokkaliga", "Gowda", "Nair", "Ezhava", "Menon",
-    "Pillai", "Chettiars", "Mudaliar", "Gounder", "Vanniyar", "Thevar",
-    # Artisan communities
-    "Vishwakarma", "Lohar", "Sonar", "Kumhar", "Darji", "Mochi",
-    "Suthar", "Kumbhar", "Soni", "Panchal", "Prajapati",
-    # Professional communities
-    "Kayastha", "Vaishya", "Baidya", "Teli", "Gandhi",
-    # Religious communities
-    "Swaminarayan", "Pushtimarg", "Vallabhacharya", "Nimbarka", "Ramanandi",
-    "Shaiva", "Vaishnava", "Shakta", "Smarta", "Goswami",
-    # Regional communities
-    "Sindhi", "Punjabi", "Gujarati", "Marathi", "Bengali", "Tamil",
-    "Telugu", "Kannada", "Malayalam", "Odia", "Assamese", "Bihari",
-    # Others
-    "Patidar", "Sikh", "Meena", "Bhil", "Gond", "Santhal", "Munda",
-    "Oraon", "Khasi", "Naga", "Mizo", "Manipuri", "Bodo", "Rabha"
-]
-
-@api_router.get("/cultural-communities")
-async def get_cultural_communities(search: Optional[str] = None):
-    """Get list of all cultural communities"""
-    communities = CULTURAL_COMMUNITIES.copy()
-    
-    if search:
-        search_lower = search.lower()
-        communities = [c for c in communities if search_lower in c.lower()]
-    
-    return sorted(communities)
-
-
-@api_router.get("/user/cultural-community")
-async def get_user_cultural_community(token_data: dict = Depends(verify_token)):
-    """Get user's cultural community info"""
-    db = await get_db()
-    user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
-    
-    change_count = user.get('cultural_change_count', 0)
-    community_id = None
-    if user.get('cultural_community'):
-        comm = await db.find_one('communities', [('cultural_group_key', '==', _community_group_key(user['cultural_community']))])
-        if comm:
-            community_id = comm.get('id')
-
-    return {
-        "cultural_community": user.get('cultural_community'),
-        "community_id": community_id,
-        "change_count": change_count,
-        "is_locked": change_count >= 1
-    }
-
-
-def _community_group_key(value: str) -> str:
-    if not value: return ""
-    return ''.join(ch.lower() if ch.isalnum() else '-' for ch in value).strip('-')
-
-@api_router.put("/user/cultural-community")
-async def update_cultural_community(data: CulturalCommunityUpdate, token_data: dict = Depends(verify_token)):
-    """
-    Update user's cultural community.
-    Rules:
-    1. A user can only belong to ONE cultural community/circle at a time.
-    2. Changing is allowed only once (Total 2 sets including initial).
-    3. Auto-leaves previous cultural community and its chat circle.
-    4. Auto-joins/Creates matching cultural community AND a corresponding Circle for chat.
-    """
-    try:
-        from google.cloud import firestore
-        db = await get_db()
-        
-        user_id = token_data["user_id"]
-        user = await db.get_document('users', user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Enforce change limit (Allowed only once after initial set)
-        current_count = user.get('cultural_change_count', 0)
-        if current_count >= 2:
-            raise HTTPException(status_code=400, detail="Culture group can only be changed once. You have already reached the limit.")
-
-        current_community = user.get('cultural_community')
-        
-        # 1. CLEANUP: Leave all existing cultural communities and circles
-        # We find them by querying joined communities/circles with type 'cultural' or name pattern
-        user_communities = list(user.get('communities', []))
-        user_circles = list(user.get('circles', []))
-        
-        for comm_id in user_communities:
-            comm = await db.get_document('communities', comm_id)
-            if comm:
-                # Be aggressive: check type, name pattern, and existence of cultural_group_key
-                is_cultural = (
-                    comm.get('type') == 'cultural' or 
-                    'Culture Group' in comm.get('name', '') or 
-                    comm.get('cultural_group_key') is not None
-                )
-                if is_cultural:
-                    await db.array_remove_update('communities', comm_id, 'members', [user_id])
-                    await db.array_remove_update('users', user_id, 'communities', [comm_id])
-                    # Decrement count
-                    await db.update_document('communities', comm_id, {'member_count': max(0, comm.get('member_count', 1) - 1)})
-
-        for circle_id in user_circles:
-            circle = await db.get_document('circles', circle_id)
-            if circle:
-                is_cultural = (
-                    circle.get('type') == 'cultural' or 
-                    'Culture Group' in circle.get('name', '') or 
-                    circle.get('cultural_group_key') is not None
-                )
-                if is_cultural:
-                    await db.array_remove_update('circles', circle_id, 'members', [user_id])
-                    await db.array_remove_update('users', user_id, 'circles', [circle_id])
-
-        selected_key = _community_group_key(data.cultural_community)
-        if not selected_key:
-            raise HTTPException(status_code=400, detail="Invalid community name")
-
-        # Cleanup any old cultural communities for this user, but keep the selected target.
-        old_cultural_comm_ids = []
-        try:
-            existing_cultural_comms = await db.query_documents('communities', filters=[('members', 'array_contains', user_id), ('type', '==', 'cultural')])
-            for comm in existing_cultural_comms:
-                if comm.get('cultural_group_key') != selected_key:
-                    old_cultural_comm_ids.append(comm['id'])
-                    await db.array_remove_update('communities', comm['id'], 'members', [user_id])
-                    await db.array_remove_update('users', user_id, 'communities', [comm['id']])
-        except Exception as ce:
-            logger.warning(f"Cultural community cleanup failed: {ce}")
-
-        # 2. Find or create the NEW cultural community and remove duplicate communities with same key.
-        same_key_comms = await db.query_documents('communities', filters=[('cultural_group_key', '==', selected_key)])
-        target_comm_id = None
-        if not comm_query:
-            target_comm_data = {
-                "name": f"My Culture Group • {data.cultural_community}",
-                "type": "cultural",
-                "cultural_group_key": selected_key,
-                "members": [user_id],
-                "member_count": 1,
-                "code": generate_community_code(data.cultural_community),
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            }
-            target_comm_id = await db.create_document('communities', target_comm_data)
-        else:
-            target_comm_id = comm_query[0]['id']
-            await db.array_union_update('communities', target_comm_id, 'members', [user_id])
-            await db.update_document('communities', target_comm_id, {'member_count': comm_query[0].get('member_count', 0) + 1})
-
-        # 3. Find or create the corresponding CIRCLE (for Chat visibility)
-        circle_query = await db.query_documents('circles', filters=[('cultural_group_key', '==', selected_key)], limit=1)
-        
-        target_circle_id = None
-        if not circle_query:
-            circle_data = {
-                "name": f"Culture Group • {data.cultural_community}",
-                "description": f"Private chat circle for members of {data.cultural_community}",
-                "type": "cultural",
-                "cultural_group_key": selected_key,
-                "code": generate_circle_code(data.cultural_community),
-                "privacy": "invite_code",
-                "members": [user_id],
-                "admin_ids": [user_id],
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            }
-            target_circle_id = await db.create_document('circles', circle_data)
-        else:
-            target_circle_id = circle_query[0]['id']
-            await db.array_union_update('circles', target_circle_id, 'members', [user_id])
-
-        # 4. Update user profile
-        new_count = current_count + 1
-        await db.update_document('users', user_id, {
-            'cultural_community': data.cultural_community,
-            'cultural_change_count': new_count,
-            'communities': firestore.ArrayUnion([target_comm_id]),
-            'circles': firestore.ArrayUnion([target_circle_id]),
-            'updated_at': datetime.utcnow()
-        })
-        
-        await cache_manager.invalidate_user_communities(user_id)
-        return {
-            "message": "Cultural community and chat group joined",
-            "cultural_community": data.cultural_community,
-            "community_id": target_comm_id,
-            "circle_id": target_circle_id,
-            "change_count": new_count
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in update_cultural_community: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
-
-
 @api_router.get("/debug-info")
 async def get_debug_info():
     return {"status": "ok", "version": "2.2.1-debug", "debug_mode": True}
@@ -10301,8 +10167,8 @@ async def get_community_requests(
     )
     if not isinstance(location_area, dict):
         location_area = {}
-    
-    requests = await db.query_documents('community_requests', filters=filters, limit=limit)
+    # Do not apply limit at DB level to avoid fetching oldest documents first
+    requests = await db.query_documents('community_requests', filters=filters)
     
     # Filter requests based on visibility level
     visible_requests = []
@@ -10388,6 +10254,10 @@ async def get_community_requests(
         return (priority, -ts)
 
     filtered_clean_requests.sort(key=_final_sort_key)
+    
+    # Apply limit
+    if limit:
+        filtered_clean_requests = filtered_clean_requests[:limit]
             
     # 2. Store in cache with 30-second TTL
     await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)
@@ -10736,6 +10606,8 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     db = await get_db()
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
+    if user and user.get('is_sos_blocked', False):
+        raise HTTPException(status_code=403, detail="Your SOS creation privileges have been suspended due to reported misuse.")
     
     # Check if user already has an active SOS
     existing = await db.find_one('sos_alerts', [
@@ -10890,6 +10762,38 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     return sos_data
 
 
+@api_router.post("/sos/{sos_id}/report-misuse")
+async def report_sos_misuse(sos_id: str, reason: str = Body(..., embed=True), token_data: dict = Depends(verify_token)):
+    """Report an SOS alert as misuse"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    
+    alert = await db.get_document('sos_alerts', sos_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="SOS alert not found")
+        
+    # Verify the user has accepted/responded to this SOS
+    responders = alert.get('responders', []) or []
+    has_responded = any(r.get('user_id') == user_id for r in responders)
+    if not has_responded:
+        raise HTTPException(status_code=403, detail="Only responders who accepted the SOS can report it as misuse")
+        
+    # Save the misuse report to database
+    report_data = {
+        "sos_id": sos_id,
+        "reporter_id": user_id,
+        "reporter_name": token_data.get("name", "Responder"),
+        "creator_id": alert.get("user_id"),
+        "creator_name": alert.get("user_name"),
+        "reason": reason,
+        "created_at": datetime.utcnow().isoformat() + 'Z'
+    }
+    
+    report_id = await db.create_document('sos_misuse_reports', report_data)
+    logger.info(f"SOS misuse report {report_id} created by user {user_id} for SOS {sos_id}")
+    return {"message": "SOS misuse reported successfully", "report_id": report_id}
+
+
 @api_router.get("/sos/nearby")
 async def get_nearby_sos_alerts(
     lat: Optional[float] = None,
@@ -11007,6 +10911,8 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     db = await get_db()
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
+    if user and user.get('is_sos_blocked', False):
+        raise HTTPException(status_code=403, detail="Your SOS privileges have been suspended.")
     
     alert = await db.get_document('sos_alerts', sos_id)
     if not alert:
@@ -11526,24 +11432,42 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
     import asyncio
     import json
     import random
+    from datetime import datetime
+    from utils.cache import cache_manager
+    
+    zodiac_clean = zodiac_name.lower().strip()
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    cache_key = f"horoscope:daily:{zodiac_clean}:{today}"
+    
+    try:
+        cached_data = await cache_manager.get(cache_key)
+        if cached_data:
+            logger.info("Serving cached daily horoscope for %s on %s", zodiac_clean, today)
+            return cached_data
+    except Exception as e:
+        logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
     def _call():
         import google.genai as genai
 
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-        model = "gemma-4-26b-a4b-it"
+        model = "gemma-4-31b-it"
         prompt = (
             f"Generate a highly detailed, comprehensive, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. "
-            f"Return ONLY a valid JSON object in this exact format, with no markdown formatting:\n"
-            f'{{"prediction": "A detailed general prediction text summing up the day.", '
-            f'"lucky_number": "7", '
-            f'"lucky_color": "Blue", '
-            f'"lucky_color_hex": "#3B82F6", '
-            f'"scores": {{"finance": 80, "love": 75, "health": 90, "overall": 82}}, '
-            f'"detailed_predictions": {{"finance": "A detailed paragraph advising on financial decisions, wealth, expenses and career prospects today.", '
-            f'"love": "A detailed paragraph advising on relationships, family, partners and emotional bonds today.", '
-            f'"health": "A detailed paragraph advising on physical wellness, energy, diet, mental peace and stress management today.", '
-            f'"overall": "A detailed paragraph summarizing the spiritual flow and main path of your entire day today."}}}}'
+            f"Return ONLY a valid JSON object in this exact schema structure, with no markdown formatting. Do not copy placeholder descriptions; generate real predictions:\n"
+            f'{{\n'
+            f'  "prediction": "General daily prediction paragraph for {zodiac_name}",\n'
+            f'  "lucky_number": "Random number from 1 to 9",\n'
+            f'  "lucky_color": "Name of lucky color",\n'
+            f'  "lucky_color_hex": "Hex color code",\n'
+            f'  "scores": {{"finance": 80, "love": 75, "health": 90, "overall": 82}},\n'
+            f'  "detailed_predictions": {{\n'
+            f'    "finance": "Detailed paragraph about career and money for {zodiac_name} today",\n'
+            f'    "love": "Detailed paragraph about relationships and emotions for {zodiac_name} today",\n'
+            f'    "health": "Detailed paragraph about physical and mental health for {zodiac_name} today",\n'
+            f'    "overall": "Detailed paragraph about spiritual path and overall flow for {zodiac_name} today"\n'
+            f'  }}\n'
+            f'}}'
         )
         from google.genai import types
         config = types.GenerateContentConfig(
@@ -11577,21 +11501,59 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
                 "health": f"Maintain your vitality with mindful practices like yoga or meditation. Keep your energy high.",
                 "overall": f"A beautiful day focused on self-reflection and spiritual growth. The stars favor your determination."
             }
+        
+        # Cache the generated result for 12 hours
+        try:
+            await cache_manager.set(cache_key, data, ttl=43200)
+        except Exception as e:
+            logger.warning("Failed to cache daily horoscope for %s: %s", zodiac_clean, e)
+            
         return data
     except Exception as e:
         logger.warning("Gemini horoscope generation failed, using mock generator: %s", e)
-        fin = random.randint(60, 95)
-        lov = random.randint(55, 95)
-        hea = random.randint(60, 95)
+        
+        # Seed random to ensure different signs have completely different, day-consistent values
+        import hashlib
+        seed_str = f"{zodiac_clean}:{today}"
+        seed_val = int(hashlib.md5(seed_str.encode('utf-8')).hexdigest()[:8], 16)
+        local_rand = random.Random(seed_val)
+        
+        fin = local_rand.randint(65, 95)
+        lov = local_rand.randint(60, 95)
+        hea = local_rand.randint(65, 95)
         ovr = int((fin + lov + hea) / 3)
+        
         colors = [
             ("Orange", "#FF6B00"), ("Purple", "#8E44AD"), ("Green", "#2ECC71"), 
             ("Blue", "#3498DB"), ("Yellow", "#F1C40F"), ("Red", "#E74C3C")
         ]
-        chosen_color = random.choice(colors)
-        return {
-            "prediction": f"Today is a day of spiritual growth and inner peace for {zodiac_name.capitalize()}. Stay positive and focus on your spiritual journey.",
-            "lucky_number": str(random.randint(1, 9)),
+        chosen_color = local_rand.choice(colors)
+        
+        # Predictions list for variation
+        finance_predictions = [
+            f"Financial decisions require care today for {zodiac_clean.capitalize()}. Avoid impulsive spending and focus on saving.",
+            f"Opportunities for wealth and professional growth are on the horizon for {zodiac_clean.capitalize()}. Stay alert.",
+            f"A stable day for career and money matters. {zodiac_clean.capitalize()} should plan for long-term investments."
+        ]
+        love_predictions = [
+            f"Spiritual bonds and family connections will deepen for {zodiac_clean.capitalize()} today. Speak from the heart.",
+            f"Express your feelings clearly to avoid misunderstandings. {zodiac_clean.capitalize()} will find emotional balance today.",
+            f"A beautiful day for sharing love and joy with close ones. {zodiac_clean.capitalize()}'s relationships will flourish."
+        ]
+        health_predictions = [
+            f"Prioritize rest and mental peace. Practicing yoga or breathing exercises will benefit {zodiac_clean.capitalize()} today.",
+            f"Vitality is high. {zodiac_clean.capitalize()} should focus on clean eating and light exercise to maintain energy.",
+            f"Listen to your body. Rejuvenating your mind through meditation is highly recommended for {zodiac_clean.capitalize()}."
+        ]
+        overall_predictions = [
+            f"A promising day of alignment and inner growth. The universe supports {zodiac_clean.capitalize()}'s spiritual path.",
+            f"A peaceful flow of energy guides {zodiac_clean.capitalize()} today. Keep your thoughts positive and actions pure.",
+            f"New insights and positive transformations await {zodiac_clean.capitalize()} today. Trust the divine timing."
+        ]
+        
+        fallback_data = {
+            "prediction": f"Today brings a wave of positive energy and spiritual focus for {zodiac_clean.capitalize()}. Embrace the changes with grace.",
+            "lucky_number": str(local_rand.randint(1, 9)),
             "lucky_color": chosen_color[0],
             "lucky_color_hex": chosen_color[1],
             "scores": {
@@ -11601,12 +11563,20 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
                 "overall": ovr
             },
             "detailed_predictions": {
-                "finance": f"A good day to review budgets and plan long-term savings. Keep an eye out for minor financial opportunities.",
-                "love": f"Express your feelings clearly to your partner or friends. Listen actively to foster emotional balance.",
-                "health": f"Focus on hydration and balanced nutrition. A light walk in nature will rejuvenate your mind and body.",
-                "overall": f"A promising day where alignment in your thoughts and actions brings peace and progress across all fronts."
+                "finance": local_rand.choice(finance_predictions),
+                "love": local_rand.choice(love_predictions),
+                "health": local_rand.choice(health_predictions),
+                "overall": local_rand.choice(overall_predictions)
             }
         }
+        
+        # Cache the fallback result for 12 hours
+        try:
+            await cache_manager.set(cache_key, fallback_data, ttl=43200)
+        except Exception as e:
+            logger.warning("Failed to cache daily horoscope for %s: %s", zodiac_clean, e)
+            
+        return fallback_data
 
 
 @api_router.get("/horoscope/daily/{zodiac_name}")

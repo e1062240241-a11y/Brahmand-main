@@ -100,7 +100,6 @@ export default function LiveJaapWelcomeScreen() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.background}>
         <LinearGradient 
-
           colors={['#FF8D57', '#EA9B76', '#F8EDE7', '#F8EDE7']} 
           locations={[0, 0.05, 0.25, 1]}
           style={[StyleSheet.absoluteFill, { opacity: 0.8 }]} 

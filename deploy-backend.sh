@@ -1,5 +1,14 @@
 #!/bin/bash
+export CLOUDSDK_PYTHON=/usr/local/bin/python3.11
+
+# Force gcloudignore to be active
+gcloud config set gcloudignore/enabled true
+
 cd backend
+
+echo "--- VERIFYING FILES TO UPLOAD ---"
+gcloud meta list-files-for-upload | head -n 15
+echo "---------------------------------"
 
 echo "Deploying Backend to Google Cloud Run..."
 gcloud run deploy brahmand-backend \

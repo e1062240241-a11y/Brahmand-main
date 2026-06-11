@@ -1,4 +1,5 @@
 // accessibility: placeholder
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React from 'react';
 import {
   View,
@@ -15,8 +16,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import api from '../src/services/api';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
 import { useTranslation } from '../src/utils/i18n';
+
+const getMantraRoomName = (id: string) => {
+  if (id === '1') return 'jaap_hanuman';
+  if (id === '2') return 'jaap_krishna';
+  if (id === '3') return 'jaap_shiva';
+  if (id === '4') return 'jaap_gayatri';
+  if (id === '5') return 'jaap_ganesh';
+  if (id === '6') return 'jaap_laxmi';
+  if (id === '7') return 'jaap_krishna';
+  return 'jaap_gayatri';
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 52) / 2;
@@ -58,43 +71,40 @@ const LIVE_JAAPS = [
     slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...',
     color: '#D4AF37',
   },
-  {
-    id: '5',
-    title: 'Ganesh\nMantra',
-    devotees: '8.2K',
-    mantraType: 'ganesh',
-    image: require('../assets/images/ganesh_jaap_card.png'),
-    slok: 'ॐ गं गणपतये नमः ॐ गं गणपतये नमः...',
-    color: '#E07820',
-  },
-  {
-    id: '6',
-    title: 'Laxmi\nMantra',
-    devotees: '6.1K',
-    mantraType: 'laxmi',
-    image: require('../assets/images/laxmi_jaap_card.png'),
-    slok: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं...',
-    color: '#C2185B',
-  },
-  {
-    id: '7',
-    title: 'Krishna\nJaap',
-    devotees: '7.2K',
-    mantraType: 'krishna',
-    image: require('../assets/images/krishna_jaap_card_v3.png'),
-    slok: 'राधे राधे राधे राधे श्याम मिलाए दे...',
-    color: '#283593',
-  },
 ];
 
 export default function AllLiveJaapsScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const [now, setNow] = React.useState(new Date());
+  const [activeCounts, setActiveCounts] = React.useState<Record<string, number>>({});
 
   React.useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
+  }, []);
+
+  React.useEffect(() => {
+    let active = true;
+    const fetchActiveCounts = async () => {
+      try {
+        const response = await api.get('/jaap/active-count', {
+          params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }
+        });
+        if (active && response && response.data) {
+          setActiveCounts(response.data);
+        }
+      } catch (error) {
+        console.warn('Error fetching active jaap counts:', error);
+      }
+    };
+
+    fetchActiveCounts();
+    const interval = setInterval(fetchActiveCounts, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const hanumanStatus = getCurrentHanumanStatus(now);
@@ -178,7 +188,7 @@ export default function AllLiveJaapsScreen() {
               }
             } else {
               if (hanumanStatus.nextSessionStart) {
-                const timeStr = hanumanStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const timeStr = formatTimeIST(hanumanStatus.nextSessionStart);
                 liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
               } else {
                 liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
@@ -191,7 +201,7 @@ export default function AllLiveJaapsScreen() {
               liveLabel = t('language') === 'hi' ? 'लाइव' : 'LIVE';
             } else {
               if (otherStatus.nextSessionStart) {
-                const timeStr = otherStatus.nextSessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const timeStr = formatTimeIST(otherStatus.nextSessionStart);
                 liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
               } else {
                 liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
@@ -219,7 +229,9 @@ export default function AllLiveJaapsScreen() {
                   </View>
                   <View style={styles.countBadge}>
                     <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 3 }} />
-                    <Text style={styles.countBadgeText}>{jaap.devotees}</Text>
+                    <Text style={styles.countBadgeText}>
+                      {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
+                    </Text>
                   </View>
                 </View>
 

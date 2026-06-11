@@ -240,7 +240,7 @@ export default function KycSubmitScreen() {
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.statusCard}>
               <Ionicons name="shield-checkmark" size={24} color={COLORS.primary} />

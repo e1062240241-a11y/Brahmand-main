@@ -16,12 +16,14 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedIndex } from '../../features/live-mantra/schedule';
 import { usePassportStore } from '../../store/passportStore';
 import { useTranslation } from '../../utils/i18n';
+import { socketService } from '../../services/socket';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
@@ -733,6 +735,17 @@ export default function LiveJaapRoomView() {
   }, []);
 
   useEffect(() => {
+    const rName = 'jaap_' + (mantraType || 'gayatri');
+    socketService.connect().then(() => {
+      socketService.joinRoom(rName);
+    }).catch(err => console.warn('Socket connection failed in LiveJaapRoomView:', err));
+
+    return () => {
+      socketService.leaveRoom(rName);
+    };
+  }, [mantraType]);
+
+  useEffect(() => {
     if (mantraType === 'hanuman') return;
 
     const WORDS_PER_LINE = 4;
@@ -805,7 +818,25 @@ export default function LiveJaapRoomView() {
   };
 
   return (
-    <LinearGradient colors={['#FFDFAC', '#FFDEAD', '#FFFFFF']} locations={[0, 0.4471, 1]} style={styles.container}>
+    <View style={styles.container}>
+      <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
+        <Defs>
+          <RadialGradient
+            id="grad"
+            cx="50%"
+            cy="50%"
+            rx="66.59%"
+            ry="50%"
+            fx="50%"
+            fy="50%"
+          >
+            <Stop offset="0%" stopColor="#FFF" stopOpacity="1" />
+            <Stop offset="40.87%" stopColor="#FFDED1" stopOpacity="1" />
+            <Stop offset="100%" stopColor="#FFC085" stopOpacity="1" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
+      </Svg>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safeArea}>
         {/* NEW HEADER */}
@@ -1042,8 +1073,8 @@ export default function LiveJaapRoomView() {
 
                 {/* Controls Bar */}
                 <View style={styles.controlsBarNew}>
-                  <TouchableOpacity style={styles.controlIconBtnNew}>
-                    <Ionicons name="mic-outline" size={24} color="#000" />
+                  <TouchableOpacity onPress={() => setIsMicEnabled(!isMicEnabled)} style={styles.controlIconBtnNew}>
+                    <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={24} color={isMicEnabled ? "#FF8A00" : "#000"} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.volumeMuteBtnNew}>
                     <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={26} color="#FFF" />
@@ -1069,7 +1100,7 @@ export default function LiveJaapRoomView() {
           }]}>{r.emoji}</Animated.Text>
         ))}
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 

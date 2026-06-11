@@ -1,0 +1,39 @@
+# Files ignored by gcloud when uploading source for Cloud Run builds.
+
+# Ignore git and other configs
+.gcloudignore
+.git/
+.gitignore
+.agent/
+.deploy/
+
+# Ignore frontend entirely when deploying backend
+frontend/
+node_modules/
+
+# Python cache and local envs (both relative to root and source)
+.venv/
+venv/
+backend/.venv/
+backend/venv/
+__pycache__/
+backend/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local secrets and generated env files
+.env
+.env.*
+backend/.env
+backend/.env.*
+backend/.gcloud.env.yaml
+
+# Build/test artifacts and logs
+dist/
+build/
+logs/
+*.log
+backend/auth_debug.log
+backend/backend.log
+backend/*.log

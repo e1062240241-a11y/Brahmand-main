@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export CLOUDSDK_PYTHON=/usr/local/bin/python3.11
+gcloud config set gcloudignore/enabled true
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ID="${1:-}"

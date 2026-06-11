@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
 import { useAuthStore } from '../../src/store/authStore';
+import { getUserProfile } from '../../src/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 
 const { width: windowWidth } = Dimensions.get('window');
 
@@ -14,10 +16,31 @@ export default function PassportCoverScreen() {
   const router = useRouter();
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const { user } = useAuthStore();
+  const isFocused = useIsFocused();
+
+  const [isOpening, setIsOpening] = useState(false);
 
   useEffect(() => {
     loadPassport();
   }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      setIsOpening(false);
+      // Fetch latest profile from backend
+      const fetchLatest = async () => {
+        try {
+          const res = await getUserProfile();
+          if (res.data) {
+            useAuthStore.getState().updateUser(res.data);
+          }
+        } catch (e) {
+          console.warn('[PassportCover] Profile fetch failed:', e);
+        }
+      };
+      fetchLatest();
+    }
+  }, [isFocused]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -25,6 +48,12 @@ export default function PassportCoverScreen() {
     } else {
       router.replace('/(tabs)/home' as any);
     }
+  };
+
+  const handleOpenPassport = () => {
+    if (isOpening) return;
+    setIsOpening(true);
+    router.push('/passport/inner' as any);
   };
 
   return (
@@ -47,18 +76,20 @@ export default function PassportCoverScreen() {
       {/* Main Content Area */}
       <View style={styles.content}>
         <TouchableOpacity 
-          style={styles.cardContainer}
           activeOpacity={0.9}
-          onPress={() => router.push('/passport/inner' as any)}
+          onPress={handleOpenPassport}
+          disabled={isOpening}
         >
-          <Image 
-            source={require('../../assets/images/pass.png')}
-            style={styles.passportImage}
-            contentFit="contain"
-          />
-          <View style={styles.textOverlay}>
-            <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
-            <Text style={styles.subText}>Your Sanatani Passport</Text>
+          <View style={styles.cardContainer}>
+            <Image 
+              source={require('../../assets/images/pass.png')}
+              style={styles.passportImage}
+              contentFit="contain"
+            />
+            <View style={styles.textOverlay}>
+              <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
+              <Text style={styles.subText}>Your Sanatani Passport</Text>
+            </View>
           </View>
         </TouchableOpacity>
       </View>
@@ -106,7 +137,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
-    elevation: 12,
+    elevation: 0,
     marginBottom: 24,
     alignItems: 'center',
   },

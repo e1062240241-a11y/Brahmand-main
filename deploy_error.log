@@ -1,7 +1,0 @@
-Building using Dockerfile and deploying container to Cloud Run service [brahmand-backend] in project [brahmand-260327-19251] region [us-central1]
-Building and deploying...
-Validating configuration......................done
-Uploading sources...............................................................................................................................................done
-Building Container.........................................................................................................................................................................................................................................................failed
-Deployment failed
-ERROR: (gcloud.run.deploy) Build failed; check build logs for details

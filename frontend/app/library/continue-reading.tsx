@@ -13,8 +13,8 @@ import { FONTS } from '../../src/constants/theme';
 
 const { width: SW } = Dimensions.get('window');
 
-const geetaCover          = require('../../assets/images/user_upload_geeta_new.jpg');
-const upanishadCover      = require('../../assets/images/ancient_new_1.jpg');
+const geetaCover          = require('../../assets/images/featured_book_6.jpg');
+const upanishadCover      = require('../../assets/images/featured_book_7.jpg');
 const yogaSutrasCover     = require('../../assets/images/ancient_new_2.jpg');
 
 const ORANGE = '#FF6B00';

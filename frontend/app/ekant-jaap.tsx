@@ -1,4 +1,5 @@
 // accessibility: placeholder
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -370,21 +371,25 @@ const EkantJaapPage = () => {
     useEffect(() => {
         if (!player) return;
 
-        if (isRunning && isAudioEnabled) {
+        if (isRunning) {
             try {
-                player.volume = 1.0;
-                player.play();
+                player.volume = isAudioEnabled ? 1.0 : 0.0;
+                if (!playerStatus?.playing) {
+                    player.play();
+                }
             } catch (error) {
                 console.warn('Ekant Jaap audio play failed', error);
             }
         } else {
             try {
-                player.pause();
+                if (playerStatus?.playing) {
+                    player.pause();
+                }
             } catch (error) {
                 console.warn('Ekant Jaap audio pause failed', error);
             }
         }
-    }, [player, isRunning, isAudioEnabled]);
+    }, [player, isRunning, isAudioEnabled, playerStatus?.playing]);
 
     // Clean up player on unmount to prevent audio leaks
     useEffect(() => {
@@ -404,7 +409,7 @@ const EkantJaapPage = () => {
         if (hasAutoPlayedRef.current) return;
 
         player.loop = false;
-        player.volume = 1.0;
+        player.volume = isAudioEnabled ? 1.0 : 0.0;
 
         const attemptPlay = () => {
             if (hasAutoPlayedRef.current) return;
@@ -580,11 +585,14 @@ const EkantJaapPage = () => {
             <View style={styles.jaapContainer}>
                 <View style={styles.jaapTopBar}>
                     <TouchableOpacity style={styles.jaapTopChip} onPress={() => setIsAudioEnabled(!isAudioEnabled)}>
-                        <Ionicons name={isKaraokeMode ? "book" : "musical-notes"} size={14} color={isKaraokeMode ? "#FF6B00" : "#555"} />
-                        <Text style={[styles.jaapTopChipText, isKaraokeMode && { color: '#FF6B00' }]} numberOfLines={1}>
-                            {isKaraokeMode ? (t('language') === 'hi' ? 'हनुमान चालीसा' : 'Hanuman Chalisa') : ((t('language') === 'hi' ? (chosenMusic as any)?.hindiName : chosenMusic?.name) || (t('language') === 'hi' ? 'संगीत नहीं' : 'No Music'))}
+                        <Ionicons name={isAudioEnabled ? "volume-high" : "volume-mute"} size={14} color={isAudioEnabled ? "#FF6B00" : "#555"} />
+                        <Text style={[styles.jaapTopChipText, isAudioEnabled && { color: '#FF6B00' }]} numberOfLines={1}>
+                            {isKaraokeMode 
+                                ? (t('language') === 'hi' ? 'हनुमान चालीसा' : 'Hanuman Chalisa') 
+                                : ((t('language') === 'hi' ? (chosenMusic as any)?.hindiName : chosenMusic?.name) || (t('language') === 'hi' ? 'संगीत नहीं' : 'No Music'))}
+                            {isAudioEnabled ? '' : ` (${t('language') === 'hi' ? 'बंद' : 'Muted'})`}
                         </Text>
-                        {isKaraokeMode && <View style={[styles.jaapTopChipIndicator, { backgroundColor: '#FF6B00' }]} />}
+                        {isAudioEnabled && <View style={[styles.jaapTopChipIndicator, { backgroundColor: '#FF6B00' }]} />}
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.jaapTopChip} onPress={handleGoBack}>
@@ -602,7 +610,7 @@ const EkantJaapPage = () => {
                             </Text>
                         ) : (
                             <Text style={styles.focusSubtitle}>
-                                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {new Date(Date.now() + timeLeft * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatTimeIST(new Date())} → {formatTimeIST(new Date(Date.now() + timeLeft * 1000))}
                             </Text>
                         )}
                     </View>

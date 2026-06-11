@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { secureStorage } from '../utils/secureStorage';
 import { database } from '../database';
+import { useAuthStore } from './authStore';
 import {
   PassportAnswer,
   PassportCertificate,
@@ -35,7 +36,9 @@ const generateJourneyStory = (journey: Omit<PassportJourney, 'id' | 'generated_s
 
 const persistPassportState = async (state: Omit<PassportState, 'loadPassport' | 'addJourney' | 'awardBadge' | 'addJaap' | 'completeBook'>) => {
   try {
-    await secureStorage.setItem(PASSPORT_STORAGE_KEY, JSON.stringify(state));
+    const userId = useAuthStore.getState().user?.id;
+    const storageKey = userId ? `brahmand_passport_data_${userId}` : PASSPORT_STORAGE_KEY;
+    await secureStorage.setItem(storageKey, JSON.stringify(state));
   } catch (error) {
     console.warn('[PassportStore] Failed to persist passport data:', error);
   }
@@ -50,8 +53,13 @@ export const usePassportStore = create<PassportState>((set, get) => ({
 
   loadPassport: async () => {
     try {
-      const raw = await secureStorage.getItem(PASSPORT_STORAGE_KEY);
-      if (!raw) return;
+      const userId = useAuthStore.getState().user?.id;
+      const storageKey = userId ? `brahmand_passport_data_${userId}` : PASSPORT_STORAGE_KEY;
+      const raw = await secureStorage.getItem(storageKey);
+      if (!raw) {
+        set({ journeys: [], badges: [], certificates: [], total_jaap: 0, books_completed: 0 });
+        return;
+      }
       const parsed = JSON.parse(raw) as Omit<PassportState, 'loadPassport' | 'addJourney' | 'awardBadge' | 'addJaap' | 'completeBook'>;
       set(parsed);
     } catch (error) {
@@ -89,8 +97,12 @@ export const usePassportStore = create<PassportState>((set, get) => ({
           record.location = newJourney.location;
           record.date = newJourney.date;
           record.story = newJourney.generated_story;
-          record.answers = JSON.stringify(newJourney.answers);
-          record.created_at = Date.now();
+          record.rawAnswers = JSON.stringify({
+            title: newJourney.title,
+            media: newJourney.media,
+            visibility: newJourney.visibility,
+            answersList: newJourney.answers,
+          });
         });
       });
     } catch (e) {

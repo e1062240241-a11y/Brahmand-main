@@ -1,3 +1,4 @@
+import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useState, useCallback, useEffect } from 'react';
 import { 
   View, 
@@ -19,7 +20,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getCommunities, createCommunityRequest, getCommunityRequests, getCulturalCommunities, getUserCulturalCommunity, updateUserCulturalCommunity, parseApiError } from '../../src/services/api';
+import { getCommunities, createCommunityRequest, getCommunityRequests, parseApiError } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
@@ -67,18 +68,12 @@ export default function CommunityScreen() {
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   
   // Cultural Community state
-  const [showCGModal, setShowCGModal] = useState(false);
-  const [cgSearch, setCGSearch] = useState('');
-  const [cgList, setCGList] = useState<string[]>([]);
-  const [cgLoading, setCGLoading] = useState(false);
-  const [userCG, setUserCG] = useState<{ cultural_community: string | null; change_count: number; is_locked: boolean } | null>(null);
-
   const fetchData = useCallback(async () => {
     try {
       if (activeTab === 'Chat') {
         // Fetch communities list
         const res = await getCommunities();
-        setCommunities((res.data || []).filter((item: Community) => item.type !== 'home_area' && item.type !== 'area'));
+        setCommunities(res.data || []);
         setRequests([]);
       } else {
         // Fetch community requests for this tab type
@@ -110,7 +105,6 @@ export default function CommunityScreen() {
       return;
     }
     fetchData();
-    fetchUserCG();
   }, [fetchData, router, userId]);
 
   const handleTabChange = (tab: string) => {
@@ -164,8 +158,6 @@ export default function CommunityScreen() {
 
   const getCommunityIcon = (type: string) => {
     switch (type) {
-      case 'home_area': return 'home';
-      case 'office_area': return 'business';
       case 'city': return 'location';
       case 'state': return 'map';
       case 'country': return 'flag';
@@ -175,8 +167,6 @@ export default function CommunityScreen() {
 
   const getCommunityColor = (type: string) => {
     switch (type) {
-      case 'home_area': return COLORS.success;
-      case 'office_area': return COLORS.info;
       case 'city': return '#9B59B6';
       case 'state': return COLORS.warning;
       case 'country': return COLORS.primary;
@@ -201,64 +191,9 @@ export default function CommunityScreen() {
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
+    return formatDateIST(date);
   };
 
-  // Cultural Community functions
-  const fetchUserCG = async () => {
-    try {
-      const res = await getUserCulturalCommunity();
-      setUserCG(res.data);
-    } catch (error) {
-      console.error('Error fetching user CG:', error);
-    }
-  };
-
-  const loadCulturalCommunities = async (search?: string) => {
-    setCGLoading(true);
-    try {
-      const res = await getCulturalCommunities(search);
-      setCGList(res.data || []);
-    } catch (error) {
-      console.error('Error loading communities:', error);
-    } finally {
-      setCGLoading(false);
-    }
-  };
-
-  const handleOpenCGModal = () => {
-    loadCulturalCommunities();
-    fetchUserCG();
-    setShowCGModal(true);
-  };
-
-  const handleSelectCG = async (community: string) => {
-    if (userCG?.is_locked) {
-      Alert.alert('Locked', 'You can only change your Lok Sangam once. It is now locked.');
-      return;
-    }
-    
-    const changeMessage = userCG?.cultural_community 
-      ? `Change from "${userCG.cultural_community}" to "${community}"? You have ${1 - (userCG?.change_count || 0)} change remaining.`
-      : `Set your Lok Sangam to "${community}"?`;
-    
-    Alert.alert('Confirm', changeMessage, [
-      { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Confirm', 
-        onPress: async () => {
-          try {
-            await updateUserCulturalCommunity(community);
-            await fetchUserCG();
-            setShowCGModal(false);
-            Alert.alert('Success', 'Lok Sangam updated!');
-          } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
-          }
-        }
-      }
-    ]);
-  };
 
   const renderCommunity = ({ item }: { item: Community }) => (
     <View>
@@ -403,25 +338,6 @@ export default function CommunityScreen() {
               </View>
             }
           />
-          {/* Lok Sangam Section - Always visible below communities */}
-          <View style={styles.cgSection}>
-            <Text style={styles.cgSectionTitle}>Your Profile</Text>
-            <TouchableOpacity 
-              style={styles.cgButton}
-              onPress={handleOpenCGModal}
-            >
-              <View style={styles.cgIconContainer}>
-                <Ionicons name="people" size={22} color={COLORS.primary} />
-              </View>
-              <View style={styles.cgContent}>
-                <Text style={styles.cgTitle}>Lok Sangam</Text>
-                <Text style={styles.cgSubtitle}>
-                  {userCG?.cultural_community || 'Tap to set'}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-            </TouchableOpacity>
-          </View>
         </>
       ) : (
         // Request List
@@ -459,96 +375,6 @@ export default function CommunityScreen() {
         onSubmit={handleSubmitRequest}
       />
 
-      {/* Lok Sangam Modal */}
-      <Modal
-        visible={showCGModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCGModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Lok Sangam</Text>
-              <TouchableOpacity onPress={() => setShowCGModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-
-            {userCG?.is_locked && (
-              <View style={styles.lockedBanner}>
-                <Ionicons name="lock-closed" size={16} color={COLORS.error} />
-                <Text style={styles.lockedText}>Locked - Maximum changes reached</Text>
-              </View>
-            )}
-
-            {userCG?.cultural_community && !userCG?.is_locked && (
-              <View style={styles.currentCGBanner}>
-                <Text style={styles.currentCGText}>
-                  Current: {userCG.cultural_community} ({1 - (userCG.change_count || 0)} change left)
-                </Text>
-              </View>
-            )}
-
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search communities..."
-              placeholderTextColor={COLORS.textLight}
-              value={cgSearch}
-              onChangeText={(text) => {
-                setCGSearch(text);
-                loadCulturalCommunities(text);
-              }}
-            />
-
-            {cgLoading ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.xl }} />
-            ) : (
-              <>
-                {cgSearch.trim().length > 0 && !cgList.some((item) => item.toLowerCase() === cgSearch.trim().toLowerCase()) && (
-                  <TouchableOpacity
-                    style={styles.cgCreateButton}
-                    onPress={() => handleSelectCG(cgSearch.trim())}
-                    disabled={userCG?.is_locked}
-                  >
-                    <Text style={styles.cgCreateButtonText}>
-                      Use "{cgSearch.trim()}" as my Lok Sangam
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                <FlatList
-                  data={cgList}
-                  keyExtractor={(item, index) => `${item}-${index}`}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.cgItem,
-                        userCG?.cultural_community === item && styles.cgItemSelected
-                      ]}
-                      onPress={() => handleSelectCG(item)}
-                      disabled={userCG?.is_locked}
-                    >
-                      <Text style={[
-                        styles.cgItemText,
-                        userCG?.cultural_community === item && styles.cgItemTextSelected
-                      ]}>
-                        {item}
-                      </Text>
-                      {userCG?.cultural_community === item && (
-                        <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                      )}
-                    </TouchableOpacity>
-                  )}
-                  style={styles.cgList}
-                  ListEmptyComponent={
-                    <Text style={styles.emptyText}>No communities found</Text>
-                  }
-                />
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
     </LinearGradient>
   );
 }

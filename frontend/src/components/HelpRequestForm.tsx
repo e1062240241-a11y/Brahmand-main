@@ -38,7 +38,6 @@ const URGENCY_LEVELS = [
 ];
 
 const VISIBILITY_OPTIONS = [
-  { key: 'area', label: 'My Area Community', icon: 'home' },
   { key: 'city', label: 'My City Community', icon: 'location' },
   { key: 'state', label: 'My State Community', icon: 'map' },
   { key: 'national', label: 'National Community', icon: 'flag' },
@@ -125,7 +124,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
         <View style={styles.container}>
