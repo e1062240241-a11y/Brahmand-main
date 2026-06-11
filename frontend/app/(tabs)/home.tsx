@@ -219,12 +219,41 @@ function BloodDropIcon() {
 
 function LotusIcon() {
   return (
-    <Image
-      source={require('../../assets/images/sai_flower_lotus_icon.png')}
-      style={styles.saiLotusIcon}
-      resizeMode="contain"
-      accessibilityLabel="Lotus flower"
-    />
+    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none" style={styles.saiLotusIcon}>
+      {/* Outer Glow */}
+      <Circle cx="12" cy="12" r="11" fill="#FFF2EE" />
+      <Circle cx="12" cy="12" r="11" stroke="#FFD1C4" strokeWidth={1} />
+      {/* Central petal */}
+      <Path
+        d="M12 5C10.5 8.5 11.2 12.5 12 16C12.8 12.5 13.5 8.5 12 5Z"
+        fill="#FF5100"
+      />
+      {/* Inner left petal */}
+      <Path
+        d="M12 8C9 10 9.5 13.5 12 16C9.5 13.5 8.5 11 12 8Z"
+        fill="#FF773D"
+      />
+      {/* Inner right petal */}
+      <Path
+        d="M12 8C15 10 14.5 13.5 12 16C14.5 13.5 15.5 11 12 8Z"
+        fill="#FF773D"
+      />
+      {/* Outer left petal */}
+      <Path
+        d="M12 11C7.5 12 8.5 15.5 12 16C8.5 15.5 6.5 13 12 11Z"
+        fill="#FFA27D"
+      />
+      {/* Outer right petal */}
+      <Path
+        d="M12 11C16.5 12 15.5 15.5 12 16C15.5 15.5 17.5 13 12 11Z"
+        fill="#FFA27D"
+      />
+      {/* Base leaves / stand */}
+      <Path
+        d="M8 17.5C10 19 14 19 16 17.5C14 17 10 17 8 17.5Z"
+        fill="#0A1C3C"
+      />
+    </Svg>
   );
 }
 

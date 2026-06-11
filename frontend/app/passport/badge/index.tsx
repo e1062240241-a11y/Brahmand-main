@@ -81,7 +81,7 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
   
   // 1. Add all earned badges that match the filter (if any filter is present)
   const earnedMatches = badges.filter(b => {
-    if (!badgeTitle) return true;
+    if (!badgeTitle || typeof badgeTitle !== 'string') return true;
     const bt = badgeTitle.toLowerCase();
     const t = b.title?.toLowerCase() || '';
     if (bt.includes('yatra')) return t.includes('yatra') || t.includes('journey');
@@ -110,7 +110,7 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
     const isEarned = badges.some(b => preset.matcher(b.title));
     if (!isEarned) {
       let filterMatches = true;
-      if (badgeTitle) {
+      if (badgeTitle && typeof badgeTitle === 'string') {
         const bt = badgeTitle.toLowerCase();
         const t = preset.title.toLowerCase();
         if (bt.includes('yatra')) filterMatches = t.includes('yatra');
@@ -157,7 +157,7 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
     setMenuVisible(false);
     
     // Determine what to share
-    const sharedText = badgeTitle 
+    const sharedText = typeof badgeTitle === 'string' && badgeTitle
       ? `Check out my completed reading badge for ${badgeTitle} from Brahmand!`
       : `Check out my completed reading badges from Brahmand!`;
       
