@@ -3181,9 +3181,8 @@ export default function CommunityDetailScreen() {
             localImageToUpload.toLowerCase().endsWith('.mov') || 
             localImageToUpload.toLowerCase().endsWith('.m4v') || 
             localImageToUpload.toLowerCase().endsWith('.webm') ||
-            localImageToUpload.toLowerCase().includes('video') ||
-            localImageToUpload.toLowerCase().includes('expopicker') ||
-            localImageToUpload.toLowerCase().includes('imagepicker')
+            localImageToUpload.toLowerCase().includes('/video/') ||
+            localImageToUpload.toLowerCase().includes('video=true')
           );
           const fileExtension = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4') : 'jpg';
           const fileMime = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4') : 'image/jpeg';
@@ -3221,11 +3220,15 @@ export default function CommunityDetailScreen() {
             );
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
 
-            // Deduplicate by updating the optimistic post with the real server ID
+            // Deduplicate by updating the optimistic post with the real server ID and URL
             const realId = res?.data?.id || (res as any)?.id;
             if (realId) {
               setCommunityPosts(prev => {
-                const updated = prev.map(p => p.id === newPosts[i].id ? { ...p, id: realId } : p);
+                const updated = prev.map(p => p.id === newPosts[i].id ? { 
+                  ...p, 
+                  id: realId,
+                  image: i === 0 && uploadedUrl ? uploadedUrl : p.image
+                } : p);
                 useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
                 return updated;
               });
