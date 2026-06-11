@@ -259,23 +259,56 @@ function LotusIcon() {
 
 function TempleIcon() {
   return (
-    <Image
-      source={require('../../assets/images/home_temple_icon.png')}
-      style={styles.actionCardIcon}
-      resizeMode="contain"
-      accessibilityLabel="Temple"
-    />
+    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none" style={styles.actionCardIcon}>
+      {/* Light warm background circle */}
+      <Circle cx="12" cy="12" r="11" fill="rgba(255, 140, 50, 0.12)" />
+      {/* Temple spire (shikhara) and flags */}
+      <Path
+        d="M12 3L11.5 4V7H12.5V4L12 3Z"
+        fill="#FF5100"
+      />
+      {/* Flag */}
+      <Path
+        d="M12 4.5L14.5 5.5L12.5 6.5"
+        fill="#FF5100"
+      />
+      {/* Main triangular temple dome */}
+      <Path
+        d="M12 6L6 14H18L12 6Z"
+        fill="#FF5100"
+      />
+      {/* Base structure */}
+      <Rect x="7" y="14" width="10" height="5" rx="1" fill="#964900" />
+      {/* Doorway */}
+      <Path
+        d="M10 19V16H14V19"
+        stroke="#FFF"
+        strokeWidth="1"
+        strokeLinecap="round"
+      />
+    </Svg>
   );
 }
 
 function ShopIcon() {
   return (
-    <Image
-      source={require('../../assets/images/home_shop_icon.png')}
-      style={styles.actionCardIcon}
-      resizeMode="contain"
-      accessibilityLabel="Shop"
-    />
+    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none" style={styles.actionCardIcon}>
+      {/* Light minty background circle */}
+      <Circle cx="12" cy="12" r="11" fill="rgba(0, 199, 129, 0.12)" />
+      {/* Roof awning/canopy */}
+      <Path
+        d="M4 8L6 5H18L20 8H4Z"
+        fill="#00C781"
+      />
+      {/* Stripes on canopy */}
+      <Path d="M7 5V8M10 5V8M13 5V8M16 5V8" stroke="#FFF" strokeWidth="1" />
+      {/* Shop body */}
+      <Rect x="5" y="8" width="14" height="10" rx="1" fill="#0A1C3C" />
+      {/* Counter / window */}
+      <Rect x="7" y="10" width="10" height="5" rx="0.5" fill="#FFF" />
+      {/* Puja plate/flower inside shop counter */}
+      <Circle cx="12" cy="12.5" r="1.5" fill="#FF8C32" />
+    </Svg>
   );
 }
 
@@ -326,8 +359,8 @@ const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
 
 const HOME_CARD_TEXTURES = {
-  rose: require('../../assets/images/home_card_bg_rose.png'),
-  peach: require('../../assets/images/home_card_bg_peach.png'),
+  rose: require('../../assets/images/home_card_bg_mint.jpg'),
+  peach: require('../../assets/images/home_card_bg_lavender.jpg'),
   mint: require('../../assets/images/home_card_bg_mint.jpg'),
   cyan: require('../../assets/images/home_card_bg_mint.jpg'),
   lavender: require('../../assets/images/home_card_bg_lavender.jpg'),
@@ -2190,43 +2223,57 @@ export default function HomeScreen() {
                                   </View>
                                 ) : item.label === 'My Krishna' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 42, height: 42 }} contentFit="contain" />
-                                    </ImageBackground>
+                                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center' }}>
+                                      <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+                                        <Path d="M12 2C10 5 7 7 12 12C17 7 14 5 12 2Z" fill="#FFA27D" />
+                                        <Path d="M12 4C11 6 9 8 12 11C15 8 13 6 12 4Z" fill="#00C781" />
+                                        <Circle cx="12" cy="7" r="1.5" fill="#0A1C3C" />
+                                      </Svg>
+                                    </View>
                                   </View>
                                 ) : item.label === 'Panchang' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
-                                    </ImageBackground>
+                                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center' }}>
+                                      <MaterialCommunityIcons name="calendar-month-outline" size={26} color="#FF8C32" />
+                                    </View>
                                   </View>
                                 ) : item.label === 'Kundli' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
-                                    </ImageBackground>
+                                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center' }}>
+                                      <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+                                        <Rect x="2" y="2" width="20" height="20" stroke="#FF8C32" strokeWidth={1.5} />
+                                        <Path d="M2 2L22 22M22 2L2 22M12 2V22M2 12H22" stroke="#FF8C32" strokeWidth={1.5} />
+                                      </Svg>
+                                    </View>
                                   </View>
                                 ) : item.label === 'Jyotish' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
-                                    </ImageBackground>
+                                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center' }}>
+                                      <Ionicons name="sparkles" size={24} color="#FF8C32" />
+                                    </View>
                                   </View>
                                 ) : item.label === 'Brahmand Passport' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'visible', width: 52, height: 67 }]}>
-                                    <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
+                                    <Svg width={41} height={52} viewBox="0 0 24 28" fill="none">
+                                      <Rect x="2" y="2" width="20" height="24" rx="2" fill="#FFF1E6" stroke="#FF8C32" strokeWidth={1.5} />
+                                      <Circle cx="12" cy="11" r="4" stroke="#FF8C32" strokeWidth={1.5} />
+                                      <Path d="M8 20H16M10 23H14" stroke="#FF8C32" strokeWidth={1.5} strokeLinecap="round" />
+                                    </Svg>
                                   </View>
                                 ) : item.label === 'Festival' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
-                                    </ImageBackground>
+                                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center' }}>
+                                      <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                                        <Path d="M12 3C12 3 9 7 9 10C9 12 10.5 13.5 12 13.5C13.5 13.5 15 12 15 10C15 7 12 3 12 3Z" fill="#FF5100" />
+                                        <Path d="M4 14C4 18.5 7.5 21 12 21C16.5 21 20 18.5 20 14H4Z" fill="#FF8C32" />
+                                      </Svg>
+                                    </View>
                                   </View>
                                 ) : item.label === 'Brahmand Library' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
-                                    </ImageBackground>
+                                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFF1E6', justifyContent: 'center', alignItems: 'center' }}>
+                                      <Ionicons name="library-outline" size={24} color="#FF8C32" />
+                                    </View>
                                   </View>
                                 ) : (
                                   <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
@@ -2690,7 +2737,9 @@ export default function HomeScreen() {
                               });
                             }}
                           >
-                            <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
+                            <View style={[styles.communityCardIcon, { backgroundColor: '#FFF5F0', justifyContent: 'center', alignItems: 'center' }]}>
+                              <Ionicons name="location" size={24} color="#FF5100" />
+                            </View>
                             <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                               <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('cityCommunity').toUpperCase()}</Text>
                               <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
@@ -2728,8 +2777,8 @@ export default function HomeScreen() {
                               });
                             }}
                           >
-                            <View style={styles.communityCardIconBox}>
-                              <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
+                            <View style={[styles.communityCardIconBox, { backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center' }]}>
+                              <Ionicons name="people" size={24} color="#4CAF50" />
                             </View>
                             <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                               <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>
