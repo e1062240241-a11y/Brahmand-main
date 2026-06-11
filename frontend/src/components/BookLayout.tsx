@@ -786,7 +786,7 @@ export default function BookLayout({
         </View>
       </View>
 
-      <View style={[styles.topHeaderRow, { paddingTop: layout.safeTop + 10 }]} pointerEvents="box-none">
+      <View style={[styles.topHeaderRow, { paddingTop: layout.safeTop + 4 }]} pointerEvents="box-none">
         <Pressable onPress={onBack} style={styles.iconBtnWrapper} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color="#5C250A" />
         </Pressable>
@@ -853,7 +853,7 @@ const styles = StyleSheet.create({
   errorText: { color: '#ff9b9b', fontSize: 16, paddingHorizontal: 24, textAlign: 'center' },
   retryButton: { marginTop: 18, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 999, backgroundColor: '#D1B981' },
   retryButtonText: { color: '#241309', fontSize: 14, fontWeight: '800' },
-  topHeaderRow: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 16, backgroundColor: 'rgba(234, 209, 163, 0.9)', borderBottomWidth: 1, borderBottomColor: 'rgba(140, 58, 0, 0.1)' },
+  topHeaderRow: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 6, backgroundColor: 'rgba(234, 209, 163, 0.9)', borderBottomWidth: 1, borderBottomColor: 'rgba(140, 58, 0, 0.1)' },
   iconBtnWrapper: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.4)', justifyContent: 'center', alignItems: 'center' },
   headerCenter: { alignItems: 'center', flex: 1 },
   headerChapterSanskrit: { color: '#111111', fontSize: 16, fontWeight: '700', lineHeight: 24, fontFamily: 'serif' },

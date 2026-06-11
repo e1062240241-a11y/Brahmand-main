@@ -306,11 +306,9 @@ export default function MyKrishnaChat() {
           </Pressable>
         </View>
 
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          {/* ── Loading indicator while history loads ── */}
+        {Platform.OS === 'ios' ? (
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+            {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
             <BrandedLoading message="Krishna ke vichar sun rahe hain..." />
           ) : (
@@ -386,7 +384,87 @@ export default function MyKrishnaChat() {
               </Pressable>
             </View>
           </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        ) : (
+          <View style={{ flex: 1 }}>
+            {/* ── Loading indicator while history loads ── */}
+            {historyLoading ? (
+              <BrandedLoading message="Krishna ke vichar sun rahe hain..." />
+            ) : (
+              <FlatList
+                ref={flatListRef}
+                data={messages}
+                renderItem={renderMessage}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={[
+                  styles.listContent,
+                  { paddingTop: insets.top + 80 },
+                ]}
+                onContentSizeChange={scrollToBottom}
+                showsVerticalScrollIndicator={false}
+                ListFooterComponent={isLoading ? <TypingDots /> : null}
+              />
+            )}
+
+            {/* ── Suggestions chips (only shown before first user message) ── */}
+            {showSuggestions && !historyLoading && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.suggestionsScroll}
+                contentContainerStyle={styles.suggestionsContent}
+              >
+                {SUGGESTIONS.map((s, i) => (
+                  <Pressable
+                    key={i}
+                    style={({ pressed }) => [styles.chip, pressed && { opacity: 0.8 }]}
+                    onPress={() => handleSuggestion(s)}
+                    android_ripple={{ color: 'rgba(255, 215, 0, 0.25)', borderless: false }}
+                  >
+                    <Text style={styles.chipText}>{s}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+
+            {/* ── Input Bar ── */}
+            <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  ref={inputRef}
+                  style={styles.input}
+                  placeholder="Apna mann kholo..."
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  value={inputText}
+                  onChangeText={setInputText}
+                  multiline
+                  maxLength={500}
+                  returnKeyType="send"
+                  onSubmitEditing={handleSend}
+                  editable={!historyLoading}
+                  disableFullscreenUI={true}
+                  textAlignVertical="top"
+                />
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.sendBtn,
+                    (!inputText.trim() || isLoading) && styles.sendBtnDisabled,
+                    pressed && inputText.trim() && !isLoading && { opacity: 0.8 }
+                  ]}
+                  onPress={handleSend}
+                  disabled={!inputText.trim() || isLoading || historyLoading}
+                  android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: true, radius: 18 }}
+                >
+                  <Ionicons
+                    name="send"
+                    size={18}
+                    color={inputText.trim() && !isLoading ? '#FFF' : 'rgba(255,255,255,0.25)'}
+                  />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
       </ImageBackground>
     </View>
   );
